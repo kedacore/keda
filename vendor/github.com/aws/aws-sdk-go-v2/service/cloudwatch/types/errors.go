@@ -81,7 +81,7 @@ func (e *DashboardInvalidInputError) ErrorMessage() string {
 }
 func (e *DashboardInvalidInputError) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "InvalidParameterInput"
+		return "DashboardInvalidInputError"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -107,7 +107,7 @@ func (e *DashboardNotFoundError) ErrorMessage() string {
 }
 func (e *DashboardNotFoundError) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "ResourceNotFound"
+		return "DashboardNotFoundError"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -133,7 +133,7 @@ func (e *InternalServiceFault) ErrorMessage() string {
 }
 func (e *InternalServiceFault) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "InternalServiceError"
+		return "InternalServiceFault"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -159,7 +159,7 @@ func (e *InvalidFormatFault) ErrorMessage() string {
 }
 func (e *InvalidFormatFault) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "InvalidFormat"
+		return "InvalidFormatFault"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -211,7 +211,7 @@ func (e *InvalidParameterCombinationException) ErrorMessage() string {
 }
 func (e *InvalidParameterCombinationException) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "InvalidParameterCombination"
+		return "InvalidParameterCombinationException"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -239,7 +239,7 @@ func (e *InvalidParameterValueException) ErrorMessage() string {
 }
 func (e *InvalidParameterValueException) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "InvalidParameterValue"
+		return "InvalidParameterValueException"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -291,7 +291,7 @@ func (e *LimitExceededFault) ErrorMessage() string {
 }
 func (e *LimitExceededFault) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "LimitExceeded"
+		return "LimitExceededFault"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -317,7 +317,7 @@ func (e *MissingRequiredParameterException) ErrorMessage() string {
 }
 func (e *MissingRequiredParameterException) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "MissingParameter"
+		return "MissingRequiredParameterException"
 	}
 	return *e.ErrorCodeOverride
 }

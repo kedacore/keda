@@ -245,6 +245,36 @@ var _ = It("validate clustertriggerauthentication when RoleArn is not empty and 
 	}).ShouldNot(HaveOccurred())
 })
 
+var _ = It("validate triggerauthentication when FilePath is set", func() {
+	namespaceName := "filepathvalidation"
+	namespace := createNamespace(namespaceName)
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	spec := TriggerAuthenticationSpec{
+		FilePath: "/mnt/auth/creds.json",
+	}
+	ta := createTriggerAuthentication("filepathvalidation", namespaceName, "TriggerAuthentication", spec)
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), ta)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("validate clustertriggerauthentication when FilePath is set", func() {
+	namespaceName := "clusterfilepathvalidation"
+	namespace := createNamespace(namespaceName)
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	spec := TriggerAuthenticationSpec{
+		FilePath: "/mnt/auth/creds.json",
+	}
+	ta := createTriggerAuthentication("clusterfilepathvalidation", namespaceName, "ClusterTriggerAuthentication", spec)
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), ta)
+	}).ShouldNot(HaveOccurred())
+})
+
 func createTriggerAuthenticationSpecWithPodIdentity(provider PodIdentityProvider, roleArn, identityID, identityTenantID, identityAuthorityHost, identityOwner *string) TriggerAuthenticationSpec {
 	return TriggerAuthenticationSpec{
 		PodIdentity: &AuthPodIdentity{

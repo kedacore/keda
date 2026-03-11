@@ -26,8 +26,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/oapi-codegen/runtime/types"
 	"github.com/google/uuid"
+
+	"github.com/oapi-codegen/runtime/types"
 )
 
 // Parameter escaping works differently based on where a header is found
@@ -79,7 +80,7 @@ func StyleParamWithLocation(style string, explode bool, paramName string, paramL
 		if !convertableToTime && !convertableToDate {
 			b, err := tu.MarshalText()
 			if err != nil {
-				return "", fmt.Errorf("error marshaling '%s' as text: %s", value, err)
+				return "", fmt.Errorf("error marshaling '%s' as text: %w", value, err)
 			}
 
 			return stylePrimitive(style, explode, paramName, paramLocation, string(b))
@@ -165,7 +166,7 @@ func styleSlice(style string, explode bool, paramName string, paramLocation Para
 		part = escapeParameterString(part, paramLocation)
 		parts[i] = part
 		if err != nil {
-			return "", fmt.Errorf("error formatting '%s': %s", paramName, err)
+			return "", fmt.Errorf("error formatting '%s': %w", paramName, err)
 		}
 	}
 	return prefix + strings.Join(parts, separator), nil
@@ -273,7 +274,7 @@ func styleStruct(style string, explode bool, paramName string, paramLocation Par
 		}
 		str, err := primitiveToString(f.Interface())
 		if err != nil {
-			return "", fmt.Errorf("error formatting '%s': %s", paramName, err)
+			return "", fmt.Errorf("error formatting '%s': %w", paramName, err)
 		}
 		fieldDict[fieldName] = str
 	}
@@ -288,19 +289,15 @@ func styleMap(style string, explode bool, paramName string, paramLocation ParamL
 		}
 		return MarshalDeepObject(value, paramName)
 	}
-
-	dict, ok := value.(map[string]interface{})
-	if !ok {
-		return "", errors.New("map not of type map[string]interface{}")
-	}
+	v := reflect.ValueOf(value)
 
 	fieldDict := make(map[string]string)
-	for fieldName, value := range dict {
-		str, err := primitiveToString(value)
+	for _, fieldName := range v.MapKeys() {
+		str, err := primitiveToString(v.MapIndex(fieldName).Interface())
 		if err != nil {
-			return "", fmt.Errorf("error formatting '%s': %s", paramName, err)
+			return "", fmt.Errorf("error formatting '%s': %w", paramName, err)
 		}
-		fieldDict[fieldName] = str
+		fieldDict[fieldName.String()] = str
 	}
 	return processFieldDict(style, explode, paramName, paramLocation, fieldDict)
 }

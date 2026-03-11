@@ -4799,7 +4799,7 @@ type EntityManagementPipelineCloudRuleEntityCreateResult struct {
 // EntityManagementPipelineCloudRuleEntityUpdateInput - Update input for PipelineCloudRuleEntity entity type.
 type EntityManagementPipelineCloudRuleEntityUpdateInput struct {
 	// See description in PipelineCloudRuleEntity.
-	Description string `json:"description,omitempty"`
+	Description string `json:"description"`
 	// See nrql in PipelineCloudRuleEntity.
 	NRQL nrdb.NRQL `json:"nrql,omitempty"`
 	// See name in PipelineCloudRuleEntity.

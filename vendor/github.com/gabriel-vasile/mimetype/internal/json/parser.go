@@ -63,8 +63,6 @@ type parserState struct {
 	// mainly because the functionality is not needed.
 	currPath [][]byte
 	// firstToken stores the first JSON token encountered in input.
-	// TODO: performance would be better if we would stop parsing as soon
-	// as we see that first token is not what we are interested in.
 	firstToken int
 	// querySatisfied is true if both path and value of any queries passed to
 	// consumeAny are satisfied.
@@ -92,20 +90,6 @@ func eq(path1, path2 [][]byte) bool {
 		}
 	}
 	return true
-}
-
-// LooksLikeObjectOrArray reports if first non white space character from raw
-// is either { or [. Parsing raw as JSON is a heavy operation. When receiving some
-// text input we can skip parsing if the input does not even look like JSON.
-func LooksLikeObjectOrArray(raw []byte) bool {
-	for i := range raw {
-		if isSpace(raw[i]) {
-			continue
-		}
-		return raw[i] == '{' || raw[i] == '['
-	}
-
-	return false
 }
 
 // Parse will take out a parser from the pool depending on queryType and tries
@@ -257,8 +241,11 @@ out:
 	return 0
 }
 
+// openArray is used instead of an inline []byte{'['} to avoid mem alllocs.
+var openArray = []byte{'['}
+
 func (p *parserState) consumeArray(b []byte, qs []query, lvl int) (n int) {
-	p.appendPath([]byte{'['}, qs)
+	p.appendPath(openArray, qs)
 	if len(b) == 0 {
 		return 0
 	}

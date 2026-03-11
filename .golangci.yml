@@ -90,6 +90,11 @@ linters:
       - linters:
           - dupl
         path: triggerauthentication_controller.go
+      # Exclude for scale_handler_test, reason:
+      # pkg/scaling/scale_handler_test.go uses multiple blank identifiers for unused return values
+      - linters:
+          - dogsled
+        path: pkg/scaling/scale_handler_test.go
 
       # https://github.com/go-critic/go-critic/issues/926
       - linters:

@@ -10,8 +10,11 @@ func init() {
 
 // Detailed API definition: https://kafka.apache.org/protocol#The_Messages_DescribeGroups
 type Request struct {
-	Groups                      []string `kafka:"min=v0,max=v4"`
-	IncludeAuthorizedOperations bool     `kafka:"min=v3,max=v4"`
+	// We need at least one tagged field to indicate that this is a "flexible" message
+	// type.
+	_                           struct{} `kafka:"min=v5,max=v5,tag"`
+	Groups                      []string `kafka:"min=v0,max=v4|min=v5,max=v5,compact"`
+	IncludeAuthorizedOperations bool     `kafka:"min=v3,max=v5"`
 }
 
 func (r *Request) ApiKey() protocol.ApiKey { return protocol.DescribeGroups }
@@ -42,27 +45,36 @@ func (r *Request) Split(cluster protocol.Cluster) (
 }
 
 type Response struct {
-	ThrottleTimeMs int32           `kafka:"min=v1,max=v4"`
-	Groups         []ResponseGroup `kafka:"min=v0,max=v4"`
+	// We need at least one tagged field to indicate that this is a "flexible" message
+	// type.
+	_              struct{}        `kafka:"min=v5,max=v5,tag"`
+	ThrottleTimeMs int32           `kafka:"min=v1,max=v5"`
+	Groups         []ResponseGroup `kafka:"min=v0,max=v5"`
 }
 
 type ResponseGroup struct {
-	ErrorCode            int16                 `kafka:"min=v0,max=v4"`
-	GroupID              string                `kafka:"min=v0,max=v4"`
-	GroupState           string                `kafka:"min=v0,max=v4"`
-	ProtocolType         string                `kafka:"min=v0,max=v4"`
-	ProtocolData         string                `kafka:"min=v0,max=v4"`
-	Members              []ResponseGroupMember `kafka:"min=v0,max=v4"`
-	AuthorizedOperations int32                 `kafka:"min=v3,max=v4"`
+	// We need at least one tagged field to indicate that this is a "flexible" message
+	// type.
+	_                    struct{}              `kafka:"min=v5,max=v5,tag"`
+	ErrorCode            int16                 `kafka:"min=v0,max=v5"`
+	GroupID              string                `kafka:"min=v0,max=v4|min=v5,max=v5,compact"`
+	GroupState           string                `kafka:"min=v0,max=v4|min=v5,max=v5,compact"`
+	ProtocolType         string                `kafka:"min=v0,max=v4|min=v5,max=v5,compact"`
+	ProtocolData         string                `kafka:"min=v0,max=v4|min=v5,max=v5,compact"`
+	Members              []ResponseGroupMember `kafka:"min=v0,max=v4|min=v5,max=v5,compact"`
+	AuthorizedOperations int32                 `kafka:"min=v3,max=v5"`
 }
 
 type ResponseGroupMember struct {
-	MemberID         string `kafka:"min=v0,max=v4"`
-	GroupInstanceID  string `kafka:"min=v4,max=v4,nullable"`
-	ClientID         string `kafka:"min=v0,max=v4"`
-	ClientHost       string `kafka:"min=v0,max=v4"`
-	MemberMetadata   []byte `kafka:"min=v0,max=v4"`
-	MemberAssignment []byte `kafka:"min=v0,max=v4"`
+	// We need at least one tagged field to indicate that this is a "flexible" message
+	// type.
+	_                struct{} `kafka:"min=v5,max=v5,tag"`
+	MemberID         string   `kafka:"min=v0,max=v4|min=v5,max=v5,compact"`
+	GroupInstanceID  string   `kafka:"min=v4,max=v4,nullable|min=v5,max=v5,compact,nullable"`
+	ClientID         string   `kafka:"min=v0,max=v4|min=v5,max=v5,compact"`
+	ClientHost       string   `kafka:"min=v0,max=v4|min=v5,max=v5,compact"`
+	MemberMetadata   []byte   `kafka:"min=v0,max=v4|min=v5,max=v5,compact"`
+	MemberAssignment []byte   `kafka:"min=v0,max=v4|min=v5,max=v5,compact"`
 }
 
 func (r *Response) ApiKey() protocol.ApiKey { return protocol.DescribeGroups }

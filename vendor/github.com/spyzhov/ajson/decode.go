@@ -26,6 +26,11 @@ func Unmarshal(data []byte) (root *Node, err error) {
 		state   States
 		key     *string
 		current *Node
+		useKey  = func() **string {
+			tmp := cptrs(key)
+			key = nil
+			return &tmp
+		}
 	)
 
 	_, err = buf.first()
@@ -49,7 +54,7 @@ func Unmarshal(data []byte) (root *Node, err error) {
 					buf.state = CO
 				} else {
 					// Detected: String
-					current, err = newNode(current, buf, String, &key)
+					current, err = newNode(current, buf, String, useKey())
 					if err != nil {
 						break
 					}
@@ -61,7 +66,7 @@ func Unmarshal(data []byte) (root *Node, err error) {
 					}
 				}
 			case MI, ZE, IN:
-				current, err = newNode(current, buf, Numeric, &key)
+				current, err = newNode(current, buf, Numeric, useKey())
 				if err != nil {
 					break
 				}
@@ -73,7 +78,7 @@ func Unmarshal(data []byte) (root *Node, err error) {
 					current = current.parent
 				}
 			case T1, F1:
-				current, err = newNode(current, buf, Bool, &key)
+				current, err = newNode(current, buf, Bool, useKey())
 				if err != nil {
 					break
 				}
@@ -88,7 +93,7 @@ func Unmarshal(data []byte) (root *Node, err error) {
 					current = current.parent
 				}
 			case N1:
-				current, err = newNode(current, buf, Null, &key)
+				current, err = newNode(current, buf, Null, useKey())
 				if err != nil {
 					break
 				}
@@ -129,10 +134,10 @@ func Unmarshal(data []byte) (root *Node, err error) {
 				}
 				buf.state = OK
 			case co: /* { */
-				current, err = newNode(current, buf, Object, &key)
+				current, err = newNode(current, buf, Object, useKey())
 				buf.state = OB
 			case bo: /* [ */
-				current, err = newNode(current, buf, Array, &key)
+				current, err = newNode(current, buf, Array, useKey())
 				buf.state = AR
 			case cm: /* , */
 				if current == nil {
@@ -207,4 +212,20 @@ func getString(b *buffer) (*string, error) {
 		return nil, errorSymbol(b)
 	}
 	return &value, nil
+}
+
+func cptrs(cpy *string) *string {
+	if cpy == nil {
+		return nil
+	}
+	val := *cpy
+	return &val
+}
+
+func cptri(cpy *int) *int {
+	if cpy == nil {
+		return nil
+	}
+	val := *cpy
+	return &val
 }

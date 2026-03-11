@@ -91,6 +91,55 @@ var testMONGODBMetadata = []parseMongoDBMetadataTestData{
 		resolvedEnv: testMongoDBResolvedEnv,
 		raisesError: true,
 	},
+	// TLS enabled with CA only - should succeed
+	{
+		metadata:    map[string]string{"query": `{"name":"John"}`, "collection": "demo", "queryValue": "12", "connectionStringFromEnv": "MongoDB_CONN_STR", "dbName": "test"},
+		authParams:  map[string]string{"tls": "enable", "ca": "cavalue"},
+		resolvedEnv: testMongoDBResolvedEnv,
+		raisesError: false,
+	},
+	// TLS enabled with cert and key - should succeed
+	{
+		metadata:    map[string]string{"query": `{"name":"John"}`, "collection": "demo", "queryValue": "12", "connectionStringFromEnv": "MongoDB_CONN_STR", "dbName": "test"},
+		authParams:  map[string]string{"tls": "enable", "cert": "certvalue", "key": "keyvalue"},
+		resolvedEnv: testMongoDBResolvedEnv,
+		raisesError: false,
+	},
+	// TLS enabled with cert and key and CA - should succeed
+	{
+		metadata:    map[string]string{"query": `{"name":"John"}`, "collection": "demo", "queryValue": "12", "connectionStringFromEnv": "MongoDB_CONN_STR", "dbName": "test"},
+		authParams:  map[string]string{"tls": "enable", "cert": "certvalue", "key": "keyvalue", "ca": "cavalue"},
+		resolvedEnv: testMongoDBResolvedEnv,
+		raisesError: false,
+	},
+	// TLS enabled with cert only - should fail (key required)
+	{
+		metadata:    map[string]string{"query": `{"name":"John"}`, "collection": "demo", "queryValue": "12", "connectionStringFromEnv": "MongoDB_CONN_STR", "dbName": "test"},
+		authParams:  map[string]string{"tls": "enable", "cert": "certvalue"},
+		resolvedEnv: testMongoDBResolvedEnv,
+		raisesError: true,
+	},
+	// TLS enabled with key only - should fail (cert required)
+	{
+		metadata:    map[string]string{"query": `{"name":"John"}`, "collection": "demo", "queryValue": "12", "connectionStringFromEnv": "MongoDB_CONN_STR", "dbName": "test"},
+		authParams:  map[string]string{"tls": "enable", "key": "keyvalue"},
+		resolvedEnv: testMongoDBResolvedEnv,
+		raisesError: true,
+	},
+	// TLS enabled without any certs - should fail
+	{
+		metadata:    map[string]string{"query": `{"name":"John"}`, "collection": "demo", "queryValue": "12", "connectionStringFromEnv": "MongoDB_CONN_STR", "dbName": "test"},
+		authParams:  map[string]string{"tls": "enable"},
+		resolvedEnv: testMongoDBResolvedEnv,
+		raisesError: true,
+	},
+	// TLS disabled (default) - should succeed without certs
+	{
+		metadata:    map[string]string{"query": `{"name":"John"}`, "collection": "demo", "queryValue": "12", "connectionStringFromEnv": "MongoDB_CONN_STR", "dbName": "test"},
+		authParams:  map[string]string{"tls": "disable"},
+		resolvedEnv: testMongoDBResolvedEnv,
+		raisesError: false,
+	},
 }
 
 var mongoDBConnectionStringTestDatas = []mongoDBConnectionStringTestData{

@@ -6,12 +6,14 @@ package mssql
 import (
 	"database/sql"
 	"database/sql/driver"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"reflect"
 	"time"
 
 	"github.com/golang-sql/sqlexp"
+	"github.com/shopspring/decimal"
 
 	// "github.com/cockroachdb/apd"
 	"github.com/golang-sql/civil"
@@ -144,7 +146,22 @@ func (c *Conn) CheckNamedValue(nv *driver.NamedValue) error {
 	}
 }
 
+func makeMoneyParam(val decimal.Decimal) (res param) {
+	res.ti.TypeId = typeMoneyN
+
+	coeff := val.Mul(decimal.New(1, 4)).IntPart()
+
+	res.buffer = make([]byte, 8)
+	res.ti.Size = 8
+	binary.LittleEndian.PutUint32(res.buffer, uint32(coeff>>32))
+	binary.LittleEndian.PutUint32(res.buffer[4:], uint32(coeff))
+
+	return
+}
+
 func (s *Stmt) makeParamExtra(val driver.Value) (res param, err error) {
+	loc := getTimezone(s.c)
+
 	switch val := val.(type) {
 	case VarChar:
 		res.ti.TypeId = typeBigVarChar
@@ -174,12 +191,12 @@ func (s *Stmt) makeParamExtra(val driver.Value) (res param, err error) {
 		res.ti.Size = len(res.buffer)
 	case civil.Date:
 		res.ti.TypeId = typeDateN
-		res.buffer = encodeDate(val.In(time.UTC))
+		res.buffer = encodeDate(val.In(loc))
 		res.ti.Size = len(res.buffer)
 	case civil.DateTime:
 		res.ti.TypeId = typeDateTime2N
 		res.ti.Scale = 7
-		res.buffer = encodeDateTime2(val.In(time.UTC), int(res.ti.Scale))
+		res.buffer = encodeDateTime2(val.In(loc), int(res.ti.Scale))
 		res.ti.Size = len(res.buffer)
 	case civil.Time:
 		res.ti.TypeId = typeTimeN
@@ -187,7 +204,20 @@ func (s *Stmt) makeParamExtra(val driver.Value) (res param, err error) {
 		res.buffer = encodeTime(val.Hour, val.Minute, val.Second, val.Nanosecond, int(res.ti.Scale))
 		res.ti.Size = len(res.buffer)
 	case sql.Out:
-		res, err = s.makeParam(val.Dest)
+		switch dest := val.Dest.(type) {
+		case Money[decimal.Decimal]:
+			res = makeMoneyParam(dest.Decimal)
+		case Money[decimal.NullDecimal]:
+			if dest.Decimal.Valid {
+				res = makeMoneyParam(dest.Decimal.Decimal)
+			} else {
+				res.ti.TypeId = typeMoneyN
+				res.buffer = []byte{}
+				res.ti.Size = 8
+			}
+		default:
+			res, err = s.makeParam(dest)
+		}
 		res.Flags = fByRevValue
 	case TVP:
 		err = val.check()
@@ -206,7 +236,7 @@ func (s *Stmt) makeParamExtra(val driver.Value) (res param, err error) {
 			err = errCalTypes
 			return
 		}
-		res.buffer, err = val.encode(schema, name, columnStr, tvpFieldIndexes)
+		res.buffer, err = val.encode(schema, name, columnStr, tvpFieldIndexes, s.c.sess.encoding)
 		if err != nil {
 			return
 		}

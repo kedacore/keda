@@ -161,6 +161,25 @@ func (m *MockWriter) EXPECT() *MockWriterMockRecorder {
 	return m.recorder
 }
 
+// Apply mocks base method.
+func (m *MockWriter) Apply(ctx context.Context, obj runtime.ApplyConfiguration, opts ...client.ApplyOption) error {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, obj}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Apply", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Apply indicates an expected call of Apply.
+func (mr *MockWriterMockRecorder) Apply(ctx, obj any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, obj}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Apply", reflect.TypeOf((*MockWriter)(nil).Apply), varargs...)
+}
+
 // Create mocks base method.
 func (m *MockWriter) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
 	m.ctrl.T.Helper()
@@ -397,6 +416,25 @@ func NewMockClient(ctrl *gomock.Controller) *MockClient {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockClient) EXPECT() *MockClientMockRecorder {
 	return m.recorder
+}
+
+// Apply mocks base method.
+func (m *MockClient) Apply(ctx context.Context, obj runtime.ApplyConfiguration, opts ...client.ApplyOption) error {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, obj}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Apply", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Apply indicates an expected call of Apply.
+func (mr *MockClientMockRecorder) Apply(ctx, obj any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, obj}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Apply", reflect.TypeOf((*MockClient)(nil).Apply), varargs...)
 }
 
 // Create mocks base method.
@@ -640,6 +678,25 @@ func NewMockWithWatch(ctrl *gomock.Controller) *MockWithWatch {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockWithWatch) EXPECT() *MockWithWatchMockRecorder {
 	return m.recorder
+}
+
+// Apply mocks base method.
+func (m *MockWithWatch) Apply(ctx context.Context, obj runtime.ApplyConfiguration, opts ...client.ApplyOption) error {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, obj}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Apply", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Apply indicates an expected call of Apply.
+func (mr *MockWithWatchMockRecorder) Apply(ctx, obj any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, obj}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Apply", reflect.TypeOf((*MockWithWatch)(nil).Apply), varargs...)
 }
 
 // Create mocks base method.

@@ -53,17 +53,20 @@ func main() {
 You can download `ajson` cli from the [release page](https://github.com/spyzhov/ajson/releases), or install from the source:
 
 ```shell script
-go get github.com/spyzhov/ajson/cmd/ajson@v0.8.0
+go get github.com/spyzhov/ajson/cmd/ajson@v0.9.6
 ```
 
 Usage:
 
 ```
-Usage: ajson "jsonpath" ["input"]
+Usage: ajson [-mq] "jsonpath" ["input"]
   Read JSON and evaluate it with JSONPath.
+Parameters:
+  -m, --multiline  Input file/stream will be read as a multiline JSON. Each line should have a full valid JSON.
+  -q, --quiet      Do not print errors into the STDERR.
 Argument:
-  jsonpath   Valid JSONPath or evaluate string (Examples: "$..[?(@.price)]", "$..price", "avg($..price)")
-  input      Path to the JSON file. Leave it blank to use STDIN.
+  jsonpath         Valid JSONPath or evaluate string (Examples: "$..[?(@.price)]", "$..price", "avg($..price)")
+  input            Path to the JSON file. Leave it blank to use STDIN.
 ```
 
 Examples:
@@ -74,6 +77,7 @@ Examples:
   curl -s "https://randomuser.me/api/?results=10" | ajson "$..coordinates"
   ajson "$" example.json
   echo "3" | ajson "2 * pi * $"
+  docker logs image-name -f | ajson -qm 'root($[?(@=="ERROR" && key(@)=="severity")])'
 ```
 
 # JSONPath
@@ -291,54 +295,69 @@ JSON: {"name":"Foo","mail":"foo@example.com"}
 
 Package has several predefined functions.
 
-    abs          math.Abs          integers, floats
-    acos         math.Acos         integers, floats
-    acosh        math.Acosh        integers, floats
-    asin         math.Asin         integers, floats
-    asinh        math.Asinh        integers, floats
-    atan         math.Atan         integers, floats
-    atanh        math.Atanh        integers, floats
-    avg          Average           array of integers or floats
-    b64decode    b64 Decoding      string
-    b64encode    b64 Encoding      string 
-    b64encoden   b64 Encoding (no padding)   string
-    cbrt         math.Cbrt         integers, floats
-    ceil         math.Ceil         integers, floats
-    cos          math.Cos          integers, floats
-    cosh         math.Cosh         integers, floats
-    erf          math.Erf          integers, floats
-    erfc         math.Erfc         integers, floats
-    erfcinv      math.Erfcinv      integers, floats
-    erfinv       math.Erfinv       integers, floats
-    exp          math.Exp          integers, floats
-    exp2         math.Exp2         integers, floats
-    expm1        math.Expm1        integers, floats
-    factorial    N!                unsigned integer
-    floor        math.Floor        integers, floats
-    gamma        math.Gamma        integers, floats
-    j0           math.J0           integers, floats
-    j1           math.J1           integers, floats
-    length       len               array
-    log          math.Log          integers, floats
-    log10        math.Log10        integers, floats
-    log1p        math.Log1p        integers, floats
-    log2         math.Log2         integers, floats
-    logb         math.Logb         integers, floats
-    not          not               any
-    pow10        math.Pow10        integer
-    rand         N*rand.Float64    float
-    randint      rand.Intn         integer
-    round        math.Round        integers, floats
-    roundtoeven  math.RoundToEven  integers, floats
-    sin          math.Sin          integers, floats
-    sinh         math.Sinh         integers, floats
-    sum          Sum               array of integers or floats
-    sqrt         math.Sqrt         integers, floats
-    tan          math.Tan          integers, floats
-    tanh         math.Tanh         integers, floats
-    trunc        math.Trunc        integers, floats
-    y0           math.Y0           integers, floats
-    y1           math.Y1           integers, floats
+    abs          math.Abs           integers, floats
+    acos         math.Acos          integers, floats
+    acosh        math.Acosh         integers, floats
+    asin         math.Asin          integers, floats
+    asinh        math.Asinh         integers, floats
+    atan         math.Atan          integers, floats
+    atanh        math.Atanh         integers, floats
+    avg          Average            array of integers or floats
+    b64decode    b64 Decoding       string
+    b64encode    b64 Encoding       string 
+    b64encoden   b64 Encoding (no padding)    string
+    cbrt         math.Cbrt          integers, floats
+    ceil         math.Ceil          integers, floats
+    cos          math.Cos           integers, floats
+    cosh         math.Cosh          integers, floats
+    erf          math.Erf           integers, floats
+    erfc         math.Erfc          integers, floats
+    erfcinv      math.Erfcinv       integers, floats
+    erfinv       math.Erfinv        integers, floats
+    exp          math.Exp           integers, floats
+    exp2         math.Exp2          integers, floats
+    expm1        math.Expm1         integers, floats
+    factorial    N!                 unsigned integer
+    first        Get first element  any
+    floor        math.Floor         integers, floats
+    gamma        math.Gamma         integers, floats
+    is_array     Is type Array      any
+    is_bool      Is type Bool       any
+    is_float     Is type Float      any
+    is_int       Is type Int        any
+    is_null      Is type Null       any
+    is_numeric   Is type Numeric    any
+    is_object    Is type Object     any
+    is_string    Is type String     any
+    is_uint      Is type Uint       any
+    j0           math.J0            integers, floats
+    j1           math.J1            integers, floats
+    key          Key of element     string
+    last         Get last element   any
+    length       Length of array    array, string
+    log          math.Log           integers, floats
+    log10        math.Log10         integers, floats
+    log1p        math.Log1p         integers, floats
+    log2         math.Log2          integers, floats
+    logb         math.Logb          integers, floats
+    not          not                any
+    parent       Get parent element any
+    pow10        math.Pow10         integer
+    rand         N*rand.Float64     float
+    randint      rand.Intn          integer
+    root         Get root element   any
+    round        math.Round         integers, floats
+    roundtoeven  math.RoundToEven   integers, floats
+    sin          math.Sin           integers, floats
+    sinh         math.Sinh          integers, floats
+    size         Count of elements  array, object
+    sum          Sum                array of integers or floats
+    sqrt         math.Sqrt          integers, floats
+    tan          math.Tan           integers, floats
+    tanh         math.Tanh          integers, floats
+    trunc        math.Trunc         integers, floats
+    y0           math.Y0            integers, floats
+    y1           math.Y1            integers, floats
 
 You are free to add new one with function `AddFunction`:
 
@@ -625,9 +644,9 @@ $ go test -bench=. -cpu=1 -benchmem
 goos: linux
 goarch: amd64
 pkg: github.com/spyzhov/ajson
-BenchmarkUnmarshal_AJSON          138032              8762 ns/op            5344 B/op         95 allocs/op
-BenchmarkUnmarshal_JSON           117423             10502 ns/op             968 B/op         31 allocs/op
-BenchmarkJSONPath_all_prices       80908             14394 ns/op            7128 B/op        153 allocs/op
+BenchmarkUnmarshal_AJSON          121656             10060 ns/op            5712 B/op        118 allocs/op
+BenchmarkUnmarshal_JSON           102674             11381 ns/op             960 B/op         32 allocs/op
+BenchmarkJSONPath_all_prices       63314             16385 ns/op            7496 B/op        178 allocs/op
 ```
 
 # License

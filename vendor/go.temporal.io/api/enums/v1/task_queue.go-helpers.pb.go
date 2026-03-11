@@ -122,3 +122,22 @@ func RateLimitSourceFromString(s string) (RateLimitSource, error) {
 	}
 	return RateLimitSource(0), fmt.Errorf("%s is not a valid RateLimitSource", s)
 }
+
+var (
+	RoutingConfigUpdateState_shorthandValue = map[string]int32{
+		"Unspecified": 0,
+		"InProgress":  1,
+		"Completed":   2,
+	}
+)
+
+// RoutingConfigUpdateStateFromString parses a RoutingConfigUpdateState value from  either the protojson
+// canonical SCREAMING_CASE enum or the traditional temporal PascalCase enum to RoutingConfigUpdateState
+func RoutingConfigUpdateStateFromString(s string) (RoutingConfigUpdateState, error) {
+	if v, ok := RoutingConfigUpdateState_value[s]; ok {
+		return RoutingConfigUpdateState(v), nil
+	} else if v, ok := RoutingConfigUpdateState_shorthandValue[s]; ok {
+		return RoutingConfigUpdateState(v), nil
+	}
+	return RoutingConfigUpdateState(0), fmt.Errorf("%s is not a valid RoutingConfigUpdateState", s)
+}

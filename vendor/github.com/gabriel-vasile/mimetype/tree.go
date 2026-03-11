@@ -24,7 +24,7 @@ var root = newMIME("application/octet-stream", "",
 	woff2, otf, ttc, eot, wasm, shx, dbf, dcm, rar, djvu, mobi, lit, bpg, cbor,
 	sqlite3, dwg, nes, lnk, macho, qcp, icns, hdr, mrc, mdb, accdb, zstd, cab,
 	rpm, xz, lzip, torrent, cpio, tzif, xcf, pat, gbr, glb, cabIS, jxr, parquet,
-	oneNote, chm,
+	oneNote, chm, wpd, dxf, grib, zlib, inf, hlp, fm, bufr,
 	// Keep text last because it is the slowest check.
 	text,
 )
@@ -65,10 +65,9 @@ var (
 	jar   = newMIME("application/java-archive", ".jar", magic.Jar).
 		alias("application/jar", "application/jar-archive", "application/x-java-archive")
 	apk = newMIME("application/vnd.android.package-archive", ".apk", magic.APK)
-	ole = newMIME("application/x-ole-storage", "", magic.Ole, msi, aaf, msg, xls, pub, ppt, doc)
+	ole = newMIME("application/x-ole-storage", "", magic.Ole, msi, msg, xls, pub, ppt, doc)
 	msi = newMIME("application/x-ms-installer", ".msi", magic.Msi).
 		alias("application/x-windows-installer", "application/x-msi")
-	aaf = newMIME("application/octet-stream", ".aaf", magic.Aaf)
 	doc = newMIME("application/msword", ".doc", magic.Doc).
 		alias("application/vnd.ms-word")
 	ppt = newMIME("application/vnd.ms-powerpoint", ".ppt", magic.Ppt).
@@ -83,7 +82,7 @@ var (
 		alias("application/x-ogg")
 	oggAudio = newMIME("audio/ogg", ".oga", magic.OggAudio)
 	oggVideo = newMIME("video/ogg", ".ogv", magic.OggVideo)
-	text     = newMIME("text/plain", ".txt", magic.Text, svg, html, xml, php, js, lua, perl, python, ruby, json, ndJSON, rtf, srt, tcl, csv, tsv, vCard, iCalendar, warc, vtt, shell, netpbm, netpgm, netppm, netpam)
+	text     = newMIME("text/plain", ".txt", magic.Text, svg, html, xml, php, js, lua, perl, python, ruby, json, ndJSON, rtf, srt, tcl, csv, tsv, vCard, iCalendar, warc, vtt, shell, netpbm, netpgm, netppm, netpam, rfc822)
 	xml      = newMIME("text/xml", ".xml", magic.XML, rss, atom, x3d, kml, xliff, collada, gml, gpx, tcx, amf, threemf, xfdf, owl2, xhtml).
 			alias("application/xml")
 	xhtml   = newMIME("application/xhtml+xml", ".html", magic.XHTML)
@@ -175,8 +174,8 @@ var (
 	aMp4 = newMIME("audio/mp4", ".mp4", magic.AMp4).
 		alias("audio/x-mp4a")
 	m4a = newMIME("audio/x-m4a", ".m4a", magic.M4a)
-	m3u = newMIME("application/vnd.apple.mpegurl", ".m3u", magic.M3u).
-		alias("audio/mpegurl")
+	m3u = newMIME("application/vnd.apple.mpegurl", ".m3u", magic.M3U).
+		alias("audio/mpegurl", "application/x-mpegurl")
 	m4v  = newMIME("video/x-m4v", ".m4v", magic.M4v)
 	mj2  = newMIME("video/mj2", ".mj2", magic.Mj2)
 	dvb  = newMIME("video/vnd.dvb.file", ".dvb", magic.Dvb)
@@ -286,4 +285,13 @@ var (
 	cbor    = newMIME("application/cbor", ".cbor", magic.CBOR)
 	oneNote = newMIME("application/onenote", ".one", magic.One)
 	chm     = newMIME("application/vnd.ms-htmlhelp", ".chm", magic.CHM)
+	wpd     = newMIME("application/vnd.wordperfect", ".wpd", magic.WPD)
+	dxf     = newMIME("image/vnd.dxf", ".dxf", magic.DXF)
+	rfc822  = newMIME("message/rfc822", ".eml", magic.RFC822)
+	grib    = newMIME("application/grib", ".grb", magic.GRIB)
+	zlib    = newMIME("application/zlib", "", magic.Zlib)
+	inf     = newMIME("application/x-os2-inf", ".inf", magic.Inf)
+	hlp     = newMIME("application/x-os2-hlp", ".hlp", magic.Hlp)
+	fm      = newMIME("application/vnd.framemaker", ".fm", magic.FrameMaker)
+	bufr    = newMIME("application/bufr", ".bufr", magic.BUFR)
 )

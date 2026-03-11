@@ -1,6 +1,7 @@
 package msdsn
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
@@ -65,6 +66,7 @@ const (
 	Port                   = "port"
 	TrustServerCertificate = "trustservercertificate"
 	Certificate            = "certificate"
+	ServerCertificate      = "servercertificate"
 	TLSMin                 = "tlsmin"
 	PacketSize             = "packet size"
 	LogParam               = "log"
@@ -84,7 +86,23 @@ const (
 	Pipe                   = "pipe"
 	MultiSubnetFailover    = "multisubnetfailover"
 	NoTraceID              = "notraceid"
+	GuidConversion         = "guid conversion"
+	Timezone               = "timezone"
 )
+
+type EncodeParameters struct {
+	// Properly convert GUIDs, using correct byte endianness
+	GuidConversion bool
+	// Timezone is the timezone to use for encoding and decoding datetime values.
+	Timezone *time.Location
+}
+
+func (e EncodeParameters) GetTimezone() *time.Location {
+	if e.Timezone == nil {
+		return time.UTC
+	}
+	return e.Timezone
+}
 
 type Config struct {
 	Port       uint64
@@ -141,6 +159,8 @@ type Config struct {
 	// When true, no connection id or trace id value is sent in the prelogin packet.
 	// Some cloud servers may block connections that lack such values.
 	NoTraceID bool
+	// Parameters related to type encoding
+	Encoding EncodeParameters
 }
 
 func readDERFile(filename string) ([]byte, error) {
@@ -175,7 +195,9 @@ func readCertificate(certificate string) ([]byte, error) {
 }
 
 // Build a tls.Config object from the supplied certificate.
-func SetupTLS(certificate string, insecureSkipVerify bool, hostInCertificate string, minTLSVersion string) (*tls.Config, error) {
+// serverCertificate is used for byte-comparison validation (skips chain validation and hostname validation)
+// certificate is used for traditional chain validation
+func SetupTLS(certificate string, serverCertificate string, insecureSkipVerify bool, hostInCertificate string, minTLSVersion string) (*tls.Config, error) {
 	config := tls.Config{
 		ServerName:         hostInCertificate,
 		InsecureSkipVerify: insecureSkipVerify,
@@ -188,6 +210,19 @@ func SetupTLS(certificate string, insecureSkipVerify bool, hostInCertificate str
 		MinVersion:                  TLSVersionFromString(minTLSVersion),
 	}
 
+	// Handle serverCertificate parameter (byte-comparison validation)
+	if len(serverCertificate) > 0 {
+		pem, err := readCertificate(serverCertificate)
+		if err != nil {
+			return nil, fmt.Errorf("cannot read server certificate %q: %w", serverCertificate, err)
+		}
+		if err := setupTLSServerCertificateOnly(&config, pem); err != nil {
+			return nil, err
+		}
+		return &config, nil
+	}
+
+	// Handle certificate parameter (traditional chain validation)
 	if len(certificate) == 0 {
 		return &config, nil
 	}
@@ -195,6 +230,7 @@ func SetupTLS(certificate string, insecureSkipVerify bool, hostInCertificate str
 	if err != nil {
 		return nil, fmt.Errorf("cannot read certificate %q: %w", certificate, err)
 	}
+
 	if strings.Contains(config.ServerName, ":") && !insecureSkipVerify {
 		err := setupTLSCommonName(&config, pem)
 		if err != skipSetup {
@@ -205,6 +241,45 @@ func SetupTLS(certificate string, insecureSkipVerify bool, hostInCertificate str
 	certs.AppendCertsFromPEM(pem)
 	config.RootCAs = certs
 	return &config, nil
+}
+
+// setupTLSServerCertificateOnly validates that the server certificate matches the provided certificate via byte comparison
+// This matches the behavior of Microsoft.Data.SqlClient
+func setupTLSServerCertificateOnly(config *tls.Config, pemData []byte) error {
+	// To match the behavior of Microsoft.Data.SqlClient, we simply compare the raw bytes
+	// of the server's certificate with the provided certificate file. This approach:
+	// - Does not validate certificate chain, expiry, or subject
+	// - Only checks that the server's certificate exactly matches the provided certificate
+	// - Skips hostname validation (which is the intended behavior)
+	//
+	// We use InsecureSkipVerify=true with VerifyPeerCertificate callback because
+	// VerifyConnection runs AFTER standard verification (including hostname check).
+
+	// Parse the expected certificate from the PEM data
+	block, _ := pem.Decode(pemData)
+	if block == nil {
+		return errors.New("failed to decode PEM certificate")
+	}
+	// Store the raw certificate bytes (DER format) for comparison
+	expectedCertBytes := block.Bytes
+
+	config.InsecureSkipVerify = true
+	config.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+		if len(rawCerts) == 0 {
+			return errors.New("no peer certificates provided")
+		}
+
+		// Compare the server's certificate bytes with the expected certificate bytes
+		// This matches the Microsoft.Data.SqlClient behavior: just compare raw bytes
+		serverCertBytes := rawCerts[0]
+
+		if !bytes.Equal(serverCertBytes, expectedCertBytes) {
+			return errors.New("server certificate doesn't match the provided certificate")
+		}
+
+		return nil
+	}
+	return nil
 }
 
 // Parse and handle encryption parameters. If encryption is desired, it returns the corresponding tls.Config object.
@@ -241,12 +316,25 @@ func parseTLS(params map[string]string, host string) (Encryption, *tls.Config, e
 		}
 	}
 	certificate := params[Certificate]
+	serverCertificate := params[ServerCertificate]
+	hostInCertificate := params[HostNameInCertificate]
+
+	// Validate parameter combinations
+	if len(serverCertificate) > 0 {
+		if len(certificate) > 0 {
+			return encryption, nil, errors.New("cannot specify both 'certificate' and 'serverCertificate' parameters")
+		}
+		if len(hostInCertificate) > 0 {
+			return encryption, nil, errors.New("cannot specify both 'serverCertificate' and 'hostnameincertificate' parameters")
+		}
+	}
+
 	if encryption != EncryptionDisabled {
 		tlsMin := params[TLSMin]
 		if encrypt == "strict" {
 			trustServerCert = false
 		}
-		tlsConfig, err := SetupTLS(certificate, trustServerCert, host, tlsMin)
+		tlsConfig, err := SetupTLS(certificate, serverCertificate, trustServerCert, host, tlsMin)
 		if err != nil {
 			return encryption, nil, fmt.Errorf("failed to setup TLS: %w", err)
 		}
@@ -293,6 +381,9 @@ func Parse(dsn string) (Config, error) {
 	p := Config{
 		ProtocolParameters: map[string]interface{}{},
 		Protocols:          []string{},
+		Encoding: EncodeParameters{
+			Timezone: time.UTC,
+		},
 	}
 
 	activityid, uerr := uuid.NewRandom()
@@ -315,6 +406,15 @@ func Parse(dsn string) (Config, error) {
 			return p, fmt.Errorf("invalid log parameter '%s': %s", strlog, err.Error())
 		}
 		p.LogFlags = Log(flags)
+	}
+
+	tz, ok := params[Timezone]
+	if ok {
+		location, err := time.LoadLocation(tz)
+		if err != nil {
+			return p, fmt.Errorf("invalid timezone '%s': %s", tz, err.Error())
+		}
+		p.Encoding.Timezone = location
 	}
 
 	p.Database = params[Database]
@@ -525,6 +625,20 @@ func Parse(dsn string) (Config, error) {
 			p.NoTraceID = notraceid
 		}
 	}
+
+	guidConversion, ok := params[GuidConversion]
+	if ok {
+		var err error
+		p.Encoding.GuidConversion, err = strconv.ParseBool(guidConversion)
+		if err != nil {
+			f := "invalid guid conversion '%s': %s"
+			return p, fmt.Errorf(f, guidConversion, err.Error())
+		}
+	} else {
+		// set to false for backward compatibility
+		p.Encoding.GuidConversion = false
+	}
+
 	return p, nil
 }
 
@@ -585,6 +699,15 @@ func (p Config) URL() *url.URL {
 	if p.ColumnEncryption {
 		q.Add("columnencryption", "true")
 	}
+
+	if p.Encoding.GuidConversion {
+		q.Add(GuidConversion, strconv.FormatBool(p.Encoding.GuidConversion))
+	}
+
+	if tz := p.Encoding.Timezone; tz != nil && tz != time.UTC {
+		q.Add(Timezone, tz.String())
+	}
+
 	if len(q) > 0 {
 		res.RawQuery = q.Encode()
 	}
@@ -601,13 +724,14 @@ var adoSynonyms = map[string]string{
 	"addr":                      Server,
 	"user":                      UserID,
 	"uid":                       UserID,
+	"pwd":                       Password,
 	"initial catalog":           Database,
 	"column encryption setting": "columnencryption",
 }
 
 func splitConnectionString(dsn string) (res map[string]string) {
 	res = map[string]string{}
-	parts := strings.Split(dsn, ";")
+	parts := splitAdoConnectionStringParts(dsn)
 	for _, part := range parts {
 		if len(part) == 0 {
 			continue
@@ -620,6 +744,12 @@ func splitConnectionString(dsn string) (res map[string]string) {
 		var value string = ""
 		if len(lst) > 1 {
 			value = strings.TrimSpace(lst[1])
+			// Remove surrounding double quotes if present
+			if len(value) >= 2 && strings.HasPrefix(value, "\"") && strings.HasSuffix(value, "\"") {
+				value = value[1 : len(value)-1]
+				// Unescape double quotes
+				value = strings.ReplaceAll(value, "\"\"", "\"")
+			}
 		}
 		synonym, hasSynonym := adoSynonyms[name]
 		if hasSynonym {
@@ -643,6 +773,45 @@ func splitConnectionString(dsn string) (res map[string]string) {
 		res[name] = value
 	}
 	return res
+}
+
+// splitAdoConnectionStringParts splits an ADO connection string into parts,
+// properly handling double-quoted values that may contain semicolons
+func splitAdoConnectionStringParts(dsn string) []string {
+	var parts []string
+	var current strings.Builder
+	inQuotes := false
+
+	runes := []rune(dsn)
+	for i := 0; i < len(runes); i++ {
+		char := runes[i]
+
+		if char == '"' {
+			if inQuotes && i+1 < len(runes) && runes[i+1] == '"' {
+				// Double quote escape sequence - add both quotes to current part
+				current.WriteRune(char)
+				current.WriteRune(runes[i+1])
+				i++ // Skip the next quote
+			} else {
+				// Start or end of quoted section
+				inQuotes = !inQuotes
+				current.WriteRune(char)
+			}
+		} else if char == ';' && !inQuotes {
+			// Semicolon outside of quotes - end current part
+			parts = append(parts, current.String())
+			current.Reset()
+		} else {
+			current.WriteRune(char)
+		}
+	}
+
+	// Add the last part if it's not empty
+	if current.Len() > 0 {
+		parts = append(parts, current.String())
+	}
+
+	return parts
 }
 
 // Splits a URL of the form sqlserver://username:password@host/instance?param1=value&param2=value

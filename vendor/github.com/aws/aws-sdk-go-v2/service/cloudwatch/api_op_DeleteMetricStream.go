@@ -47,11 +47,11 @@ func (c *Client) addOperationDeleteMetricStreamMiddlewares(stack *middleware.Sta
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsAwsquery_serializeOpDeleteMetricStream{}, middleware.After)
+	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpDeleteMetricStream{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsquery_deserializeOpDeleteMetricStream{}, middleware.After)
+	err = stack.Deserialize.Add(&smithyRpcv2cbor_deserializeOpDeleteMetricStream{}, middleware.After)
 	if err != nil {
 		return err
 	}
@@ -105,6 +105,9 @@ func (c *Client) addOperationDeleteMetricStreamMiddlewares(stack *middleware.Sta
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {

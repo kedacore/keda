@@ -3,16 +3,35 @@ package magic
 import (
 	"bytes"
 	"encoding/binary"
+
+	"github.com/gabriel-vasile/mimetype/internal/scan"
 )
 
-var (
-	// Fdf matches a Forms Data Format file.
-	Fdf = prefix([]byte("%FDF"))
-	// Mobi matches a Mobi file.
-	Mobi = offset([]byte("BOOKMOBI"), 60)
-	// Lit matches a Microsoft Lit file.
-	Lit = prefix([]byte("ITOLITLS"))
-)
+// Pdf matches a Portable Document Format file.
+// https://github.com/file/file/blob/11010cc805546a3e35597e67e1129a481aed40e8/magic/Magdir/pdf
+func Pdf(raw []byte, _ uint32) bool {
+	// usual pdf signature
+	return bytes.HasPrefix(raw, []byte("%PDF-")) ||
+		// new-line prefixed signature
+		bytes.HasPrefix(raw, []byte("\012%PDF-")) ||
+		// UTF-8 BOM prefixed signature
+		bytes.HasPrefix(raw, []byte("\xef\xbb\xbf%PDF-"))
+}
+
+// Fdf matches a Forms Data Format file.
+func Fdf(raw []byte, _ uint32) bool {
+	return bytes.HasPrefix(raw, []byte("%FDF"))
+}
+
+// Mobi matches a Mobi file.
+func Mobi(raw []byte, _ uint32) bool {
+	return offset(raw, []byte("BOOKMOBI"), 60)
+}
+
+// Lit matches a Microsoft Lit file.
+func Lit(raw []byte, _ uint32) bool {
+	return bytes.HasPrefix(raw, []byte("ITOLITLS"))
+}
 
 // PDF matches a Portable Document Format file.
 // The %PDF- header should be the first thing inside the file but many
@@ -80,4 +99,27 @@ func Lotus123(raw []byte, _ uint32) bool {
 // CHM matches a Microsoft Compiled HTML Help file.
 func CHM(raw []byte, _ uint32) bool {
 	return bytes.HasPrefix(raw, []byte("ITSF\003\000\000\000\x60\000\000\000"))
+}
+
+// Inf matches an OS/2 .inf file.
+func Inf(raw []byte, _ uint32) bool {
+	return bytes.HasPrefix(raw, []byte("HSP\x01\x9b\x00"))
+}
+
+// Hlp matches an OS/2 .hlp file.
+func Hlp(raw []byte, _ uint32) bool {
+	return bytes.HasPrefix(raw, []byte("HSP\x10\x9b\x00"))
+}
+
+// FrameMaker matches an Adobe FrameMaker file.
+func FrameMaker(raw []byte, _ uint32) bool {
+	b := scan.Bytes(raw)
+	if !bytes.HasPrefix(b, []byte("<MakerFile")) &&
+		!bytes.HasPrefix(b, []byte("<MakerDictionary")) &&
+		b.Match([]byte("<BOOKFILE"), scan.IgnoreCase) == -1 {
+		return false
+	}
+
+	// To avoid plain text false positives.
+	return bytes.IndexByte(b[:min(len(b), 512)], 0x00) != -1
 }

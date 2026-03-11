@@ -40,7 +40,7 @@ const (
 
 // ScaleExecutor contains methods RequestJobScale and RequestScale
 type ScaleExecutor interface {
-	RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive bool, isError bool, scaleTo int64, maxScale int64)
+	RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive bool, isError bool, scaleTo int64, maxScale int64, options *ScaleExecutorOptions)
 	RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool, isError bool, options *ScaleExecutorOptions)
 }
 
@@ -124,4 +124,105 @@ func (e *scaleExecutor) setActiveCondition(ctx context.Context, logger logr.Logg
 		conditions.SetActiveCondition(status, reason, message)
 	}
 	return e.setCondition(ctx, logger, object, status, reason, message, active)
+}
+
+func (e *scaleExecutor) updateTriggersActivity(ctx context.Context, logger logr.Logger, object interface{}, activeTriggers []string) error {
+	// Get the current status to check if update is needed
+	var triggersActivity map[string]kedav1alpha1.TriggerActivityStatus
+	var allTriggerNames []string
+
+	switch obj := object.(type) {
+	case *kedav1alpha1.ScaledObject:
+		triggersActivity = obj.Status.TriggersActivity
+		allTriggerNames = obj.Status.ExternalMetricNames
+	case *kedav1alpha1.ScaledJob:
+		triggersActivity = obj.Status.TriggersActivity
+		allTriggerNames = obj.Status.ExternalMetricNames
+	default:
+		return fmt.Errorf("unsupported object type %T for updateTriggersActivity", object)
+	}
+
+	// Create set of active triggers for quick lookup
+	activeSet := make(map[string]bool, len(activeTriggers))
+	for _, trigger := range activeTriggers {
+		activeSet[trigger] = true
+	}
+
+	// Create set of current triggers for efficient lookup
+	currentTriggerSet := make(map[string]bool, len(allTriggerNames))
+	for _, trigger := range allTriggerNames {
+		currentTriggerSet[trigger] = true
+	}
+
+	// Check if any trigger's state has changed
+	needsUpdate := false
+
+	// Check if the map needs initialization
+	if triggersActivity == nil {
+		needsUpdate = len(allTriggerNames) > 0
+	} else {
+		// Check for state changes in existing triggers
+		for _, trigger := range allTriggerNames {
+			currentStatus, exists := triggersActivity[trigger]
+			if !exists || currentStatus.IsActive != activeSet[trigger] {
+				needsUpdate = true
+				break
+			}
+		}
+
+		// Check if there are stale triggers to remove
+		if !needsUpdate {
+			for triggerName := range triggersActivity {
+				if !currentTriggerSet[triggerName] {
+					needsUpdate = true
+					break
+				}
+			}
+		}
+	}
+
+	// If no update needed, return early without calling TransformObject
+	if !needsUpdate {
+		return nil
+	}
+
+	// Update is needed, perform the transformation
+	transform := func(runtimeObj runtimeclient.Object, _ interface{}) error {
+		var triggersActivity *map[string]kedav1alpha1.TriggerActivityStatus
+		var allTriggerNames []string
+
+		switch obj := runtimeObj.(type) {
+		case *kedav1alpha1.ScaledObject:
+			triggersActivity = &obj.Status.TriggersActivity
+			allTriggerNames = obj.Status.ExternalMetricNames
+		case *kedav1alpha1.ScaledJob:
+			triggersActivity = &obj.Status.TriggersActivity
+			allTriggerNames = obj.Status.ExternalMetricNames
+		default:
+			return fmt.Errorf("unsupported object type %T for updateTriggersActivity", runtimeObj)
+		}
+
+		// Initialize if needed
+		if *triggersActivity == nil {
+			*triggersActivity = make(map[string]kedav1alpha1.TriggerActivityStatus, len(allTriggerNames))
+		}
+
+		// Update IsActive status for all triggers
+		for _, trigger := range allTriggerNames {
+			(*triggersActivity)[trigger] = kedav1alpha1.TriggerActivityStatus{
+				IsActive: activeSet[trigger],
+			}
+		}
+
+		// Remove stale triggers
+		for triggerName := range *triggersActivity {
+			if !currentTriggerSet[triggerName] {
+				delete(*triggersActivity, triggerName)
+			}
+		}
+
+		return nil
+	}
+
+	return kedastatus.TransformObject(ctx, e.client, logger, object, nil, transform)
 }

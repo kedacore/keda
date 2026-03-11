@@ -41,14 +41,14 @@ const (
 	asterisk     byte = '*'
 	plus         byte = '+'
 	minus        byte = '-'
-	//division     byte = '/'
-	//exclamation  byte = '!'
-	//caret        byte = '^'
-	//signL        byte = '<'
-	//signG        byte = '>'
-	//signE        byte = '='
-	//ampersand    byte = '&'
-	//pipe         byte = '|'
+	// division     byte = '/'
+	// exclamation  byte = '!'
+	// caret        byte = '^'
+	// signL        byte = '<'
+	// signG        byte = '>'
+	// signE        byte = '='
+	// ampersand    byte = '&'
+	// pipe         byte = '|'
 	question byte = '?'
 )
 
@@ -88,11 +88,11 @@ func (b *buffer) next() (c byte, err error) {
 	return b.data[b.index], nil
 }
 
-func (b *buffer) slice(delta uint) ([]byte, error) {
-	if b.index+int(delta) > b.length {
+func (b *buffer) slice(delta int) ([]byte, error) {
+	if delta < 0 || b.index+delta > b.length {
 		return nil, io.EOF
 	}
-	return b.data[b.index : b.index+int(delta)], nil
+	return b.data[b.index : b.index+delta], nil
 }
 
 func (b *buffer) move(delta int) error {
@@ -648,7 +648,7 @@ func (b *buffer) operation() string {
 	// fixme: add additional order for comparison
 
 	for _, operation := range comparisonOperationsOrder() {
-		if bytes, ok := b.slice(uint(len(operation))); ok == nil {
+		if bytes, ok := b.slice(len(operation)); ok == nil {
 			if string(bytes) == operation {
 				current = operation
 				_ = b.move(len(operation) - 1) // error can't occupy here because of b.slice result

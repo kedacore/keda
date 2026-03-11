@@ -1874,6 +1874,11 @@ func awsAwsjson11_serializeOpDocumentListSecretsInput(v *ListSecretsInput, value
 		ok.String(*v.NextToken)
 	}
 
+	if len(v.SortBy) > 0 {
+		ok := object.Key("SortBy")
+		ok.String(string(v.SortBy))
+	}
+
 	if len(v.SortOrder) > 0 {
 		ok := object.Key("SortOrder")
 		ok.String(string(v.SortOrder))

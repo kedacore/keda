@@ -36,6 +36,11 @@ func init() {
 
 const autoScale = 100
 
+// GetInteger gets the ind'th element of the integer array
+func (d *Decimal) GetInteger(ind uint8) uint32 {
+	return d.integer[ind]
+}
+
 // SetInteger sets the ind'th element in the integer array
 func (d *Decimal) SetInteger(integer uint32, ind uint8) {
 	d.integer[ind] = integer

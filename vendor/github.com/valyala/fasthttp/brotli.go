@@ -17,8 +17,8 @@ const (
 	CompressBrotliBestSpeed       = brotli.BestSpeed
 	CompressBrotliBestCompression = brotli.BestCompression
 
-	// Choose a default brotli compression level comparable to
-	// CompressDefaultCompression (gzip 6)
+	// CompressBrotliDefaultCompression chooses a default brotli compression level comparable to
+	// CompressDefaultCompression (gzip 6).
 	// See: https://github.com/valyala/fasthttp/issues/798#issuecomment-626293806
 	CompressBrotliDefaultCompression = 4
 )
@@ -97,7 +97,7 @@ var (
 //   - CompressBrotliBestCompression
 //   - CompressBrotliDefaultCompression
 func AppendBrotliBytesLevel(dst, src []byte, level int) []byte {
-	w := &byteSliceWriter{dst}
+	w := &byteSliceWriter{b: dst}
 	WriteBrotliLevel(w, src, level) //nolint:errcheck
 	return w.b
 }
@@ -134,17 +134,17 @@ func WriteBrotliLevel(w io.Writer, p []byte, level int) (int, error) {
 
 var (
 	stacklessWriteBrotliOnce sync.Once
-	stacklessWriteBrotliFunc func(ctx interface{}) bool
+	stacklessWriteBrotliFunc func(ctx any) bool
 )
 
-func stacklessWriteBrotli(ctx interface{}) {
+func stacklessWriteBrotli(ctx any) {
 	stacklessWriteBrotliOnce.Do(func() {
 		stacklessWriteBrotliFunc = stackless.NewFunc(nonblockingWriteBrotli)
 	})
 	stacklessWriteBrotliFunc(ctx)
 }
 
-func nonblockingWriteBrotli(ctxv interface{}) {
+func nonblockingWriteBrotli(ctxv any) {
 	ctx := ctxv.(*compressCtx)
 	zw := acquireRealBrotliWriter(ctx.w, ctx.level)
 
@@ -167,7 +167,7 @@ func AppendBrotliBytes(dst, src []byte) []byte {
 // WriteUnbrotli writes unbrotlied p to w and returns the number of uncompressed
 // bytes written to w.
 func WriteUnbrotli(w io.Writer, p []byte) (int, error) {
-	r := &byteSliceReader{p}
+	r := &byteSliceReader{b: p}
 	zr, err := acquireBrotliReader(r)
 	if err != nil {
 		return 0, err
@@ -183,7 +183,7 @@ func WriteUnbrotli(w io.Writer, p []byte) (int, error) {
 
 // AppendUnbrotliBytes appends unbrotlied src to dst and returns the resulting dst.
 func AppendUnbrotliBytes(dst, src []byte) ([]byte, error) {
-	w := &byteSliceWriter{dst}
+	w := &byteSliceWriter{b: dst}
 	_, err := WriteUnbrotli(w, src)
 	return w.b, err
 }

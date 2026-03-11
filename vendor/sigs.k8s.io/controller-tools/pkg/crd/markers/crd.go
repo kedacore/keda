@@ -20,8 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"sigs.k8s.io/controller-tools/pkg/markers"
 )
 
@@ -72,15 +71,15 @@ func init() {
 // SubresourceStatus enables the "/status" subresource on a CRD.
 type SubresourceStatus struct{}
 
-func (s SubresourceStatus) ApplyToCRD(crd *apiext.CustomResourceDefinitionSpec, version string) error {
-	var subresources *apiext.CustomResourceSubresources
+func (s SubresourceStatus) ApplyToCRD(crd *apiextensionsv1.CustomResourceDefinitionSpec, version string) error {
+	var subresources *apiextensionsv1.CustomResourceSubresources
 	for i := range crd.Versions {
 		ver := &crd.Versions[i]
 		if ver.Name != version {
 			continue
 		}
 		if ver.Subresources == nil {
-			ver.Subresources = &apiext.CustomResourceSubresources{}
+			ver.Subresources = &apiextensionsv1.CustomResourceSubresources{}
 		}
 		subresources = ver.Subresources
 		break
@@ -88,7 +87,7 @@ func (s SubresourceStatus) ApplyToCRD(crd *apiext.CustomResourceDefinitionSpec, 
 	if subresources == nil {
 		return fmt.Errorf("status subresource applied to version %q not in CRD", version)
 	}
-	subresources.Status = &apiext.CustomResourceSubresourceStatus{}
+	subresources.Status = &apiextensionsv1.CustomResourceSubresourceStatus{}
 	return nil
 }
 
@@ -111,15 +110,15 @@ type SubresourceScale struct {
 	SelectorPath *string `marker:"selectorpath"`
 }
 
-func (s SubresourceScale) ApplyToCRD(crd *apiext.CustomResourceDefinitionSpec, version string) error {
-	var subresources *apiext.CustomResourceSubresources
+func (s SubresourceScale) ApplyToCRD(crd *apiextensionsv1.CustomResourceDefinitionSpec, version string) error {
+	var subresources *apiextensionsv1.CustomResourceSubresources
 	for i := range crd.Versions {
 		ver := &crd.Versions[i]
 		if ver.Name != version {
 			continue
 		}
 		if ver.Subresources == nil {
-			ver.Subresources = &apiext.CustomResourceSubresources{}
+			ver.Subresources = &apiextensionsv1.CustomResourceSubresources{}
 		}
 		subresources = ver.Subresources
 		break
@@ -127,7 +126,7 @@ func (s SubresourceScale) ApplyToCRD(crd *apiext.CustomResourceDefinitionSpec, v
 	if subresources == nil {
 		return fmt.Errorf("scale subresource applied to version %q not in CRD", version)
 	}
-	subresources.Scale = &apiext.CustomResourceSubresourceScale{
+	subresources.Scale = &apiextensionsv1.CustomResourceSubresourceScale{
 		SpecReplicasPath:   s.SpecPath,
 		StatusReplicasPath: s.StatusPath,
 		LabelSelectorPath:  s.SelectorPath,
@@ -144,7 +143,7 @@ func (s SubresourceScale) ApplyToCRD(crd *apiext.CustomResourceDefinitionSpec, v
 // other version will result in conversion to the storage version via a conversion webhook.
 type StorageVersion struct{}
 
-func (s StorageVersion) ApplyToCRD(crd *apiext.CustomResourceDefinitionSpec, version string) error {
+func (s StorageVersion) ApplyToCRD(crd *apiextensionsv1.CustomResourceDefinitionSpec, version string) error {
 	if version == "" {
 		// single-version, do nothing
 		return nil
@@ -170,12 +169,12 @@ func (s StorageVersion) ApplyToCRD(crd *apiext.CustomResourceDefinitionSpec, ver
 // Kubernetes upstream conversion-gen tool.
 type SkipVersion struct{}
 
-func (s SkipVersion) ApplyToCRD(crd *apiext.CustomResourceDefinitionSpec, version string) error {
+func (s SkipVersion) ApplyToCRD(crd *apiextensionsv1.CustomResourceDefinitionSpec, version string) error {
 	if version == "" {
 		// single-version, this is an invalid state
 		return fmt.Errorf("cannot skip a version if there is only a single version")
 	}
-	var versions []apiext.CustomResourceDefinitionVersion
+	var versions []apiextensionsv1.CustomResourceDefinitionVersion
 	// multi-version
 	for i := range crd.Versions {
 		ver := crd.Versions[i]
@@ -221,15 +220,15 @@ type PrintColumn struct {
 	Priority int32 `marker:",optional"`
 }
 
-func (s PrintColumn) ApplyToCRD(crd *apiext.CustomResourceDefinitionSpec, version string) error {
-	var columns *[]apiext.CustomResourceColumnDefinition
+func (s PrintColumn) ApplyToCRD(crd *apiextensionsv1.CustomResourceDefinitionSpec, version string) error {
+	var columns *[]apiextensionsv1.CustomResourceColumnDefinition
 	for i := range crd.Versions {
 		ver := &crd.Versions[i]
 		if ver.Name != version {
 			continue
 		}
 		if ver.Subresources == nil {
-			ver.Subresources = &apiext.CustomResourceSubresources{}
+			ver.Subresources = &apiextensionsv1.CustomResourceSubresources{}
 		}
 		columns = &ver.AdditionalPrinterColumns
 		break
@@ -238,7 +237,7 @@ func (s PrintColumn) ApplyToCRD(crd *apiext.CustomResourceDefinitionSpec, versio
 		return fmt.Errorf("printer columns applied to version %q not in CRD", version)
 	}
 
-	*columns = append(*columns, apiext.CustomResourceColumnDefinition{
+	*columns = append(*columns, apiextensionsv1.CustomResourceColumnDefinition{
 		Name:        s.Name,
 		Type:        s.Type,
 		JSONPath:    s.JSONPath,
@@ -286,7 +285,7 @@ type Resource struct {
 	Scope string `marker:",optional"`
 }
 
-func (s Resource) ApplyToCRD(crd *apiext.CustomResourceDefinitionSpec, _ string) error {
+func (s Resource) ApplyToCRD(crd *apiextensionsv1.CustomResourceDefinitionSpec, _ string) error {
 	if s.Path != "" {
 		crd.Names.Plural = s.Path
 	}
@@ -298,9 +297,9 @@ func (s Resource) ApplyToCRD(crd *apiext.CustomResourceDefinitionSpec, _ string)
 
 	switch s.Scope {
 	case "":
-		crd.Scope = apiext.NamespaceScoped
+		crd.Scope = apiextensionsv1.NamespaceScoped
 	default:
-		crd.Scope = apiext.ResourceScope(s.Scope)
+		crd.Scope = apiextensionsv1.ResourceScope(s.Scope)
 	}
 
 	return nil
@@ -313,7 +312,7 @@ func (s Resource) ApplyToCRD(crd *apiext.CustomResourceDefinitionSpec, _ string)
 // This is useful if you need to drop support for a version in favor of a newer version.
 type UnservedVersion struct{}
 
-func (s UnservedVersion) ApplyToCRD(crd *apiext.CustomResourceDefinitionSpec, version string) error {
+func (s UnservedVersion) ApplyToCRD(crd *apiextensionsv1.CustomResourceDefinitionSpec, version string) error {
 	for i := range crd.Versions {
 		ver := &crd.Versions[i]
 		if ver.Name != version {
@@ -335,7 +334,7 @@ type DeprecatedVersion struct {
 	Warning *string `marker:",optional"`
 }
 
-func (s DeprecatedVersion) ApplyToCRD(crd *apiext.CustomResourceDefinitionSpec, version string) error {
+func (s DeprecatedVersion) ApplyToCRD(crd *apiextensionsv1.CustomResourceDefinitionSpec, version string) error {
 	if version == "" {
 		// single-version, do nothing
 		return nil
@@ -365,7 +364,7 @@ type Metadata struct {
 	Labels []string `marker:",optional"`
 }
 
-func (s Metadata) ApplyToCRD(crd *apiext.CustomResourceDefinition, _ string) error {
+func (s Metadata) ApplyToCRD(crd *apiextensionsv1.CustomResourceDefinition, _ string) error {
 	if len(s.Annotations) > 0 {
 		if crd.Annotations == nil {
 			crd.Annotations = map[string]string{}
@@ -400,8 +399,8 @@ type SelectableField struct {
 	JSONPath string `marker:"JSONPath"`
 }
 
-func (s SelectableField) ApplyToCRD(crd *apiext.CustomResourceDefinitionSpec, version string) error {
-	var selectableFields *[]apiext.SelectableField
+func (s SelectableField) ApplyToCRD(crd *apiextensionsv1.CustomResourceDefinitionSpec, version string) error {
+	var selectableFields *[]apiextensionsv1.SelectableField
 	for i := range crd.Versions {
 		ver := &crd.Versions[i]
 		if ver.Name != version {
@@ -414,7 +413,7 @@ func (s SelectableField) ApplyToCRD(crd *apiext.CustomResourceDefinitionSpec, ve
 		return fmt.Errorf("selectable field applied to version %q not in CRD", version)
 	}
 
-	*selectableFields = append(*selectableFields, apiext.SelectableField{
+	*selectableFields = append(*selectableFields, apiextensionsv1.SelectableField{
 		JSONPath: s.JSONPath,
 	})
 

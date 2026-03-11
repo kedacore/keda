@@ -38,7 +38,7 @@ func (i token) String() string {
 	case 237 <= i && i <= 238:
 		i -= 237
 		return _token_name_5[_token_index_5[i]:_token_index_5[i+1]]
-	case 253 <= i && i <= 255:
+	case 253 <= i:
 		i -= 253
 		return _token_name_6[_token_index_6[i]:_token_index_6[i+1]]
 	default:

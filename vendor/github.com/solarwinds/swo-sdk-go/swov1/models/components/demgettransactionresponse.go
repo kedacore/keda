@@ -73,7 +73,7 @@ func (d DemGetTransactionResponse) MarshalJSON() ([]byte, error) {
 }
 
 func (d *DemGetTransactionResponse) UnmarshalJSON(data []byte) error {
-	if err := utils.UnmarshalJSON(data, &d, "", false, []string{"id", "type", "status", "name", "testDefinition"}); err != nil {
+	if err := utils.UnmarshalJSON(data, &d, "", false, nil); err != nil {
 		return err
 	}
 	return nil

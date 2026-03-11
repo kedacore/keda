@@ -48,7 +48,7 @@ type AfterErrorContext struct {
 
 // sdkInitHook is called when the SDK is initializing. The hook can modify and return a new baseURL and HTTP client to be used by the SDK.
 type sdkInitHook interface {
-	SDKInit(baseURL string, client HTTPClient) (string, HTTPClient)
+	SDKInit(config config.SDKConfiguration) config.SDKConfiguration
 }
 
 // beforeRequestHook is called before the SDK sends a request. The hook can modify the request before it is sent or return an error to stop the request from being sent.
@@ -112,11 +112,11 @@ func (h *Hooks) registerAfterErrorHook(hook afterErrorHook) {
 	h.afterErrorHook = append(h.afterErrorHook, hook)
 }
 
-func (h *Hooks) SDKInit(baseURL string, client HTTPClient) (string, HTTPClient) {
+func (h *Hooks) SDKInit(config config.SDKConfiguration) config.SDKConfiguration {
 	for _, hook := range h.sdkInitHooks {
-		baseURL, client = hook.SDKInit(baseURL, client)
+		config = hook.SDKInit(config)
 	}
-	return baseURL, client
+	return config
 }
 
 func (h *Hooks) BeforeRequest(hookCtx BeforeRequestContext, req *http.Request) (*http.Request, error) {

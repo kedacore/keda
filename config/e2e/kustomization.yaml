@@ -15,3 +15,9 @@ patches:
     kind: Deployment
     name: keda-operator
     version: v1
+- path: file_auth/patch_operator.yml
+  target:
+    group: apps
+    kind: Deployment
+    name: keda-operator
+    version: v1

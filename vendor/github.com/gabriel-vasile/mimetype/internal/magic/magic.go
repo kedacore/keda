@@ -3,7 +3,6 @@ package magic
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/gabriel-vasile/mimetype/internal/scan"
 )
@@ -22,37 +21,20 @@ type (
 	}
 )
 
-// prefix creates a Detector which returns true if any of the provided signatures
-// is the prefix of the raw input.
-func prefix(sigs ...[]byte) Detector {
-	return func(raw []byte, limit uint32) bool {
-		for _, s := range sigs {
-			if bytes.HasPrefix(raw, s) {
-				return true
-			}
-		}
-		return false
-	}
-}
-
-// offset creates a Detector which returns true if the provided signature can be
+// offset returns true if the provided signature can be
 // found at offset in the raw input.
-func offset(sig []byte, offset int) Detector {
-	return func(raw []byte, limit uint32) bool {
-		return len(raw) > offset && bytes.HasPrefix(raw[offset:], sig)
-	}
+func offset(raw []byte, sig []byte, offset int) bool {
+	return len(raw) > offset && bytes.HasPrefix(raw[offset:], sig)
 }
 
 // ciPrefix is like prefix but the check is case insensitive.
-func ciPrefix(sigs ...[]byte) Detector {
-	return func(raw []byte, limit uint32) bool {
-		for _, s := range sigs {
-			if ciCheck(s, raw) {
-				return true
-			}
+func ciPrefix(raw []byte, sigs ...[]byte) bool {
+	for _, s := range sigs {
+		if ciCheck(s, raw) {
+			return true
 		}
-		return false
 	}
+	return false
 }
 func ciCheck(sig, raw []byte) bool {
 	if len(raw) < len(sig)+1 {
@@ -72,22 +54,18 @@ func ciCheck(sig, raw []byte) bool {
 	return true
 }
 
-// xml creates a Detector which returns true if any of the provided XML signatures
-// matches the raw input.
-func xml(sigs ...xmlSig) Detector {
-	return func(raw []byte, limit uint32) bool {
-		b := scan.Bytes(raw)
-		b.TrimLWS()
-		if len(b) == 0 {
-			return false
-		}
-		for _, s := range sigs {
-			if xmlCheck(s, b) {
-				return true
-			}
-		}
+// xml returns true if any of the provided XML signatures matches the raw input.
+func xml(b scan.Bytes, sigs ...xmlSig) bool {
+	b.TrimLWS()
+	if len(b) == 0 {
 		return false
 	}
+	for _, s := range sigs {
+		if xmlCheck(s, b) {
+			return true
+		}
+	}
+	return false
 }
 func xmlCheck(sig xmlSig, raw []byte) bool {
 	raw = raw[:min(len(raw), 512)]
@@ -103,28 +81,24 @@ func xmlCheck(sig xmlSig, raw []byte) bool {
 	return localNameIndex != -1 && localNameIndex < bytes.Index(raw, sig.xmlns)
 }
 
-// markup creates a Detector which returns true is any of the HTML signatures
-// matches the raw input.
-func markup(sigs ...[]byte) Detector {
-	return func(raw []byte, limit uint32) bool {
-		b := scan.Bytes(raw)
-		if bytes.HasPrefix(b, []byte{0xEF, 0xBB, 0xBF}) {
-			// We skip the UTF-8 BOM if present to ensure we correctly
-			// process any leading whitespace. The presence of the BOM
-			// is taken into account during charset detection in charset.go.
-			b.Advance(3)
-		}
-		b.TrimLWS()
-		if len(b) == 0 {
-			return false
-		}
-		for _, s := range sigs {
-			if markupCheck(s, b) {
-				return true
-			}
-		}
+// markup returns true is any of the HTML signatures matches the raw input.
+func markup(b scan.Bytes, sigs ...[]byte) bool {
+	if bytes.HasPrefix(b, []byte{0xEF, 0xBB, 0xBF}) {
+		// We skip the UTF-8 BOM if present to ensure we correctly
+		// process any leading whitespace. The presence of the BOM
+		// is taken into account during charset detection in charset.go.
+		b.Advance(3)
+	}
+	b.TrimLWS()
+	if len(b) == 0 {
 		return false
 	}
+	for _, s := range sigs {
+		if markupCheck(s, b) {
+			return true
+		}
+	}
+	return false
 }
 func markupCheck(sig, raw []byte) bool {
 	if len(raw) < len(sig)+1 {
@@ -149,29 +123,17 @@ func markupCheck(sig, raw []byte) bool {
 	return true
 }
 
-// ftyp creates a Detector which returns true if any of the FTYP signatures
-// matches the raw input.
-func ftyp(sigs ...[]byte) Detector {
-	return func(raw []byte, limit uint32) bool {
-		if len(raw) < 12 {
-			return false
-		}
-		for _, s := range sigs {
-			if bytes.Equal(raw[8:12], s) {
-				return true
-			}
-		}
+// ftyp returns true if any of the FTYP signatures matches the raw input.
+func ftyp(raw []byte, sigs ...[]byte) bool {
+	if len(raw) < 12 {
 		return false
 	}
-}
-
-func newXMLSig(localName, xmlns string) xmlSig {
-	ret := xmlSig{xmlns: []byte(xmlns)}
-	if localName != "" {
-		ret.localName = []byte(fmt.Sprintf("<%s", localName))
+	for _, s := range sigs {
+		if bytes.Equal(raw[8:12], s) {
+			return true
+		}
 	}
-
-	return ret
+	return false
 }
 
 // A valid shebang starts with the "#!" characters,
@@ -184,29 +146,17 @@ func newXMLSig(localName, xmlns string) xmlSig {
 //	#! /usr/bin/env php
 //
 // /usr/bin/env is the interpreter, php is the first and only argument.
-func shebang(sigs ...[]byte) Detector {
-	return func(raw []byte, limit uint32) bool {
-		b := scan.Bytes(raw)
-		line := b.Line()
-		for _, s := range sigs {
-			if shebangCheck(s, line) {
-				return true
-			}
+func shebang(b scan.Bytes, matchFlags scan.Flags, sigs ...[]byte) bool {
+	line := b.Line()
+	if len(line) < 2 || line[0] != '#' || line[1] != '!' {
+		return false
+	}
+	line = line[2:]
+	line.TrimLWS()
+	for _, s := range sigs {
+		if line.Match(s, matchFlags) != -1 {
+			return true
 		}
-		return false
 	}
-}
-
-func shebangCheck(sig []byte, raw scan.Bytes) bool {
-	if len(raw) < len(sig)+2 {
-		return false
-	}
-	if raw[0] != '#' || raw[1] != '!' {
-		return false
-	}
-
-	raw.Advance(2) // skip #! we checked above
-	raw.TrimLWS()
-	raw.TrimRWS()
-	return bytes.Equal(raw, sig)
+	return false
 }

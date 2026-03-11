@@ -3,9 +3,11 @@
 
 package msdsn
 
-import "crypto/tls"
+import (
+	"crypto/tls"
+)
 
-func setupTLSCommonName(config *tls.Config, pem []byte) error {
+func setupTLSCommonName(config *tls.Config, pemData []byte) error {
 	// Prior to Go 1.15, the TLS allowed ":" when checking the hostname.
 	// See https://golang.org/issue/40748 for details.
 	return skipSetup

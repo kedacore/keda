@@ -191,6 +191,11 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		}
 	}
 
+	activeTriggers := []string{}
+	if options != nil {
+		activeTriggers = options.ActiveTriggers
+	}
+
 	condition := scaledObject.Status.Conditions.GetActiveCondition()
 	if condition.IsUnknown() || condition.IsTrue() != (isActive || scaledObject.NeedToForceActivation()) {
 		switch {
@@ -212,6 +217,12 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 				return
 			}
 		}
+	}
+
+	// Update triggers activity if individual trigger states have changed
+	if err := e.updateTriggersActivity(ctx, logger, scaledObject, activeTriggers); err != nil {
+		logger.Error(err, "Error updating triggers activity")
+		return
 	}
 }
 

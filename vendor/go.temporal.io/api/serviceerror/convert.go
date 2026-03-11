@@ -132,6 +132,8 @@ func FromStatus(st *status.Status) error {
 			return newNamespaceAlreadyExists(st)
 		case *errordetails.WorkflowExecutionAlreadyStartedFailure:
 			return newWorkflowExecutionAlreadyStarted(st, errDetails)
+		case *errordetails.ActivityExecutionAlreadyStartedFailure:
+			return newActivityExecutionAlreadyStarted(st, errDetails)
 		case *errordetails.CancellationAlreadyRequestedFailure:
 			return newCancellationAlreadyRequested(st)
 		default:

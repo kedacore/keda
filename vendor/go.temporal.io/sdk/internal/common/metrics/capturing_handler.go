@@ -191,10 +191,17 @@ func (c *CapturedGauge) Value() float64 {
 type CapturedTimer struct {
 	CapturedMetricMeta
 	value int64
+	count int64
 }
 
 // Record implements Timer.Record.
-func (c *CapturedTimer) Record(d time.Duration) { atomic.StoreInt64(&c.value, int64(d)) }
+func (c *CapturedTimer) Record(d time.Duration) {
+	atomic.StoreInt64(&c.value, int64(d))
+	atomic.AddInt64(&c.count, 1)
+}
 
 // Value atomically returns the current value.
 func (c *CapturedTimer) Value() time.Duration { return time.Duration(atomic.LoadInt64(&c.value)) }
+
+// Count atomically returns the current count.
+func (c *CapturedTimer) Count() int64 { return atomic.LoadInt64(&c.count) }

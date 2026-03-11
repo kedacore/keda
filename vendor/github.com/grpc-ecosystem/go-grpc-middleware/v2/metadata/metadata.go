@@ -108,7 +108,7 @@ func (m MD) Del(key string) MD {
 // It works analogously to http.Header.Set, overwriting all previous metadata values.
 //
 // The function is binary-key safe.
-func (m MD) Set(key string, value string) MD {
+func (m MD) Set(key, value string) MD {
 	k, v := encodeKeyValue(key, value)
 	m[k] = []string{v}
 	return m
@@ -119,7 +119,7 @@ func (m MD) Set(key string, value string) MD {
 // It works analogously to http.Header.Add, as it appends to any existing values associated with key.
 //
 // The function is binary-key safe.
-func (m MD) Add(key string, value string) MD {
+func (m MD) Add(key, value string) MD {
 	k, v := encodeKeyValue(key, value)
 	m[k] = append(m[k], v)
 	return m

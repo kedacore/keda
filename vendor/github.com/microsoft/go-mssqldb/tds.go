@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"sort"
@@ -175,6 +174,7 @@ type tdsSession struct {
 	aeSettings      *alwaysEncryptedSettings
 	connid          UniqueIdentifier
 	activityid      UniqueIdentifier
+	encoding        msdsn.EncodeParameters
 }
 
 type alwaysEncryptedSettings struct {
@@ -279,7 +279,7 @@ func readPrelogin(r *tdsBuffer) (map[uint8][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	struct_buf, err := ioutil.ReadAll(r)
+	struct_buf, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
@@ -1113,7 +1113,7 @@ func getTLSConn(conn *timeoutConn, p msdsn.Config, alpnSeq string) (tlsConn *tls
 		config = pc
 	}
 	if config == nil {
-		config, err = msdsn.SetupTLS("", false, p.Host, "")
+		config, err = msdsn.SetupTLS("", "", false, p.Host, "")
 		if err != nil {
 			return nil, err
 		}
@@ -1225,7 +1225,7 @@ initiate_connection:
 				}
 			}
 			if config == nil {
-				config, err = msdsn.SetupTLS("", false, p.Host, "")
+				config, err = msdsn.SetupTLS("", "", false, p.Host, "")
 				if err != nil {
 					return nil, err
 				}
@@ -1237,11 +1237,17 @@ initiate_connection:
 			passthrough := passthroughConn{c: &handshakeConn}
 			tlsConn := tls.Client(&passthrough, config)
 			err = tlsConn.Handshake()
-			passthrough.c = toconn
-			outbuf.transport = tlsConn
 			if err != nil {
 				return nil, fmt.Errorf("TLS Handshake failed: %v", err)
 			}
+			// Flush any pending packet from the handshake
+			// The driver's Finished message is still in the buffer
+			_, err = handshakeConn.FinishPacket()
+			if err != nil {
+				return nil, fmt.Errorf("TLS Handshake flush failed: %w", err)
+			}
+			passthrough.c = toconn
+			outbuf.transport = tlsConn
 			if encrypt == encryptOff {
 				outbuf.afterFirst = func() {
 					outbuf.transport = toconn
@@ -1411,5 +1417,4 @@ func getClientId(mac *[6]byte) {
 			}
 		}
 	}
-	return
 }

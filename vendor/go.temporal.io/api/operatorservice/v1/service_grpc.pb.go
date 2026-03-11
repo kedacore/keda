@@ -269,40 +269,40 @@ type OperatorServiceServer interface {
 type UnimplementedOperatorServiceServer struct{}
 
 func (UnimplementedOperatorServiceServer) AddSearchAttributes(context.Context, *AddSearchAttributesRequest) (*AddSearchAttributesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddSearchAttributes not implemented")
+	return nil, status.Error(codes.Unimplemented, "method AddSearchAttributes not implemented")
 }
 func (UnimplementedOperatorServiceServer) RemoveSearchAttributes(context.Context, *RemoveSearchAttributesRequest) (*RemoveSearchAttributesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RemoveSearchAttributes not implemented")
+	return nil, status.Error(codes.Unimplemented, "method RemoveSearchAttributes not implemented")
 }
 func (UnimplementedOperatorServiceServer) ListSearchAttributes(context.Context, *ListSearchAttributesRequest) (*ListSearchAttributesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListSearchAttributes not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ListSearchAttributes not implemented")
 }
 func (UnimplementedOperatorServiceServer) DeleteNamespace(context.Context, *DeleteNamespaceRequest) (*DeleteNamespaceResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteNamespace not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DeleteNamespace not implemented")
 }
 func (UnimplementedOperatorServiceServer) AddOrUpdateRemoteCluster(context.Context, *AddOrUpdateRemoteClusterRequest) (*AddOrUpdateRemoteClusterResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddOrUpdateRemoteCluster not implemented")
+	return nil, status.Error(codes.Unimplemented, "method AddOrUpdateRemoteCluster not implemented")
 }
 func (UnimplementedOperatorServiceServer) RemoveRemoteCluster(context.Context, *RemoveRemoteClusterRequest) (*RemoveRemoteClusterResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RemoveRemoteCluster not implemented")
+	return nil, status.Error(codes.Unimplemented, "method RemoveRemoteCluster not implemented")
 }
 func (UnimplementedOperatorServiceServer) ListClusters(context.Context, *ListClustersRequest) (*ListClustersResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListClusters not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ListClusters not implemented")
 }
 func (UnimplementedOperatorServiceServer) GetNexusEndpoint(context.Context, *GetNexusEndpointRequest) (*GetNexusEndpointResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetNexusEndpoint not implemented")
+	return nil, status.Error(codes.Unimplemented, "method GetNexusEndpoint not implemented")
 }
 func (UnimplementedOperatorServiceServer) CreateNexusEndpoint(context.Context, *CreateNexusEndpointRequest) (*CreateNexusEndpointResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateNexusEndpoint not implemented")
+	return nil, status.Error(codes.Unimplemented, "method CreateNexusEndpoint not implemented")
 }
 func (UnimplementedOperatorServiceServer) UpdateNexusEndpoint(context.Context, *UpdateNexusEndpointRequest) (*UpdateNexusEndpointResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateNexusEndpoint not implemented")
+	return nil, status.Error(codes.Unimplemented, "method UpdateNexusEndpoint not implemented")
 }
 func (UnimplementedOperatorServiceServer) DeleteNexusEndpoint(context.Context, *DeleteNexusEndpointRequest) (*DeleteNexusEndpointResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteNexusEndpoint not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DeleteNexusEndpoint not implemented")
 }
 func (UnimplementedOperatorServiceServer) ListNexusEndpoints(context.Context, *ListNexusEndpointsRequest) (*ListNexusEndpointsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListNexusEndpoints not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ListNexusEndpoints not implemented")
 }
 func (UnimplementedOperatorServiceServer) mustEmbedUnimplementedOperatorServiceServer() {}
 func (UnimplementedOperatorServiceServer) testEmbeddedByValue()                         {}
@@ -315,7 +315,7 @@ type UnsafeOperatorServiceServer interface {
 }
 
 func RegisterOperatorServiceServer(s grpc.ServiceRegistrar, srv OperatorServiceServer) {
-	// If the following call pancis, it indicates UnimplementedOperatorServiceServer was
+	// If the following call panics, it indicates UnimplementedOperatorServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.

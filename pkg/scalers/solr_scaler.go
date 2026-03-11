@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -91,10 +92,17 @@ func (s *solrScaler) getItemCount(ctx context.Context) (float64, error) {
 	var SolrResponse1 *solrResponse
 	var itemCount float64
 
-	url := fmt.Sprintf("%s/solr/%s/select?q=%s&wt=json",
-		s.metadata.Host, s.metadata.Collection, s.metadata.Query)
+	baseURL, err := url.Parse(fmt.Sprintf("%s/solr/%s/select", s.metadata.Host, s.metadata.Collection))
+	if err != nil {
+		return -1, fmt.Errorf("error parsing solr URL: %w", err)
+	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	params := url.Values{}
+	params.Set("q", s.metadata.Query)
+	params.Set("wt", "json")
+	baseURL.RawQuery = params.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", baseURL.String(), nil)
 	if err != nil {
 		return -1, err
 	}

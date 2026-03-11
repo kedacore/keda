@@ -400,6 +400,7 @@ func (s *metricsAPIScaler) aggregateMetricsFromMultipleEndpoints(ctx context.Con
 	var err error
 	var firstMetricEncountered bool
 	var aggregation float64
+	s.logger.V(1).Info(fmt.Sprintf("start iterating %d endpoint urls", len(endpointsUrls)))
 	for _, endpointURL := range endpointsUrls {
 		if err := sem.Acquire(ctx, 1); err != nil {
 			s.logger.Error(err, "Failed to acquire semaphore")
@@ -437,6 +438,11 @@ func (s *metricsAPIScaler) aggregateMetricsFromMultipleEndpoints(ctx context.Con
 			}
 		}(endpointURL)
 	}
+	// Wait that all goroutines have released their semaphore acquisition
+	if err := sem.Acquire(ctx, maxGoroutines); err != nil {
+		s.logger.V(1).Error(err, "final semaphore acquisition failed")
+	}
+	s.logger.V(1).Info(fmt.Sprintf("ENDED iterating %d endpoint urls, aggregation is now %v", len(endpointsUrls), aggregation))
 
 	if nbErrors > 0 && nbErrors == len(endpointsUrls) {
 		err = fmt.Errorf("could not get any metric successfully from the %d provided endpoints", len(endpointsUrls))

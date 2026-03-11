@@ -15,6 +15,7 @@
 #include <stddef.h>    /* size_t, ptrdiff_t */
 #include <string.h>    /* memcpy */
 #include <stdlib.h>    /* malloc, free, qsort */
+#include "compiler.h"
 #include "error_private.h"
 
 
@@ -67,15 +68,6 @@ extern "C" {
 #if defined(_MSC_VER)   /* Visual Studio */
 #   include <stdlib.h>  /* _byteswap_ulong */
 #   include <intrin.h>  /* _byteswap_* */
-#endif
-#if defined(__GNUC__)
-#  define MEM_STATIC static __attribute__((unused))
-#elif defined (__cplusplus) || (defined (__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L) /* C99 */)
-#  define MEM_STATIC static inline
-#elif defined(_MSC_VER)
-#  define MEM_STATIC static __inline
-#else
-#  define MEM_STATIC static  /* this version may generate warnings for unused static functions; disable the relevant warning */
 #endif
 
 
@@ -561,9 +553,9 @@ typedef struct {
     U32  cachedLitLength;
     const BYTE* cachedLiterals;
     ZSTDv06_stats_t stats;
-} seqStore_t;
+} SeqStore_t;
 
-void ZSTDv06_seqToCodes(const seqStore_t* seqStorePtr, size_t const nbSeq);
+void ZSTDv06_seqToCodes(const SeqStore_t* seqStorePtr, size_t const nbSeq);
 
 
 #endif   /* ZSTDv06_CCOMMON_H_MODULE */
@@ -3746,6 +3738,7 @@ size_t ZSTDv06_decompressContinue(ZSTDv06_DCtx* dctx, void* dst, size_t dstCapac
             }
             dctx->stage = ZSTDds_decodeBlockHeader;
             dctx->expected = ZSTDv06_blockHeaderSize;
+            if (ZSTDv06_isError(rSize)) return rSize;
             dctx->previousDstEnd = (char*)dst + rSize;
             return rSize;
         }
@@ -3927,6 +3920,10 @@ ZBUFFv06_DCtx* ZBUFFv06_createDCtx(void)
     if (zbd==NULL) return NULL;
     memset(zbd, 0, sizeof(*zbd));
     zbd->zd = ZSTDv06_createDCtx();
+    if (zbd->zd==NULL) {
+        ZBUFFv06_freeDCtx(zbd); /* avoid leaking the context */
+        return NULL;
+    }
     zbd->stage = ZBUFFds_init;
     return zbd;
 }

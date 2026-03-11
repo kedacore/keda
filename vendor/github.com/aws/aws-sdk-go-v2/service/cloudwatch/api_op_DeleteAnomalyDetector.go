@@ -106,11 +106,11 @@ func (c *Client) addOperationDeleteAnomalyDetectorMiddlewares(stack *middleware.
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsAwsquery_serializeOpDeleteAnomalyDetector{}, middleware.After)
+	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpDeleteAnomalyDetector{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsquery_deserializeOpDeleteAnomalyDetector{}, middleware.After)
+	err = stack.Deserialize.Add(&smithyRpcv2cbor_deserializeOpDeleteAnomalyDetector{}, middleware.After)
 	if err != nil {
 		return err
 	}
@@ -164,6 +164,9 @@ func (c *Client) addOperationDeleteAnomalyDetectorMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {

@@ -4,7 +4,6 @@
 package remote
 
 import (
-	//nolint:gosec // We're aware that md5 is a weak cryptographic primitive, but we don't have a choice here.
 	"crypto/md5"
 	"crypto/sha512"
 	"encoding/base64"
@@ -28,7 +27,7 @@ func readBody(resp *http.Response, out io.Writer, archiveName string, platform v
 		case versions.SHA512HashType:
 			hasher = sha512.New()
 		case versions.MD5HashType:
-			hasher = md5.New() //nolint:gosec // We're aware that md5 is a weak cryptographic primitive, but we don't have a choice here.
+			hasher = md5.New()
 		default:
 			return fmt.Errorf("hash type %s not implemented", platform.Hash.Type)
 		}

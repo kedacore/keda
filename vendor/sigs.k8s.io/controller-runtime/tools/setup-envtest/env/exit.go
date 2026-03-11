@@ -12,7 +12,7 @@ import (
 // Exit exits with the given code and error message.
 //
 // Defer HandleExitWithCode in main to catch this and get the right behavior.
-func Exit(code int, msg string, args ...interface{}) {
+func Exit(code int, msg string, args ...any) {
 	panic(&exitCode{
 		code: code,
 		err:  fmt.Errorf(msg, args...),
@@ -23,7 +23,7 @@ func Exit(code int, msg string, args ...interface{}) {
 // wrapping the underlying error passed as well.
 //
 // Defer HandleExitWithCode in main to catch this and get the right behavior.
-func ExitCause(code int, err error, msg string, args ...interface{}) {
+func ExitCause(code int, err error, msg string, args ...any) {
 	args = append(args, err)
 	panic(&exitCode{
 		code: code,
@@ -48,7 +48,7 @@ func (c *exitCode) Unwrap() error {
 // asExit checks if the given (panic) value is an exitCode error,
 // and if so stores it in the given pointer.  It's roughly analogous
 // to errors.As, except it works on recover() values.
-func asExit(val interface{}, exit **exitCode) bool {
+func asExit(val any, exit **exitCode) bool {
 	if val == nil {
 		return false
 	}
@@ -81,7 +81,7 @@ func HandleExitWithCode() {
 // the cause.
 //
 // It's mainly useful for testing, normally you'd use HandleExitWithCode.
-func CheckRecover(cause interface{}, cb func(int, error)) bool {
+func CheckRecover(cause any, cb func(int, error)) bool {
 	if cause == nil {
 		return false
 	}

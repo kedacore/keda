@@ -15,7 +15,7 @@ import (
 )
 
 type (
-	workflowTaskHeartbeatFunc func(response interface{}, startTime time.Time) (*workflowTask, error)
+	workflowTaskHeartbeatFunc func(taskCompletion *workflowTaskCompletion, startTime time.Time) (*workflowTask, error)
 
 	// HistoryIterator iterator through history events
 	HistoryIterator interface {
@@ -32,8 +32,8 @@ type (
 	WorkflowExecutionContext interface {
 		Lock()
 		Unlock(err error)
-		ProcessWorkflowTask(workflowTask *workflowTask) (completeRequest interface{}, err error)
-		ProcessLocalActivityResult(workflowTask *workflowTask, lar *localActivityResult) (interface{}, error)
+		ProcessWorkflowTask(workflowTask *workflowTask) (taskCompletion *workflowTaskCompletion, err error)
+		ProcessLocalActivityResult(workflowTask *workflowTask, lar *localActivityResult) (*workflowTaskCompletion, error)
 		// CompleteWorkflowTask try to complete current workflow task and get response that needs to be sent back to server.
 		// The waitLocalActivity is used to control if we should wait for outstanding local activities.
 		// If there is no outstanding local activities or if waitLocalActivity is false, the complete will return response
@@ -42,7 +42,7 @@ type (
 		//  - RespondWorkflowTaskFailedRequest
 		//  - RespondQueryTaskCompletedRequest
 		// If waitLocalActivity is true, and there is outstanding local activities, this call will return nil.
-		CompleteWorkflowTask(workflowTask *workflowTask, waitLocalActivity bool) interface{}
+		CompleteWorkflowTask(workflowTask *workflowTask, waitLocalActivity bool) workflowTaskCompletion
 		// GetWorkflowTaskTimeout returns the WorkflowTaskTimeout
 		GetWorkflowTaskTimeout() time.Duration
 		GetCurrentWorkflowTask() *workflowservice.PollWorkflowTaskQueueResponse
@@ -65,7 +65,7 @@ type (
 			task *workflowTask,
 			ctx *workflowExecutionContextImpl,
 			f workflowTaskHeartbeatFunc,
-		) (response interface{}, err error)
+		) (taskCompletion *workflowTaskCompletion, err error)
 	}
 
 	WorkflowContextManager interface {

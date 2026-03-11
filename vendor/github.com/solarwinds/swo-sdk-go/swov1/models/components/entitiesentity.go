@@ -89,7 +89,7 @@ func (e EntitiesEntity) MarshalJSON() ([]byte, error) {
 }
 
 func (e *EntitiesEntity) UnmarshalJSON(data []byte) error {
-	if err := utils.UnmarshalJSON(data, &e, "", false, []string{"id", "type", "lastSeenTime", "inMaintenance", "tags"}); err != nil {
+	if err := utils.UnmarshalJSON(data, &e, "", false, nil); err != nil {
 		return err
 	}
 	return nil

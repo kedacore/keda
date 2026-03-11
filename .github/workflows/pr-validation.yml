@@ -11,7 +11,7 @@ jobs:
     name: validate - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     container:
-      image: ghcr.io/kedacore/keda-tools:1.25.5
+      image: ghcr.io/kedacore/keda-tools:1.25.7
       volumes:
         - /usr:/host/usr
         - /opt:/host/opt
@@ -38,67 +38,92 @@ jobs:
           rm -rf /host/opt/ghc
 
       - name: Check out code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 1
 
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3
+        id: filter
+        with:
+          filters: |
+            go:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'Makefile'
+              - '**/*.proto'
+              - 'hack/*.sh'
+
+      - name: Register workspace path
+        if: steps.filter.outputs.go == 'true'
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Install prerequisites
+        if: steps.filter.outputs.go == 'true'
         run: |
           apt-get update
           apt-get install -y jq python3-yaml
 
-      - name: Register workspace path
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
       - name: Check go version
+        if: steps.filter.outputs.go == 'true'
         run: go version
 
       - name: Set Go paths
+        if: steps.filter.outputs.go == 'true'
         id: go-paths
         run: |
           echo "mod_cache=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
           echo "build_cache=$(go env GOCACHE)" >> $GITHUB_OUTPUT
 
       - name: Go modules cache
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        if: steps.filter.outputs.go == 'true'
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: ${{ steps.go-paths.outputs.mod_cache }}
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
       - name: Go build cache
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        if: steps.filter.outputs.go == 'true'
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: ${{ steps.go-paths.outputs.build_cache }}
           key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
 
       - name: Go modules sync
+        if: steps.filter.outputs.go == 'true'
         run: go mod tidy -compat=1.25
 
       - name: Verify generated Clientset is up to date
+        if: steps.filter.outputs.go == 'true'
         run: make clientset-verify
 
       - name: Verify generated Manifests are up to date
+        if: steps.filter.outputs.go == 'true'
         run: make verify-manifests
 
       - name: Verify generated Scalers schema is up to date
+        if: steps.filter.outputs.go == 'true'
         run: make verify-scalers-schema
 
       - name: Build
+        if: steps.filter.outputs.go == 'true'
         run: make build
 
       - name: Test
+        if: steps.filter.outputs.go == 'true'
         run: make test
 
       - name: Test with race detector enabled
+        if: steps.filter.outputs.go == 'true'
         run: make test-race
 
       - name: Create test Summary
+        if: always() && steps.filter.outputs.go == 'true'
         uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86 # v2.4
         with:
           paths: |
             report.xml
             report-race.xml
-        if: always()
 
   validate-dockerfiles:
     permissions:
@@ -106,7 +131,7 @@ jobs:
       pull-requests: read # for dorny/paths-filter to read pull requests
     name: validate-dockerfiles - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.25.5
+    container: ghcr.io/kedacore/keda-tools:1.25.7
     strategy:
       matrix:
         include:
@@ -118,7 +143,7 @@ jobs:
             name: s390x
     steps:
       - name: Check out code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 1
 
@@ -142,7 +167,7 @@ jobs:
       pull-requests: read # for dorny/paths-filter to read pull requests
     name: Validate dev-container - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.25.5
+    container: ghcr.io/kedacore/keda-tools:1.25.7
     strategy:
       matrix:
         include:
@@ -153,7 +178,7 @@ jobs:
           - runner: s390x
             name: s390x
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -173,11 +198,11 @@ jobs:
     name: Static Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-      - uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: 3.x
-      - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version-file: 'go.mod'
       - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1

@@ -83,12 +83,12 @@ func BindStyledParameterWithOptions(style string, paramName string, value string
 		// since prior to this refactoring, they always query unescaped.
 		value, err = url.QueryUnescape(value)
 		if err != nil {
-			return fmt.Errorf("error unescaping query parameter '%s': %v", paramName, err)
+			return fmt.Errorf("error unescaping query parameter '%s': %w", paramName, err)
 		}
 	case ParamLocationPath:
 		value, err = url.PathUnescape(value)
 		if err != nil {
-			return fmt.Errorf("error unescaping path parameter '%s': %v", paramName, err)
+			return fmt.Errorf("error unescaping path parameter '%s': %w", paramName, err)
 		}
 	default:
 		// Headers and cookies aren't escaped.
@@ -97,7 +97,7 @@ func BindStyledParameterWithOptions(style string, paramName string, value string
 	// If the destination implements encoding.TextUnmarshaler we use it for binding
 	if tu, ok := dest.(encoding.TextUnmarshaler); ok {
 		if err := tu.UnmarshalText([]byte(value)); err != nil {
-			return fmt.Errorf("error unmarshaling '%s' text as %T: %s", value, dest, err)
+			return fmt.Errorf("error unmarshaling '%s' text as %T: %w", value, dest, err)
 		}
 
 		return nil
@@ -124,7 +124,7 @@ func BindStyledParameterWithOptions(style string, paramName string, value string
 		// Chop up the parameter into parts based on its style
 		parts, err := splitStyledParameter(style, opts.Explode, false, paramName, value)
 		if err != nil {
-			return fmt.Errorf("error splitting input '%s' into parts: %s", value, err)
+			return fmt.Errorf("error splitting input '%s' into parts: %w", value, err)
 		}
 
 		return bindSplitPartsToDestinationArray(parts, dest)
@@ -287,7 +287,7 @@ func bindSplitPartsToDestinationStruct(paramName string, parts []string, explode
 	jsonParam := "{" + strings.Join(fields, ",") + "}"
 	err := json.Unmarshal([]byte(jsonParam), dest)
 	if err != nil {
-		return fmt.Errorf("error binding parameter %s fields: %s", paramName, err)
+		return fmt.Errorf("error binding parameter %s fields: %w", paramName, err)
 	}
 	return nil
 }
@@ -318,7 +318,11 @@ func BindQueryParameter(style string, explode bool, required bool, paramName str
 	// inner code will bind the string's value to this interface.
 	var output interface{}
 
-	if required {
+	// required params are never pointers, but it may happen that optional param
+	// is not pointer as well if user decides to annotate it with
+	// x-go-type-skip-optional-pointer
+	var extraIndirect = !required && v.Kind() == reflect.Pointer
+	if !extraIndirect {
 		// If the parameter is required, then the generated code will pass us
 		// a pointer to it: &int, &object, and so forth. We can directly set
 		// them.
@@ -414,9 +418,10 @@ func BindQueryParameter(style string, explode bool, required bool, paramName str
 			if err != nil {
 				return err
 			}
-			// If the parameter is required, and we've successfully unmarshaled
-			// it, this assigns the new object to the pointer pointer.
-			if !required {
+			// If the parameter is required (or relies on x-go-type-skip-optional-pointer),
+			// and we've successfully unmarshaled it, this assigns the new object to the
+			// pointer pointer.
+			if extraIndirect {
 				dv.Set(reflect.ValueOf(output))
 			}
 			return nil
@@ -456,7 +461,7 @@ func BindQueryParameter(style string, explode bool, required bool, paramName str
 		if err != nil {
 			return err
 		}
-		if !required {
+		if extraIndirect {
 			dv.Set(reflect.ValueOf(output))
 		}
 		return nil

@@ -79,7 +79,7 @@ type (
 		AsyncActivityClient
 		LocalActivityClient
 		WorkflowTimerClient
-		SideEffect(f func() (*commonpb.Payloads, error), callback ResultHandler)
+		SideEffect(f func() (*commonpb.Payloads, error), callback ResultHandler, summary string)
 		GetVersion(changeID string, minSupported, maxSupported Version) Version
 		WorkflowInfo() *WorkflowInfo
 		TypedSearchAttributes() SearchAttributes
@@ -114,7 +114,7 @@ type (
 			handler func(string, string, *commonpb.Payloads, *commonpb.Header, UpdateCallbacks),
 		)
 		IsReplaying() bool
-		MutableSideEffect(id string, f func() interface{}, equals func(a, b interface{}) bool) converter.EncodedValue
+		MutableSideEffect(id string, f func() interface{}, equals func(a, b interface{}) bool, summary string) converter.EncodedValue
 		GetDataConverter() converter.DataConverter
 		GetFailureConverter() converter.FailureConverter
 		AddSession(sessionInfo *SessionInfo)

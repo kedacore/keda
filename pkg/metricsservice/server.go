@@ -88,6 +88,7 @@ func (s *GrpcServer) GetRawMetricsStream(request *api.RawMetricsRequest, stream 
 				metrics = append(metrics, &api.RawMetric{
 					Value:     v.Value.AsApproximateFloat64(),
 					Timestamp: timestamppb.New(v.Timestamp.Time),
+					IsActive:  rm.IsActive,
 					Metadata: &api.ScaledObjectRef{
 						Name:       rm.Meta.ScaledObjectName,
 						Namespace:  rm.Meta.Namespace,
@@ -106,10 +107,9 @@ func (s *GrpcServer) GetRawMetricsStream(request *api.RawMetricsRequest, stream 
 					return err
 				}
 			}
-		case val, open := <-doneCh:
-			if open && !val {
-				logger.V(10).Info(fmt.Sprintf("Channel closed for subscriber %s", request.GetSubscriber()))
-			}
+		case <-doneCh:
+			logger.V(10).Info("Raw metrics stream terminated after subscriber unsubscribed", "subscriber", request.GetSubscriber())
+			return nil
 		}
 	}
 }

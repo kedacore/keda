@@ -268,6 +268,7 @@ func (h *workerDeploymentHandleImpl) SetRampingVersion(ctx context.Context, opti
 		PreviousVersion: workerDeploymentVersionFromProtoOrString(
 			//lint:ignore SA1019 ignore deprecated versioning APIs
 			resp.PreviousDeploymentVersion, resp.PreviousVersion),
+		//lint:ignore SA1019 ignore deprecated versioning APIs
 		PreviousPercentage: resp.GetPreviousPercentage(),
 	}, nil
 
@@ -309,7 +310,8 @@ func (h *workerDeploymentHandleImpl) SetManagerIdentity(ctx context.Context, opt
 	}
 
 	return WorkerDeploymentSetManagerIdentityResponse{
-		ConflictToken:           resp.GetConflictToken(),
+		ConflictToken: resp.GetConflictToken(),
+		//lint:ignore SA1019 ignore deprecated versioning APIs
 		PreviousManagerIdentity: resp.GetPreviousManagerIdentity(),
 	}, nil
 

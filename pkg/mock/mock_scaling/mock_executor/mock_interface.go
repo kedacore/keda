@@ -13,10 +13,9 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gomock "go.uber.org/mock/gomock"
-
 	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	executor "github.com/kedacore/keda/v2/pkg/scaling/executor"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockScaleExecutor is a mock of ScaleExecutor interface.
@@ -44,15 +43,15 @@ func (m *MockScaleExecutor) EXPECT() *MockScaleExecutorMockRecorder {
 }
 
 // RequestJobScale mocks base method.
-func (m *MockScaleExecutor) RequestJobScale(ctx context.Context, scaledJob *v1alpha1.ScaledJob, isActive, isError bool, scaleTo, maxScale int64) {
+func (m *MockScaleExecutor) RequestJobScale(ctx context.Context, scaledJob *v1alpha1.ScaledJob, isActive, isError bool, scaleTo, maxScale int64, options *executor.ScaleExecutorOptions) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RequestJobScale", ctx, scaledJob, isActive, isError, scaleTo, maxScale)
+	m.ctrl.Call(m, "RequestJobScale", ctx, scaledJob, isActive, isError, scaleTo, maxScale, options)
 }
 
 // RequestJobScale indicates an expected call of RequestJobScale.
-func (mr *MockScaleExecutorMockRecorder) RequestJobScale(ctx, scaledJob, isActive, isError, scaleTo, maxScale any) *gomock.Call {
+func (mr *MockScaleExecutorMockRecorder) RequestJobScale(ctx, scaledJob, isActive, isError, scaleTo, maxScale, options any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestJobScale", reflect.TypeOf((*MockScaleExecutor)(nil).RequestJobScale), ctx, scaledJob, isActive, isError, scaleTo, maxScale)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestJobScale", reflect.TypeOf((*MockScaleExecutor)(nil).RequestJobScale), ctx, scaledJob, isActive, isError, scaleTo, maxScale, options)
 }
 
 // RequestScale mocks base method.

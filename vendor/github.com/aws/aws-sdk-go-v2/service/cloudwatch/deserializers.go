@@ -3,13092 +3,8759 @@
 package cloudwatch
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
-	"encoding/xml"
 	"fmt"
-	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	awsxml "github.com/aws/aws-sdk-go-v2/aws/protocol/xml"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	smithy "github.com/aws/smithy-go"
-	smithyxml "github.com/aws/smithy-go/encoding/xml"
-	smithyio "github.com/aws/smithy-go/io"
+	smithycbor "github.com/aws/smithy-go/encoding/cbor"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
-	smithytime "github.com/aws/smithy-go/time"
 	"github.com/aws/smithy-go/tracing"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"io"
 	"io/ioutil"
-	"strconv"
 	"strings"
 	"time"
 )
 
-type awsAwsquery_deserializeOpDeleteAlarms struct {
+type smithyRpcv2cbor_deserializeOpDeleteAlarms struct {
 }
 
-func (*awsAwsquery_deserializeOpDeleteAlarms) ID() string {
+func (*smithyRpcv2cbor_deserializeOpDeleteAlarms) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpDeleteAlarms) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpDeleteAlarms) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorDeleteAlarms(response, &metadata)
-	}
-	output := &DeleteAlarmsOutput{}
-	out.Result = output
-
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
 		return out, metadata, &smithy.DeserializationError{
-			Err: fmt.Errorf("failed to discard response body, %w", err),
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
 		}
 	}
 
-	return out, metadata, err
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorDeleteAlarms(resp)
+	}
+
+	if _, err = io.Copy(ioutil.Discard, resp.Body); err != nil {
+		return out, metadata, fmt.Errorf("discard response body: %w", err)
+	}
+
+	out.Result = &DeleteAlarmsOutput{}
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorDeleteAlarms(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("ResourceNotFound", errorCode):
-		return awsAwsquery_deserializeErrorResourceNotFound(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpDeleteAnomalyDetector struct {
 }
 
-type awsAwsquery_deserializeOpDeleteAnomalyDetector struct {
-}
-
-func (*awsAwsquery_deserializeOpDeleteAnomalyDetector) ID() string {
+func (*smithyRpcv2cbor_deserializeOpDeleteAnomalyDetector) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpDeleteAnomalyDetector) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpDeleteAnomalyDetector) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorDeleteAnomalyDetector(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &DeleteAnomalyDetectorOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorDeleteAnomalyDetector(resp)
+	}
+
+	if _, err = io.Copy(ioutil.Discard, resp.Body); err != nil {
+		return out, metadata, fmt.Errorf("discard response body: %w", err)
+	}
+
+	out.Result = &DeleteAnomalyDetectorOutput{}
+
+	return out, metadata, nil
+}
+
+type smithyRpcv2cbor_deserializeOpDeleteDashboards struct {
+}
+
+func (*smithyRpcv2cbor_deserializeOpDeleteDashboards) ID() string {
+	return "OperationDeserializer"
+}
+
+func (m *smithyRpcv2cbor_deserializeOpDeleteDashboards) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
+) {
+	out, metadata, err = next.HandleDeserialize(ctx, in)
+
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
+	}
+
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
+	}
+
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorDeleteDashboards(resp)
+	}
+
+	if _, err = io.Copy(ioutil.Discard, resp.Body); err != nil {
+		return out, metadata, fmt.Errorf("discard response body: %w", err)
+	}
+
+	out.Result = &DeleteDashboardsOutput{}
+
+	return out, metadata, nil
+}
+
+type smithyRpcv2cbor_deserializeOpDeleteInsightRules struct {
+}
+
+func (*smithyRpcv2cbor_deserializeOpDeleteInsightRules) ID() string {
+	return "OperationDeserializer"
+}
+
+func (m *smithyRpcv2cbor_deserializeOpDeleteInsightRules) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
+) {
+	out, metadata, err = next.HandleDeserialize(ctx, in)
+
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
+	}
+
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
+	}
+
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorDeleteInsightRules(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &DeleteInsightRulesOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("DeleteAnomalyDetectorResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentDeleteAnomalyDetectorOutput(&output, decoder)
+	output, err := deserializeCBOR_DeleteInsightRulesOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorDeleteAnomalyDetector(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InternalServiceError", errorCode):
-		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterCombination", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterCombinationException(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("MissingParameter", errorCode):
-		return awsAwsquery_deserializeErrorMissingRequiredParameterException(response, errorBody)
-
-	case strings.EqualFold("ResourceNotFoundException", errorCode):
-		return awsAwsquery_deserializeErrorResourceNotFoundException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpDeleteMetricStream struct {
 }
 
-type awsAwsquery_deserializeOpDeleteDashboards struct {
-}
-
-func (*awsAwsquery_deserializeOpDeleteDashboards) ID() string {
+func (*smithyRpcv2cbor_deserializeOpDeleteMetricStream) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpDeleteDashboards) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpDeleteMetricStream) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorDeleteDashboards(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &DeleteDashboardsOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorDeleteMetricStream(resp)
+	}
+
+	if _, err = io.Copy(ioutil.Discard, resp.Body); err != nil {
+		return out, metadata, fmt.Errorf("discard response body: %w", err)
+	}
+
+	out.Result = &DeleteMetricStreamOutput{}
+
+	return out, metadata, nil
+}
+
+type smithyRpcv2cbor_deserializeOpDescribeAlarmContributors struct {
+}
+
+func (*smithyRpcv2cbor_deserializeOpDescribeAlarmContributors) ID() string {
+	return "OperationDeserializer"
+}
+
+func (m *smithyRpcv2cbor_deserializeOpDescribeAlarmContributors) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
+) {
+	out, metadata, err = next.HandleDeserialize(ctx, in)
+
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
+	}
+
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
+	}
+
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorDescribeAlarmContributors(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &DescribeAlarmContributorsOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("DeleteDashboardsResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentDeleteDashboardsOutput(&output, decoder)
+	output, err := deserializeCBOR_DescribeAlarmContributorsOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorDeleteDashboards(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("ConflictException", errorCode):
-		return awsAwsquery_deserializeErrorConflictException(response, errorBody)
-
-	case strings.EqualFold("InternalServiceError", errorCode):
-		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("ResourceNotFound", errorCode):
-		return awsAwsquery_deserializeErrorDashboardNotFoundError(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpDescribeAlarmHistory struct {
 }
 
-type awsAwsquery_deserializeOpDeleteInsightRules struct {
-}
-
-func (*awsAwsquery_deserializeOpDeleteInsightRules) ID() string {
+func (*smithyRpcv2cbor_deserializeOpDescribeAlarmHistory) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpDeleteInsightRules) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpDescribeAlarmHistory) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorDeleteInsightRules(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &DeleteInsightRulesOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorDescribeAlarmHistory(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &DescribeAlarmHistoryOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("DeleteInsightRulesResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentDeleteInsightRulesOutput(&output, decoder)
+	output, err := deserializeCBOR_DescribeAlarmHistoryOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorDeleteInsightRules(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("MissingParameter", errorCode):
-		return awsAwsquery_deserializeErrorMissingRequiredParameterException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpDescribeAlarms struct {
 }
 
-type awsAwsquery_deserializeOpDeleteMetricStream struct {
-}
-
-func (*awsAwsquery_deserializeOpDeleteMetricStream) ID() string {
+func (*smithyRpcv2cbor_deserializeOpDescribeAlarms) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpDeleteMetricStream) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpDescribeAlarms) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorDeleteMetricStream(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &DeleteMetricStreamOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorDescribeAlarms(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &DescribeAlarmsOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("DeleteMetricStreamResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentDeleteMetricStreamOutput(&output, decoder)
+	output, err := deserializeCBOR_DescribeAlarmsOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorDeleteMetricStream(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InternalServiceError", errorCode):
-		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("MissingParameter", errorCode):
-		return awsAwsquery_deserializeErrorMissingRequiredParameterException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpDescribeAlarmsForMetric struct {
 }
 
-type awsAwsquery_deserializeOpDescribeAlarmContributors struct {
-}
-
-func (*awsAwsquery_deserializeOpDescribeAlarmContributors) ID() string {
+func (*smithyRpcv2cbor_deserializeOpDescribeAlarmsForMetric) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpDescribeAlarmContributors) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpDescribeAlarmsForMetric) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorDescribeAlarmContributors(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &DescribeAlarmContributorsOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorDescribeAlarmsForMetric(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &DescribeAlarmsForMetricOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("DescribeAlarmContributorsResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentDescribeAlarmContributorsOutput(&output, decoder)
+	output, err := deserializeCBOR_DescribeAlarmsForMetricOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorDescribeAlarmContributors(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InvalidNextToken", errorCode):
-		return awsAwsquery_deserializeErrorInvalidNextToken(response, errorBody)
-
-	case strings.EqualFold("ResourceNotFoundException", errorCode):
-		return awsAwsquery_deserializeErrorResourceNotFoundException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpDescribeAnomalyDetectors struct {
 }
 
-type awsAwsquery_deserializeOpDescribeAlarmHistory struct {
-}
-
-func (*awsAwsquery_deserializeOpDescribeAlarmHistory) ID() string {
+func (*smithyRpcv2cbor_deserializeOpDescribeAnomalyDetectors) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpDescribeAlarmHistory) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpDescribeAnomalyDetectors) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorDescribeAlarmHistory(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &DescribeAlarmHistoryOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorDescribeAnomalyDetectors(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &DescribeAnomalyDetectorsOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("DescribeAlarmHistoryResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentDescribeAlarmHistoryOutput(&output, decoder)
+	output, err := deserializeCBOR_DescribeAnomalyDetectorsOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorDescribeAlarmHistory(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InvalidNextToken", errorCode):
-		return awsAwsquery_deserializeErrorInvalidNextToken(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpDescribeInsightRules struct {
 }
 
-type awsAwsquery_deserializeOpDescribeAlarms struct {
-}
-
-func (*awsAwsquery_deserializeOpDescribeAlarms) ID() string {
+func (*smithyRpcv2cbor_deserializeOpDescribeInsightRules) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpDescribeAlarms) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpDescribeInsightRules) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorDescribeAlarms(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &DescribeAlarmsOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorDescribeInsightRules(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &DescribeInsightRulesOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("DescribeAlarmsResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentDescribeAlarmsOutput(&output, decoder)
+	output, err := deserializeCBOR_DescribeInsightRulesOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorDescribeAlarms(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InvalidNextToken", errorCode):
-		return awsAwsquery_deserializeErrorInvalidNextToken(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpDisableAlarmActions struct {
 }
 
-type awsAwsquery_deserializeOpDescribeAlarmsForMetric struct {
-}
-
-func (*awsAwsquery_deserializeOpDescribeAlarmsForMetric) ID() string {
+func (*smithyRpcv2cbor_deserializeOpDisableAlarmActions) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpDescribeAlarmsForMetric) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpDisableAlarmActions) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorDescribeAlarmsForMetric(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &DescribeAlarmsForMetricOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorDisableAlarmActions(resp)
+	}
+
+	if _, err = io.Copy(ioutil.Discard, resp.Body); err != nil {
+		return out, metadata, fmt.Errorf("discard response body: %w", err)
+	}
+
+	out.Result = &DisableAlarmActionsOutput{}
+
+	return out, metadata, nil
+}
+
+type smithyRpcv2cbor_deserializeOpDisableInsightRules struct {
+}
+
+func (*smithyRpcv2cbor_deserializeOpDisableInsightRules) ID() string {
+	return "OperationDeserializer"
+}
+
+func (m *smithyRpcv2cbor_deserializeOpDisableInsightRules) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
+) {
+	out, metadata, err = next.HandleDeserialize(ctx, in)
+
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
+	}
+
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
+	}
+
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorDisableInsightRules(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &DisableInsightRulesOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("DescribeAlarmsForMetricResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentDescribeAlarmsForMetricOutput(&output, decoder)
+	output, err := deserializeCBOR_DisableInsightRulesOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorDescribeAlarmsForMetric(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpEnableAlarmActions struct {
 }
 
-type awsAwsquery_deserializeOpDescribeAnomalyDetectors struct {
-}
-
-func (*awsAwsquery_deserializeOpDescribeAnomalyDetectors) ID() string {
+func (*smithyRpcv2cbor_deserializeOpEnableAlarmActions) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpDescribeAnomalyDetectors) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpEnableAlarmActions) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorDescribeAnomalyDetectors(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &DescribeAnomalyDetectorsOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorEnableAlarmActions(resp)
+	}
+
+	if _, err = io.Copy(ioutil.Discard, resp.Body); err != nil {
+		return out, metadata, fmt.Errorf("discard response body: %w", err)
+	}
+
+	out.Result = &EnableAlarmActionsOutput{}
+
+	return out, metadata, nil
+}
+
+type smithyRpcv2cbor_deserializeOpEnableInsightRules struct {
+}
+
+func (*smithyRpcv2cbor_deserializeOpEnableInsightRules) ID() string {
+	return "OperationDeserializer"
+}
+
+func (m *smithyRpcv2cbor_deserializeOpEnableInsightRules) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
+) {
+	out, metadata, err = next.HandleDeserialize(ctx, in)
+
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
+	}
+
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
+	}
+
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorEnableInsightRules(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &EnableInsightRulesOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("DescribeAnomalyDetectorsResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentDescribeAnomalyDetectorsOutput(&output, decoder)
+	output, err := deserializeCBOR_EnableInsightRulesOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorDescribeAnomalyDetectors(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InternalServiceError", errorCode):
-		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
-
-	case strings.EqualFold("InvalidNextToken", errorCode):
-		return awsAwsquery_deserializeErrorInvalidNextToken(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterCombination", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterCombinationException(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpGetDashboard struct {
 }
 
-type awsAwsquery_deserializeOpDescribeInsightRules struct {
-}
-
-func (*awsAwsquery_deserializeOpDescribeInsightRules) ID() string {
+func (*smithyRpcv2cbor_deserializeOpGetDashboard) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpDescribeInsightRules) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpGetDashboard) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorDescribeInsightRules(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &DescribeInsightRulesOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorGetDashboard(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &GetDashboardOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("DescribeInsightRulesResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentDescribeInsightRulesOutput(&output, decoder)
+	output, err := deserializeCBOR_GetDashboardOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorDescribeInsightRules(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InvalidNextToken", errorCode):
-		return awsAwsquery_deserializeErrorInvalidNextToken(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpGetInsightRuleReport struct {
 }
 
-type awsAwsquery_deserializeOpDisableAlarmActions struct {
-}
-
-func (*awsAwsquery_deserializeOpDisableAlarmActions) ID() string {
+func (*smithyRpcv2cbor_deserializeOpGetInsightRuleReport) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpDisableAlarmActions) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpGetInsightRuleReport) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
-	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
-	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorDisableAlarmActions(response, &metadata)
-	}
-	output := &DisableAlarmActionsOutput{}
-	out.Result = output
-
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
-		return out, metadata, &smithy.DeserializationError{
-			Err: fmt.Errorf("failed to discard response body, %w", err),
-		}
-	}
-
-	return out, metadata, err
-}
-
-func awsAwsquery_deserializeOpErrorDisableAlarmActions(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
-}
-
-type awsAwsquery_deserializeOpDisableInsightRules struct {
-}
-
-func (*awsAwsquery_deserializeOpDisableInsightRules) ID() string {
-	return "OperationDeserializer"
-}
-
-func (m *awsAwsquery_deserializeOpDisableInsightRules) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
-	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
-) {
-	out, metadata, err = next.HandleDeserialize(ctx, in)
 	if err != nil {
 		return out, metadata, err
 	}
 
-	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
-	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
-	defer endTimer()
-	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorDisableInsightRules(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &DisableInsightRulesOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorGetInsightRuleReport(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &GetInsightRuleReportOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("DisableInsightRulesResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentDisableInsightRulesOutput(&output, decoder)
+	output, err := deserializeCBOR_GetInsightRuleReportOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorDisableInsightRules(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("MissingParameter", errorCode):
-		return awsAwsquery_deserializeErrorMissingRequiredParameterException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpGetMetricData struct {
 }
 
-type awsAwsquery_deserializeOpEnableAlarmActions struct {
-}
-
-func (*awsAwsquery_deserializeOpEnableAlarmActions) ID() string {
+func (*smithyRpcv2cbor_deserializeOpGetMetricData) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpEnableAlarmActions) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpGetMetricData) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
-	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
-	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorEnableAlarmActions(response, &metadata)
-	}
-	output := &EnableAlarmActionsOutput{}
-	out.Result = output
-
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
-		return out, metadata, &smithy.DeserializationError{
-			Err: fmt.Errorf("failed to discard response body, %w", err),
-		}
-	}
-
-	return out, metadata, err
-}
-
-func awsAwsquery_deserializeOpErrorEnableAlarmActions(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
-}
-
-type awsAwsquery_deserializeOpEnableInsightRules struct {
-}
-
-func (*awsAwsquery_deserializeOpEnableInsightRules) ID() string {
-	return "OperationDeserializer"
-}
-
-func (m *awsAwsquery_deserializeOpEnableInsightRules) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
-	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
-) {
-	out, metadata, err = next.HandleDeserialize(ctx, in)
 	if err != nil {
 		return out, metadata, err
 	}
 
-	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
-	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
-	defer endTimer()
-	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorEnableInsightRules(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &EnableInsightRulesOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorGetMetricData(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &GetMetricDataOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("EnableInsightRulesResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentEnableInsightRulesOutput(&output, decoder)
+	output, err := deserializeCBOR_GetMetricDataOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorEnableInsightRules(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("LimitExceededException", errorCode):
-		return awsAwsquery_deserializeErrorLimitExceededException(response, errorBody)
-
-	case strings.EqualFold("MissingParameter", errorCode):
-		return awsAwsquery_deserializeErrorMissingRequiredParameterException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpGetMetricStatistics struct {
 }
 
-type awsAwsquery_deserializeOpGetDashboard struct {
-}
-
-func (*awsAwsquery_deserializeOpGetDashboard) ID() string {
+func (*smithyRpcv2cbor_deserializeOpGetMetricStatistics) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpGetDashboard) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpGetMetricStatistics) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorGetDashboard(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &GetDashboardOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorGetMetricStatistics(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &GetMetricStatisticsOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("GetDashboardResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentGetDashboardOutput(&output, decoder)
+	output, err := deserializeCBOR_GetMetricStatisticsOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorGetDashboard(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InternalServiceError", errorCode):
-		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("ResourceNotFound", errorCode):
-		return awsAwsquery_deserializeErrorDashboardNotFoundError(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpGetMetricStream struct {
 }
 
-type awsAwsquery_deserializeOpGetInsightRuleReport struct {
-}
-
-func (*awsAwsquery_deserializeOpGetInsightRuleReport) ID() string {
+func (*smithyRpcv2cbor_deserializeOpGetMetricStream) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpGetInsightRuleReport) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpGetMetricStream) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorGetInsightRuleReport(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &GetInsightRuleReportOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorGetMetricStream(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &GetMetricStreamOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("GetInsightRuleReportResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentGetInsightRuleReportOutput(&output, decoder)
+	output, err := deserializeCBOR_GetMetricStreamOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorGetInsightRuleReport(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("MissingParameter", errorCode):
-		return awsAwsquery_deserializeErrorMissingRequiredParameterException(response, errorBody)
-
-	case strings.EqualFold("ResourceNotFoundException", errorCode):
-		return awsAwsquery_deserializeErrorResourceNotFoundException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpGetMetricWidgetImage struct {
 }
 
-type awsAwsquery_deserializeOpGetMetricData struct {
-}
-
-func (*awsAwsquery_deserializeOpGetMetricData) ID() string {
+func (*smithyRpcv2cbor_deserializeOpGetMetricWidgetImage) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpGetMetricData) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpGetMetricWidgetImage) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorGetMetricData(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &GetMetricDataOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorGetMetricWidgetImage(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &GetMetricWidgetImageOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("GetMetricDataResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentGetMetricDataOutput(&output, decoder)
+	output, err := deserializeCBOR_GetMetricWidgetImageOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorGetMetricData(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InvalidNextToken", errorCode):
-		return awsAwsquery_deserializeErrorInvalidNextToken(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpListDashboards struct {
 }
 
-type awsAwsquery_deserializeOpGetMetricStatistics struct {
-}
-
-func (*awsAwsquery_deserializeOpGetMetricStatistics) ID() string {
+func (*smithyRpcv2cbor_deserializeOpListDashboards) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpGetMetricStatistics) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpListDashboards) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorGetMetricStatistics(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &GetMetricStatisticsOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorListDashboards(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &ListDashboardsOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("GetMetricStatisticsResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentGetMetricStatisticsOutput(&output, decoder)
+	output, err := deserializeCBOR_ListDashboardsOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorGetMetricStatistics(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InternalServiceError", errorCode):
-		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterCombination", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterCombinationException(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("MissingParameter", errorCode):
-		return awsAwsquery_deserializeErrorMissingRequiredParameterException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpListManagedInsightRules struct {
 }
 
-type awsAwsquery_deserializeOpGetMetricStream struct {
-}
-
-func (*awsAwsquery_deserializeOpGetMetricStream) ID() string {
+func (*smithyRpcv2cbor_deserializeOpListManagedInsightRules) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpGetMetricStream) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpListManagedInsightRules) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorGetMetricStream(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &GetMetricStreamOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorListManagedInsightRules(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &ListManagedInsightRulesOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("GetMetricStreamResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentGetMetricStreamOutput(&output, decoder)
+	output, err := deserializeCBOR_ListManagedInsightRulesOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorGetMetricStream(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InternalServiceError", errorCode):
-		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterCombination", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterCombinationException(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("MissingParameter", errorCode):
-		return awsAwsquery_deserializeErrorMissingRequiredParameterException(response, errorBody)
-
-	case strings.EqualFold("ResourceNotFoundException", errorCode):
-		return awsAwsquery_deserializeErrorResourceNotFoundException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpListMetrics struct {
 }
 
-type awsAwsquery_deserializeOpGetMetricWidgetImage struct {
-}
-
-func (*awsAwsquery_deserializeOpGetMetricWidgetImage) ID() string {
+func (*smithyRpcv2cbor_deserializeOpListMetrics) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpGetMetricWidgetImage) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpListMetrics) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorGetMetricWidgetImage(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &GetMetricWidgetImageOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorListMetrics(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &ListMetricsOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("GetMetricWidgetImageResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentGetMetricWidgetImageOutput(&output, decoder)
+	output, err := deserializeCBOR_ListMetricsOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorGetMetricWidgetImage(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpListMetricStreams struct {
 }
 
-type awsAwsquery_deserializeOpListDashboards struct {
-}
-
-func (*awsAwsquery_deserializeOpListDashboards) ID() string {
+func (*smithyRpcv2cbor_deserializeOpListMetricStreams) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpListDashboards) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpListMetricStreams) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorListDashboards(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &ListDashboardsOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorListMetricStreams(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &ListMetricStreamsOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("ListDashboardsResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentListDashboardsOutput(&output, decoder)
+	output, err := deserializeCBOR_ListMetricStreamsOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorListDashboards(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InternalServiceError", errorCode):
-		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpListTagsForResource struct {
 }
 
-type awsAwsquery_deserializeOpListManagedInsightRules struct {
-}
-
-func (*awsAwsquery_deserializeOpListManagedInsightRules) ID() string {
+func (*smithyRpcv2cbor_deserializeOpListTagsForResource) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpListManagedInsightRules) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpListTagsForResource) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorListManagedInsightRules(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &ListManagedInsightRulesOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorListTagsForResource(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &ListTagsForResourceOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("ListManagedInsightRulesResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentListManagedInsightRulesOutput(&output, decoder)
+	output, err := deserializeCBOR_ListTagsForResourceOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorListManagedInsightRules(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InvalidNextToken", errorCode):
-		return awsAwsquery_deserializeErrorInvalidNextToken(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("MissingParameter", errorCode):
-		return awsAwsquery_deserializeErrorMissingRequiredParameterException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpPutAnomalyDetector struct {
 }
 
-type awsAwsquery_deserializeOpListMetrics struct {
-}
-
-func (*awsAwsquery_deserializeOpListMetrics) ID() string {
+func (*smithyRpcv2cbor_deserializeOpPutAnomalyDetector) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpListMetrics) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpPutAnomalyDetector) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorListMetrics(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &ListMetricsOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorPutAnomalyDetector(resp)
+	}
+
+	if _, err = io.Copy(ioutil.Discard, resp.Body); err != nil {
+		return out, metadata, fmt.Errorf("discard response body: %w", err)
+	}
+
+	out.Result = &PutAnomalyDetectorOutput{}
+
+	return out, metadata, nil
+}
+
+type smithyRpcv2cbor_deserializeOpPutCompositeAlarm struct {
+}
+
+func (*smithyRpcv2cbor_deserializeOpPutCompositeAlarm) ID() string {
+	return "OperationDeserializer"
+}
+
+func (m *smithyRpcv2cbor_deserializeOpPutCompositeAlarm) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
+) {
+	out, metadata, err = next.HandleDeserialize(ctx, in)
+
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
+	}
+
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
+	}
+
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorPutCompositeAlarm(resp)
+	}
+
+	if _, err = io.Copy(ioutil.Discard, resp.Body); err != nil {
+		return out, metadata, fmt.Errorf("discard response body: %w", err)
+	}
+
+	out.Result = &PutCompositeAlarmOutput{}
+
+	return out, metadata, nil
+}
+
+type smithyRpcv2cbor_deserializeOpPutDashboard struct {
+}
+
+func (*smithyRpcv2cbor_deserializeOpPutDashboard) ID() string {
+	return "OperationDeserializer"
+}
+
+func (m *smithyRpcv2cbor_deserializeOpPutDashboard) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
+) {
+	out, metadata, err = next.HandleDeserialize(ctx, in)
+
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
+	}
+
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
+	}
+
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorPutDashboard(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &PutDashboardOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("ListMetricsResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentListMetricsOutput(&output, decoder)
+	output, err := deserializeCBOR_PutDashboardOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorListMetrics(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InternalServiceError", errorCode):
-		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpPutInsightRule struct {
 }
 
-type awsAwsquery_deserializeOpListMetricStreams struct {
-}
-
-func (*awsAwsquery_deserializeOpListMetricStreams) ID() string {
+func (*smithyRpcv2cbor_deserializeOpPutInsightRule) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpListMetricStreams) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpPutInsightRule) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorListMetricStreams(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &ListMetricStreamsOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorPutInsightRule(resp)
+	}
+
+	if _, err = io.Copy(ioutil.Discard, resp.Body); err != nil {
+		return out, metadata, fmt.Errorf("discard response body: %w", err)
+	}
+
+	out.Result = &PutInsightRuleOutput{}
+
+	return out, metadata, nil
+}
+
+type smithyRpcv2cbor_deserializeOpPutManagedInsightRules struct {
+}
+
+func (*smithyRpcv2cbor_deserializeOpPutManagedInsightRules) ID() string {
+	return "OperationDeserializer"
+}
+
+func (m *smithyRpcv2cbor_deserializeOpPutManagedInsightRules) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
+) {
+	out, metadata, err = next.HandleDeserialize(ctx, in)
+
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
+	}
+
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
+	}
+
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorPutManagedInsightRules(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &PutManagedInsightRulesOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("ListMetricStreamsResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentListMetricStreamsOutput(&output, decoder)
+	output, err := deserializeCBOR_PutManagedInsightRulesOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorListMetricStreams(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InternalServiceError", errorCode):
-		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
-
-	case strings.EqualFold("InvalidNextToken", errorCode):
-		return awsAwsquery_deserializeErrorInvalidNextToken(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("MissingParameter", errorCode):
-		return awsAwsquery_deserializeErrorMissingRequiredParameterException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpPutMetricAlarm struct {
 }
 
-type awsAwsquery_deserializeOpListTagsForResource struct {
-}
-
-func (*awsAwsquery_deserializeOpListTagsForResource) ID() string {
+func (*smithyRpcv2cbor_deserializeOpPutMetricAlarm) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpListTagsForResource) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpPutMetricAlarm) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorListTagsForResource(response, &metadata)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
 	}
-	output := &ListTagsForResourceOutput{}
-	out.Result = output
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorPutMetricAlarm(resp)
+	}
+
+	if _, err = io.Copy(ioutil.Discard, resp.Body); err != nil {
+		return out, metadata, fmt.Errorf("discard response body: %w", err)
+	}
+
+	out.Result = &PutMetricAlarmOutput{}
+
+	return out, metadata, nil
+}
+
+type smithyRpcv2cbor_deserializeOpPutMetricData struct {
+}
+
+func (*smithyRpcv2cbor_deserializeOpPutMetricData) ID() string {
+	return "OperationDeserializer"
+}
+
+func (m *smithyRpcv2cbor_deserializeOpPutMetricData) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
+) {
+	out, metadata, err = next.HandleDeserialize(ctx, in)
+
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
+	}
+
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
+	}
+
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorPutMetricData(resp)
+	}
+
+	if _, err = io.Copy(ioutil.Discard, resp.Body); err != nil {
+		return out, metadata, fmt.Errorf("discard response body: %w", err)
+	}
+
+	out.Result = &PutMetricDataOutput{}
+
+	return out, metadata, nil
+}
+
+type smithyRpcv2cbor_deserializeOpPutMetricStream struct {
+}
+
+func (*smithyRpcv2cbor_deserializeOpPutMetricStream) ID() string {
+	return "OperationDeserializer"
+}
+
+func (m *smithyRpcv2cbor_deserializeOpPutMetricStream) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
+) {
+	out, metadata, err = next.HandleDeserialize(ctx, in)
+
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
+	}
+
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
+	}
+
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorPutMetricStream(resp)
+	}
+
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	if len(payload) == 0 {
+		out.Result = &PutMetricStreamOutput{}
 		return out, metadata, nil
 	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("ListTagsForResourceResult")
+	cv, err := smithycbor.Decode(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentListTagsForResourceOutput(&output, decoder)
+	output, err := deserializeCBOR_PutMetricStreamOutput(cv)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
 		return out, metadata, err
 	}
 
-	return out, metadata, err
+	out.Result = output
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorListTagsForResource(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InternalServiceError", errorCode):
-		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("ResourceNotFoundException", errorCode):
-		return awsAwsquery_deserializeErrorResourceNotFoundException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpSetAlarmState struct {
 }
 
-type awsAwsquery_deserializeOpPutAnomalyDetector struct {
-}
-
-func (*awsAwsquery_deserializeOpPutAnomalyDetector) ID() string {
+func (*smithyRpcv2cbor_deserializeOpSetAlarmState) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpPutAnomalyDetector) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpSetAlarmState) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorPutAnomalyDetector(response, &metadata)
-	}
-	output := &PutAnomalyDetectorOutput{}
-	out.Result = output
-
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return out, metadata, nil
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
 		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
 		}
 	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("PutAnomalyDetectorResult")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-		return out, metadata, err
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorSetAlarmState(resp)
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentPutAnomalyDetectorOutput(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-		return out, metadata, err
+	if _, err = io.Copy(ioutil.Discard, resp.Body); err != nil {
+		return out, metadata, fmt.Errorf("discard response body: %w", err)
 	}
 
-	return out, metadata, err
+	out.Result = &SetAlarmStateOutput{}
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorPutAnomalyDetector(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InternalServiceError", errorCode):
-		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterCombination", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterCombinationException(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("LimitExceededException", errorCode):
-		return awsAwsquery_deserializeErrorLimitExceededException(response, errorBody)
-
-	case strings.EqualFold("MissingParameter", errorCode):
-		return awsAwsquery_deserializeErrorMissingRequiredParameterException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpStartMetricStreams struct {
 }
 
-type awsAwsquery_deserializeOpPutCompositeAlarm struct {
-}
-
-func (*awsAwsquery_deserializeOpPutCompositeAlarm) ID() string {
+func (*smithyRpcv2cbor_deserializeOpStartMetricStreams) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpPutCompositeAlarm) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpStartMetricStreams) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
-	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
-	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorPutCompositeAlarm(response, &metadata)
-	}
-	output := &PutCompositeAlarmOutput{}
-	out.Result = output
-
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
-		return out, metadata, &smithy.DeserializationError{
-			Err: fmt.Errorf("failed to discard response body, %w", err),
-		}
-	}
-
-	return out, metadata, err
-}
-
-func awsAwsquery_deserializeOpErrorPutCompositeAlarm(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("LimitExceeded", errorCode):
-		return awsAwsquery_deserializeErrorLimitExceededFault(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
-}
-
-type awsAwsquery_deserializeOpPutDashboard struct {
-}
-
-func (*awsAwsquery_deserializeOpPutDashboard) ID() string {
-	return "OperationDeserializer"
-}
-
-func (m *awsAwsquery_deserializeOpPutDashboard) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
-	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
-) {
-	out, metadata, err = next.HandleDeserialize(ctx, in)
 	if err != nil {
 		return out, metadata, err
 	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
+	}
+
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
+		return out, metadata, &smithy.DeserializationError{
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
+		}
+	}
+
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorStartMetricStreams(resp)
+	}
+
+	if _, err = io.Copy(ioutil.Discard, resp.Body); err != nil {
+		return out, metadata, fmt.Errorf("discard response body: %w", err)
+	}
+
+	out.Result = &StartMetricStreamsOutput{}
+
+	return out, metadata, nil
+}
+
+type smithyRpcv2cbor_deserializeOpStopMetricStreams struct {
+}
+
+func (*smithyRpcv2cbor_deserializeOpStopMetricStreams) ID() string {
+	return "OperationDeserializer"
+}
+
+func (m *smithyRpcv2cbor_deserializeOpStopMetricStreams) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
+) {
+	out, metadata, err = next.HandleDeserialize(ctx, in)
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorPutDashboard(response, &metadata)
-	}
-	output := &PutDashboardOutput{}
-	out.Result = output
-
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return out, metadata, nil
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
 		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
 		}
 	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("PutDashboardResult")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-		return out, metadata, err
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorStopMetricStreams(resp)
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentPutDashboardOutput(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-		return out, metadata, err
+	if _, err = io.Copy(ioutil.Discard, resp.Body); err != nil {
+		return out, metadata, fmt.Errorf("discard response body: %w", err)
 	}
 
-	return out, metadata, err
+	out.Result = &StopMetricStreamsOutput{}
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorPutDashboard(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("ConflictException", errorCode):
-		return awsAwsquery_deserializeErrorConflictException(response, errorBody)
-
-	case strings.EqualFold("InternalServiceError", errorCode):
-		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterInput", errorCode):
-		return awsAwsquery_deserializeErrorDashboardInvalidInputError(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpTagResource struct {
 }
 
-type awsAwsquery_deserializeOpPutInsightRule struct {
-}
-
-func (*awsAwsquery_deserializeOpPutInsightRule) ID() string {
+func (*smithyRpcv2cbor_deserializeOpTagResource) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpPutInsightRule) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpTagResource) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorPutInsightRule(response, &metadata)
-	}
-	output := &PutInsightRuleOutput{}
-	out.Result = output
-
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return out, metadata, nil
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
 		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
 		}
 	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("PutInsightRuleResult")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-		return out, metadata, err
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorTagResource(resp)
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentPutInsightRuleOutput(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-		return out, metadata, err
+	if _, err = io.Copy(ioutil.Discard, resp.Body); err != nil {
+		return out, metadata, fmt.Errorf("discard response body: %w", err)
 	}
 
-	return out, metadata, err
+	out.Result = &TagResourceOutput{}
+
+	return out, metadata, nil
 }
 
-func awsAwsquery_deserializeOpErrorPutInsightRule(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("LimitExceededException", errorCode):
-		return awsAwsquery_deserializeErrorLimitExceededException(response, errorBody)
-
-	case strings.EqualFold("MissingParameter", errorCode):
-		return awsAwsquery_deserializeErrorMissingRequiredParameterException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
+type smithyRpcv2cbor_deserializeOpUntagResource struct {
 }
 
-type awsAwsquery_deserializeOpPutManagedInsightRules struct {
-}
-
-func (*awsAwsquery_deserializeOpPutManagedInsightRules) ID() string {
+func (*smithyRpcv2cbor_deserializeOpUntagResource) ID() string {
 	return "OperationDeserializer"
 }
 
-func (m *awsAwsquery_deserializeOpPutManagedInsightRules) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+func (m *smithyRpcv2cbor_deserializeOpUntagResource) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
 	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
 ) {
 	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
 
 	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
 	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
 	defer endTimer()
 	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+
+	if err != nil {
+		return out, metadata, err
+	}
+
+	resp, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return out, metadata, fmt.Errorf("unexpected transport type %T", out.RawResponse)
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorPutManagedInsightRules(response, &metadata)
-	}
-	output := &PutManagedInsightRulesOutput{}
-	out.Result = output
-
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return out, metadata, nil
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
+	if resp.Header.Get("smithy-protocol") != "rpc-v2-cbor" {
 		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
+			Err: fmt.Errorf(
+				"unexpected smithy-protocol response header '%s' (HTTP status: %s)",
+				resp.Header.Get("smithy-protocol"),
+				resp.Status,
+			),
 		}
 	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("PutManagedInsightRulesResult")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-		return out, metadata, err
+	if resp.StatusCode != 200 {
+		return out, metadata, rpc2_deserializeOpErrorUntagResource(resp)
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentPutManagedInsightRulesOutput(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-		return out, metadata, err
+	if _, err = io.Copy(ioutil.Discard, resp.Body); err != nil {
+		return out, metadata, fmt.Errorf("discard response body: %w", err)
 	}
 
-	return out, metadata, err
+	out.Result = &UntagResourceOutput{}
+
+	return out, metadata, nil
 }
-
-func awsAwsquery_deserializeOpErrorPutManagedInsightRules(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("MissingParameter", errorCode):
-		return awsAwsquery_deserializeErrorMissingRequiredParameterException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
-}
-
-type awsAwsquery_deserializeOpPutMetricAlarm struct {
-}
-
-func (*awsAwsquery_deserializeOpPutMetricAlarm) ID() string {
-	return "OperationDeserializer"
-}
-
-func (m *awsAwsquery_deserializeOpPutMetricAlarm) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
-	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
-) {
-	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
-
-	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
-	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
-	defer endTimer()
-	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+func deserializeCBOR_ActionsSuppressedBy(v smithycbor.Value) (types.ActionsSuppressedBy, error) {
+	av, ok := v.(smithycbor.String)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return types.ActionsSuppressedBy(""), fmt.Errorf("unexpected value type %T", v)
 	}
-
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorPutMetricAlarm(response, &metadata)
-	}
-	output := &PutMetricAlarmOutput{}
-	out.Result = output
-
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
-		return out, metadata, &smithy.DeserializationError{
-			Err: fmt.Errorf("failed to discard response body, %w", err),
-		}
-	}
-
-	return out, metadata, err
+	return types.ActionsSuppressedBy(av), nil
 }
 
-func awsAwsquery_deserializeOpErrorPutMetricAlarm(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("LimitExceeded", errorCode):
-		return awsAwsquery_deserializeErrorLimitExceededFault(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
-}
-
-type awsAwsquery_deserializeOpPutMetricData struct {
-}
-
-func (*awsAwsquery_deserializeOpPutMetricData) ID() string {
-	return "OperationDeserializer"
-}
-
-func (m *awsAwsquery_deserializeOpPutMetricData) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
-	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
-) {
-	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
-
-	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
-	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
-	defer endTimer()
-	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+func deserializeCBOR_AlarmContributor(v smithycbor.Value) (*types.AlarmContributor, error) {
+	av, ok := v.(smithycbor.Map)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return nil, fmt.Errorf("unexpected value type %T", v)
 	}
+	ds := &types.AlarmContributor{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "ContributorId" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ContributorId = ptr.String(dv)
+		}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorPutMetricData(response, &metadata)
-	}
-	output := &PutMetricDataOutput{}
-	out.Result = output
+		if key == "ContributorAttributes" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_ContributorAttributes(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ContributorAttributes = dv
+		}
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
-		return out, metadata, &smithy.DeserializationError{
-			Err: fmt.Errorf("failed to discard response body, %w", err),
+		if key == "StateReason" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.StateReason = ptr.String(dv)
+		}
+
+		if key == "StateTransitionedTimestamp" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Time(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.StateTransitionedTimestamp = ptr.Time(dv)
 		}
 	}
-
-	return out, metadata, err
+	return ds, nil
 }
 
-func awsAwsquery_deserializeOpErrorPutMetricData(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InternalServiceError", errorCode):
-		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterCombination", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterCombinationException(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("MissingParameter", errorCode):
-		return awsAwsquery_deserializeErrorMissingRequiredParameterException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
-}
-
-type awsAwsquery_deserializeOpPutMetricStream struct {
-}
-
-func (*awsAwsquery_deserializeOpPutMetricStream) ID() string {
-	return "OperationDeserializer"
-}
-
-func (m *awsAwsquery_deserializeOpPutMetricStream) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
-	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
-) {
-	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
-
-	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
-	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
-	defer endTimer()
-	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+func deserializeCBOR_AlarmContributors(v smithycbor.Value) ([]types.AlarmContributor, error) {
+	av, ok := v.(smithycbor.List)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return nil, fmt.Errorf("unexpected value type %T", v)
 	}
+	var dl []types.AlarmContributor
+	for _, si := range av {
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorPutMetricStream(response, &metadata)
-	}
-	output := &PutMetricStreamOutput{}
-	out.Result = output
-
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return out, metadata, nil
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
+		di, err := deserializeCBOR_AlarmContributor(si)
+		if err != nil {
+			return nil, err
 		}
+		dl = append(dl, *di)
 	}
-
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("PutMetricStreamResult")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-		return out, metadata, err
-	}
-
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentPutMetricStreamOutput(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-		return out, metadata, err
-	}
-
-	return out, metadata, err
+	return dl, nil
 }
 
-func awsAwsquery_deserializeOpErrorPutMetricStream(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("ConcurrentModificationException", errorCode):
-		return awsAwsquery_deserializeErrorConcurrentModificationException(response, errorBody)
-
-	case strings.EqualFold("InternalServiceError", errorCode):
-		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterCombination", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterCombinationException(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("MissingParameter", errorCode):
-		return awsAwsquery_deserializeErrorMissingRequiredParameterException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
-}
-
-type awsAwsquery_deserializeOpSetAlarmState struct {
-}
-
-func (*awsAwsquery_deserializeOpSetAlarmState) ID() string {
-	return "OperationDeserializer"
-}
-
-func (m *awsAwsquery_deserializeOpSetAlarmState) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
-	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
-) {
-	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
-
-	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
-	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
-	defer endTimer()
-	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+func deserializeCBOR_AlarmHistoryItem(v smithycbor.Value) (*types.AlarmHistoryItem, error) {
+	av, ok := v.(smithycbor.Map)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return nil, fmt.Errorf("unexpected value type %T", v)
 	}
+	ds := &types.AlarmHistoryItem{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "AlarmName" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AlarmName = ptr.String(dv)
+		}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorSetAlarmState(response, &metadata)
-	}
-	output := &SetAlarmStateOutput{}
-	out.Result = output
+		if key == "AlarmContributorId" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AlarmContributorId = ptr.String(dv)
+		}
 
-	if _, err = io.Copy(ioutil.Discard, response.Body); err != nil {
-		return out, metadata, &smithy.DeserializationError{
-			Err: fmt.Errorf("failed to discard response body, %w", err),
+		if key == "AlarmType" {
+
+			dv, err := deserializeCBOR_AlarmType(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AlarmType = dv
+		}
+
+		if key == "Timestamp" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Time(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Timestamp = ptr.Time(dv)
+		}
+
+		if key == "HistoryItemType" {
+
+			dv, err := deserializeCBOR_HistoryItemType(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.HistoryItemType = dv
+		}
+
+		if key == "HistorySummary" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.HistorySummary = ptr.String(dv)
+		}
+
+		if key == "HistoryData" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.HistoryData = ptr.String(dv)
+		}
+
+		if key == "AlarmContributorAttributes" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_ContributorAttributes(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AlarmContributorAttributes = dv
 		}
 	}
-
-	return out, metadata, err
+	return ds, nil
 }
 
-func awsAwsquery_deserializeOpErrorSetAlarmState(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InvalidFormat", errorCode):
-		return awsAwsquery_deserializeErrorInvalidFormatFault(response, errorBody)
-
-	case strings.EqualFold("ResourceNotFound", errorCode):
-		return awsAwsquery_deserializeErrorResourceNotFound(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
-}
-
-type awsAwsquery_deserializeOpStartMetricStreams struct {
-}
-
-func (*awsAwsquery_deserializeOpStartMetricStreams) ID() string {
-	return "OperationDeserializer"
-}
-
-func (m *awsAwsquery_deserializeOpStartMetricStreams) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
-	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
-) {
-	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
-
-	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
-	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
-	defer endTimer()
-	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+func deserializeCBOR_AlarmHistoryItems(v smithycbor.Value) ([]types.AlarmHistoryItem, error) {
+	av, ok := v.(smithycbor.List)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return nil, fmt.Errorf("unexpected value type %T", v)
 	}
+	var dl []types.AlarmHistoryItem
+	for _, si := range av {
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorStartMetricStreams(response, &metadata)
-	}
-	output := &StartMetricStreamsOutput{}
-	out.Result = output
-
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return out, metadata, nil
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
+		di, err := deserializeCBOR_AlarmHistoryItem(si)
+		if err != nil {
+			return nil, err
 		}
+		dl = append(dl, *di)
 	}
-
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("StartMetricStreamsResult")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-		return out, metadata, err
-	}
-
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentStartMetricStreamsOutput(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-		return out, metadata, err
-	}
-
-	return out, metadata, err
+	return dl, nil
 }
 
-func awsAwsquery_deserializeOpErrorStartMetricStreams(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InternalServiceError", errorCode):
-		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("MissingParameter", errorCode):
-		return awsAwsquery_deserializeErrorMissingRequiredParameterException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
-}
-
-type awsAwsquery_deserializeOpStopMetricStreams struct {
-}
-
-func (*awsAwsquery_deserializeOpStopMetricStreams) ID() string {
-	return "OperationDeserializer"
-}
-
-func (m *awsAwsquery_deserializeOpStopMetricStreams) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
-	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
-) {
-	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
-
-	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
-	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
-	defer endTimer()
-	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+func deserializeCBOR_AlarmType(v smithycbor.Value) (types.AlarmType, error) {
+	av, ok := v.(smithycbor.String)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return types.AlarmType(""), fmt.Errorf("unexpected value type %T", v)
 	}
-
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorStopMetricStreams(response, &metadata)
-	}
-	output := &StopMetricStreamsOutput{}
-	out.Result = output
-
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return out, metadata, nil
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("StopMetricStreamsResult")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-		return out, metadata, err
-	}
-
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentStopMetricStreamsOutput(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-		return out, metadata, err
-	}
-
-	return out, metadata, err
+	return types.AlarmType(av), nil
 }
 
-func awsAwsquery_deserializeOpErrorStopMetricStreams(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("InternalServiceError", errorCode):
-		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("MissingParameter", errorCode):
-		return awsAwsquery_deserializeErrorMissingRequiredParameterException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
-}
-
-type awsAwsquery_deserializeOpTagResource struct {
-}
-
-func (*awsAwsquery_deserializeOpTagResource) ID() string {
-	return "OperationDeserializer"
-}
-
-func (m *awsAwsquery_deserializeOpTagResource) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
-	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
-) {
-	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
-
-	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
-	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
-	defer endTimer()
-	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+func deserializeCBOR_AnomalyDetector(v smithycbor.Value) (*types.AnomalyDetector, error) {
+	av, ok := v.(smithycbor.Map)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return nil, fmt.Errorf("unexpected value type %T", v)
 	}
+	ds := &types.AnomalyDetector{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Namespace" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Namespace = ptr.String(dv)
+		}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorTagResource(response, &metadata)
-	}
-	output := &TagResourceOutput{}
-	out.Result = output
+		if key == "MetricName" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.MetricName = ptr.String(dv)
+		}
 
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return out, metadata, nil
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
+		if key == "Dimensions" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Dimensions(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Dimensions = dv
+		}
+
+		if key == "Stat" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Stat = ptr.String(dv)
+		}
+
+		if key == "Configuration" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_AnomalyDetectorConfiguration(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Configuration = dv
+		}
+
+		if key == "StateValue" {
+
+			dv, err := deserializeCBOR_AnomalyDetectorStateValue(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.StateValue = dv
+		}
+
+		if key == "MetricCharacteristics" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_MetricCharacteristics(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.MetricCharacteristics = dv
+		}
+
+		if key == "SingleMetricAnomalyDetector" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_SingleMetricAnomalyDetector(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.SingleMetricAnomalyDetector = dv
+		}
+
+		if key == "MetricMathAnomalyDetector" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_MetricMathAnomalyDetector(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.MetricMathAnomalyDetector = dv
 		}
 	}
-
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("TagResourceResult")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-		return out, metadata, err
-	}
-
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentTagResourceOutput(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-		return out, metadata, err
-	}
-
-	return out, metadata, err
+	return ds, nil
 }
 
-func awsAwsquery_deserializeOpErrorTagResource(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
-	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
-
-	errorCode := "UnknownError"
-	errorMessage := errorCode
-
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
-	if err != nil {
-		return err
-	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
-	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
-	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
-	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("ConcurrentModificationException", errorCode):
-		return awsAwsquery_deserializeErrorConcurrentModificationException(response, errorBody)
-
-	case strings.EqualFold("ConflictException", errorCode):
-		return awsAwsquery_deserializeErrorConflictException(response, errorBody)
-
-	case strings.EqualFold("InternalServiceError", errorCode):
-		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
-
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
-
-	case strings.EqualFold("ResourceNotFoundException", errorCode):
-		return awsAwsquery_deserializeErrorResourceNotFoundException(response, errorBody)
-
-	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
-		}
-		return genericError
-
-	}
-}
-
-type awsAwsquery_deserializeOpUntagResource struct {
-}
-
-func (*awsAwsquery_deserializeOpUntagResource) ID() string {
-	return "OperationDeserializer"
-}
-
-func (m *awsAwsquery_deserializeOpUntagResource) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
-	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
-) {
-	out, metadata, err = next.HandleDeserialize(ctx, in)
-	if err != nil {
-		return out, metadata, err
-	}
-
-	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
-	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
-	defer endTimer()
-	defer span.End()
-	response, ok := out.RawResponse.(*smithyhttp.Response)
+func deserializeCBOR_AnomalyDetectorConfiguration(v smithycbor.Value) (*types.AnomalyDetectorConfiguration, error) {
+	av, ok := v.(smithycbor.Map)
 	if !ok {
-		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+		return nil, fmt.Errorf("unexpected value type %T", v)
 	}
+	ds := &types.AnomalyDetectorConfiguration{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "ExcludedTimeRanges" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_AnomalyDetectorExcludedTimeRanges(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ExcludedTimeRanges = dv
+		}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return out, metadata, awsAwsquery_deserializeOpErrorUntagResource(response, &metadata)
-	}
-	output := &UntagResourceOutput{}
-	out.Result = output
-
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(response.Body, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return out, metadata, nil
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return out, metadata, &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
+		if key == "MetricTimezone" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.MetricTimezone = ptr.String(dv)
 		}
 	}
-
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("UntagResourceResult")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-		return out, metadata, err
-	}
-
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeOpDocumentUntagResourceOutput(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		err = &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-		return out, metadata, err
-	}
-
-	return out, metadata, err
+	return ds, nil
 }
 
-func awsAwsquery_deserializeOpErrorUntagResource(response *smithyhttp.Response, metadata *middleware.Metadata) error {
-	var errorBuffer bytes.Buffer
-	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
-		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
+func deserializeCBOR_AnomalyDetectorExcludedTimeRanges(v smithycbor.Value) ([]types.Range, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
 	}
-	errorBody := bytes.NewReader(errorBuffer.Bytes())
+	var dl []types.Range
+	for _, si := range av {
 
-	errorCode := "UnknownError"
-	errorMessage := errorCode
+		di, err := deserializeCBOR_Range(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
 
-	errorComponents, err := awsxml.GetErrorResponseComponents(errorBody, false)
+func deserializeCBOR_AnomalyDetectors(v smithycbor.Value) ([]types.AnomalyDetector, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.AnomalyDetector
+	for _, si := range av {
+
+		di, err := deserializeCBOR_AnomalyDetector(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_AnomalyDetectorStateValue(v smithycbor.Value) (types.AnomalyDetectorStateValue, error) {
+	av, ok := v.(smithycbor.String)
+	if !ok {
+		return types.AnomalyDetectorStateValue(""), fmt.Errorf("unexpected value type %T", v)
+	}
+	return types.AnomalyDetectorStateValue(av), nil
+}
+
+func deserializeCBOR_BatchFailures(v smithycbor.Value) ([]types.PartialFailure, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.PartialFailure
+	for _, si := range av {
+
+		di, err := deserializeCBOR_PartialFailure(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_ComparisonOperator(v smithycbor.Value) (types.ComparisonOperator, error) {
+	av, ok := v.(smithycbor.String)
+	if !ok {
+		return types.ComparisonOperator(""), fmt.Errorf("unexpected value type %T", v)
+	}
+	return types.ComparisonOperator(av), nil
+}
+
+func deserializeCBOR_CompositeAlarm(v smithycbor.Value) (*types.CompositeAlarm, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.CompositeAlarm{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "ActionsEnabled" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Bool(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ActionsEnabled = ptr.Bool(dv)
+		}
+
+		if key == "AlarmActions" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_ResourceList(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AlarmActions = dv
+		}
+
+		if key == "AlarmArn" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AlarmArn = ptr.String(dv)
+		}
+
+		if key == "AlarmConfigurationUpdatedTimestamp" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Time(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AlarmConfigurationUpdatedTimestamp = ptr.Time(dv)
+		}
+
+		if key == "AlarmDescription" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AlarmDescription = ptr.String(dv)
+		}
+
+		if key == "AlarmName" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AlarmName = ptr.String(dv)
+		}
+
+		if key == "AlarmRule" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AlarmRule = ptr.String(dv)
+		}
+
+		if key == "InsufficientDataActions" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_ResourceList(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.InsufficientDataActions = dv
+		}
+
+		if key == "OKActions" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_ResourceList(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.OKActions = dv
+		}
+
+		if key == "StateReason" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.StateReason = ptr.String(dv)
+		}
+
+		if key == "StateReasonData" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.StateReasonData = ptr.String(dv)
+		}
+
+		if key == "StateUpdatedTimestamp" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Time(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.StateUpdatedTimestamp = ptr.Time(dv)
+		}
+
+		if key == "StateValue" {
+
+			dv, err := deserializeCBOR_StateValue(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.StateValue = dv
+		}
+
+		if key == "StateTransitionedTimestamp" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Time(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.StateTransitionedTimestamp = ptr.Time(dv)
+		}
+
+		if key == "ActionsSuppressedBy" {
+
+			dv, err := deserializeCBOR_ActionsSuppressedBy(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ActionsSuppressedBy = dv
+		}
+
+		if key == "ActionsSuppressedReason" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ActionsSuppressedReason = ptr.String(dv)
+		}
+
+		if key == "ActionsSuppressor" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ActionsSuppressor = ptr.String(dv)
+		}
+
+		if key == "ActionsSuppressorWaitPeriod" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Int32(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ActionsSuppressorWaitPeriod = ptr.Int32(dv)
+		}
+
+		if key == "ActionsSuppressorExtensionPeriod" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Int32(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ActionsSuppressorExtensionPeriod = ptr.Int32(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_CompositeAlarms(v smithycbor.Value) ([]types.CompositeAlarm, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.CompositeAlarm
+	for _, si := range av {
+
+		di, err := deserializeCBOR_CompositeAlarm(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_ConcurrentModificationException(v smithycbor.Value) (*types.ConcurrentModificationException, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.ConcurrentModificationException{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Message" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Message = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_ConflictException(v smithycbor.Value) (*types.ConflictException, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.ConflictException{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Message" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Message = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_ContributorAttributes(v smithycbor.Value) (map[string]string, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	dm := map[string]string{}
+	for key, sv := range av {
+
+		dv, err := deserializeCBOR_String(sv)
+		if err != nil {
+			return nil, err
+		}
+		dm[key] = dv
+	}
+	return dm, nil
+}
+
+func deserializeCBOR_DashboardEntries(v smithycbor.Value) ([]types.DashboardEntry, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.DashboardEntry
+	for _, si := range av {
+
+		di, err := deserializeCBOR_DashboardEntry(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_DashboardEntry(v smithycbor.Value) (*types.DashboardEntry, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.DashboardEntry{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "DashboardName" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.DashboardName = ptr.String(dv)
+		}
+
+		if key == "DashboardArn" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.DashboardArn = ptr.String(dv)
+		}
+
+		if key == "LastModified" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Time(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.LastModified = ptr.Time(dv)
+		}
+
+		if key == "Size" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Int64(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Size = ptr.Int64(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_DashboardInvalidInputError(v smithycbor.Value) (*types.DashboardInvalidInputError, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.DashboardInvalidInputError{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "message" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Message = ptr.String(dv)
+		}
+
+		if key == "dashboardValidationMessages" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_DashboardValidationMessages(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.DashboardValidationMessages = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_DashboardNotFoundError(v smithycbor.Value) (*types.DashboardNotFoundError, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.DashboardNotFoundError{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "message" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Message = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_DashboardValidationMessage(v smithycbor.Value) (*types.DashboardValidationMessage, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.DashboardValidationMessage{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "DataPath" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.DataPath = ptr.String(dv)
+		}
+
+		if key == "Message" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Message = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_DashboardValidationMessages(v smithycbor.Value) ([]types.DashboardValidationMessage, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.DashboardValidationMessage
+	for _, si := range av {
+
+		di, err := deserializeCBOR_DashboardValidationMessage(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_Datapoint(v smithycbor.Value) (*types.Datapoint, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.Datapoint{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Timestamp" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Time(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Timestamp = ptr.Time(dv)
+		}
+
+		if key == "SampleCount" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Float64(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.SampleCount = ptr.Float64(dv)
+		}
+
+		if key == "Average" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Float64(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Average = ptr.Float64(dv)
+		}
+
+		if key == "Sum" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Float64(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Sum = ptr.Float64(dv)
+		}
+
+		if key == "Minimum" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Float64(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Minimum = ptr.Float64(dv)
+		}
+
+		if key == "Maximum" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Float64(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Maximum = ptr.Float64(dv)
+		}
+
+		if key == "Unit" {
+
+			dv, err := deserializeCBOR_StandardUnit(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Unit = dv
+		}
+
+		if key == "ExtendedStatistics" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_DatapointValueMap(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ExtendedStatistics = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_Datapoints(v smithycbor.Value) ([]types.Datapoint, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.Datapoint
+	for _, si := range av {
+
+		di, err := deserializeCBOR_Datapoint(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_DatapointValueMap(v smithycbor.Value) (map[string]float64, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	dm := map[string]float64{}
+	for key, sv := range av {
+
+		dv, err := deserializeCBOR_Float64(sv)
+		if err != nil {
+			return nil, err
+		}
+		dm[key] = dv
+	}
+	return dm, nil
+}
+
+func deserializeCBOR_DatapointValues(v smithycbor.Value) ([]float64, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []float64
+	for _, si := range av {
+
+		di, err := deserializeCBOR_Float64(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_Dimension(v smithycbor.Value) (*types.Dimension, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.Dimension{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Name" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Name = ptr.String(dv)
+		}
+
+		if key == "Value" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Value = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_Dimensions(v smithycbor.Value) ([]types.Dimension, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.Dimension
+	for _, si := range av {
+
+		di, err := deserializeCBOR_Dimension(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_EvaluationState(v smithycbor.Value) (types.EvaluationState, error) {
+	av, ok := v.(smithycbor.String)
+	if !ok {
+		return types.EvaluationState(""), fmt.Errorf("unexpected value type %T", v)
+	}
+	return types.EvaluationState(av), nil
+}
+
+func deserializeCBOR_HistoryItemType(v smithycbor.Value) (types.HistoryItemType, error) {
+	av, ok := v.(smithycbor.String)
+	if !ok {
+		return types.HistoryItemType(""), fmt.Errorf("unexpected value type %T", v)
+	}
+	return types.HistoryItemType(av), nil
+}
+
+func deserializeCBOR_InsightRule(v smithycbor.Value) (*types.InsightRule, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.InsightRule{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Name" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Name = ptr.String(dv)
+		}
+
+		if key == "State" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.State = ptr.String(dv)
+		}
+
+		if key == "Schema" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Schema = ptr.String(dv)
+		}
+
+		if key == "Definition" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Definition = ptr.String(dv)
+		}
+
+		if key == "ManagedRule" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Bool(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ManagedRule = ptr.Bool(dv)
+		}
+
+		if key == "ApplyOnTransformedLogs" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Bool(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ApplyOnTransformedLogs = ptr.Bool(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_InsightRuleContributor(v smithycbor.Value) (*types.InsightRuleContributor, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.InsightRuleContributor{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Keys" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_InsightRuleContributorKeys(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Keys = dv
+		}
+
+		if key == "ApproximateAggregateValue" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Float64(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ApproximateAggregateValue = ptr.Float64(dv)
+		}
+
+		if key == "Datapoints" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_InsightRuleContributorDatapoints(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Datapoints = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_InsightRuleContributorDatapoint(v smithycbor.Value) (*types.InsightRuleContributorDatapoint, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.InsightRuleContributorDatapoint{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Timestamp" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Time(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Timestamp = ptr.Time(dv)
+		}
+
+		if key == "ApproximateValue" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Float64(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ApproximateValue = ptr.Float64(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_InsightRuleContributorDatapoints(v smithycbor.Value) ([]types.InsightRuleContributorDatapoint, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.InsightRuleContributorDatapoint
+	for _, si := range av {
+
+		di, err := deserializeCBOR_InsightRuleContributorDatapoint(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_InsightRuleContributorKeyLabels(v smithycbor.Value) ([]string, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []string
+	for _, si := range av {
+
+		di, err := deserializeCBOR_String(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_InsightRuleContributorKeys(v smithycbor.Value) ([]string, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []string
+	for _, si := range av {
+
+		di, err := deserializeCBOR_String(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_InsightRuleContributors(v smithycbor.Value) ([]types.InsightRuleContributor, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.InsightRuleContributor
+	for _, si := range av {
+
+		di, err := deserializeCBOR_InsightRuleContributor(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_InsightRuleMetricDatapoint(v smithycbor.Value) (*types.InsightRuleMetricDatapoint, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.InsightRuleMetricDatapoint{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Timestamp" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Time(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Timestamp = ptr.Time(dv)
+		}
+
+		if key == "UniqueContributors" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Float64(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.UniqueContributors = ptr.Float64(dv)
+		}
+
+		if key == "MaxContributorValue" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Float64(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.MaxContributorValue = ptr.Float64(dv)
+		}
+
+		if key == "SampleCount" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Float64(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.SampleCount = ptr.Float64(dv)
+		}
+
+		if key == "Average" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Float64(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Average = ptr.Float64(dv)
+		}
+
+		if key == "Sum" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Float64(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Sum = ptr.Float64(dv)
+		}
+
+		if key == "Minimum" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Float64(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Minimum = ptr.Float64(dv)
+		}
+
+		if key == "Maximum" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Float64(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Maximum = ptr.Float64(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_InsightRuleMetricDatapoints(v smithycbor.Value) ([]types.InsightRuleMetricDatapoint, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.InsightRuleMetricDatapoint
+	for _, si := range av {
+
+		di, err := deserializeCBOR_InsightRuleMetricDatapoint(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_InsightRules(v smithycbor.Value) ([]types.InsightRule, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.InsightRule
+	for _, si := range av {
+
+		di, err := deserializeCBOR_InsightRule(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_InternalServiceFault(v smithycbor.Value) (*types.InternalServiceFault, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.InternalServiceFault{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Message" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Message = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_InvalidFormatFault(v smithycbor.Value) (*types.InvalidFormatFault, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.InvalidFormatFault{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "message" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Message = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_InvalidNextToken(v smithycbor.Value) (*types.InvalidNextToken, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.InvalidNextToken{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "message" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Message = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_InvalidParameterCombinationException(v smithycbor.Value) (*types.InvalidParameterCombinationException, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.InvalidParameterCombinationException{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "message" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Message = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_InvalidParameterValueException(v smithycbor.Value) (*types.InvalidParameterValueException, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.InvalidParameterValueException{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "message" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Message = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_LimitExceededException(v smithycbor.Value) (*types.LimitExceededException, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.LimitExceededException{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Message" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Message = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_LimitExceededFault(v smithycbor.Value) (*types.LimitExceededFault, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.LimitExceededFault{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "message" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Message = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_ManagedRuleDescription(v smithycbor.Value) (*types.ManagedRuleDescription, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.ManagedRuleDescription{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "TemplateName" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.TemplateName = ptr.String(dv)
+		}
+
+		if key == "ResourceARN" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ResourceARN = ptr.String(dv)
+		}
+
+		if key == "RuleState" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_ManagedRuleState(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.RuleState = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_ManagedRuleDescriptions(v smithycbor.Value) ([]types.ManagedRuleDescription, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.ManagedRuleDescription
+	for _, si := range av {
+
+		di, err := deserializeCBOR_ManagedRuleDescription(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_ManagedRuleState(v smithycbor.Value) (*types.ManagedRuleState, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.ManagedRuleState{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "RuleName" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.RuleName = ptr.String(dv)
+		}
+
+		if key == "State" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.State = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_MessageData(v smithycbor.Value) (*types.MessageData, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.MessageData{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Code" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Code = ptr.String(dv)
+		}
+
+		if key == "Value" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Value = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_Metric(v smithycbor.Value) (*types.Metric, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.Metric{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Namespace" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Namespace = ptr.String(dv)
+		}
+
+		if key == "MetricName" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.MetricName = ptr.String(dv)
+		}
+
+		if key == "Dimensions" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Dimensions(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Dimensions = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_MetricAlarm(v smithycbor.Value) (*types.MetricAlarm, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.MetricAlarm{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "AlarmName" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AlarmName = ptr.String(dv)
+		}
+
+		if key == "AlarmArn" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AlarmArn = ptr.String(dv)
+		}
+
+		if key == "AlarmDescription" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AlarmDescription = ptr.String(dv)
+		}
+
+		if key == "AlarmConfigurationUpdatedTimestamp" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Time(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AlarmConfigurationUpdatedTimestamp = ptr.Time(dv)
+		}
+
+		if key == "ActionsEnabled" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Bool(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ActionsEnabled = ptr.Bool(dv)
+		}
+
+		if key == "OKActions" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_ResourceList(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.OKActions = dv
+		}
+
+		if key == "AlarmActions" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_ResourceList(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AlarmActions = dv
+		}
+
+		if key == "InsufficientDataActions" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_ResourceList(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.InsufficientDataActions = dv
+		}
+
+		if key == "StateValue" {
+
+			dv, err := deserializeCBOR_StateValue(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.StateValue = dv
+		}
+
+		if key == "StateReason" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.StateReason = ptr.String(dv)
+		}
+
+		if key == "StateReasonData" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.StateReasonData = ptr.String(dv)
+		}
+
+		if key == "StateUpdatedTimestamp" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Time(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.StateUpdatedTimestamp = ptr.Time(dv)
+		}
+
+		if key == "MetricName" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.MetricName = ptr.String(dv)
+		}
+
+		if key == "Namespace" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Namespace = ptr.String(dv)
+		}
+
+		if key == "Statistic" {
+
+			dv, err := deserializeCBOR_Statistic(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Statistic = dv
+		}
+
+		if key == "ExtendedStatistic" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ExtendedStatistic = ptr.String(dv)
+		}
+
+		if key == "Dimensions" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Dimensions(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Dimensions = dv
+		}
+
+		if key == "Period" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Int32(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Period = ptr.Int32(dv)
+		}
+
+		if key == "Unit" {
+
+			dv, err := deserializeCBOR_StandardUnit(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Unit = dv
+		}
+
+		if key == "EvaluationPeriods" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Int32(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.EvaluationPeriods = ptr.Int32(dv)
+		}
+
+		if key == "DatapointsToAlarm" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Int32(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.DatapointsToAlarm = ptr.Int32(dv)
+		}
+
+		if key == "Threshold" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Float64(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Threshold = ptr.Float64(dv)
+		}
+
+		if key == "ComparisonOperator" {
+
+			dv, err := deserializeCBOR_ComparisonOperator(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ComparisonOperator = dv
+		}
+
+		if key == "TreatMissingData" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.TreatMissingData = ptr.String(dv)
+		}
+
+		if key == "EvaluateLowSampleCountPercentile" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.EvaluateLowSampleCountPercentile = ptr.String(dv)
+		}
+
+		if key == "Metrics" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_MetricDataQueries(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Metrics = dv
+		}
+
+		if key == "ThresholdMetricId" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ThresholdMetricId = ptr.String(dv)
+		}
+
+		if key == "EvaluationState" {
+
+			dv, err := deserializeCBOR_EvaluationState(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.EvaluationState = dv
+		}
+
+		if key == "StateTransitionedTimestamp" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Time(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.StateTransitionedTimestamp = ptr.Time(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_MetricAlarms(v smithycbor.Value) ([]types.MetricAlarm, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.MetricAlarm
+	for _, si := range av {
+
+		di, err := deserializeCBOR_MetricAlarm(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_MetricCharacteristics(v smithycbor.Value) (*types.MetricCharacteristics, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.MetricCharacteristics{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "PeriodicSpikes" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Bool(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.PeriodicSpikes = ptr.Bool(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_MetricDataQueries(v smithycbor.Value) ([]types.MetricDataQuery, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.MetricDataQuery
+	for _, si := range av {
+
+		di, err := deserializeCBOR_MetricDataQuery(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_MetricDataQuery(v smithycbor.Value) (*types.MetricDataQuery, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.MetricDataQuery{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Id" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Id = ptr.String(dv)
+		}
+
+		if key == "MetricStat" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_MetricStat(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.MetricStat = dv
+		}
+
+		if key == "Expression" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Expression = ptr.String(dv)
+		}
+
+		if key == "Label" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Label = ptr.String(dv)
+		}
+
+		if key == "ReturnData" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Bool(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ReturnData = ptr.Bool(dv)
+		}
+
+		if key == "Period" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Int32(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Period = ptr.Int32(dv)
+		}
+
+		if key == "AccountId" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AccountId = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_MetricDataResult(v smithycbor.Value) (*types.MetricDataResult, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.MetricDataResult{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Id" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Id = ptr.String(dv)
+		}
+
+		if key == "Label" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Label = ptr.String(dv)
+		}
+
+		if key == "Timestamps" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Timestamps(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Timestamps = dv
+		}
+
+		if key == "Values" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_DatapointValues(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Values = dv
+		}
+
+		if key == "StatusCode" {
+
+			dv, err := deserializeCBOR_StatusCode(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.StatusCode = dv
+		}
+
+		if key == "Messages" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_MetricDataResultMessages(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Messages = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_MetricDataResultMessages(v smithycbor.Value) ([]types.MessageData, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.MessageData
+	for _, si := range av {
+
+		di, err := deserializeCBOR_MessageData(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_MetricDataResults(v smithycbor.Value) ([]types.MetricDataResult, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.MetricDataResult
+	for _, si := range av {
+
+		di, err := deserializeCBOR_MetricDataResult(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_MetricMathAnomalyDetector(v smithycbor.Value) (*types.MetricMathAnomalyDetector, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.MetricMathAnomalyDetector{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "MetricDataQueries" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_MetricDataQueries(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.MetricDataQueries = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_Metrics(v smithycbor.Value) ([]types.Metric, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.Metric
+	for _, si := range av {
+
+		di, err := deserializeCBOR_Metric(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_MetricStat(v smithycbor.Value) (*types.MetricStat, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.MetricStat{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Metric" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Metric(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Metric = dv
+		}
+
+		if key == "Period" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Int32(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Period = ptr.Int32(dv)
+		}
+
+		if key == "Stat" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Stat = ptr.String(dv)
+		}
+
+		if key == "Unit" {
+
+			dv, err := deserializeCBOR_StandardUnit(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Unit = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_MetricStreamEntries(v smithycbor.Value) ([]types.MetricStreamEntry, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.MetricStreamEntry
+	for _, si := range av {
+
+		di, err := deserializeCBOR_MetricStreamEntry(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_MetricStreamEntry(v smithycbor.Value) (*types.MetricStreamEntry, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.MetricStreamEntry{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Arn" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Arn = ptr.String(dv)
+		}
+
+		if key == "CreationDate" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Time(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.CreationDate = ptr.Time(dv)
+		}
+
+		if key == "LastUpdateDate" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Time(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.LastUpdateDate = ptr.Time(dv)
+		}
+
+		if key == "Name" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Name = ptr.String(dv)
+		}
+
+		if key == "FirehoseArn" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.FirehoseArn = ptr.String(dv)
+		}
+
+		if key == "State" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.State = ptr.String(dv)
+		}
+
+		if key == "OutputFormat" {
+
+			dv, err := deserializeCBOR_MetricStreamOutputFormat(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.OutputFormat = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_MetricStreamFilter(v smithycbor.Value) (*types.MetricStreamFilter, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.MetricStreamFilter{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Namespace" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Namespace = ptr.String(dv)
+		}
+
+		if key == "MetricNames" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_MetricStreamFilterMetricNames(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.MetricNames = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_MetricStreamFilterMetricNames(v smithycbor.Value) ([]string, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []string
+	for _, si := range av {
+
+		di, err := deserializeCBOR_String(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_MetricStreamFilters(v smithycbor.Value) ([]types.MetricStreamFilter, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.MetricStreamFilter
+	for _, si := range av {
+
+		di, err := deserializeCBOR_MetricStreamFilter(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_MetricStreamOutputFormat(v smithycbor.Value) (types.MetricStreamOutputFormat, error) {
+	av, ok := v.(smithycbor.String)
+	if !ok {
+		return types.MetricStreamOutputFormat(""), fmt.Errorf("unexpected value type %T", v)
+	}
+	return types.MetricStreamOutputFormat(av), nil
+}
+
+func deserializeCBOR_MetricStreamStatisticsAdditionalStatistics(v smithycbor.Value) ([]string, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []string
+	for _, si := range av {
+
+		di, err := deserializeCBOR_String(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_MetricStreamStatisticsConfiguration(v smithycbor.Value) (*types.MetricStreamStatisticsConfiguration, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.MetricStreamStatisticsConfiguration{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "IncludeMetrics" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_MetricStreamStatisticsIncludeMetrics(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.IncludeMetrics = dv
+		}
+
+		if key == "AdditionalStatistics" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_MetricStreamStatisticsAdditionalStatistics(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AdditionalStatistics = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_MetricStreamStatisticsConfigurations(v smithycbor.Value) ([]types.MetricStreamStatisticsConfiguration, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.MetricStreamStatisticsConfiguration
+	for _, si := range av {
+
+		di, err := deserializeCBOR_MetricStreamStatisticsConfiguration(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_MetricStreamStatisticsIncludeMetrics(v smithycbor.Value) ([]types.MetricStreamStatisticsMetric, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.MetricStreamStatisticsMetric
+	for _, si := range av {
+
+		di, err := deserializeCBOR_MetricStreamStatisticsMetric(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_MetricStreamStatisticsMetric(v smithycbor.Value) (*types.MetricStreamStatisticsMetric, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.MetricStreamStatisticsMetric{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Namespace" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Namespace = ptr.String(dv)
+		}
+
+		if key == "MetricName" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.MetricName = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_MissingRequiredParameterException(v smithycbor.Value) (*types.MissingRequiredParameterException, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.MissingRequiredParameterException{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "message" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Message = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_OwningAccounts(v smithycbor.Value) ([]string, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []string
+	for _, si := range av {
+
+		di, err := deserializeCBOR_String(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_PartialFailure(v smithycbor.Value) (*types.PartialFailure, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.PartialFailure{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "FailureResource" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.FailureResource = ptr.String(dv)
+		}
+
+		if key == "ExceptionType" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ExceptionType = ptr.String(dv)
+		}
+
+		if key == "FailureCode" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.FailureCode = ptr.String(dv)
+		}
+
+		if key == "FailureDescription" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.FailureDescription = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_Range(v smithycbor.Value) (*types.Range, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.Range{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "StartTime" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Time(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.StartTime = ptr.Time(dv)
+		}
+
+		if key == "EndTime" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Time(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.EndTime = ptr.Time(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_ResourceList(v smithycbor.Value) ([]string, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []string
+	for _, si := range av {
+
+		di, err := deserializeCBOR_String(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_ResourceNotFound(v smithycbor.Value) (*types.ResourceNotFound, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.ResourceNotFound{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "message" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Message = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_ResourceNotFoundException(v smithycbor.Value) (*types.ResourceNotFoundException, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.ResourceNotFoundException{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "ResourceType" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ResourceType = ptr.String(dv)
+		}
+
+		if key == "ResourceId" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ResourceId = ptr.String(dv)
+		}
+
+		if key == "Message" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Message = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_SingleMetricAnomalyDetector(v smithycbor.Value) (*types.SingleMetricAnomalyDetector, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.SingleMetricAnomalyDetector{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "AccountId" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AccountId = ptr.String(dv)
+		}
+
+		if key == "Namespace" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Namespace = ptr.String(dv)
+		}
+
+		if key == "MetricName" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.MetricName = ptr.String(dv)
+		}
+
+		if key == "Dimensions" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Dimensions(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Dimensions = dv
+		}
+
+		if key == "Stat" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Stat = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_StandardUnit(v smithycbor.Value) (types.StandardUnit, error) {
+	av, ok := v.(smithycbor.String)
+	if !ok {
+		return types.StandardUnit(""), fmt.Errorf("unexpected value type %T", v)
+	}
+	return types.StandardUnit(av), nil
+}
+
+func deserializeCBOR_StateValue(v smithycbor.Value) (types.StateValue, error) {
+	av, ok := v.(smithycbor.String)
+	if !ok {
+		return types.StateValue(""), fmt.Errorf("unexpected value type %T", v)
+	}
+	return types.StateValue(av), nil
+}
+
+func deserializeCBOR_Statistic(v smithycbor.Value) (types.Statistic, error) {
+	av, ok := v.(smithycbor.String)
+	if !ok {
+		return types.Statistic(""), fmt.Errorf("unexpected value type %T", v)
+	}
+	return types.Statistic(av), nil
+}
+
+func deserializeCBOR_StatusCode(v smithycbor.Value) (types.StatusCode, error) {
+	av, ok := v.(smithycbor.String)
+	if !ok {
+		return types.StatusCode(""), fmt.Errorf("unexpected value type %T", v)
+	}
+	return types.StatusCode(av), nil
+}
+
+func deserializeCBOR_Tag(v smithycbor.Value) (*types.Tag, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &types.Tag{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Key" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Key = ptr.String(dv)
+		}
+
+		if key == "Value" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Value = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_TagList(v smithycbor.Value) ([]types.Tag, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []types.Tag
+	for _, si := range av {
+
+		di, err := deserializeCBOR_Tag(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, *di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_Timestamps(v smithycbor.Value) ([]time.Time, error) {
+	av, ok := v.(smithycbor.List)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	var dl []time.Time
+	for _, si := range av {
+
+		di, err := deserializeCBOR_Time(si)
+		if err != nil {
+			return nil, err
+		}
+		dl = append(dl, di)
+	}
+	return dl, nil
+}
+
+func deserializeCBOR_Blob(v smithycbor.Value) ([]byte, error) {
+	av, ok := v.(smithycbor.Slice)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	return []byte(av), nil
+}
+
+func deserializeCBOR_Bool(v smithycbor.Value) (bool, error) {
+	av, ok := v.(smithycbor.Bool)
+	if !ok {
+		return false, fmt.Errorf("unexpected value type %T", v)
+	}
+	return bool(av), nil
+}
+
+func deserializeCBOR_Float64(v smithycbor.Value) (float64, error) {
+	return smithycbor.AsFloat64(v)
+}
+
+func deserializeCBOR_Int32(v smithycbor.Value) (int32, error) {
+	return smithycbor.AsInt32(v)
+}
+
+func deserializeCBOR_Int64(v smithycbor.Value) (int64, error) {
+	return smithycbor.AsInt64(v)
+}
+
+func deserializeCBOR_String(v smithycbor.Value) (string, error) {
+	av, ok := v.(smithycbor.String)
+	if !ok {
+		return "", fmt.Errorf("unexpected value type %T", v)
+	}
+	return string(av), nil
+}
+
+func deserializeCBOR_Time(v smithycbor.Value) (time.Time, error) {
+	return smithycbor.AsTime(v)
+}
+
+func deserializeCBOR_DeleteInsightRulesOutput(v smithycbor.Value) (*DeleteInsightRulesOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &DeleteInsightRulesOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Failures" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_BatchFailures(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Failures = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_DescribeAlarmContributorsOutput(v smithycbor.Value) (*DescribeAlarmContributorsOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &DescribeAlarmContributorsOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "AlarmContributors" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_AlarmContributors(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AlarmContributors = dv
+		}
+
+		if key == "NextToken" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.NextToken = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_DescribeAlarmHistoryOutput(v smithycbor.Value) (*DescribeAlarmHistoryOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &DescribeAlarmHistoryOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "AlarmHistoryItems" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_AlarmHistoryItems(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AlarmHistoryItems = dv
+		}
+
+		if key == "NextToken" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.NextToken = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_DescribeAlarmsForMetricOutput(v smithycbor.Value) (*DescribeAlarmsForMetricOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &DescribeAlarmsForMetricOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "MetricAlarms" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_MetricAlarms(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.MetricAlarms = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_DescribeAlarmsOutput(v smithycbor.Value) (*DescribeAlarmsOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &DescribeAlarmsOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "CompositeAlarms" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_CompositeAlarms(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.CompositeAlarms = dv
+		}
+
+		if key == "MetricAlarms" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_MetricAlarms(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.MetricAlarms = dv
+		}
+
+		if key == "NextToken" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.NextToken = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_DescribeAnomalyDetectorsOutput(v smithycbor.Value) (*DescribeAnomalyDetectorsOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &DescribeAnomalyDetectorsOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "AnomalyDetectors" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_AnomalyDetectors(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AnomalyDetectors = dv
+		}
+
+		if key == "NextToken" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.NextToken = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_DescribeInsightRulesOutput(v smithycbor.Value) (*DescribeInsightRulesOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &DescribeInsightRulesOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "NextToken" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.NextToken = ptr.String(dv)
+		}
+
+		if key == "InsightRules" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_InsightRules(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.InsightRules = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_DisableInsightRulesOutput(v smithycbor.Value) (*DisableInsightRulesOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &DisableInsightRulesOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Failures" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_BatchFailures(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Failures = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_EnableInsightRulesOutput(v smithycbor.Value) (*EnableInsightRulesOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &EnableInsightRulesOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Failures" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_BatchFailures(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Failures = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_GetDashboardOutput(v smithycbor.Value) (*GetDashboardOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &GetDashboardOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "DashboardArn" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.DashboardArn = ptr.String(dv)
+		}
+
+		if key == "DashboardBody" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.DashboardBody = ptr.String(dv)
+		}
+
+		if key == "DashboardName" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.DashboardName = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_GetInsightRuleReportOutput(v smithycbor.Value) (*GetInsightRuleReportOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &GetInsightRuleReportOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "KeyLabels" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_InsightRuleContributorKeyLabels(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.KeyLabels = dv
+		}
+
+		if key == "AggregationStatistic" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AggregationStatistic = ptr.String(dv)
+		}
+
+		if key == "AggregateValue" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Float64(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.AggregateValue = ptr.Float64(dv)
+		}
+
+		if key == "ApproximateUniqueCount" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Int64(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ApproximateUniqueCount = ptr.Int64(dv)
+		}
+
+		if key == "Contributors" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_InsightRuleContributors(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Contributors = dv
+		}
+
+		if key == "MetricDatapoints" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_InsightRuleMetricDatapoints(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.MetricDatapoints = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_GetMetricDataOutput(v smithycbor.Value) (*GetMetricDataOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &GetMetricDataOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "MetricDataResults" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_MetricDataResults(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.MetricDataResults = dv
+		}
+
+		if key == "NextToken" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.NextToken = ptr.String(dv)
+		}
+
+		if key == "Messages" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_MetricDataResultMessages(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Messages = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_GetMetricStatisticsOutput(v smithycbor.Value) (*GetMetricStatisticsOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &GetMetricStatisticsOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Label" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Label = ptr.String(dv)
+		}
+
+		if key == "Datapoints" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Datapoints(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Datapoints = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_GetMetricStreamOutput(v smithycbor.Value) (*GetMetricStreamOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &GetMetricStreamOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Arn" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Arn = ptr.String(dv)
+		}
+
+		if key == "Name" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Name = ptr.String(dv)
+		}
+
+		if key == "IncludeFilters" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_MetricStreamFilters(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.IncludeFilters = dv
+		}
+
+		if key == "ExcludeFilters" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_MetricStreamFilters(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ExcludeFilters = dv
+		}
+
+		if key == "FirehoseArn" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.FirehoseArn = ptr.String(dv)
+		}
+
+		if key == "RoleArn" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.RoleArn = ptr.String(dv)
+		}
+
+		if key == "State" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.State = ptr.String(dv)
+		}
+
+		if key == "CreationDate" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Time(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.CreationDate = ptr.Time(dv)
+		}
+
+		if key == "LastUpdateDate" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Time(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.LastUpdateDate = ptr.Time(dv)
+		}
+
+		if key == "OutputFormat" {
+
+			dv, err := deserializeCBOR_MetricStreamOutputFormat(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.OutputFormat = dv
+		}
+
+		if key == "StatisticsConfigurations" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_MetricStreamStatisticsConfigurations(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.StatisticsConfigurations = dv
+		}
+
+		if key == "IncludeLinkedAccountsMetrics" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Bool(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.IncludeLinkedAccountsMetrics = ptr.Bool(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_GetMetricWidgetImageOutput(v smithycbor.Value) (*GetMetricWidgetImageOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &GetMetricWidgetImageOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "MetricWidgetImage" {
+
+			dv, err := deserializeCBOR_Blob(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.MetricWidgetImage = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_ListDashboardsOutput(v smithycbor.Value) (*ListDashboardsOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &ListDashboardsOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "DashboardEntries" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_DashboardEntries(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.DashboardEntries = dv
+		}
+
+		if key == "NextToken" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.NextToken = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_ListManagedInsightRulesOutput(v smithycbor.Value) (*ListManagedInsightRulesOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &ListManagedInsightRulesOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "ManagedRules" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_ManagedRuleDescriptions(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.ManagedRules = dv
+		}
+
+		if key == "NextToken" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.NextToken = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_ListMetricsOutput(v smithycbor.Value) (*ListMetricsOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &ListMetricsOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Metrics" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_Metrics(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Metrics = dv
+		}
+
+		if key == "NextToken" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.NextToken = ptr.String(dv)
+		}
+
+		if key == "OwningAccounts" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_OwningAccounts(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.OwningAccounts = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_ListMetricStreamsOutput(v smithycbor.Value) (*ListMetricStreamsOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &ListMetricStreamsOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "NextToken" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.NextToken = ptr.String(dv)
+		}
+
+		if key == "Entries" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_MetricStreamEntries(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Entries = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_ListTagsForResourceOutput(v smithycbor.Value) (*ListTagsForResourceOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &ListTagsForResourceOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Tags" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_TagList(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Tags = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_PutDashboardOutput(v smithycbor.Value) (*PutDashboardOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &PutDashboardOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "DashboardValidationMessages" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_DashboardValidationMessages(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.DashboardValidationMessages = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_PutManagedInsightRulesOutput(v smithycbor.Value) (*PutManagedInsightRulesOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &PutManagedInsightRulesOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Failures" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_BatchFailures(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Failures = dv
+		}
+	}
+	return ds, nil
+}
+
+func deserializeCBOR_PutMetricStreamOutput(v smithycbor.Value) (*PutMetricStreamOutput, error) {
+	av, ok := v.(smithycbor.Map)
+	if !ok {
+		return nil, fmt.Errorf("unexpected value type %T", v)
+	}
+	ds := &PutMetricStreamOutput{}
+	for key, sv := range av {
+		_, _ = key, sv
+		if key == "Arn" {
+			if _, ok := sv.(*smithycbor.Nil); ok {
+				continue
+			}
+			dv, err := deserializeCBOR_String(sv)
+			if err != nil {
+				return nil, err
+			}
+			ds.Arn = ptr.String(dv)
+		}
+	}
+	return ds, nil
+}
+func rpc2_deserializeOpErrorDeleteAlarms(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
-	if reqID := errorComponents.RequestID; len(reqID) != 0 {
-		awsmiddleware.SetRequestIDMetadata(metadata, reqID)
+
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
 	}
-	if len(errorComponents.Code) != 0 {
-		errorCode = errorComponents.Code
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
 	}
-	if len(errorComponents.Message) != 0 {
-		errorMessage = errorComponents.Message
+	if len(msg) == 0 {
+		msg = "UnknownError"
 	}
-	errorBody.Seek(0, io.SeekStart)
-	switch {
-	case strings.EqualFold("ConcurrentModificationException", errorCode):
-		return awsAwsquery_deserializeErrorConcurrentModificationException(response, errorBody)
 
-	case strings.EqualFold("ConflictException", errorCode):
-		return awsAwsquery_deserializeErrorConflictException(response, errorBody)
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "ResourceNotFound":
+		verr, err := deserializeCBOR_ResourceNotFound(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#ResourceNotFound: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	default:
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
+		}
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
+	}
+}
 
-	case strings.EqualFold("InternalServiceError", errorCode):
-		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
+func rpc2_deserializeOpErrorDeleteAnomalyDetector(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
+	}
 
-	case strings.EqualFold("InvalidParameterValue", errorCode):
-		return awsAwsquery_deserializeErrorInvalidParameterValueException(response, errorBody)
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
 
-	case strings.EqualFold("ResourceNotFoundException", errorCode):
-		return awsAwsquery_deserializeErrorResourceNotFoundException(response, errorBody)
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InternalServiceFault":
+		verr, err := deserializeCBOR_InternalServiceFault(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InternalServiceFault: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "InvalidParameterCombinationException":
+		verr, err := deserializeCBOR_InvalidParameterCombinationException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterCombinationException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "MissingRequiredParameterException":
+		verr, err := deserializeCBOR_MissingRequiredParameterException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#MissingRequiredParameterException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "ResourceNotFoundException":
+		verr, err := deserializeCBOR_ResourceNotFoundException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#ResourceNotFoundException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	default:
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
+		}
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
+	}
+}
+
+func rpc2_deserializeOpErrorDeleteDashboards(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
+	}
+
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "ConflictException":
+		verr, err := deserializeCBOR_ConflictException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#ConflictException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "DashboardNotFoundError":
+		verr, err := deserializeCBOR_DashboardNotFoundError(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#DashboardNotFoundError: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "InternalServiceFault":
+		verr, err := deserializeCBOR_InternalServiceFault(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InternalServiceFault: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	default:
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
+		}
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
+	}
+}
+
+func rpc2_deserializeOpErrorDeleteInsightRules(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
+	}
+
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "MissingRequiredParameterException":
+		verr, err := deserializeCBOR_MissingRequiredParameterException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#MissingRequiredParameterException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	default:
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
+		}
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
+	}
+}
+
+func rpc2_deserializeOpErrorDeleteMetricStream(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
+	}
+
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InternalServiceFault":
+		verr, err := deserializeCBOR_InternalServiceFault(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InternalServiceFault: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "MissingRequiredParameterException":
+		verr, err := deserializeCBOR_MissingRequiredParameterException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#MissingRequiredParameterException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	default:
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
+		}
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
+	}
+}
+
+func rpc2_deserializeOpErrorDescribeAlarmContributors(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
+	}
+
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InvalidNextToken":
+		verr, err := deserializeCBOR_InvalidNextToken(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidNextToken: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "ResourceNotFoundException":
+		verr, err := deserializeCBOR_ResourceNotFoundException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#ResourceNotFoundException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	default:
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
+		}
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
+	}
+}
+
+func rpc2_deserializeOpErrorDescribeAlarmHistory(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
+	}
+
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InvalidNextToken":
+		verr, err := deserializeCBOR_InvalidNextToken(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidNextToken: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	default:
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
+		}
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
+	}
+}
+
+func rpc2_deserializeOpErrorDescribeAlarms(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
+	}
+
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InvalidNextToken":
+		verr, err := deserializeCBOR_InvalidNextToken(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidNextToken: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	default:
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
+		}
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
+	}
+}
+
+func rpc2_deserializeOpErrorDescribeAlarmsForMetric(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
+	}
+
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
 
 	default:
-		genericError := &smithy.GenericAPIError{
-			Code:    errorCode,
-			Message: errorMessage,
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		return genericError
-
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
 }
 
-func awsAwsquery_deserializeErrorConcurrentModificationException(response *smithyhttp.Response, errorBody *bytes.Reader) error {
-	output := &types.ConcurrentModificationException{}
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(errorBody, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return output
-	}
+func rpc2_deserializeOpErrorDescribeAnomalyDetectors(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("Error")
+	typ, msg, v, err := getProtocolErrorInfo(payload)
 	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
 	}
 
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeDocumentConcurrentModificationException(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
 	}
 
-	return output
-}
-
-func awsAwsquery_deserializeErrorConflictException(response *smithyhttp.Response, errorBody *bytes.Reader) error {
-	output := &types.ConflictException{}
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(errorBody, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return output
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("Error")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeDocumentConflictException(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	return output
-}
-
-func awsAwsquery_deserializeErrorDashboardInvalidInputError(response *smithyhttp.Response, errorBody *bytes.Reader) error {
-	output := &types.DashboardInvalidInputError{}
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(errorBody, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return output
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("Error")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeDocumentDashboardInvalidInputError(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	return output
-}
-
-func awsAwsquery_deserializeErrorDashboardNotFoundError(response *smithyhttp.Response, errorBody *bytes.Reader) error {
-	output := &types.DashboardNotFoundError{}
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(errorBody, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return output
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("Error")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeDocumentDashboardNotFoundError(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	return output
-}
-
-func awsAwsquery_deserializeErrorInternalServiceFault(response *smithyhttp.Response, errorBody *bytes.Reader) error {
-	output := &types.InternalServiceFault{}
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(errorBody, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return output
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("Error")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeDocumentInternalServiceFault(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	return output
-}
-
-func awsAwsquery_deserializeErrorInvalidFormatFault(response *smithyhttp.Response, errorBody *bytes.Reader) error {
-	output := &types.InvalidFormatFault{}
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(errorBody, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return output
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("Error")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeDocumentInvalidFormatFault(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	return output
-}
-
-func awsAwsquery_deserializeErrorInvalidNextToken(response *smithyhttp.Response, errorBody *bytes.Reader) error {
-	output := &types.InvalidNextToken{}
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(errorBody, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return output
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("Error")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeDocumentInvalidNextToken(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	return output
-}
-
-func awsAwsquery_deserializeErrorInvalidParameterCombinationException(response *smithyhttp.Response, errorBody *bytes.Reader) error {
-	output := &types.InvalidParameterCombinationException{}
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(errorBody, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return output
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("Error")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeDocumentInvalidParameterCombinationException(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	return output
-}
-
-func awsAwsquery_deserializeErrorInvalidParameterValueException(response *smithyhttp.Response, errorBody *bytes.Reader) error {
-	output := &types.InvalidParameterValueException{}
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(errorBody, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return output
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("Error")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeDocumentInvalidParameterValueException(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	return output
-}
-
-func awsAwsquery_deserializeErrorLimitExceededException(response *smithyhttp.Response, errorBody *bytes.Reader) error {
-	output := &types.LimitExceededException{}
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(errorBody, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return output
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("Error")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeDocumentLimitExceededException(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	return output
-}
-
-func awsAwsquery_deserializeErrorLimitExceededFault(response *smithyhttp.Response, errorBody *bytes.Reader) error {
-	output := &types.LimitExceededFault{}
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(errorBody, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return output
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("Error")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeDocumentLimitExceededFault(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	return output
-}
-
-func awsAwsquery_deserializeErrorMissingRequiredParameterException(response *smithyhttp.Response, errorBody *bytes.Reader) error {
-	output := &types.MissingRequiredParameterException{}
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(errorBody, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return output
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("Error")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeDocumentMissingRequiredParameterException(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	return output
-}
-
-func awsAwsquery_deserializeErrorResourceNotFound(response *smithyhttp.Response, errorBody *bytes.Reader) error {
-	output := &types.ResourceNotFound{}
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(errorBody, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return output
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("Error")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeDocumentResourceNotFound(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	return output
-}
-
-func awsAwsquery_deserializeErrorResourceNotFoundException(response *smithyhttp.Response, errorBody *bytes.Reader) error {
-	output := &types.ResourceNotFoundException{}
-	var buff [1024]byte
-	ringBuffer := smithyio.NewRingBuffer(buff[:])
-	body := io.TeeReader(errorBody, ringBuffer)
-	rootDecoder := xml.NewDecoder(body)
-	t, err := smithyxml.FetchRootElement(rootDecoder)
-	if err == io.EOF {
-		return output
-	}
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
-	t, err = decoder.GetElement("Error")
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-	err = awsAwsquery_deserializeDocumentResourceNotFoundException(&output, decoder)
-	if err != nil {
-		var snapshot bytes.Buffer
-		io.Copy(&snapshot, ringBuffer)
-		return &smithy.DeserializationError{
-			Err:      fmt.Errorf("failed to decode response body, %w", err),
-			Snapshot: snapshot.Bytes(),
-		}
-	}
-
-	return output
-}
-
-func awsAwsquery_deserializeDocumentAlarmContributor(v **types.AlarmContributor, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.AlarmContributor
-	if *v == nil {
-		sv = &types.AlarmContributor{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InternalServiceFault":
+		verr, err := deserializeCBOR_InternalServiceFault(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InternalServiceFault: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("ContributorAttributes", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentContributorAttributes(&sv.ContributorAttributes, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("ContributorId", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.ContributorId = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("StateReason", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.StateReason = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("StateTransitionedTimestamp", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				t, err := smithytime.ParseDateTime(xtv)
-				if err != nil {
-					return err
-				}
-				sv.StateTransitionedTimestamp = ptr.Time(t)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentAlarmContributors(v *[]types.AlarmContributor, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.AlarmContributor
-	if *v == nil {
-		sv = make([]types.AlarmContributor, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
+		return verr
+	case "InvalidNextToken":
+		verr, err := deserializeCBOR_InvalidNextToken(v)
 		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.AlarmContributor
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentAlarmContributor(&destAddr, nodeDecoder); err != nil {
-				return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidNextToken: %w", err),
+				Snapshot: payload,
 			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
 		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentAlarmContributorsUnwrapped(v *[]types.AlarmContributor, decoder smithyxml.NodeDecoder) error {
-	var sv []types.AlarmContributor
-	if *v == nil {
-		sv = make([]types.AlarmContributor, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "InvalidParameterCombinationException":
+		verr, err := deserializeCBOR_InvalidParameterCombinationException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterCombinationException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
 	default:
-		var mv types.AlarmContributor
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentAlarmContributor(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentAlarmHistoryItem(v **types.AlarmHistoryItem, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.AlarmHistoryItem
-	if *v == nil {
-		sv = &types.AlarmHistoryItem{}
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorDescribeInsightRules(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InvalidNextToken":
+		verr, err := deserializeCBOR_InvalidNextToken(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidNextToken: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("AlarmContributorAttributes", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentContributorAttributes(&sv.AlarmContributorAttributes, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("AlarmContributorId", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.AlarmContributorId = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("AlarmName", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.AlarmName = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("AlarmType", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.AlarmType = types.AlarmType(xtv)
-			}
-
-		case strings.EqualFold("HistoryData", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.HistoryData = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("HistoryItemType", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.HistoryItemType = types.HistoryItemType(xtv)
-			}
-
-		case strings.EqualFold("HistorySummary", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.HistorySummary = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("Timestamp", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				t, err := smithytime.ParseDateTime(xtv)
-				if err != nil {
-					return err
-				}
-				sv.Timestamp = ptr.Time(t)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentAlarmHistoryItems(v *[]types.AlarmHistoryItem, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.AlarmHistoryItem
-	if *v == nil {
-		sv = make([]types.AlarmHistoryItem, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.AlarmHistoryItem
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentAlarmHistoryItem(&destAddr, nodeDecoder); err != nil {
-				return err
-			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentAlarmHistoryItemsUnwrapped(v *[]types.AlarmHistoryItem, decoder smithyxml.NodeDecoder) error {
-	var sv []types.AlarmHistoryItem
-	if *v == nil {
-		sv = make([]types.AlarmHistoryItem, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		return verr
 	default:
-		var mv types.AlarmHistoryItem
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentAlarmHistoryItem(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
-}
-func awsAwsquery_deserializeDocumentAnomalyDetector(v **types.AnomalyDetector, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.AnomalyDetector
-	if *v == nil {
-		sv = &types.AnomalyDetector{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Configuration", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentAnomalyDetectorConfiguration(&sv.Configuration, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("Dimensions", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentDimensions(&sv.Dimensions, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("MetricCharacteristics", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentMetricCharacteristics(&sv.MetricCharacteristics, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("MetricMathAnomalyDetector", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentMetricMathAnomalyDetector(&sv.MetricMathAnomalyDetector, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("MetricName", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.MetricName = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("Namespace", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Namespace = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("SingleMetricAnomalyDetector", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentSingleMetricAnomalyDetector(&sv.SingleMetricAnomalyDetector, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("Stat", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Stat = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("StateValue", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.StateValue = types.AnomalyDetectorStateValue(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
 }
 
-func awsAwsquery_deserializeDocumentAnomalyDetectorConfiguration(v **types.AnomalyDetectorConfiguration, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.AnomalyDetectorConfiguration
-	if *v == nil {
-		sv = &types.AnomalyDetectorConfiguration{}
-	} else {
-		sv = *v
+func rpc2_deserializeOpErrorDisableAlarmActions(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("ExcludedTimeRanges", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentAnomalyDetectorExcludedTimeRanges(&sv.ExcludedTimeRanges, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("MetricTimezone", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.MetricTimezone = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentAnomalyDetectorExcludedTimeRanges(v *[]types.Range, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.Range
-	if *v == nil {
-		sv = make([]types.Range, 0)
-	} else {
-		sv = *v
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
 	}
 
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.Range
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentRange(&destAddr, nodeDecoder); err != nil {
-				return err
-			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
+	if len(typ) == 0 {
+		typ = "UnknownError"
 	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentAnomalyDetectorExcludedTimeRangesUnwrapped(v *[]types.Range, decoder smithyxml.NodeDecoder) error {
-	var sv []types.Range
-	if *v == nil {
-		sv = make([]types.Range, 0)
-	} else {
-		sv = *v
+	if len(msg) == 0 {
+		msg = "UnknownError"
 	}
 
-	switch {
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+
 	default:
-		var mv types.Range
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentRange(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentAnomalyDetectors(v *[]types.AnomalyDetector, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.AnomalyDetector
-	if *v == nil {
-		sv = make([]types.AnomalyDetector, 0)
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorDisableInsightRules(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
 		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.AnomalyDetector
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentAnomalyDetector(&destAddr, nodeDecoder); err != nil {
-				return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
 			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
 		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentAnomalyDetectorsUnwrapped(v *[]types.AnomalyDetector, decoder smithyxml.NodeDecoder) error {
-	var sv []types.AnomalyDetector
-	if *v == nil {
-		sv = make([]types.AnomalyDetector, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "MissingRequiredParameterException":
+		verr, err := deserializeCBOR_MissingRequiredParameterException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#MissingRequiredParameterException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
 	default:
-		var mv types.AnomalyDetector
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentAnomalyDetector(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
-}
-func awsAwsquery_deserializeDocumentBatchFailures(v *[]types.PartialFailure, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.PartialFailure
-	if *v == nil {
-		sv = make([]types.PartialFailure, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.PartialFailure
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentPartialFailure(&destAddr, nodeDecoder); err != nil {
-				return err
-			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
 }
 
-func awsAwsquery_deserializeDocumentBatchFailuresUnwrapped(v *[]types.PartialFailure, decoder smithyxml.NodeDecoder) error {
-	var sv []types.PartialFailure
-	if *v == nil {
-		sv = make([]types.PartialFailure, 0)
-	} else {
-		sv = *v
+func rpc2_deserializeOpErrorEnableAlarmActions(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	switch {
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+
 	default:
-		var mv types.PartialFailure
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentPartialFailure(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentCompositeAlarm(v **types.CompositeAlarm, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.CompositeAlarm
-	if *v == nil {
-		sv = &types.CompositeAlarm{}
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorEnableInsightRules(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("ActionsEnabled", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv, err := strconv.ParseBool(string(val))
-				if err != nil {
-					return fmt.Errorf("expected ActionsEnabled to be of type *bool, got %T instead", val)
-				}
-				sv.ActionsEnabled = ptr.Bool(xtv)
-			}
-
-		case strings.EqualFold("ActionsSuppressedBy", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.ActionsSuppressedBy = types.ActionsSuppressedBy(xtv)
-			}
-
-		case strings.EqualFold("ActionsSuppressedReason", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.ActionsSuppressedReason = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("ActionsSuppressor", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.ActionsSuppressor = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("ActionsSuppressorExtensionPeriod", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				i64, err := strconv.ParseInt(xtv, 10, 64)
-				if err != nil {
-					return err
-				}
-				sv.ActionsSuppressorExtensionPeriod = ptr.Int32(int32(i64))
-			}
-
-		case strings.EqualFold("ActionsSuppressorWaitPeriod", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				i64, err := strconv.ParseInt(xtv, 10, 64)
-				if err != nil {
-					return err
-				}
-				sv.ActionsSuppressorWaitPeriod = ptr.Int32(int32(i64))
-			}
-
-		case strings.EqualFold("AlarmActions", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentResourceList(&sv.AlarmActions, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("AlarmArn", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.AlarmArn = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("AlarmConfigurationUpdatedTimestamp", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				t, err := smithytime.ParseDateTime(xtv)
-				if err != nil {
-					return err
-				}
-				sv.AlarmConfigurationUpdatedTimestamp = ptr.Time(t)
-			}
-
-		case strings.EqualFold("AlarmDescription", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.AlarmDescription = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("AlarmName", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.AlarmName = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("AlarmRule", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.AlarmRule = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("InsufficientDataActions", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentResourceList(&sv.InsufficientDataActions, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("OKActions", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentResourceList(&sv.OKActions, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("StateReason", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.StateReason = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("StateReasonData", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.StateReasonData = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("StateTransitionedTimestamp", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				t, err := smithytime.ParseDateTime(xtv)
-				if err != nil {
-					return err
-				}
-				sv.StateTransitionedTimestamp = ptr.Time(t)
-			}
-
-		case strings.EqualFold("StateUpdatedTimestamp", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				t, err := smithytime.ParseDateTime(xtv)
-				if err != nil {
-					return err
-				}
-				sv.StateUpdatedTimestamp = ptr.Time(t)
-			}
-
-		case strings.EqualFold("StateValue", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.StateValue = types.StateValue(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentCompositeAlarms(v *[]types.CompositeAlarm, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.CompositeAlarm
-	if *v == nil {
-		sv = make([]types.CompositeAlarm, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
+		return verr
+	case "LimitExceededException":
+		verr, err := deserializeCBOR_LimitExceededException(v)
 		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.CompositeAlarm
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentCompositeAlarm(&destAddr, nodeDecoder); err != nil {
-				return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#LimitExceededException: %w", err),
+				Snapshot: payload,
 			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
 		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentCompositeAlarmsUnwrapped(v *[]types.CompositeAlarm, decoder smithyxml.NodeDecoder) error {
-	var sv []types.CompositeAlarm
-	if *v == nil {
-		sv = make([]types.CompositeAlarm, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "MissingRequiredParameterException":
+		verr, err := deserializeCBOR_MissingRequiredParameterException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#MissingRequiredParameterException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
 	default:
-		var mv types.CompositeAlarm
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentCompositeAlarm(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentConcurrentModificationException(v **types.ConcurrentModificationException, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.ConcurrentModificationException
-	if *v == nil {
-		sv = &types.ConcurrentModificationException{}
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorGetDashboard(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "DashboardNotFoundError":
+		verr, err := deserializeCBOR_DashboardNotFoundError(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#DashboardNotFoundError: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Message", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Message = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentConflictException(v **types.ConflictException, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.ConflictException
-	if *v == nil {
-		sv = &types.ConflictException{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
+		return verr
+	case "InternalServiceFault":
+		verr, err := deserializeCBOR_InternalServiceFault(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InternalServiceFault: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Message", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Message = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentContributorAttributes(v *map[string]string, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv map[string]string
-	if *v == nil {
-		sv = make(map[string]string, 0)
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
+		return verr
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		switch {
-		case strings.EqualFold("entry", t.Name.Local):
-			entryDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentContributorAttributesUnwrapped(&sv, entryDecoder); err != nil {
-				return err
-			}
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentContributorAttributesUnwrapped(v *map[string]string, decoder smithyxml.NodeDecoder) error {
-	var sv map[string]string
-	if *v == nil {
-		sv = make(map[string]string, 0)
-	} else {
-		sv = *v
-	}
-
-	var ek string
-	var ev string
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			sv[ek] = ev
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("key", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				ek = xtv
-			}
-
-		case strings.EqualFold("value", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				ev = xtv
-			}
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-func awsAwsquery_deserializeDocumentDashboardEntries(v *[]types.DashboardEntry, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.DashboardEntry
-	if *v == nil {
-		sv = make([]types.DashboardEntry, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.DashboardEntry
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentDashboardEntry(&destAddr, nodeDecoder); err != nil {
-				return err
-			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentDashboardEntriesUnwrapped(v *[]types.DashboardEntry, decoder smithyxml.NodeDecoder) error {
-	var sv []types.DashboardEntry
-	if *v == nil {
-		sv = make([]types.DashboardEntry, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		return verr
 	default:
-		var mv types.DashboardEntry
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentDashboardEntry(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentDashboardEntry(v **types.DashboardEntry, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.DashboardEntry
-	if *v == nil {
-		sv = &types.DashboardEntry{}
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorGetInsightRuleReport(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("DashboardArn", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.DashboardArn = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("DashboardName", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.DashboardName = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("LastModified", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				t, err := smithytime.ParseDateTime(xtv)
-				if err != nil {
-					return err
-				}
-				sv.LastModified = ptr.Time(t)
-			}
-
-		case strings.EqualFold("Size", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				i64, err := strconv.ParseInt(xtv, 10, 64)
-				if err != nil {
-					return err
-				}
-				sv.Size = ptr.Int64(i64)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentDashboardInvalidInputError(v **types.DashboardInvalidInputError, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.DashboardInvalidInputError
-	if *v == nil {
-		sv = &types.DashboardInvalidInputError{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
+		return verr
+	case "MissingRequiredParameterException":
+		verr, err := deserializeCBOR_MissingRequiredParameterException(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#MissingRequiredParameterException: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("dashboardValidationMessages", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentDashboardValidationMessages(&sv.DashboardValidationMessages, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("message", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Message = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentDashboardNotFoundError(v **types.DashboardNotFoundError, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.DashboardNotFoundError
-	if *v == nil {
-		sv = &types.DashboardNotFoundError{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
+		return verr
+	case "ResourceNotFoundException":
+		verr, err := deserializeCBOR_ResourceNotFoundException(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#ResourceNotFoundException: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("message", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Message = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentDashboardValidationMessage(v **types.DashboardValidationMessage, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.DashboardValidationMessage
-	if *v == nil {
-		sv = &types.DashboardValidationMessage{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("DataPath", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.DataPath = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("Message", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Message = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentDashboardValidationMessages(v *[]types.DashboardValidationMessage, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.DashboardValidationMessage
-	if *v == nil {
-		sv = make([]types.DashboardValidationMessage, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.DashboardValidationMessage
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentDashboardValidationMessage(&destAddr, nodeDecoder); err != nil {
-				return err
-			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentDashboardValidationMessagesUnwrapped(v *[]types.DashboardValidationMessage, decoder smithyxml.NodeDecoder) error {
-	var sv []types.DashboardValidationMessage
-	if *v == nil {
-		sv = make([]types.DashboardValidationMessage, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		return verr
 	default:
-		var mv types.DashboardValidationMessage
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentDashboardValidationMessage(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentDatapoint(v **types.Datapoint, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.Datapoint
-	if *v == nil {
-		sv = &types.Datapoint{}
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorGetMetricData(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InvalidNextToken":
+		verr, err := deserializeCBOR_InvalidNextToken(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidNextToken: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Average", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				f64, err := strconv.ParseFloat(xtv, 64)
-				if err != nil {
-					return err
-				}
-				sv.Average = ptr.Float64(f64)
-			}
-
-		case strings.EqualFold("ExtendedStatistics", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentDatapointValueMap(&sv.ExtendedStatistics, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("Maximum", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				f64, err := strconv.ParseFloat(xtv, 64)
-				if err != nil {
-					return err
-				}
-				sv.Maximum = ptr.Float64(f64)
-			}
-
-		case strings.EqualFold("Minimum", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				f64, err := strconv.ParseFloat(xtv, 64)
-				if err != nil {
-					return err
-				}
-				sv.Minimum = ptr.Float64(f64)
-			}
-
-		case strings.EqualFold("SampleCount", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				f64, err := strconv.ParseFloat(xtv, 64)
-				if err != nil {
-					return err
-				}
-				sv.SampleCount = ptr.Float64(f64)
-			}
-
-		case strings.EqualFold("Sum", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				f64, err := strconv.ParseFloat(xtv, 64)
-				if err != nil {
-					return err
-				}
-				sv.Sum = ptr.Float64(f64)
-			}
-
-		case strings.EqualFold("Timestamp", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				t, err := smithytime.ParseDateTime(xtv)
-				if err != nil {
-					return err
-				}
-				sv.Timestamp = ptr.Time(t)
-			}
-
-		case strings.EqualFold("Unit", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Unit = types.StandardUnit(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentDatapoints(v *[]types.Datapoint, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.Datapoint
-	if *v == nil {
-		sv = make([]types.Datapoint, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.Datapoint
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentDatapoint(&destAddr, nodeDecoder); err != nil {
-				return err
-			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentDatapointsUnwrapped(v *[]types.Datapoint, decoder smithyxml.NodeDecoder) error {
-	var sv []types.Datapoint
-	if *v == nil {
-		sv = make([]types.Datapoint, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		return verr
 	default:
-		var mv types.Datapoint
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentDatapoint(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentDatapointValueMap(v *map[string]float64, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv map[string]float64
-	if *v == nil {
-		sv = make(map[string]float64, 0)
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorGetMetricStatistics(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InternalServiceFault":
+		verr, err := deserializeCBOR_InternalServiceFault(v)
 		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("entry", t.Name.Local):
-			entryDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentDatapointValueMapUnwrapped(&sv, entryDecoder); err != nil {
-				return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InternalServiceFault: %w", err),
+				Snapshot: payload,
 			}
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
 		}
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentDatapointValueMapUnwrapped(v *map[string]float64, decoder smithyxml.NodeDecoder) error {
-	var sv map[string]float64
-	if *v == nil {
-		sv = make(map[string]float64, 0)
-	} else {
-		sv = *v
-	}
-
-	var ek string
-	var ev float64
-	for {
-		t, done, err := decoder.Token()
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "InvalidParameterCombinationException":
+		verr, err := deserializeCBOR_InvalidParameterCombinationException(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterCombinationException: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			sv[ek] = ev
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("key", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				ek = xtv
-			}
-
-		case strings.EqualFold("value", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				f64, err := strconv.ParseFloat(xtv, 64)
-				if err != nil {
-					return err
-				}
-				ev = f64
-			}
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-func awsAwsquery_deserializeDocumentDatapointValues(v *[]float64, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []float64
-	if *v == nil {
-		sv = make([]float64, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
+		return verr
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		memberDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		decoder = memberDecoder
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col float64
-			val, err := decoder.Value()
-			if err != nil {
-				return err
+		return verr
+	case "MissingRequiredParameterException":
+		verr, err := deserializeCBOR_MissingRequiredParameterException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#MissingRequiredParameterException: %w", err),
+				Snapshot: payload,
 			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				f64, err := strconv.ParseFloat(xtv, 64)
-				if err != nil {
-					return err
-				}
-				col = f64
-			}
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
 		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentDatapointValuesUnwrapped(v *[]float64, decoder smithyxml.NodeDecoder) error {
-	var sv []float64
-	if *v == nil {
-		sv = make([]float64, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
 	default:
-		var mv float64
-		t := decoder.StartEl
-		_ = t
-		val, err := decoder.Value()
-		if err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		if val == nil {
-			break
-		}
-		{
-			xtv := string(val)
-			f64, err := strconv.ParseFloat(xtv, 64)
-			if err != nil {
-				return err
-			}
-			mv = f64
-		}
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
-}
-func awsAwsquery_deserializeDocumentDimension(v **types.Dimension, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.Dimension
-	if *v == nil {
-		sv = &types.Dimension{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Name", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Name = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("Value", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Value = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
 }
 
-func awsAwsquery_deserializeDocumentDimensions(v *[]types.Dimension, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.Dimension
-	if *v == nil {
-		sv = make([]types.Dimension, 0)
-	} else {
-		sv = *v
+func rpc2_deserializeOpErrorGetMetricStream(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InternalServiceFault":
+		verr, err := deserializeCBOR_InternalServiceFault(v)
 		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.Dimension
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentDimension(&destAddr, nodeDecoder); err != nil {
-				return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InternalServiceFault: %w", err),
+				Snapshot: payload,
 			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
 		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentDimensionsUnwrapped(v *[]types.Dimension, decoder smithyxml.NodeDecoder) error {
-	var sv []types.Dimension
-	if *v == nil {
-		sv = make([]types.Dimension, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "InvalidParameterCombinationException":
+		verr, err := deserializeCBOR_InvalidParameterCombinationException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterCombinationException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "MissingRequiredParameterException":
+		verr, err := deserializeCBOR_MissingRequiredParameterException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#MissingRequiredParameterException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "ResourceNotFoundException":
+		verr, err := deserializeCBOR_ResourceNotFoundException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#ResourceNotFoundException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
 	default:
-		var mv types.Dimension
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentDimension(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
-}
-func awsAwsquery_deserializeDocumentInsightRule(v **types.InsightRule, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.InsightRule
-	if *v == nil {
-		sv = &types.InsightRule{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("ApplyOnTransformedLogs", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv, err := strconv.ParseBool(string(val))
-				if err != nil {
-					return fmt.Errorf("expected InsightRuleOnTransformedLogs to be of type *bool, got %T instead", val)
-				}
-				sv.ApplyOnTransformedLogs = ptr.Bool(xtv)
-			}
-
-		case strings.EqualFold("Definition", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Definition = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("ManagedRule", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv, err := strconv.ParseBool(string(val))
-				if err != nil {
-					return fmt.Errorf("expected InsightRuleIsManaged to be of type *bool, got %T instead", val)
-				}
-				sv.ManagedRule = ptr.Bool(xtv)
-			}
-
-		case strings.EqualFold("Name", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Name = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("Schema", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Schema = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("State", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.State = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
 }
 
-func awsAwsquery_deserializeDocumentInsightRuleContributor(v **types.InsightRuleContributor, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.InsightRuleContributor
-	if *v == nil {
-		sv = &types.InsightRuleContributor{}
-	} else {
-		sv = *v
+func rpc2_deserializeOpErrorGetMetricWidgetImage(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("ApproximateAggregateValue", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				f64, err := strconv.ParseFloat(xtv, 64)
-				if err != nil {
-					return err
-				}
-				sv.ApproximateAggregateValue = ptr.Float64(f64)
-			}
-
-		case strings.EqualFold("Datapoints", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentInsightRuleContributorDatapoints(&sv.Datapoints, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("Keys", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentInsightRuleContributorKeys(&sv.Keys, nodeDecoder); err != nil {
-				return err
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentInsightRuleContributorDatapoint(v **types.InsightRuleContributorDatapoint, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.InsightRuleContributorDatapoint
-	if *v == nil {
-		sv = &types.InsightRuleContributorDatapoint{}
-	} else {
-		sv = *v
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
 	}
 
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("ApproximateValue", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				f64, err := strconv.ParseFloat(xtv, 64)
-				if err != nil {
-					return err
-				}
-				sv.ApproximateValue = ptr.Float64(f64)
-			}
-
-		case strings.EqualFold("Timestamp", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				t, err := smithytime.ParseDateTime(xtv)
-				if err != nil {
-					return err
-				}
-				sv.Timestamp = ptr.Time(t)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
+	if len(typ) == 0 {
+		typ = "UnknownError"
 	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentInsightRuleContributorDatapoints(v *[]types.InsightRuleContributorDatapoint, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.InsightRuleContributorDatapoint
-	if *v == nil {
-		sv = make([]types.InsightRuleContributorDatapoint, 0)
-	} else {
-		sv = *v
+	if len(msg) == 0 {
+		msg = "UnknownError"
 	}
 
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.InsightRuleContributorDatapoint
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentInsightRuleContributorDatapoint(&destAddr, nodeDecoder); err != nil {
-				return err
-			}
-			col = *destAddr
-			sv = append(sv, col)
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
 
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentInsightRuleContributorDatapointsUnwrapped(v *[]types.InsightRuleContributorDatapoint, decoder smithyxml.NodeDecoder) error {
-	var sv []types.InsightRuleContributorDatapoint
-	if *v == nil {
-		sv = make([]types.InsightRuleContributorDatapoint, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
 	default:
-		var mv types.InsightRuleContributorDatapoint
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentInsightRuleContributorDatapoint(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentInsightRuleContributorKeyLabels(v *[]string, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []string
-	if *v == nil {
-		sv = make([]string, 0)
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorListDashboards(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InternalServiceFault":
+		verr, err := deserializeCBOR_InternalServiceFault(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InternalServiceFault: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		memberDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		decoder = memberDecoder
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col string
-			val, err := decoder.Value()
-			if err != nil {
-				return err
+		return verr
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
 			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				col = xtv
-			}
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
 		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentInsightRuleContributorKeyLabelsUnwrapped(v *[]string, decoder smithyxml.NodeDecoder) error {
-	var sv []string
-	if *v == nil {
-		sv = make([]string, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
 	default:
-		var mv string
-		t := decoder.StartEl
-		_ = t
-		val, err := decoder.Value()
-		if err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		if val == nil {
-			break
-		}
-		{
-			xtv := string(val)
-			mv = xtv
-		}
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
-}
-func awsAwsquery_deserializeDocumentInsightRuleContributorKeys(v *[]string, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []string
-	if *v == nil {
-		sv = make([]string, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		memberDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		decoder = memberDecoder
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col string
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				col = xtv
-			}
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
 }
 
-func awsAwsquery_deserializeDocumentInsightRuleContributorKeysUnwrapped(v *[]string, decoder smithyxml.NodeDecoder) error {
-	var sv []string
-	if *v == nil {
-		sv = make([]string, 0)
-	} else {
-		sv = *v
+func rpc2_deserializeOpErrorListManagedInsightRules(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	switch {
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InvalidNextToken":
+		verr, err := deserializeCBOR_InvalidNextToken(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidNextToken: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "MissingRequiredParameterException":
+		verr, err := deserializeCBOR_MissingRequiredParameterException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#MissingRequiredParameterException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
 	default:
-		var mv string
-		t := decoder.StartEl
-		_ = t
-		val, err := decoder.Value()
-		if err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		if val == nil {
-			break
-		}
-		{
-			xtv := string(val)
-			mv = xtv
-		}
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
-}
-func awsAwsquery_deserializeDocumentInsightRuleContributors(v *[]types.InsightRuleContributor, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.InsightRuleContributor
-	if *v == nil {
-		sv = make([]types.InsightRuleContributor, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.InsightRuleContributor
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentInsightRuleContributor(&destAddr, nodeDecoder); err != nil {
-				return err
-			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
 }
 
-func awsAwsquery_deserializeDocumentInsightRuleContributorsUnwrapped(v *[]types.InsightRuleContributor, decoder smithyxml.NodeDecoder) error {
-	var sv []types.InsightRuleContributor
-	if *v == nil {
-		sv = make([]types.InsightRuleContributor, 0)
-	} else {
-		sv = *v
+func rpc2_deserializeOpErrorListMetrics(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	switch {
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InternalServiceFault":
+		verr, err := deserializeCBOR_InternalServiceFault(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InternalServiceFault: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
 	default:
-		var mv types.InsightRuleContributor
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentInsightRuleContributor(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentInsightRuleMetricDatapoint(v **types.InsightRuleMetricDatapoint, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.InsightRuleMetricDatapoint
-	if *v == nil {
-		sv = &types.InsightRuleMetricDatapoint{}
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorListMetricStreams(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InternalServiceFault":
+		verr, err := deserializeCBOR_InternalServiceFault(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InternalServiceFault: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Average", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				f64, err := strconv.ParseFloat(xtv, 64)
-				if err != nil {
-					return err
-				}
-				sv.Average = ptr.Float64(f64)
-			}
-
-		case strings.EqualFold("MaxContributorValue", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				f64, err := strconv.ParseFloat(xtv, 64)
-				if err != nil {
-					return err
-				}
-				sv.MaxContributorValue = ptr.Float64(f64)
-			}
-
-		case strings.EqualFold("Maximum", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				f64, err := strconv.ParseFloat(xtv, 64)
-				if err != nil {
-					return err
-				}
-				sv.Maximum = ptr.Float64(f64)
-			}
-
-		case strings.EqualFold("Minimum", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				f64, err := strconv.ParseFloat(xtv, 64)
-				if err != nil {
-					return err
-				}
-				sv.Minimum = ptr.Float64(f64)
-			}
-
-		case strings.EqualFold("SampleCount", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				f64, err := strconv.ParseFloat(xtv, 64)
-				if err != nil {
-					return err
-				}
-				sv.SampleCount = ptr.Float64(f64)
-			}
-
-		case strings.EqualFold("Sum", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				f64, err := strconv.ParseFloat(xtv, 64)
-				if err != nil {
-					return err
-				}
-				sv.Sum = ptr.Float64(f64)
-			}
-
-		case strings.EqualFold("Timestamp", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				t, err := smithytime.ParseDateTime(xtv)
-				if err != nil {
-					return err
-				}
-				sv.Timestamp = ptr.Time(t)
-			}
-
-		case strings.EqualFold("UniqueContributors", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				f64, err := strconv.ParseFloat(xtv, 64)
-				if err != nil {
-					return err
-				}
-				sv.UniqueContributors = ptr.Float64(f64)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentInsightRuleMetricDatapoints(v *[]types.InsightRuleMetricDatapoint, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.InsightRuleMetricDatapoint
-	if *v == nil {
-		sv = make([]types.InsightRuleMetricDatapoint, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
+		return verr
+	case "InvalidNextToken":
+		verr, err := deserializeCBOR_InvalidNextToken(v)
 		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.InsightRuleMetricDatapoint
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentInsightRuleMetricDatapoint(&destAddr, nodeDecoder); err != nil {
-				return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidNextToken: %w", err),
+				Snapshot: payload,
 			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
 		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentInsightRuleMetricDatapointsUnwrapped(v *[]types.InsightRuleMetricDatapoint, decoder smithyxml.NodeDecoder) error {
-	var sv []types.InsightRuleMetricDatapoint
-	if *v == nil {
-		sv = make([]types.InsightRuleMetricDatapoint, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "MissingRequiredParameterException":
+		verr, err := deserializeCBOR_MissingRequiredParameterException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#MissingRequiredParameterException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
 	default:
-		var mv types.InsightRuleMetricDatapoint
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentInsightRuleMetricDatapoint(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentInsightRules(v *[]types.InsightRule, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.InsightRule
-	if *v == nil {
-		sv = make([]types.InsightRule, 0)
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorListTagsForResource(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InternalServiceFault":
+		verr, err := deserializeCBOR_InternalServiceFault(v)
 		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.InsightRule
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentInsightRule(&destAddr, nodeDecoder); err != nil {
-				return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InternalServiceFault: %w", err),
+				Snapshot: payload,
 			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
 		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentInsightRulesUnwrapped(v *[]types.InsightRule, decoder smithyxml.NodeDecoder) error {
-	var sv []types.InsightRule
-	if *v == nil {
-		sv = make([]types.InsightRule, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "ResourceNotFoundException":
+		verr, err := deserializeCBOR_ResourceNotFoundException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#ResourceNotFoundException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
 	default:
-		var mv types.InsightRule
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentInsightRule(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentInternalServiceFault(v **types.InternalServiceFault, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.InternalServiceFault
-	if *v == nil {
-		sv = &types.InternalServiceFault{}
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorPutAnomalyDetector(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InternalServiceFault":
+		verr, err := deserializeCBOR_InternalServiceFault(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InternalServiceFault: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Message", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Message = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentInvalidFormatFault(v **types.InvalidFormatFault, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.InvalidFormatFault
-	if *v == nil {
-		sv = &types.InvalidFormatFault{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
+		return verr
+	case "InvalidParameterCombinationException":
+		verr, err := deserializeCBOR_InvalidParameterCombinationException(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterCombinationException: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("message", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Message = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentInvalidNextToken(v **types.InvalidNextToken, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.InvalidNextToken
-	if *v == nil {
-		sv = &types.InvalidNextToken{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
+		return verr
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("message", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Message = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentInvalidParameterCombinationException(v **types.InvalidParameterCombinationException, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.InvalidParameterCombinationException
-	if *v == nil {
-		sv = &types.InvalidParameterCombinationException{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
+		return verr
+	case "LimitExceededException":
+		verr, err := deserializeCBOR_LimitExceededException(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#LimitExceededException: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("message", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Message = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentInvalidParameterValueException(v **types.InvalidParameterValueException, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.InvalidParameterValueException
-	if *v == nil {
-		sv = &types.InvalidParameterValueException{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
+		return verr
+	case "MissingRequiredParameterException":
+		verr, err := deserializeCBOR_MissingRequiredParameterException(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#MissingRequiredParameterException: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("message", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Message = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentLimitExceededException(v **types.LimitExceededException, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.LimitExceededException
-	if *v == nil {
-		sv = &types.LimitExceededException{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Message", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Message = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentLimitExceededFault(v **types.LimitExceededFault, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.LimitExceededFault
-	if *v == nil {
-		sv = &types.LimitExceededFault{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("message", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Message = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentManagedRuleDescription(v **types.ManagedRuleDescription, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.ManagedRuleDescription
-	if *v == nil {
-		sv = &types.ManagedRuleDescription{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("ResourceARN", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.ResourceARN = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("RuleState", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentManagedRuleState(&sv.RuleState, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("TemplateName", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.TemplateName = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentManagedRuleDescriptions(v *[]types.ManagedRuleDescription, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.ManagedRuleDescription
-	if *v == nil {
-		sv = make([]types.ManagedRuleDescription, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.ManagedRuleDescription
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentManagedRuleDescription(&destAddr, nodeDecoder); err != nil {
-				return err
-			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentManagedRuleDescriptionsUnwrapped(v *[]types.ManagedRuleDescription, decoder smithyxml.NodeDecoder) error {
-	var sv []types.ManagedRuleDescription
-	if *v == nil {
-		sv = make([]types.ManagedRuleDescription, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		return verr
 	default:
-		var mv types.ManagedRuleDescription
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentManagedRuleDescription(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentManagedRuleState(v **types.ManagedRuleState, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.ManagedRuleState
-	if *v == nil {
-		sv = &types.ManagedRuleState{}
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorPutCompositeAlarm(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "LimitExceededFault":
+		verr, err := deserializeCBOR_LimitExceededFault(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#LimitExceededFault: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("RuleName", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.RuleName = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("State", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.State = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMessageData(v **types.MessageData, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.MessageData
-	if *v == nil {
-		sv = &types.MessageData{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Code", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Code = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("Value", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Value = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMetric(v **types.Metric, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.Metric
-	if *v == nil {
-		sv = &types.Metric{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Dimensions", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentDimensions(&sv.Dimensions, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("MetricName", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.MetricName = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("Namespace", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Namespace = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMetricAlarm(v **types.MetricAlarm, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.MetricAlarm
-	if *v == nil {
-		sv = &types.MetricAlarm{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("ActionsEnabled", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv, err := strconv.ParseBool(string(val))
-				if err != nil {
-					return fmt.Errorf("expected ActionsEnabled to be of type *bool, got %T instead", val)
-				}
-				sv.ActionsEnabled = ptr.Bool(xtv)
-			}
-
-		case strings.EqualFold("AlarmActions", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentResourceList(&sv.AlarmActions, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("AlarmArn", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.AlarmArn = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("AlarmConfigurationUpdatedTimestamp", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				t, err := smithytime.ParseDateTime(xtv)
-				if err != nil {
-					return err
-				}
-				sv.AlarmConfigurationUpdatedTimestamp = ptr.Time(t)
-			}
-
-		case strings.EqualFold("AlarmDescription", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.AlarmDescription = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("AlarmName", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.AlarmName = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("ComparisonOperator", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.ComparisonOperator = types.ComparisonOperator(xtv)
-			}
-
-		case strings.EqualFold("DatapointsToAlarm", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				i64, err := strconv.ParseInt(xtv, 10, 64)
-				if err != nil {
-					return err
-				}
-				sv.DatapointsToAlarm = ptr.Int32(int32(i64))
-			}
-
-		case strings.EqualFold("Dimensions", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentDimensions(&sv.Dimensions, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("EvaluateLowSampleCountPercentile", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.EvaluateLowSampleCountPercentile = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("EvaluationPeriods", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				i64, err := strconv.ParseInt(xtv, 10, 64)
-				if err != nil {
-					return err
-				}
-				sv.EvaluationPeriods = ptr.Int32(int32(i64))
-			}
-
-		case strings.EqualFold("EvaluationState", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.EvaluationState = types.EvaluationState(xtv)
-			}
-
-		case strings.EqualFold("ExtendedStatistic", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.ExtendedStatistic = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("InsufficientDataActions", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentResourceList(&sv.InsufficientDataActions, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("MetricName", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.MetricName = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("Metrics", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentMetricDataQueries(&sv.Metrics, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("Namespace", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Namespace = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("OKActions", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentResourceList(&sv.OKActions, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("Period", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				i64, err := strconv.ParseInt(xtv, 10, 64)
-				if err != nil {
-					return err
-				}
-				sv.Period = ptr.Int32(int32(i64))
-			}
-
-		case strings.EqualFold("StateReason", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.StateReason = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("StateReasonData", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.StateReasonData = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("StateTransitionedTimestamp", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				t, err := smithytime.ParseDateTime(xtv)
-				if err != nil {
-					return err
-				}
-				sv.StateTransitionedTimestamp = ptr.Time(t)
-			}
-
-		case strings.EqualFold("StateUpdatedTimestamp", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				t, err := smithytime.ParseDateTime(xtv)
-				if err != nil {
-					return err
-				}
-				sv.StateUpdatedTimestamp = ptr.Time(t)
-			}
-
-		case strings.EqualFold("StateValue", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.StateValue = types.StateValue(xtv)
-			}
-
-		case strings.EqualFold("Statistic", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Statistic = types.Statistic(xtv)
-			}
-
-		case strings.EqualFold("Threshold", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				f64, err := strconv.ParseFloat(xtv, 64)
-				if err != nil {
-					return err
-				}
-				sv.Threshold = ptr.Float64(f64)
-			}
-
-		case strings.EqualFold("ThresholdMetricId", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.ThresholdMetricId = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("TreatMissingData", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.TreatMissingData = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("Unit", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Unit = types.StandardUnit(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMetricAlarms(v *[]types.MetricAlarm, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.MetricAlarm
-	if *v == nil {
-		sv = make([]types.MetricAlarm, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.MetricAlarm
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentMetricAlarm(&destAddr, nodeDecoder); err != nil {
-				return err
-			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMetricAlarmsUnwrapped(v *[]types.MetricAlarm, decoder smithyxml.NodeDecoder) error {
-	var sv []types.MetricAlarm
-	if *v == nil {
-		sv = make([]types.MetricAlarm, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		return verr
 	default:
-		var mv types.MetricAlarm
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentMetricAlarm(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentMetricCharacteristics(v **types.MetricCharacteristics, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.MetricCharacteristics
-	if *v == nil {
-		sv = &types.MetricCharacteristics{}
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorPutDashboard(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "ConflictException":
+		verr, err := deserializeCBOR_ConflictException(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#ConflictException: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("PeriodicSpikes", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv, err := strconv.ParseBool(string(val))
-				if err != nil {
-					return fmt.Errorf("expected PeriodicSpikes to be of type *bool, got %T instead", val)
-				}
-				sv.PeriodicSpikes = ptr.Bool(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMetricDataQueries(v *[]types.MetricDataQuery, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.MetricDataQuery
-	if *v == nil {
-		sv = make([]types.MetricDataQuery, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
+		return verr
+	case "DashboardInvalidInputError":
+		verr, err := deserializeCBOR_DashboardInvalidInputError(v)
 		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.MetricDataQuery
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentMetricDataQuery(&destAddr, nodeDecoder); err != nil {
-				return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#DashboardInvalidInputError: %w", err),
+				Snapshot: payload,
 			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
 		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMetricDataQueriesUnwrapped(v *[]types.MetricDataQuery, decoder smithyxml.NodeDecoder) error {
-	var sv []types.MetricDataQuery
-	if *v == nil {
-		sv = make([]types.MetricDataQuery, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "InternalServiceFault":
+		verr, err := deserializeCBOR_InternalServiceFault(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InternalServiceFault: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
 	default:
-		var mv types.MetricDataQuery
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentMetricDataQuery(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentMetricDataQuery(v **types.MetricDataQuery, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.MetricDataQuery
-	if *v == nil {
-		sv = &types.MetricDataQuery{}
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorPutInsightRule(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("AccountId", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.AccountId = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("Expression", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Expression = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("Id", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Id = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("Label", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Label = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("MetricStat", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentMetricStat(&sv.MetricStat, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("Period", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				i64, err := strconv.ParseInt(xtv, 10, 64)
-				if err != nil {
-					return err
-				}
-				sv.Period = ptr.Int32(int32(i64))
-			}
-
-		case strings.EqualFold("ReturnData", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv, err := strconv.ParseBool(string(val))
-				if err != nil {
-					return fmt.Errorf("expected ReturnData to be of type *bool, got %T instead", val)
-				}
-				sv.ReturnData = ptr.Bool(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMetricDataResult(v **types.MetricDataResult, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.MetricDataResult
-	if *v == nil {
-		sv = &types.MetricDataResult{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
+		return verr
+	case "LimitExceededException":
+		verr, err := deserializeCBOR_LimitExceededException(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#LimitExceededException: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Id", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Id = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("Label", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Label = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("Messages", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentMetricDataResultMessages(&sv.Messages, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("StatusCode", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.StatusCode = types.StatusCode(xtv)
-			}
-
-		case strings.EqualFold("Timestamps", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentTimestamps(&sv.Timestamps, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("Values", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentDatapointValues(&sv.Values, nodeDecoder); err != nil {
-				return err
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMetricDataResultMessages(v *[]types.MessageData, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.MessageData
-	if *v == nil {
-		sv = make([]types.MessageData, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
+		return verr
+	case "MissingRequiredParameterException":
+		verr, err := deserializeCBOR_MissingRequiredParameterException(v)
 		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.MessageData
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentMessageData(&destAddr, nodeDecoder); err != nil {
-				return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#MissingRequiredParameterException: %w", err),
+				Snapshot: payload,
 			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
 		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMetricDataResultMessagesUnwrapped(v *[]types.MessageData, decoder smithyxml.NodeDecoder) error {
-	var sv []types.MessageData
-	if *v == nil {
-		sv = make([]types.MessageData, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
 	default:
-		var mv types.MessageData
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentMessageData(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentMetricDataResults(v *[]types.MetricDataResult, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.MetricDataResult
-	if *v == nil {
-		sv = make([]types.MetricDataResult, 0)
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorPutManagedInsightRules(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
 		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.MetricDataResult
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentMetricDataResult(&destAddr, nodeDecoder); err != nil {
-				return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
 			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
 		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMetricDataResultsUnwrapped(v *[]types.MetricDataResult, decoder smithyxml.NodeDecoder) error {
-	var sv []types.MetricDataResult
-	if *v == nil {
-		sv = make([]types.MetricDataResult, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "MissingRequiredParameterException":
+		verr, err := deserializeCBOR_MissingRequiredParameterException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#MissingRequiredParameterException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
 	default:
-		var mv types.MetricDataResult
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentMetricDataResult(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentMetricMathAnomalyDetector(v **types.MetricMathAnomalyDetector, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.MetricMathAnomalyDetector
-	if *v == nil {
-		sv = &types.MetricMathAnomalyDetector{}
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorPutMetricAlarm(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "LimitExceededFault":
+		verr, err := deserializeCBOR_LimitExceededFault(v)
 		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("MetricDataQueries", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentMetricDataQueries(&sv.MetricDataQueries, nodeDecoder); err != nil {
-				return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#LimitExceededFault: %w", err),
+				Snapshot: payload,
 			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
 		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMetrics(v *[]types.Metric, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.Metric
-	if *v == nil {
-		sv = make([]types.Metric, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.Metric
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentMetric(&destAddr, nodeDecoder); err != nil {
-				return err
-			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMetricsUnwrapped(v *[]types.Metric, decoder smithyxml.NodeDecoder) error {
-	var sv []types.Metric
-	if *v == nil {
-		sv = make([]types.Metric, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		return verr
 	default:
-		var mv types.Metric
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentMetric(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentMetricStat(v **types.MetricStat, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.MetricStat
-	if *v == nil {
-		sv = &types.MetricStat{}
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorPutMetricData(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InternalServiceFault":
+		verr, err := deserializeCBOR_InternalServiceFault(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InternalServiceFault: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Metric", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentMetric(&sv.Metric, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("Period", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				i64, err := strconv.ParseInt(xtv, 10, 64)
-				if err != nil {
-					return err
-				}
-				sv.Period = ptr.Int32(int32(i64))
-			}
-
-		case strings.EqualFold("Stat", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Stat = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("Unit", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Unit = types.StandardUnit(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMetricStreamEntries(v *[]types.MetricStreamEntry, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.MetricStreamEntry
-	if *v == nil {
-		sv = make([]types.MetricStreamEntry, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
+		return verr
+	case "InvalidParameterCombinationException":
+		verr, err := deserializeCBOR_InvalidParameterCombinationException(v)
 		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.MetricStreamEntry
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentMetricStreamEntry(&destAddr, nodeDecoder); err != nil {
-				return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterCombinationException: %w", err),
+				Snapshot: payload,
 			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
 		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMetricStreamEntriesUnwrapped(v *[]types.MetricStreamEntry, decoder smithyxml.NodeDecoder) error {
-	var sv []types.MetricStreamEntry
-	if *v == nil {
-		sv = make([]types.MetricStreamEntry, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "MissingRequiredParameterException":
+		verr, err := deserializeCBOR_MissingRequiredParameterException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#MissingRequiredParameterException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
 	default:
-		var mv types.MetricStreamEntry
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentMetricStreamEntry(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentMetricStreamEntry(v **types.MetricStreamEntry, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.MetricStreamEntry
-	if *v == nil {
-		sv = &types.MetricStreamEntry{}
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorPutMetricStream(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "ConcurrentModificationException":
+		verr, err := deserializeCBOR_ConcurrentModificationException(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#ConcurrentModificationException: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Arn", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Arn = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("CreationDate", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				t, err := smithytime.ParseDateTime(xtv)
-				if err != nil {
-					return err
-				}
-				sv.CreationDate = ptr.Time(t)
-			}
-
-		case strings.EqualFold("FirehoseArn", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.FirehoseArn = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("LastUpdateDate", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				t, err := smithytime.ParseDateTime(xtv)
-				if err != nil {
-					return err
-				}
-				sv.LastUpdateDate = ptr.Time(t)
-			}
-
-		case strings.EqualFold("Name", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Name = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("OutputFormat", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.OutputFormat = types.MetricStreamOutputFormat(xtv)
-			}
-
-		case strings.EqualFold("State", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.State = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMetricStreamFilter(v **types.MetricStreamFilter, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.MetricStreamFilter
-	if *v == nil {
-		sv = &types.MetricStreamFilter{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
+		return verr
+	case "InternalServiceFault":
+		verr, err := deserializeCBOR_InternalServiceFault(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InternalServiceFault: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("MetricNames", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentMetricStreamFilterMetricNames(&sv.MetricNames, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("Namespace", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Namespace = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMetricStreamFilterMetricNames(v *[]string, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []string
-	if *v == nil {
-		sv = make([]string, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
+		return verr
+	case "InvalidParameterCombinationException":
+		verr, err := deserializeCBOR_InvalidParameterCombinationException(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterCombinationException: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		memberDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		decoder = memberDecoder
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col string
-			val, err := decoder.Value()
-			if err != nil {
-				return err
+		return verr
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
 			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				col = xtv
-			}
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
 		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMetricStreamFilterMetricNamesUnwrapped(v *[]string, decoder smithyxml.NodeDecoder) error {
-	var sv []string
-	if *v == nil {
-		sv = make([]string, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "MissingRequiredParameterException":
+		verr, err := deserializeCBOR_MissingRequiredParameterException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#MissingRequiredParameterException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
 	default:
-		var mv string
-		t := decoder.StartEl
-		_ = t
-		val, err := decoder.Value()
-		if err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		if val == nil {
-			break
-		}
-		{
-			xtv := string(val)
-			mv = xtv
-		}
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
-}
-func awsAwsquery_deserializeDocumentMetricStreamFilters(v *[]types.MetricStreamFilter, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.MetricStreamFilter
-	if *v == nil {
-		sv = make([]types.MetricStreamFilter, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.MetricStreamFilter
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentMetricStreamFilter(&destAddr, nodeDecoder); err != nil {
-				return err
-			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
 }
 
-func awsAwsquery_deserializeDocumentMetricStreamFiltersUnwrapped(v *[]types.MetricStreamFilter, decoder smithyxml.NodeDecoder) error {
-	var sv []types.MetricStreamFilter
-	if *v == nil {
-		sv = make([]types.MetricStreamFilter, 0)
-	} else {
-		sv = *v
+func rpc2_deserializeOpErrorSetAlarmState(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	switch {
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InvalidFormatFault":
+		verr, err := deserializeCBOR_InvalidFormatFault(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidFormatFault: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "ResourceNotFound":
+		verr, err := deserializeCBOR_ResourceNotFound(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#ResourceNotFound: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
 	default:
-		var mv types.MetricStreamFilter
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentMetricStreamFilter(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentMetricStreamStatisticsAdditionalStatistics(v *[]string, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []string
-	if *v == nil {
-		sv = make([]string, 0)
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorStartMetricStreams(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InternalServiceFault":
+		verr, err := deserializeCBOR_InternalServiceFault(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InternalServiceFault: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		memberDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		decoder = memberDecoder
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col string
-			val, err := decoder.Value()
-			if err != nil {
-				return err
+		return verr
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
 			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				col = xtv
-			}
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
 		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMetricStreamStatisticsAdditionalStatisticsUnwrapped(v *[]string, decoder smithyxml.NodeDecoder) error {
-	var sv []string
-	if *v == nil {
-		sv = make([]string, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "MissingRequiredParameterException":
+		verr, err := deserializeCBOR_MissingRequiredParameterException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#MissingRequiredParameterException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
 	default:
-		var mv string
-		t := decoder.StartEl
-		_ = t
-		val, err := decoder.Value()
-		if err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		if val == nil {
-			break
-		}
-		{
-			xtv := string(val)
-			mv = xtv
-		}
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
-}
-func awsAwsquery_deserializeDocumentMetricStreamStatisticsConfiguration(v **types.MetricStreamStatisticsConfiguration, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.MetricStreamStatisticsConfiguration
-	if *v == nil {
-		sv = &types.MetricStreamStatisticsConfiguration{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("AdditionalStatistics", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentMetricStreamStatisticsAdditionalStatistics(&sv.AdditionalStatistics, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("IncludeMetrics", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentMetricStreamStatisticsIncludeMetrics(&sv.IncludeMetrics, nodeDecoder); err != nil {
-				return err
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
 }
 
-func awsAwsquery_deserializeDocumentMetricStreamStatisticsConfigurations(v *[]types.MetricStreamStatisticsConfiguration, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.MetricStreamStatisticsConfiguration
-	if *v == nil {
-		sv = make([]types.MetricStreamStatisticsConfiguration, 0)
-	} else {
-		sv = *v
+func rpc2_deserializeOpErrorStopMetricStreams(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "InternalServiceFault":
+		verr, err := deserializeCBOR_InternalServiceFault(v)
 		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.MetricStreamStatisticsConfiguration
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentMetricStreamStatisticsConfiguration(&destAddr, nodeDecoder); err != nil {
-				return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InternalServiceFault: %w", err),
+				Snapshot: payload,
 			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
 		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMetricStreamStatisticsConfigurationsUnwrapped(v *[]types.MetricStreamStatisticsConfiguration, decoder smithyxml.NodeDecoder) error {
-	var sv []types.MetricStreamStatisticsConfiguration
-	if *v == nil {
-		sv = make([]types.MetricStreamStatisticsConfiguration, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "MissingRequiredParameterException":
+		verr, err := deserializeCBOR_MissingRequiredParameterException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#MissingRequiredParameterException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
 	default:
-		var mv types.MetricStreamStatisticsConfiguration
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentMetricStreamStatisticsConfiguration(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentMetricStreamStatisticsIncludeMetrics(v *[]types.MetricStreamStatisticsMetric, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.MetricStreamStatisticsMetric
-	if *v == nil {
-		sv = make([]types.MetricStreamStatisticsMetric, 0)
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorTagResource(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "ConcurrentModificationException":
+		verr, err := deserializeCBOR_ConcurrentModificationException(v)
 		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.MetricStreamStatisticsMetric
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentMetricStreamStatisticsMetric(&destAddr, nodeDecoder); err != nil {
-				return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#ConcurrentModificationException: %w", err),
+				Snapshot: payload,
 			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
 		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMetricStreamStatisticsIncludeMetricsUnwrapped(v *[]types.MetricStreamStatisticsMetric, decoder smithyxml.NodeDecoder) error {
-	var sv []types.MetricStreamStatisticsMetric
-	if *v == nil {
-		sv = make([]types.MetricStreamStatisticsMetric, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "ConflictException":
+		verr, err := deserializeCBOR_ConflictException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#ConflictException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "InternalServiceFault":
+		verr, err := deserializeCBOR_InternalServiceFault(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InternalServiceFault: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "ResourceNotFoundException":
+		verr, err := deserializeCBOR_ResourceNotFoundException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#ResourceNotFoundException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
 	default:
-		var mv types.MetricStreamStatisticsMetric
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentMetricStreamStatisticsMetric(&destAddr, nodeDecoder); err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		mv = *destAddr
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentMetricStreamStatisticsMetric(v **types.MetricStreamStatisticsMetric, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.MetricStreamStatisticsMetric
-	if *v == nil {
-		sv = &types.MetricStreamStatisticsMetric{}
-	} else {
-		sv = *v
+
+func rpc2_deserializeOpErrorUntagResource(resp *smithyhttp.Response) error {
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("read response body: %w", err)}
 	}
 
-	for {
-		t, done, err := decoder.Token()
+	typ, msg, v, err := getProtocolErrorInfo(payload)
+	if err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("get error info: %w", err)}
+	}
+
+	if len(typ) == 0 {
+		typ = "UnknownError"
+	}
+	if len(msg) == 0 {
+		msg = "UnknownError"
+	}
+
+	_ = v
+	// namespace can be mangled by service, so matching by error shape name
+	errorParts := strings.Split(typ, "#")
+	errorName := errorParts[len(errorParts)-1]
+	switch string(errorName) {
+	case "ConcurrentModificationException":
+		verr, err := deserializeCBOR_ConcurrentModificationException(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#ConcurrentModificationException: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("MetricName", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.MetricName = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("Namespace", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Namespace = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentMissingRequiredParameterException(v **types.MissingRequiredParameterException, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.MissingRequiredParameterException
-	if *v == nil {
-		sv = &types.MissingRequiredParameterException{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
+		return verr
+	case "ConflictException":
+		verr, err := deserializeCBOR_ConflictException(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#ConflictException: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("message", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Message = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentOwningAccounts(v *[]string, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []string
-	if *v == nil {
-		sv = make([]string, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
+		return verr
+	case "InternalServiceFault":
+		verr, err := deserializeCBOR_InternalServiceFault(v)
 		if err != nil {
-			return err
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InternalServiceFault: %w", err),
+				Snapshot: payload,
+			}
 		}
-		if done {
-			break
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
-		memberDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		decoder = memberDecoder
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col string
-			val, err := decoder.Value()
-			if err != nil {
-				return err
+		return verr
+	case "InvalidParameterValueException":
+		verr, err := deserializeCBOR_InvalidParameterValueException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#InvalidParameterValueException: %w", err),
+				Snapshot: payload,
 			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				col = xtv
-			}
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
 		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentOwningAccountsUnwrapped(v *[]string, decoder smithyxml.NodeDecoder) error {
-	var sv []string
-	if *v == nil {
-		sv = make([]string, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
+	case "ResourceNotFoundException":
+		verr, err := deserializeCBOR_ResourceNotFoundException(v)
+		if err != nil {
+			return &smithy.DeserializationError{
+				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#ResourceNotFoundException: %w", err),
+				Snapshot: payload,
+			}
+		}
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			verr.ErrorCodeOverride = ptr.String(qtype)
+		}
+		return verr
 	default:
-		var mv string
-		t := decoder.StartEl
-		_ = t
-		val, err := decoder.Value()
-		if err != nil {
-			return err
+		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
+			typ = qtype
 		}
-		if val == nil {
-			break
-		}
-		{
-			xtv := string(val)
-			mv = xtv
-		}
-		sv = append(sv, mv)
+		return &smithy.GenericAPIError{Code: typ, Message: msg}
 	}
-	*v = sv
-	return nil
 }
-func awsAwsquery_deserializeDocumentPartialFailure(v **types.PartialFailure, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.PartialFailure
-	if *v == nil {
-		sv = &types.PartialFailure{}
-	} else {
-		sv = *v
+func getProtocolErrorInfo(payload []byte) (typ, msg string, v smithycbor.Value, err error) {
+	v, err = smithycbor.Decode(payload)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("decode: %w", err)
 	}
 
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("ExceptionType", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.ExceptionType = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("FailureCode", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.FailureCode = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("FailureDescription", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.FailureDescription = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("FailureResource", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.FailureResource = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
+	mv, ok := v.(smithycbor.Map)
+	if !ok {
+		return "", "", nil, fmt.Errorf("unexpected payload type %T", v)
 	}
-	*v = sv
-	return nil
+
+	if ctyp, ok := mv["__type"]; ok {
+		if ttyp, ok := ctyp.(smithycbor.String); ok {
+			typ = string(ttyp)
+		}
+	}
+
+	if cmsg, ok := mv["message"]; ok {
+		if tmsg, ok := cmsg.(smithycbor.String); ok {
+			msg = string(tmsg)
+		}
+	}
+
+	return typ, msg, mv, nil
 }
-
-func awsAwsquery_deserializeDocumentRange(v **types.Range, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.Range
-	if *v == nil {
-		sv = &types.Range{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("EndTime", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				t, err := smithytime.ParseDateTime(xtv)
-				if err != nil {
-					return err
-				}
-				sv.EndTime = ptr.Time(t)
-			}
-
-		case strings.EqualFold("StartTime", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				t, err := smithytime.ParseDateTime(xtv)
-				if err != nil {
-					return err
-				}
-				sv.StartTime = ptr.Time(t)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentResourceList(v *[]string, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []string
-	if *v == nil {
-		sv = make([]string, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		memberDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		decoder = memberDecoder
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col string
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				col = xtv
-			}
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentResourceListUnwrapped(v *[]string, decoder smithyxml.NodeDecoder) error {
-	var sv []string
-	if *v == nil {
-		sv = make([]string, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
-	default:
-		var mv string
-		t := decoder.StartEl
-		_ = t
-		val, err := decoder.Value()
-		if err != nil {
-			return err
-		}
-		if val == nil {
-			break
-		}
-		{
-			xtv := string(val)
-			mv = xtv
-		}
-		sv = append(sv, mv)
-	}
-	*v = sv
-	return nil
-}
-func awsAwsquery_deserializeDocumentResourceNotFound(v **types.ResourceNotFound, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.ResourceNotFound
-	if *v == nil {
-		sv = &types.ResourceNotFound{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("message", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Message = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentResourceNotFoundException(v **types.ResourceNotFoundException, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.ResourceNotFoundException
-	if *v == nil {
-		sv = &types.ResourceNotFoundException{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Message", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Message = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("ResourceId", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.ResourceId = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("ResourceType", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.ResourceType = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentSingleMetricAnomalyDetector(v **types.SingleMetricAnomalyDetector, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.SingleMetricAnomalyDetector
-	if *v == nil {
-		sv = &types.SingleMetricAnomalyDetector{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("AccountId", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.AccountId = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("Dimensions", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentDimensions(&sv.Dimensions, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("MetricName", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.MetricName = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("Namespace", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Namespace = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("Stat", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Stat = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentTag(v **types.Tag, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *types.Tag
-	if *v == nil {
-		sv = &types.Tag{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Key", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Key = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("Value", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Value = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentTagList(v *[]types.Tag, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []types.Tag
-	if *v == nil {
-		sv = make([]types.Tag, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col types.Tag
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			destAddr := &col
-			if err := awsAwsquery_deserializeDocumentTag(&destAddr, nodeDecoder); err != nil {
-				return err
-			}
-			col = *destAddr
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentTagListUnwrapped(v *[]types.Tag, decoder smithyxml.NodeDecoder) error {
-	var sv []types.Tag
-	if *v == nil {
-		sv = make([]types.Tag, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
-	default:
-		var mv types.Tag
-		t := decoder.StartEl
-		_ = t
-		nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		destAddr := &mv
-		if err := awsAwsquery_deserializeDocumentTag(&destAddr, nodeDecoder); err != nil {
-			return err
-		}
-		mv = *destAddr
-		sv = append(sv, mv)
-	}
-	*v = sv
-	return nil
-}
-func awsAwsquery_deserializeDocumentTimestamps(v *[]time.Time, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv []time.Time
-	if *v == nil {
-		sv = make([]time.Time, 0)
-	} else {
-		sv = *v
-	}
-
-	originalDecoder := decoder
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		memberDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-		decoder = memberDecoder
-		switch {
-		case strings.EqualFold("member", t.Name.Local):
-			var col time.Time
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				t, err := smithytime.ParseDateTime(xtv)
-				if err != nil {
-					return err
-				}
-				col = t
-			}
-			sv = append(sv, col)
-
-		default:
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeDocumentTimestampsUnwrapped(v *[]time.Time, decoder smithyxml.NodeDecoder) error {
-	var sv []time.Time
-	if *v == nil {
-		sv = make([]time.Time, 0)
-	} else {
-		sv = *v
-	}
-
-	switch {
-	default:
-		var mv time.Time
-		t := decoder.StartEl
-		_ = t
-		val, err := decoder.Value()
-		if err != nil {
-			return err
-		}
-		if val == nil {
-			break
-		}
-		{
-			xtv := string(val)
-			t, err := smithytime.ParseDateTime(xtv)
-			if err != nil {
-				return err
-			}
-			mv = t
-		}
-		sv = append(sv, mv)
-	}
-	*v = sv
-	return nil
-}
-func awsAwsquery_deserializeOpDocumentDeleteAnomalyDetectorOutput(v **DeleteAnomalyDetectorOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *DeleteAnomalyDetectorOutput
-	if *v == nil {
-		sv = &DeleteAnomalyDetectorOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentDeleteDashboardsOutput(v **DeleteDashboardsOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *DeleteDashboardsOutput
-	if *v == nil {
-		sv = &DeleteDashboardsOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentDeleteInsightRulesOutput(v **DeleteInsightRulesOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *DeleteInsightRulesOutput
-	if *v == nil {
-		sv = &DeleteInsightRulesOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Failures", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentBatchFailures(&sv.Failures, nodeDecoder); err != nil {
-				return err
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentDeleteMetricStreamOutput(v **DeleteMetricStreamOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *DeleteMetricStreamOutput
-	if *v == nil {
-		sv = &DeleteMetricStreamOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentDescribeAlarmContributorsOutput(v **DescribeAlarmContributorsOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *DescribeAlarmContributorsOutput
-	if *v == nil {
-		sv = &DescribeAlarmContributorsOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("AlarmContributors", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentAlarmContributors(&sv.AlarmContributors, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("NextToken", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.NextToken = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentDescribeAlarmHistoryOutput(v **DescribeAlarmHistoryOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *DescribeAlarmHistoryOutput
-	if *v == nil {
-		sv = &DescribeAlarmHistoryOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("AlarmHistoryItems", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentAlarmHistoryItems(&sv.AlarmHistoryItems, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("NextToken", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.NextToken = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentDescribeAlarmsForMetricOutput(v **DescribeAlarmsForMetricOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *DescribeAlarmsForMetricOutput
-	if *v == nil {
-		sv = &DescribeAlarmsForMetricOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("MetricAlarms", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentMetricAlarms(&sv.MetricAlarms, nodeDecoder); err != nil {
-				return err
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentDescribeAlarmsOutput(v **DescribeAlarmsOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *DescribeAlarmsOutput
-	if *v == nil {
-		sv = &DescribeAlarmsOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("CompositeAlarms", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentCompositeAlarms(&sv.CompositeAlarms, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("MetricAlarms", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentMetricAlarms(&sv.MetricAlarms, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("NextToken", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.NextToken = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentDescribeAnomalyDetectorsOutput(v **DescribeAnomalyDetectorsOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *DescribeAnomalyDetectorsOutput
-	if *v == nil {
-		sv = &DescribeAnomalyDetectorsOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("AnomalyDetectors", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentAnomalyDetectors(&sv.AnomalyDetectors, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("NextToken", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.NextToken = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentDescribeInsightRulesOutput(v **DescribeInsightRulesOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *DescribeInsightRulesOutput
-	if *v == nil {
-		sv = &DescribeInsightRulesOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("InsightRules", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentInsightRules(&sv.InsightRules, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("NextToken", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.NextToken = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentDisableInsightRulesOutput(v **DisableInsightRulesOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *DisableInsightRulesOutput
-	if *v == nil {
-		sv = &DisableInsightRulesOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Failures", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentBatchFailures(&sv.Failures, nodeDecoder); err != nil {
-				return err
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentEnableInsightRulesOutput(v **EnableInsightRulesOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *EnableInsightRulesOutput
-	if *v == nil {
-		sv = &EnableInsightRulesOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Failures", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentBatchFailures(&sv.Failures, nodeDecoder); err != nil {
-				return err
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentGetDashboardOutput(v **GetDashboardOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *GetDashboardOutput
-	if *v == nil {
-		sv = &GetDashboardOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("DashboardArn", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.DashboardArn = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("DashboardBody", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.DashboardBody = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("DashboardName", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.DashboardName = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentGetInsightRuleReportOutput(v **GetInsightRuleReportOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *GetInsightRuleReportOutput
-	if *v == nil {
-		sv = &GetInsightRuleReportOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("AggregateValue", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				f64, err := strconv.ParseFloat(xtv, 64)
-				if err != nil {
-					return err
-				}
-				sv.AggregateValue = ptr.Float64(f64)
-			}
-
-		case strings.EqualFold("AggregationStatistic", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.AggregationStatistic = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("ApproximateUniqueCount", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				i64, err := strconv.ParseInt(xtv, 10, 64)
-				if err != nil {
-					return err
-				}
-				sv.ApproximateUniqueCount = ptr.Int64(i64)
-			}
-
-		case strings.EqualFold("Contributors", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentInsightRuleContributors(&sv.Contributors, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("KeyLabels", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentInsightRuleContributorKeyLabels(&sv.KeyLabels, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("MetricDatapoints", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentInsightRuleMetricDatapoints(&sv.MetricDatapoints, nodeDecoder); err != nil {
-				return err
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentGetMetricDataOutput(v **GetMetricDataOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *GetMetricDataOutput
-	if *v == nil {
-		sv = &GetMetricDataOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Messages", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentMetricDataResultMessages(&sv.Messages, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("MetricDataResults", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentMetricDataResults(&sv.MetricDataResults, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("NextToken", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.NextToken = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentGetMetricStatisticsOutput(v **GetMetricStatisticsOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *GetMetricStatisticsOutput
-	if *v == nil {
-		sv = &GetMetricStatisticsOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Datapoints", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentDatapoints(&sv.Datapoints, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("Label", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Label = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentGetMetricStreamOutput(v **GetMetricStreamOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *GetMetricStreamOutput
-	if *v == nil {
-		sv = &GetMetricStreamOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Arn", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Arn = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("CreationDate", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				t, err := smithytime.ParseDateTime(xtv)
-				if err != nil {
-					return err
-				}
-				sv.CreationDate = ptr.Time(t)
-			}
-
-		case strings.EqualFold("ExcludeFilters", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentMetricStreamFilters(&sv.ExcludeFilters, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("FirehoseArn", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.FirehoseArn = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("IncludeFilters", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentMetricStreamFilters(&sv.IncludeFilters, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("IncludeLinkedAccountsMetrics", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv, err := strconv.ParseBool(string(val))
-				if err != nil {
-					return fmt.Errorf("expected IncludeLinkedAccountsMetrics to be of type *bool, got %T instead", val)
-				}
-				sv.IncludeLinkedAccountsMetrics = ptr.Bool(xtv)
-			}
-
-		case strings.EqualFold("LastUpdateDate", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				t, err := smithytime.ParseDateTime(xtv)
-				if err != nil {
-					return err
-				}
-				sv.LastUpdateDate = ptr.Time(t)
-			}
-
-		case strings.EqualFold("Name", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Name = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("OutputFormat", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.OutputFormat = types.MetricStreamOutputFormat(xtv)
-			}
-
-		case strings.EqualFold("RoleArn", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.RoleArn = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("State", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.State = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("StatisticsConfigurations", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentMetricStreamStatisticsConfigurations(&sv.StatisticsConfigurations, nodeDecoder); err != nil {
-				return err
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentGetMetricWidgetImageOutput(v **GetMetricWidgetImageOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *GetMetricWidgetImageOutput
-	if *v == nil {
-		sv = &GetMetricWidgetImageOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("MetricWidgetImage", t.Name.Local):
-			var data string
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				data = xtv
-			}
-			sv.MetricWidgetImage, err = base64.StdEncoding.DecodeString(data)
-			if err != nil {
-				return err
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentListDashboardsOutput(v **ListDashboardsOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *ListDashboardsOutput
-	if *v == nil {
-		sv = &ListDashboardsOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("DashboardEntries", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentDashboardEntries(&sv.DashboardEntries, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("NextToken", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.NextToken = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentListManagedInsightRulesOutput(v **ListManagedInsightRulesOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *ListManagedInsightRulesOutput
-	if *v == nil {
-		sv = &ListManagedInsightRulesOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("ManagedRules", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentManagedRuleDescriptions(&sv.ManagedRules, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("NextToken", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.NextToken = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentListMetricsOutput(v **ListMetricsOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *ListMetricsOutput
-	if *v == nil {
-		sv = &ListMetricsOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Metrics", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentMetrics(&sv.Metrics, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("NextToken", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.NextToken = ptr.String(xtv)
-			}
-
-		case strings.EqualFold("OwningAccounts", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentOwningAccounts(&sv.OwningAccounts, nodeDecoder); err != nil {
-				return err
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentListMetricStreamsOutput(v **ListMetricStreamsOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *ListMetricStreamsOutput
-	if *v == nil {
-		sv = &ListMetricStreamsOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Entries", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentMetricStreamEntries(&sv.Entries, nodeDecoder); err != nil {
-				return err
-			}
-
-		case strings.EqualFold("NextToken", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.NextToken = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentListTagsForResourceOutput(v **ListTagsForResourceOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *ListTagsForResourceOutput
-	if *v == nil {
-		sv = &ListTagsForResourceOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Tags", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentTagList(&sv.Tags, nodeDecoder); err != nil {
-				return err
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentPutAnomalyDetectorOutput(v **PutAnomalyDetectorOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *PutAnomalyDetectorOutput
-	if *v == nil {
-		sv = &PutAnomalyDetectorOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentPutDashboardOutput(v **PutDashboardOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *PutDashboardOutput
-	if *v == nil {
-		sv = &PutDashboardOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("DashboardValidationMessages", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentDashboardValidationMessages(&sv.DashboardValidationMessages, nodeDecoder); err != nil {
-				return err
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentPutInsightRuleOutput(v **PutInsightRuleOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *PutInsightRuleOutput
-	if *v == nil {
-		sv = &PutInsightRuleOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentPutManagedInsightRulesOutput(v **PutManagedInsightRulesOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *PutManagedInsightRulesOutput
-	if *v == nil {
-		sv = &PutManagedInsightRulesOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Failures", t.Name.Local):
-			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
-			if err := awsAwsquery_deserializeDocumentBatchFailures(&sv.Failures, nodeDecoder); err != nil {
-				return err
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentPutMetricStreamOutput(v **PutMetricStreamOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *PutMetricStreamOutput
-	if *v == nil {
-		sv = &PutMetricStreamOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		case strings.EqualFold("Arn", t.Name.Local):
-			val, err := decoder.Value()
-			if err != nil {
-				return err
-			}
-			if val == nil {
-				break
-			}
-			{
-				xtv := string(val)
-				sv.Arn = ptr.String(xtv)
-			}
-
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentStartMetricStreamsOutput(v **StartMetricStreamsOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *StartMetricStreamsOutput
-	if *v == nil {
-		sv = &StartMetricStreamsOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentStopMetricStreamsOutput(v **StopMetricStreamsOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *StopMetricStreamsOutput
-	if *v == nil {
-		sv = &StopMetricStreamsOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
-}
-
-func awsAwsquery_deserializeOpDocumentTagResourceOutput(v **TagResourceOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
-	}
-	var sv *TagResourceOutput
-	if *v == nil {
-		sv = &TagResourceOutput{}
-	} else {
-		sv = *v
-	}
-
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
+func getAwsQueryErrorCode(resp *smithyhttp.Response) string {
+	header := resp.Header.Get("x-amzn-query-error")
+	if header == "" {
+		return ""
 	}
-	*v = sv
-	return nil
-}
 
-func awsAwsquery_deserializeOpDocumentUntagResourceOutput(v **UntagResourceOutput, decoder smithyxml.NodeDecoder) error {
-	if v == nil {
-		return fmt.Errorf("unexpected nil of type %T", v)
+	parts := strings.Split(header, ";")
+	if len(parts) != 2 {
+		return ""
 	}
-	var sv *UntagResourceOutput
-	if *v == nil {
-		sv = &UntagResourceOutput{}
-	} else {
-		sv = *v
-	}
 
-	for {
-		t, done, err := decoder.Token()
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		originalDecoder := decoder
-		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
-		switch {
-		default:
-			// Do nothing and ignore the unexpected tag element
-			err = decoder.Decoder.Skip()
-			if err != nil {
-				return err
-			}
-
-		}
-		decoder = originalDecoder
-	}
-	*v = sv
-	return nil
+	return parts[0]
 }

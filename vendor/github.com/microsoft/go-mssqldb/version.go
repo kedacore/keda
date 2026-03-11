@@ -4,7 +4,7 @@ import "fmt"
 
 // Update this variable with the release tag before pushing the tag
 // This value is written to the prelogin and login7 packets during a new connection
-const driverVersion = "v1.8.0"
+const driverVersion = "v1.9.6"
 
 func getDriverVersion(ver string) uint32 {
 	var majorVersion uint32

@@ -174,7 +174,7 @@ func (m MetricsMeasurementsRequest) MarshalJSON() ([]byte, error) {
 }
 
 func (m *MetricsMeasurementsRequest) UnmarshalJSON(data []byte) error {
-	if err := utils.UnmarshalJSON(data, &m, "", false, []string{"name"}); err != nil {
+	if err := utils.UnmarshalJSON(data, &m, "", false, nil); err != nil {
 		return err
 	}
 	return nil

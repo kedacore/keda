@@ -19,7 +19,7 @@ package markers
 import (
 	"fmt"
 
-	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"sigs.k8s.io/controller-tools/pkg/markers"
 )
 
@@ -66,6 +66,16 @@ func init() {
 //     are typically manipulated together by the same actor.
 type ListType string
 
+const (
+	Map     ListType = "map"
+	Set     ListType = "set"
+	Atomic  ListType = "atomic"
+	Array   ListType = "array"
+	Object  ListType = "object"
+	Integer ListType = "integer"
+	Number  ListType = "number"
+)
+
 // +controllertools:marker:generateHelp:category="CRD processing"
 
 // ListMapKey specifies the keys to map listTypes.
@@ -107,11 +117,11 @@ type MapType string
 //     Any changes have to replace the entire struct.
 type StructType string
 
-func (l ListType) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
-	if schema.Type != "array" {
+func (l ListType) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+	if schema.Type != string(Array) {
 		return fmt.Errorf("must apply listType to an array, found %s", schema.Type)
 	}
-	if l != "map" && l != "atomic" && l != "set" {
+	if l != Map && l != Atomic && l != Set {
 		return fmt.Errorf(`ListType must be either "map", "set" or "atomic"`)
 	}
 	p := string(l)
@@ -123,19 +133,19 @@ func (l ListType) ApplyPriority() ApplyPriority {
 	return ApplyPriorityDefault - 1
 }
 
-func (l ListMapKey) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
-	if schema.Type != "array" {
+func (l ListMapKey) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+	if schema.Type != string(Array) {
 		return fmt.Errorf("must apply listMapKey to an array, found %s", schema.Type)
 	}
-	if schema.XListType == nil || *schema.XListType != "map" {
+	if schema.XListType == nil || *schema.XListType != string(Map) {
 		return fmt.Errorf("must apply listMapKey to an associative-list")
 	}
 	schema.XListMapKeys = append(schema.XListMapKeys, string(l))
 	return nil
 }
 
-func (m MapType) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
-	if schema.Type != "object" {
+func (m MapType) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+	if schema.Type != string(Object) {
 		return fmt.Errorf("must apply mapType to an object")
 	}
 
@@ -149,8 +159,8 @@ func (m MapType) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
 	return nil
 }
 
-func (s StructType) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
-	if schema.Type != "object" && schema.Type != "" {
+func (s StructType) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+	if schema.Type != string(Object) && schema.Type != "" {
 		return fmt.Errorf("must apply structType to an object; either explicitly set or defaulted through an empty schema type")
 	}
 

@@ -74,7 +74,7 @@ func (rs *requestStream) Read(p []byte) (int, error) {
 		return n, err
 	}
 	left := rs.header.ContentLength() - rs.totalBytesRead
-	if len(p) > left {
+	if left > 0 && len(p) > left {
 		p = p[:left]
 	}
 	n, err = rs.reader.Read(p)
@@ -107,7 +107,7 @@ func releaseRequestStream(rs *requestStream) {
 }
 
 var requestStreamPool = sync.Pool{
-	New: func() interface{} {
+	New: func() any {
 		return &requestStream{}
 	},
 }

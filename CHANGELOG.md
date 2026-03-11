@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.19.0](#v2190)
 - [v2.18.3](#v2183)
 - [v2.18.2](#v2182)
 - [v2.18.1](#v2181)
@@ -67,7 +68,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **General**: Introduce new Kubernetes Resource Scaler ([#7212](https://github.com/kedacore/keda/issues/7212))
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 #### Experimental
 
@@ -76,15 +77,17 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Improvements
 
 - **General**: Add cooldownPeriod and pollingInterval checks for ScaledObject ([#7271](https://github.com/kedacore/keda/pull/7271))
-- **General**: Correct error message when awsSecretAccessKey is missing in credential-based authentication ([#7265](https://github.com/kedacore/keda/pull/7265))
-- **AWS CloudWatch Scaler**: Add cross-account observability support ([#7189](https://github.com/kedacore/keda/issues/7189))
-- **Dynamodb Scaler**: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
+- **Elasticsearch Scaler**: Add HTTP status check for Elasticsearch errors ([#7480](https://github.com/kedacore/keda/pull/7480))
 
 ### Fixes
 
-- **General**: Apply fallback in polling loop to enable scaling from zero ([#7239](https://github.com/kedacore/keda/issues/7239))
-- **General**: Replace deprecated `azure autorest` dependency to `azure sdk for go` ([#7073](https://github.com/kedacore/keda/issues/7073))
-- **IBMMQ Scaler**: Create new HTTP request for each queue query in IBMMQ scaler ([#7202](https://github.com/kedacore/keda/pull/7202))
+- **Cron Scaler**: Fix metric name generation so cron expressions with comma-separated values no longer produce invalid metric names ([#7448](https://github.com/kedacore/keda/issues/7448))
+- **Forgejo Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
+- **GCP Scaler**: Validate Pub/Sub resource name in BuildMQLQuery ([#7468](https://github.com/kedacore/keda/pull/7468))
+- **Github Runner Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
+- **Loki Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
+- **Prometheus Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
+- **Solr Scaler**: Use net/url to safely encode query parameters ([#7467](https://github.com/kedacore/keda/pull/7467))
 
 ### Deprecations
 
@@ -96,11 +99,54 @@ New deprecation(s):
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **IBM MQ scaler**: The `tls` setting code is removed ([#6094](https://github.com/kedacore/keda/issues/6094))
 
 ### Other
 
+- **General**: Use informer cache for ReplicaSet lookups in GetCurrentReplicas to reduce API server load ([#7466](https://github.com/kedacore/keda/pull/7466))
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+## v2.19.0
+
+### New
+
+- **General**: Add file-based authentication support for ClusterTriggerAuthentication ([#7083](https://github.com/kedacore/keda/issues/7083))
+- **General**: Introduce new Kubernetes Resource Scaler ([#7212](https://github.com/kedacore/keda/issues/7212))
+
+### Improvements
+
+- **General**: Correct error message when awsSecretAccessKey is missing in credential-based authentication ([#7265](https://github.com/kedacore/keda/pull/7265))
+- **General**: Emit more events about what is happening with ScaledObject/ScaledJob ([#7382](https://github.com/kedacore/keda/issues/7382))
+- **General**: Raw metrics stream - include trigger activity status in response ([#7369](https://github.com/kedacore/keda/issues/7369))
+- **AWS CloudWatch Scaler**: Add cross-account observability support ([#7189](https://github.com/kedacore/keda/issues/7189))
+- **Dynamodb Scaler**: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
+- **Dynatrace Scaler**: Support DQL querying ([#7377](https://github.com/kedacore/keda/issues/7377))
+- **MongoDB Scaler**: Add TLS support ([#6976](https://github.com/kedacore/keda/issues/6976))
+
+### Fixes
+
+- **General**: Apply fallback in polling loop to enable scaling from zero ([#7239](https://github.com/kedacore/keda/issues/7239))
+- **General**: Fix accurateScalingStrategy ignoring pendingJobCount in maxReplicaCount check ([#7329](https://github.com/kedacore/keda/issues/7329))
+- **General**: Replace deprecated `azure autorest` dependency to `azure sdk for go` ([#7073](https://github.com/kedacore/keda/issues/7073))
+- **Datadog Scaler**: Return request in cluster agent proxy without bearer auth ([#7341](https://github.com/kedacore/keda/issues/7341))
+- **Datadog Scaler**: Use metricUnavailableValue for 422 errors in Datadog Cluster Agent ([#7246](https://github.com/kedacore/keda/issues/7246))
+- **IBMMQ Scaler**: Create new HTTP request for each queue query in IBMMQ scaler ([#7202](https://github.com/kedacore/keda/pull/7202))
+- **Kafka Scaler**: Improve check for missing partition information when calculating lag ([#7414](https://github.com/kedacore/keda/issues/7414))
+- **Temporal Scaler**: Fix TLS RootCAs initialization when using API key authentication with Temporal Cloud ([#7367](https://github.com/kedacore/keda/pull/7367))
+
+### Deprecations
+
+You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
+
+### Breaking Changes
+
+- NATS Streaming scaler: Remove NATS Streaming Server (aka Stan) ([#6366](https://github.com/kedacore/keda/issues/6366))
+
+### Other
+
+- **CI**: Replace stale bot with official GitHub Actions stale action ([#7321](https://github.com/kedacore/keda/issues/7321))
 - **CI**: Use GitHub-hosted ARM64 runners ([#7293](https://github.com/kedacore/keda/issues/7293))
+- **ScaledObject/ScaledJob**: Track activity for each trigger in the status ([#7347](https://github.com/kedacore/keda/issues/7347))
 
 ## v2.18.3
 

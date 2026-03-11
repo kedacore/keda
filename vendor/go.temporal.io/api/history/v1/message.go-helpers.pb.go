@@ -1781,6 +1781,80 @@ func (this *WorkflowExecutionUpdateAdmittedEventAttributes) Equal(that interface
 	return proto.Equal(this, that1)
 }
 
+// Marshal an object of type WorkflowExecutionPausedEventAttributes to the protobuf v3 wire format
+func (val *WorkflowExecutionPausedEventAttributes) Marshal() ([]byte, error) {
+	return proto.Marshal(val)
+}
+
+// Unmarshal an object of type WorkflowExecutionPausedEventAttributes from the protobuf v3 wire format
+func (val *WorkflowExecutionPausedEventAttributes) Unmarshal(buf []byte) error {
+	return proto.Unmarshal(buf, val)
+}
+
+// Size returns the size of the object, in bytes, once serialized
+func (val *WorkflowExecutionPausedEventAttributes) Size() int {
+	return proto.Size(val)
+}
+
+// Equal returns whether two WorkflowExecutionPausedEventAttributes values are equivalent by recursively
+// comparing the message's fields.
+// For more information see the documentation for
+// https://pkg.go.dev/google.golang.org/protobuf/proto#Equal
+func (this *WorkflowExecutionPausedEventAttributes) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	var that1 *WorkflowExecutionPausedEventAttributes
+	switch t := that.(type) {
+	case *WorkflowExecutionPausedEventAttributes:
+		that1 = t
+	case WorkflowExecutionPausedEventAttributes:
+		that1 = &t
+	default:
+		return false
+	}
+
+	return proto.Equal(this, that1)
+}
+
+// Marshal an object of type WorkflowExecutionUnpausedEventAttributes to the protobuf v3 wire format
+func (val *WorkflowExecutionUnpausedEventAttributes) Marshal() ([]byte, error) {
+	return proto.Marshal(val)
+}
+
+// Unmarshal an object of type WorkflowExecutionUnpausedEventAttributes from the protobuf v3 wire format
+func (val *WorkflowExecutionUnpausedEventAttributes) Unmarshal(buf []byte) error {
+	return proto.Unmarshal(buf, val)
+}
+
+// Size returns the size of the object, in bytes, once serialized
+func (val *WorkflowExecutionUnpausedEventAttributes) Size() int {
+	return proto.Size(val)
+}
+
+// Equal returns whether two WorkflowExecutionUnpausedEventAttributes values are equivalent by recursively
+// comparing the message's fields.
+// For more information see the documentation for
+// https://pkg.go.dev/google.golang.org/protobuf/proto#Equal
+func (this *WorkflowExecutionUnpausedEventAttributes) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	var that1 *WorkflowExecutionUnpausedEventAttributes
+	switch t := that.(type) {
+	case *WorkflowExecutionUnpausedEventAttributes:
+		that1 = t
+	case WorkflowExecutionUnpausedEventAttributes:
+		that1 = &t
+	default:
+		return false
+	}
+
+	return proto.Equal(this, that1)
+}
+
 // Marshal an object of type NexusOperationScheduledEventAttributes to the protobuf v3 wire format
 func (val *NexusOperationScheduledEventAttributes) Marshal() ([]byte, error) {
 	return proto.Marshal(val)

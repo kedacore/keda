@@ -231,16 +231,17 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	if err != nil {
 		return -1, err
 	}
-
-	b, err := io.ReadAll(r.Body)
-	if err != nil {
-		return -1, err
-	}
 	defer r.Body.Close()
 
 	if r.StatusCode < 200 || r.StatusCode > 299 {
-		err := fmt.Errorf("prometheus query api returned error. status: %d response: %s", r.StatusCode, string(b))
+		_, _ = io.Copy(io.Discard, r.Body)
+		err := fmt.Errorf("prometheus query api returned error. status: %d", r.StatusCode)
 		s.logger.Error(err, "prometheus query api returned error")
+		return -1, err
+	}
+
+	b, err := io.ReadAll(r.Body)
+	if err != nil {
 		return -1, err
 	}
 

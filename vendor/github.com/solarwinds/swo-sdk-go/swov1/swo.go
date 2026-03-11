@@ -2,7 +2,7 @@
 
 package swov1
 
-// Generated from OpenAPI doc version 1.0.12 and generator version 2.767.2
+// Generated from OpenAPI doc version 1.0.12 and generator version 2.781.2
 
 import (
 	"context"
@@ -150,9 +150,9 @@ func WithTimeout(timeout time.Duration) SDKOption {
 // New creates a new instance of the SDK with the provided options
 func New(opts ...SDKOption) *Swo {
 	sdk := &Swo{
-		SDKVersion: "0.13.0",
+		SDKVersion: "0.13.1",
 		sdkConfiguration: config.SDKConfiguration{
-			UserAgent:  "speakeasy-sdk/go 0.13.0 2.767.2 1.0.12 github.com/solarwinds/swo-sdk-go/swov1",
+			UserAgent:  "speakeasy-sdk/go 0.13.1 2.781.2 1.0.12 github.com/solarwinds/swo-sdk-go/swov1",
 			ServerList: ServerList,
 			ServerVariables: []map[string]string{
 				{
@@ -178,12 +178,7 @@ func New(opts ...SDKOption) *Swo {
 		sdk.sdkConfiguration.Client = &http.Client{Timeout: 60 * time.Second}
 	}
 
-	currentServerURL, _ := sdk.sdkConfiguration.GetServerDetails()
-	serverURL := currentServerURL
-	serverURL, sdk.sdkConfiguration.Client = sdk.hooks.SDKInit(currentServerURL, sdk.sdkConfiguration.Client)
-	if currentServerURL != serverURL {
-		sdk.sdkConfiguration.ServerURL = serverURL
-	}
+	sdk.sdkConfiguration = sdk.hooks.SDKInit(sdk.sdkConfiguration)
 
 	sdk.ChangeEvents = newChangeEvents(sdk, sdk.sdkConfiguration, sdk.hooks)
 	sdk.CloudAccounts = newCloudAccounts(sdk, sdk.sdkConfiguration, sdk.hooks)

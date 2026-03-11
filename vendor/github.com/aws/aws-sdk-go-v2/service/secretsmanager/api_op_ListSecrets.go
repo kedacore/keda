@@ -72,6 +72,9 @@ type ListSecretsInput struct {
 	// with this value.
 	NextToken *string
 
+	// If not specified, secrets are listed by CreatedDate .
+	SortBy types.SortByType
+
 	// Secrets are listed by CreatedDate .
 	SortOrder types.SortOrderType
 

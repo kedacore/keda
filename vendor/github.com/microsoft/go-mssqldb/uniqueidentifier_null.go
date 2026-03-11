@@ -2,6 +2,7 @@ package mssql
 
 import (
 	"database/sql/driver"
+	"encoding/json"
 )
 
 type NullUniqueIdentifier struct {
@@ -62,4 +63,11 @@ func (n *NullUniqueIdentifier) UnmarshalJSON(b []byte) error {
 		Valid: true,
 	}
 	return err
+}
+
+func (n NullUniqueIdentifier) MarshalJSON() ([]byte, error) {
+	if !n.Valid {
+		return []byte("null"), nil
+	}
+	return json.Marshal(n.UUID)
 }

@@ -477,6 +477,8 @@ func (e *TestWorkflowEnvironment) OnWorkflow(workflow interface{}, args ...inter
 const mockMethodForSignalExternalWorkflow = "workflow.SignalExternalWorkflow"
 const mockMethodForRequestCancelExternalWorkflow = "workflow.RequestCancelExternalWorkflow"
 const mockMethodForGetVersion = "workflow.GetVersion"
+const mockMethodForSideEffect = "workflow.SideEffect"
+const mockMethodForMutableSideEffect = "workflow.MutableSideEffect"
 const mockMethodForUpsertSearchAttributes = "workflow.UpsertSearchAttributes"
 const mockMethodForUpsertTypedSearchAttributes = "workflow.UpsertTypedSearchAttributes"
 const mockMethodForUpsertMemo = "workflow.UpsertMemo"
@@ -543,6 +545,31 @@ func (e *TestWorkflowEnvironment) OnRequestCancelExternalWorkflow(namespace, wor
 // will be mocked. Mock for a specific changeID has higher priority over mock.Anything.
 func (e *TestWorkflowEnvironment) OnGetVersion(changeID string, minSupported, maxSupported Version) *MockCallWrapper {
 	call := e.workflowMock.On(getMockMethodForGetVersion(changeID), changeID, minSupported, maxSupported)
+	return e.wrapWorkflowCall(call)
+}
+
+// OnSideEffect setup a mock for workflow.SideEffect/SideEffectWithOptions.
+// Side effects are matched in the order they are executed. Use .Once() to match a single call,
+// or set up multiple OnSideEffect mocks to match multiple calls in order.
+// You must call Return() with a value on the returned *MockCallWrapper instance.
+//
+// Example:
+//
+//	env.OnSideEffect().Return("mocked value").Once()
+func (e *TestWorkflowEnvironment) OnSideEffect() *MockCallWrapper {
+	call := e.workflowMock.On(mockMethodForSideEffect)
+	return e.wrapWorkflowCall(call)
+}
+
+// OnMutableSideEffect setup a mock for workflow.MutableSideEffect/MutableSideEffectWithOptions.
+// Use id to match the MutableSideEffect id (use mock.Anything to match any).
+// You must call Return() with a value on the returned *MockCallWrapper instance.
+//
+// Example:
+//
+//	env.OnMutableSideEffect("my-id").Return("mocked value").Once()
+func (e *TestWorkflowEnvironment) OnMutableSideEffect(id string) *MockCallWrapper {
+	call := e.workflowMock.On(mockMethodForMutableSideEffect, id)
 	return e.wrapWorkflowCall(call)
 }
 
@@ -1221,7 +1248,8 @@ func (e *TestWorkflowEnvironment) SetTypedSearchAttributesOnStart(searchAttribut
 	return nil
 }
 
-// AssertExpectations asserts that everything specified with OnWorkflow, OnActivity, OnNexusOperation
+// AssertExpectations asserts that everything specified with OnWorkflow, OnActivity, OnSideEffect,
+// OnMutableSideEffect, OnNexusOperation
 // was in fact called as expected. Calls may have occurred in any order.
 func (e *TestWorkflowEnvironment) AssertExpectations(t mock.TestingT) bool {
 	return e.workflowMock.AssertExpectations(t) &&

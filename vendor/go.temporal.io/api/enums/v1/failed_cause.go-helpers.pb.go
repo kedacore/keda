@@ -44,6 +44,7 @@ var (
 		"BadRequestCancelNexusOperationAttributes":            34,
 		"FeatureDisabled":                                     35,
 		"GrpcMessageTooLarge":                                 36,
+		"PayloadsTooLarge":                                    37,
 	}
 )
 
@@ -128,6 +129,7 @@ var (
 		"PersistenceStorageLimit": 7,
 		"CircuitBreakerOpen":      8,
 		"OpsLimit":                9,
+		"WorkerDeploymentLimits":  10,
 	}
 )
 

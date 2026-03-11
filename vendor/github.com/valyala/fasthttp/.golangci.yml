@@ -1,43 +1,39 @@
-# This file contains configuration options for golangci-lint.
-# https://github.com/golangci/golangci-lint/blob/master/.golangci.reference.yml
-
-run:
-  # Timeout for analysis.
-  timeout: 5m
-
+version: "2"
 linters:
-  enable-all: true
+  default: all
   disable:
+    - copyloopvar
     - cyclop
     - depguard
     - dupl
+    - err113
     - errname
     - errorlint
     - exhaustive
     - exhaustruct
+    - forbidigo
     - forcetypeassert
+    - funcorder
     - funlen
     - gochecknoglobals
     - gocognit
     - goconst
     - gocyclo
-    - godot
-    - goerr113
-    - gomnd
+    - godox
     - gosec
+    - gosmopolitan
     - inamedparam
+    - intrange
     - ireturn
-    - lll
     - maintidx
+    - mnd
     - nakedret
     - nestif
     - nlreturn
     - noctx
+    - noinlineerr
     - nonamedreturns
     - paralleltest
-    - perfsprint
-    - revive
-    - stylecheck
     - testableexamples
     - testpackage
     - thelper
@@ -45,26 +41,64 @@ linters:
     - unparam
     - usestdlibvars
     - varnamelen
-    - wastedassign
-    - whitespace
     - wrapcheck
     - wsl
-
-    # Deprecated linters
-    - deadcode
-    - exhaustivestruct
-    - golint
-    - ifshort
-    - interfacer
-    - maligned
-    - nosnakecase
-    - scopelint
-    - structcheck
-    - varcheck
-
-linters-settings:
-  # Show all issues from a linter.
+    - wsl_v5
+  settings:
+    gocritic:
+      disabled-checks:
+        - deferInLoop
+        - importShadow
+        - sloppyReassign
+        - unnamedResult
+        - whyNoLint
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+        - style
+    govet:
+      disable:
+        - fieldalignment
+        - shadow
+      enable-all: true
+    lll:
+      line-length: 130
+    revive:
+      rules:
+        - name: indent-error-flow
+        - name: use-any
+    staticcheck:
+      checks:
+        - -ST1000
+        - all
+  exclusions:
+    generated: lax
+    presets:
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - lll
+        path: _test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+issues:
   max-issues-per-linter: 0
-
-  # Show all issues with the same text.
   max-same-issues: 0
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

@@ -49,7 +49,7 @@ func SafeDiff(x, y interface{}, opts ...cmp.Option) (diff string, err error) {
 	opts = append(opts, defaultOpts...)
 	diff = cmp.Diff(x, y, opts...)
 
-	return
+	return diff, err
 }
 
 // SafeEqual wraps cmp.Equal but recovers from panics and uses custom Comparers for:
@@ -67,7 +67,7 @@ func SafeEqual(x, y interface{}, opts ...cmp.Option) (equal bool, err error) {
 	opts = append(opts, defaultOpts...)
 	equal = cmp.Equal(x, y, opts...)
 
-	return
+	return equal, err
 }
 
 // CompareSetFields returns a list of field names that differ between

@@ -15,6 +15,7 @@ func newSession(outbuf *tdsBuffer, logger ContextLogger, p msdsn.Config) *tdsSes
 		logger:     logger,
 		logFlags:   uint64(p.LogFlags),
 		aeSettings: &alwaysEncryptedSettings{keyProviders: aecmk.GetGlobalCekProviders()},
+		encoding:   p.Encoding,
 	}
 	_ = sess.activityid.Scan(p.ActivityID)
 	// generating a guid has a small chance of failure. Make a best effort
@@ -33,7 +34,7 @@ func (s *tdsSession) preparePreloginFields(ctx context.Context, p msdsn.Config, 
 	var encrypt byte
 	switch p.Encryption {
 	default:
-		panic(fmt.Errorf("Unsupported Encryption Config %v", p.Encryption))
+		panic(fmt.Errorf("unsupported encryption config %v", p.Encryption))
 	case msdsn.EncryptionDisabled:
 		encrypt = encryptNotSup
 	case msdsn.EncryptionRequired:

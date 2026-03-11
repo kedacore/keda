@@ -19,7 +19,7 @@ func (m MetricsMeasurement) MarshalJSON() ([]byte, error) {
 }
 
 func (m *MetricsMeasurement) UnmarshalJSON(data []byte) error {
-	if err := utils.UnmarshalJSON(data, &m, "", false, []string{"time", "value"}); err != nil {
+	if err := utils.UnmarshalJSON(data, &m, "", false, nil); err != nil {
 		return err
 	}
 	return nil
