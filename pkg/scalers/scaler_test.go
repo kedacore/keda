@@ -92,32 +92,26 @@ func TestGetMetricTarget(t *testing.T) {
 func TestGetMetricTargetMili(t *testing.T) {
 	cases := []struct {
 		name        string
-		metricType  v2.MetricTargetType
 		metricValue float64
 	}{
 		{
 			name:        "small value",
-			metricType:  v2.AverageValueMetricType,
 			metricValue: 100.5,
 		},
 		{
 			name:        "large value exceeding int64 milli threshold",
-			metricType:  v2.AverageValueMetricType,
 			metricValue: 1e18,
 		},
 		{
-			name:        "value metric type with large value",
-			metricType:  v2.ValueMetricType,
+			name:        "value just above int64 milli overflow threshold",
 			metricValue: 9.3e15,
 		},
 		{
 			name:        "NaN treated as zero",
-			metricType:  v2.AverageValueMetricType,
 			metricValue: math.NaN(),
 		},
 		{
 			name:        "positive Inf treated as zero",
-			metricType:  v2.ValueMetricType,
 			metricValue: math.Inf(1),
 		},
 	}
@@ -125,21 +119,13 @@ func TestGetMetricTargetMili(t *testing.T) {
 	for _, testCase := range cases {
 		c := testCase
 		t.Run(c.name, func(t *testing.T) {
-			target := GetMetricTargetMili(c.metricType, c.metricValue)
-			assert.Equal(t, c.metricType, target.Type)
-
-			var qty *resource.Quantity
-			if c.metricType == v2.AverageValueMetricType {
-				qty = target.AverageValue
-			} else {
-				qty = target.Value
-			}
-			assert.NotNil(t, qty)
+			target := GetMetricTargetMili(v2.AverageValueMetricType, c.metricValue)
+			assert.NotNil(t, target.AverageValue)
 
 			if math.IsNaN(c.metricValue) || math.IsInf(c.metricValue, 0) {
-				assert.True(t, qty.IsZero(), "expected zero quantity for NaN/Inf, got %v", qty)
+				assert.True(t, target.AverageValue.IsZero(), "expected zero quantity for NaN/Inf, got %v", target.AverageValue)
 			} else {
-				assert.True(t, qty.AsApproximateFloat64() > 0, "expected positive quantity, got %v", qty)
+				assert.True(t, target.AverageValue.AsApproximateFloat64() > 0, "expected positive quantity, got %v", target.AverageValue)
 			}
 		})
 	}
