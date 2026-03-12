@@ -8,7 +8,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"testing"
-	"text/template"
+	"html/template"
 	"time"
 
 	"github.com/joho/godotenv"
