@@ -15,9 +15,9 @@ import (
 type AddOnCRD struct {
 	Status *struct {
 		AddOnMetadata *struct {
-			ServerAddress string `json:"serverAddress"`
-			Metadata      string `json:"metadata"`
-			UsePushScaler bool   `json:"usePushScaler"`
+			ServerAddress string            `json:"serverAddress"`
+			Metadata      map[string]string `json:"metadata"`
+			UsePushScaler bool              `json:"usePushScaler"`
 		} `json:"addOnMetadata"`
 	} `json:"status"`
 }
@@ -27,7 +27,7 @@ type kedaAddOnScalerMetadata struct {
 
 	Name       string `keda:"name=name, order=triggerMetadata"`
 	Kind       string `keda:"name=kind, order=triggerMetadata"`
-	ApiVersion string `keda:"name=apiVersion, order=triggerMetadata"`
+	APIVersion string `keda:"name=apiVersion, order=triggerMetadata"`
 }
 
 // NewKedaAddOnScaler creates a new Keda Add-On Scaler
@@ -43,7 +43,7 @@ func NewKedaAddOnScaler(ctx context.Context, kubeClient client.Client, config *s
 		return nil, fmt.Errorf("error parsing add-on metadata: %w", err)
 	}
 
-	gvk, err := v1alpha1.ParseGVKR(kubeClient.RESTMapper(), meta.ApiVersion, meta.Kind)
+	gvk, err := v1alpha1.ParseGVKR(kubeClient.RESTMapper(), meta.APIVersion, meta.Kind)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing add-on gvkr: %w", err)
 	}
@@ -72,7 +72,7 @@ func NewKedaAddOnScaler(ctx context.Context, kubeClient client.Client, config *s
 				scaledObjectRef: pb.ScaledObjectRef{
 					Name:           config.ScalableObjectName,
 					Namespace:      config.ScalableObjectNamespace,
-					ScalerMetadata: make(map[string]string),
+					ScalerMetadata: addOnCRD.Status.AddOnMetadata.Metadata,
 				},
 				logger: InitializeLogger(config, "add_on_external_push_scaler"),
 			},
@@ -85,7 +85,7 @@ func NewKedaAddOnScaler(ctx context.Context, kubeClient client.Client, config *s
 		scaledObjectRef: pb.ScaledObjectRef{
 			Name:           config.ScalableObjectName,
 			Namespace:      config.ScalableObjectNamespace,
-			ScalerMetadata: make(map[string]string),
+			ScalerMetadata: addOnCRD.Status.AddOnMetadata.Metadata,
 		},
 		logger: InitializeLogger(config, "add_on_external_scaler"),
 	}, nil
