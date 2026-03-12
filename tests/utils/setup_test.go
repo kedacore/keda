@@ -160,7 +160,7 @@ func TestSetupGcpIdentityComponents(t *testing.T) {
 	KubeClient = GetKubernetesClient(t)
 	CreateNamespace(t, KubeClient, GcpIdentityNamespace)
 
-	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install gcp-identity-webhook gcp-workload-identity-federation-webhook/gcp-workload-identity-federation-webhook --namespace %s --set fullnameOverride=gcp-identity-webhook --set controllerManager.manager.args[0]=--token-default-mode=0444",
+	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install gcp-identity-webhook gcp-workload-identity-federation-webhook/gcp-workload-identity-federation-webhook --namespace %s --set fullnameOverride=gcp-identity-webhook --set controllerManager.manager.args[0]=--token-default-mode=0444 --set controllerManager.kubeRbacProxy.image.repository=quay.io/brancz/kube-rbac-proxy --set controllerManager.kubeRbacProxy.image.tag=v0.18.2",
 		GcpIdentityNamespace))
 	require.NoErrorf(t, err, "cannot install workload identity webhook - %s", err)
 }

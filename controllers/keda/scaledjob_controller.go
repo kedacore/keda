@@ -267,9 +267,9 @@ func (r *ScaledJobReconciler) checkIfPaused(ctx context.Context, logger logr.Log
 // Delete Jobs owned by the previous version of the scaledJob based on the rolloutStrategy given for this scaledJob, if any
 func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
 	var rolloutStrategy string
-	if len(scaledJob.Spec.RolloutStrategy) > 0 {
-		logger.Info("RolloutStrategy is deprecated, please us Rollout.Strategy in order to define the desired strategy for job rollouts")
-		rolloutStrategy = scaledJob.Spec.RolloutStrategy
+	if len(scaledJob.Spec.RolloutStrategy) > 0 { //nolint:staticcheck // SA1019: intentional use of deprecated field for backward compatibility
+		logger.Info("RolloutStrategy is deprecated, please use Rollout.Strategy in order to define the desired strategy for job rollouts")
+		rolloutStrategy = scaledJob.Spec.RolloutStrategy //nolint:staticcheck // SA1019
 	} else {
 		rolloutStrategy = scaledJob.Spec.Rollout.Strategy
 	}
@@ -322,7 +322,7 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context
 			return fmt.Sprintf("RolloutStrategy: immediate, deleted jobs owned by the previous version of the scaleJob: %d jobs deleted", len(jobIndexes)), nil
 		}
 	}
-	return fmt.Sprintf("RolloutStrategy: %s", scaledJob.Spec.RolloutStrategy), nil
+	return fmt.Sprintf("RolloutStrategy: %s", rolloutStrategy), nil
 }
 
 // requestScaleLoop request ScaleLoop handler for the respective ScaledJob

@@ -136,18 +136,17 @@ func (s *forgejoRunnerScaler) getJobsList(ctx context.Context) ([]ForgejoJob, er
 		}
 	}()
 
+	if r.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, r.Body)
+		return jobList, fmt.Errorf("the Forgejo REST API returned error. url: %s status: %d",
+			s.metadata.Address,
+			r.StatusCode,
+		)
+	}
+
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		return jobList, err
-	}
-
-	if r.StatusCode != 200 {
-		return jobList,
-			fmt.Errorf("the Forgejo REST API returned error. url: %s status: %d response: %s",
-				s.metadata.Address,
-				r.StatusCode,
-				string(b),
-			)
 	}
 
 	err = json.Unmarshal(b, &jobList)
