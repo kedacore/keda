@@ -25,7 +25,7 @@ import (
 type opensearchScaler struct {
 	metricType  v2.MetricTargetType
 	metadata    opensearchMetadata
-	osApiClient *opensearchapi.Client
+	osAPIClient *opensearchapi.Client
 	logger      logr.Logger
 }
 
@@ -81,7 +81,7 @@ func NewOpensearchScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("failed to parse opensearch metadata: %w", err)
 	}
 
-	opensearchApiClient, err := newOpensearchApiClient(meta, logger)
+	opensearchAPIClient, err := newOpensearchAPIClient(meta, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create opensearch client: %w", err)
 	}
@@ -89,32 +89,32 @@ func NewOpensearchScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	return &opensearchScaler{
 		metricType:  metricType,
 		metadata:    meta,
-		osApiClient: opensearchApiClient,
+		osAPIClient: opensearchAPIClient,
 		logger:      logger,
 	}, nil
 }
 
-func newOpensearchApiClient(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, error) {
+func newOpensearchAPIClient(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, error) {
 	if meta.EnableTLS {
-		return newOpensearchApiClientWithTLS(meta, logger)
+		return newOpensearchAPIClientWithTLS(meta, logger)
 	}
-	return newOpensearchApiClientWithBasicAuth(meta, logger)
+	return newOpensearchAPIClientWithBasicAuth(meta, logger)
 }
 
-func newOpensearchApiClientWithTLS(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, error) {
+func newOpensearchAPIClientWithTLS(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, error) {
 	tlsConfig, err := util.NewTLSConfig(meta.ClientCert, meta.ClientKey, meta.CACert, meta.UnsafeSsl)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create TLS config: %w", err)
 	}
 
-	return newOpensearchApiClientFromConfig(opensearch.Config{
+	return newOpensearchAPIClientFromConfig(opensearch.Config{
 		Addresses: meta.Addresses,
 		Transport: util.CreateHTTPTransportWithTLSConfig(tlsConfig),
 	}, logger)
 }
 
-func newOpensearchApiClientWithBasicAuth(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, error) {
-	return newOpensearchApiClientFromConfig(opensearch.Config{
+func newOpensearchAPIClientWithBasicAuth(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, error) {
+	return newOpensearchAPIClientFromConfig(opensearch.Config{
 		Addresses: meta.Addresses,
 		Username:  meta.Username,
 		Password:  meta.Password,
@@ -122,7 +122,7 @@ func newOpensearchApiClientWithBasicAuth(meta opensearchMetadata, logger logr.Lo
 	}, logger)
 }
 
-func newOpensearchApiClientFromConfig(cfg opensearch.Config, logger logr.Logger) (*opensearchapi.Client, error) {
+func newOpensearchAPIClientFromConfig(cfg opensearch.Config, logger logr.Logger) (*opensearchapi.Client, error) {
 	client, err := opensearchapi.NewClient(opensearchapi.Config{Client: cfg})
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("failed to create opensearch client: %s", err))
@@ -159,7 +159,7 @@ func (s *opensearchScaler) Close(_ context.Context) error {
 	return nil
 }
 
-func (s *opensearchScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
+func (s *opensearchScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: s.metadata.MetricName,
@@ -242,7 +242,7 @@ func (s *opensearchScaler) search(ctx context.Context) ([]byte, error) {
 		return nil, status.Error(codes.InvalidArgument, "invalid searchQuery JSON")
 	}
 
-	searchResponse, err := s.osApiClient.Search(ctx, &opensearchapi.SearchReq{
+	searchResponse, err := s.osAPIClient.Search(ctx, &opensearchapi.SearchReq{
 		Indices: s.metadata.Index,
 		Body:    bytes.NewReader([]byte(query)),
 	})
@@ -264,7 +264,7 @@ func (s *opensearchScaler) searchTemplate(ctx context.Context) ([]byte, error) {
 		return nil, status.Errorf(codes.Internal, "failed to encode search template request: %v", err)
 	}
 
-	searchTemplResponse, err := s.osApiClient.SearchTemplate(ctx, opensearchapi.SearchTemplateReq{
+	searchTemplResponse, err := s.osAPIClient.SearchTemplate(ctx, opensearchapi.SearchTemplateReq{
 		Indices: s.metadata.Index,
 		Body:    bytes.NewReader(body),
 	})
@@ -288,7 +288,6 @@ func (s *opensearchScaler) buildQueryFromMetadata() map[string]interface{} {
 			key := strings.TrimSpace(kv[0])
 			value := strings.TrimSpace(kv[1])
 			parameters[key] = value
-
 		}
 	}
 	query := map[string]interface{}{
