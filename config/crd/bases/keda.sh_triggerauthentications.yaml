@@ -192,6 +192,7 @@ spec:
                       - name
                       - parameter
                       type: object
+                    minItems: 1
                     type: array
                 required:
                 - secrets
@@ -296,6 +297,7 @@ spec:
                       - name
                       - parameter
                       type: object
+                    minItems: 1
                     type: array
                   vaultUri:
                     type: string
@@ -435,6 +437,7 @@ spec:
                       - id
                       - parameter
                       type: object
+                    minItems: 1
                     type: array
                 required:
                 - secrets
@@ -448,6 +451,9 @@ spec:
                   authentication:
                     description: VaultAuthentication contains the list of Hashicorp
                       Vault authentication methods
+                    enum:
+                    - token
+                    - kubernetes
                     type: string
                   credential:
                     description: Credential defines the Hashicorp Vault credentials
@@ -496,12 +502,18 @@ spec:
                           type: object
                         type:
                           description: VaultSecretType defines the type of vault secret
+                          enum:
+                          - ""
+                          - secretV2
+                          - secret
+                          - pki
                           type: string
                       required:
                       - key
                       - parameter
                       - path
                       type: object
+                    minItems: 1
                     type: array
                 required:
                 - address
