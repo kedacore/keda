@@ -120,7 +120,6 @@ func TestOpensearchMetadataValidate(t *testing.T) {
 			} else {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.wantErr)
-
 			}
 		})
 	}
@@ -331,7 +330,7 @@ func TestParseOpensearchMetadata(t *testing.T) {
 	}
 }
 
-func TestNewOpensearchApiClientWithBasicAuth(t *testing.T) {
+func TestNewOpensearchAPIClientWithBasicAuth(t *testing.T) {
 	t.Run("success: connects to a plain HTTP server", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
@@ -343,7 +342,7 @@ func TestNewOpensearchApiClientWithBasicAuth(t *testing.T) {
 			Username:  "admin",
 			Password:  "secret",
 		}
-		client, err := newOpensearchApiClientWithBasicAuth(meta, logr.Discard())
+		client, err := newOpensearchAPIClientWithBasicAuth(meta, logr.Discard())
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
 	})
@@ -354,21 +353,21 @@ func TestNewOpensearchApiClientWithBasicAuth(t *testing.T) {
 			Username:  "admin",
 			Password:  "secret",
 		}
-		client, err := newOpensearchApiClientWithBasicAuth(meta, logr.Discard())
+		client, err := newOpensearchAPIClientWithBasicAuth(meta, logr.Discard())
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "connection refused")
 		assert.Nil(t, client)
 	})
 }
 
-func TestNewOpensearchApiClientWithTLS(t *testing.T) {
+func TestNewOpensearchAPIClientWithTLS(t *testing.T) {
 	t.Run("error: invalid clientCert and clientKey fails TLS config creation", func(t *testing.T) {
 		meta := opensearchMetadata{
 			Addresses:  []string{"https://localhost:9200"},
 			ClientCert: "not-a-valid-cert",
 			ClientKey:  "not-a-valid-key",
 		}
-		client, err := newOpensearchApiClientWithTLS(meta, logr.Discard())
+		client, err := newOpensearchAPIClientWithTLS(meta, logr.Discard())
 		assert.ErrorContains(t, err, "failed to create TLS config")
 		assert.Nil(t, client)
 	})
@@ -389,7 +388,7 @@ func TestNewOpensearchApiClientWithTLS(t *testing.T) {
 			CACert:    caCertPEM,
 			UnsafeSsl: false,
 		}
-		client, err := newOpensearchApiClientWithTLS(meta, logr.Discard())
+		client, err := newOpensearchAPIClientWithTLS(meta, logr.Discard())
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
 	})
@@ -404,7 +403,7 @@ func TestNewOpensearchApiClientWithTLS(t *testing.T) {
 			Addresses: []string{srv.URL},
 			UnsafeSsl: true,
 		}
-		client, err := newOpensearchApiClientWithTLS(meta, logr.Discard())
+		client, err := newOpensearchAPIClientWithTLS(meta, logr.Discard())
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
 	})
@@ -421,7 +420,7 @@ func TestNewOpensearchApiClientWithTLS(t *testing.T) {
 			Addresses: []string{"https://" + srv.Listener.Addr().String()},
 			UnsafeSsl: true,
 		}
-		client, err := newOpensearchApiClientWithTLS(meta, logr.Discard())
+		client, err := newOpensearchAPIClientWithTLS(meta, logr.Discard())
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "tls: first record does not look like a TLS handshake")
 		assert.Nil(t, client)
