@@ -3436,7 +3436,6 @@
                 {
                     "name": "addresses",
                     "type": "string",
-                    "optional": true,
                     "metadataVariableReadable": true,
                     "triggerAuthenticationVariableReadable": true
                 },
@@ -3445,6 +3444,13 @@
                     "type": "string",
                     "default": "false",
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "enableTLS",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "username",
@@ -3459,6 +3465,27 @@
                     "optional": true,
                     "metadataVariableReadable": true,
                     "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "caCert",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "clientCert",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "clientKey",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
                     "triggerAuthenticationVariableReadable": true
                 },
                 {
