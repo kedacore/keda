@@ -1215,14 +1215,23 @@ var _ = Describe("ScaledObjectController", func() {
 					},
 				},
 			}
+			// CRD-level XValidation rejects minReplicaCount > maxReplicaCount
+			// before it reaches the webhook or controller.
 			err = k8sClient.Create(context.Background(), so)
-			Ω(err).ToNot(HaveOccurred())
-
-			Eventually(func() metav1.ConditionStatus {
-				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
-				Ω(err).ToNot(HaveOccurred())
-				return so.Status.Conditions.GetReadyCondition().Status
-			}, 20*time.Second).Should(Equal(metav1.ConditionFalse))
+			Expect(err).To(HaveOccurred())
+			Expect(errors.IsInvalid(err)).To(BeTrue())
+			statusErr, ok := err.(*errors.StatusError)
+			Expect(ok).To(BeTrue())
+			Expect(statusErr.ErrStatus.Details).ToNot(BeNil())
+			Expect(statusErr.ErrStatus.Details.Causes).ToNot(BeEmpty())
+			foundSpecField := false
+			for _, cause := range statusErr.ErrStatus.Details.Causes {
+				if cause.Field == "spec" {
+					foundSpecField = true
+					break
+				}
+			}
+			Expect(foundSpecField).To(BeTrue())
 		})
 
 		It("doesn't allow IdleReplicaCount > MinReplicaCount", func() {
@@ -2065,7 +2074,6 @@ var _ = Describe("ScaledObjectController", func() {
 		err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
 		Expect(err).ToNot(HaveOccurred())
 
-		// Create the ScaledObject without specifying name.
 		so := &kedav1alpha1.ScaledObject{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      soName,
@@ -2084,17 +2092,23 @@ var _ = Describe("ScaledObjectController", func() {
 				Triggers: []kedav1alpha1.ScaleTriggers{},
 			},
 		}
+		// CRD-level MinItems=1 validation on spec.triggers rejects the
+		// request before it reaches the webhook or controller.
 		err = k8sClient.Create(context.Background(), so)
-		Expect(err).ToNot(HaveOccurred())
-
-		// wait to check so's ready condition Not Ready
-		Eventually(func() metav1.ConditionStatus {
-			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
-			if err != nil {
-				return metav1.ConditionUnknown
+		Expect(err).To(HaveOccurred())
+		Expect(errors.IsInvalid(err)).To(BeTrue())
+		statusErr, ok := err.(*errors.StatusError)
+		Expect(ok).To(BeTrue())
+		Expect(statusErr.ErrStatus.Details).ToNot(BeNil())
+		Expect(statusErr.ErrStatus.Details.Causes).ToNot(BeEmpty())
+		foundTriggersField := false
+		for _, cause := range statusErr.ErrStatus.Details.Causes {
+			if cause.Field == "spec.triggers" {
+				foundTriggersField = true
+				break
 			}
-			return so.Status.Conditions.GetReadyCondition().Status
-		}).Should(Equal(metav1.ConditionFalse))
+		}
+		Expect(foundTriggersField).To(BeTrue())
 	})
 
 })

@@ -127,7 +127,7 @@ func testTriggersWithEmptyArray(t *testing.T, data templateData) {
 
 	err := KubectlApplyWithErrors(t, data, "emptyTriggersSjTemplate", emptyTriggersSjTemplate)
 	assert.Errorf(t, err, "can deploy the scaledJob - %s", err)
-	assert.Contains(t, err.Error(), "no triggers defined in the ScaledObject/ScaledJob")
+	assert.Contains(t, err.Error(), "spec.triggers in body should have at least 1 items")
 }
 
 func testScaledJobWithExcludedLabels(t *testing.T, data templateData) {
