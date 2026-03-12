@@ -69,6 +69,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### New
 
 - **General**: Introduce Elastic Forecast Scaler ([#7494](https://github.com/kedacore/keda/issues/7494))
+- **General:** Introduce new OpenSearch Scaler ([#7456](https://github.com/kedacore/keda/issues/7456))
 
 #### Experimental
 
