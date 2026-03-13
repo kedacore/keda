@@ -250,7 +250,7 @@ func (s *opensearchScaler) search(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 
-	responseBody, err := readResponseBody(searchResponse.Inspect().Response)
+	responseBody, err := s.readResponseBody(searchResponse.Inspect().Response)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +272,7 @@ func (s *opensearchScaler) searchTemplate(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 
-	responseBody, err := readResponseBody(searchTemplResponse.Inspect().Response)
+	responseBody, err := s.readResponseBody(searchTemplResponse.Inspect().Response)
 	if err != nil {
 		return nil, err
 	}
@@ -299,11 +299,15 @@ func (s *opensearchScaler) buildQueryFromMetadata() map[string]interface{} {
 	return query
 }
 
-func readResponseBody(resp *opensearch.Response) ([]byte, error) {
+func (s *opensearchScaler) readResponseBody(resp *opensearch.Response) ([]byte, error) {
 	if resp == nil || resp.Body == nil {
 		return nil, status.Error(codes.Internal, "empty search response")
 	}
 	defer resp.Body.Close()
+
+	if err := s.checkHTTPStatus(resp.StatusCode); err != nil {
+		return nil, err
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -311,4 +315,15 @@ func readResponseBody(resp *opensearch.Response) ([]byte, error) {
 	}
 
 	return body, nil
+}
+
+// checkHTTPStatus returns a clear error for authentication and authorization failures
+func (s *opensearchScaler) checkHTTPStatus(statusCode int) error {
+	if statusCode == 401 {
+		return fmt.Errorf("opensearch authentication failed (HTTP 401): check username and password")
+	}
+	if statusCode == 403 {
+		return fmt.Errorf("opensearch authorization failed (HTTP 403): user has insufficient permissions")
+	}
+	return nil
 }

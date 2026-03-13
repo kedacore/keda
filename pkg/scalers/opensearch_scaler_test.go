@@ -426,3 +426,33 @@ func TestNewOpensearchAPIClientWithTLS(t *testing.T) {
 		assert.Nil(t, client)
 	})
 }
+
+func TestOpensearchCheckHTTPStatus(t *testing.T) {
+	scaler := &opensearchScaler{}
+
+	t.Run("returns clear error on HTTP 401", func(t *testing.T) {
+		err := scaler.checkHTTPStatus(401)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "authentication failed")
+		assert.Contains(t, err.Error(), "HTTP 401")
+		assert.Contains(t, err.Error(), "check username and password")
+	})
+
+	t.Run("returns clear error on HTTP 403", func(t *testing.T) {
+		err := scaler.checkHTTPStatus(403)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "authorization failed")
+		assert.Contains(t, err.Error(), "HTTP 403")
+		assert.Contains(t, err.Error(), "insufficient permissions")
+	})
+
+	t.Run("returns nil for HTTP 200", func(t *testing.T) {
+		err := scaler.checkHTTPStatus(200)
+		assert.NoError(t, err)
+	})
+
+	t.Run("returns nil for other status codes", func(t *testing.T) {
+		err := scaler.checkHTTPStatus(404)
+		assert.NoError(t, err)
+	})
+}
