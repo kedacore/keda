@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log/slog"
-	"strings"
+	"regexp"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -46,7 +46,7 @@ type temporalMetadata struct {
 	BuildID                     string   `keda:"name=buildId,                   order=triggerMetadata;resolvedEnv, optional"`
 	AllActive                   bool     `keda:"name=selectAllActive,           order=triggerMetadata, default=false"`
 	Unversioned                 bool     `keda:"name=selectUnversioned,         order=triggerMetadata, default=false"`
-	IncludeRunningWorkflowCount bool     `keda:"name=includeRunningWorkflowCount, order=triggerMetadata, default=true"`
+	IncludeRunningWorkflowCount bool     `keda:"name=includeRunningWorkflowCount, order=triggerMetadata, default=false"`
 	WorkflowTaskQueueForCount   string   `keda:"name=workflowTaskQueueForCount,   order=triggerMetadata;resolvedEnv, optional"`
 	APIKey                      string   `keda:"name=apiKey,                    order=authParams;resolvedEnv, optional"`
 	MinConnectTimeout           int      `keda:"name=minConnectTimeout,         order=triggerMetadata, default=5"`
@@ -131,14 +131,24 @@ func (s *temporalScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 }
 
 func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	queueSize, err := s.getQueueSize(ctx)
+	backlog, err := s.getQueueSize(ctx)
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to get Temporal queue size: %w", err)
 	}
 
-	metric := GenerateMetricInMili(metricName, float64(queueSize))
+	metric := GenerateMetricInMili(metricName, float64(backlog))
 
-	return []external_metrics.ExternalMetricValue{metric}, queueSize > s.metadata.ActivationTargetQueueSize, nil
+	isActive := backlog > s.metadata.ActivationTargetQueueSize
+	if !isActive && s.metadata.IncludeRunningWorkflowCount {
+		runningCount, err := s.getRunningWorkflowCount(ctx)
+		if err != nil {
+			s.logger.V(1).Info("failed to get running workflow count, skipping for activity check", "error", err)
+		} else {
+			isActive = runningCount > 0
+		}
+	}
+
+	return []external_metrics.ExternalMetricValue{metric}, isActive, nil
 }
 
 func (s *temporalScaler) getQueueSize(ctx context.Context) (int64, error) {
@@ -163,20 +173,13 @@ func (s *temporalScaler) getQueueSize(ctx context.Context) (int64, error) {
 		return 0, fmt.Errorf("failed to get Temporal queue size: %w", err)
 	}
 
-	backlog := getCombinedBacklogCount(resp)
-
-	if !s.metadata.IncludeRunningWorkflowCount {
-		return backlog, nil
-	}
-
-	runningCount, err := s.getRunningWorkflowCount(ctx)
-	if err != nil {
-		s.logger.V(1).Info("failed to get running workflow count, using backlog only", "error", err)
-		return backlog, nil
-	}
-
-	return backlog + runningCount, nil
+	return getCombinedBacklogCount(resp), nil
 }
+
+// validTaskQueueName matches task queue names containing only safe characters.
+// Temporal task queue names support alphanumerics, hyphens, underscores, dots, forward slashes, and colons.
+// Rejecting anything outside this set prevents query injection since the SDK offers no parameterized queries.
+var validTaskQueueName = regexp.MustCompile(`^[a-zA-Z0-9\-_./:]+$`)
 
 // getRunningWorkflowCount returns the approximate number of running workflow executions
 // for the task queue (or workflowTaskQueueForCount if set). Used to avoid premature
@@ -186,9 +189,10 @@ func (s *temporalScaler) getRunningWorkflowCount(ctx context.Context) (int64, er
 	if taskQueue == "" {
 		taskQueue = s.metadata.TaskQueue
 	}
-	// Escape single quotes in task queue name for visibility query
-	escaped := strings.ReplaceAll(taskQueue, "'", "''")
-	query := fmt.Sprintf("ExecutionStatus = 'Running' AND TaskQueue = '%s'", escaped)
+	if !validTaskQueueName.MatchString(taskQueue) {
+		return 0, fmt.Errorf("task queue name %q contains characters not allowed in visibility queries", taskQueue)
+	}
+	query := fmt.Sprintf("ExecutionStatus = 'Running' AND TaskQueue = '%s'", taskQueue)
 
 	req := &workflowservice.CountWorkflowExecutionsRequest{
 		Namespace: s.metadata.Namespace,
