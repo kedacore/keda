@@ -107,6 +107,7 @@ New deprecation(s):
 
 - **General**: Use informer cache for ReplicaSet lookups in GetCurrentReplicas to reduce API server load ([#7466](https://github.com/kedacore/keda/pull/7466))
 - **GCP scaler**: Replaced credentialsFromJSON to credentialsFromJSONWithType ([#7523](https://github.com/kedacore/keda/pull/7523))
+- **Kafka Scaler**: Refactor Kafka Scaler ([#7528](https://github.com/kedacore/keda/pull/7528))
 
 ## v2.19.0
 
