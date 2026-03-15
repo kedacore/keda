@@ -117,7 +117,7 @@ func (m *kafkaMetadata) Validate() error {
 		return fmt.Errorf("%q must be positive number", lagThresholdMetricName)
 	}
 	if m.ActivationLagThreshold < 0 {
-		return fmt.Errorf("%q must be positive number", activationLagThresholdMetricName)
+		return fmt.Errorf("%q must be a non-negative number", activationLagThresholdMetricName)
 	}
 
 	if m.PartitionLimitationStr != "" && strings.TrimSpace(m.PartitionLimitationStr) != "" {
