@@ -6,7 +6,6 @@ package keda_add_on_test
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -29,15 +28,15 @@ const (
 
 var (
 	testNamespace              = fmt.Sprintf("%s-ns", testName)
-	serviceName                = fmt.Sprintf("%s-service", testName)
+	serviceName                = fmt.Sprintf("%s-service-%d", testName, GetRandomNumber())
 	deploymentName             = fmt.Sprintf("%s-deployment", testName)
 	scalerName                 = fmt.Sprintf("%s-scaler", testName)
 	scaledObjectName           = fmt.Sprintf("%s-so", testName)
 	hpaName                    = fmt.Sprintf("keda-hpa-%s", scaledObjectName)
 	clientName                 = fmt.Sprintf("%s-client", testName)
 	customResourceName         = fmt.Sprintf("%s-cr", testName)
-	metricsServerValueEndpoint = fmt.Sprintf("http://%s.%s.svc.cluster.local:8080/api/value", serviceName, testNamespace)
-	metricsServerTypeEndpoint  = fmt.Sprintf("http://%s.%s.svc.cluster.local:8080/api/type", serviceName, testNamespace)
+	metricsServerValueEndpoint = fmt.Sprintf("http://%s.%s:8080/api/value", serviceName, testNamespace)
+	metricsServerTypeEndpoint  = fmt.Sprintf("http://%s.%s:8080/api/type", serviceName, testNamespace)
 )
 
 type templateData struct {
@@ -140,6 +139,10 @@ spec:
           ports:
           - containerPort: 6000
           - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
 `
 
 	deploymentTemplate = `
@@ -293,32 +296,34 @@ func createAddOnCR(t *testing.T, dc dynamic.Interface) error {
 }
 
 func setMetricType(t *testing.T, metricType string) {
-	_, _, err := ExecCommandOnSpecificPod(t, clientName, testNamespace, fmt.Sprintf(`curl -X POST "%s/%s"`, metricsServerTypeEndpoint, metricType))
+	message, errMessage, err := ExecCommandOnSpecificPod(t, clientName, testNamespace, fmt.Sprintf(`curl -X POST "%s/%s"`, metricsServerTypeEndpoint, metricType))
+	if err != nil {
+		t.Logf("stdout: %s -- stderr %s", message, errMessage)
+	}
 	require.NoError(t, err, "failed to set metric type")
 }
 
 func setMetricValue(t *testing.T, metricValue int) {
-	_, _, err := ExecCommandOnSpecificPod(t, clientName, testNamespace, fmt.Sprintf(`curl -X POST "%s/%d"`, metricsServerValueEndpoint, metricValue))
+	message, errMessage, err := ExecCommandOnSpecificPod(t, clientName, testNamespace, fmt.Sprintf(`curl -X POST "%s/%d"`, metricsServerValueEndpoint, metricValue))
+	if err != nil {
+		t.Logf("stdout: %s -- stderr %s", message, errMessage)
+	}
 	require.NoError(t, err, "failed to set metric value")
 }
 
 func testHPAMetricType(t *testing.T, kc *kubernetes.Clientset, metricType string) error {
-	t.Log("--- testing scale out ---")
-	tries := 3
-	for i := 0; i < tries; i++ {
-		hpa, err := WaitForHpaCreation(t, kc, hpaName, testNamespace, 15, 2)
-		assert.NoError(t, err, "failed to get HPA")
-		assert.NotNil(t, hpa, "HPA should not be nil")
-		if hpa != nil {
-			if len(hpa.Spec.Metrics) != 1 || hpa.Spec.Metrics[0].External == nil {
-				time.Sleep(10 * time.Second) // HPA can need some time to be updated with the correct metric type, so we wait and retry
-				continue
-			}
-			assert.Equal(t, metricType, hpa.Spec.Metrics[0].External.Target.Type, "metric type in HPA does not match expected")
-			return nil
+	t.Log("--- testing hpa metric type ---")
+	hpa, err := WaitForHpaCreation(t, kc, hpaName, testNamespace, 15, 2)
+	assert.NoError(t, err, "failed to get HPA")
+	assert.NotNil(t, hpa, "HPA should not be nil")
+	if hpa != nil {
+		if len(hpa.Spec.Metrics) != 1 || hpa.Spec.Metrics[0].External == nil {
+			return fmt.Errorf("unexpected HPA metrics configuration: %v", hpa.Spec.Metrics)
 		}
+		assert.Equal(t, metricType, string(hpa.Spec.Metrics[0].External.Target.Type), "metric type in HPA does not match expected")
+		return nil
 	}
-	return fmt.Errorf("HPA not validated")
+	return fmt.Errorf("HPA not found")
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
