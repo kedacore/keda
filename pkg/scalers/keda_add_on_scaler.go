@@ -61,15 +61,15 @@ func NewKedaAddOnScaler(ctx context.Context, kubeClient client.Client, config *s
 	}
 	addOnResource := &AddOnResource{}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstruct.Object, addOnResource); err != nil {
-		return nil, fmt.Errorf("cannot convert Unstructured into AddOnCRD: %w", err)
+		return nil, fmt.Errorf("cannot convert Unstructured into add-on custom resource %s %s %s/%s: %w", meta.APIVersion, meta.Kind, config.ScalableObjectNamespace, meta.Name, err)
 	}
 	if addOnResource.Status == nil || addOnResource.Status.AddOnMetadata == nil {
-		return nil, fmt.Errorf("add-on CRD status or add-on metadata is nil")
+		return nil, fmt.Errorf("add-on custom resource %s %s %s/%s status or add-on metadata is nil", meta.APIVersion, meta.Kind, config.ScalableObjectNamespace, meta.Name)
 	}
 
 	serverAddress := strings.TrimSpace(addOnResource.Status.AddOnMetadata.ServerAddress)
 	if serverAddress == "" {
-		return nil, fmt.Errorf("add-on metadata serverAddress is empty")
+		return nil, fmt.Errorf("add-on custom resource %s %s %s/%s add-on metadata serverAddress is empty", meta.APIVersion, meta.Kind, config.ScalableObjectNamespace, meta.Name)
 	}
 
 	externalMeta := externalScalerMetadata{
