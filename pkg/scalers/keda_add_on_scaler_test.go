@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -129,7 +130,7 @@ var kedaAddOnScalerTestDataset = []kedaAddOnScalerTestData{
 }
 
 func TestKedaAddOnScaler(t *testing.T) {
-	for _, testData := range kedaAddOnScalerTestDataset {
+	for idx, testData := range kedaAddOnScalerTestDataset {
 		t.Run(testData.name, func(t *testing.T) {
 			scheme := runtime.NewScheme()
 			gv := schema.GroupVersion{Group: kedaAddOnCRDGroup, Version: kedaAddOnCRDVersion}
@@ -144,6 +145,7 @@ func TestKedaAddOnScaler(t *testing.T) {
 				t.Context(),
 				clientBuilder.Build(),
 				&scalersconfig.ScalerConfig{
+					TriggerIndex:            idx,
 					TriggerMetadata:         testData.metadata,
 					GlobalHTTPTimeout:       1000 * time.Millisecond,
 					ScalableObjectNamespace: testData.resource.Namespace,
@@ -157,14 +159,18 @@ func TestKedaAddOnScaler(t *testing.T) {
 			}
 
 			if testData.resource.Status.AddOnMetadata.UsePushScaler {
-				if _, ok := s.(*externalPushScaler); !ok {
-					t.Errorf("Expected an externalPushScaler, got %T", s)
+				if es, ok := s.(*externalPushScaler); ok {
+					assert.Equal(t, idx, es.metadata.triggerIndex)
+				} else {
+					assert.Fail(t, fmt.Sprintf("Expected an externalPushScaler, got %T", s))
 				}
 			}
 
 			if !testData.resource.Status.AddOnMetadata.UsePushScaler {
-				if _, ok := s.(*externalScaler); !ok {
-					t.Errorf("Expected an externalScaler, got %T", s)
+				if es, ok := s.(*externalScaler); ok {
+					assert.Equal(t, idx, es.metadata.triggerIndex)
+				} else {
+					assert.Fail(t, fmt.Sprintf("Expected an externalScaler, got %T", s))
 				}
 			}
 		})

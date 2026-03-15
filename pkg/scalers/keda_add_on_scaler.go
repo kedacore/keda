@@ -25,7 +25,7 @@ type AddOnCRD struct {
 }
 
 type kedaAddOnScalerMetadata struct {
-	triggerIndex int //nolint:unused // This is needed as marker for schema generation
+	triggerIndex int
 
 	Name       string `keda:"name=name, order=triggerMetadata"`
 	Kind       string `keda:"name=kind, order=triggerMetadata"`
@@ -39,7 +39,9 @@ func NewKedaAddOnScaler(ctx context.Context, kubeClient client.Client, config *s
 		return nil, fmt.Errorf("error getting external scaler metric type: %w", err)
 	}
 
-	meta := &kedaAddOnScalerMetadata{}
+	meta := &kedaAddOnScalerMetadata{
+		triggerIndex: config.TriggerIndex,
+	}
 	err = config.TypedConfig(meta)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing add-on metadata: %w", err)
@@ -70,6 +72,7 @@ func NewKedaAddOnScaler(ctx context.Context, kubeClient client.Client, config *s
 
 	externalScalerMetadata := externalScalerMetadata{
 		ScalerAddress: serverAddress,
+		triggerIndex:  meta.triggerIndex,
 	}
 	if addOnCRD.Status.AddOnMetadata.UsePushScaler {
 		return &externalPushScaler{
