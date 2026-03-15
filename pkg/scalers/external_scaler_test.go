@@ -247,6 +247,10 @@ func startMetricSpecServer(t *testing.T, response *pb.GetMetricSpecResponse) (st
 	}
 	srv := grpc.NewServer()
 	pb.RegisterExternalScalerServer(srv, &metricSpecTestServer{response: response})
+	t.Cleanup(func() {
+		srv.GracefulStop()
+		_ = lis.Close()
+	})
 	go func() { _ = srv.Serve(lis) }()
 	return lis.Addr().String(), srv
 }

@@ -56,7 +56,7 @@ func NewKedaAddOnScaler(ctx context.Context, kubeClient client.Client, config *s
 	unstruct.SetGroupVersionKind(gv.WithKind(meta.Kind))
 
 	if err := kubeClient.Get(ctx, client.ObjectKey{Namespace: config.ScalableObjectNamespace, Name: meta.Name}, unstruct); err != nil {
-		return nil, fmt.Errorf("target resource doesn't exist: %w", err)
+		return nil, fmt.Errorf("target resource %s %s/%s not found: %w", unstruct.GroupVersionKind().String(), config.ScalableObjectNamespace, meta.Name, err)
 	}
 	addOnResource := &AddOnResource{}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstruct.Object, addOnResource); err != nil {

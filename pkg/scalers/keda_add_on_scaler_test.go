@@ -35,10 +35,8 @@ func (t *TestCR) DeepCopyObject() runtime.Object {
 	if t == nil {
 		return nil
 	}
-	// Start with a shallow copy of the top-level struct.
-	copy := *t
-	// Deep copy the ObjectMeta to avoid shared maps/slices (labels, annotations, etc.).
-	copy.ObjectMeta = *t.ObjectMeta.DeepCopy()
+	// Start with a shallow c of the top-level struct.
+	c := *t
 	// Deep copy the Status field and its nested structures.
 	if t.Status != nil {
 		statusCopy := *t.Status
@@ -53,9 +51,9 @@ func (t *TestCR) DeepCopyObject() runtime.Object {
 			}
 			statusCopy.AddOnMetadata = &addOnCopy
 		}
-		copy.Status = &statusCopy
+		c.Status = &statusCopy
 	}
-	return &copy
+	return &c
 }
 
 var kedaAddOnCRDGroup = "scalers"

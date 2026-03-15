@@ -8,10 +8,13 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apixclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -29,26 +32,28 @@ const (
 )
 
 var (
-	testNamespace              = fmt.Sprintf("%s-ns", testName)
-	serviceName                = fmt.Sprintf("%s-service-%d", testName, GetRandomNumber())
-	deploymentName             = fmt.Sprintf("%s-deployment", testName)
-	scalerName                 = fmt.Sprintf("%s-scaler", testName)
-	scaledObjectName           = fmt.Sprintf("%s-so", testName)
-	clientName                 = fmt.Sprintf("%s-client", testName)
-	customResourceName         = fmt.Sprintf("%s-cr", testName)
-	metricsServerValueEndpoint = fmt.Sprintf("http://%s.%s:8080/api/value", serviceName, testNamespace)
-	metricsServerTypeEndpoint  = fmt.Sprintf("http://%s.%s:8080/api/type", serviceName, testNamespace)
+	testNamespace                = fmt.Sprintf("%s-ns", testName)
+	serviceName                  = fmt.Sprintf("%s-service-%d", testName, GetRandomNumber())
+	deploymentName               = fmt.Sprintf("%s-deployment", testName)
+	scalerName                   = fmt.Sprintf("%s-scaler", testName)
+	scaledObjectName             = fmt.Sprintf("%s-so", testName)
+	clientName                   = fmt.Sprintf("%s-client", testName)
+	customResourceDefinitionName = "addons.e2e.com"
+	customResourceName           = fmt.Sprintf("%s-cr", testName)
+	metricsServerValueEndpoint   = fmt.Sprintf("http://%s.%s:8080/api/value", serviceName, testNamespace)
+	metricsServerTypeEndpoint    = fmt.Sprintf("http://%s.%s:8080/api/type", serviceName, testNamespace)
 )
 
 type templateData struct {
-	TestNamespace      string
-	ServiceName        string
-	DeploymentName     string
-	ScalerName         string
-	ScaledObjectName   string
-	CustomResourceName string
-	ClientName         string
-	HPAName            string
+	TestNamespace                string
+	ServiceName                  string
+	DeploymentName               string
+	ScalerName                   string
+	ScaledObjectName             string
+	CustomResourceDefinitionName string
+	CustomResourceName           string
+	ClientName                   string
+	HPAName                      string
 }
 
 const (
@@ -56,7 +61,7 @@ const (
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: addons.e2e.com
+  name: {{.CustomResourceDefinitionName}}
 spec:
   group: e2e.com
   names:
@@ -222,6 +227,8 @@ func TestScaler(t *testing.T) {
 		DeleteKubernetesResources(t, testNamespace, data, templates)
 	})
 
+	waitForAddOnCRDAccepted(t)
+
 	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 15, 1),
 		"replica count should be 0 after 15 seconds")
 
@@ -252,15 +259,47 @@ func TestScaler(t *testing.T) {
 	}
 }
 
+func waitForAddOnCRDAccepted(t *testing.T) {
+	t.Helper()
+	apiExtClient, err := apixclientset.NewForConfig(KubeConfig)
+	require.NoError(t, err, "failed to create apiextensions client")
+
+	require.Eventually(t, func() bool {
+		crd, getErr := apiExtClient.ApiextensionsV1().CustomResourceDefinitions().Get(t.Context(), customResourceDefinitionName, v1.GetOptions{})
+		if getErr != nil {
+			t.Logf("waiting for CRD get: %v", getErr)
+			return false
+		}
+
+		namesAccepted := false
+		established := false
+		for _, condition := range crd.Status.Conditions {
+			if condition.Type == apixv1.NamesAccepted && condition.Status == apixv1.ConditionTrue {
+				namesAccepted = true
+			}
+			if condition.Type == apixv1.Established && condition.Status == apixv1.ConditionTrue {
+				established = true
+			}
+		}
+
+		if !namesAccepted || !established {
+			t.Logf("waiting for CRD conditions: NamesAccepted=%t Established=%t", namesAccepted, established)
+		}
+
+		return namesAccepted && established
+	}, time.Minute, 2*time.Second, "CRD %s was not accepted/established in time", customResourceDefinitionName)
+}
+
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:      testNamespace,
-			ServiceName:        serviceName,
-			DeploymentName:     deploymentName,
-			ScalerName:         scalerName,
-			ScaledObjectName:   scaledObjectName,
-			CustomResourceName: customResourceName,
-			ClientName:         clientName,
+			TestNamespace:                testNamespace,
+			ServiceName:                  serviceName,
+			DeploymentName:               deploymentName,
+			ScalerName:                   scalerName,
+			ScaledObjectName:             scaledObjectName,
+			CustomResourceDefinitionName: customResourceDefinitionName,
+			CustomResourceName:           customResourceName,
+			ClientName:                   clientName,
 		}, []Template{
 			{Name: "addOnCRDTemplate", Config: addOnCRDTemplate},
 			{Name: "scalerTemplate", Config: scalerTemplate},
