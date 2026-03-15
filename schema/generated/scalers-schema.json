@@ -3506,7 +3506,7 @@
                 {
                     "name": "inverseScaling",
                     "type": "string",
-                    "default": "true",
+                    "default": "false",
                     "metadataVariableReadable": true
                 }
             ]
