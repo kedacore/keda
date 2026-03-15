@@ -3505,7 +3505,7 @@ scalers:
           metadataVariableReadable: true
         - name: includeRunningWorkflowCount
           type: string
-          default: "true"
+          default: "false"
           metadataVariableReadable: true
         - name: workflowTaskQueueForCount
           type: string
