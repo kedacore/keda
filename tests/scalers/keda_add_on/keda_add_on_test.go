@@ -223,13 +223,13 @@ func TestScaler(t *testing.T) {
 	})
 
 	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 15, 1),
-		"replica count should be 0 after 1 minute")
+		"replica count should be 0 after 15 seconds")
 
 	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, scalerName, testNamespace, 1, 15, 1),
-		"replica count should be 1 after 1 minute")
+		"replica count should be 1 after 15 seconds")
 
 	require.True(t, WaitForPodReady(t, kc, clientName, testNamespace, 15, 1),
-		"client pod should be ready after 1 minute")
+		"client pod should be ready after 15 seconds")
 
 	err := createAddOnCR(t.Context(), dc)
 	require.NoError(t, err, "failed to create AddOn CR")

@@ -14,7 +14,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
-type AddOnCRD struct {
+type AddOnResource struct {
 	Status *struct {
 		AddOnMetadata *struct {
 			ServerAddress string            `json:"serverAddress"`
@@ -36,7 +36,7 @@ type kedaAddOnScalerMetadata struct {
 func NewKedaAddOnScaler(ctx context.Context, kubeClient client.Client, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting external scaler metric type: %w", err)
+		return nil, fmt.Errorf("error getting add-on scaler metric type: %w", err)
 	}
 
 	meta := &kedaAddOnScalerMetadata{
@@ -57,7 +57,7 @@ func NewKedaAddOnScaler(ctx context.Context, kubeClient client.Client, config *s
 	if err := kubeClient.Get(ctx, client.ObjectKey{Namespace: config.ScalableObjectNamespace, Name: meta.Name}, unstruct); err != nil {
 		return nil, fmt.Errorf("target resource doesn't exist: %w", err)
 	}
-	addOnCRD := &AddOnCRD{}
+	addOnCRD := &AddOnResource{}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstruct.Object, addOnCRD); err != nil {
 		return nil, fmt.Errorf("cannot convert Unstructured into AddOnCRD: %w", err)
 	}

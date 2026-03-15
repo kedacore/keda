@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -67,7 +68,6 @@ type kedaAddOnScalerTestData struct {
 	name     string
 	resource *TestCR
 	metadata map[string]string
-	isError  bool
 }
 
 var kedaAddOnScalerTestDataset = []kedaAddOnScalerTestData{
@@ -92,7 +92,7 @@ var kedaAddOnScalerTestDataset = []kedaAddOnScalerTestData{
 					Metadata      map[string]string `json:"metadata"`
 					UsePushScaler bool              `json:"usePushScaler"`
 				}{
-					ServerAddress: "http://test-scaler.default.svc.cluster.local",
+					ServerAddress: "http://test-scaler.default.svc.cluster.local:6000",
 					Metadata:      map[string]string{"key": "value"},
 					UsePushScaler: true,
 				},
@@ -120,7 +120,7 @@ var kedaAddOnScalerTestDataset = []kedaAddOnScalerTestData{
 					Metadata      map[string]string `json:"metadata"`
 					UsePushScaler bool              `json:"usePushScaler"`
 				}{
-					ServerAddress: "http://test-scaler.default.svc.cluster.local",
+					ServerAddress: "http://test-scaler.default.svc.cluster.local:6000",
 					Metadata:      map[string]string{"key": "value"},
 					UsePushScaler: false,
 				},
@@ -152,11 +152,7 @@ func TestKedaAddOnScaler(t *testing.T) {
 				},
 			)
 
-			if testData.isError {
-				assert.Error(t, err, "Expected error creating scaler: %v", err)
-			} else {
-				assert.NoError(t, err, "Unexpected error creating scaler: %v", err)
-			}
+			require.NoError(t, err, "Unexpected error creating scaler")
 
 			if testData.resource.Status.AddOnMetadata.UsePushScaler {
 				if es, ok := s.(*externalPushScaler); ok {
