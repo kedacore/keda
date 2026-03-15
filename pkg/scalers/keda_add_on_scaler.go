@@ -58,15 +58,15 @@ func NewKedaAddOnScaler(ctx context.Context, kubeClient client.Client, config *s
 	if err := kubeClient.Get(ctx, client.ObjectKey{Namespace: config.ScalableObjectNamespace, Name: meta.Name}, unstruct); err != nil {
 		return nil, fmt.Errorf("target resource doesn't exist: %w", err)
 	}
-	addOnCRD := &AddOnResource{}
-	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstruct.Object, addOnCRD); err != nil {
+	addOnResource := &AddOnResource{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstruct.Object, addOnResource); err != nil {
 		return nil, fmt.Errorf("cannot convert Unstructured into AddOnCRD: %w", err)
 	}
-	if addOnCRD.Status == nil || addOnCRD.Status.AddOnMetadata == nil {
+	if addOnResource.Status == nil || addOnResource.Status.AddOnMetadata == nil {
 		return nil, fmt.Errorf("add-on CRD status or add-on metadata is nil")
 	}
 
-	serverAddress := strings.TrimSpace(addOnCRD.Status.AddOnMetadata.ServerAddress)
+	serverAddress := strings.TrimSpace(addOnResource.Status.AddOnMetadata.ServerAddress)
 	if serverAddress == "" {
 		return nil, fmt.Errorf("add-on metadata serverAddress is empty")
 	}
@@ -75,7 +75,7 @@ func NewKedaAddOnScaler(ctx context.Context, kubeClient client.Client, config *s
 		ScalerAddress: serverAddress,
 		triggerIndex:  meta.triggerIndex,
 	}
-	if addOnCRD.Status.AddOnMetadata.UsePushScaler {
+	if addOnResource.Status.AddOnMetadata.UsePushScaler {
 		return &externalPushScaler{
 			externalScaler: externalScaler{
 				metricType: metricType,
@@ -83,7 +83,7 @@ func NewKedaAddOnScaler(ctx context.Context, kubeClient client.Client, config *s
 				scaledObjectRef: pb.ScaledObjectRef{
 					Name:           config.ScalableObjectName,
 					Namespace:      config.ScalableObjectNamespace,
-					ScalerMetadata: addOnCRD.Status.AddOnMetadata.Metadata,
+					ScalerMetadata: addOnResource.Status.AddOnMetadata.Metadata,
 				},
 				logger: InitializeLogger(config, "add_on_external_push_scaler"),
 			},
@@ -96,7 +96,7 @@ func NewKedaAddOnScaler(ctx context.Context, kubeClient client.Client, config *s
 		scaledObjectRef: pb.ScaledObjectRef{
 			Name:           config.ScalableObjectName,
 			Namespace:      config.ScalableObjectNamespace,
-			ScalerMetadata: addOnCRD.Status.AddOnMetadata.Metadata,
+			ScalerMetadata: addOnResource.Status.AddOnMetadata.Metadata,
 		},
 		logger: InitializeLogger(config, "add_on_external_scaler"),
 	}, nil

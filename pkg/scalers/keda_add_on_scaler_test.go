@@ -37,6 +37,8 @@ func (t *TestCR) DeepCopyObject() runtime.Object {
 	}
 	// Start with a shallow copy of the top-level struct.
 	copy := *t
+	// Deep copy the ObjectMeta to avoid shared maps/slices (labels, annotations, etc.).
+	copy.ObjectMeta = *t.ObjectMeta.DeepCopy()
 	// Deep copy the Status field and its nested structures.
 	if t.Status != nil {
 		statusCopy := *t.Status
@@ -91,7 +93,7 @@ var kedaAddOnScalerTestDataset = []kedaAddOnScalerTestData{
 					Metadata      map[string]string `json:"metadata"`
 					UsePushScaler bool              `json:"usePushScaler"`
 				}{
-					ServerAddress: "http://test-scaler.default.svc.cluster.local:6000",
+					ServerAddress: "test-scaler.default.svc.cluster.local:6000",
 					Metadata:      map[string]string{"key": "value"},
 					UsePushScaler: true,
 				},
@@ -119,7 +121,7 @@ var kedaAddOnScalerTestDataset = []kedaAddOnScalerTestData{
 					Metadata      map[string]string `json:"metadata"`
 					UsePushScaler bool              `json:"usePushScaler"`
 				}{
-					ServerAddress: "http://test-scaler.default.svc.cluster.local:6000",
+					ServerAddress: "test-scaler.default.svc.cluster.local:6000",
 					Metadata:      map[string]string{"key": "value"},
 					UsePushScaler: false,
 				},
