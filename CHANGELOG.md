@@ -66,6 +66,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
+- General: Fix flaky `TestWaitForState` by correcting context cancellation in `waitForState` (#7542)
+
 ### New
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))

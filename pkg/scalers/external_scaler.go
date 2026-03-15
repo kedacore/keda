@@ -361,7 +361,7 @@ func waitForState(ctx context.Context, conn *grpc.ClientConn, states ...connecti
 			changeState := conn.WaitForStateChange(ctx, conn.GetState())
 			if !changeState {
 				// ctx is done, return
-				continue
+				return
 			}
 
 			nowState := conn.GetState()
