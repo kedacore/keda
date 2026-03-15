@@ -69,7 +69,7 @@ func NewKedaAddOnScaler(ctx context.Context, kubeClient client.Client, config *s
 	}
 
 	externalScalerMetadata := externalScalerMetadata{
-		ScalerAddress: addOnCRD.Status.AddOnMetadata.ServerAddress,
+		ScalerAddress: serverAddress,
 	}
 	if addOnCRD.Status.AddOnMetadata.UsePushScaler {
 		return &externalPushScaler{
