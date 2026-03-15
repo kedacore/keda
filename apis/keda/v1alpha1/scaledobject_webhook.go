@@ -458,9 +458,9 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string, dryRun bool
 					return nil, nil
 				}
 			}
-			conainerName := trigger.Metadata["containerName"]
+			containerName := trigger.Metadata["containerName"]
 			for _, container := range podSpec.Containers {
-				if conainerName != "" && container.Name != conainerName {
+				if containerName != "" && container.Name != containerName {
 					continue
 				}
 

@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"math"
 	"reflect"
 	"testing"
 
@@ -84,6 +85,90 @@ func TestGetMetricTarget(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			metricTarget := GetMetricTarget(c.metricType, c.metricValue)
 			assert.Equal(t, c.wantmetricTarget, metricTarget)
+		})
+	}
+}
+
+func TestGetMetricTargetMili(t *testing.T) {
+	cases := []struct {
+		name        string
+		metricValue float64
+	}{
+		{
+			name:        "small value",
+			metricValue: 100.5,
+		},
+		{
+			name:        "large value exceeding int64 milli threshold",
+			metricValue: 1e18,
+		},
+		{
+			name:        "value just above int64 milli overflow threshold",
+			metricValue: 9.3e15,
+		},
+		{
+			name:        "NaN treated as zero",
+			metricValue: math.NaN(),
+		},
+		{
+			name:        "positive Inf treated as zero",
+			metricValue: math.Inf(1),
+		},
+	}
+
+	for _, testCase := range cases {
+		c := testCase
+		t.Run(c.name, func(t *testing.T) {
+			target := GetMetricTargetMili(v2.AverageValueMetricType, c.metricValue)
+			assert.NotNil(t, target.AverageValue)
+
+			if math.IsNaN(c.metricValue) || math.IsInf(c.metricValue, 0) {
+				assert.True(t, target.AverageValue.IsZero(), "expected zero quantity for NaN/Inf, got %v", target.AverageValue)
+			} else {
+				assert.True(t, target.AverageValue.AsApproximateFloat64() > 0, "expected positive quantity, got %v", target.AverageValue)
+			}
+		})
+	}
+}
+
+func TestGenerateMetricInMili(t *testing.T) {
+	cases := []struct {
+		name  string
+		value float64
+	}{
+		{
+			name:  "small value",
+			value: 42.5,
+		},
+		{
+			name:  "large value in quintillion range",
+			value: 1e18,
+		},
+		{
+			name:  "value just above int64 milli overflow threshold",
+			value: 9.3e15,
+		},
+		{
+			name:  "NaN treated as zero",
+			value: math.NaN(),
+		},
+		{
+			name:  "positive Inf treated as zero",
+			value: math.Inf(1),
+		},
+	}
+
+	for _, testCase := range cases {
+		c := testCase
+		t.Run(c.name, func(t *testing.T) {
+			metric := GenerateMetricInMili("test-metric", c.value)
+			assert.Equal(t, "test-metric", metric.MetricName)
+
+			if math.IsNaN(c.value) || math.IsInf(c.value, 0) {
+				assert.True(t, metric.Value.IsZero(), "expected zero quantity for NaN/Inf, got %v", &metric.Value)
+			} else {
+				assert.True(t, metric.Value.AsApproximateFloat64() > 0, "expected positive quantity, got %v", &metric.Value)
+			}
 		})
 	}
 }
