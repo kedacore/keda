@@ -262,11 +262,11 @@ func getTemplateData() (templateData, []Template) {
 			CustomResourceName: customResourceName,
 			ClientName:         clientName,
 		}, []Template{
+			{Name: "addOnCRDTemplate", Config: addOnCRDTemplate},
 			{Name: "scalerTemplate", Config: scalerTemplate},
 			{Name: "serviceTemplate", Config: serviceTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "clientTemplate", Config: clientTemplate},
-			{Name: "addOnCRDTemplate", Config: addOnCRDTemplate},
 		}
 }
 

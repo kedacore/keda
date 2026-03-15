@@ -7,9 +7,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -47,12 +47,13 @@ func NewKedaAddOnScaler(ctx context.Context, kubeClient client.Client, config *s
 		return nil, fmt.Errorf("error parsing add-on metadata: %w", err)
 	}
 
-	gvk, err := v1alpha1.ParseGVKR(kubeClient.RESTMapper(), meta.APIVersion, meta.Kind)
+	gv, err := schema.ParseGroupVersion(meta.APIVersion)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing add-on gvkr: %w", err)
+		return nil, fmt.Errorf("error parsing add-on group version: %w", err)
 	}
+
 	unstruct := &unstructured.Unstructured{}
-	unstruct.SetGroupVersionKind(gvk.GroupVersionKind())
+	unstruct.SetGroupVersionKind(gv.WithKind(meta.Kind))
 
 	if err := kubeClient.Get(ctx, client.ObjectKey{Namespace: config.ScalableObjectNamespace, Name: meta.Name}, unstruct); err != nil {
 		return nil, fmt.Errorf("target resource doesn't exist: %w", err)

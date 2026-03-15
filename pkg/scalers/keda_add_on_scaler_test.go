@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -135,10 +134,8 @@ func TestKedaAddOnScaler(t *testing.T) {
 			scheme := runtime.NewScheme()
 			gv := schema.GroupVersion{Group: kedaAddOnCRDGroup, Version: kedaAddOnCRDVersion}
 			scheme.AddKnownTypes(gv, &TestCR{})
-			mapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{gv})
-			mapper.Add(gv.WithKind("TestCR"), meta.RESTScopeNamespace)
 
-			clientBuilder := fake.NewClientBuilder().WithScheme(scheme).WithRESTMapper(mapper)
+			clientBuilder := fake.NewClientBuilder().WithScheme(scheme)
 			clientBuilder = clientBuilder.WithRuntimeObjects(testData.resource)
 
 			s, err := NewKedaAddOnScaler(
