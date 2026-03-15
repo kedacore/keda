@@ -153,7 +153,12 @@ func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metri
 	for _, spec := range response.MetricSpecs {
 		metricType := s.metricType
 		if spec.MetricType != nil {
-			metricType = v2.MetricTargetType(*spec.MetricType)
+			switch *spec.MetricType {
+			case string(v2.ValueMetricType), string(v2.AverageValueMetricType):
+				metricType = v2.MetricTargetType(*spec.MetricType)
+			default:
+				s.logger.Info("Invalid MetricType received from external scaler, falling back to default", "MetricType", *spec.MetricType)
+			}
 		}
 
 		externalMetric := &v2.ExternalMetricSource{

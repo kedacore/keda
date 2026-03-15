@@ -5,6 +5,7 @@ package keda_add_on_test
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/joho/godotenv"
@@ -32,7 +33,6 @@ var (
 	deploymentName             = fmt.Sprintf("%s-deployment", testName)
 	scalerName                 = fmt.Sprintf("%s-scaler", testName)
 	scaledObjectName           = fmt.Sprintf("%s-so", testName)
-	hpaName                    = fmt.Sprintf("keda-hpa-%s", scaledObjectName)
 	clientName                 = fmt.Sprintf("%s-client", testName)
 	customResourceName         = fmt.Sprintf("%s-cr", testName)
 	metricsServerValueEndpoint = fmt.Sprintf("http://%s.%s:8080/api/value", serviceName, testNamespace)
@@ -47,6 +47,7 @@ type templateData struct {
 	ScaledObjectName   string
 	CustomResourceName string
 	ClientName         string
+	HPAName            string
 }
 
 const (
@@ -177,6 +178,9 @@ metadata:
 spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      name: {{.HPAName}}
   pollingInterval: 5
   cooldownPeriod: 10
   minReplicaCount: 0
@@ -233,12 +237,16 @@ func TestScaler(t *testing.T) {
 	for _, metricType := range metricTypes {
 		t.Logf("--- testing with metric type: %s ---", metricType)
 		setMetricType(t, metricType)
+
+		data.HPAName = fmt.Sprintf("keda-hpa-%s", strings.ToLower(metricType))
 		err := KubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 		require.NoError(t, err, "failed to apply ScaledObject")
-		err = testHPAMetricType(t, kc, metricType)
+		err = testHPAMetricType(t, kc, metricType, data.HPAName)
 		require.NoError(t, err, "failed to validate HPA metric type")
+
 		testScaleOut(t, kc)
 		testScaleIn(t, kc)
+
 		KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	}
 }
@@ -311,7 +319,7 @@ func setMetricValue(t *testing.T, metricValue int) {
 	require.NoError(t, err, "failed to set metric value")
 }
 
-func testHPAMetricType(t *testing.T, kc *kubernetes.Clientset, metricType string) error {
+func testHPAMetricType(t *testing.T, kc *kubernetes.Clientset, metricType, hpaName string) error {
 	t.Log("--- testing hpa metric type ---")
 	hpa, err := WaitForHpaCreation(t, kc, hpaName, testNamespace, 15, 2)
 	assert.NoError(t, err, "failed to get HPA")

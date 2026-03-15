@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
@@ -59,6 +60,11 @@ func NewKedaAddOnScaler(ctx context.Context, kubeClient client.Client, config *s
 	}
 	if addOnCRD.Status == nil || addOnCRD.Status.AddOnMetadata == nil {
 		return nil, fmt.Errorf("add-on CRD status or add-on metadata is nil")
+	}
+
+	serverAddress := strings.TrimSpace(addOnCRD.Status.AddOnMetadata.ServerAddress)
+	if serverAddress == "" {
+		return nil, fmt.Errorf("add-on metadata serverAddress is empty")
 	}
 
 	externalScalerMetadata := externalScalerMetadata{

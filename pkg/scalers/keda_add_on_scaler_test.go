@@ -31,7 +31,27 @@ func (t *TestCR) GetObjectKind() schema.ObjectKind {
 }
 
 func (t *TestCR) DeepCopyObject() runtime.Object {
+	if t == nil {
+		return nil
+	}
+	// Start with a shallow copy of the top-level struct.
 	copy := *t
+	// Deep copy the Status field and its nested structures.
+	if t.Status != nil {
+		statusCopy := *t.Status
+		if t.Status.AddOnMetadata != nil {
+			addOnCopy := *t.Status.AddOnMetadata
+			if addOnCopy.Metadata != nil {
+				metadataCopy := make(map[string]string, len(addOnCopy.Metadata))
+				for k, v := range addOnCopy.Metadata {
+					metadataCopy[k] = v
+				}
+				addOnCopy.Metadata = metadataCopy
+			}
+			statusCopy.AddOnMetadata = &addOnCopy
+		}
+		copy.Status = &statusCopy
+	}
 	return &copy
 }
 
