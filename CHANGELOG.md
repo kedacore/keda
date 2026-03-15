@@ -72,7 +72,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 #### Experimental
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Add new KEDA add-on scaler ([#7470](https://github.com/kedacore/keda/issues/7470))
 
 ### Improvements
 

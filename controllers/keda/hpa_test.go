@@ -119,6 +119,40 @@ var _ = Describe("hpa", func() {
 		Expect(capturedScaledObject.Status.Health).To(Equal(expectedHealth))
 	})
 
+	It("should return error when no metric specs are produced for HPA", func() {
+		scaledObject := &v1alpha1.ScaledObject{
+			ObjectMeta: v1.ObjectMeta{
+				Name: "scaled-object-without-metrics",
+			},
+			Spec: v1alpha1.ScaledObjectSpec{
+				ScaleTargetRef: &v1alpha1.ScaleTarget{
+					Name: "workload",
+				},
+			},
+		}
+
+		scalersCache := cache.ScalersCache{
+			Scalers: []cache.ScalerBuilder{{
+				Scaler: scaler,
+				Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+					return scaler, &scalersconfig.ScalerConfig{}, nil
+				},
+			}},
+			Recorder: nil,
+		}
+
+		ctx := context.Background()
+		scaler.EXPECT().GetMetricSpecForScaling(ctx).Return([]v2.MetricSpec{})
+		scaleHandler.EXPECT().GetScalersCache(ctx, gomock.Eq(scaledObject)).Return(&scalersCache, nil)
+
+		client.EXPECT().Status().Return(statusWriter)
+		statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+
+		_, err := reconciler.newHPAForScaledObject(ctx, logger, scaledObject, &v1alpha1.GroupVersionKindResource{})
+
+		Expect(err).To(MatchError("no metrics found"))
+	})
+
 })
 
 func setupTest(health map[string]v1alpha1.HealthStatus, scaler *mock_scalers.MockScaler, scaleHandler *mock_scaling.MockScaleHandler) *v1alpha1.ScaledObject {

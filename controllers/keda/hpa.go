@@ -76,6 +76,10 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 	if err != nil {
 		return nil, err
 	}
+	// If there isn't any metric defined for the ScaledObject, we shouldn't create HPA and return an error, as HPA without metrics doesn't make sense and can cause confusion for users.
+	if len(scaledObjectMetricSpecs) == 0 {
+		return nil, fmt.Errorf("no metrics found")
+	}
 
 	var behavior *autoscalingv2.HorizontalPodAutoscalerBehavior
 	if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig != nil {

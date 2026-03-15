@@ -2436,6 +2436,26 @@
             ]
         },
         {
+            "type": "keda-add-on",
+            "parameters": [
+                {
+                    "name": "name",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "kind",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "apiVersion",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                }
+            ]
+        },
+        {
             "type": "kubernetes-resource",
             "parameters": [
                 {

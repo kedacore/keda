@@ -175,6 +175,7 @@ type MetricSpec struct {
 	// deprecated, use targetSizeFloat instead
 	TargetSize      int64   `protobuf:"varint,2,opt,name=targetSize,proto3" json:"targetSize,omitempty"`
 	TargetSizeFloat float64 `protobuf:"fixed64,3,opt,name=targetSizeFloat,proto3" json:"targetSizeFloat,omitempty"`
+	MetricType      *string `protobuf:"bytes,4,opt,name=metricType,proto3,oneof" json:"metricType,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -228,6 +229,13 @@ func (x *MetricSpec) GetTargetSizeFloat() float64 {
 		return x.TargetSizeFloat
 	}
 	return 0
+}
+
+func (x *MetricSpec) GetMetricType() string {
+	if x != nil && x.MetricType != nil {
+		return *x.MetricType
+	}
+	return ""
 }
 
 type GetMetricsRequest struct {
@@ -402,7 +410,7 @@ const file_externalscaler_proto_rawDesc = "" +
 	"\x10IsActiveResponse\x12\x16\n" +
 	"\x06result\x18\x01 \x01(\bR\x06result\"U\n" +
 	"\x15GetMetricSpecResponse\x12<\n" +
-	"\vmetricSpecs\x18\x01 \x03(\v2\x1a.externalscaler.MetricSpecR\vmetricSpecs\"v\n" +
+	"\vmetricSpecs\x18\x01 \x03(\v2\x1a.externalscaler.MetricSpecR\vmetricSpecs\"\xaa\x01\n" +
 	"\n" +
 	"MetricSpec\x12\x1e\n" +
 	"\n" +
@@ -411,7 +419,11 @@ const file_externalscaler_proto_rawDesc = "" +
 	"\n" +
 	"targetSize\x18\x02 \x01(\x03R\n" +
 	"targetSize\x12(\n" +
-	"\x0ftargetSizeFloat\x18\x03 \x01(\x01R\x0ftargetSizeFloat\"~\n" +
+	"\x0ftargetSizeFloat\x18\x03 \x01(\x01R\x0ftargetSizeFloat\x12#\n" +
+	"\n" +
+	"metricType\x18\x04 \x01(\tH\x00R\n" +
+	"metricType\x88\x01\x01B\r\n" +
+	"\v_metricType\"~\n" +
 	"\x11GetMetricsRequest\x12I\n" +
 	"\x0fscaledObjectRef\x18\x01 \x01(\v2\x1f.externalscaler.ScaledObjectRefR\x0fscaledObjectRef\x12\x1e\n" +
 	"\n" +
@@ -480,6 +492,7 @@ func file_externalscaler_proto_init() {
 	if File_externalscaler_proto != nil {
 		return
 	}
+	file_externalscaler_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

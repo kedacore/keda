@@ -38,6 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -109,6 +110,7 @@ func init() {
 var (
 	KubeClient     *kubernetes.Clientset
 	KedaKubeClient *v1alpha1.KedaV1alpha1Client
+	DynamicClient  dynamic.Interface
 	KubeConfig     *rest.Config
 )
 
@@ -247,6 +249,21 @@ func GetKubernetesClient(t *testing.T) *kubernetes.Clientset {
 	assert.NoErrorf(t, err, "cannot create kubernetes client - %s", err)
 
 	return KubeClient
+}
+
+func GetDynamicKubernetesClient(t *testing.T) dynamic.Interface {
+	if DynamicClient != nil && KubeConfig != nil {
+		return DynamicClient
+	}
+
+	var err error
+	KubeConfig, err = config.GetConfig()
+	assert.NoErrorf(t, err, "cannot fetch kube config file - %s", err)
+
+	DynamicClient, err = dynamic.NewForConfig(KubeConfig)
+	assert.NoErrorf(t, err, "cannot create kubernetes client - %s", err)
+
+	return DynamicClient
 }
 
 func GetKedaKubernetesClient(t *testing.T) *v1alpha1.KedaV1alpha1Client {

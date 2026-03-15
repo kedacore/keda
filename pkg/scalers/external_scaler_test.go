@@ -8,11 +8,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
+	v2 "k8s.io/api/autoscaling/v2"
 
 	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -221,6 +225,101 @@ func (e *testExternalScaler) StreamIsActive(_ *pb.ScaledObjectRef, epsServer pb.
 
 func (e *testExternalScaler) GetMetricSpec(context.Context, *pb.ScaledObjectRef) (*pb.GetMetricSpecResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMetricSpec not implemented")
+}
+
+// metricSpecTestServer is a gRPC server stub whose GetMetricSpec returns a fixed response.
+type metricSpecTestServer struct {
+	pb.UnimplementedExternalScalerServer
+	response *pb.GetMetricSpecResponse
+}
+
+func (s *metricSpecTestServer) GetMetricSpec(_ context.Context, _ *pb.ScaledObjectRef) (*pb.GetMetricSpecResponse, error) {
+	return s.response, nil
+}
+
+// startMetricSpecServer starts a local gRPC server on a random loopback port and
+// returns its address for use in tests.
+func startMetricSpecServer(t *testing.T, response *pb.GetMetricSpecResponse) string {
+	t.Helper()
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to listen: %v", err)
+	}
+	srv := grpc.NewServer()
+	pb.RegisterExternalScalerServer(srv, &metricSpecTestServer{response: response})
+	t.Cleanup(func() {
+		srv.GracefulStop()
+		_ = lis.Close()
+	})
+	go func() { _ = srv.Serve(lis) }()
+	return lis.Addr().String()
+}
+
+func TestGetMetricSpecForScaling_MetricTypeOverride(t *testing.T) {
+	strPtr := func(s string) *string { return &s }
+
+	tests := []struct {
+		name               string  // Start with a shallow copy of the top-level struct.
+		returnedMetricType *string // value returned by the gRPC server; nil means not set
+		scalerDefaultType  v2.MetricTargetType
+		expectedTargetType v2.MetricTargetType
+	}{
+		{
+			name:               "nil MetricType uses scaler default",
+			returnedMetricType: nil,
+			scalerDefaultType:  v2.AverageValueMetricType,
+			expectedTargetType: v2.AverageValueMetricType,
+		},
+		{
+			name:               "MetricType Value overrides scaler default",
+			returnedMetricType: strPtr(string(v2.ValueMetricType)),
+			scalerDefaultType:  v2.AverageValueMetricType,
+			expectedTargetType: v2.ValueMetricType,
+		},
+		{
+			name:               "MetricType AverageValue overrides scaler default",
+			returnedMetricType: strPtr(string(v2.AverageValueMetricType)),
+			scalerDefaultType:  v2.ValueMetricType,
+			expectedTargetType: v2.AverageValueMetricType,
+		},
+		{
+			name:               "invalid MetricType falls back to scaler default",
+			returnedMetricType: strPtr("Utilization"),
+			scalerDefaultType:  v2.AverageValueMetricType,
+			expectedTargetType: v2.AverageValueMetricType,
+		},
+	}
+
+	for i, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			address := startMetricSpecServer(t, &pb.GetMetricSpecResponse{
+				MetricSpecs: []*pb.MetricSpec{
+					{
+						MetricName: "test-metric",
+						TargetSize: 5,
+						MetricType: tc.returnedMetricType,
+					},
+				},
+			})
+
+			scaler := &externalScaler{
+				metricType: tc.scalerDefaultType,
+				metadata: externalScalerMetadata{
+					ScalerAddress: address,
+					triggerIndex:  i,
+				},
+				scaledObjectRef: pb.ScaledObjectRef{
+					Name:      "test-obj",
+					Namespace: "default",
+				},
+				logger: logr.Discard(),
+			}
+
+			specs := scaler.GetMetricSpecForScaling(context.Background())
+			require.Len(t, specs, 1, "expected exactly one metric spec")
+			assert.Equal(t, tc.expectedTargetType, specs[0].External.Target.Type)
+		})
+	}
 }
 
 func (e *testExternalScaler) GetMetrics(context.Context, *pb.GetMetricsRequest) (*pb.GetMetricsResponse, error) {
