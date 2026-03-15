@@ -194,7 +194,7 @@ func TestOpenCostGetMetricsAndActivity(t *testing.T) {
 			costThreshold:           "100",
 			costType:                "totalCost",
 			expectedActive:          true,
-			expectedMetricValue:     49.50,
+			expectedMetricValue:     66.445, // 100²/150.50
 			activationCostThreshold: "0",
 			inverseScaling:          "true",
 		},
@@ -203,7 +203,7 @@ func TestOpenCostGetMetricsAndActivity(t *testing.T) {
 			costThreshold:           "200",
 			costType:                "totalCost",
 			expectedActive:          false,
-			expectedMetricValue:     249.50,
+			expectedMetricValue:     265.78, // 200²/150.50
 			activationCostThreshold: "200",
 			inverseScaling:          "true",
 		},
@@ -221,7 +221,7 @@ func TestOpenCostGetMetricsAndActivity(t *testing.T) {
 			costThreshold:           "100",
 			costType:                "cpuCost",
 			expectedActive:          true,
-			expectedMetricValue:     149.75,
+			expectedMetricValue:     199.00, // 100²/50.25
 			activationCostThreshold: "0",
 			inverseScaling:          "true",
 		},
@@ -230,7 +230,7 @@ func TestOpenCostGetMetricsAndActivity(t *testing.T) {
 			costThreshold:           "100",
 			costType:                "ramCost",
 			expectedActive:          true,
-			expectedMetricValue:     124.85,
+			expectedMetricValue:     133.07, // 100²/75.15
 			activationCostThreshold: "0",
 			inverseScaling:          "true",
 		},
