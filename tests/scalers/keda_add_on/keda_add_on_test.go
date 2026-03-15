@@ -4,6 +4,7 @@
 package keda_add_on_test
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -230,7 +231,7 @@ func TestScaler(t *testing.T) {
 	require.True(t, WaitForPodReady(t, kc, clientName, testNamespace, 15, 1),
 		"client pod should be ready after 1 minute")
 
-	err := createAddOnCR(t, dc)
+	err := createAddOnCR(t.Context(), dc)
 	require.NoError(t, err, "failed to create AddOn CR")
 
 	metricTypes := []string{"AverageValue", "Value"}
@@ -269,7 +270,7 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func createAddOnCR(t *testing.T, dc dynamic.Interface) error {
+func createAddOnCR(ctx context.Context, dc dynamic.Interface) error {
 	gvr := schema.GroupVersionResource{Group: "e2e.com", Version: "v1", Resource: "addons"}
 
 	addOnCr := &unstructured.Unstructured{
@@ -282,7 +283,7 @@ func createAddOnCR(t *testing.T, dc dynamic.Interface) error {
 		},
 	}
 
-	obj, err := dc.Resource(gvr).Namespace(testNamespace).Create(t.Context(), addOnCr, v1.CreateOptions{})
+	obj, err := dc.Resource(gvr).Namespace(testNamespace).Create(ctx, addOnCr, v1.CreateOptions{})
 	if err != nil {
 		return err
 	}
@@ -297,9 +298,12 @@ func createAddOnCR(t *testing.T, dc dynamic.Interface) error {
 		},
 	}
 
-	unstructured.SetNestedMap(obj.Object, newStatus, "status")
+	err = unstructured.SetNestedMap(obj.Object, newStatus, "status")
+	if err != nil {
+		return err
+	}
 
-	_, err = dc.Resource(gvr).Namespace(testNamespace).UpdateStatus(t.Context(), obj, v1.UpdateOptions{})
+	_, err = dc.Resource(gvr).Namespace(testNamespace).UpdateStatus(ctx, obj, v1.UpdateOptions{})
 	return err
 }
 
