@@ -238,7 +238,7 @@ func (s *metricSpecTestServer) GetMetricSpec(_ context.Context, _ *pb.ScaledObje
 }
 
 // startMetricSpecServer starts a local gRPC server on a random loopback port and
-// returns its address and server handle for use in tests.
+// returns its address for use in tests.
 func startMetricSpecServer(t *testing.T, response *pb.GetMetricSpecResponse) string {
 	t.Helper()
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
@@ -259,7 +259,7 @@ func TestGetMetricSpecForScaling_MetricTypeOverride(t *testing.T) {
 	strPtr := func(s string) *string { return &s }
 
 	tests := []struct {
-		name               string
+		name               string  // Start with a shallow copy of the top-level struct.
 		returnedMetricType *string // value returned by the gRPC server; nil means not set
 		scalerDefaultType  v2.MetricTargetType
 		expectedTargetType v2.MetricTargetType

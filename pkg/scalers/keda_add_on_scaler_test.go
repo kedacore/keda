@@ -35,7 +35,7 @@ func (t *TestCR) DeepCopyObject() runtime.Object {
 	if t == nil {
 		return nil
 	}
-	// Start with a shallow c of the top-level struct.
+	// Start with a shallow copy of the top-level struct.
 	c := *t
 	// Deep copy the Status field and its nested structures.
 	if t.Status != nil {
