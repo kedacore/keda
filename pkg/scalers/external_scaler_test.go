@@ -239,7 +239,7 @@ func (s *metricSpecTestServer) GetMetricSpec(_ context.Context, _ *pb.ScaledObje
 
 // startMetricSpecServer starts a local gRPC server on a random loopback port and
 // returns its address and server handle for use in tests.
-func startMetricSpecServer(t *testing.T, response *pb.GetMetricSpecResponse) (string, *grpc.Server) {
+func startMetricSpecServer(t *testing.T, response *pb.GetMetricSpecResponse) string {
 	t.Helper()
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -252,7 +252,7 @@ func startMetricSpecServer(t *testing.T, response *pb.GetMetricSpecResponse) (st
 		_ = lis.Close()
 	})
 	go func() { _ = srv.Serve(lis) }()
-	return lis.Addr().String(), srv
+	return lis.Addr().String()
 }
 
 func TestGetMetricSpecForScaling_MetricTypeOverride(t *testing.T) {
@@ -292,7 +292,7 @@ func TestGetMetricSpecForScaling_MetricTypeOverride(t *testing.T) {
 
 	for i, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			address, grpcSrv := startMetricSpecServer(t, &pb.GetMetricSpecResponse{
+			address := startMetricSpecServer(t, &pb.GetMetricSpecResponse{
 				MetricSpecs: []*pb.MetricSpec{
 					{
 						MetricName: "test-metric",
@@ -301,7 +301,6 @@ func TestGetMetricSpecForScaling_MetricTypeOverride(t *testing.T) {
 					},
 				},
 			})
-			defer grpcSrv.GracefulStop()
 
 			scaler := &externalScaler{
 				metricType: tc.scalerDefaultType,

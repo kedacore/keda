@@ -14,6 +14,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
+// AddOnResource represents the status of a KEDA add-on resource and its metadata used by the add-on scaler.
 type AddOnResource struct {
 	Status *struct {
 		AddOnMetadata *struct {
@@ -71,7 +72,7 @@ func NewKedaAddOnScaler(ctx context.Context, kubeClient client.Client, config *s
 		return nil, fmt.Errorf("add-on metadata serverAddress is empty")
 	}
 
-	externalScalerMetadata := externalScalerMetadata{
+	externalMeta := externalScalerMetadata{
 		ScalerAddress: serverAddress,
 		triggerIndex:  meta.triggerIndex,
 	}
@@ -79,7 +80,7 @@ func NewKedaAddOnScaler(ctx context.Context, kubeClient client.Client, config *s
 		return &externalPushScaler{
 			externalScaler: externalScaler{
 				metricType: metricType,
-				metadata:   externalScalerMetadata,
+				metadata:   externalMeta,
 				scaledObjectRef: pb.ScaledObjectRef{
 					Name:           config.ScalableObjectName,
 					Namespace:      config.ScalableObjectNamespace,
@@ -92,7 +93,7 @@ func NewKedaAddOnScaler(ctx context.Context, kubeClient client.Client, config *s
 
 	return &externalScaler{
 		metricType: metricType,
-		metadata:   externalScalerMetadata,
+		metadata:   externalMeta,
 		scaledObjectRef: pb.ScaledObjectRef{
 			Name:           config.ScalableObjectName,
 			Namespace:      config.ScalableObjectNamespace,
