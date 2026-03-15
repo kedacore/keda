@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
-	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type AddOnCRD struct {
@@ -24,7 +25,7 @@ type AddOnCRD struct {
 }
 
 type kedaAddOnScalerMetadata struct {
-	triggerIndex int // This is needed as marker for schema generation
+	triggerIndex int //nolint:unused // This is needed as marker for schema generation
 
 	Name       string `keda:"name=name, order=triggerMetadata"`
 	Kind       string `keda:"name=kind, order=triggerMetadata"`
@@ -95,5 +96,4 @@ func NewKedaAddOnScaler(ctx context.Context, kubeClient client.Client, config *s
 		},
 		logger: InitializeLogger(config, "add_on_external_scaler"),
 	}, nil
-
 }
