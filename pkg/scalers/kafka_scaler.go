@@ -57,7 +57,7 @@ const (
 
 type kafkaMetadata struct {
 	BootstrapServers []string `keda:"name=bootstrapServers,order=triggerMetadata;resolvedEnv"`
-	Group            string   `keda:"name=consumerGroup,order=triggerMetadata;resolvedEnv"`
+	ConsumerGroup    string   `keda:"name=consumerGroup,order=triggerMetadata;resolvedEnv"`
 	Topic            string   `keda:"name=topic,order=triggerMetadata;resolvedEnv,optional"`
 
 	PartitionLimitationStr string  `keda:"name=partitionLimitation,order=triggerMetadata,optional"`
@@ -370,7 +370,7 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 
 	if meta.Topic == "" {
 		logger.V(1).Info(fmt.Sprintf("consumer group %q has no topic specified, "+
-			"will use all topics subscribed by the consumer group for scaling", meta.Group))
+			"will use all topics subscribed by the consumer group for scaling", meta.ConsumerGroup))
 	}
 
 	meta.version = sarama.V1_0_0_0
@@ -541,7 +541,7 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 	var topicsToDescribe = make([]string, 0)
 
 	if s.metadata.Topic == "" {
-		listCGOffsetResponse, err := s.admin.ListConsumerGroupOffsets(s.metadata.Group, nil)
+		listCGOffsetResponse, err := s.admin.ListConsumerGroupOffsets(s.metadata.ConsumerGroup, nil)
 		if err != nil {
 			return nil, fmt.Errorf("error listing cg offset: %w", err)
 		}
@@ -603,7 +603,7 @@ func (s *kafkaScaler) isActivePartition(pID int32) bool {
 }
 
 func (s *kafkaScaler) getConsumerOffsets(topicPartitions map[string][]int32) (*sarama.OffsetFetchResponse, error) {
-	offsets, err := s.admin.ListConsumerGroupOffsets(s.metadata.Group, topicPartitions)
+	offsets, err := s.admin.ListConsumerGroupOffsets(s.metadata.ConsumerGroup, topicPartitions)
 	if err != nil {
 		return nil, fmt.Errorf("error listing consumer group offsets: %w", err)
 	}
@@ -645,7 +645,7 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 			}
 			msg := fmt.Sprintf(
 				"invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet. Returning with lag of %d",
-				topic, s.metadata.Group, partitionID, retVal)
+				topic, s.metadata.ConsumerGroup, partitionID, retVal)
 			s.logger.V(1).Info(msg)
 			return retVal, retVal, nil
 		}
@@ -726,7 +726,7 @@ func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	if s.metadata.Topic != "" {
 		metricName = fmt.Sprintf("kafka-%s", s.metadata.Topic)
 	} else {
-		metricName = fmt.Sprintf("kafka-%s-topics", s.metadata.Group)
+		metricName = fmt.Sprintf("kafka-%s-topics", s.metadata.ConsumerGroup)
 	}
 
 	externalMetric := &v2.ExternalMetricSource{

@@ -377,8 +377,8 @@ func getBrokerTestBase(t *testing.T, meta kafkaMetadata, testData parseKafkaMeta
 	if !reflect.DeepEqual(testData.brokers, meta.BootstrapServers) {
 		t.Errorf("Expected %v but got %v\n", testData.brokers, meta.BootstrapServers)
 	}
-	if meta.Group != testData.group {
-		t.Errorf("Expected group %s but got %s\n", testData.group, meta.Group)
+	if meta.ConsumerGroup != testData.group {
+		t.Errorf("Expected group %s but got %s\n", testData.group, meta.ConsumerGroup)
 	}
 	if meta.Topic != testData.topic {
 		t.Errorf("Expected topic %s but got %s\n", testData.topic, meta.Topic)
@@ -1065,7 +1065,7 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 
 			scaler := &kafkaScaler{
 				metadata: kafkaMetadata{
-					Group:                      "test-group",
+					ConsumerGroup:              "test-group",
 					OffsetResetPolicy:          tt.offsetResetPolicy,
 					ScaleToZeroOnInvalidOffset: tt.scaleToZeroOnInvalidOffset,
 				},
