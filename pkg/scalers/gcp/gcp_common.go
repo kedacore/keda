@@ -31,7 +31,7 @@ func (a *AuthorizationMetadata) tokenSource(ctx context.Context, scopes ...strin
 	}
 
 	if a.GoogleApplicationCredentials != "" {
-		creds, err := google.CredentialsFromJSON(ctx, []byte(a.GoogleApplicationCredentials), scopes...)
+		creds, err := google.CredentialsFromJSONWithType(ctx, []byte(a.GoogleApplicationCredentials), google.ServiceAccount, scopes...)
 		if err != nil {
 			return nil, err
 		}
@@ -45,7 +45,7 @@ func (a *AuthorizationMetadata) tokenSource(ctx context.Context, scopes ...strin
 			return nil, err
 		}
 
-		creds, err := google.CredentialsFromJSON(ctx, data, scopes...)
+		creds, err := google.CredentialsFromJSONWithType(ctx, data, google.ServiceAccount, scopes...)
 		if err != nil {
 			return nil, err
 		}
