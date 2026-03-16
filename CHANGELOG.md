@@ -66,7 +66,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
-- General: Fix flaky `TestWaitForState` by correcting context cancellation in `waitForState` (#7542)
 
 ### New
 
@@ -92,6 +91,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Loki Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **Prometheus Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **Solr Scaler**: Use net/url to safely encode query parameters ([#7467](https://github.com/kedacore/keda/pull/7467))
+- **External Scaler**: Fix context cancellation handling in `waitForState` of external scaler ([#7542](https://github.com/kedacore/keda/pull/7467)
+
 
 ### Deprecations
 
