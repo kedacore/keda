@@ -19,7 +19,6 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/Azure/azure-kusto-go/kusto"
 	"github.com/go-logr/logr"
@@ -39,6 +38,20 @@ type azureDataExplorerScaler struct {
 	name       string
 	namespace  string
 	logger     logr.Logger
+}
+
+type azureDataExplorerMetadata struct {
+	DatabaseName        string  `keda:"name=databaseName,order=triggerMetadata"`
+	Endpoint            string  `keda:"name=endpoint,order=triggerMetadata"`
+	Query               string  `keda:"name=query,order=triggerMetadata"`
+	Threshold           float64 `keda:"name=threshold,order=triggerMetadata"`
+	ActivationThreshold float64 `keda:"name=activationThreshold,order=triggerMetadata,default=0"`
+
+	TenantID     string `keda:"name=tenantId,order=triggerMetadata;authParams;resolvedEnv,optional"`
+	ClientID     string `keda:"name=clientId,order=triggerMetadata;authParams;resolvedEnv,optional"`
+	ClientSecret string `keda:"name=clientSecret,order=authParams;resolvedEnv,optional"`
+
+	triggerIndex int
 }
 
 const adxName = "azure-data-explorer"
@@ -73,59 +86,30 @@ func NewAzureDataExplorerScaler(config *scalersconfig.ScalerConfig) (Scaler, err
 }
 
 func parseAzureDataExplorerMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*azure.DataExplorerMetadata, error) {
-	metadata, err := parseAzureDataExplorerAuthParams(config, logger)
-	if err != nil {
-		return nil, err
+	meta := azureDataExplorerMetadata{}
+	if err := config.TypedConfig(&meta); err != nil {
+		return nil, fmt.Errorf("error parsing azure data explorer metadata: %w", err)
 	}
-
-	// Get database name.
-	databaseName, err := getParameterFromConfig(config, "databaseName", false)
-	if err != nil {
-		return nil, err
-	}
-	metadata.DatabaseName = databaseName
-
-	// Get endpoint.
-	endpoint, err := getParameterFromConfig(config, "endpoint", false)
-	if err != nil {
-		return nil, err
-	}
-	metadata.Endpoint = endpoint
-
-	// Get query.
-	query, err := getParameterFromConfig(config, "query", false)
-	if err != nil {
-		return nil, err
-	}
-	metadata.Query = query
-
-	// Get threshold.
-	if val, ok := config.TriggerMetadata["threshold"]; ok {
-		threshold, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %w", err)
-		}
-		metadata.Threshold = threshold
-	}
-
-	// Get activationThreshold.
-	metadata.ActivationThreshold = 0
-	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
-		activationThreshold, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing metadata. Details: can't parse activationThreshold. Inner Error: %w", err)
-		}
-		metadata.ActivationThreshold = activationThreshold
-	}
-
-	// Generate metricName.
-	metadata.MetricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", adxName, metadata.DatabaseName)))
+	meta.triggerIndex = config.TriggerIndex
 
 	activeDirectoryEndpoint, err := azure.ParseActiveDirectoryEndpoint(config.TriggerMetadata)
 	if err != nil {
 		return nil, err
 	}
-	metadata.ActiveDirectoryEndpoint = activeDirectoryEndpoint
+
+	metadata := &azure.DataExplorerMetadata{
+		DatabaseName:            meta.DatabaseName,
+		Endpoint:                meta.Endpoint,
+		Query:                   meta.Query,
+		Threshold:               meta.Threshold,
+		ActivationThreshold:     meta.ActivationThreshold,
+		ActiveDirectoryEndpoint: activeDirectoryEndpoint,
+		MetricName:              GenerateMetricNameWithIndex(meta.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", adxName, meta.DatabaseName))),
+	}
+
+	if err := parseAzureDataExplorerAuthParams(config, &meta, metadata, logger); err != nil {
+		return nil, err
+	}
 
 	logger.V(1).Info("Parsed azureDataExplorerMetadata",
 		"database", metadata.DatabaseName,
@@ -139,41 +123,30 @@ func parseAzureDataExplorerMetadata(config *scalersconfig.ScalerConfig, logger l
 	return metadata, nil
 }
 
-func parseAzureDataExplorerAuthParams(config *scalersconfig.ScalerConfig, logger logr.Logger) (*azure.DataExplorerMetadata, error) {
-	metadata := azure.DataExplorerMetadata{}
-
+func parseAzureDataExplorerAuthParams(config *scalersconfig.ScalerConfig, meta *azureDataExplorerMetadata, metadata *azure.DataExplorerMetadata, logger logr.Logger) error {
 	switch config.PodIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		metadata.PodIdentity = config.PodIdentity
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		logger.V(1).Info("Pod Identity is not provided. Trying to resolve clientId, clientSecret and tenantId.")
 
-		tenantID, err := getParameterFromConfig(config, "tenantId", true)
-		if err != nil {
-			return nil, err
+		if meta.TenantID == "" {
+			return fmt.Errorf("missing required parameter tenantId")
 		}
-		metadata.TenantID = tenantID
-
-		clientID, err := getParameterFromConfig(config, "clientId", true)
-		if err != nil {
-			return nil, err
+		if meta.ClientID == "" {
+			return fmt.Errorf("missing required parameter clientId")
 		}
-		metadata.ClientID = clientID
-
-		var clientSecret string
-		if val, ok := config.AuthParams["clientSecret"]; ok && val != "" {
-			clientSecret = val
-		} else if val, ok = config.TriggerMetadata["clientSecretFromEnv"]; ok && val != "" {
-			clientSecret = val
-		} else {
-			return nil, fmt.Errorf("error parsing metadata. Details: clientSecret was not found in metadata. Check your ScaledObject configuration")
+		if meta.ClientSecret == "" {
+			return fmt.Errorf("error parsing metadata. Details: clientSecret was not found in metadata. Check your ScaledObject configuration")
 		}
-		metadata.ClientSecret = clientSecret
 
+		metadata.TenantID = meta.TenantID
+		metadata.ClientID = meta.ClientID
+		metadata.ClientSecret = meta.ClientSecret
 	default:
-		return nil, fmt.Errorf("error parsing auth params")
+		return fmt.Errorf("error parsing auth params")
 	}
-	return &metadata, nil
+	return nil
 }
 
 func (s azureDataExplorerScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
