@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/prometheus/common/expfmt"
@@ -48,6 +49,7 @@ type metricsAPIScalerMetadata struct {
 	UnsafeSsl                         bool            `keda:"name=unsafeSsl,order=triggerMetadata,default=false"`
 	AggregateFromKubeServiceEndpoints bool            `keda:"name=aggregateFromKubeServiceEndpoints,order=triggerMetadata,default=false"`
 	AggregationType                   AggregationType `keda:"name=aggregationType,order=triggerMetadata,default=average,enum=average;sum;max;min"`
+	timeout                           time.Duration   // custom HTTP client timeout 
 	// Authentication parameters for connecting to the metrics API
 	MetricsAPIAuth *authentication.Config `keda:"optional"`
 
@@ -93,7 +95,7 @@ func NewMetricsAPIScaler(config *scalersconfig.ScalerConfig, kubeClient client.C
 		return nil, fmt.Errorf("error parsing metric API metadata: %w", err)
 	}
 
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.UnsafeSsl)
+	httpClient := kedautil.CreateHTTPClient(meta.timeout, meta.UnsafeSsl)
 
 	// Handle TLS configuration with authentication config
 	if meta.MetricsAPIAuth != nil && meta.MetricsAPIAuth.EnabledTLS() {
@@ -124,6 +126,22 @@ func parseMetricsAPIMetadata(config *scalersconfig.ScalerConfig) (*metricsAPISca
 	// Special validation for targetValue when not used as metric source
 	if meta.TargetValue == 0 && !config.AsMetricSource {
 		return nil, fmt.Errorf("no targetValue given in metadata")
+	}
+
+	// Resolve HTTP client timeout
+	meta.timeout = config.GlobalHTTPTimeout
+	timeoutVal, err := getParameterFromConfig(config, "timeout", false)
+	if err == nil {
+		timeout, err := strconv.Atoi(timeoutVal)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse timeout: %w", err)
+		}
+
+		if timeout <= 0 {
+			return nil, fmt.Errorf("timeout must be greater than 0: %w", err)
+		}
+
+		meta.timeout = time.Duration(timeout) * time.Millisecond
 	}
 
 	return meta, nil
