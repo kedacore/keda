@@ -78,7 +78,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Add CRD-level validation markers (Minimum, MinLength, MinItems, Enum) for ScaledObject, ScaledJob, ScaleTriggers, and TriggerAuthentication API types ([#7533](https://github.com/kedacore/keda/pull/7533))
 - **Elasticsearch Scaler**: Add HTTP status check for Elasticsearch errors ([#7480](https://github.com/kedacore/keda/pull/7480))
-- **Metrics API Scaler**: Add custom HTTP client timeout ([#7551](https://github.com/kedacore/keda/pull/7551))
+- **Metrics API Scaler**: Add custom HTTP client timeout ([#7549](https://github.com/kedacore/keda/issues/7549))
 
 ### Fixes
 
