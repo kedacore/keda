@@ -1930,6 +1930,10 @@ scalers:
             - max
             - min
           metadataVariableReadable: true
+        - name: timeout
+          type: string
+          optional: true
+          metadataVariableReadable: true
     - type: mongodb
       parameters:
         - name: connectionString
