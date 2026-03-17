@@ -80,7 +80,7 @@ func NewAzureAppInsightsScaler(config *scalersconfig.ScalerConfig) (Scaler, erro
 
 	logger := InitializeLogger(config, "azure_app_insights_scaler")
 
-	meta, err := parseAzureAppInsightsMetadata(config, logger)
+	meta, err := parseAzureAppInsightsMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure app insights metadata: %w", err)
 	}
@@ -113,7 +113,7 @@ func getAuthConfig(info azure.AppInsightsInfo, podIdentity kedav1alpha1.AuthPodI
 	}
 }
 
-func parseAzureAppInsightsMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*azureAppInsightsMetadata, error) {
+func parseAzureAppInsightsMetadata(config *scalersconfig.ScalerConfig) (*azureAppInsightsMetadata, error) {
 	meta := azureAppInsightsMetadata{}
 	if err := config.TypedConfig(&meta); err != nil {
 		return nil, fmt.Errorf("error parsing azure app insights metadata: %w", err)
