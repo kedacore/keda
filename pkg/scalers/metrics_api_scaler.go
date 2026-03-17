@@ -98,7 +98,7 @@ func NewMetricsAPIScaler(config *scalersconfig.ScalerConfig, kubeClient client.C
 	// handle HTTP client timeout
 	httpClientTimeout := config.GlobalHTTPTimeout
 	if meta.Timeout > 0 {
-		httpClientTimeout = time.Duration(meta.Timeout) * time.Millisecond
+		httpClientTimeout = meta.Timeout
 	}
 
 	httpClient := kedautil.CreateHTTPClient(httpClientTimeout, meta.UnsafeSsl)
@@ -132,13 +132,6 @@ func parseMetricsAPIMetadata(config *scalersconfig.ScalerConfig) (*metricsAPISca
 	// Special validation for targetValue when not used as metric source
 	if meta.TargetValue == 0 && !config.AsMetricSource {
 		return nil, fmt.Errorf("no targetValue given in metadata")
-	}
-
-	// Resolve HTTP client timeout
-	meta.Timeout = config.GlobalHTTPTimeout
-	// validate the timeout
-	if meta.Timeout < 0 {
-		return nil, fmt.Errorf("timeout must be greater than 0: %d", meta.Timeout)
 	}
 
 	return meta, nil
