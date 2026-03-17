@@ -9056,6 +9056,8 @@ spec:
                   type: object
                 minItems: 1
                 type: array
+                x-kubernetes-patch-merge-key: name
+                x-kubernetes-patch-strategy: merge
             required:
             - jobTargetRef
             - triggers
