@@ -68,6 +68,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+- **General**: Introduce new Azure Cosmos DB Change Feed Scaler ([#7556](https://github.com/kedacore/keda/issues/7556))
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 #### Experimental
