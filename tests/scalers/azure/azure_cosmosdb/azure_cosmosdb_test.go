@@ -5,11 +5,17 @@ package azure_cosmosdb_test
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -181,14 +187,11 @@ func getTemplateData() (templateData, []Template) {
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing activation ---")
-	// With no documents being processed, the change feed lag should be 0
-	// and the deployment should not scale
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
 
 func testScaleOut(ctx context.Context, t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out ---")
-	// Insert documents to create change feed lag
 	addDocuments(ctx, t, 10)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
@@ -197,20 +200,77 @@ func testScaleOut(ctx context.Context, t *testing.T, kc *kubernetes.Clientset) {
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
-	// After processing completes, lag returns to 0 and deployment scales down
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
 }
 
-func addDocuments(_ context.Context, t *testing.T, count int) {
+// addDocuments inserts documents into the Cosmos DB data container via the REST API
+// to generate change feed lag for the scaler to detect.
+func addDocuments(ctx context.Context, t *testing.T, count int) {
 	t.Helper()
+
+	endpoint, key, err := parseConnString(connectionString)
+	require.NoErrorf(t, err, "cannot parse connection string - %s", err)
+
 	for i := 0; i < count; i++ {
-		doc := map[string]interface{}{
-			"id":      fmt.Sprintf("test-doc-%d-%d", GetRandomNumber(), i),
-			"message": fmt.Sprintf("Test document %d", i),
-		}
-		docBytes, err := json.Marshal(doc)
-		assert.NoErrorf(t, err, "cannot marshal document - %s", err)
-		t.Logf("Document prepared: %s", string(docBytes))
+		docID := fmt.Sprintf("test-doc-%d-%d", GetRandomNumber(), i)
+		body := fmt.Sprintf(`{"id":"%s","partitionKey":"%s","message":"Test document %d"}`, docID, docID, i)
+
+		resourceLink := fmt.Sprintf("dbs/%s/colls/%s", databaseID, containerID)
+		reqURL := fmt.Sprintf("%s/%s/docs", strings.TrimRight(endpoint, "/"), resourceLink)
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqURL, strings.NewReader(body))
+		require.NoErrorf(t, err, "cannot create request - %s", err)
+
+		now := time.Now().UTC().Format(http.TimeFormat)
+		req.Header.Set("Authorization", cosmosAuthToken("post", "docs", resourceLink, now, key))
+		req.Header.Set("x-ms-date", now)
+		req.Header.Set("x-ms-version", "2018-12-31")
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("x-ms-documentdb-partitionkey", fmt.Sprintf(`["%s"]`, docID))
+
+		resp, err := http.DefaultClient.Do(req)
+		require.NoErrorf(t, err, "cannot send request - %s", err)
+
+		respBody, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		require.Truef(t, resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusOK,
+			"unexpected status %d creating document: %s", resp.StatusCode, string(respBody))
+
+		t.Logf("Document created: %s", docID)
 	}
+}
+
+func parseConnString(conn string) (string, string, error) {
+	var endpoint, key string
+	for _, part := range strings.Split(conn, ";") {
+		part = strings.TrimSpace(part)
+		switch {
+		case strings.HasPrefix(part, "AccountEndpoint="):
+			endpoint = strings.TrimPrefix(part, "AccountEndpoint=")
+		case strings.HasPrefix(part, "AccountKey="):
+			key = strings.TrimPrefix(part, "AccountKey=")
+		}
+	}
+	if endpoint == "" || key == "" {
+		return "", "", fmt.Errorf("invalid connection string: missing AccountEndpoint or AccountKey")
+	}
+	return endpoint, key, nil
+}
+
+func cosmosAuthToken(verb, resourceType, resourceLink, date, key string) string {
+	keyBytes, err := base64.StdEncoding.DecodeString(key)
+	if err != nil {
+		return ""
+	}
+	text := fmt.Sprintf("%s\n%s\n%s\n%s\n\n",
+		strings.ToLower(verb),
+		strings.ToLower(resourceType),
+		resourceLink,
+		strings.ToLower(date))
+	h := hmac.New(sha256.New, keyBytes)
+	h.Write([]byte(text))
+	sig := base64.StdEncoding.EncodeToString(h.Sum(nil))
+	return url.QueryEscape(fmt.Sprintf("type=master&ver=1.0&sig=%s", sig))
 }
