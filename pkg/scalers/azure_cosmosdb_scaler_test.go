@@ -224,23 +224,7 @@ var testCosmosDBMetadata = []parseCosmosDBMetadataTestData{
 		podIdentity: "",
 	},
 	{
-		name: "invalid lagThreshold",
-		metadata: map[string]string{
-			"connectionFromEnv": "COSMOS_CONNECTION",
-			"databaseId":        "testdb",
-			"containerId":       "testcontainer",
-			"leaseDatabaseId":   "testdb",
-			"leaseContainerId":  "leases",
-			"processorName":     "testprocessor",
-			"lagThreshold":      "invalid",
-		},
-		isError:     true,
-		resolvedEnv: testCosmosDBResolvedEnv,
-		authParams:  map[string]string{},
-		podIdentity: "",
-	},
-	{
-		name: "invalid activationLagThreshold",
+		name: "invalid changeFeedLagThreshold",
 		metadata: map[string]string{
 			"connectionFromEnv":      "COSMOS_CONNECTION",
 			"databaseId":             "testdb",
@@ -248,7 +232,23 @@ var testCosmosDBMetadata = []parseCosmosDBMetadataTestData{
 			"leaseDatabaseId":        "testdb",
 			"leaseContainerId":       "leases",
 			"processorName":          "testprocessor",
-			"activationLagThreshold": "invalid",
+			"changeFeedLagThreshold": "invalid",
+		},
+		isError:     true,
+		resolvedEnv: testCosmosDBResolvedEnv,
+		authParams:  map[string]string{},
+		podIdentity: "",
+	},
+	{
+		name: "invalid activationChangeFeedLagThreshold",
+		metadata: map[string]string{
+			"connectionFromEnv":                "COSMOS_CONNECTION",
+			"databaseId":                       "testdb",
+			"containerId":                      "testcontainer",
+			"leaseDatabaseId":                  "testdb",
+			"leaseContainerId":                 "leases",
+			"processorName":                    "testprocessor",
+			"activationChangeFeedLagThreshold": "invalid",
 		},
 		isError:     true,
 		resolvedEnv: testCosmosDBResolvedEnv,
@@ -526,10 +526,10 @@ func TestCosmosDBLeaseParsingDotNetFormat(t *testing.T) {
 		leaseContainerID: "leases",
 	}
 
-	partitionsWithLag, err := client.estimateLag(context.Background())
+	totalLag, _, err := client.estimateLag(context.Background())
 	assert.NoError(t, err)
 	// Only partition 6 has lag; partition 3 is caught up; metadata doc is filtered
-	assert.Equal(t, int64(1), partitionsWithLag)
+	assert.Equal(t, int64(89), totalLag)
 }
 
 func TestCosmosDBLeaseParsingJavaFormat(t *testing.T) {
@@ -592,10 +592,10 @@ func TestCosmosDBLeaseParsingJavaFormat(t *testing.T) {
 		leaseContainerID: "leases",
 	}
 
-	partitionsWithLag, err := client.estimateLag(context.Background())
+	totalLag, _, err := client.estimateLag(context.Background())
 	assert.NoError(t, err)
 	// Both partitions 2 and 5 have lag; lock doc is filtered out
-	assert.Equal(t, int64(2), partitionsWithLag)
+	assert.Equal(t, int64(252), totalLag)
 }
 
 func TestCosmosDBLeaseParsingMixedFormats(t *testing.T) {
@@ -643,9 +643,9 @@ func TestCosmosDBLeaseParsingMixedFormats(t *testing.T) {
 		leaseContainerID: "leases",
 	}
 
-	partitionsWithLag, err := client.estimateLag(context.Background())
+	totalLag, _, err := client.estimateLag(context.Background())
 	assert.NoError(t, err)
-	assert.Equal(t, int64(2), partitionsWithLag)
+	assert.Equal(t, int64(302), totalLag)
 }
 
 func TestCosmosDBLeaseParsingEPKBasedDotNet(t *testing.T) {
@@ -702,10 +702,10 @@ func TestCosmosDBLeaseParsingEPKBasedDotNet(t *testing.T) {
 		leaseContainerID: "leases",
 	}
 
-	partitionsWithLag, err := client.estimateLag(context.Background())
+	totalLag, _, err := client.estimateLag(context.Background())
 	assert.NoError(t, err)
 	// Partition 0 has lag (900-751+1=150), partition 1 is caught up
-	assert.Equal(t, int64(1), partitionsWithLag)
+	assert.Equal(t, int64(150), totalLag)
 }
 
 func TestCosmosDBLeaseParsingEPKBasedJava(t *testing.T) {
@@ -755,10 +755,10 @@ func TestCosmosDBLeaseParsingEPKBasedJava(t *testing.T) {
 		leaseContainerID: "leases",
 	}
 
-	partitionsWithLag, err := client.estimateLag(context.Background())
+	totalLag, _, err := client.estimateLag(context.Background())
 	assert.NoError(t, err)
 	// Both partitions have lag; Base64 tokens are passed through to the server
-	assert.Equal(t, int64(2), partitionsWithLag)
+	assert.Equal(t, int64(200), totalLag)
 }
 
 func TestCosmosDBLagEstimation(t *testing.T) {
@@ -823,9 +823,9 @@ func TestCosmosDBLagEstimation(t *testing.T) {
 		leaseContainerID: "leases",
 	}
 
-	partitionsWithLag, err := client.estimateLag(context.Background())
+	totalLag, _, err := client.estimateLag(context.Background())
 	assert.NoError(t, err)
-	assert.Equal(t, int64(1), partitionsWithLag)
+	assert.Equal(t, int64(51), totalLag)
 }
 
 func TestCosmosDBLagEstimationEmptyLeases(t *testing.T) {
@@ -846,9 +846,9 @@ func TestCosmosDBLagEstimationEmptyLeases(t *testing.T) {
 		leaseContainerID: "leases",
 	}
 
-	partitionsWithLag, err := client.estimateLag(context.Background())
+	totalLag, _, err := client.estimateLag(context.Background())
 	assert.NoError(t, err)
-	assert.Equal(t, int64(0), partitionsWithLag)
+	assert.Equal(t, int64(0), totalLag)
 }
 
 func TestCosmosDBLagEstimationAllPartitionsLagging(t *testing.T) {
@@ -889,9 +889,9 @@ func TestCosmosDBLagEstimationAllPartitionsLagging(t *testing.T) {
 		leaseContainerID: "leases",
 	}
 
-	partitionsWithLag, err := client.estimateLag(context.Background())
+	totalLag, _, err := client.estimateLag(context.Background())
 	assert.NoError(t, err)
-	assert.Equal(t, int64(2), partitionsWithLag)
+	assert.Equal(t, int64(202), totalLag)
 }
 
 func TestCosmosDBLagEstimationPartitionSplit(t *testing.T) {
@@ -932,9 +932,9 @@ func TestCosmosDBLagEstimationPartitionSplit(t *testing.T) {
 		leaseContainerID: "leases",
 	}
 
-	partitionsWithLag, err := client.estimateLag(context.Background())
+	totalLag, _, err := client.estimateLag(context.Background())
 	assert.NoError(t, err)
-	assert.Equal(t, int64(0), partitionsWithLag)
+	assert.Equal(t, int64(0), totalLag)
 	// Should have retried: lease query + change feed (410) + lease query (retry) + change feed (304)
 	assert.GreaterOrEqual(t, changeFeedCallCount, 2)
 }

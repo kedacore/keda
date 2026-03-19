@@ -133,7 +133,7 @@ spec:
         leaseContainerId: {{.LeaseContainerID}}
         processorName: {{.ProcessorName}}
         connectionFromEnv: COSMOS_CONNECTION
-        activationLagThreshold: "0"
+        activationChangeFeedLagThreshold: "0"
       authenticationRef:
         name: {{.SecretName}}-trigger-auth
 `

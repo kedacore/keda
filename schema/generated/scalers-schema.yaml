@@ -543,11 +543,11 @@ scalers:
           optional: true
           envVariableReadable: true
           triggerAuthenticationVariableReadable: true
-        - name: lagThreshold
+        - name: changeFeedLagThreshold
           type: string
-          default: "1"
+          default: "100"
           metadataVariableReadable: true
-        - name: activationLagThreshold
+        - name: activationChangeFeedLagThreshold
           type: string
           default: "0"
           metadataVariableReadable: true

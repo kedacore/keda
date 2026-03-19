@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -50,8 +51,8 @@ type azureCosmosDBMetadata struct {
 	LeaseConnection     string `keda:"name=leaseConnection,         order=authParams;resolvedEnv;triggerMetadata, optional"`
 	CosmosDBKey         string `keda:"name=cosmosDBKey,             order=authParams;resolvedEnv, optional"`
 	LeaseCosmosDBKey    string `keda:"name=leaseCosmosDBKey,        order=authParams;resolvedEnv, optional"`
-	Threshold           int64  `keda:"name=lagThreshold,            order=triggerMetadata, default=1"`
-	ActivationThreshold int64  `keda:"name=activationLagThreshold,  order=triggerMetadata, default=0"`
+	Threshold           int64  `keda:"name=changeFeedLagThreshold,            order=triggerMetadata, default=100"`
+	ActivationThreshold int64  `keda:"name=activationChangeFeedLagThreshold,  order=triggerMetadata, default=0"`
 	TriggerIndex        int
 }
 
@@ -372,50 +373,56 @@ func (c *cosmosDBClient) readChangeFeed(ctx context.Context, partitionKeyRangeID
 	return cfResp, nil
 }
 
-// estimateLag estimates the change feed lag and returns the count of partitions with lag > 0.
+// estimateLag estimates the total change feed lag across all partitions and
+// returns both the total lag and partition count.
 // If a partition split (410 Gone) is detected, it retries once to get fresh lease data.
-func (c *cosmosDBClient) estimateLag(ctx context.Context) (int64, error) {
-	count, splitDetected, err := c.estimateOnce(ctx)
+func (c *cosmosDBClient) estimateLag(ctx context.Context) (totalLag int64, partitionCount int64, err error) {
+	totalLag, partitionCount, splitDetected, err := c.estimateOnce(ctx)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	if splitDetected {
-		count, _, err = c.estimateOnce(ctx)
+		totalLag, partitionCount, _, err = c.estimateOnce(ctx)
 		if err != nil {
-			return 0, err
+			return 0, 0, err
 		}
 	}
-	return count, nil
+	return totalLag, partitionCount, nil
 }
 
-func (c *cosmosDBClient) estimateOnce(ctx context.Context) (int64, bool, error) {
+func (c *cosmosDBClient) estimateOnce(ctx context.Context) (int64, int64, bool, error) {
 	leases, err := c.queryLeases(ctx)
 	if err != nil {
-		return 0, false, fmt.Errorf("error querying leases: %w", err)
+		return 0, 0, false, fmt.Errorf("error querying leases: %w", err)
 	}
 
 	if len(leases) == 0 {
-		return 0, false, nil
+		return 0, 0, false, nil
 	}
 
-	partitionsWithLag := int64(0)
+	totalLag := int64(0)
 	splitDetected := false
 
 	for _, lease := range leases {
 		lag, isSplit, err := c.estimatePartitionLag(ctx, lease)
 		if err != nil {
-			return 0, false, fmt.Errorf("error estimating lag for partition %s: %w", lease.LeaseToken, err)
+			return 0, 0, false, fmt.Errorf("error estimating lag for partition %s: %w", lease.LeaseToken, err)
 		}
 		if isSplit {
 			splitDetected = true
 			continue
 		}
 		if lag > 0 {
-			partitionsWithLag++
+			totalLag += lag
 		}
 	}
 
-	return partitionsWithLag, splitDetected, nil
+	// Cap to prevent int64 overflow from summing across many partitions
+	if totalLag < 0 {
+		totalLag = math.MaxInt64
+	}
+
+	return totalLag, int64(len(leases)), splitDetected, nil
 }
 
 // estimatePartitionLag calculates the lag for a single partition.
@@ -518,18 +525,31 @@ func (s *azureCosmosDBScaler) GetMetricSpecForScaling(context.Context) []v2.Metr
 	return []v2.MetricSpec{metricSpec}
 }
 
+// getChangeFeedTotalLagRelatedToPartitionAmount caps the total lag to prevent scaling beyond
+// the number of partitions. This matches the EventHub scaler's approach.
+func getChangeFeedTotalLagRelatedToPartitionAmount(totalLag int64, partitionCount int64, threshold int64) int64 {
+	if threshold > 0 && (totalLag/threshold) > partitionCount {
+		return partitionCount * threshold
+	}
+	return totalLag
+}
+
 // GetMetricsAndActivity returns the metric value and activity status.
 func (s *azureCosmosDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	partitionsWithLag, err := s.cosmosClient.estimateLag(ctx)
+	totalLag, partitionCount, err := s.cosmosClient.estimateLag(ctx)
 	if err != nil {
 		s.logger.Error(err, "error getting cosmos db change feed lag")
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
-	s.logger.V(1).Info(fmt.Sprintf("Cosmos DB partitions with lag: %d", partitionsWithLag))
+	// Don't scale out beyond the number of partitions
+	lagRelatedToPartitionCount := getChangeFeedTotalLagRelatedToPartitionAmount(totalLag, partitionCount, s.metadata.Threshold)
 
-	metric := GenerateMetricInMili(metricName, float64(partitionsWithLag))
-	return []external_metrics.ExternalMetricValue{metric}, partitionsWithLag > s.metadata.ActivationThreshold, nil
+	s.logger.V(1).Info(fmt.Sprintf("Cosmos DB change feed total lag: %d, scaling for a lag of %d related to %d partitions",
+		totalLag, lagRelatedToPartitionCount, partitionCount))
+
+	metric := GenerateMetricInMili(metricName, float64(lagRelatedToPartitionCount))
+	return []external_metrics.ExternalMetricValue{metric}, totalLag > s.metadata.ActivationThreshold, nil
 }
 
 // Close cleans up the scaler resources.
