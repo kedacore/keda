@@ -181,12 +181,18 @@ var _ = It("shouldn't validate the so creation when the fallback is configured a
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, true, true)
 	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
+	// Remove non-cpu/memory triggers to test the scenario with ONLY cpu and memory
+	cpuMemoryTriggers := []ScaleTriggers{}
+	for _, trigger := range so.Spec.Triggers {
+		if trigger.Type == "cpu" || trigger.Type == "memory" {
+			trigger.MetricType = "AverageValue"
+			cpuMemoryTriggers = append(cpuMemoryTriggers, trigger)
+		}
+	}
+	so.Spec.Triggers = cpuMemoryTriggers
 	so.Spec.Fallback = &Fallback{
 		FailureThreshold: 3,
 		Replicas:         6,
-	}
-	for index := range so.Spec.Triggers {
-		so.Spec.Triggers[index].MetricType = "AverageValue"
 	}
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
@@ -1159,6 +1165,83 @@ var _ = It("should validate the so creation with ScalingModifiers.Formula - doub
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), so)
 	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("should validate the so creation with triggerScoped fallback behavior", func() {
+	namespaceName := "trigger-scoped-fallback-valid"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+
+	sm := ScalingModifiers{Target: "2", Formula: "trig_one ?? trig_two ?? 5"}
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Name: "trig_one",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "trig_two",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
+	so.Spec.Fallback = &Fallback{
+		FailureThreshold: 3,
+		Replicas:         5,
+		Behavior:         FallbackBehaviorTriggerScoped,
+	}
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("shouldn't validate the so creation with triggerScoped fallback without formula", func() {
+	namespaceName := "trigger-scoped-fallback-no-formula"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+	}
+
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
+	so.Spec.Triggers = triggers
+	so.Spec.Fallback = &Fallback{
+		FailureThreshold: 3,
+		Replicas:         5,
+		Behavior:         FallbackBehaviorTriggerScoped,
+	}
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {
