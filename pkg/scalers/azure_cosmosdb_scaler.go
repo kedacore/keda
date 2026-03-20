@@ -33,10 +33,11 @@ const (
 )
 
 type azureCosmosDBScaler struct {
-	metricType   v2.MetricTargetType
-	metadata     *azureCosmosDBMetadata
-	cosmosClient *cosmosDBClient
-	logger       logr.Logger
+	metricType          v2.MetricTargetType
+	metadata            *azureCosmosDBMetadata
+	cosmosClient        *cosmosDBClient
+	logger              logr.Logger
+	lastPartitionCount  int64
 }
 
 type azureCosmosDBMetadata struct {
@@ -535,11 +536,25 @@ func getChangeFeedTotalLagRelatedToPartitionAmount(totalLag int64, partitionCoun
 }
 
 // GetMetricsAndActivity returns the metric value and activity status.
+// On error, returns the maximum possible metric (partitions * threshold) to scale
+// to max replicas, ensuring the system is not under-provisioned during failures.
 func (s *azureCosmosDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	totalLag, partitionCount, err := s.cosmosClient.estimateLag(ctx)
 	if err != nil {
-		s.logger.Error(err, "error getting cosmos db change feed lag")
-		return []external_metrics.ExternalMetricValue{}, false, err
+		s.logger.Error(err, "error getting cosmos db change feed lag, scaling to max")
+		if s.lastPartitionCount > 0 {
+			maxLag := s.lastPartitionCount * s.metadata.Threshold
+			metric := GenerateMetricInMili(metricName, float64(maxLag))
+			return []external_metrics.ExternalMetricValue{metric}, true, nil
+		}
+		// No cached partition count — fall back to threshold as a safe default
+		metric := GenerateMetricInMili(metricName, float64(s.metadata.Threshold))
+		return []external_metrics.ExternalMetricValue{metric}, true, nil
+	}
+
+	// Cache partition count for error fallback
+	if partitionCount > 0 {
+		s.lastPartitionCount = partitionCount
 	}
 
 	// Don't scale out beyond the number of partitions
