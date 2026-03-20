@@ -288,7 +288,18 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		}
 	case isPausedInStatus:
 		unpausedMessage := "pause annotation removed for ScaledObject"
+		// Write unpaused status FIRST before any operations that might trigger new
+		// reconciles or start the scale loop. This mirrors the pause path which writes
+		// Paused=True before stopping the scale loop. Without this, a race condition
+		// exists where the scale loop (started later in this reconcile via
+		// requestScaleLoop) reads the stale Paused=True condition and overwrites it
+		// back via a merge patch that replaces the entire conditions array.
+		// See: https://github.com/kedacore/keda/issues/6421
+		logger.Info("Setting Unpaused condition before starting scale loop")
 		conditions.SetPausedCondition(metav1.ConditionFalse, "ScaledObjectUnpaused", unpausedMessage)
+		if err := kedastatus.SetStatusConditions(ctx, r.Client, logger, scaledObject, conditions); err != nil {
+			return "failed to update unpaused status", err
+		}
 		r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectUnpausedType, eventreason.ScaledObjectUnpaused, unpausedMessage)
 	}
 
