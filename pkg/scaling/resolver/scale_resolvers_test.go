@@ -26,9 +26,11 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
+	appsv1 "k8s.io/api/apps/v1"
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	corev1listers "k8s.io/client-go/listers/core/v1"
@@ -1123,4 +1125,271 @@ func TestReadAuthParamsFromFile_Errors(t *testing.T) {
 	_, err = readAuthParamsFromFile("../test.json")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "filePath must be relative")
+}
+
+func TestResolveWorkloadRef(t *testing.T) {
+	if err := appsv1.AddToScheme(scheme.Scheme); err != nil {
+		t.Fatalf("failed to add appsv1 to scheme: %v", err)
+	}
+
+	tests := []struct {
+		name           string
+		unstruct       *unstructured.Unstructured
+		existing       []runtime.Object
+		expectedEnvVar string
+		expectedEnvVal string
+		expectErr      bool
+		expectNil      bool
+	}{
+		{
+			name: "workloadRef points to Deployment with env vars",
+			unstruct: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "argoproj.io/v1alpha1",
+					"kind":       "Rollout",
+					"metadata": map[string]interface{}{
+						"name":      "my-rollout",
+						"namespace": namespace,
+					},
+					"spec": map[string]interface{}{
+						"workloadRef": map[string]interface{}{
+							"apiVersion": "apps/v1",
+							"kind":       "Deployment",
+							"name":       "my-deployment",
+						},
+					},
+				},
+			},
+			existing: []runtime.Object{
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "my-deployment",
+						Namespace: namespace,
+					},
+					Spec: appsv1.DeploymentSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: "app",
+										Env: []corev1.EnvVar{
+											{
+												Name:  "MY_QUEUE_URL",
+												Value: "https://sqs.us-east-1.amazonaws.com/123/my-queue",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedEnvVar: "MY_QUEUE_URL",
+			expectedEnvVal: "https://sqs.us-east-1.amazonaws.com/123/my-queue",
+		},
+		{
+			name: "workloadRef points to StatefulSet",
+			unstruct: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "argoproj.io/v1alpha1",
+					"kind":       "Rollout",
+					"metadata": map[string]interface{}{
+						"name":      "my-rollout",
+						"namespace": namespace,
+					},
+					"spec": map[string]interface{}{
+						"workloadRef": map[string]interface{}{
+							"apiVersion": "apps/v1",
+							"kind":       "StatefulSet",
+							"name":       "my-statefulset",
+						},
+					},
+				},
+			},
+			existing: []runtime.Object{
+				&appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "my-statefulset",
+						Namespace: namespace,
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: "app",
+										Env: []corev1.EnvVar{
+											{
+												Name:  "DB_HOST",
+												Value: "postgres.default.svc",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedEnvVar: "DB_HOST",
+			expectedEnvVal: "postgres.default.svc",
+		},
+		{
+			name: "no workloadRef in spec",
+			unstruct: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "argoproj.io/v1alpha1",
+					"kind":       "Rollout",
+					"metadata": map[string]interface{}{
+						"name":      "my-rollout",
+						"namespace": namespace,
+					},
+					"spec": map[string]interface{}{},
+				},
+			},
+			expectErr: true,
+		},
+		{
+			name: "workloadRef with incomplete fields",
+			unstruct: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "argoproj.io/v1alpha1",
+					"kind":       "Rollout",
+					"metadata": map[string]interface{}{
+						"name":      "my-rollout",
+						"namespace": namespace,
+					},
+					"spec": map[string]interface{}{
+						"workloadRef": map[string]interface{}{
+							"apiVersion": "apps/v1",
+							"kind":       "Deployment",
+							// missing "name"
+						},
+					},
+				},
+			},
+			expectErr: true,
+		},
+		{
+			name: "workloadRef points to non-existent Deployment",
+			unstruct: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "argoproj.io/v1alpha1",
+					"kind":       "Rollout",
+					"metadata": map[string]interface{}{
+						"name":      "my-rollout",
+						"namespace": namespace,
+					},
+					"spec": map[string]interface{}{
+						"workloadRef": map[string]interface{}{
+							"apiVersion": "apps/v1",
+							"kind":       "Deployment",
+							"name":       "does-not-exist",
+						},
+					},
+				},
+			},
+			existing:  []runtime.Object{},
+			expectErr: true,
+		},
+		{
+			name: "no spec in unstructured object",
+			unstruct: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "argoproj.io/v1alpha1",
+					"kind":       "Rollout",
+					"metadata": map[string]interface{}{
+						"name":      "my-rollout",
+						"namespace": namespace,
+					},
+				},
+			},
+			expectErr: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
+			clientBuilder := fake.NewClientBuilder().WithScheme(scheme.Scheme)
+			if test.existing != nil {
+				clientBuilder = clientBuilder.WithRuntimeObjects(test.existing...)
+			}
+			kubeClient := clientBuilder.Build()
+
+			result, err := resolveWorkloadRef(ctx, kubeClient, test.unstruct, namespace, logf.Log.WithName("test"))
+
+			if test.expectErr {
+				assert.Error(t, err)
+				return
+			}
+			if test.expectNil {
+				assert.Nil(t, result)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.NotNil(t, result)
+			assert.Greater(t, len(result.Spec.Containers), 0)
+
+			if test.expectedEnvVar != "" {
+				container := result.Spec.Containers[0]
+				found := false
+				for _, env := range container.Env {
+					if env.Name == test.expectedEnvVar {
+						assert.Equal(t, test.expectedEnvVal, env.Value)
+						found = true
+						break
+					}
+				}
+				assert.True(t, found, "expected env var %s not found", test.expectedEnvVar)
+			}
+		})
+	}
+}
+
+func TestParseGVK(t *testing.T) {
+	tests := []struct {
+		name       string
+		apiVersion string
+		kind       string
+		wantGroup  string
+		wantVer    string
+		wantKind   string
+	}{
+		{
+			name:       "apps/v1 Deployment",
+			apiVersion: "apps/v1",
+			kind:       "Deployment",
+			wantGroup:  "apps",
+			wantVer:    "v1",
+			wantKind:   "Deployment",
+		},
+		{
+			name:       "core v1 (no group)",
+			apiVersion: "v1",
+			kind:       "Pod",
+			wantGroup:  "",
+			wantVer:    "v1",
+			wantKind:   "Pod",
+		},
+		{
+			name:       "argoproj.io/v1alpha1 Rollout",
+			apiVersion: "argoproj.io/v1alpha1",
+			kind:       "Rollout",
+			wantGroup:  "argoproj.io",
+			wantVer:    "v1alpha1",
+			wantKind:   "Rollout",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			gvk := parseGVK(test.apiVersion, test.kind)
+			assert.Equal(t, test.wantGroup, gvk.Group)
+			assert.Equal(t, test.wantVer, gvk.Version)
+			assert.Equal(t, test.wantKind, gvk.Kind)
+		})
+	}
 }
