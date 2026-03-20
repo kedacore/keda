@@ -1043,3 +1043,83 @@ func TestCosmosDBGetMetricsAndActivityNotActive(t *testing.T) {
 	assert.False(t, isActive)
 	assert.Len(t, metrics, 1)
 }
+
+func TestCosmosDBGetMetricsAndActivityOnError(t *testing.T) {
+	// Server that returns 500 for all requests
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"internal server error"}`))
+	}))
+	defer server.Close()
+
+	scaler := &azureCosmosDBScaler{
+		metricType: v2.AverageValueMetricType,
+		metadata: &azureCosmosDBMetadata{
+			DatabaseID:          "testdb",
+			ContainerID:         "testcontainer",
+			LeaseDatabaseID:     "testdb",
+			LeaseContainerID:    "leases",
+			ProcessorName:       "testprocessor",
+			Threshold:           100,
+			ActivationThreshold: 0,
+		},
+		cosmosClient: &cosmosDBClient{
+			httpClient:       &http.Client{},
+			dataEndpoint:     server.URL,
+			dataKey:          "dGVzdGtleQ==",
+			leaseEndpoint:    server.URL,
+			leaseKey:         "dGVzdGtleQ==",
+			databaseID:       "testdb",
+			containerID:      "testcontainer",
+			leaseDatabaseID:  "testdb",
+			leaseContainerID: "leases",
+		},
+		logger:             logr.Discard(),
+		lastPartitionCount: 4, // Simulate cached partition count from previous successful poll
+	}
+
+	// On error, should return max lag (4 * 100 = 400) and active=true
+	metrics, isActive, err := scaler.GetMetricsAndActivity(context.Background(), "test-metric")
+	assert.NoError(t, err) // No error returned — we handle it internally
+	assert.True(t, isActive)
+	assert.Len(t, metrics, 1)
+}
+
+func TestCosmosDBGetMetricsAndActivityOnErrorNoCachedPartitions(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	scaler := &azureCosmosDBScaler{
+		metricType: v2.AverageValueMetricType,
+		metadata: &azureCosmosDBMetadata{
+			DatabaseID:          "testdb",
+			ContainerID:         "testcontainer",
+			LeaseDatabaseID:     "testdb",
+			LeaseContainerID:    "leases",
+			ProcessorName:       "testprocessor",
+			Threshold:           100,
+			ActivationThreshold: 0,
+		},
+		cosmosClient: &cosmosDBClient{
+			httpClient:       &http.Client{},
+			dataEndpoint:     server.URL,
+			dataKey:          "dGVzdGtleQ==",
+			leaseEndpoint:    server.URL,
+			leaseKey:         "dGVzdGtleQ==",
+			databaseID:       "testdb",
+			containerID:      "testcontainer",
+			leaseDatabaseID:  "testdb",
+			leaseContainerID: "leases",
+		},
+		logger:             logr.Discard(),
+		lastPartitionCount: 0, // No cached partition count
+	}
+
+	// On error with no cached partitions, should return threshold as fallback
+	metrics, isActive, err := scaler.GetMetricsAndActivity(context.Background(), "test-metric")
+	assert.NoError(t, err)
+	assert.True(t, isActive)
+	assert.Len(t, metrics, 1)
+}
