@@ -73,6 +73,7 @@ func main() {
 	var metricsServiceAddr string
 	var profilingAddr string
 	var enableLeaderElection bool
+	var leaderElectionID string
 	var adapterClientRequestQPS float32
 	var adapterClientRequestBurst int
 	var disableCompression bool
@@ -98,6 +99,7 @@ func main() {
 	pflag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	pflag.StringVar(&leaderElectionID, "leader-election-id", "operator.keda.sh", "Leader election ID for the controller manager. Defaults to operator.keda.sh")
 	pflag.Float32Var(&adapterClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
 	pflag.IntVar(&adapterClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
 	pflag.BoolVar(&disableCompression, "disable-compression", true, "Disable response compression for k8s restAPI in client-go. ")
@@ -180,7 +182,7 @@ func main() {
 		HealthProbeBindAddress:  probeAddr,
 		PprofBindAddress:        profilingAddr,
 		LeaderElection:          enableLeaderElection,
-		LeaderElectionID:        "operator.keda.sh",
+		LeaderElectionID:        leaderElectionID,
 		LeaderElectionNamespace: kedautil.GetPodNamespace(),
 		LeaseDuration:           leaseDuration,
 		RenewDeadline:           renewDeadline,
