@@ -80,6 +80,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Add `--leader-election-id` flag to allow configuring the leader election Lease name ([#7564](https://github.com/kedacore/keda/issues/7564))
 - **General**: Make APIService cert injections optional ([#7559](https://github.com/kedacore/keda/pull/7559))
 - **Elasticsearch Scaler**: Add HTTP status check for Elasticsearch errors ([#7480](https://github.com/kedacore/keda/pull/7480))
+- **Metrics API Scaler**: Add custom HTTP client timeout ([#7549](https://github.com/kedacore/keda/issues/7549))
 
 ### Fixes
 
