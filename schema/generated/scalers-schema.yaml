@@ -527,7 +527,6 @@ scalers:
         - name: clientSecret
           type: string
           optional: true
-          envVariableReadable: true
           triggerAuthenticationVariableReadable: true
     - type: azure-eventhub
       parameters:

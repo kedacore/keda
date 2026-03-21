@@ -49,7 +49,7 @@ type azureDataExplorerMetadata struct {
 
 	TenantID     string `keda:"name=tenantId,order=triggerMetadata;authParams;resolvedEnv,optional"`
 	ClientID     string `keda:"name=clientId,order=triggerMetadata;authParams;resolvedEnv,optional"`
-	ClientSecret string `keda:"name=clientSecret,order=authParams;resolvedEnv,optional"`
+	ClientSecret string `keda:"name=clientSecret,order=authParams,optional"`
 
 	triggerIndex int
 }
