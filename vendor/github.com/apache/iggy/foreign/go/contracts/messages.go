@@ -118,7 +118,7 @@ func WithID(id [16]byte) IggyMessageOpt {
 	}
 }
 
-func WithUserHeaders(userHeaders map[HeaderKey]HeaderValue) IggyMessageOpt {
+func WithUserHeaders(userHeaders []HeaderEntry) IggyMessageOpt {
 	return func(m *IggyMessage) {
 		userHeaderBytes := GetHeadersBytes(userHeaders)
 		m.UserHeaders = userHeaderBytes

@@ -36,9 +36,9 @@ type ConsumerGroupMember struct {
 }
 
 type CreateConsumerGroupRequest struct {
-	StreamId        Identifier `json:"streamId"`
-	TopicId         Identifier `json:"topicId"`
-	Name            string     `json:"name"`
+	StreamId Identifier `json:"streamId"`
+	TopicId  Identifier `json:"topicId"`
+	Name     string     `json:"name"`
 }
 
 type DeleteConsumerGroupRequest struct {

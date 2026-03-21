@@ -11,7 +11,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
-// mockIggyClient implements the subset of iggycli.Client used by apacheIggyScaler.
+// mockIggyClient implements iggcon.Client for testing apacheIggyScaler.
 type mockIggyClient struct {
 	topic   *iggcon.TopicDetails
 	offsets map[uint32]*iggcon.ConsumerOffsetInfo
@@ -29,7 +29,12 @@ func (m *mockIggyClient) GetConsumerOffset(_ iggcon.Consumer, _, _ iggcon.Identi
 	return m.offsets[*partitionID], nil
 }
 
-// Stub methods to satisfy iggycli.Client interface.
+// Stub methods to satisfy iggcon.Client interface.
+func (m *mockIggyClient) Close() error                                 { return nil }
+func (m *mockIggyClient) GetConnectionInfo() *iggcon.ConnectionInfo    { return nil }
+func (m *mockIggyClient) GetClusterMetadata() (*iggcon.ClusterMetadata, error) {
+	return nil, nil
+}
 func (m *mockIggyClient) GetStream(_ iggcon.Identifier) (*iggcon.StreamDetails, error) {
 	return nil, nil
 }

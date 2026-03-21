@@ -23,7 +23,7 @@ import (
 	ierror "github.com/apache/iggy/foreign/go/errors"
 )
 
-func (tms *IggyTcpClient) SendMessages(
+func (c *IggyTcpClient) SendMessages(
 	streamId iggcon.Identifier,
 	topicId iggcon.Identifier,
 	partitioning iggcon.Partitioning,
@@ -42,11 +42,11 @@ func (tms *IggyTcpClient) SendMessages(
 		Partitioning: partitioning,
 		Messages:     messages,
 	}
-	_, err := tms.sendAndFetchResponse(serializedRequest.Serialize(tms.MessageCompression), iggcon.SendMessagesCode)
+	_, err := c.sendAndFetchResponse(serializedRequest.Serialize(c.MessageCompression), iggcon.SendMessagesCode)
 	return err
 }
 
-func (tms *IggyTcpClient) PollMessages(
+func (c *IggyTcpClient) PollMessages(
 	streamId iggcon.Identifier,
 	topicId iggcon.Identifier,
 	consumer iggcon.Consumer,
@@ -64,10 +64,10 @@ func (tms *IggyTcpClient) PollMessages(
 		Count:       count,
 		PartitionId: partitionId,
 	}
-	buffer, err := tms.sendAndFetchResponse(serializedRequest.Serialize(), iggcon.PollMessagesCode)
+	buffer, err := c.sendAndFetchResponse(serializedRequest.Serialize(), iggcon.PollMessagesCode)
 	if err != nil {
 		return nil, err
 	}
 
-	return binaryserialization.DeserializeFetchMessagesResponse(buffer, tms.MessageCompression)
+	return binaryserialization.DeserializeFetchMessagesResponse(buffer, c.MessageCompression)
 }

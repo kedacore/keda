@@ -23,9 +23,9 @@ import (
 	ierror "github.com/apache/iggy/foreign/go/errors"
 )
 
-func (tms *IggyTcpClient) GetConsumerGroups(streamId, topicId iggcon.Identifier) ([]iggcon.ConsumerGroup, error) {
+func (c *IggyTcpClient) GetConsumerGroups(streamId, topicId iggcon.Identifier) ([]iggcon.ConsumerGroup, error) {
 	message := binaryserialization.SerializeIdentifiers(streamId, topicId)
-	buffer, err := tms.sendAndFetchResponse(message, iggcon.GetGroupsCode)
+	buffer, err := c.sendAndFetchResponse(message, iggcon.GetGroupsCode)
 	if err != nil {
 		return nil, err
 	}
@@ -33,9 +33,9 @@ func (tms *IggyTcpClient) GetConsumerGroups(streamId, topicId iggcon.Identifier)
 	return binaryserialization.DeserializeConsumerGroups(buffer), err
 }
 
-func (tms *IggyTcpClient) GetConsumerGroup(streamId, topicId, groupId iggcon.Identifier) (*iggcon.ConsumerGroupDetails, error) {
+func (c *IggyTcpClient) GetConsumerGroup(streamId, topicId, groupId iggcon.Identifier) (*iggcon.ConsumerGroupDetails, error) {
 	message := binaryserialization.SerializeIdentifiers(streamId, topicId, groupId)
-	buffer, err := tms.sendAndFetchResponse(message, iggcon.GetGroupCode)
+	buffer, err := c.sendAndFetchResponse(message, iggcon.GetGroupCode)
 	if err != nil {
 		return nil, err
 	}
@@ -47,16 +47,16 @@ func (tms *IggyTcpClient) GetConsumerGroup(streamId, topicId, groupId iggcon.Ide
 	return consumerGroupDetails, err
 }
 
-func (tms *IggyTcpClient) CreateConsumerGroup(streamId iggcon.Identifier, topicId iggcon.Identifier, name string) (*iggcon.ConsumerGroupDetails, error) {
+func (c *IggyTcpClient) CreateConsumerGroup(streamId iggcon.Identifier, topicId iggcon.Identifier, name string) (*iggcon.ConsumerGroupDetails, error) {
 	if MaxStringLength < len(name) || len(name) == 0 {
 		return nil, ierror.ErrInvalidConsumerGroupName
 	}
 	message := binaryserialization.CreateGroup(iggcon.CreateConsumerGroupRequest{
-		StreamId:        streamId,
-		TopicId:         topicId,
-		Name:            name,
+		StreamId: streamId,
+		TopicId:  topicId,
+		Name:     name,
 	})
-	buffer, err := tms.sendAndFetchResponse(message, iggcon.CreateGroupCode)
+	buffer, err := c.sendAndFetchResponse(message, iggcon.CreateGroupCode)
 	if err != nil {
 		return nil, err
 	}
@@ -64,20 +64,20 @@ func (tms *IggyTcpClient) CreateConsumerGroup(streamId iggcon.Identifier, topicI
 	return consumerGroup, err
 }
 
-func (tms *IggyTcpClient) DeleteConsumerGroup(streamId iggcon.Identifier, topicId iggcon.Identifier, groupId iggcon.Identifier) error {
+func (c *IggyTcpClient) DeleteConsumerGroup(streamId iggcon.Identifier, topicId iggcon.Identifier, groupId iggcon.Identifier) error {
 	message := binaryserialization.SerializeIdentifiers(streamId, topicId, groupId)
-	_, err := tms.sendAndFetchResponse(message, iggcon.DeleteGroupCode)
+	_, err := c.sendAndFetchResponse(message, iggcon.DeleteGroupCode)
 	return err
 }
 
-func (tms *IggyTcpClient) JoinConsumerGroup(streamId iggcon.Identifier, topicId iggcon.Identifier, groupId iggcon.Identifier) error {
+func (c *IggyTcpClient) JoinConsumerGroup(streamId iggcon.Identifier, topicId iggcon.Identifier, groupId iggcon.Identifier) error {
 	message := binaryserialization.SerializeIdentifiers(streamId, topicId, groupId)
-	_, err := tms.sendAndFetchResponse(message, iggcon.JoinGroupCode)
+	_, err := c.sendAndFetchResponse(message, iggcon.JoinGroupCode)
 	return err
 }
 
-func (tms *IggyTcpClient) LeaveConsumerGroup(streamId iggcon.Identifier, topicId iggcon.Identifier, groupId iggcon.Identifier) error {
+func (c *IggyTcpClient) LeaveConsumerGroup(streamId iggcon.Identifier, topicId iggcon.Identifier, groupId iggcon.Identifier) error {
 	message := binaryserialization.SerializeIdentifiers(streamId, topicId, groupId)
-	_, err := tms.sendAndFetchResponse(message, iggcon.LeaveGroupCode)
+	_, err := c.sendAndFetchResponse(message, iggcon.LeaveGroupCode)
 	return err
 }

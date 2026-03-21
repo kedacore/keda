@@ -17,38 +17,6 @@
 
 package iggcon
 
-type ConsumerKind uint8
-
-const (
-	ConsumerKindSingle ConsumerKind = 1
-	ConsumerKindGroup  ConsumerKind = 2
-)
-
-type Consumer struct {
-	Kind ConsumerKind
-	Id   Identifier
-}
-
-func DefaultConsumer() Consumer {
-	defaultID, _ := NewIdentifier(uint32(0))
-	return Consumer{
-		Kind: ConsumerKindSingle,
-		Id:   defaultID,
-	}
-}
-
-// NewSingleConsumer create a new Consumer whose kind is ConsumerKindSingle from the Identifier
-func NewSingleConsumer(id Identifier) Consumer {
-	return Consumer{
-		Kind: ConsumerKindSingle,
-		Id:   id,
-	}
-}
-
-// NewGroupConsumer create a new Consumer whose kind is ConsumerKindGroup from the Identifier
-func NewGroupConsumer(id Identifier) Consumer {
-	return Consumer{
-		Kind: ConsumerKindGroup,
-		Id:   id,
-	}
-}
+// TODO: Wire Version into binary_serialization/log_in_request_serializer.go
+// to send the actual SDK version during login instead of an empty string.
+const Version = "0.7.0"

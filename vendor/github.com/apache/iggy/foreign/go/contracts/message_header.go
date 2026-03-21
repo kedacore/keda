@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-const MessageHeaderSize = 8 + 16 + 8 + 8 + 8 + 4 + 4
+const MessageHeaderSize = 8 + 16 + 8 + 8 + 8 + 4 + 4 + 8
 
 type MessageID [16]byte
 
@@ -35,6 +35,7 @@ type MessageHeader struct {
 	OriginTimestamp  uint64    `json:"origin_timestamp"`
 	UserHeaderLength uint32    `json:"user_header_length"`
 	PayloadLength    uint32    `json:"payload_length"`
+	Reserved         uint64    `json:"reserved"`
 }
 
 func NewMessageHeader(id MessageID, payloadLength uint32, userHeaderLength uint32) MessageHeader {
@@ -49,7 +50,7 @@ func NewMessageHeader(id MessageID, payloadLength uint32, userHeaderLength uint3
 func MessageHeaderFromBytes(data []byte) (*MessageHeader, error) {
 
 	if len(data) != MessageHeaderSize {
-		return nil, errors.New("data has incorrect size, must be 56")
+		return nil, errors.New("data has incorrect size, must be 64")
 	}
 	checksum := binary.LittleEndian.Uint64(data[0:8])
 	id := data[8:24]
@@ -58,6 +59,7 @@ func MessageHeaderFromBytes(data []byte) (*MessageHeader, error) {
 	originTimestamp := binary.LittleEndian.Uint64(data[40:48])
 	userHeaderLength := binary.LittleEndian.Uint32(data[48:52])
 	payloadLength := binary.LittleEndian.Uint32(data[52:56])
+	reserved := binary.LittleEndian.Uint64(data[56:64])
 
 	return &MessageHeader{
 		Checksum:         checksum,
@@ -67,6 +69,7 @@ func MessageHeaderFromBytes(data []byte) (*MessageHeader, error) {
 		OriginTimestamp:  originTimestamp,
 		UserHeaderLength: userHeaderLength,
 		PayloadLength:    payloadLength,
+		Reserved:         reserved,
 	}, nil
 }
 
@@ -81,6 +84,7 @@ func (mh *MessageHeader) ToBytes() []byte {
 	bytes = binary.LittleEndian.AppendUint64(bytes, mh.OriginTimestamp)
 	bytes = binary.LittleEndian.AppendUint32(bytes, mh.UserHeaderLength)
 	bytes = binary.LittleEndian.AppendUint32(bytes, mh.PayloadLength)
+	bytes = binary.LittleEndian.AppendUint64(bytes, mh.Reserved)
 
 	return bytes
 }

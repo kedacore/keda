@@ -17,38 +17,11 @@
 
 package iggcon
 
-type ConsumerKind uint8
+import "encoding"
 
-const (
-	ConsumerKindSingle ConsumerKind = 1
-	ConsumerKindGroup  ConsumerKind = 2
-)
+type Command interface {
+	// Code returns the command code associated with this command.
+	Code() CommandCode
 
-type Consumer struct {
-	Kind ConsumerKind
-	Id   Identifier
-}
-
-func DefaultConsumer() Consumer {
-	defaultID, _ := NewIdentifier(uint32(0))
-	return Consumer{
-		Kind: ConsumerKindSingle,
-		Id:   defaultID,
-	}
-}
-
-// NewSingleConsumer create a new Consumer whose kind is ConsumerKindSingle from the Identifier
-func NewSingleConsumer(id Identifier) Consumer {
-	return Consumer{
-		Kind: ConsumerKindSingle,
-		Id:   id,
-	}
-}
-
-// NewGroupConsumer create a new Consumer whose kind is ConsumerKindGroup from the Identifier
-func NewGroupConsumer(id Identifier) Consumer {
-	return Consumer{
-		Kind: ConsumerKindGroup,
-		Id:   id,
-	}
+	encoding.BinaryMarshaler
 }

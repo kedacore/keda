@@ -22,6 +22,8 @@ type CommandCode int
 const (
 	PingCode                 CommandCode = 1
 	GetStatsCode             CommandCode = 10
+	GetSnapshotFileCode      CommandCode = 11
+	GetClusterMetadataCode   CommandCode = 12
 	GetMeCode                CommandCode = 20
 	GetClientCode            CommandCode = 21
 	GetClientsCode           CommandCode = 22

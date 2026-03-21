@@ -22,14 +22,14 @@ import (
 	iggcon "github.com/apache/iggy/foreign/go/contracts"
 )
 
-func (tms *IggyTcpClient) GetConsumerOffset(consumer iggcon.Consumer, streamId iggcon.Identifier, topicId iggcon.Identifier, partitionId *uint32) (*iggcon.ConsumerOffsetInfo, error) {
+func (c *IggyTcpClient) GetConsumerOffset(consumer iggcon.Consumer, streamId iggcon.Identifier, topicId iggcon.Identifier, partitionId *uint32) (*iggcon.ConsumerOffsetInfo, error) {
 	message := binaryserialization.GetOffset(iggcon.GetConsumerOffsetRequest{
 		StreamId:    streamId,
 		TopicId:     topicId,
 		Consumer:    consumer,
 		PartitionId: partitionId,
 	})
-	buffer, err := tms.sendAndFetchResponse(message, iggcon.GetOffsetCode)
+	buffer, err := c.sendAndFetchResponse(message, iggcon.GetOffsetCode)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func (tms *IggyTcpClient) GetConsumerOffset(consumer iggcon.Consumer, streamId i
 	return binaryserialization.DeserializeOffset(buffer), nil
 }
 
-func (tms *IggyTcpClient) StoreConsumerOffset(consumer iggcon.Consumer, streamId iggcon.Identifier, topicId iggcon.Identifier, offset uint64, partitionId *uint32) error {
+func (c *IggyTcpClient) StoreConsumerOffset(consumer iggcon.Consumer, streamId iggcon.Identifier, topicId iggcon.Identifier, offset uint64, partitionId *uint32) error {
 	message := binaryserialization.UpdateOffset(iggcon.StoreConsumerOffsetRequest{
 		StreamId:    streamId,
 		TopicId:     topicId,
@@ -45,17 +45,17 @@ func (tms *IggyTcpClient) StoreConsumerOffset(consumer iggcon.Consumer, streamId
 		Consumer:    consumer,
 		PartitionId: partitionId,
 	})
-	_, err := tms.sendAndFetchResponse(message, iggcon.StoreOffsetCode)
+	_, err := c.sendAndFetchResponse(message, iggcon.StoreOffsetCode)
 	return err
 }
 
-func (tms *IggyTcpClient) DeleteConsumerOffset(consumer iggcon.Consumer, streamId iggcon.Identifier, topicId iggcon.Identifier, partitionId *uint32) error {
+func (c *IggyTcpClient) DeleteConsumerOffset(consumer iggcon.Consumer, streamId iggcon.Identifier, topicId iggcon.Identifier, partitionId *uint32) error {
 	message := binaryserialization.DeleteOffset(iggcon.DeleteConsumerOffsetRequest{
 		Consumer:    consumer,
 		StreamId:    streamId,
 		TopicId:     topicId,
 		PartitionId: partitionId,
 	})
-	_, err := tms.sendAndFetchResponse(message, iggcon.DeleteConsumerOffsetCode)
+	_, err := c.sendAndFetchResponse(message, iggcon.DeleteConsumerOffsetCode)
 	return err
 }

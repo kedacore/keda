@@ -22,22 +22,32 @@ import (
 	iggcon "github.com/apache/iggy/foreign/go/contracts"
 )
 
-func (tms *IggyTcpClient) CreatePartitions(streamId iggcon.Identifier, topicId iggcon.Identifier, partitionsCount uint32) error {
-	message := binaryserialization.CreatePartitions(iggcon.CreatePartitionsRequest{
-		StreamId:        streamId,
-		TopicId:         topicId,
-		PartitionsCount: partitionsCount,
+func (c *IggyTcpClient) CreatePersonalAccessToken(name string, expiry uint32) (*iggcon.RawPersonalAccessToken, error) {
+	message := binaryserialization.SerializeCreatePersonalAccessToken(iggcon.CreatePersonalAccessTokenRequest{
+		Name:   name,
+		Expiry: expiry,
 	})
-	_, err := tms.sendAndFetchResponse(message, iggcon.CreatePartitionsCode)
+	buffer, err := c.sendAndFetchResponse(message, iggcon.CreateAccessTokenCode)
+	if err != nil {
+		return nil, err
+	}
+
+	return binaryserialization.DeserializeAccessToken(buffer)
+}
+
+func (c *IggyTcpClient) DeletePersonalAccessToken(name string) error {
+	message := binaryserialization.SerializeDeletePersonalAccessToken(iggcon.DeletePersonalAccessTokenRequest{
+		Name: name,
+	})
+	_, err := c.sendAndFetchResponse(message, iggcon.DeleteAccessTokenCode)
 	return err
 }
 
-func (tms *IggyTcpClient) DeletePartitions(streamId iggcon.Identifier, topicId iggcon.Identifier, partitionsCount uint32) error {
-	message := binaryserialization.DeletePartitions(iggcon.DeletePartitionsRequest{
-		StreamId:        streamId,
-		TopicId:         topicId,
-		PartitionsCount: partitionsCount,
-	})
-	_, err := tms.sendAndFetchResponse(message, iggcon.DeletePartitionsCode)
-	return err
+func (c *IggyTcpClient) GetPersonalAccessTokens() ([]iggcon.PersonalAccessTokenInfo, error) {
+	buffer, err := c.sendAndFetchResponse([]byte{}, iggcon.GetAccessTokensCode)
+	if err != nil {
+		return nil, err
+	}
+
+	return binaryserialization.DeserializeAccessTokens(buffer)
 }

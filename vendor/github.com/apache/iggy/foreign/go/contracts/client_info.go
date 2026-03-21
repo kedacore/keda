@@ -17,38 +17,15 @@
 
 package iggcon
 
-type ConsumerKind uint8
-
-const (
-	ConsumerKindSingle ConsumerKind = 1
-	ConsumerKindGroup  ConsumerKind = 2
-)
-
-type Consumer struct {
-	Kind ConsumerKind
-	Id   Identifier
+type ClientInfoDetails struct {
+	ClientInfo
+	ConsumerGroups []ConsumerGroupInfo `json:"consumerGroups,omitempty"`
 }
 
-func DefaultConsumer() Consumer {
-	defaultID, _ := NewIdentifier(uint32(0))
-	return Consumer{
-		Kind: ConsumerKindSingle,
-		Id:   defaultID,
-	}
-}
-
-// NewSingleConsumer create a new Consumer whose kind is ConsumerKindSingle from the Identifier
-func NewSingleConsumer(id Identifier) Consumer {
-	return Consumer{
-		Kind: ConsumerKindSingle,
-		Id:   id,
-	}
-}
-
-// NewGroupConsumer create a new Consumer whose kind is ConsumerKindGroup from the Identifier
-func NewGroupConsumer(id Identifier) Consumer {
-	return Consumer{
-		Kind: ConsumerKindGroup,
-		Id:   id,
-	}
+type ClientInfo struct {
+	ID                  uint32 `json:"id"`
+	Address             string `json:"address"`
+	UserID              uint32 `json:"userId"`
+	Transport           string `json:"transport"`
+	ConsumerGroupsCount uint32 `json:"consumerGroupsCount"`
 }

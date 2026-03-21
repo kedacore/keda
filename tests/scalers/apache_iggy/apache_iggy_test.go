@@ -33,7 +33,7 @@ var (
 	triggerAuthName  = fmt.Sprintf("%s-ta", testName)
 
 	iggyServerAddress = fmt.Sprintf("%s.%s.svc.cluster.local:8090", iggyServiceName, testNamespace)
-	iggyImage         = "apache/iggy:0.6.0"
+	iggyImage         = "apache/iggy:0.7.0"
 
 	// Stream
 	streamID   = "1"

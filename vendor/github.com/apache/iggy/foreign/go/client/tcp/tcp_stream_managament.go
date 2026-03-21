@@ -23,8 +23,8 @@ import (
 	ierror "github.com/apache/iggy/foreign/go/errors"
 )
 
-func (tms *IggyTcpClient) GetStreams() ([]iggcon.Stream, error) {
-	buffer, err := tms.sendAndFetchResponse([]byte{}, iggcon.GetStreamsCode)
+func (c *IggyTcpClient) GetStreams() ([]iggcon.Stream, error) {
+	buffer, err := c.sendAndFetchResponse([]byte{}, iggcon.GetStreamsCode)
 	if err != nil {
 		return nil, err
 	}
@@ -32,9 +32,9 @@ func (tms *IggyTcpClient) GetStreams() ([]iggcon.Stream, error) {
 	return binaryserialization.DeserializeStreams(buffer), nil
 }
 
-func (tms *IggyTcpClient) GetStream(streamId iggcon.Identifier) (*iggcon.StreamDetails, error) {
+func (c *IggyTcpClient) GetStream(streamId iggcon.Identifier) (*iggcon.StreamDetails, error) {
 	message := binaryserialization.SerializeIdentifier(streamId)
-	buffer, err := tms.sendAndFetchResponse(message, iggcon.GetStreamCode)
+	buffer, err := c.sendAndFetchResponse(message, iggcon.GetStreamCode)
 	if err != nil {
 		return nil, err
 	}
@@ -50,12 +50,12 @@ func (tms *IggyTcpClient) GetStream(streamId iggcon.Identifier) (*iggcon.StreamD
 	return stream, nil
 }
 
-func (tms *IggyTcpClient) CreateStream(name string) (*iggcon.StreamDetails, error) {
+func (c *IggyTcpClient) CreateStream(name string) (*iggcon.StreamDetails, error) {
 	if len(name) == 0 || MaxStringLength < len(name) {
 		return nil, ierror.ErrInvalidStreamName
 	}
-    serializedRequest := binaryserialization.TcpCreateStreamRequest{Name: name}
-	buffer, err := tms.sendAndFetchResponse(serializedRequest.Serialize(), iggcon.CreateStreamCode)
+	serializedRequest := binaryserialization.TcpCreateStreamRequest{Name: name}
+	buffer, err := c.sendAndFetchResponse(serializedRequest.Serialize(), iggcon.CreateStreamCode)
 	if err != nil {
 		return nil, err
 	}
@@ -67,17 +67,17 @@ func (tms *IggyTcpClient) CreateStream(name string) (*iggcon.StreamDetails, erro
 	return stream, err
 }
 
-func (tms *IggyTcpClient) UpdateStream(streamId iggcon.Identifier, name string) error {
+func (c *IggyTcpClient) UpdateStream(streamId iggcon.Identifier, name string) error {
 	if len(name) > MaxStringLength || len(name) == 0 {
 		return ierror.ErrInvalidStreamName
 	}
 	serializedRequest := binaryserialization.TcpUpdateStreamRequest{StreamId: streamId, Name: name}
-	_, err := tms.sendAndFetchResponse(serializedRequest.Serialize(), iggcon.UpdateStreamCode)
+	_, err := c.sendAndFetchResponse(serializedRequest.Serialize(), iggcon.UpdateStreamCode)
 	return err
 }
 
-func (tms *IggyTcpClient) DeleteStream(id iggcon.Identifier) error {
+func (c *IggyTcpClient) DeleteStream(id iggcon.Identifier) error {
 	message := binaryserialization.SerializeIdentifier(id)
-	_, err := tms.sendAndFetchResponse(message, iggcon.DeleteStreamCode)
+	_, err := c.sendAndFetchResponse(message, iggcon.DeleteStreamCode)
 	return err
 }

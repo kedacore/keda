@@ -23,9 +23,9 @@ import (
 	ierror "github.com/apache/iggy/foreign/go/errors"
 )
 
-func (tms *IggyTcpClient) GetTopics(streamId iggcon.Identifier) ([]iggcon.Topic, error) {
+func (c *IggyTcpClient) GetTopics(streamId iggcon.Identifier) ([]iggcon.Topic, error) {
 	message := binaryserialization.SerializeIdentifier(streamId)
-	buffer, err := tms.sendAndFetchResponse(message, iggcon.GetTopicsCode)
+	buffer, err := c.sendAndFetchResponse(message, iggcon.GetTopicsCode)
 	if err != nil {
 		return nil, err
 	}
@@ -33,9 +33,9 @@ func (tms *IggyTcpClient) GetTopics(streamId iggcon.Identifier) ([]iggcon.Topic,
 	return binaryserialization.DeserializeTopics(buffer)
 }
 
-func (tms *IggyTcpClient) GetTopic(streamId iggcon.Identifier, topicId iggcon.Identifier) (*iggcon.TopicDetails, error) {
+func (c *IggyTcpClient) GetTopic(streamId iggcon.Identifier, topicId iggcon.Identifier) (*iggcon.TopicDetails, error) {
 	message := binaryserialization.SerializeIdentifiers(streamId, topicId)
-	buffer, err := tms.sendAndFetchResponse(message, iggcon.GetTopicCode)
+	buffer, err := c.sendAndFetchResponse(message, iggcon.GetTopicCode)
 	if err != nil {
 		return nil, err
 	}
@@ -51,14 +51,14 @@ func (tms *IggyTcpClient) GetTopic(streamId iggcon.Identifier, topicId iggcon.Id
 	return topic, nil
 }
 
-func (tms *IggyTcpClient) CreateTopic(
+func (c *IggyTcpClient) CreateTopic(
 	streamId iggcon.Identifier,
 	name string,
 	partitionsCount uint32,
 	compressionAlgorithm iggcon.CompressionAlgorithm,
 	messageExpiry iggcon.Duration,
 	maxTopicSize uint64,
-    replicationFactor *uint8,
+	replicationFactor *uint8,
 ) (*iggcon.TopicDetails, error) {
 	if len(name) == 0 || len(name) > MaxStringLength {
 		return nil, ierror.ErrInvalidTopicName
@@ -79,7 +79,7 @@ func (tms *IggyTcpClient) CreateTopic(
 		MaxTopicSize:         maxTopicSize,
 		ReplicationFactor:    replicationFactor,
 	}
-	buffer, err := tms.sendAndFetchResponse(serializedRequest.Serialize(), iggcon.CreateTopicCode)
+	buffer, err := c.sendAndFetchResponse(serializedRequest.Serialize(), iggcon.CreateTopicCode)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (tms *IggyTcpClient) CreateTopic(
 	return topic, err
 }
 
-func (tms *IggyTcpClient) UpdateTopic(
+func (c *IggyTcpClient) UpdateTopic(
 	streamId iggcon.Identifier,
 	topicId iggcon.Identifier,
 	name string,
@@ -110,12 +110,12 @@ func (tms *IggyTcpClient) UpdateTopic(
 		MaxTopicSize:         maxTopicSize,
 		ReplicationFactor:    replicationFactor,
 		Name:                 name}
-	_, err := tms.sendAndFetchResponse(serializedRequest.Serialize(), iggcon.UpdateTopicCode)
+	_, err := c.sendAndFetchResponse(serializedRequest.Serialize(), iggcon.UpdateTopicCode)
 	return err
 }
 
-func (tms *IggyTcpClient) DeleteTopic(streamId, topicId iggcon.Identifier) error {
+func (c *IggyTcpClient) DeleteTopic(streamId, topicId iggcon.Identifier) error {
 	message := binaryserialization.SerializeIdentifiers(streamId, topicId)
-	_, err := tms.sendAndFetchResponse(message, iggcon.DeleteTopicCode)
+	_, err := c.sendAndFetchResponse(message, iggcon.DeleteTopicCode)
 	return err
 }
