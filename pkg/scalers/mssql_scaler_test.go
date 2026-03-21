@@ -88,6 +88,27 @@ var testMSSQLMetadata = []parseMSSQLMetadataTestData{
 		expectedConnectionString: "sqlserver://user3:Password%233@example.database.windows.net",
 	},
 	{
+		name:                     "no driver selected; default to sqlserver",
+		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "example.database.windows.net", "username": "user4"},
+		resolvedEnv:              map[string]string{},
+		authParams:               map[string]string{"password": "Password#4"},
+		expectedConnectionString: "sqlserver://user4:Password%233@example.database.windows.net",
+	},
+	{
+		name:                     "sqlserver driver selected",
+		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "example.database.windows.net", "username": "user5"},
+		resolvedEnv:              map[string]string{},
+		authParams:               map[string]string{"password": "Password#5", "driverName": "sqlserver"},
+		expectedConnectionString: "sqlserver://user5:Password%233@example.database.windows.net",
+	},
+	{
+		name:                     "azuresql driver selected",
+		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "example.database.windows.net", "username": "user6"},
+		resolvedEnv:              map[string]string{},
+		authParams:               map[string]string{"password": "Password#6", "driverName": "azuresql"},
+		expectedConnectionString: "sqlserver://user6:Password%233@example.database.windows.net",
+	},
+	{
 		name:          "Error: missing query",
 		metadata:      map[string]string{"targetValue": "1"},
 		resolvedEnv:   map[string]string{},
@@ -107,6 +128,13 @@ var testMSSQLMetadata = []parseMSSQLMetadataTestData{
 		resolvedEnv:   map[string]string{},
 		authParams:    map[string]string{},
 		expectedError: "must provide either connectionstring or host",
+	},
+	{
+		name:          "Error:  invalid driver",
+		metadata:      map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "example.database.windows.net", "username": "user7"},
+		resolvedEnv:   map[string]string{},
+		authParams:    map[string]string{"password": "Password#7", "driverName": "fake"},
+		expectedError: "driver name must be 'sqlserver' or 'azuresql'",
 	},
 }
 

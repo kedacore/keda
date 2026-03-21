@@ -10,6 +10,8 @@ import (
 	"github.com/go-logr/logr"
 	// Import the MS SQL driver so it can register itself with database/sql
 	_ "github.com/microsoft/go-mssqldb"
+	// Import the Azure SQL driver so it can register itself with database/sql
+	_ "github.com/microsoft/go-mssqldb/azuread"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -24,6 +26,7 @@ type mssqlScaler struct {
 }
 
 type mssqlMetadata struct {
+	DriverName            string  `keda:"name=driverName,			 order=authParams;triggerMetadata, default=sqlserver"`
 	ConnectionString      string  `keda:"name=connectionString,      order=authParams;resolvedEnv, optional"`
 	Username              string  `keda:"name=username,              order=authParams;triggerMetadata, optional"`
 	Password              string  `keda:"name=password,              order=authParams;resolvedEnv, optional"`
@@ -40,6 +43,9 @@ type mssqlMetadata struct {
 func (m *mssqlMetadata) Validate() error {
 	if m.ConnectionString == "" && m.Host == "" {
 		return fmt.Errorf("must provide either connectionstring or host")
+	}
+	if m.DriverName != "sqlserver" && m.DriverName != "azuresql" {
+		return fmt.Errorf("driver name must be 'sqlserver' or 'azuresql'")
 	}
 	return nil
 }
@@ -90,7 +96,7 @@ func parseMSSQLMetadata(config *scalersconfig.ScalerConfig) (*mssqlMetadata, err
 func newMSSQLConnection(s *mssqlScaler) (*sql.DB, error) {
 	connStr := getMSSQLConnectionString(s)
 
-	db, err := sql.Open("sqlserver", connStr)
+	db, err := sql.Open(s.metadata.DriverName, connStr)
 	if err != nil {
 		s.logger.Error(err, "Found error opening mssql")
 		return nil, err
@@ -116,7 +122,7 @@ func getMSSQLConnectionString(s *mssqlScaler) string {
 		query.Add("database", meta.Database)
 	}
 
-	connectionURL := &url.URL{Scheme: "sqlserver", RawQuery: query.Encode()}
+	connectionURL := &url.URL{Scheme: s.metadata.DriverName, RawQuery: query.Encode()}
 	if meta.Username != "" {
 		if meta.Password != "" {
 			connectionURL.User = url.UserPassword(meta.Username, meta.Password)
