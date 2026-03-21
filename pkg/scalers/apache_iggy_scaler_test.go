@@ -522,9 +522,13 @@ func TestApacheIggyGetMetricsAndActivity_NilOffset(t *testing.T) {
 }
 
 func TestApacheIggyGetMetricsAndActivity_NilOffsetScaleToZero(t *testing.T) {
+	// Empty partition (CurrentOffset=0): scaleToZeroOnInvalidOffset should correctly return inactive
 	client := &mockIggyClient{
 		topic: &iggcon.TopicDetails{
 			Topic: iggcon.Topic{PartitionsCount: 1},
+			Partitions: []iggcon.PartitionContract{
+				{Id: 1, CurrentOffset: 0, MessagesCount: 0},
+			},
 		},
 		offsets: map[uint32]*iggcon.ConsumerOffsetInfo{
 			1: nil,
@@ -549,6 +553,86 @@ func TestApacheIggyGetMetricsAndActivity_NilOffsetScaleToZero(t *testing.T) {
 	gotLag := metrics[0].Value.MilliValue() / 1000
 	if gotLag != 0 {
 		t.Errorf("expected lag 0, got %d", gotLag)
+	}
+}
+
+func TestApacheIggyGetMetricsAndActivity_NilOffsetScaleToZeroWithMessages(t *testing.T) {
+	// Fresh consumer group with pending messages: scaleToZeroOnInvalidOffset should still
+	// scale up because the partition has unprocessed messages (high watermark > 0).
+	client := &mockIggyClient{
+		topic: &iggcon.TopicDetails{
+			Topic: iggcon.Topic{PartitionsCount: 2},
+			Partitions: []iggcon.PartitionContract{
+				{Id: 1, CurrentOffset: 50, MessagesCount: 50},
+				{Id: 2, CurrentOffset: 100, MessagesCount: 100},
+			},
+		},
+		offsets: map[uint32]*iggcon.ConsumerOffsetInfo{
+			1: nil,
+			2: nil,
+		},
+	}
+	meta := &apacheIggyMetadata{
+		StreamID:                   "test-stream",
+		TopicID:                    "test-topic",
+		ConsumerGroupID:            "test-group",
+		LagThreshold:               10,
+		ScaleToZeroOnInvalidOffset: true,
+	}
+	scaler := newTestIggyScaler(client, meta)
+
+	metrics, isActive, err := scaler.GetMetricsAndActivity(t.Context(), "s0-iggy-test-stream-test-topic-test-group")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if !isActive {
+		t.Error("expected active, got inactive")
+	}
+	// partition 1: high watermark=50, partition 2: high watermark=100
+	// Each capped to lagThreshold=10, total=20
+	expectedLag := int64(20)
+	gotLag := metrics[0].Value.MilliValue() / 1000
+	if gotLag != expectedLag {
+		t.Errorf("expected lag %d, got %d", expectedLag, gotLag)
+	}
+}
+
+func TestApacheIggyGetMetricsAndActivity_ErrorOffsetScaleToZeroWithMessages(t *testing.T) {
+	// Error fetching offset with scaleToZeroOnInvalidOffset=true but partition has messages:
+	// should use high watermark as lag, not 0.
+	client := &mockIggyClient{
+		topic: &iggcon.TopicDetails{
+			Topic: iggcon.Topic{PartitionsCount: 1},
+			Partitions: []iggcon.PartitionContract{
+				{Id: 1, CurrentOffset: 75, MessagesCount: 75},
+			},
+		},
+		offsets: map[uint32]*iggcon.ConsumerOffsetInfo{},
+		errors: map[uint32]error{
+			1: errors.New("connection refused"),
+		},
+	}
+	meta := &apacheIggyMetadata{
+		StreamID:                   "test-stream",
+		TopicID:                    "test-topic",
+		ConsumerGroupID:            "test-group",
+		LagThreshold:               10,
+		ScaleToZeroOnInvalidOffset: true,
+	}
+	scaler := newTestIggyScaler(client, meta)
+
+	metrics, isActive, err := scaler.GetMetricsAndActivity(t.Context(), "s0-iggy-test-stream-test-topic-test-group")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if !isActive {
+		t.Error("expected active, got inactive")
+	}
+	// partition 1: high watermark=75, capped to lagThreshold=10
+	expectedLag := int64(10)
+	gotLag := metrics[0].Value.MilliValue() / 1000
+	if gotLag != expectedLag {
+		t.Errorf("expected lag %d, got %d", expectedLag, gotLag)
 	}
 }
 
