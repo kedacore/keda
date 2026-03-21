@@ -1,0 +1,1111 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+- name: Error
+  code: 1
+  format: "error"
+  fields: []
+- name: InvalidConfiguration
+  code: 2
+  format: "invalid configuration"
+  fields: []
+- name: InvalidCommand
+  code: 3
+  format: "invalid command"
+  fields: []
+- name: InvalidFormat
+  code: 4
+  format: "invalid format"
+  fields: []
+- name: FeatureUnavailable
+  code: 5
+  format: "feature is unavailable"
+  fields: []
+- name: InvalidIdentifier
+  code: 6
+  format: "invalid identifier"
+  fields: []
+- name: InvalidVersion
+  code: 7
+  format: "invalid version: %s"
+  fields:
+    - name: Version
+      type: string
+- name: Disconnected
+  code: 8
+  format: "disconnected"
+  fields: []
+- name: CannotEstablishConnection
+  code: 9
+  format: "cannot establish connection"
+  fields: []
+- name: CannotCreateBaseDirectory
+  code: 10
+  format: "cannot create base directory, path: %s"
+  fields:
+    - name: Path
+      type: string
+- name: CannotCreateRuntimeDirectory
+  code: 11
+  format: "cannot create runtime directory, path: %s"
+  fields:
+    - name: Path
+      type: string
+- name: CannotRemoveRuntimeDirectory
+  code: 12
+  format: "cannot remove runtime directory, path: %s"
+  fields:
+    - name: Path
+      type: string
+- name: CannotCreateStateDirectory
+  code: 13
+  format: "cannot create state directory, path: %s"
+  fields:
+    - name: Path
+      type: string
+- name: StateFileNotFound
+  code: 14
+  format: "state file not found"
+  fields: []
+- name: StateFileCorrupted
+  code: 15
+  format: "state file corrupted"
+  fields: []
+- name: InvalidStateEntryChecksum
+  code: 16
+  format: "invalid state entry checksum: %d, expected: %d, for index: %d"
+  fields:
+    - name: Actual
+      type: uint32
+    - name: Expected
+      type: uint32
+    - name: Index
+      type: uint64
+- name: CannotOpenDatabase
+  code: 19
+  format: "cannot open database, path: %s"
+  fields:
+    - name: Path
+      type: string
+- name: ResourceNotFound
+  code: 20
+  format: "resource with key: %s was not found."
+  fields:
+    - name: Key
+      type: string
+- name: StaleClient
+  code: 30
+  format: "stale client"
+  fields: []
+- name: TcpError
+  code: 31
+  format: "tcp error"
+  fields: []
+- name: QuicError
+  code: 32
+  format: "quic error"
+  fields: []
+- name: InvalidServerAddress
+  code: 33
+  format: "invalid server address"
+  fields: []
+- name: InvalidClientAddress
+  code: 34
+  format: "invalid client address"
+  fields: []
+- name: InvalidIpAddress
+  code: 35
+  format: "invalid ip address: %s:%s"
+  fields:
+    - name: IP
+      type: string
+    - name: Port
+      type: string
+- name: Unauthenticated
+  code: 40
+  format: "unauthenticated"
+  fields: []
+- name: Unauthorized
+  code: 41
+  format: "unauthorized"
+  fields: []
+- name: InvalidCredentials
+  code: 42
+  format: "invalid credentials"
+  fields: []
+- name: InvalidUsername
+  code: 43
+  format: "invalid username"
+  fields: []
+- name: InvalidPassword
+  code: 44
+  format: "invalid password"
+  fields: []
+- name: InvalidUserStatus
+  code: 45
+  format: "invalid user status"
+  fields: []
+- name: UserAlreadyExists
+  code: 46
+  format: "user already exists"
+  fields: []
+- name: UserInactive
+  code: 47
+  format: "user inactive"
+  fields: []
+- name: CannotDeleteUser
+  code: 48
+  format: "cannot delete user with id: %d"
+  fields:
+    - name: ID
+      type: uint32
+- name: CannotChangePermissions
+  code: 49
+  format: "cannot change permissions for user with id: %d"
+  fields:
+    - name: ID
+      type: uint32
+- name: InvalidPersonalAccessTokenName
+  code: 50
+  format: "invalid personal access token name"
+  fields: []
+- name: PersonalAccessTokenAlreadyExists
+  code: 51
+  format: "personal access token: %s for user with id: %d already exists"
+  fields:
+    - name: Token
+      type: string
+    - name: ID
+      type: uint32
+- name: PersonalAccessTokensLimitReached
+  code: 52
+  format: "user with id: %d has reached the maximum number of personal access tokens: %d"
+  fields:
+    - name: ID
+      type: uint32
+    - name: Limit
+      type: uint32
+- name: InvalidPersonalAccessToken
+  code: 53
+  format: "invalid personal access token"
+  fields: []
+- name: PersonalAccessTokenExpired
+  code: 54
+  format: "personal access token: %s for user with id: %d has expired."
+  fields:
+    - name: Token
+      type: string
+    - name: ID
+      type: uint32
+- name: UsersLimitReached
+  code: 55
+  format: "users limit reached."
+  fields: []
+- name: NotConnected
+  code: 61
+  format: "not connected"
+  fields: []
+- name: ClientShutdown
+  code: 63
+  format: "client shutdown"
+  fields: []
+- name: InvalidTlsDomain
+  code: 64
+  format: "invalid tls domain"
+  fields: []
+- name: InvalidTlsCertificatePath
+  code: 65
+  format: "invalid tls certificate path"
+  fields: []
+- name: InvalidTlsCertificate
+  code: 66
+  format: "invalid tls certificate"
+  fields: []
+- name: FailedToAddCertificate
+  code: 67
+  format: "failed to add certificate"
+  fields: []
+- name: InvalidEncryptionKey
+  code: 70
+  format: "invalid encryption key"
+  fields: []
+- name: CannotEncryptData
+  code: 71
+  format: "cannot encrypt data"
+  fields: []
+- name: CannotDecryptData
+  code: 72
+  format: "cannot decrypt data"
+  fields: []
+- name: InvalidJwtAlgorithm
+  code: 73
+  format: "invalid jwt algorithm: %s"
+  fields:
+    - name: Algorithm
+      type: string
+- name: InvalidJwtSecret
+  code: 74
+  format: "invalid jwt secret"
+  fields: []
+- name: JwtMissing
+  code: 75
+  format: "jwt is missing"
+  fields: []
+- name: CannotGenerateJwt
+  code: 76
+  format: "cannot generate jwt"
+  fields: []
+- name: AccessTokenMissing
+  code: 77
+  format: "access token is missing"
+  fields: []
+- name: InvalidAccessToken
+  code: 78
+  format: "invalid access token"
+  fields: []
+- name: InvalidSizeBytes
+  code: 80
+  format: "invalid size bytes"
+  fields: []
+- name: InvalidUtf8
+  code: 81
+  format: "invalid utf-8"
+  fields: []
+- name: InvalidNumberEncoding
+  code: 82
+  format: "invalid number encoding"
+  fields: []
+- name: InvalidBooleanValue
+  code: 83
+  format: "invalid boolean value"
+  fields: []
+- name: InvalidNumberValue
+  code: 84
+  format: "invalid number value"
+  fields: []
+- name: ClientNotFound
+  code: 100
+  format: "client with id: %d was not found."
+  fields:
+    - name: ID
+      type: uint32
+- name: InvalidClientId
+  code: 101
+  format: "invalid client id"
+  fields: []
+- name: ConnectionClosed
+  code: 206
+  format: "connection closed"
+  fields: []
+- name: CannotParseHeaderKind
+  code: 209
+  format: "cannot parse header kind from %s"
+  fields:
+    - name: Str
+      type: string
+- name: HttpResponseError
+  code: 300
+  format: "http response error, status: %d, body: %s"
+  fields:
+    - name: Status
+      type: uint16
+    - name: Reason
+      type: string
+- name: InvalidHttpRequest
+  code: 301
+  format: "invalid http request"
+  fields: []
+- name: InvalidJsonResponse
+  code: 302
+  format: "invalid json response"
+  fields: []
+- name: InvalidBytesResponse
+  code: 303
+  format: "invalid bytes response"
+  fields: []
+- name: EmptyResponse
+  code: 304
+  format: "empty response"
+  fields: []
+- name: CannotCreateEndpoint
+  code: 305
+  format: "cannot create endpoint"
+  fields: []
+- name: CannotParseUrl
+  code: 306
+  format: "cannot parse url"
+  fields: []
+- name: CannotCreateStreamsDirectory
+  code: 1000
+  format: "cannot create streams directory, path: %s"
+  fields:
+    - name: Path
+      type: string
+- name: CannotCreateStreamDirectory
+  code: 1001
+  format: "cannot create stream with id: %d directory, path: %s"
+  fields:
+    - name: ID
+      type: uint32
+    - name: Path
+      type: string
+- name: CannotCreateStreamInfo
+  code: 1002
+  format: "failed to create stream info file for stream with id: %d"
+  fields:
+    - name: ID
+      type: uint32
+- name: CannotUpdateStreamInfo
+  code: 1003
+  format: "failed to update stream info for stream with id: %d"
+  fields:
+    - name: ID
+      type: uint32
+- name: CannotOpenStreamInfo
+  code: 1004
+  format: "failed to open stream info file for stream with id: %d"
+  fields:
+    - name: ID
+      type: uint32
+- name: CannotReadStreamInfo
+  code: 1005
+  format: "failed to read stream info file for stream with id: %d"
+  fields:
+    - name: ID
+      type: uint32
+- name: CannotCreateStream
+  code: 1006
+  format: "failed to create stream with id: %d"
+  fields:
+    - name: ID
+      type: uint32
+- name: CannotDeleteStream
+  code: 1007
+  format: "failed to delete stream with id: %d"
+  fields:
+    - name: ID
+      type: uint32
+- name: CannotDeleteStreamDirectory
+  code: 1008
+  format: "failed to delete stream directory with id: %d"
+  fields:
+    - name: ID
+      type: uint32
+- name: StreamIdNotFound
+  code: 1009
+  format: "stream with id: %d was not found."
+  fields:
+    - name: ID
+      type: uint32
+- name: StreamNameNotFound
+  code: 1010
+  format: "stream with name: %s was not found."
+  fields:
+    - name: Name
+      type: string
+- name: StreamIdAlreadyExists
+  code: 1011
+  format: "stream with id: %d already exists."
+  fields:
+    - name: ID
+      type: uint32
+- name: StreamNameAlreadyExists
+  code: 1012
+  format: "stream with name: %s already exists."
+  fields:
+    - name: Name
+      type: string
+- name: InvalidStreamName
+  code: 1013
+  format: "invalid stream name"
+  fields: []
+- name: InvalidStreamId
+  code: 1014
+  format: "invalid stream id"
+  fields: []
+- name: CannotReadStreams
+  code: 1015
+  format: "cannot read streams"
+  fields: []
+- name: InvalidTopicSize
+  code: 1019
+  format: "max topic size cannot be lower than segment size. max topic size: %v < segment size: %v."
+  fields:
+    - name: MaxTopicSize
+      type: uint64
+    - name: SegmentSize
+      type: uint64
+- name: CannotCreateTopicsDirectory
+  code: 2000
+  format: "cannot create topics directory for stream with id: %d, path: %s"
+  fields:
+    - name: ID
+      type: uint32
+    - name: Path
+      type: string
+- name: CannotCreateTopicDirectory
+  code: 2001
+  format: "failed to create directory for topic with id: %d for stream with id: %d, path: %s"
+  fields:
+    - name: TopicId
+      type: uint32
+    - name: StreamId
+      type: uint32
+    - name: Path
+      type: string
+- name: CannotCreateTopicInfo
+  code: 2002
+  format: "failed to create topic info file for topic with id: %d for stream with id: %d."
+  fields:
+    - name: TopicId
+      type: uint32
+    - name: StreamId
+      type: uint32
+- name: CannotUpdateTopicInfo
+  code: 2003
+  format: "failed to update topic info for topic with id: %d for stream with id: %d."
+  fields:
+    - name: TopicId
+      type: uint32
+    - name: StreamId
+      type: uint32
+- name: CannotOpenTopicInfo
+  code: 2004
+  format: "failed to open topic info file for topic with id: %d for stream with id: %d."
+  fields:
+    - name: TopicId
+      type: uint32
+    - name: StreamId
+      type: uint32
+- name: CannotReadTopicInfo
+  code: 2005
+  format: "failed to read topic info file for topic with id: %d for stream with id: %d."
+  fields:
+    - name: TopicId
+      type: uint32
+    - name: StreamId
+      type: uint32
+- name: CannotCreateTopic
+  code: 2006
+  format: "failed to create topic with id: %d for stream with id: %d."
+  fields:
+    - name: TopicId
+      type: uint32
+    - name: StreamId
+      type: uint32
+- name: CannotDeleteTopic
+  code: 2007
+  format: "failed to delete topic with id: %d for stream with id: %d."
+  fields:
+    - name: TopicId
+      type: uint32
+    - name: StreamId
+      type: uint32
+- name: CannotDeleteTopicDirectory
+  code: 2008
+  format: "failed to delete topic directory with id: %d for stream with id: %d, path: %s"
+  fields:
+    - name: TopicId
+      type: uint32
+    - name: StreamId
+      type: uint32
+    - name: Path
+      type: string
+- name: CannotPollTopic
+  code: 2009
+  format: "cannot poll topic"
+  fields: []
+- name: TopicIdNotFound
+  code: 2010
+  format: "topic with id: %d for stream with id: %d was not found."
+  fields:
+    - name: TopicId
+      type: uint32
+    - name: StreamId
+      type: uint32
+- name: TopicNameNotFound
+  code: 2011
+  format: "topic with name: %s for stream with id: %s was not found."
+  fields:
+    - name: TopicName
+      type: string
+    - name: StreamId
+      type: string
+- name: TopicIdAlreadyExists
+  code: 2012
+  format: "topic with id: %d for stream with id: %d already exists."
+  fields:
+    - name: TopicId
+      type: uint32
+    - name: StreamId
+      type: uint32
+- name: TopicNameAlreadyExists
+  code: 2013
+  format: "topic with name: %s for stream with id: %d already exists."
+  fields:
+    - name: TopicName
+      type: string
+    - name: StreamId
+      type: uint32
+- name: InvalidTopicName
+  code: 2014
+  format: "invalid topic name"
+  fields: []
+- name: TooManyPartitions
+  code: 2015
+  format: "too many partitions"
+  fields: []
+- name: InvalidTopicId
+  code: 2016
+  format: "invalid topic id"
+  fields: []
+- name: CannotReadTopics
+  code: 2017
+  format: "cannot read topics for stream with id: %d"
+  fields:
+    - name: ID
+      type: uint32
+- name: InvalidReplicationFactor
+  code: 2018
+  format: "invalid replication factor"
+  fields: []
+- name: CannotCreatePartition
+  code: 3000
+  format: "cannot create partition with id: %d for stream with id: %d and topic with id: %d"
+  fields:
+    - name: PartitionId
+      type: uint32
+    - name: StreamId
+      type: uint32
+    - name: TopicId
+      type: uint32
+- name: CannotCreatePartitionsDirectory
+  code: 3001
+  format: "failed to create directory for partitions for stream with id: %d and topic with id: %d"
+  fields:
+    - name: StreamId
+      type: uint32
+    - name: TopicId
+      type: uint32
+- name: CannotCreatePartitionDirectory
+  code: 3002
+  format: "failed to create directory for partition with id: %d for stream with id: %d and topic with id: %d"
+  fields:
+    - name: PartitionId
+      type: uint32
+    - name: StreamId
+      type: uint32
+    - name: TopicId
+      type: uint32
+- name: CannotOpenPartitionLogFile
+  code: 3003
+  format: "cannot open partition log file"
+  fields: []
+- name: CannotReadPartitions
+  code: 3004
+  format: "cannot read partitions directories."
+  fields: []
+- name: CannotDeletePartition
+  code: 3005
+  format: "failed to delete partition with id: %d for stream with id: %d and topic with id: %d"
+  fields:
+    - name: PartitionId
+      type: uint32
+    - name: StreamId
+      type: uint32
+    - name: TopicId
+      type: uint32
+- name: CannotDeletePartitionDirectory
+  code: 3006
+  format: "failed to delete partition directory with id: %d for stream with id: %d and topic with id: %d"
+  fields:
+    - name: PartitionId
+      type: uint32
+    - name: StreamId
+      type: uint32
+    - name: TopicId
+      type: uint32
+- name: PartitionNotFound
+  code: 3007
+  format: "partition with id: %d for topic with id: %d for stream with id: %d was not found."
+  fields:
+    - name: PartitionId
+      type: uint32
+    - name: TopicId
+      type: uint32
+    - name: StreamId
+      type: uint32
+- name: NoPartitions
+  code: 3008
+  format: "topic with id: %d for stream with id: %d has no partitions."
+  fields:
+    - name: TopicId
+      type: uint32
+    - name: StreamId
+      type: uint32
+- name: TopicFull
+  code: 3009
+  format: "cannot read partitions for topic with id: %d for stream with id: %d"
+  fields:
+    - name: TopicId
+      type: uint32
+    - name: StreamId
+      type: uint32
+- name: CannotDeleteConsumerOffsetsDirectory
+  code: 3010
+  format: "failed to delete consumer offsets directory for path: %s"
+  fields:
+    - name: Path
+      type: string
+- name: CannotDeleteConsumerOffsetFile
+  code: 3011
+  format: "failed to delete consumer offset file for path: %s"
+  fields:
+    - name: Path
+      type: string
+- name: CannotCreateConsumerOffsetsDirectory
+  code: 3012
+  format: "failed to create consumer offsets directory for path: %s"
+  fields:
+    - name: Path
+      type: string
+- name: CannotReadConsumerOffsets
+  code: 3020
+  format: "failed to read consumers offsets from path: %s"
+  fields:
+    - name: Path
+      type: string
+- name: ConsumerOffsetNotFound
+  code: 3021
+  format: "consumer offset for consumer with id: %d was not found."
+  fields:
+    - name: ID
+      type: uint32
+- name: SegmentNotFound
+  code: 4000
+  format: "segment not found"
+  fields: []
+- name: SegmentClosed
+  code: 4001
+  format: "segment with start offset: %d and partition with id: %d is closed"
+  fields:
+    - name: StartOffset
+      type: uint64
+    - name: PartitionId
+      type: uint32
+- name: InvalidSegmentSize
+  code: 4002
+  format: "segment size is invalid"
+  fields:
+    - name: Size
+      type: uint64
+- name: CannotCreateSegmentLogFile
+  code: 4003
+  format: "failed to create segment log file for path: %s."
+  fields:
+    - name: Path
+      type: string
+- name: CannotCreateSegmentIndexFile
+  code: 4004
+  format: "failed to create segment index file for path: %s."
+  fields:
+    - name: Path
+      type: string
+- name: CannotCreateSegmentTimeIndexFile
+  code: 4005
+  format: "failed to create segment time index file for path: %s."
+  fields:
+    - name: Path
+      type: string
+- name: CannotSaveMessagesToSegment
+  code: 4006
+  format: "cannot save messages to segment."
+  fields: []
+- name: CannotSaveIndexToSegment
+  code: 4007
+  format: "cannot save index to segment."
+  fields: []
+- name: CannotSaveTimeIndexToSegment
+  code: 4008
+  format: "cannot save time index to segment."
+  fields: []
+- name: InvalidMessagesCount
+  code: 4009
+  format: "invalid messages count"
+  fields: []
+- name: CannotAppendMessage
+  code: 4010
+  format: "cannot append message"
+  fields: []
+- name: CannotReadMessage
+  code: 4011
+  format: "cannot read message"
+  fields: []
+- name: CannotReadMessageId
+  code: 4012
+  format: "cannot read message id"
+  fields: []
+- name: CannotReadMessageState
+  code: 4013
+  format: "cannot read message state"
+  fields: []
+- name: CannotReadMessageTimestamp
+  code: 4014
+  format: "cannot read message timestamp"
+  fields: []
+- name: CannotReadHeadersLength
+  code: 4015
+  format: "cannot read headers length"
+  fields: []
+- name: CannotReadHeadersPayload
+  code: 4016
+  format: "cannot read headers payload"
+  fields: []
+- name: TooBigUserHeaders
+  code: 4017
+  format: "too big headers payload"
+  fields: []
+- name: InvalidHeaderKey
+  code: 4018
+  format: "invalid header key"
+  fields: []
+- name: InvalidHeaderValue
+  code: 4019
+  format: "invalid header value"
+  fields: []
+- name: CannotReadMessageLength
+  code: 4020
+  format: "cannot read message length"
+  fields: []
+- name: CannotReadMessagePayload
+  code: 4021
+  format: "cannot save messages to segment"
+  fields: []
+- name: TooBigMessagePayload
+  code: 4022
+  format: "too big message payload"
+  fields: []
+- name: TooManyMessages
+  code: 4023
+  format: "too many messages"
+  fields: []
+- name: EmptyMessagePayload
+  code: 4024
+  format: "empty message payload"
+  fields: []
+- name: InvalidMessagePayloadLength
+  code: 4025
+  format: "invalid message payload length"
+  fields: []
+- name: CannotReadMessageChecksum
+  code: 4026
+  format: "cannot read message checksum"
+  fields: []
+- name: InvalidMessageChecksum
+  code: 4027
+  format: "invalid message checksum: %d, expected: %d, for offset: %d"
+  fields:
+    - name: Actual
+      type: uint64
+    - name: Expected
+      type: uint64
+    - name: Offset
+      type: uint64
+- name: InvalidKeyValueLength
+  code: 4028
+  format: "invalid key value length"
+  fields: []
+- name: CommandLengthError
+  code: 4029
+  format: "command length error: %s"
+  fields:
+    - name: Detail
+      type: string
+- name: InvalidSegmentsCount
+  code: 4030
+  format: "incorrect segments count size: %d"
+  fields:
+    - name: Count
+      type: uint32
+- name: NonZeroOffset
+  code: 4031
+  format: "non-zero offset: %d at index: %d"
+  fields:
+    - name: Offset
+      type: uint64
+    - name: Index
+      type: uint32
+- name: NonZeroTimestamp
+  code: 4032
+  format: "non-zero timestamp: %d at index: %d"
+  fields:
+    - name: Timestamp
+      type: uint64
+    - name: Index
+      type: uint32
+- name: MissingIndex
+  code: 4033
+  format: "missing index: %d"
+  fields:
+    - name: Index
+      type: uint32
+- name: InvalidIndexesByteSize
+  code: 4034
+  format: "invalid indexes byte size: %dB, should be divisible by 16"
+  fields:
+    - name: Size
+      type: uint32
+- name: InvalidIndexesCount
+  code: 4035
+  format: "invalid indexes count: %d, expected: %d"
+  fields:
+    - name: Count
+      type: uint32
+    - name: Expected
+      type: uint32
+- name: InvalidMessagesSize
+  code: 4036
+  format: "invalid messages byte size: %dB, expected: %dB"
+  fields:
+    - name: Actual
+      type: uint32
+    - name: Expected
+      type: uint32
+- name: TooSmallMessage
+  code: 4037
+  format: "too small message: %dB, expected: %dB"
+  fields:
+    - name: Actual
+      type: uint32
+    - name: Expected
+      type: uint32
+- name: CannotSendMessagesDueToClientDisconnection
+  code: 4050
+  format: "cannot sed messages due to client disconnection"
+  fields: []
+- name: BackgroundSendError
+  code: 4051
+  format: "background send error"
+  fields: []
+- name: BackgroundSendTimeout
+  code: 4052
+  format: "background send timeout"
+  fields: []
+- name: BackgroundSendBufferFull
+  code: 4053
+  format: "background send buffer is full"
+  fields: []
+- name: BackgroundWorkerDisconnected
+  code: 4054
+  format: "background worker disconnected"
+  fields: []
+- name: BackgroundSendBufferOverflow
+  code: 4055
+  format: "background send buffer overflow"
+  fields: []
+- name: ProducerSendFailed
+  code: 4056
+  format: "producer send failed"
+  fields:
+    - name: Cause
+      type: error
+    - name: Failed
+      type: string
+    - name: StreamName
+      type: string
+    - name: TopicName
+      type: string
+- name: ProducerClosed
+  code: 4057
+  format: "producer closed"
+  fields: []
+- name: InvalidOffset
+  code: 4100
+  format: "invalid offset: %d"
+  fields:
+    - name: Offset
+      type: uint64
+- name: ConsumerGroupIdNotFound
+  code: 5000
+  format: "consumer group with id: %d for topic with id: %d was not found."
+  fields:
+    - name: GroupId
+      type: uint32
+    - name: TopicId
+      type: uint32
+- name: ConsumerGroupIdAlreadyExists
+  code: 5001
+  format: "consumer group with id: %d for topic with id: %d already exists."
+  fields:
+    - name: GroupId
+      type: uint32
+    - name: TopicId
+      type: uint32
+- name: InvalidConsumerGroupId
+  code: 5002
+  format: "invalid consumer group id"
+  fields: []
+- name: ConsumerGroupNameNotFound
+  code: 5003
+  format: "consumer group with name: %s for topic with id: %s was not found."
+  fields:
+    - name: Name
+      type: string
+    - name: TopicId
+      type: string
+- name: ConsumerGroupNameAlreadyExists
+  code: 5004
+  format: "consumer group with name: %s for topic with id: %d already exists."
+  fields:
+    - name: Name
+      type: string
+    - name: TopicId
+      type: uint32
+- name: InvalidConsumerGroupName
+  code: 5005
+  format: "invalid consumer group name"
+  fields: []
+- name: ConsumerGroupMemberNotFound
+  code: 5006
+  format: "consumer group member with id: %d for group with id: %d for topic with id: %d was not found."
+  fields:
+    - name: MemberId
+      type: uint32
+    - name: GroupId
+      type: uint32
+    - name: TopicId
+      type: uint32
+- name: CannotCreateConsumerGroupInfo
+  code: 5007
+  format: "failed to create consumer group info file for id: %d for topic with id: %d for stream with id: %d."
+  fields:
+    - name: GroupId
+      type: uint32
+    - name: TopicId
+      type: uint32
+    - name: StreamId
+      type: uint32
+- name: CannotDeleteConsumerGroupInfo
+  code: 5008
+  format: "failed to delete consumer group info file for id: %d for topic with id: %d for stream with id: %d."
+  fields:
+    - name: GroupId
+      type: uint32
+    - name: TopicId
+      type: uint32
+    - name: StreamId
+      type: uint32
+- name: MissingBaseOffsetRetainedMessageBatch
+  code: 6000
+  format: "base offset is missing"
+  fields: []
+- name: MissingLastOffsetDeltaRetainedMessageBatch
+  code: 6001
+  format: "last offset delta is missing"
+  fields: []
+- name: MissingMaxTimestampRetainedMessageBatch
+  code: 6002
+  format: "max timestamp is missing"
+  fields: []
+- name: MissingLengthRetainedMessageBatch
+  code: 6003
+  format: "length is missing"
+  fields: []
+- name: MissingPayloadRetainedMessageBatch
+  code: 6004
+  format: "payload is missing"
+  fields: []
+- name: CannotReadBatchBaseOffset
+  code: 7000
+  format: "cannot read batch base offset"
+  fields: []
+- name: CannotReadBatchLength
+  code: 7001
+  format: "cannot read batch length"
+  fields: []
+- name: CannotReadLastOffsetDelta
+  code: 7002
+  format: "cannot read batch last offset delta"
+  fields: []
+- name: CannotReadMaxTimestamp
+  code: 7003
+  format: "cannot read batch maximum timestamp"
+  fields: []
+- name: CannotReadBatchPayload
+  code: 7004
+  format: "cannot read batch payload"
+  fields: []
+- name: InvalidConnectionString
+  code: 8000
+  format: "invalid connection string"
+  fields: []
+- name: SnapshotFileCompletionFailed
+  code: 9000
+  format: "snapshot file completion failed"
+  fields: []
+- name: CannotSerializeResource
+  code: 10000
+  format: "cannot serialize resource"
+  fields: []
+- name: CannotDeserializeResource
+  code: 10001
+  format: "cannot deserialize resource"
+  fields: []
+- name: CannotReadFile
+  code: 10002
+  format: "cannot read file"
+  fields: []
+- name: CannotReadFileMetadata
+  code: 10003
+  format: "cannot read file metadata"
+  fields: []
+- name: CannotSeekFile
+  code: 10004
+  format: "cannot seek file"
+  fields: []
+- name: CannotAppendToFile
+  code: 10005
+  format: "cannot append to file"
+  fields: []
+- name: CannotWriteToFile
+  code: 10006
+  format: "cannot write to file"
+  fields: []
+- name: CannotOverwriteFile
+  code: 10007
+  format: "cannot overwrite file"
+  fields: []
+- name: CannotDeleteFile
+  code: 10008
+  format: "cannot delete file"
+  fields: []
+- name: CannotSyncFile
+  code: 10009
+  format: "cannot sync file"
+  fields: []
+- name: CannotReadIndexOffset
+  code: 10010
+  format: "cannot read index offset"
+  fields: []
+- name: CannotReadIndexPosition
+  code: 10011
+  format: "cannot read index position"
+  fields: []
+- name: CannotReadIndexTimestamp
+  code: 10012
+  format: "cannot read index timestamp"
+  fields: []
