@@ -3653,6 +3653,15 @@ scalers:
           type: string
           default: "false"
           metadataVariableReadable: true
+        - name: includeRunningWorkflowCount
+          type: string
+          default: "false"
+          metadataVariableReadable: true
+        - name: workflowTaskQueueForCount
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
         - name: apiKey
           type: string
           optional: true

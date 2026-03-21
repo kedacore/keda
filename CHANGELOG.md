@@ -68,7 +68,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Temporal Scaler**: Add composite metric support (backlog + running workflow count) ([#7459](https://github.com/kedacore/keda/issues/7459))
 
 #### Experimental
 
