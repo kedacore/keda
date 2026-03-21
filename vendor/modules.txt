@@ -324,13 +324,14 @@ github.com/apache/arrow-go/v18/internal/bitutils
 github.com/apache/arrow-go/v18/internal/hashing
 github.com/apache/arrow-go/v18/internal/json
 github.com/apache/arrow-go/v18/internal/utils
-# github.com/apache/iggy/foreign/go v0.6.0
+# github.com/apache/iggy/foreign/go v0.7.0
 ## explicit; go 1.23.0
 github.com/apache/iggy/foreign/go/binary_serialization
+github.com/apache/iggy/foreign/go/client
+github.com/apache/iggy/foreign/go/client/tcp
 github.com/apache/iggy/foreign/go/contracts
 github.com/apache/iggy/foreign/go/errors
-github.com/apache/iggy/foreign/go/iggycli
-github.com/apache/iggy/foreign/go/tcp
+github.com/apache/iggy/foreign/go/internal/util
 # github.com/apapsch/go-jsonmerge/v2 v2.0.0
 ## explicit; go 1.12
 github.com/apapsch/go-jsonmerge/v2
@@ -344,6 +345,9 @@ github.com/arangodb/go-driver/util
 # github.com/arangodb/go-velocypack v0.0.0-20200318135517-5af53c29c67e
 ## explicit; go 1.12
 github.com/arangodb/go-velocypack
+# github.com/avast/retry-go v3.0.0+incompatible
+## explicit
+github.com/avast/retry-go
 # github.com/aws/aws-msk-iam-sasl-signer-go v1.0.4
 ## explicit; go 1.21
 github.com/aws/aws-msk-iam-sasl-signer-go/signer

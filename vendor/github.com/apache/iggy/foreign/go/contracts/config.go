@@ -30,7 +30,8 @@ const (
 type Protocol string
 
 const (
-	Http Protocol = "Http"
-	Tcp  Protocol = "Tcp"
-	Quic Protocol = "Quic"
+	Http      Protocol = "http"
+	Tcp       Protocol = "tcp"
+	Quic      Protocol = "quic"
+	WebSocket Protocol = "ws"
 )

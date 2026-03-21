@@ -22,32 +22,21 @@ import (
 	iggcon "github.com/apache/iggy/foreign/go/contracts"
 )
 
-func (tms *IggyTcpClient) CreatePersonalAccessToken(name string, expiry uint32) (*iggcon.RawPersonalAccessToken, error) {
-	message := binaryserialization.SerializeCreatePersonalAccessToken(iggcon.CreatePersonalAccessTokenRequest{
-		Name:   name,
-		Expiry: expiry,
-	})
-	buffer, err := tms.sendAndFetchResponse(message, iggcon.CreateAccessTokenCode)
+func (c *IggyTcpClient) GetClients() ([]iggcon.ClientInfo, error) {
+	buffer, err := c.sendAndFetchResponse([]byte{}, iggcon.GetClientsCode)
 	if err != nil {
 		return nil, err
 	}
 
-	return binaryserialization.DeserializeAccessToken(buffer)
+	return binaryserialization.DeserializeClients(buffer)
 }
 
-func (tms *IggyTcpClient) DeletePersonalAccessToken(name string) error {
-	message := binaryserialization.SerializeDeletePersonalAccessToken(iggcon.DeletePersonalAccessTokenRequest{
-		Name: name,
-	})
-	_, err := tms.sendAndFetchResponse(message, iggcon.DeleteAccessTokenCode)
-	return err
-}
-
-func (tms *IggyTcpClient) GetPersonalAccessTokens() ([]iggcon.PersonalAccessTokenInfo, error) {
-	buffer, err := tms.sendAndFetchResponse([]byte{}, iggcon.GetAccessTokensCode)
+func (c *IggyTcpClient) GetClient(clientId uint32) (*iggcon.ClientInfoDetails, error) {
+	message := binaryserialization.SerializeUint32(clientId)
+	buffer, err := c.sendAndFetchResponse(message, iggcon.GetClientCode)
 	if err != nil {
 		return nil, err
 	}
 
-	return binaryserialization.DeserializeAccessTokens(buffer)
+	return binaryserialization.DeserializeClient(buffer), nil
 }

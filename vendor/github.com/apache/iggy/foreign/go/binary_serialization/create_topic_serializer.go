@@ -40,7 +40,7 @@ func (request *TcpCreateTopicRequest) Serialize() []byte {
 	streamIdBytes := SerializeIdentifier(request.StreamId)
 	nameBytes := []byte(request.Name)
 
-    totalLength := len(streamIdBytes) + // StreamId
+	totalLength := len(streamIdBytes) + // StreamId
 		4 + // PartitionsCount
 		1 + // CompressionAlgorithm
 		8 + // MessageExpiry

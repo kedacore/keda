@@ -22,19 +22,22 @@ import (
 	iggcon "github.com/apache/iggy/foreign/go/contracts"
 )
 
-func (tms *IggyTcpClient) GetStats() (*iggcon.Stats, error) {
-	buffer, err := tms.sendAndFetchResponse([]byte{}, iggcon.GetStatsCode)
-	if err != nil {
-		return nil, err
-	}
-
-	stats := &binaryserialization.TcpStats{}
-	err = stats.Deserialize(buffer)
-
-	return &stats.Stats, err
+func (c *IggyTcpClient) CreatePartitions(streamId iggcon.Identifier, topicId iggcon.Identifier, partitionsCount uint32) error {
+	message := binaryserialization.CreatePartitions(iggcon.CreatePartitionsRequest{
+		StreamId:        streamId,
+		TopicId:         topicId,
+		PartitionsCount: partitionsCount,
+	})
+	_, err := c.sendAndFetchResponse(message, iggcon.CreatePartitionsCode)
+	return err
 }
 
-func (tms *IggyTcpClient) Ping() error {
-	_, err := tms.sendAndFetchResponse([]byte{}, iggcon.PingCode)
+func (c *IggyTcpClient) DeletePartitions(streamId iggcon.Identifier, topicId iggcon.Identifier, partitionsCount uint32) error {
+	message := binaryserialization.DeletePartitions(iggcon.DeletePartitionsRequest{
+		StreamId:        streamId,
+		TopicId:         topicId,
+		PartitionsCount: partitionsCount,
+	})
+	_, err := c.sendAndFetchResponse(message, iggcon.DeletePartitionsCode)
 	return err
 }

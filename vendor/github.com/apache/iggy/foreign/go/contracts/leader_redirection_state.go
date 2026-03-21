@@ -15,28 +15,30 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package tcp
+package iggcon
 
-import (
-	binaryserialization "github.com/apache/iggy/foreign/go/binary_serialization"
-	iggcon "github.com/apache/iggy/foreign/go/contracts"
-)
+const MaxLeaderRedirects uint8 = 3
 
-func (tms *IggyTcpClient) GetClients() ([]iggcon.ClientInfo, error) {
-	buffer, err := tms.sendAndFetchResponse([]byte{}, iggcon.GetClientsCode)
-	if err != nil {
-		return nil, err
-	}
-
-	return binaryserialization.DeserializeClients(buffer)
+// LeaderRedirectionState tracks redirection attempts to avoid loops.
+type LeaderRedirectionState struct {
+	RedirectCount     uint8
+	LastLeaderAddress string
 }
 
-func (tms *IggyTcpClient) GetClient(clientId uint32) (*iggcon.ClientInfoDetails, error) {
-	message := binaryserialization.SerializeUint32(clientId)
-	buffer, err := tms.sendAndFetchResponse(message, iggcon.GetClientCode)
-	if err != nil {
-		return nil, err
-	}
+func NewLeaderRedirectionState() *LeaderRedirectionState {
+	return &LeaderRedirectionState{RedirectCount: 0}
+}
 
-	return binaryserialization.DeserializeClient(buffer), nil
+func (s *LeaderRedirectionState) CanRedirect() bool {
+	return s.RedirectCount < MaxLeaderRedirects
+}
+
+func (s *LeaderRedirectionState) IncrementRedirect(leaderAddress string) {
+	s.RedirectCount++
+	s.LastLeaderAddress = leaderAddress
+}
+
+func (s *LeaderRedirectionState) Reset() {
+	s.RedirectCount = 0
+	s.LastLeaderAddress = ""
 }

@@ -20,9 +20,9 @@ import (
 	"context"
 	"fmt"
 
+	iggcli "github.com/apache/iggy/foreign/go/client"
+	"github.com/apache/iggy/foreign/go/client/tcp"
 	iggcon "github.com/apache/iggy/foreign/go/contracts"
-	"github.com/apache/iggy/foreign/go/iggycli"
-	"github.com/apache/iggy/foreign/go/tcp"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -36,13 +36,12 @@ const apacheIggyMetricType = "External"
 type apacheIggyScaler struct {
 	metricType      v2.MetricTargetType
 	metadata        *apacheIggyMetadata
-	client          iggycli.Client
+	client          iggcon.Client
 	logger          logr.Logger
 	previousOffsets map[uint32]int64
 	streamID        iggcon.Identifier
 	topicID         iggcon.Identifier
 	consumer        iggcon.Consumer
-	cancel          context.CancelFunc
 }
 
 type apacheIggyMetadata struct {
@@ -140,18 +139,12 @@ func NewApacheIggyScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 	s.consumer = iggcon.NewGroupConsumer(groupID)
 
-	// Use a cancellable context so Close() can stop the SDK's heartbeat goroutine
-	ctx, cancel := context.WithCancel(context.Background())
-	s.cancel = cancel
-
-	client, err := iggycli.NewIggyClient(
-		iggycli.WithTcp(
+	client, err := iggcli.NewIggyClient(
+		iggcli.WithTcp(
 			tcp.WithServerAddress(meta.ServerAddress),
-			tcp.WithContext(ctx),
 		),
 	)
 	if err != nil {
-		cancel()
 		return nil, fmt.Errorf("error creating iggy client: %w", err)
 	}
 
@@ -161,7 +154,7 @@ func NewApacheIggyScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		_, err = client.LoginUser(meta.Username, meta.Password)
 	}
 	if err != nil {
-		cancel()
+		_ = client.Close()
 		return nil, fmt.Errorf("error authenticating with iggy: %w", err)
 	}
 
@@ -268,10 +261,10 @@ func (s *apacheIggyScaler) Close(_ context.Context) error {
 		if err := s.client.LogoutUser(); err != nil {
 			s.logger.V(1).Info("Error logging out from iggy", "error", err)
 		}
-	}
-	// Cancel the context to stop the SDK's heartbeat goroutine and release the TCP connection
-	if s.cancel != nil {
-		s.cancel()
+		// Close stops the SDK's heartbeat goroutine and releases the TCP connection
+		if err := s.client.Close(); err != nil {
+			s.logger.V(1).Info("Error closing iggy client", "error", err)
+		}
 	}
 	return nil
 }
