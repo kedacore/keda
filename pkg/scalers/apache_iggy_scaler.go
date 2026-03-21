@@ -207,7 +207,7 @@ func (s *apacheIggyScaler) GetMetricsAndActivity(_ context.Context, metricName s
 				"partition", i, "error", err)
 			retVal := int64(1)
 			if s.metadata.ScaleToZeroOnInvalidOffset {
-				retVal = 0
+				retVal = iggyPartitionHighWatermark(topic, partitionID)
 			}
 			partitionLags = append(partitionLags, retVal)
 			partitionLagsWithPersistent = append(partitionLagsWithPersistent, retVal)
@@ -221,7 +221,7 @@ func (s *apacheIggyScaler) GetMetricsAndActivity(_ context.Context, metricName s
 				"partition", i)
 			retVal := int64(1)
 			if s.metadata.ScaleToZeroOnInvalidOffset {
-				retVal = 0
+				retVal = iggyPartitionHighWatermark(topic, partitionID)
 			}
 			partitionLags = append(partitionLags, retVal)
 			partitionLagsWithPersistent = append(partitionLagsWithPersistent, retVal)
@@ -274,6 +274,17 @@ func (s *apacheIggyScaler) Close(_ context.Context) error {
 		s.cancel()
 	}
 	return nil
+}
+
+// iggyPartitionHighWatermark returns the high watermark (latest offset) for a
+// partition from the topic details. Returns 0 if the partition is not found.
+func iggyPartitionHighWatermark(topic *iggcon.TopicDetails, partitionID uint32) int64 {
+	for _, p := range topic.Partitions {
+		if p.Id == partitionID {
+			return int64(p.CurrentOffset)
+		}
+	}
+	return 0
 }
 
 // calculateIggyLag computes total lag from per-partition lags.
