@@ -1,0 +1,9 @@
+tmp/
+*.test
+
+# editors
+.idea
+.vscode
+bin/
+
+.DS_Store

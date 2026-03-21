@@ -230,6 +230,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewNewRelicScaler(config)
 	case "nsq":
 		return scalers.NewNSQScaler(config)
+	case "opensearch":
+		return scalers.NewOpensearchScaler(config)
 	case "openstack-metric":
 		return scalers.NewOpenstackMetricScaler(ctx, config)
 	case "openstack-swift":
