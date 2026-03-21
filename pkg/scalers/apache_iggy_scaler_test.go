@@ -30,8 +30,8 @@ func (m *mockIggyClient) GetConsumerOffset(_ iggcon.Consumer, _, _ iggcon.Identi
 }
 
 // Stub methods to satisfy iggcon.Client interface.
-func (m *mockIggyClient) Close() error                                 { return nil }
-func (m *mockIggyClient) GetConnectionInfo() *iggcon.ConnectionInfo    { return nil }
+func (m *mockIggyClient) Close() error                              { return nil }
+func (m *mockIggyClient) GetConnectionInfo() *iggcon.ConnectionInfo { return nil }
 func (m *mockIggyClient) GetClusterMetadata() (*iggcon.ClusterMetadata, error) {
 	return nil, nil
 }
