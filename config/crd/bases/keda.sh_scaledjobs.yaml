@@ -70,6 +70,7 @@ spec:
                 type: string
               failedJobsHistoryLimit:
                 format: int32
+                minimum: 0
                 type: integer
               jobTargetRef:
                 description: JobSpec describes how the job execution will look like.
@@ -8952,22 +8953,35 @@ spec:
                 type: object
               maxReplicaCount:
                 format: int32
+                minimum: 1
                 type: integer
               minReplicaCount:
                 format: int32
+                minimum: 0
                 type: integer
               pollingInterval:
                 format: int32
+                minimum: 1
                 type: integer
               rollout:
                 description: Rollout defines the strategy for job rollouts
                 properties:
                   propagationPolicy:
+                    enum:
+                    - foreground
+                    - background
                     type: string
                   strategy:
+                    enum:
+                    - gradual
+                    - immediate
                     type: string
                 type: object
               rolloutStrategy:
+                description: 'Deprecated: Use Rollout.Strategy instead (see https://github.com/kedacore/keda/issues/3596).'
+                enum:
+                - gradual
+                - immediate
                 type: string
               scalingStrategy:
                 description: ScalingStrategy defines the strategy of Scaling
@@ -8978,16 +8992,26 @@ spec:
                   customScalingRunningJobPercentage:
                     type: string
                   multipleScalersCalculation:
+                    enum:
+                    - min
+                    - avg
+                    - sum
+                    - max
                     type: string
                   pendingPodConditions:
                     items:
                       type: string
                     type: array
                   strategy:
+                    enum:
+                    - custom
+                    - accurate
+                    - eager
                     type: string
                 type: object
               successfulJobsHistoryLimit:
                 format: int32
+                minimum: 0
                 type: integer
               triggers:
                 items:
@@ -9001,6 +9025,9 @@ spec:
                         kind:
                           description: Kind of the resource being referred to. Defaults
                             to TriggerAuthentication.
+                          enum:
+                          - TriggerAuthentication
+                          - ClusterTriggerAuthentication
                           type: string
                         name:
                           type: string
@@ -9019,6 +9046,7 @@ spec:
                     name:
                       type: string
                     type:
+                      minLength: 1
                       type: string
                     useCachedMetrics:
                       type: boolean
@@ -9026,6 +9054,7 @@ spec:
                   - metadata
                   - type
                   type: object
+                minItems: 1
                 type: array
             required:
             - jobTargetRef

@@ -50,11 +50,11 @@ const (
 const (
 	// ScaledJobConditionPausedReason defines the default Reason for paused ScaledJob
 	ScaledJobConditionPausedReason = "ScaledJobPaused"
-	// ScaledJobConditionPausedReason defines the default Reason for paused ScaledJob
+	// ScaledJobConditionUnpausedReason defines the default Reason for unpaused ScaledJob
 	ScaledJobConditionUnpausedReason = "ScaledJobUnpaused"
 	// ScaledJobConditionPausedMessage defines the default Message for paused ScaledJob
 	ScaledJobConditionPausedMessage = "ScaledJob is paused"
-	// ScaledJobConditionPausedMessage defines the default Message for paused ScaledJob
+	// ScaledJobConditionUnpausedMessage defines the default Message for unpaused ScaledJob
 	ScaledJobConditionUnpausedMessage = "ScaledJob is unpaused"
 )
 
