@@ -80,6 +80,10 @@ linters:
         text: 'var-naming: avoid meaningless package names'
         path: pkg/util/
       - linters:
+          - revive
+        text: 'var-naming: avoid package names that conflict with Go standard library package names'
+        path: version/version.go
+      - linters:
           - gocyclo
         path: scalers_builder.go
       - linters:

@@ -80,6 +80,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Add `--leader-election-id` flag to allow configuring the leader election Lease name ([#7564](https://github.com/kedacore/keda/issues/7564))
 - **General**: Make APIService cert injections optional ([#7559](https://github.com/kedacore/keda/pull/7559))
 - **Elasticsearch Scaler**: Add HTTP status check for Elasticsearch errors ([#7480](https://github.com/kedacore/keda/pull/7480))
+- **RabbitMQ Scaler**: Add support for authentication to HTTP Rabbitmq with OAuth2 ([#7379](https://github.com/kedacore/keda/issues/7379))
 
 ### Fixes
 
