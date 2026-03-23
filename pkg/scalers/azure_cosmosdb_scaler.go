@@ -547,8 +547,9 @@ func (s *azureCosmosDBScaler) GetMetricsAndActivity(ctx context.Context, metricN
 			metric := GenerateMetricInMili(metricName, float64(maxLag))
 			return []external_metrics.ExternalMetricValue{metric}, true, nil
 		}
-		// No cached partition count — fall back to threshold as a safe default
-		metric := GenerateMetricInMili(metricName, float64(s.metadata.Threshold))
+		// No cached partition count — return a large value to trigger max scaling.
+		// Use 100 * threshold to ensure HPA scales well beyond 1 replica.
+		metric := GenerateMetricInMili(metricName, float64(100*s.metadata.Threshold))
 		return []external_metrics.ExternalMetricValue{metric}, true, nil
 	}
 
