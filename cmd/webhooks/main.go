@@ -73,6 +73,13 @@ func main() {
 
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
+
+	// Opt into the new klog behavior so that -stderrthreshold is honored even
+	// when -logtostderr=true (the default). Without this, all log levels are
+	// unconditionally sent to stderr and users cannot filter by severity.
+	// Requires klog v2.140.0+ (kubernetes/klog#432).
+	_ = flag.CommandLine.Set("legacy_stderr_threshold_behavior", "false")
+
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 
