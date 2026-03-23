@@ -26,7 +26,7 @@ type mssqlScaler struct {
 }
 
 type mssqlMetadata struct {
-	DriverName            string  `keda:"name=driverName,			 order=authParams;triggerMetadata, default=sqlserver"`
+	DriverName            string  `keda:"name=driverName,			 order=authParams;triggerMetadata, enum=sqlserver;azuresql, default=sqlserver"`
 	ConnectionString      string  `keda:"name=connectionString,      order=authParams;resolvedEnv, optional"`
 	Username              string  `keda:"name=username,              order=authParams;triggerMetadata, optional"`
 	Password              string  `keda:"name=password,              order=authParams;resolvedEnv, optional"`
@@ -43,9 +43,6 @@ type mssqlMetadata struct {
 func (m *mssqlMetadata) Validate() error {
 	if m.ConnectionString == "" && m.Host == "" {
 		return fmt.Errorf("must provide either connectionstring or host")
-	}
-	if m.DriverName != "sqlserver" && m.DriverName != "azuresql" {
-		return fmt.Errorf("driver name must be 'sqlserver' or 'azuresql'")
 	}
 	return nil
 }

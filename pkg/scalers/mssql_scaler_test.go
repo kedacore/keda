@@ -134,7 +134,7 @@ var testMSSQLMetadata = []parseMSSQLMetadataTestData{
 		metadata:      map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "example.database.windows.net", "username": "user7"},
 		resolvedEnv:   map[string]string{},
 		authParams:    map[string]string{"password": "Password#7", "driverName": "fake"},
-		expectedError: "driver name must be 'sqlserver' or 'azuresql'",
+		expectedError: "parameter \"driverName\" value \"fake\" must be one of [sqlserver azuresql]",
 	},
 }
 

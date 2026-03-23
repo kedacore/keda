@@ -2836,6 +2836,10 @@
                     "name": "driverName",
                     "type": "string",
                     "default": "sqlserver",
+                    "allowedValue": [
+                        "sqlserver",
+                        "azuresql"
+                    ],
                     "metadataVariableReadable": true,
                     "triggerAuthenticationVariableReadable": true
                 },
