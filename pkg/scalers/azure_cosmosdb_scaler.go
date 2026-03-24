@@ -70,6 +70,7 @@ type cosmosDBClient struct {
 	databaseID       string
 	containerID      string
 	credential       azcore.TokenCredential
+	logger           logr.Logger
 }
 
 type leaseDocument struct {
@@ -157,6 +158,7 @@ func newCosmosDBClient(meta *azureCosmosDBMetadata, podIdentity kedav1alpha1.Aut
 		leaseContainerID: meta.LeaseContainerID,
 		databaseID:       meta.DatabaseID,
 		containerID:      meta.ContainerID,
+		logger:           logger,
 	}
 
 	// Resolve data endpoint and key
@@ -383,6 +385,7 @@ func (c *cosmosDBClient) estimateLag(ctx context.Context) (totalLag int64, parti
 		return 0, 0, err
 	}
 	if splitDetected {
+		c.logger.Info("Warning: partition split detected, re-reading leases")
 		totalLag, partitionCount, _, err = c.estimateOnce(ctx)
 		if err != nil {
 			return 0, 0, err
@@ -398,8 +401,11 @@ func (c *cosmosDBClient) estimateOnce(ctx context.Context) (int64, int64, bool, 
 	}
 
 	if len(leases) == 0 {
+		c.logger.V(1).Info("no lease documents found in lease container")
 		return 0, 0, false, nil
 	}
+
+	c.logger.V(1).Info(fmt.Sprintf("found %d lease documents", len(leases)))
 
 	totalLag := int64(0)
 	splitDetected := false
@@ -410,9 +416,11 @@ func (c *cosmosDBClient) estimateOnce(ctx context.Context) (int64, int64, bool, 
 			return 0, 0, false, fmt.Errorf("error estimating lag for partition %s: %w", lease.LeaseToken, err)
 		}
 		if isSplit {
+			c.logger.Info(fmt.Sprintf("Warning: partition %s returned 410 Gone (split/merge detected)", lease.LeaseToken))
 			splitDetected = true
 			continue
 		}
+		c.logger.V(1).Info(fmt.Sprintf("partition %s: estimated lag = %d, owner = %s", lease.LeaseToken, lag, lease.Owner))
 		if lag > 0 {
 			totalLag += lag
 		}
@@ -436,7 +444,7 @@ func (c *cosmosDBClient) estimateOnce(ctx context.Context) (int64, int64, bool, 
 func (c *cosmosDBClient) estimatePartitionLag(ctx context.Context, lease leaseDocument) (int64, bool, error) {
 	cfResp, err := c.readChangeFeed(ctx, lease.LeaseToken, lease.ContinuationToken)
 	if err != nil {
-		return 0, false, err
+		return 0, false, fmt.Errorf("error reading change feed for partition %s: %w", lease.LeaseToken, err)
 	}
 
 	// 410 Gone indicates partition split or merge
@@ -452,16 +460,19 @@ func (c *cosmosDBClient) estimatePartitionLag(ctx context.Context, lease leaseDo
 	// Calculate lag: sessionLSN - firstItemLSN + 1
 	sessionLSN, err := parseLSNFromSessionToken(cfResp.SessionToken)
 	if err != nil || sessionLSN < 0 {
+		c.logger.V(1).Info(fmt.Sprintf("partition %s: could not parse session token LSN (token: %s), assuming no lag", lease.LeaseToken, cfResp.SessionToken))
 		return 0, false, nil
 	}
 
 	firstItemLSN, err := extractItemLSN(cfResp.Items[0])
 	if err != nil || firstItemLSN < 0 {
+		c.logger.V(1).Info(fmt.Sprintf("partition %s: could not extract _lsn from first item, assuming no lag", lease.LeaseToken))
 		return 0, false, nil
 	}
 
 	lag := sessionLSN - firstItemLSN + 1
 	if lag < 0 {
+		c.logger.V(1).Info(fmt.Sprintf("partition %s: negative lag (sessionLSN=%d, firstItemLSN=%d), assuming no lag", lease.LeaseToken, sessionLSN, firstItemLSN))
 		return 0, false, nil
 	}
 
@@ -544,12 +555,16 @@ func (s *azureCosmosDBScaler) GetMetricsAndActivity(ctx context.Context, metricN
 		s.logger.Error(err, "error getting cosmos db change feed lag, scaling to max")
 		if s.lastPartitionCount > 0 {
 			maxLag := s.lastPartitionCount * s.metadata.Threshold
+			s.logger.Info(fmt.Sprintf("Warning: using cached partition count (%d) for error fallback, reporting lag=%d",
+				s.lastPartitionCount, maxLag))
 			metric := GenerateMetricInMili(metricName, float64(maxLag))
 			return []external_metrics.ExternalMetricValue{metric}, true, nil
 		}
 		// No cached partition count — return a large value to trigger max scaling.
 		// Use 100 * threshold to ensure HPA scales well beyond 1 replica.
-		metric := GenerateMetricInMili(metricName, float64(100*s.metadata.Threshold))
+		fallbackLag := 100 * s.metadata.Threshold
+		s.logger.Info(fmt.Sprintf("Warning: no cached partition count available, using large fallback lag=%d", fallbackLag))
+		metric := GenerateMetricInMili(metricName, float64(fallbackLag))
 		return []external_metrics.ExternalMetricValue{metric}, true, nil
 	}
 
