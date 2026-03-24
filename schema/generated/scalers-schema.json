@@ -1637,6 +1637,93 @@
             ]
         },
         {
+            "type": "elastic-forecast",
+            "parameters": [
+                {
+                    "name": "addresses",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "cloudID",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "apiKey",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "jobID",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "lookAhead",
+                    "type": "string",
+                    "default": "10m",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "targetValue",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "activationTargetValue",
+                    "type": "string",
+                    "default": "0",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "index",
+                    "type": "string",
+                    "default": "*",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "partitionFieldValue",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "byFieldValue",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                }
+            ]
+        },
+        {
             "type": "elasticsearch",
             "parameters": [
                 {

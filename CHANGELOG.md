@@ -68,7 +68,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Introduce Elastic Forecast Scaler ([#7494](https://github.com/kedacore/keda/issues/7494))
 
 #### Experimental
 
