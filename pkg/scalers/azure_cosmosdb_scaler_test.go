@@ -1117,9 +1117,7 @@ func TestCosmosDBGetMetricsAndActivityOnErrorNoCachedPartitions(t *testing.T) {
 		lastPartitionCount: 0, // No cached partition count
 	}
 
-	// On error with no cached partitions, should return threshold as fallback
-	metrics, isActive, err := scaler.GetMetricsAndActivity(context.Background(), "test-metric")
-	assert.NoError(t, err)
-	assert.True(t, isActive)
-	assert.Len(t, metrics, 1)
+	// On error with no cached partitions, should return error
+	_, _, err := scaler.GetMetricsAndActivity(context.Background(), "test-metric")
+	assert.Error(t, err)
 }

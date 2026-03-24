@@ -33,11 +33,11 @@ const (
 )
 
 type azureCosmosDBScaler struct {
-	metricType          v2.MetricTargetType
-	metadata            *azureCosmosDBMetadata
-	cosmosClient        *cosmosDBClient
-	logger              logr.Logger
-	lastPartitionCount  int64
+	metricType         v2.MetricTargetType
+	metadata           *azureCosmosDBMetadata
+	cosmosClient       *cosmosDBClient
+	logger             logr.Logger
+	lastPartitionCount int64
 }
 
 type azureCosmosDBMetadata struct {
@@ -552,20 +552,16 @@ func getChangeFeedTotalLagRelatedToPartitionAmount(totalLag int64, partitionCoun
 func (s *azureCosmosDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	totalLag, partitionCount, err := s.cosmosClient.estimateLag(ctx)
 	if err != nil {
-		s.logger.Error(err, "error getting cosmos db change feed lag, scaling to max")
 		if s.lastPartitionCount > 0 {
 			maxLag := s.lastPartitionCount * s.metadata.Threshold
-			s.logger.Info(fmt.Sprintf("Warning: using cached partition count (%d) for error fallback, reporting lag=%d",
+			s.logger.Error(err, fmt.Sprintf("error getting cosmos db change feed lag, using cached partition count (%d) for fallback, reporting lag=%d",
 				s.lastPartitionCount, maxLag))
 			metric := GenerateMetricInMili(metricName, float64(maxLag))
 			return []external_metrics.ExternalMetricValue{metric}, true, nil
 		}
-		// No cached partition count — return a large value to trigger max scaling.
-		// Use 100 * threshold to ensure HPA scales well beyond 1 replica.
-		fallbackLag := 100 * s.metadata.Threshold
-		s.logger.Info(fmt.Sprintf("Warning: no cached partition count available, using large fallback lag=%d", fallbackLag))
-		metric := GenerateMetricInMili(metricName, float64(fallbackLag))
-		return []external_metrics.ExternalMetricValue{metric}, true, nil
+		// No cached partition count — propagate error to KEDA (standard behavior)
+		s.logger.Error(err, "error getting cosmos db change feed lag, no cached partition count available")
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	// Cache partition count for error fallback
