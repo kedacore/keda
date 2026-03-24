@@ -494,6 +494,63 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
+    - type: azure-cosmosdb
+      parameters:
+        - name: databaseId
+          type: string
+          metadataVariableReadable: true
+        - name: containerId
+          type: string
+          metadataVariableReadable: true
+        - name: leaseDatabaseId
+          type: string
+          metadataVariableReadable: true
+        - name: leaseContainerId
+          type: string
+          metadataVariableReadable: true
+        - name: processorName
+          type: string
+          metadataVariableReadable: true
+        - name: endpoint
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: connection
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: leaseEndpoint
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: leaseConnection
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: cosmosDBKey
+          type: string
+          optional: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: leaseCosmosDBKey
+          type: string
+          optional: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: changeFeedLagThreshold
+          type: string
+          default: "100"
+          metadataVariableReadable: true
+        - name: activationChangeFeedLagThreshold
+          type: string
+          default: "0"
+          metadataVariableReadable: true
     - type: azure-eventhub
       parameters:
         - name: unprocessedEventThreshold
