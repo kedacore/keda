@@ -186,6 +186,114 @@ var _ = Describe("ScaledJobController", func() {
 			}
 			Expect(foundTriggersField).To(BeTrue())
 		})
+
+		It("ScaledJob minReplicaCount defaults to nil when not set", func() {
+			jobName := "use-default-minreplicacount-value"
+			sjName := "sj-" + jobName
+			sj := &kedav1alpha1.ScaledJob{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      sjName,
+					Namespace: "default",
+				},
+				Spec: kedav1alpha1.ScaledJobSpec{
+					JobTargetRef: generateJobSpec(jobName),
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			pollingInterval := int32(5)
+			sj.Spec.PollingInterval = &pollingInterval
+			err := k8sClient.Create(context.Background(), sj)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Confirm the minReplicaCount is nil
+			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: sjName, Namespace: "default"}, sj)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sj.Spec.MinReplicaCount).To(BeNil())
+		})
+
+		It("ScaledJob maxReplicaCount defaults to nil when not set", func() {
+			jobName := "use-default-maxreplicacount-value"
+			sjName := "sj-" + jobName
+			sj := &kedav1alpha1.ScaledJob{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      sjName,
+					Namespace: "default",
+				},
+				Spec: kedav1alpha1.ScaledJobSpec{
+					JobTargetRef: generateJobSpec(jobName),
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			pollingInterval := int32(5)
+			sj.Spec.PollingInterval = &pollingInterval
+			err := k8sClient.Create(context.Background(), sj)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Confirm the maxReplicaCount is nil
+			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: sjName, Namespace: "default"}, sj)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sj.Spec.MaxReplicaCount).To(BeNil())
+		})
+
+		It("ScaledJob minReplicaCount is set to maxReplicaCount when maxReplicaCount is less than minReplicaCount", func() {
+			jobName := "minreplicacount-changes-to-maxreplicacount"
+			sjName := "sj-" + jobName
+			minReplicaCount := int32(10)
+			maxReplicaCount := int32(3)
+			sj := &kedav1alpha1.ScaledJob{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      sjName,
+					Namespace: "default",
+				},
+				Spec: kedav1alpha1.ScaledJobSpec{
+					JobTargetRef: generateJobSpec(jobName),
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+					MinReplicaCount: &minReplicaCount,
+					MaxReplicaCount: &maxReplicaCount,
+				},
+			}
+			pollingInterval := int32(5)
+			sj.Spec.PollingInterval = &pollingInterval
+			err := k8sClient.Create(context.Background(), sj)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Confirm that minReplicaCount is set to maxReplicaCount
+			Eventually(func() *int32 {
+				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: sjName, Namespace: "default"}, sj)
+				Expect(err).ToNot(HaveOccurred())
+				return sj.Spec.MinReplicaCount
+			}).WithTimeout(1 * time.Minute).WithPolling(5 * time.Second).Should(Equal(&maxReplicaCount))
+		})
 	})
 })
 
