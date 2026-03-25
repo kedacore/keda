@@ -190,14 +190,13 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 	return nil, nil
 }
 
-//nolint:unparam
 func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) error {
 	err := CheckReplicaCountBoundsAreValid(incomingSo)
 	if err != nil {
 		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
 		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-replicas")
 	}
-	return nil
+	return err
 }
 
 func verifyFallback(incomingSo *ScaledObject, action string, _ bool) error {
@@ -405,9 +404,9 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string, dryRun bool
 					return nil
 				}
 			}
-			conainerName := trigger.Metadata["containerName"]
+			containerName := trigger.Metadata["containerName"]
 			for _, container := range podSpec.Containers {
-				if conainerName != "" && container.Name != conainerName {
+				if containerName != "" && container.Name != containerName {
 					continue
 				}
 

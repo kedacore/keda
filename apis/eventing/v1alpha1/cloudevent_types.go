@@ -73,7 +73,7 @@ const (
 	// ClusterTriggerAuthenticationCreatedType is for event when a new ClusterTriggerAuthentication is created
 	ClusterTriggerAuthenticationCreatedType CloudEventType = "keda.authentication.clustertriggerauthentication.created.v1"
 
-	// ClusterTriggerAuthenticationCreatedType is for event when a ClusterTriggerAuthentication is updated
+	// ClusterTriggerAuthenticationUpdatedType is for event when a ClusterTriggerAuthentication is updated
 	ClusterTriggerAuthenticationUpdatedType CloudEventType = "keda.authentication.clustertriggerauthentication.updated.v1"
 
 	// ClusterTriggerAuthenticationRemovedType is for event when a ClusterTriggerAuthentication is deleted
