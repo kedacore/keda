@@ -32,6 +32,7 @@ var (
 	mssqlServerPodName        = fmt.Sprintf("%s-0", mssqlServerName)
 	mssqlPassword             = "Pass@word1"
 	mssqlDatabase             = "TestDB"
+	mssqlDriverName           = "sqlserver"
 	mssqlHostname             = fmt.Sprintf("%s.%s.svc.cluster.local", mssqlServerName, testNamespace)
 	mssqlConnectionString     = fmt.Sprintf("Server=%s;Database=%s;User ID=sa;Password=%s;",
 		mssqlHostname, mssqlDatabase, mssqlPassword)
@@ -50,6 +51,7 @@ type templateData struct {
 	MssqlPassword             string
 	MssqlDatabase             string
 	MssqlConnectionString     string
+	DriverName                string
 	MinReplicaCount           int
 	MaxReplicaCount           int
 }
@@ -128,6 +130,7 @@ spec:
       port: "1433"
       database: {{.MssqlDatabase}}
       username: sa
+      driverName: {{.DriverName}}
       query: "SELECT COUNT(*) FROM tasks WHERE [status]='running' OR [status]='queued'"
       targetValue: "1" # one replica per row
       activationTargetValue: "15"
@@ -321,6 +324,7 @@ var data = templateData{
 	MssqlPassword:             mssqlPassword,
 	MssqlDatabase:             mssqlDatabase,
 	MssqlConnectionString:     mssqlConnectionString,
+	DriverName:                mssqlDriverName,
 }
 
 func getMssqlTemplateData() (templateData, []Template) {
