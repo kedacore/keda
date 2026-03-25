@@ -424,29 +424,10 @@ func (s *rabbitMQScaler) getQueueStatus(ctx context.Context) (int64, float64, fl
 
 	// QueueDeclarePassive assumes that the queue exists and fails if it doesn't.
 	items, err := s.channel.QueueDeclarePassive(s.metadata.QueueName, false, false, false, false, amqp.Table{})
-	if err == nil {
-		return int64(items.Messages), 0, 0, nil
+	if err != nil {
+		return -1, -1, -1, err
 	}
-
-	// AMQP channels are closed by the broker on any channel-level error (e.g.,
-	// queue not found). Try to recover by opening a new channel on the existing
-	// connection so we don't leak a TCP connection every polling cycle.
-	if s.connection != nil && !s.connection.IsClosed() {
-		s.logger.V(1).Info("RabbitMQ channel error, attempting to recover channel", "error", err)
-		newCh, chErr := s.connection.Channel()
-		if chErr != nil {
-			return -1, -1, -1, fmt.Errorf("failed to recover channel: %w (original error: %w)", chErr, err)
-		}
-		s.channel = newCh
-
-		items, retryErr := s.channel.QueueDeclarePassive(s.metadata.QueueName, false, false, false, false, amqp.Table{})
-		if retryErr != nil {
-			return -1, -1, -1, retryErr
-		}
-		return int64(items.Messages), 0, 0, nil
-	}
-
-	return -1, -1, -1, err
+	return int64(items.Messages), 0, 0, nil
 }
 
 func getJSON(ctx context.Context, s *rabbitMQScaler, url string) (queueInfo, error) {
