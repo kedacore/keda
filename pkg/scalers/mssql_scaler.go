@@ -119,7 +119,7 @@ func getMSSQLConnectionString(s *mssqlScaler) string {
 		query.Add("database", meta.Database)
 	}
 
-	connectionURL := &url.URL{Scheme: s.metadata.DriverName, RawQuery: query.Encode()}
+	connectionURL := &url.URL{Scheme: "sqlserver", RawQuery: query.Encode()}
 	if meta.Username != "" {
 		if meta.Password != "" {
 			connectionURL.User = url.UserPassword(meta.Username, meta.Password)
