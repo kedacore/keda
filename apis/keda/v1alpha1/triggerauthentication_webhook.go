@@ -177,27 +177,38 @@ func isTriggerAuthenticationRemovingFinalizer(om metav1.ObjectMeta, oldOm metav1
 }
 
 func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
+	var warnings admission.Warnings
+
+	if spec.HashiCorpVault != nil && spec.HashiCorpVault.Credential != nil {
+		if spec.HashiCorpVault.Credential.Token != "" {
+			warnings = append(warnings, "spec.hashiCorpVault.credential.token is deprecated; use spec.hashiCorpVault.credential.tokenFrom.secretKeyRef instead")
+		}
+		if spec.HashiCorpVault.Credential.Token != "" && spec.HashiCorpVault.Credential.TokenFrom != nil {
+			warnings = append(warnings, "spec.hashiCorpVault.credential.tokenFrom.secretKeyRef takes precedence over spec.hashiCorpVault.credential.token")
+		}
+	}
+
 	if spec.PodIdentity != nil {
 		switch spec.PodIdentity.Provider {
 		case PodIdentityProviderAzureWorkload:
 			if spec.PodIdentity.IdentityID != nil && *spec.PodIdentity.IdentityID == "" {
-				return nil, fmt.Errorf("identityId of PodIdentity should not be empty. If it's set, identityId has to be different than \"\"")
+				return warnings, fmt.Errorf("identityId of PodIdentity should not be empty. If it's set, identityId has to be different than \"\"")
 			}
 
 			if spec.PodIdentity.IdentityAuthorityHost != nil && *spec.PodIdentity.IdentityAuthorityHost != "" {
 				if spec.PodIdentity.IdentityTenantID == nil || *spec.PodIdentity.IdentityTenantID == "" {
-					return nil, fmt.Errorf("identityTenantID of PodIdentity should not be nil or empty when identityAuthorityHost of PodIdentity is set")
+					return warnings, fmt.Errorf("identityTenantID of PodIdentity should not be nil or empty when identityAuthorityHost of PodIdentity is set")
 				}
 			} else if spec.PodIdentity.IdentityTenantID != nil && *spec.PodIdentity.IdentityTenantID == "" {
-				return nil, fmt.Errorf("identityTenantId of PodIdentity should not be empty. If it's set, identityTenantId has to be different than \"\"")
+				return warnings, fmt.Errorf("identityTenantId of PodIdentity should not be empty. If it's set, identityTenantId has to be different than \"\"")
 			}
 		case PodIdentityProviderAws:
 			if spec.PodIdentity.RoleArn != nil && *spec.PodIdentity.RoleArn != "" && spec.PodIdentity.IsWorkloadIdentityOwner() {
-				return nil, fmt.Errorf("roleArn of PodIdentity can't be set if KEDA isn't identityOwner")
+				return warnings, fmt.Errorf("roleArn of PodIdentity can't be set if KEDA isn't identityOwner")
 			}
 		default:
-			return nil, nil
+			return warnings, nil
 		}
 	}
-	return nil, nil
+	return warnings, nil
 }

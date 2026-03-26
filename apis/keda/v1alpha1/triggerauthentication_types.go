@@ -245,6 +245,9 @@ type Credential struct {
 	Token string `json:"token,omitempty"`
 
 	// +optional
+	TokenFrom *ValueFromSecret `json:"tokenFrom,omitempty"`
+
+	// +optional
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 
 	// +optional

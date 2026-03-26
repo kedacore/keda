@@ -248,6 +248,23 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 	return resolveAuthRef(ctx, client, logger, triggerAuthRef, nil, namespace, authClientSet)
 }
 
+func resolveHashicorpVaultCredential(ctx context.Context, client client.Client, logger logr.Logger,
+	vault *kedav1alpha1.HashiCorpVault, namespace string, secretsLister corev1listers.SecretLister,
+) error {
+	if vault == nil || vault.Authentication != kedav1alpha1.VaultAuthenticationToken || vault.Credential == nil || vault.Credential.TokenFrom == nil {
+		return nil
+	}
+
+	secretKeyRef := vault.Credential.TokenFrom.SecretKeyRef
+	token := resolveAuthSecret(ctx, client, logger, secretKeyRef.Name, namespace, secretKeyRef.Key, secretsLister)
+	if token == "" {
+		return fmt.Errorf("error reading hashiCorpVault token from secret %s/%s key %s", namespace, secretKeyRef.Name, secretKeyRef.Key)
+	}
+
+	vault.Credential.Token = token
+	return nil
+}
+
 // resolveAuthRef provides authentication parameters needed authenticate scaler with the environment.
 // based on authentication method defined in TriggerAuthentication, authParams and podIdentity is returned
 func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logger,
@@ -304,6 +321,16 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 				}
 			}
 			if triggerAuthSpec.HashiCorpVault != nil && len(triggerAuthSpec.HashiCorpVault.Secrets) > 0 {
+				if err := resolveHashicorpVaultCredential(ctx, client, logger, triggerAuthSpec.HashiCorpVault, triggerNamespace, authClientSet.SecretLister); err != nil {
+					return result, podIdentity, err
+				}
+
+				if triggerAuthSpec.HashiCorpVault.Credential != nil &&
+					triggerAuthSpec.HashiCorpVault.Credential.Token != "" &&
+					triggerAuthSpec.HashiCorpVault.Credential.TokenFrom == nil {
+					logger.Info("WARNING: spec.hashiCorpVault.credential.token is deprecated and will be removed in KEDA v3. Use spec.hashiCorpVault.credential.tokenFrom.secretKeyRef instead")
+				}
+
 				vault := NewHashicorpVaultHandler(triggerAuthSpec.HashiCorpVault, authClientSet, namespace)
 				err := vault.Initialize(logger)
 				defer vault.Stop()
