@@ -145,6 +145,9 @@ func TestScaler(t *testing.T) {
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, connectionString, "TF_AZURE_COSMOSDB_CONNECTION_STRING env variable is required for azure cosmosdb test")
 
+	// Create Cosmos DB resources (database + containers)
+	setupCosmosDB(ctx, t)
+
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
@@ -273,4 +276,57 @@ func cosmosAuthToken(verb, resourceType, resourceLink, date, key string) string 
 	h.Write([]byte(text))
 	sig := base64.StdEncoding.EncodeToString(h.Sum(nil))
 	return url.QueryEscape(fmt.Sprintf("type=master&ver=1.0&sig=%s", sig))
+}
+
+// setupCosmosDB creates the database, data container, and lease container if they don't exist.
+func setupCosmosDB(ctx context.Context, t *testing.T) {
+	t.Helper()
+
+	endpoint, key, err := parseConnString(connectionString)
+	require.NoErrorf(t, err, "cannot parse connection string - %s", err)
+
+	// Create database
+	cosmosCreateResource(ctx, t, endpoint, key, "", "dbs", fmt.Sprintf(`{"id":"%s"}`, databaseID))
+
+	// Create data container with /id as partition key
+	dbLink := fmt.Sprintf("dbs/%s", databaseID)
+	cosmosCreateResource(ctx, t, endpoint, key, dbLink, "colls",
+		fmt.Sprintf(`{"id":"%s","partitionKey":{"paths":["/id"],"kind":"Hash"}}`, containerID))
+
+	// Create lease container with /id as partition key
+	cosmosCreateResource(ctx, t, endpoint, key, dbLink, "colls",
+		fmt.Sprintf(`{"id":"%s","partitionKey":{"paths":["/id"],"kind":"Hash"}}`, leaseContainerID))
+}
+
+// cosmosCreateResource creates a Cosmos DB resource via REST API, ignoring 409 Conflict (already exists).
+func cosmosCreateResource(ctx context.Context, t *testing.T, endpoint, key, parentLink, resourceType, body string) {
+	t.Helper()
+
+	reqURL := fmt.Sprintf("%s/%s/%s", strings.TrimRight(endpoint, "/"), parentLink, resourceType)
+	if parentLink == "" {
+		reqURL = fmt.Sprintf("%s/%s", strings.TrimRight(endpoint, "/"), resourceType)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqURL, strings.NewReader(body))
+	require.NoErrorf(t, err, "cannot create request - %s", err)
+
+	now := time.Now().UTC().Format(http.TimeFormat)
+	req.Header.Set("Authorization", cosmosAuthToken("post", resourceType, parentLink, now, key))
+	req.Header.Set("x-ms-date", now)
+	req.Header.Set("x-ms-version", "2018-12-31")
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoErrorf(t, err, "cannot send request - %s", err)
+	respBody, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	if resp.StatusCode == http.StatusConflict {
+		t.Logf("Resource already exists (409), skipping: %s/%s", parentLink, resourceType)
+		return
+	}
+
+	require.Truef(t, resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusOK,
+		"unexpected status %d creating resource: %s", resp.StatusCode, string(respBody))
+	t.Logf("Created resource: %s/%s", parentLink, resourceType)
 }
