@@ -258,6 +258,43 @@ func TestConditions_SetAndGetConditions(t *testing.T) {
 	}
 }
 
+func TestConditions_SetCondition_NilInitializes(t *testing.T) {
+	var conditions Conditions
+
+	conditions.SetReadyCondition(metav1.ConditionTrue, "Ready", "ready message")
+
+	if conditions == nil {
+		t.Fatal("expected SetReadyCondition to initialize nil Conditions")
+	}
+	if !conditions.AreInitialized() {
+		t.Error("expected all condition types to be present after initialization")
+	}
+
+	got := conditions.GetReadyCondition()
+	if got.Status != metav1.ConditionTrue {
+		t.Errorf("expected Ready status True, got %s", got.Status)
+	}
+	if got.Reason != "Ready" {
+		t.Errorf("expected reason 'Ready', got %s", got.Reason)
+	}
+}
+
+func TestConditions_GetCondition_NilInitializes(t *testing.T) {
+	var conditions Conditions
+
+	got := conditions.GetActiveCondition()
+
+	if conditions == nil {
+		t.Fatal("expected GetActiveCondition to initialize nil Conditions")
+	}
+	if got.Type != ConditionActive {
+		t.Errorf("expected Active condition, got %+v", got)
+	}
+	if got.Status != metav1.ConditionUnknown {
+		t.Errorf("expected Unknown status for unset Active condition, got %s", got.Status)
+	}
+}
+
 func TestConditions_getCondition_NotFound(t *testing.T) {
 	conditions := Conditions{
 		{Type: ConditionReady, Status: metav1.ConditionTrue},
