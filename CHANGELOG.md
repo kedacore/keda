@@ -86,6 +86,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Check updated status for Fallback condition instead of ScaledObject ([#7488](https://github.com/kedacore/keda/issues/7488))
 - **General**: Fix int64 overflow in milli-quantity conversion for very large metric values ([#7441](https://github.com/kedacore/keda/issues/7441))
 - **General**: Fix ScaledObject admission webhook to return validation error from `verifyReplicaCount`, preventing invalid ScaledObjects from being created ([#5954](https://github.com/kedacore/keda/issues/5954))
+- **General**: Use `%w` verb for error wrapping in AWS DynamoDB, Azure App Insights, and Azure Monitor scalers to enable proper error unwrapping ([#7515](https://github.com/kedacore/keda/pull/7515))
 - **Azure Data Explorer Scaler**: Remove clientSecretFromEnv support ([#7554](https://github.com/kedacore/keda/pull/7554))
 - **Cron Scaler**: Fix metric name generation so cron expressions with comma-separated values no longer produce invalid metric names ([#7448](https://github.com/kedacore/keda/issues/7448))
 - **External Scaler**: Fix context cancellation handling in `waitForState` of external scaler ([#7542](https://github.com/kedacore/keda/issues/7542))
