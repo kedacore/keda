@@ -249,9 +249,11 @@ func testMssqlScalerDriver(t *testing.T, driverName string) {
 	_, mssqlTemplates := getMssqlTemplateData(data)
 	_, templates := getTemplateData(data)
 
+	allTemplates := append([]Template{}, mssqlTemplates...)
+	allTemplates = append(allTemplates, templates...)
+
 	t.Cleanup(func() {
-		DeleteKubernetesResources(t, data.TestNamespace, data, mssqlTemplates)
-		DeleteKubernetesResources(t, data.TestNamespace, data, templates)
+		DeleteKubernetesResources(t, data.TestNamespace, data, allTemplates)
 	})
 
 	CreateKubernetesResources(t, kc, data.TestNamespace, data, mssqlTemplates)
