@@ -1221,6 +1221,7 @@ github.com/microsoft/azure-devops-go-api/azuredevops/webapi
 ## explicit; go 1.24.0
 github.com/microsoft/go-mssqldb
 github.com/microsoft/go-mssqldb/aecmk
+github.com/microsoft/go-mssqldb/azuread
 github.com/microsoft/go-mssqldb/integratedauth
 github.com/microsoft/go-mssqldb/integratedauth/ntlm
 github.com/microsoft/go-mssqldb/integratedauth/winsspi

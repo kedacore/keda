@@ -18,26 +18,7 @@ import (
 // Load environment variables from .env file
 var _ = godotenv.Load("../../.env")
 
-const (
-	testName = "mssql-test"
-)
-
-var (
-	testNamespace             = fmt.Sprintf("%s-ns", testName)
-	deploymentName            = fmt.Sprintf("%s-deployment", testName)
-	scaledObjectName          = fmt.Sprintf("%s-so", testName)
-	triggerAuthenticationName = fmt.Sprintf("%s-ta", testName)
-	secretName                = fmt.Sprintf("%s-secret", testName)
-	mssqlServerName           = fmt.Sprintf("%s-server", testName)
-	mssqlServerPodName        = fmt.Sprintf("%s-0", mssqlServerName)
-	mssqlPassword             = "Pass@word1"
-	mssqlDatabase             = "TestDB"
-	mssqlHostname             = fmt.Sprintf("%s.%s.svc.cluster.local", mssqlServerName, testNamespace)
-	mssqlConnectionString     = fmt.Sprintf("Server=%s;Database=%s;User ID=sa;Password=%s;",
-		mssqlHostname, mssqlDatabase, mssqlPassword)
-	minReplicaCount = 0
-	maxReplicaCount = 5
-)
+var mssqlDrivers = []string{"sqlserver", "azuresql"}
 
 type templateData struct {
 	TestNamespace             string
@@ -50,6 +31,7 @@ type templateData struct {
 	MssqlPassword             string
 	MssqlDatabase             string
 	MssqlConnectionString     string
+	DriverName                string
 	MinReplicaCount           int
 	MaxReplicaCount           int
 }
@@ -128,6 +110,7 @@ spec:
       port: "1433"
       database: {{.MssqlDatabase}}
       username: sa
+      driverName: {{.DriverName}}
       query: "SELECT COUNT(*) FROM tasks WHERE [status]='running' OR [status]='queued'"
       targetValue: "1" # one replica per row
       activationTargetValue: "15"
@@ -251,37 +234,53 @@ spec:
 )
 
 func TestMssqlScaler(t *testing.T) {
+	for _, driver := range mssqlDrivers {
+		t.Run(driver, func(t *testing.T) {
+			testMssqlScalerDriver(t, driver)
+		})
+	}
+}
+
+func testMssqlScalerDriver(t *testing.T, driverName string) {
+	data := newTemplateData(driverName)
+
 	// Create kubernetes resources for MS SQL server
 	kc := GetKubernetesClient(t)
-	_, mssqlTemplates := getMssqlTemplateData()
-	_, templates := getTemplateData()
+	_, mssqlTemplates := getMssqlTemplateData(data)
+	_, templates := getTemplateData(data)
+
+	allTemplates := append([]Template{}, mssqlTemplates...)
+	allTemplates = append(allTemplates, templates...)
+
 	t.Cleanup(func() {
-		DeleteKubernetesResources(t, testNamespace, data, templates)
+		DeleteKubernetesResources(t, data.TestNamespace, data, allTemplates)
 	})
 
-	CreateKubernetesResources(t, kc, testNamespace, data, mssqlTemplates)
+	CreateKubernetesResources(t, kc, data.TestNamespace, data, mssqlTemplates)
 
-	require.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, mssqlServerName, testNamespace, 1, 60, 3),
+	require.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, data.MssqlServerName, data.TestNamespace, 1, 60, 3),
 		"replica count should be %d after 3 minutes", 1)
 
-	createDatabaseCommand := fmt.Sprintf("/opt/mssql-tools18/bin/sqlcmd -S . -C -U sa -P \"%s\" -Q \"CREATE DATABASE [%s]\"", mssqlPassword, mssqlDatabase)
+	createDatabaseCommand := fmt.Sprintf("/opt/mssql-tools18/bin/sqlcmd -S . -C -U sa -P \"%s\" -Q \"CREATE DATABASE [%s]\"", data.MssqlPassword, data.MssqlDatabase)
 
-	ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, mssqlServerPodName, testNamespace, createDatabaseCommand, 60, 3)
+	mssqlServerPodName := fmt.Sprintf("%s-0", data.MssqlServerName)
+
+	ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, mssqlServerPodName, data.TestNamespace, createDatabaseCommand, 60, 3)
 	require.True(t, ok, "executing a command on MS SQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
 
 	createTableCommand := fmt.Sprintf("/opt/mssql-tools18/bin/sqlcmd -S . -C -U sa -P \"%s\" -d %s -Q \"CREATE TABLE tasks ([id] int identity primary key, [status] varchar(10))\"",
-		mssqlPassword, mssqlDatabase)
-	ok, out, errOut, err = WaitForSuccessfulExecCommandOnSpecificPod(t, mssqlServerPodName, testNamespace, createTableCommand, 60, 3)
+		data.MssqlPassword, data.MssqlDatabase)
+	ok, out, errOut, err = WaitForSuccessfulExecCommandOnSpecificPod(t, mssqlServerPodName, data.TestNamespace, createTableCommand, 60, 3)
 	require.True(t, ok, "executing a command on MS SQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
 
 	// Create kubernetes resources for testing
 	KubectlApplyMultipleWithTemplate(t, data, templates)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, data.TestNamespace, data.MinReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", data.MinReplicaCount)
 
 	testActivation(t, kc, data)
 	testScaleOut(t, kc, data)
-	testScaleIn(t, kc)
+	testScaleIn(t, kc, data)
 }
 
 // insert 10 records in the table -> activation should not happen (activationTargetValue = 15)
@@ -289,7 +288,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
 	KubectlReplaceWithTemplate(t, data, "insertRecordsJobTemplate1", insertRecordsJobTemplate1)
 
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, data.DeploymentName, data.TestNamespace, data.MinReplicaCount, 60)
 }
 
 // insert another 10 records in the table, which in total is 20 -> should be scaled up
@@ -297,40 +296,59 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
 	KubectlReplaceWithTemplate(t, data, "insertRecordsJobTemplate2", insertRecordsJobTemplate2)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", maxReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, data.TestNamespace, data.MaxReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", data.MaxReplicaCount)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale in ---")
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, data.TestNamespace, data.MinReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", data.MinReplicaCount)
 }
 
-var data = templateData{
-	TestNamespace:             testNamespace,
-	DeploymentName:            deploymentName,
-	ScaledObjectName:          scaledObjectName,
-	MinReplicaCount:           minReplicaCount,
-	MaxReplicaCount:           maxReplicaCount,
-	TriggerAuthenticationName: triggerAuthenticationName,
-	SecretName:                secretName,
-	MssqlServerName:           mssqlServerName,
-	MssqlHostname:             mssqlHostname,
-	MssqlPassword:             mssqlPassword,
-	MssqlDatabase:             mssqlDatabase,
-	MssqlConnectionString:     mssqlConnectionString,
+func newTemplateData(driverName string) templateData {
+	testName := fmt.Sprintf("mssql-%s-test", driverName)
+
+	testNamespace := fmt.Sprintf("%s-ns", testName)
+	deploymentName := fmt.Sprintf("%s-deployment", testName)
+	scaledObjectName := fmt.Sprintf("%s-so", testName)
+	triggerAuthenticationName := fmt.Sprintf("%s-ta", testName)
+	secretName := fmt.Sprintf("%s-secret", testName)
+	mssqlServerName := fmt.Sprintf("%s-server", testName)
+	mssqlPassword := "Pass@word1"
+	mssqlDatabase := "TestDB"
+	mssqlHostname := fmt.Sprintf("%s.%s.svc.cluster.local", mssqlServerName, testNamespace)
+	mssqlConnectionString := fmt.Sprintf(
+		"Server=%s;Database=%s;User ID=sa;Password=%s;",
+		mssqlHostname, mssqlDatabase, mssqlPassword,
+	)
+
+	return templateData{
+		TestNamespace:             testNamespace,
+		DeploymentName:            deploymentName,
+		ScaledObjectName:          scaledObjectName,
+		TriggerAuthenticationName: triggerAuthenticationName,
+		SecretName:                secretName,
+		MssqlServerName:           mssqlServerName,
+		MssqlHostname:             mssqlHostname,
+		MssqlPassword:             mssqlPassword,
+		MssqlDatabase:             mssqlDatabase,
+		MssqlConnectionString:     mssqlConnectionString,
+		DriverName:                driverName,
+		MinReplicaCount:           0,
+		MaxReplicaCount:           5,
+	}
 }
 
-func getMssqlTemplateData() (templateData, []Template) {
+func getMssqlTemplateData(data templateData) (templateData, []Template) {
 	return data, []Template{
 		{Name: "mssqlStatefulSetTemplate", Config: mssqlStatefulSetTemplate},
 		{Name: "mssqlServiceTemplate", Config: mssqlServiceTemplate},
 	}
 }
 
-func getTemplateData() (templateData, []Template) {
+func getTemplateData(data templateData) (templateData, []Template) {
 	return data, []Template{
 		{Name: "secretTemplate", Config: secretTemplate},
 		{Name: "deploymentTemplate", Config: deploymentTemplate},

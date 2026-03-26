@@ -10,6 +10,8 @@ import (
 	"github.com/go-logr/logr"
 	// Import the MS SQL driver so it can register itself with database/sql
 	_ "github.com/microsoft/go-mssqldb"
+	// Import the Azure SQL driver so it can register itself with database/sql
+	_ "github.com/microsoft/go-mssqldb/azuread"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -24,6 +26,7 @@ type mssqlScaler struct {
 }
 
 type mssqlMetadata struct {
+	DriverName            string  `keda:"name=driverName,			 order=authParams;triggerMetadata, enum=sqlserver;azuresql, default=sqlserver"`
 	ConnectionString      string  `keda:"name=connectionString,      order=authParams;resolvedEnv, optional"`
 	Username              string  `keda:"name=username,              order=authParams;triggerMetadata, optional"`
 	Password              string  `keda:"name=password,              order=authParams;resolvedEnv, optional"`
@@ -90,7 +93,7 @@ func parseMSSQLMetadata(config *scalersconfig.ScalerConfig) (*mssqlMetadata, err
 func newMSSQLConnection(s *mssqlScaler) (*sql.DB, error) {
 	connStr := getMSSQLConnectionString(s)
 
-	db, err := sql.Open("sqlserver", connStr)
+	db, err := sql.Open(s.metadata.DriverName, connStr)
 	if err != nil {
 		s.logger.Error(err, "Found error opening mssql")
 		return nil, err
