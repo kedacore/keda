@@ -767,3 +767,26 @@ func TestHashicorpVaultHandler_Token_ServiceAccountAuth(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
 }
+
+func TestHashicorpVaultHandler_Token_VaultTokenAuth_NoCredential(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
+	mockSecretLister := mock_secretlister.NewMockSecretLister(ctrl)
+	authClientSet := &authentication.AuthClientSet{
+		CoreV1Interface: mockCoreV1Interface,
+		SecretLister:    mockSecretLister,
+	}
+
+	vault := kedav1alpha1.HashiCorpVault{
+		Authentication: kedav1alpha1.VaultAuthenticationToken,
+	}
+
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	config := vaultapi.DefaultConfig()
+	client, err := vaultapi.NewClient(config)
+	assert.NoError(t, err)
+
+	token, err := vaultHandler.token(client)
+	assert.Empty(t, token)
+	assert.EqualError(t, err, "could not get Vault token from VAULT_TOKEN env variable, credential.tokenFrom.secretKeyRef, or credential.token")
+}
