@@ -3,4 +3,8 @@
 package configsources
 
 // goModuleVersion is the tagged release for this module
+<<<<<<< HEAD
 const goModuleVersion = "1.4.21"
+=======
+const goModuleVersion = "1.4.20"
+>>>>>>> 025a918d3 (Add AWS Parameter Store support to TriggerAuthentication)

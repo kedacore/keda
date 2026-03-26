@@ -382,6 +382,24 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 					}
 				}
 			}
+			if triggerAuthSpec.AwsParameterStore != nil && len(triggerAuthSpec.AwsParameterStore.Parameters) > 0 {
+				awsParameterStoreHandler := NewAwsParameterStoreHandler(triggerAuthSpec.AwsParameterStore)
+				err := awsParameterStoreHandler.Initialize(ctx, client, logger, triggerNamespace, authClientSet.SecretLister, podSpec)
+				defer awsParameterStoreHandler.Stop()
+				if err != nil {
+					logger.Error(err, "error authenticating to Aws Parameter Store", "triggerAuthRef.Name", triggerAuthRef.Name)
+				} else {
+					for _, parameter := range triggerAuthSpec.AwsParameterStore.Parameters {
+						res, err := awsParameterStoreHandler.Read(ctx, logger, parameter.Name, parameter.WithDecryption)
+						if err != nil {
+							logger.Error(err, "error trying to read parameter from Aws Parameter Store", "triggerAuthRef.Name", triggerAuthRef.Name,
+								"parameter.Name", parameter.Name)
+						} else {
+							result[parameter.Parameter] = res
+						}
+					}
+				}
+			}
 			if triggerAuthSpec.BoundServiceAccountToken != nil {
 				for _, e := range triggerAuthSpec.BoundServiceAccountToken {
 					result[e.Parameter] = resolveBoundServiceAccountToken(ctx, client, logger, triggerNamespace, &e, authClientSet)

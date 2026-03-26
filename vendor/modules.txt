@@ -387,10 +387,17 @@ github.com/aws/aws-sdk-go-v2/credentials/stscreds
 ## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/feature/ec2/imds
 github.com/aws/aws-sdk-go-v2/feature/ec2/imds/internal/config
+<<<<<<< HEAD
 # github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.21
 ## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/internal/configsources
 # github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.21
+=======
+# github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.20
+## explicit; go 1.24
+github.com/aws/aws-sdk-go-v2/internal/configsources
+# github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.20
+>>>>>>> 025a918d3 (Add AWS Parameter Store support to TriggerAuthentication)
 ## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/internal/endpoints/v2
 # github.com/aws/aws-sdk-go-v2/internal/ini v1.8.6
@@ -446,8 +453,18 @@ github.com/aws/aws-sdk-go-v2/service/signin/types
 github.com/aws/aws-sdk-go-v2/service/sqs
 github.com/aws/aws-sdk-go-v2/service/sqs/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/sqs/types
+<<<<<<< HEAD
 # github.com/aws/aws-sdk-go-v2/service/sso v1.30.15
 ## explicit; go 1.24
+=======
+# github.com/aws/aws-sdk-go-v2/service/ssm v1.68.3
+## explicit; go 1.24
+github.com/aws/aws-sdk-go-v2/service/ssm
+github.com/aws/aws-sdk-go-v2/service/ssm/internal/endpoints
+github.com/aws/aws-sdk-go-v2/service/ssm/types
+# github.com/aws/aws-sdk-go-v2/service/sso v1.30.9
+## explicit; go 1.23
+>>>>>>> 025a918d3 (Add AWS Parameter Store support to TriggerAuthentication)
 github.com/aws/aws-sdk-go-v2/service/sso
 github.com/aws/aws-sdk-go-v2/service/sso/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/sso/types

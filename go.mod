@@ -57,6 +57,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.43.5
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.41.5
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.42.25
+	github.com/aws/aws-sdk-go-v2/service/ssm v1.68.3
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.10
 	github.com/beanstalkd/go-beanstalk v0.2.0
 	github.com/bradleyfalzon/ghinstallation/v2 v2.18.0
