@@ -150,7 +150,7 @@ func (c *Condition) IsUnknown() bool {
 // SetReadyCondition modifies Ready Condition according to input parameters
 func (c *Conditions) SetReadyCondition(status metav1.ConditionStatus, reason string, message string) {
 	if *c == nil {
-		c = GetInitializedConditions()
+		*c = *GetInitializedConditions()
 	}
 	c.setCondition(ConditionReady, status, reason, message)
 }
@@ -158,7 +158,7 @@ func (c *Conditions) SetReadyCondition(status metav1.ConditionStatus, reason str
 // SetActiveCondition modifies Active Condition according to input parameters
 func (c *Conditions) SetActiveCondition(status metav1.ConditionStatus, reason string, message string) {
 	if *c == nil {
-		c = GetInitializedConditions()
+		*c = *GetInitializedConditions()
 	}
 	c.setCondition(ConditionActive, status, reason, message)
 }
@@ -166,7 +166,7 @@ func (c *Conditions) SetActiveCondition(status metav1.ConditionStatus, reason st
 // SetFallbackCondition modifies Fallback Condition according to input parameters
 func (c *Conditions) SetFallbackCondition(status metav1.ConditionStatus, reason string, message string) {
 	if *c == nil {
-		c = GetInitializedConditions()
+		*c = *GetInitializedConditions()
 	}
 	c.setCondition(ConditionFallback, status, reason, message)
 }
@@ -174,7 +174,7 @@ func (c *Conditions) SetFallbackCondition(status metav1.ConditionStatus, reason 
 // SetPausedCondition modifies Paused Condition according to input parameters
 func (c *Conditions) SetPausedCondition(status metav1.ConditionStatus, reason string, message string) {
 	if *c == nil {
-		c = GetInitializedConditions()
+		*c = *GetInitializedConditions()
 	}
 	c.setCondition(ConditionPaused, status, reason, message)
 }
@@ -182,7 +182,7 @@ func (c *Conditions) SetPausedCondition(status metav1.ConditionStatus, reason st
 // GetActiveCondition returns Condition of type Active
 func (c *Conditions) GetActiveCondition() Condition {
 	if *c == nil {
-		c = GetInitializedConditions()
+		*c = *GetInitializedConditions()
 	}
 	return c.getCondition(ConditionActive)
 }
@@ -190,7 +190,7 @@ func (c *Conditions) GetActiveCondition() Condition {
 // GetReadyCondition returns Condition of type Ready
 func (c *Conditions) GetReadyCondition() Condition {
 	if *c == nil {
-		c = GetInitializedConditions()
+		*c = *GetInitializedConditions()
 	}
 	return c.getCondition(ConditionReady)
 }
@@ -198,7 +198,7 @@ func (c *Conditions) GetReadyCondition() Condition {
 // GetFallbackCondition returns Condition of type Fallback
 func (c *Conditions) GetFallbackCondition() Condition {
 	if *c == nil {
-		c = GetInitializedConditions()
+		*c = *GetInitializedConditions()
 	}
 	return c.getCondition(ConditionFallback)
 }
@@ -206,7 +206,7 @@ func (c *Conditions) GetFallbackCondition() Condition {
 // GetPausedCondition returns Condition of type Paused
 func (c *Conditions) GetPausedCondition() Condition {
 	if *c == nil {
-		c = GetInitializedConditions()
+		*c = *GetInitializedConditions()
 	}
 	return c.getCondition(ConditionPaused)
 }
