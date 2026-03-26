@@ -43,6 +43,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -382,6 +383,24 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 					}
 				}
 			}
+			if triggerAuthSpec.AwsParameterStore != nil && len(triggerAuthSpec.AwsParameterStore.Parameters) > 0 {
+				awsParameterStoreHandler := NewAwsParameterStoreHandler(triggerAuthSpec.AwsParameterStore)
+				err := awsParameterStoreHandler.Initialize(ctx, client, logger, triggerNamespace, authClientSet.SecretLister, podSpec)
+				if err != nil {
+					logger.Error(err, "error authenticating to Aws Parameter Store", "triggerAuthRef.Name", triggerAuthRef.Name)
+				} else {
+					defer awsParameterStoreHandler.Stop()
+					for _, parameter := range triggerAuthSpec.AwsParameterStore.Parameters {
+						res, err := awsParameterStoreHandler.Read(ctx, logger, parameter.Name, parameter.WithDecryption)
+						if err != nil {
+							logger.Error(err, "error trying to read parameter from Aws Parameter Store", "triggerAuthRef.Name", triggerAuthRef.Name,
+								"parameter.Name", parameter.Name)
+						} else {
+							result[parameter.Parameter] = res
+						}
+					}
+				}
+			}
 			if triggerAuthSpec.BoundServiceAccountToken != nil {
 				for _, e := range triggerAuthSpec.BoundServiceAccountToken {
 					result[e.Parameter] = resolveBoundServiceAccountToken(ctx, client, logger, triggerNamespace, &e, authClientSet)
@@ -705,7 +724,7 @@ func GenerateBoundServiceAccountToken(ctx context.Context, serviceAccountName, n
 
 // resolveServiceAccountAnnotation retrieves the value of a specific annotation
 // from the annotations of a given Kubernetes ServiceAccount.
-func resolveServiceAccountAnnotation(ctx context.Context, client client.Client, name, namespace, annotation string, required bool) (string, error) {
+func resolveServiceAccountAnnotation(ctx context.Context, client client.Client, name, namespace, annotation string, _ bool) (string, error) {
 	serviceAccountName := defaultServiceAccount
 	if name != "" {
 		serviceAccountName = name
@@ -716,10 +735,64 @@ func resolveServiceAccountAnnotation(ctx context.Context, client client.Client, 
 		return "", fmt.Errorf("error getting service account: '%s', error: %w", serviceAccountName, err)
 	}
 	value, ok := serviceAccount.Annotations[annotation]
-	if !ok && required {
+	if !ok {
 		return "", fmt.Errorf("annotation '%s' not found", annotation)
 	}
 	return value, nil
+}
+
+// initializeAwsMetadata is a helper function to initialize AWS metadata for AWS service handlers
+// to eliminate code duplication between AWS Secret Manager and Parameter Store handlers.
+func initializeAwsMetadata(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string, secretsLister corev1listers.SecretLister, podSpec *corev1.PodSpec, serviceName, region string, podIdentity *kedav1alpha1.AuthPodIdentity, credentials interface{}) (awsutils.AuthorizationMetadata, error) {
+	metadata := awsutils.AuthorizationMetadata{
+		TriggerUniqueKey: fmt.Sprintf("%s-%s", serviceName, triggerNamespace),
+	}
+
+	if region != "" {
+		metadata.AwsRegion = region
+	}
+
+	if podIdentity == nil {
+		podIdentity = &kedav1alpha1.AuthPodIdentity{}
+	}
+
+	switch podIdentity.Provider {
+	case "", kedav1alpha1.PodIdentityProviderNone:
+		// Extract credentials based on type
+		var accessKey, secretKey *kedav1alpha1.ValueFromSecret
+		switch creds := credentials.(type) {
+		case *kedav1alpha1.AwsSecretManagerCredentials:
+			if creds != nil {
+				accessKey = &creds.AccessKey.ValueFrom
+				secretKey = &creds.AccessSecretKey.ValueFrom
+			}
+		case *kedav1alpha1.AwsParameterStoreCredentials:
+			if creds != nil {
+				accessKey = &creds.AccessKey.ValueFrom
+				secretKey = &creds.AccessSecretKey.ValueFrom
+			}
+		}
+
+		if accessKey != nil && secretKey != nil {
+			metadata.AwsAccessKeyID = resolveAuthSecret(ctx, client, logger, accessKey.SecretKeyRef.Name, triggerNamespace, accessKey.SecretKeyRef.Key, secretsLister)
+			metadata.AwsSecretAccessKey = resolveAuthSecret(ctx, client, logger, secretKey.SecretKeyRef.Name, triggerNamespace, secretKey.SecretKeyRef.Key, secretsLister)
+		}
+	case kedav1alpha1.PodIdentityProviderAws:
+		metadata.UsingPodIdentity = true
+		if podIdentity.IsWorkloadIdentityOwner() {
+			awsRoleArn, err := resolveServiceAccountAnnotation(ctx, client, podSpec.ServiceAccountName, triggerNamespace, kedav1alpha1.PodIdentityAnnotationEKS, true)
+			if err != nil {
+				return metadata, fmt.Errorf("error resolving role arn for aws: %w", err)
+			}
+			metadata.AwsRoleArn = awsRoleArn
+		} else if podIdentity.RoleArn != nil {
+			metadata.AwsRoleArn = *podIdentity.RoleArn
+		}
+	default:
+		return metadata, fmt.Errorf("pod identity provider %s not supported", podIdentity.Provider)
+	}
+
+	return metadata, nil
 }
 
 // GetCurrentReplicas returns the current replica count for a ScaledObject

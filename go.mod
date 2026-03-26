@@ -47,7 +47,7 @@ require (
 	github.com/InfluxCommunity/influxdb3-go/v2 v2.12.0
 	github.com/arangodb/go-driver v1.6.9
 	github.com/aws/aws-msk-iam-sasl-signer-go v1.0.4
-	github.com/aws/aws-sdk-go-v2 v1.41.3
+	github.com/aws/aws-sdk-go-v2 v1.41.4
 	github.com/aws/aws-sdk-go-v2/config v1.32.7
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.7
 	github.com/aws/aws-sdk-go-v2/service/amp v1.42.5
@@ -57,6 +57,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.42.10
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.41.1
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.42.21
+	github.com/aws/aws-sdk-go-v2/service/ssm v1.68.3
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.6
 	github.com/beanstalkd/go-beanstalk v0.2.0
 	github.com/bradleyfalzon/ghinstallation/v2 v2.17.0
@@ -173,8 +174,8 @@ require (
 	github.com/arangodb/go-velocypack v0.0.0-20200318135517-5af53c29c67e // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.4 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.17 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.19 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.19 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.20 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.20 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.11.18 // indirect
