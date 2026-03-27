@@ -32,6 +32,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	kubemetrics "k8s.io/component-base/metrics"
 	"k8s.io/component-base/metrics/legacyregistry"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -259,7 +260,12 @@ func main() {
 	// when -logtostderr=true (the default). Without this, all log levels are
 	// unconditionally sent to stderr and users cannot filter by severity.
 	// Requires klog v2.140.0+ (kubernetes/klog#432).
-	_ = flag.CommandLine.Set("legacy_stderr_threshold_behavior", "false")
+	if err := flag.CommandLine.Set("legacy_stderr_threshold_behavior", "false"); err != nil {
+		klog.Fatalf("Failed to set legacy_stderr_threshold_behavior: %v", err)
+	}
+	if err := flag.CommandLine.Set("stderrthreshold", "INFO"); err != nil {
+		klog.Fatalf("Failed to set stderrthreshold: %v", err)
+	}
 
 	cmd.Flags().AddGoFlagSet(flag.CommandLine)
 
