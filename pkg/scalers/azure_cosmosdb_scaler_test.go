@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -452,8 +453,14 @@ func TestExtractItemLSN(t *testing.T) {
 }
 
 func TestCosmosDBAuthTokenGeneration(t *testing.T) {
-	token := generateCosmosDBAuthToken("get", "docs", "dbs/testdb/colls/testcol", "thu, 01 jan 2024 00:00:00 gmt", "dGVzdGtleQ==")
+	token, err := generateCosmosDBAuthToken("get", "docs", "dbs/testdb/colls/testcol", "thu, 01 jan 2024 00:00:00 gmt", "dGVzdGtleQ==")
+	assert.NoError(t, err)
 	assert.Contains(t, token, "type%3Dmaster%26ver%3D1.0%26sig%3D")
+}
+
+func TestCosmosDBAuthTokenGenerationInvalidKey(t *testing.T) {
+	_, err := generateCosmosDBAuthToken("get", "docs", "dbs/testdb/colls/testcol", "date", "not-valid-base64!!!")
+	assert.Error(t, err)
 }
 
 func TestCosmosDBLeaseParsingDotNetFormat(t *testing.T) {
@@ -524,6 +531,7 @@ func TestCosmosDBLeaseParsingDotNetFormat(t *testing.T) {
 		containerID:      "data",
 		leaseDatabaseID:  "testdb",
 		leaseContainerID: "leases",
+		processorName:    "testprocessor",
 	}
 
 	totalLag, _, err := client.estimateLag(context.Background())
@@ -590,6 +598,7 @@ func TestCosmosDBLeaseParsingJavaFormat(t *testing.T) {
 		containerID:      "data",
 		leaseDatabaseID:  "testdb",
 		leaseContainerID: "leases",
+		processorName:    "testprocessor",
 	}
 
 	totalLag, _, err := client.estimateLag(context.Background())
@@ -641,6 +650,7 @@ func TestCosmosDBLeaseParsingMixedFormats(t *testing.T) {
 		containerID:      "data",
 		leaseDatabaseID:  "testdb",
 		leaseContainerID: "leases",
+		processorName:    "testprocessor",
 	}
 
 	totalLag, _, err := client.estimateLag(context.Background())
@@ -700,6 +710,7 @@ func TestCosmosDBLeaseParsingEPKBasedDotNet(t *testing.T) {
 		containerID:      "data",
 		leaseDatabaseID:  "testdb",
 		leaseContainerID: "leases",
+		processorName:    "testprocessor",
 	}
 
 	totalLag, _, err := client.estimateLag(context.Background())
@@ -753,6 +764,7 @@ func TestCosmosDBLeaseParsingEPKBasedJava(t *testing.T) {
 		containerID:      "data",
 		leaseDatabaseID:  "testdb",
 		leaseContainerID: "leases",
+		processorName:    "testprocessor",
 	}
 
 	totalLag, _, err := client.estimateLag(context.Background())
@@ -821,6 +833,7 @@ func TestCosmosDBLagEstimation(t *testing.T) {
 		containerID:      "testcontainer",
 		leaseDatabaseID:  "testdb",
 		leaseContainerID: "leases",
+		processorName:    "testprocessor",
 	}
 
 	totalLag, _, err := client.estimateLag(context.Background())
@@ -844,6 +857,7 @@ func TestCosmosDBLagEstimationEmptyLeases(t *testing.T) {
 		leaseKey:         "dGVzdGtleQ==",
 		leaseDatabaseID:  "testdb",
 		leaseContainerID: "leases",
+		processorName:    "testprocessor",
 	}
 
 	totalLag, _, err := client.estimateLag(context.Background())
@@ -887,6 +901,7 @@ func TestCosmosDBLagEstimationAllPartitionsLagging(t *testing.T) {
 		containerID:      "testcontainer",
 		leaseDatabaseID:  "testdb",
 		leaseContainerID: "leases",
+		processorName:    "testprocessor",
 	}
 
 	totalLag, _, err := client.estimateLag(context.Background())
@@ -930,6 +945,7 @@ func TestCosmosDBLagEstimationPartitionSplit(t *testing.T) {
 		containerID:      "testcontainer",
 		leaseDatabaseID:  "testdb",
 		leaseContainerID: "leases",
+		processorName:    "testprocessor",
 	}
 
 	totalLag, _, err := client.estimateLag(context.Background())
@@ -984,6 +1000,7 @@ func TestCosmosDBGetMetricsAndActivity(t *testing.T) {
 			containerID:      "testcontainer",
 			leaseDatabaseID:  "testdb",
 			leaseContainerID: "leases",
+		processorName:    "testprocessor",
 		},
 		logger: logr.Discard(),
 	}
@@ -1034,6 +1051,7 @@ func TestCosmosDBGetMetricsAndActivityNotActive(t *testing.T) {
 			containerID:      "testcontainer",
 			leaseDatabaseID:  "testdb",
 			leaseContainerID: "leases",
+		processorName:    "testprocessor",
 		},
 		logger: logr.Discard(),
 	}
@@ -1073,6 +1091,7 @@ func TestCosmosDBGetMetricsAndActivityOnError(t *testing.T) {
 			containerID:      "testcontainer",
 			leaseDatabaseID:  "testdb",
 			leaseContainerID: "leases",
+		processorName:    "testprocessor",
 		},
 		logger:             logr.Discard(),
 		lastPartitionCount: 4, // Simulate cached partition count from previous successful poll
@@ -1112,6 +1131,7 @@ func TestCosmosDBGetMetricsAndActivityOnErrorNoCachedPartitions(t *testing.T) {
 			containerID:      "testcontainer",
 			leaseDatabaseID:  "testdb",
 			leaseContainerID: "leases",
+		processorName:    "testprocessor",
 		},
 		logger:             logr.Discard(),
 		lastPartitionCount: 0, // No cached partition count
@@ -1120,4 +1140,32 @@ func TestCosmosDBGetMetricsAndActivityOnErrorNoCachedPartitions(t *testing.T) {
 	// On error with no cached partitions, should return error
 	_, _, err := scaler.GetMetricsAndActivity(context.Background(), "test-metric")
 	assert.Error(t, err)
+}
+
+func TestCosmosDBLeaseQueryFiltersByProcessorName(t *testing.T) {
+	var capturedBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/dbs/testdb/colls/leases/docs":
+			bodyBytes, _ := io.ReadAll(r.Body)
+			capturedBody = string(bodyBytes)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"Documents":[]}`))
+		}
+	}))
+	defer server.Close()
+
+	client := &cosmosDBClient{
+		httpClient:       &http.Client{},
+		leaseEndpoint:    server.URL,
+		leaseKey:         "dGVzdGtleQ==",
+		leaseDatabaseID:  "testdb",
+		leaseContainerID: "leases",
+		processorName:    "myprocessor",
+	}
+
+	_, _ = client.queryLeases(context.Background())
+	assert.Contains(t, capturedBody, "STARTSWITH")
+	assert.Contains(t, capturedBody, "@prefix")
+	assert.Contains(t, capturedBody, "myprocessor")
 }
