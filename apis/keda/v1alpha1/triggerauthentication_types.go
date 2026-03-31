@@ -424,6 +424,10 @@ type AwsParameterStoreValue struct {
 	ValueFrom ValueFromSecret `json:"valueFrom"`
 }
 
+// WithDecryption defaults to true if not specified.
+// For SecureString parameters, this must be true to retrieve the plaintext value.
+// Set to false for SecureString parameters to retrieve the encrypted value.
+// For String parameters, this setting has no effect.
 type AwsParameterStoreParameter struct {
 	Parameter string `json:"parameter"`
 	Name      string `json:"name"`
