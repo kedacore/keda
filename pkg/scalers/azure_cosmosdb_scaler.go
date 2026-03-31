@@ -69,6 +69,7 @@ type cosmosDBClient struct {
 	leaseContainerID string
 	databaseID       string
 	containerID      string
+	processorName    string
 	credential       azcore.TokenCredential
 	logger           logr.Logger
 }
@@ -158,6 +159,7 @@ func newCosmosDBClient(meta *azureCosmosDBMetadata, podIdentity kedav1alpha1.Aut
 		leaseContainerID: meta.LeaseContainerID,
 		databaseID:       meta.DatabaseID,
 		containerID:      meta.ContainerID,
+		processorName:    meta.ProcessorName,
 		logger:           logger,
 	}
 
@@ -226,7 +228,10 @@ func parseCosmosDBConnectionString(connectionString string) (string, string, err
 // setAuthHeader sets the Authorization header using either master key HMAC-SHA256 or bearer token.
 func (c *cosmosDBClient) setAuthHeader(req *http.Request, verb, resourceType, resourceLink, date, key string) error {
 	if key != "" {
-		token := generateCosmosDBAuthToken(verb, resourceType, resourceLink, date, key)
+		token, err := generateCosmosDBAuthToken(verb, resourceType, resourceLink, date, key)
+		if err != nil {
+			return fmt.Errorf("error generating auth token: %w", err)
+		}
 		req.Header.Set("Authorization", token)
 		return nil
 	}
@@ -238,7 +243,7 @@ func (c *cosmosDBClient) setAuthHeader(req *http.Request, verb, resourceType, re
 		if err != nil {
 			return fmt.Errorf("error acquiring bearer token: %w", err)
 		}
-		req.Header.Set("Authorization", "type=aad&ver=1.0&sig="+tk.Token)
+		req.Header.Set("Authorization", url.QueryEscape(fmt.Sprintf("type=aad&ver=1.0&sig=%s", tk.Token)))
 		return nil
 	}
 
@@ -248,10 +253,10 @@ func (c *cosmosDBClient) setAuthHeader(req *http.Request, verb, resourceType, re
 // generateCosmosDBAuthToken generates an HMAC-SHA256 auth token for Cosmos DB REST API.
 // Format: type=master&ver=1.0&sig={hashsignature}
 // Signature input: {verb}\n{resourceType}\n{resourceLink}\n{date}\n\n
-func generateCosmosDBAuthToken(verb, resourceType, resourceLink, date, key string) string {
+func generateCosmosDBAuthToken(verb, resourceType, resourceLink, date, key string) (string, error) {
 	keyBytes, err := base64.StdEncoding.DecodeString(key)
 	if err != nil {
-		return ""
+		return "", fmt.Errorf("error decoding cosmos db key: %w", err)
 	}
 
 	text := fmt.Sprintf("%s\n%s\n%s\n%s\n\n",
@@ -264,14 +269,14 @@ func generateCosmosDBAuthToken(verb, resourceType, resourceLink, date, key strin
 	h.Write([]byte(text))
 	signature := base64.StdEncoding.EncodeToString(h.Sum(nil))
 
-	return url.QueryEscape(fmt.Sprintf("type=master&ver=1.0&sig=%s", signature))
+	return url.QueryEscape(fmt.Sprintf("type=master&ver=1.0&sig=%s", signature)), nil
 }
 
 func (c *cosmosDBClient) queryLeases(ctx context.Context) ([]leaseDocument, error) {
 	resourceLink := fmt.Sprintf("dbs/%s/colls/%s", c.leaseDatabaseID, c.leaseContainerID)
 	reqURL := fmt.Sprintf("%s/%s/docs", strings.TrimRight(c.leaseEndpoint, "/"), resourceLink)
 
-	body := `{"query":"SELECT * FROM c"}`
+	body := fmt.Sprintf(`{"query":"SELECT * FROM c WHERE STARTSWITH(c.id, @prefix)","parameters":[{"name":"@prefix","value":"%s"}]}`, c.processorName)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqURL, strings.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
