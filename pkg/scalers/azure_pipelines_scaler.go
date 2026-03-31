@@ -137,6 +137,11 @@ type azurePipelinesMetadata struct {
 	OrganizationURL                      string `keda:"name=organizationURL, order=resolvedEnv;authParams;triggerMetadata"`
 	OrganizationName                     string
 	PersonalAccessToken                  string `keda:"name=personalAccessToken, order=authParams;resolvedEnv, optional"`
+	TenantID                             string `keda:"name=tenantId, order=authParams;triggerMetadata;resolvedEnv, optional"`
+	ClientID                             string `keda:"name=clientId, order=authParams;triggerMetadata;resolvedEnv, optional"`
+	ClientSecret                         string `keda:"name=clientSecret, order=authParams;triggerMetadata;resolvedEnv, optional"`
+	ClientCertificate                    string `keda:"name=clientCertificate, order=authParams;triggerMetadata;resolvedEnv, optional"`
+	ClientCertificatePassword            string `keda:"name=clientCertificatePassword, order=authParams;triggerMetadata;resolvedEnv, optional"`
 	authContext                          authContext
 	Parent                               string `keda:"name=parent, order=triggerMetadata, optional"`
 	Demands                              string `keda:"name=demands, order=triggerMetadata, optional"`
@@ -153,9 +158,30 @@ type azurePipelinesMetadata struct {
 }
 
 type authContext struct {
-	cred  *azidentity.ChainedTokenCredential
-	pat   string
-	token *azcore.AccessToken
+	cred     azcore.TokenCredential
+	pat      string
+	token    *azcore.AccessToken
+	authType azurePipelinesAuthType
+}
+
+type azurePipelinesAuthType string
+
+const (
+	azurePipelinesAuthTypePAT              azurePipelinesAuthType = "pat"
+	azurePipelinesAuthTypeServicePrincipal azurePipelinesAuthType = "service-principal"
+	azurePipelinesAuthTypeWorkloadIdentity azurePipelinesAuthType = "workload-identity"
+)
+
+var newAzurePipelinesClientSecretCredential = func(tenantID, clientID, clientSecret string) (azcore.TokenCredential, error) {
+	return azidentity.NewClientSecretCredential(tenantID, clientID, clientSecret, nil)
+}
+
+var newAzurePipelinesClientCertificateCredential = func(tenantID, clientID, clientCertificate, clientCertificatePassword string) (azcore.TokenCredential, error) {
+	certs, key, err := azidentity.ParseCertificates([]byte(clientCertificate), []byte(clientCertificatePassword))
+	if err != nil {
+		return nil, err
+	}
+	return azidentity.NewClientCertificateCredential(tenantID, clientID, certs, key, nil)
 }
 
 func (a *azurePipelinesMetadata) Validate() error {
@@ -191,20 +217,61 @@ func NewAzurePipelinesScaler(ctx context.Context, config *scalersconfig.ScalerCo
 	}, nil
 }
 
-func getAuthMethod(logger logr.Logger, config *scalersconfig.ScalerConfig, meta *azurePipelinesMetadata) (*azidentity.ChainedTokenCredential, kedav1alpha1.AuthPodIdentity, error) {
+func getAuthMethod(logger logr.Logger, config *scalersconfig.ScalerConfig, meta *azurePipelinesMetadata) (azcore.TokenCredential, kedav1alpha1.AuthPodIdentity, error) {
 	if meta.PersonalAccessToken != "" {
 		meta.authContext.pat = strings.TrimSuffix(meta.PersonalAccessToken, "\n")
+		meta.authContext.authType = azurePipelinesAuthTypePAT
 		return nil, kedav1alpha1.AuthPodIdentity{}, nil
+	}
+
+	if meta.TenantID != "" || meta.ClientID != "" || meta.ClientSecret != "" || meta.ClientCertificate != "" || meta.ClientCertificatePassword != "" {
+		missing := make([]string, 0, 3)
+		if meta.TenantID == "" {
+			missing = append(missing, "tenantId")
+		}
+		if meta.ClientID == "" {
+			missing = append(missing, "clientId")
+		}
+		usingClientSecret := meta.ClientSecret != ""
+		usingClientCertificate := meta.ClientCertificate != ""
+		if usingClientSecret && usingClientCertificate {
+			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("clientSecret and clientCertificate are mutually exclusive")
+		}
+		if !usingClientSecret && !usingClientCertificate {
+			missing = append(missing, "one of clientSecret or clientCertificate")
+		}
+		if meta.ClientCertificatePassword != "" && !usingClientCertificate {
+			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("clientCertificatePassword requires clientCertificate")
+		}
+		if len(missing) != 0 {
+			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("incomplete service principal configuration, missing %s", strings.Join(missing, ", "))
+		}
+
+		var (
+			cred azcore.TokenCredential
+			err  error
+		)
+		if usingClientCertificate {
+			cred, err = newAzurePipelinesClientCertificateCredential(meta.TenantID, meta.ClientID, meta.ClientCertificate, meta.ClientCertificatePassword)
+		} else {
+			cred, err = newAzurePipelinesClientSecretCredential(meta.TenantID, meta.ClientID, meta.ClientSecret)
+		}
+		if err != nil {
+			return nil, kedav1alpha1.AuthPodIdentity{}, err
+		}
+		meta.authContext.authType = azurePipelinesAuthTypeServicePrincipal
+		return cred, kedav1alpha1.AuthPodIdentity{}, nil
 	}
 
 	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no personalAccessToken given or PodIdentity provider configured")
+		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no personalAccessToken, service principal credentials, or PodIdentity provider configured")
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		cred, err := azure.NewChainedCredential(logger, config.PodIdentity)
 		if err != nil {
 			return nil, kedav1alpha1.AuthPodIdentity{}, err
 		}
+		meta.authContext.authType = azurePipelinesAuthTypeWorkloadIdentity
 		return cred, kedav1alpha1.AuthPodIdentity{Provider: config.PodIdentity.Provider}, nil
 	default:
 		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("pod identity %s not supported for azure pipelines", config.PodIdentity.Provider)
@@ -323,20 +390,36 @@ func getAzurePipelineRequest(ctx context.Context, logger logr.Logger, urlString 
 		return []byte{}, err
 	}
 
-	switch podIdentity.Provider {
-	case "", kedav1alpha1.PodIdentityProviderNone:
-		//PAT
+	authType := metadata.authContext.authType
+	if authType == "" {
+		switch {
+		case metadata.authContext.pat != "":
+			authType = azurePipelinesAuthTypePAT
+		case metadata.authContext.cred != nil && podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload:
+			authType = azurePipelinesAuthTypeWorkloadIdentity
+		case metadata.authContext.cred != nil:
+			authType = azurePipelinesAuthTypeServicePrincipal
+		}
+	}
+
+	switch authType {
+	case azurePipelinesAuthTypePAT:
 		logger.V(1).Info("making request to ADO REST API using PAT")
 		req.SetBasicAuth("", metadata.authContext.pat)
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		//ADO Resource token
-		logger.V(1).Info("making request to ADO REST API using managed identity")
+	case azurePipelinesAuthTypeServicePrincipal, azurePipelinesAuthTypeWorkloadIdentity:
+		authMethod := "service principal"
+		if authType == azurePipelinesAuthTypeWorkloadIdentity {
+			authMethod = "workload identity"
+		}
+		logger.V(1).Info("making request to ADO REST API using bearer token", "authMethod", authMethod)
 		aadToken, err := getToken(ctx, metadata, devopsResource)
 		if err != nil {
-			return []byte{}, fmt.Errorf("cannot create workload identity credentials: %w", err)
+			return []byte{}, fmt.Errorf("cannot create %s credentials: %w", authMethod, err)
 		}
 		logger.V(1).Info("token acquired setting auth header as 'bearer XXXXXX'")
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", aadToken))
+	default:
+		return []byte{}, fmt.Errorf("no authentication method configured for azure pipelines")
 	}
 
 	r, err := httpClient.Do(req)
