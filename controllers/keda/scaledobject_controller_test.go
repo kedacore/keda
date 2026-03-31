@@ -1804,6 +1804,100 @@ var _ = Describe("ScaledObjectController", func() {
 		}).Should(HaveOccurred())
 	})
 
+	// Fix issue 6421
+	It("scaledobject created with paused annotation becomes active when annotation is removed", func() {
+		// Create the scaling target.
+		deploymentName := "initially-paused-then-unpaused"
+		soName := "so-" + deploymentName
+		err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+		Expect(err).ToNot(HaveOccurred())
+
+		// Create the ScaledObject with the paused annotation already set.
+		so := &kedav1alpha1.ScaledObject{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      soName,
+				Namespace: "default",
+				Annotations: map[string]string{
+					kedav1alpha1.PausedAnnotation: "true",
+				},
+			},
+			Spec: kedav1alpha1.ScaledObjectSpec{
+				ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+					Name: deploymentName,
+				},
+				Advanced: &kedav1alpha1.AdvancedConfig{
+					HorizontalPodAutoscalerConfig: &kedav1alpha1.HorizontalPodAutoscalerConfig{},
+				},
+				Triggers: []kedav1alpha1.ScaleTriggers{
+					{
+						Type: "cron",
+						Metadata: map[string]string{
+							"timezone":        "UTC",
+							"start":           "0 * * * *",
+							"end":             "1 * * * *",
+							"desiredReplicas": "1",
+						},
+					},
+				},
+			},
+		}
+		pollingInterval := int32(5)
+		so.Spec.PollingInterval = &pollingInterval
+		err = k8sClient.Create(context.Background(), so)
+		Expect(err).ToNot(HaveOccurred())
+
+		// Wait for Paused condition to become True.
+		Eventually(func() metav1.ConditionStatus {
+			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+			if err != nil {
+				return metav1.ConditionFalse
+			}
+			return so.Status.Conditions.GetPausedCondition().Status
+		}).WithTimeout(1 * time.Minute).WithPolling(2 * time.Second).Should(Equal(metav1.ConditionTrue))
+
+		// HPA should NOT exist while paused.
+		hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+		Consistently(func() bool {
+			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: fmt.Sprintf("keda-hpa-%s", soName), Namespace: "default"}, hpa)
+			return errors.IsNotFound(err)
+		}, 5*time.Second, 1*time.Second).Should(BeTrue())
+
+		// Remove the paused annotation to unpause.
+		Eventually(func() error {
+			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+			Expect(err).ToNot(HaveOccurred())
+			annotations := so.GetAnnotations()
+			delete(annotations, kedav1alpha1.PausedAnnotation)
+			so.SetAnnotations(annotations)
+			return k8sClient.Update(context.Background(), so)
+		}).WithTimeout(1 * time.Minute).WithPolling(5 * time.Second).ShouldNot(HaveOccurred())
+		testLogger.Info("paused annotation removed")
+
+		// Paused condition should become False.
+		Eventually(func() metav1.ConditionStatus {
+			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+			if err != nil {
+				return metav1.ConditionTrue
+			}
+			return so.Status.Conditions.GetPausedCondition().Status
+		}).WithTimeout(1 * time.Minute).WithPolling(2 * time.Second).Should(Equal(metav1.ConditionFalse))
+
+		// HPA should be created after unpausing.
+		Eventually(func() error {
+			return k8sClient.Get(context.Background(), types.NamespacedName{Name: fmt.Sprintf("keda-hpa-%s", soName), Namespace: "default"}, hpa)
+		}).WithTimeout(1 * time.Minute).WithPolling(2 * time.Second).ShouldNot(HaveOccurred())
+
+		// Crucially: Paused condition must STAY False and not flip back to True.
+		// This is the core assertion for issue #6421.
+		Consistently(func() metav1.ConditionStatus {
+			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+			if err != nil {
+				return metav1.ConditionTrue
+			}
+			return so.Status.Conditions.GetPausedCondition().Status
+		}, 15*time.Second, 2*time.Second).Should(Equal(metav1.ConditionFalse))
+	})
+
 	// Fix issue 5281
 	It("reconciles scaledobject when hpa spec is changed", func() {
 		var (
