@@ -78,18 +78,19 @@ func TestParseAzurePipelinesMetadata(t *testing.T) {
 		t.Run(testData.testName, func(t *testing.T) {
 			var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				authHeader := r.Header.Get("Authorization")
-				if strings.HasPrefix(authHeader, "Basic ") {
+				switch {
+				case strings.HasPrefix(authHeader, "Basic "):
 					personalAccessToken := strings.Split(authHeader, " ")[1]
 					if personalAccessToken != "" && personalAccessToken[len(personalAccessToken)-1:] == "\n" {
 						w.WriteHeader(http.StatusUnauthorized)
 						return
 					}
-				} else if strings.HasPrefix(authHeader, "Bearer ") {
+				case strings.HasPrefix(authHeader, "Bearer "):
 					if authHeader != "Bearer fake-token" {
 						w.WriteHeader(http.StatusUnauthorized)
 						return
 					}
-				} else {
+				default:
 					w.WriteHeader(http.StatusUnauthorized)
 					return
 				}
