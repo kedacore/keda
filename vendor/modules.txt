@@ -1267,7 +1267,7 @@ github.com/mwitkow/go-conntrack
 # github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f
 ## explicit
 github.com/mxk/go-flowrate/flowrate
-# github.com/newrelic/newrelic-client-go/v2 v2.76.0
+# github.com/newrelic/newrelic-client-go/v2 v2.82.0
 ## explicit; go 1.24.0
 github.com/newrelic/newrelic-client-go/v2/internal/http
 github.com/newrelic/newrelic-client-go/v2/internal/serialization
@@ -1296,6 +1296,7 @@ github.com/newrelic/newrelic-client-go/v2/pkg/entityrelationship
 github.com/newrelic/newrelic-client-go/v2/pkg/errors
 github.com/newrelic/newrelic-client-go/v2/pkg/events
 github.com/newrelic/newrelic-client-go/v2/pkg/eventstometrics
+github.com/newrelic/newrelic-client-go/v2/pkg/fleetcontrol
 github.com/newrelic/newrelic-client-go/v2/pkg/infrastructure
 github.com/newrelic/newrelic-client-go/v2/pkg/installevents
 github.com/newrelic/newrelic-client-go/v2/pkg/keytransaction
@@ -1317,6 +1318,7 @@ github.com/newrelic/newrelic-client-go/v2/pkg/synthetics
 github.com/newrelic/newrelic-client-go/v2/pkg/testhelpers
 github.com/newrelic/newrelic-client-go/v2/pkg/usermanagement
 github.com/newrelic/newrelic-client-go/v2/pkg/users
+github.com/newrelic/newrelic-client-go/v2/pkg/workflowautomation
 github.com/newrelic/newrelic-client-go/v2/pkg/workflows
 github.com/newrelic/newrelic-client-go/v2/pkg/workloads
 # github.com/nexus-rpc/sdk-go v0.5.1
