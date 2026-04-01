@@ -19,6 +19,7 @@ package scaling
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -28,11 +29,13 @@ import (
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/scale"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -61,10 +64,10 @@ var (
 // ScaleHandler encapsulates the logic of calling the right scalers for
 // each ScaledObject and making the final scale decision and operation
 type ScaleHandler interface {
-	HandleScalableObject(ctx context.Context, scalableObject client.Object) error
-	DeleteScalableObject(ctx context.Context, scalableObject client.Object) error
-	GetScalersCache(ctx context.Context, scalableObject client.Object) (*cache.ScalersCache, error)
-	ClearScalersCache(ctx context.Context, scalableObject client.Object) error
+	HandleScalableObject(ctx context.Context, scalableObject kedav1alpha1.ScalableObject) error
+	DeleteScalableObject(ctx context.Context, scalableObject kedav1alpha1.ScalableObject) error
+	GetScalersCache(ctx context.Context, scalableObject kedav1alpha1.ScalableObject) (*cache.ScalersCache, error)
+	ClearScalersCache(ctx context.Context, scalableObject kedav1alpha1.ScalableObject) error
 
 	GetScaledObjectMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error)
 	SubscribeMetric(ctx context.Context, subscriber string, metricMetadata *api.ScaledObjectRef) bool
@@ -113,7 +116,7 @@ func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, recon
 /// --------------------------------------------------------------------------- ///
 
 // HandleScalableObject is the initial method when Scalable is created and it handles the main scaling logic
-func (h *scaleHandler) HandleScalableObject(ctx context.Context, scalableObject client.Object) error {
+func (h *scaleHandler) HandleScalableObject(ctx context.Context, scalableObject kedav1alpha1.ScalableObject) error {
 	withTriggers, err := kedav1alpha1.AsDuckWithTriggers(scalableObject)
 	if err != nil {
 		log.Error(err, "error duck typing object into withTrigger", "scalableObject", scalableObject)
@@ -139,19 +142,13 @@ func (h *scaleHandler) HandleScalableObject(ctx context.Context, scalableObject 
 	scalingMutex := &sync.Mutex{}
 
 	// passing deep copy of ScaledObject/ScaledJob to the scaleLoop go routines, it's a precaution to not have global objects shared between threads
-	switch obj := scalableObject.(type) {
-	case *kedav1alpha1.ScaledObject:
-		go h.startPushScalers(ctx, withTriggers, obj.DeepCopy(), scalingMutex)
-		go h.startScaleLoop(ctx, withTriggers, obj.DeepCopy(), scalingMutex, true)
-	case *kedav1alpha1.ScaledJob:
-		go h.startPushScalers(ctx, withTriggers, obj.DeepCopy(), scalingMutex)
-		go h.startScaleLoop(ctx, withTriggers, obj.DeepCopy(), scalingMutex, false)
-	}
+	go h.startPushScalers(ctx, withTriggers, scalableObject.DeepCopyObject().(kedav1alpha1.ScalableObject), scalingMutex)
+	go h.startScaleLoop(ctx, withTriggers, scalableObject.DeepCopyObject().(kedav1alpha1.ScalableObject), scalingMutex)
 	return nil
 }
 
 // DeleteScalableObject stops handling logic for input ScalableObject
-func (h *scaleHandler) DeleteScalableObject(ctx context.Context, scalableObject client.Object) error {
+func (h *scaleHandler) DeleteScalableObject(ctx context.Context, scalableObject kedav1alpha1.ScalableObject) error {
 	withTriggers, err := kedav1alpha1.AsDuckWithTriggers(scalableObject)
 	if err != nil {
 		log.Error(err, "error duck typing object into withTrigger", "scalableObject", scalableObject)
@@ -179,12 +176,13 @@ func (h *scaleHandler) DeleteScalableObject(ctx context.Context, scalableObject 
 }
 
 // startScaleLoop blocks forever and checks the scalableObject based on its pollingInterval
-func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject client.Object, scalingMutex sync.Locker, isScaledObject bool) {
+func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject kedav1alpha1.ScalableObject, scalingMutex sync.Locker) {
 	logger := log.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
 
 	pollingInterval := withTriggers.GetPollingInterval()
 	logger.V(1).Info("Watching with pollingInterval", "PollingInterval", pollingInterval)
 
+	_, isScaledObject := scalableObject.(*kedav1alpha1.ScaledObject)
 	next := time.Now()
 
 	for {
@@ -214,16 +212,16 @@ func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1a
 }
 
 // startPushScalers starts all push scalers defined in the input scalableOjbect
-func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject client.Object, scalingMutex sync.Locker) {
+func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject kedav1alpha1.ScalableObject, scalingMutex sync.Locker) {
 	logger := log.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
-	cache, err := h.GetScalersCache(ctx, scalableObject)
+	scalersCache, err := h.GetScalersCache(ctx, scalableObject)
 	if err != nil {
 		logger.Error(err, "Error getting scalers", "object", scalableObject)
 		return
 	}
 
-	for i, ps := range cache.GetPushScalers() {
-		go func(s scalers.PushScaler) {
+	for i, ps := range scalersCache.GetPushScalers() {
+		go func(s scalers.PushScaler, triggerIndex int) {
 			activeCh := make(chan bool)
 			go s.Run(ctx, activeCh)
 			for {
@@ -240,23 +238,97 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 						logger.V(4).Info("Push scaler inactivation event received", "scalableObject", scalableObject, "pushScalerIndex", i)
 						continue
 					}
-					scalingMutex.Lock()
-					switch obj := scalableObject.(type) {
+					switch scalableObject.(type) {
 					case *kedav1alpha1.ScaledObject:
-						h.scaleExecutor.RequestScale(ctx, obj, active, false, &executor.ScaleExecutorOptions{})
+						// fetch fresh SO from cache to get up-to-date ExternalMetricNames
+						freshSO := &kedav1alpha1.ScaledObject{}
+						if err := h.client.Get(ctx, types.NamespacedName{Name: scalableObject.GetName(), Namespace: scalableObject.GetNamespace()}, freshSO); err != nil {
+							logger.Error(err, "error fetching ScaledObject for push scaler")
+							continue
+						}
+						metricName := metricNameForTriggerIndex(freshSO.Status.ExternalMetricNames, triggerIndex)
+						if metricName == "" {
+							logger.V(1).Info("Could not resolve metric name for push scaler, will retry on next activation", "triggerIndex", triggerIndex)
+							continue
+						}
+						opts := executor.ScaleExecutorOptions{
+							ForPushScalerMetric: metricName,
+							ActiveTriggers:      []string{metricName},
+						}
+						scalingMutex.Lock()
+						result := h.scaleExecutor.RequestScale(ctx, freshSO, active, false, opts)
+						h.handleResult(ctx, freshSO, result)
+						scalingMutex.Unlock()
 					case *kedav1alpha1.ScaledJob:
 						logger.Info("Warning: External Push Scaler does not support ScaledJob", "object", scalableObject)
 					}
-					scalingMutex.Unlock()
 				}
 			}
-		}(ps)
+		}(ps.Scaler, ps.TriggerIndex)
+	}
+}
+
+// metricNameForTriggerIndex finds the external metric name for the given trigger index from the ExternalMetricNames list. Metric names follow the format "s{index}-{name}".
+func metricNameForTriggerIndex(metricNames []string, triggerIndex int) string {
+	prefix := fmt.Sprintf("s%d-", triggerIndex)
+	for _, name := range metricNames {
+		if strings.HasPrefix(name, prefix) {
+			return name
+		}
+	}
+	return ""
+}
+
+// handleResult applies the ScaleResult to the scalable object's status in the API server.
+// It fetches the latest object, merges the result fields, and performs a single status patch with conflict retry.
+func (h *scaleHandler) handleResult(ctx context.Context, obj kedav1alpha1.ScalableObject, result executor.ScaleResult) {
+	logger := log.WithValues("namespace", obj.GetNamespace(), "name", obj.GetName())
+	if result.Error != nil {
+		logger.Error(result.Error, "error during scaling")
+	}
+
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		current := reflect.New(reflect.TypeOf(obj).Elem()).Interface().(kedav1alpha1.ScalableObject)
+		if err := h.client.Get(ctx, types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, current); err != nil {
+			return err
+		}
+
+		original := current.DeepCopyObject().(client.Object)
+
+		// apply conditions from the result
+		conds := current.GetStatusConditions()
+		for _, cond := range result.Conditions {
+			conds.SetCondition(cond.Type, cond.Status, cond.Reason, cond.Message)
+		}
+
+		// apply last active time
+		if result.LastActiveTime != nil {
+			current.SetStatusLastActiveTime(result.LastActiveTime)
+		}
+
+		// apply paused replica count (no-op for ScaledJob)
+		current.SetStatusPausedReplicaCount(result.PauseReplicas)
+
+		// apply triggers activity
+		if result.TriggersActivity != nil {
+			current.SetStatusTriggersActivity(result.TriggersActivity)
+		}
+
+		// skip the patch if nothing changed
+		if equality.Semantic.DeepEqual(original, current) {
+			return nil
+		}
+
+		return h.client.Status().Patch(ctx, current, client.MergeFrom(original))
+	})
+	if err != nil {
+		logger.Error(err, "failed to update status")
 	}
 }
 
 // checkScalers contains the main logic for the ScaleHandler scaling logic.
 // It'll check each trigger active status then call RequestScale
-func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject client.Object, scalingMutex sync.Locker) {
+func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject kedav1alpha1.ScalableObject, scalingMutex sync.Locker) {
 	scalingMutex.Lock()
 	defer scalingMutex.Unlock()
 	switch obj := scalableObject.(type) {
@@ -279,7 +351,8 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject client.O
 			h.recorder.Event(obj, corev1.EventTypeNormal, eventreason.ScaledObjectFallbackDeactivated, message.ScaledObjectFallbackDeactivatedMsg)
 		}
 
-		h.scaleExecutor.RequestScale(ctx, obj, isActive, isError, &executor.ScaleExecutorOptions{ActiveTriggers: activeTriggers})
+		result := h.scaleExecutor.RequestScale(ctx, obj, isActive, isError, executor.ScaleExecutorOptions{ActiveTriggers: activeTriggers})
+		h.handleResult(ctx, obj, result)
 
 		if len(metricsRecords) > 0 {
 			log.V(1).Info("Storing metrics to cache", "scaledObject.Namespace", obj.Namespace, "scaledObject.Name", obj.Name, "metricsRecords", metricsRecords)
@@ -294,7 +367,8 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject client.O
 
 		isActive, isError, scaleTo, maxScale, activeTriggers := h.getScaledJobState(ctx, obj)
 
-		h.scaleExecutor.RequestJobScale(ctx, obj, isActive, isError, scaleTo, maxScale, &executor.ScaleExecutorOptions{ActiveTriggers: activeTriggers})
+		result := h.scaleExecutor.RequestJobScale(ctx, obj, isActive, isError, scaleTo, maxScale, executor.ScaleExecutorOptions{ActiveTriggers: activeTriggers})
+		h.handleResult(ctx, obj, result)
 	}
 }
 
@@ -305,7 +379,7 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject client.O
 // GetScalersCache returns cache for input scalableObject, if the object is not found in the cache, it returns a new one
 // if the input object is ScaledObject, it also compares the Generation of the input of object with the one stored in the cache,
 // this is needed for out of scalerLoop invocations of this method (in package `controllers/keda`).
-func (h *scaleHandler) GetScalersCache(ctx context.Context, scalableObject client.Object) (*cache.ScalersCache, error) {
+func (h *scaleHandler) GetScalersCache(ctx context.Context, scalableObject kedav1alpha1.ScalableObject) (*cache.ScalersCache, error) {
 	withTriggers, err := kedav1alpha1.AsDuckWithTriggers(scalableObject)
 	if err != nil {
 		return nil, err
@@ -325,7 +399,7 @@ func (h *scaleHandler) getScalersCacheForScaledObject(ctx context.Context, scale
 }
 
 // performGetScalersCache returns cache for input scalableObject, it is common code used by GetScalersCache() and getScalersCacheForScaledObject() methods
-func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, scalableObject client.Object, scalableObjectGeneration *int64, scalableObjectKind, scalableObjectNamespace, scalableObjectName string) (*cache.ScalersCache, error) {
+func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, scalableObject kedav1alpha1.ScalableObject, scalableObjectGeneration *int64, scalableObjectKind, scalableObjectNamespace, scalableObjectName string) (*cache.ScalersCache, error) {
 	h.scalerCachesLock.RLock()
 
 	if cache, ok := h.scalerCaches[key]; ok {
@@ -426,7 +500,7 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 }
 
 // ClearScalersCache invalidates chache for the input scalableObject
-func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject client.Object) error {
+func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject kedav1alpha1.ScalableObject) error {
 	withTriggers, err := kedav1alpha1.AsDuckWithTriggers(scalableObject)
 	if err != nil {
 		return err

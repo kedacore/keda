@@ -168,3 +168,30 @@ func (s ScaledJob) MinReplicaCount() int64 {
 func (s *ScaledJob) GenerateIdentifier() string {
 	return GenerateIdentifier("ScaledJob", s.Namespace, s.Name)
 }
+
+// GetStatusConditions returns a pointer to the status conditions for in-place modification.
+func (s *ScaledJob) GetStatusConditions() *Conditions { return &s.Status.Conditions }
+
+// SetStatusLastActiveTime sets the LastActiveTime in the status.
+func (s *ScaledJob) SetStatusLastActiveTime(t *metav1.Time) { s.Status.LastActiveTime = t }
+
+// SetStatusPausedReplicaCount is a no-op for ScaledJob (no paused replica count).
+func (s *ScaledJob) SetStatusPausedReplicaCount(_ *int32) {}
+
+// GetStatusTriggersActivity returns the TriggersActivity map from the ScaledJob status, initializing it if it is nil.
+func (s *ScaledJob) GetStatusTriggersActivity() map[string]TriggerActivityStatus {
+	if s.Status.TriggersActivity == nil {
+		s.Status.TriggersActivity = make(map[string]TriggerActivityStatus)
+	}
+	return s.Status.TriggersActivity
+}
+
+// SetStatusTriggersActivity sets the triggers activity map in the status.
+func (s *ScaledJob) SetStatusTriggersActivity(m map[string]TriggerActivityStatus) {
+	s.Status.TriggersActivity = m
+}
+
+// GetStatusExternalMetricNames returns the ExternalMetricNames slice from the ScaledJob status
+func (s *ScaledJob) GetStatusExternalMetricNames() []string {
+	return s.Status.ExternalMetricNames
+}

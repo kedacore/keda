@@ -131,6 +131,7 @@ func TestGetScaledObjectMetrics_DirectCall(t *testing.T) {
 	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
 	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{metricValue}, true, nil)
 	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
+	expectHandleResult(mockClient)
 	sh.checkScalers(context.TODO(), &scaledObject, &sync.RWMutex{})
 
 	expectNoStatusPatch(ctrl)
@@ -223,6 +224,7 @@ func TestGetScaledObjectMetrics_FromCache(t *testing.T) {
 	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
 	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{metricValue}, true, nil)
 	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
+	expectHandleResult(mockClient)
 	sh.checkScalers(context.TODO(), &scaledObject, &sync.RWMutex{})
 
 	expectNoStatusPatch(ctrl)
@@ -352,6 +354,7 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 		})
 	}
 	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
+	expectHandleResult(mockClient)
 	assert.Eventually(t, func() bool {
 		sh.checkScalers(context.TODO(), &scaledObject, &sync.RWMutex{})
 		return true
@@ -1035,6 +1038,7 @@ func TestScalingModifiersFormula(t *testing.T) {
 	scaler1.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{metricValue1, metricValue2}, true, nil)
 	scaler2.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{metricValue1, metricValue2}, true, nil)
 	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
+	expectHandleResult(mockClient)
 	sh.checkScalers(context.TODO(), &scaledObject, &sync.RWMutex{})
 
 	expectNoStatusPatch(ctrl)
@@ -1066,4 +1070,12 @@ func createMetricSpec(averageValue int64, metricName string) v2.MetricSpec {
 func expectNoStatusPatch(ctrl *gomock.Controller) {
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
 	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+}
+
+// expectHandleResult sets up mock expectations for handleResult:
+// a Get call to fetch the latest object. The status patch is only issued when the
+// computed status differs from the fetched object, so we don't expect it here
+// (mock executor returns a zero ScaleResult which causes no status changes).
+func expectHandleResult(mockClient *mock_client.MockClient) {
+	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 }
