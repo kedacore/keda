@@ -124,8 +124,8 @@ github.com/Azure/azure-sdk-for-go/sdk/internal/poller
 github.com/Azure/azure-sdk-for-go/sdk/internal/telemetry
 github.com/Azure/azure-sdk-for-go/sdk/internal/temporal
 github.com/Azure/azure-sdk-for-go/sdk/internal/uuid
-# github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2 v2.0.1
-## explicit; go 1.23.0
+# github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2 v2.0.2
+## explicit; go 1.24.0
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2/internal
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2/internal/amqpwrap
