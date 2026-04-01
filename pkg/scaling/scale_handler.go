@@ -19,6 +19,7 @@ package scaling
 import (
 	"context"
 	"fmt"
+	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -267,23 +268,33 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 			return
 		}
 		fallbackStatus := obj.Status.Conditions.GetFallbackCondition().Status
-		isActive, isError, metricsRecords, activeTriggers, isFallbackActive, err := h.getScaledObjectState(ctx, obj)
+		state, err := h.getScaledObjectState(ctx, obj)
 		if err != nil {
 			log.Error(err, "error getting state of scaledObject", "scaledObject.Namespace", obj.Namespace, "scaledObject.Name", obj.Name)
 			return
 		}
 
-		if isFallbackActive && fallbackStatus != metav1.ConditionTrue {
+		if state.FallbackActive && fallbackStatus != metav1.ConditionTrue {
 			h.recorder.Event(obj, corev1.EventTypeNormal, eventreason.ScaledObjectFallbackActivated, message.ScaledObjectFallbackActivatedMsg)
-		} else if !isFallbackActive && fallbackStatus == metav1.ConditionTrue {
+		} else if !state.FallbackActive && fallbackStatus == metav1.ConditionTrue {
 			h.recorder.Event(obj, corev1.EventTypeNormal, eventreason.ScaledObjectFallbackDeactivated, message.ScaledObjectFallbackDeactivatedMsg)
 		}
 
-		h.scaleExecutor.RequestScale(ctx, obj, isActive, isError, &executor.ScaleExecutorOptions{ActiveTriggers: activeTriggers})
+		opts := &executor.ScaleExecutorOptions{ActiveTriggers: state.ActiveTriggers}
 
-		if len(metricsRecords) > 0 {
-			log.V(1).Info("Storing metrics to cache", "scaledObject.Namespace", obj.Namespace, "scaledObject.Name", obj.Name, "metricsRecords", metricsRecords)
-			h.scaledObjectsMetricCache.StoreRecords(obj.GenerateIdentifier(), metricsRecords)
+		if state.IsActive && !state.IsError &&
+			(obj.Spec.MinReplicaCount == nil || *obj.Spec.MinReplicaCount == 0) &&
+			!obj.IsUsingModifiers() {
+			if desired := computeDesiredReplicasFromMetrics(state.MetricSpecs, state.MetricsRecords); desired != nil {
+				opts.DesiredReplicas = desired
+			}
+		}
+
+		h.scaleExecutor.RequestScale(ctx, obj, state.IsActive, state.IsError, opts)
+
+		if len(state.MetricsRecords) > 0 {
+			log.V(1).Info("Storing metrics to cache", "scaledObject.Namespace", obj.Namespace, "scaledObject.Name", obj.Name, "metricsRecords", state.MetricsRecords)
+			h.scaledObjectsMetricCache.StoreRecords(obj.GenerateIdentifier(), state.MetricsRecords)
 		}
 	case *kedav1alpha1.ScaledJob:
 		err := h.client.Get(ctx, types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, obj)
@@ -296,6 +307,55 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 
 		h.scaleExecutor.RequestJobScale(ctx, obj, isActive, isError, scaleTo, maxScale, &executor.ScaleExecutorOptions{ActiveTriggers: activeTriggers})
 	}
+}
+
+// computeDesiredReplicasFromMetrics applies the HPA AverageValue formula
+// (ceil(currentValue / targetValue)) to compute the desired replica count.
+// Only AverageValue targets are supported because the Value formula
+// (ceil(currentReplicas * currentValue / targetValue)) requires
+// currentReplicas which is not available in this context.
+func computeDesiredReplicasFromMetrics(metricSpecs []v2.MetricSpec, metricsRecords map[string]metricscache.MetricsRecord) *int32 {
+	if len(metricSpecs) == 0 {
+		return nil
+	}
+
+	var maxDesired int32
+	for _, spec := range metricSpecs {
+		if spec.External == nil {
+			continue
+		}
+		if spec.External.Target.AverageValue == nil {
+			log.V(1).Info("Catch-up scaling: skipping metric without AverageValue target",
+				"metricName", spec.External.Metric.Name)
+			continue
+		}
+		targetValue := spec.External.Target.AverageValue.AsApproximateFloat64()
+		if targetValue <= 0 {
+			continue
+		}
+
+		metricName := spec.External.Metric.Name
+		record, ok := metricsRecords[metricName]
+		if !ok || len(record.Metric) == 0 {
+			continue
+		}
+
+		for _, m := range record.Metric {
+			currentValue := m.Value.AsApproximateFloat64()
+			if currentValue <= 0 {
+				continue
+			}
+			desired := int32(math.Ceil(currentValue / targetValue))
+			if desired > maxDesired {
+				maxDesired = desired
+			}
+		}
+	}
+
+	if maxDesired <= 1 {
+		return nil
+	}
+	return &maxDesired
 }
 
 /// --------------------------------------------------------------------------- ///
@@ -663,18 +723,22 @@ type scalerState struct {
 	Metrics         []external_metrics.ExternalMetricValue
 	Pairs           map[string]string
 	Records         map[string]metricscache.MetricsRecord
+	MetricSpecs     []v2.MetricSpec
 	Err             error
 	FallbackActive  bool
 	FallbackMetrics []external_metrics.ExternalMetricValue
 }
 
-// getScaledObjectState returns whether the input ScaledObject:
-// is active as the first return value,
-// the second return value indicates whether there was any error during querying scalers,
-// the third return value is a map of metrics record - a metric value for each scaler and its metric
-// the fourth return indicates whether fallback is active
-// the fifth value contains error if is not able to access scalers cache
-func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) (bool, bool, map[string]metricscache.MetricsRecord, []string, bool, error) {
+type scaledObjectState struct {
+	IsActive       bool
+	IsError        bool
+	MetricsRecords map[string]metricscache.MetricsRecord
+	MetricSpecs    []v2.MetricSpec
+	ActiveTriggers []string
+	FallbackActive bool
+}
+
+func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) (*scaledObjectState, error) {
 	logger := log.WithValues("scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
 
 	isScaledObjectActive := false
@@ -683,13 +747,14 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	metricTriggerPairList := make(map[string]string)
 	var matchingMetrics []external_metrics.ExternalMetricValue
 	var fallbackMetrics []external_metrics.ExternalMetricValue
+	var allMetricSpecs []v2.MetricSpec
 	var activeTriggers []string
 	isFallbackActive := false
 
 	cache, err := h.GetScalersCache(ctx, scaledObject)
 	metricscollector.RecordScaledObjectError(scaledObject.Namespace, scaledObject.Name, err)
 	if err != nil {
-		return false, true, map[string]metricscache.MetricsRecord{}, []string{}, false, fmt.Errorf("error getting scalers cache %w", err)
+		return &scaledObjectState{IsError: true, MetricsRecords: map[string]metricscache.MetricsRecord{}}, fmt.Errorf("error getting scalers cache %w", err)
 	}
 
 	// count the number of non-external triggers (cpu/mem) in order to check for
@@ -736,6 +801,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 		}
 
 		matchingMetrics = append(matchingMetrics, result.Metrics...)
+		allMetricSpecs = append(allMetricSpecs, result.MetricSpecs...)
 		for k, v := range result.Pairs {
 			metricTriggerPairList[k] = v
 		}
@@ -769,7 +835,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 			if scaledObject.Spec.Advanced.ScalingModifiers.ActivationTarget != "" {
 				targetValue, err := strconv.ParseFloat(scaledObject.Spec.Advanced.ScalingModifiers.ActivationTarget, 64)
 				if err != nil {
-					return false, true, metricsRecord, []string{}, false, fmt.Errorf("scalingModifiers.ActivationTarget parsing error %w", err)
+					return &scaledObjectState{IsError: true, MetricsRecords: metricsRecord}, fmt.Errorf("scalingModifiers.ActivationTarget parsing error %w", err)
 				}
 				activationValue = targetValue
 			}
@@ -794,7 +860,14 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	if len(scaledObject.Spec.Triggers) <= cpuMemCount && !isScaledObjectError {
 		isScaledObjectActive = true
 	}
-	return isScaledObjectActive, isScaledObjectError, metricsRecord, activeTriggers, isFallbackActive, err
+	return &scaledObjectState{
+		IsActive:       isScaledObjectActive,
+		IsError:        isScaledObjectError,
+		MetricsRecords: metricsRecord,
+		MetricSpecs:    allMetricSpecs,
+		ActiveTriggers: activeTriggers,
+		FallbackActive: isFallbackActive,
+	}, err
 }
 
 // getScalerState returns getStateScalerResult with the state
@@ -825,6 +898,7 @@ func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler
 		logger.Error(err, "error getting metric spec for the scaler", "scaler", result.TriggerName)
 		cache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 	}
+	result.MetricSpecs = metricSpecs
 
 	for _, spec := range metricSpecs {
 		if spec.External == nil {
@@ -855,12 +929,10 @@ func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler
 		// When fallback is active, the scaler should be considered active
 		isActiveOrFallback := fallbackActive || isMetricActive
 
-		if scalerConfig.TriggerUseCachedMetrics {
-			result.Records[metricName] = metricscache.MetricsRecord{
-				IsActive:    isActiveOrFallback,
-				Metric:      metrics,
-				ScalerError: err,
-			}
+		result.Records[metricName] = metricscache.MetricsRecord{
+			IsActive:    isActiveOrFallback,
+			Metric:      metrics,
+			ScalerError: err,
 		}
 
 		if err != nil {

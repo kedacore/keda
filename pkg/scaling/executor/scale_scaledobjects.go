@@ -25,8 +25,10 @@ import (
 
 	"github.com/go-logr/logr"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
@@ -126,6 +128,35 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			}
 		default:
 			// triggers are active, but we didn't need to scale (replica count > 0)
+
+			// Catch-up scaling: while the HPA has not yet completed its
+			// first successful sync (ScalingActive != True), KEDA scales
+			// directly instead of waiting for the HPA controller's
+			// sequential queue. Once the HPA is active, it takes over.
+			if !e.isHPAScalingActive(ctx, scaledObject) &&
+				options != nil && options.DesiredReplicas != nil &&
+				*options.DesiredReplicas > currentReplicas && !scaledObject.NeedToPauseScaleOut() {
+				desired := *options.DesiredReplicas
+				if maxReplicas := scaledObject.Spec.MaxReplicaCount; maxReplicas != nil && desired > *maxReplicas {
+					desired = *maxReplicas
+				}
+				if desired > currentReplicas {
+					_, err := e.updateScaleOnScaleTarget(ctx, scaledObject, currentScale, desired)
+					if err == nil {
+						logger.Info("Catch-up scaling: directly scaled target bypassing HPA",
+							"Original Replicas Count", currentReplicas,
+							"New Replicas Count", desired)
+						e.recorder.Eventf(scaledObject, corev1.EventTypeNormal, eventreason.KEDAScaleTargetCatchUpScaled,
+							"Catch-up scaled %s %s/%s from %d to %d",
+							scaledObject.Status.ScaleTargetKind,
+							scaledObject.Namespace,
+							scaledObject.Spec.ScaleTargetRef.Name,
+							currentReplicas, desired)
+					} else {
+						logger.Error(err, "Failed catch-up scaling")
+					}
+				}
+			}
 
 			// update LastActiveTime to now
 			err := e.updateLastActiveTime(ctx, logger, scaledObject)
@@ -354,6 +385,31 @@ func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Log
 	} else {
 		e.recorder.Eventf(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScaleTargetActivationFailed, "Failed to scale %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, replicas)
 	}
+}
+
+// isHPAScalingActive checks whether the HPA associated with the ScaledObject
+// has its ScalingActive condition set to True, meaning the HPA controller has
+// completed at least one successful sync and is actively managing scaling.
+// Returns false on any error (fail-open: keep catch-up scaling if HPA state
+// cannot be determined).
+func (e *scaleExecutor) isHPAScalingActive(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) bool {
+	hpaName := scaledObject.Status.HpaName
+	if hpaName == "" {
+		hpaName = fmt.Sprintf("keda-hpa-%s", scaledObject.Name)
+	}
+
+	hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+	err := e.client.Get(ctx, types.NamespacedName{Name: hpaName, Namespace: scaledObject.Namespace}, hpa)
+	if err != nil {
+		return false
+	}
+
+	for _, cond := range hpa.Status.Conditions {
+		if cond.Type == autoscalingv2.ScalingActive {
+			return cond.Status == corev1.ConditionTrue
+		}
+	}
+	return false
 }
 
 func (e *scaleExecutor) getScaleTargetScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) (*autoscalingv1.Scale, error) {

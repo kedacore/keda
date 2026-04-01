@@ -46,7 +46,8 @@ type ScaleExecutor interface {
 
 // ScaleExecutorOptions contains the optional parameters for the RequestScale method.
 type ScaleExecutorOptions struct {
-	ActiveTriggers []string
+	ActiveTriggers  []string
+	DesiredReplicas *int32
 }
 
 type scaleExecutor struct {

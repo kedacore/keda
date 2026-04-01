@@ -95,6 +95,10 @@ const (
 	// KEDAScaleTargetActivated is for event when the scale target of ScaledObject was activated
 	KEDAScaleTargetActivated = "KEDAScaleTargetActivated"
 
+	// KEDAScaleTargetCatchUpScaled is for event when KEDA directly scales the target
+	// bypassing the HPA during catch-up (HPA not yet active after cold-start)
+	KEDAScaleTargetCatchUpScaled = "KEDAScaleTargetCatchUpScaled"
+
 	// KEDAScaleTargetDeactivated is for event when the scale target for ScaledObject was deactivated
 	KEDAScaleTargetDeactivated = "KEDAScaleTargetDeactivated"
 

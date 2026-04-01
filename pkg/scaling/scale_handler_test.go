@@ -434,12 +434,12 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 		subsLock:                 &sync.RWMutex{},
 	}
 
-	isActive, isError, _, activeTriggers, _, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	state, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
 	scalerCache.Close(context.Background())
 
-	assert.Equal(t, false, isActive)
-	assert.Equal(t, true, isError)
-	assert.Empty(t, activeTriggers)
+	assert.Equal(t, false, state.IsActive)
+	assert.Equal(t, true, state.IsError)
+	assert.Empty(t, state.ActiveTriggers)
 }
 
 func TestCheckScaledObjectScalersWithTriggerAuthError(t *testing.T) {
@@ -557,12 +557,12 @@ func TestCheckScaledObjectScalersWithTriggerAuthError(t *testing.T) {
 		subsLock:                &sync.RWMutex{},
 	}
 
-	isActive, isError, _, activeTriggers, _, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	state, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
 	scalerCache.Close(context.Background())
 
-	assert.Equal(t, false, isActive)
-	assert.Equal(t, true, isError)
-	assert.Empty(t, activeTriggers)
+	assert.Equal(t, false, state.IsActive)
+	assert.Equal(t, true, state.IsError)
+	assert.Empty(t, state.ActiveTriggers)
 
 	failureEvent := <-recorder.Events
 	assert.Contains(t, failureEvent, "KEDAScalerFailed")
@@ -644,12 +644,12 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 		subsLock:                 &sync.RWMutex{},
 	}
 
-	isActive, isError, _, activeTriggers, _, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	state, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
 	scalerCache.Close(context.Background())
 
-	assert.Equal(t, true, isActive)
-	assert.Equal(t, true, isError)
-	assert.Equal(t, []string{"metric-name"}, activeTriggers)
+	assert.Equal(t, true, state.IsActive)
+	assert.Equal(t, true, state.IsError)
+	assert.Equal(t, []string{"metric-name"}, state.ActiveTriggers)
 }
 
 func TestGetScaledJobState(t *testing.T) {
@@ -1066,4 +1066,111 @@ func createMetricSpec(averageValue int64, metricName string) v2.MetricSpec {
 func expectNoStatusPatch(ctrl *gomock.Controller) {
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
 	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+}
+
+func TestComputeDesiredReplicasFromMetrics(t *testing.T) {
+	makeRecord := func(value int64) metricscache.MetricsRecord {
+		return metricscache.MetricsRecord{
+			IsActive: true,
+			Metric: []external_metrics.ExternalMetricValue{
+				{Value: *resource.NewQuantity(value, resource.DecimalSI)},
+			},
+		}
+	}
+	avgSpec := createMetricSpec
+	valueSpec := func(target int64, name string) v2.MetricSpec {
+		qty := resource.NewQuantity(target, resource.DecimalSI)
+		return v2.MetricSpec{
+			External: &v2.ExternalMetricSource{
+				Target: v2.MetricTarget{Value: qty},
+				Metric: v2.MetricIdentifier{Name: name},
+			},
+		}
+	}
+
+	tests := []struct {
+		name     string
+		specs    []v2.MetricSpec
+		records  map[string]metricscache.MetricsRecord
+		expected *int32
+	}{
+		{
+			name:     "nil when no specs",
+			specs:    nil,
+			records:  map[string]metricscache.MetricsRecord{},
+			expected: nil,
+		},
+		{
+			name:     "nil when no matching records",
+			specs:    []v2.MetricSpec{avgSpec(10, "m1")},
+			records:  map[string]metricscache.MetricsRecord{},
+			expected: nil,
+		},
+		{
+			name:     "basic AverageValue: ceil(25/10) = 3",
+			specs:    []v2.MetricSpec{avgSpec(10, "rps")},
+			records:  map[string]metricscache.MetricsRecord{"rps": makeRecord(25)},
+			expected: func() *int32 { v := int32(3); return &v }(),
+		},
+		{
+			name:     "AverageValue exactly on boundary: ceil(20/10) = 2",
+			specs:    []v2.MetricSpec{avgSpec(10, "rps")},
+			records:  map[string]metricscache.MetricsRecord{"rps": makeRecord(20)},
+			expected: func() *int32 { v := int32(2); return &v }(),
+		},
+		{
+			name:     "nil when desired would be 1 (no scale-up needed)",
+			specs:    []v2.MetricSpec{avgSpec(10, "rps")},
+			records:  map[string]metricscache.MetricsRecord{"rps": makeRecord(5)},
+			expected: nil,
+		},
+		{
+			name:     "nil when current value is 0",
+			specs:    []v2.MetricSpec{avgSpec(10, "rps")},
+			records:  map[string]metricscache.MetricsRecord{"rps": makeRecord(0)},
+			expected: nil,
+		},
+		{
+			name:  "picks max across multiple triggers",
+			specs: []v2.MetricSpec{avgSpec(10, "rps"), avgSpec(5, "conn")},
+			records: map[string]metricscache.MetricsRecord{
+				"rps":  makeRecord(25),
+				"conn": makeRecord(20),
+			},
+			expected: func() *int32 { v := int32(4); return &v }(),
+		},
+		{
+			name:     "skips Value target (requires currentReplicas)",
+			specs:    []v2.MetricSpec{valueSpec(10, "rps")},
+			records:  map[string]metricscache.MetricsRecord{"rps": makeRecord(25)},
+			expected: nil,
+		},
+		{
+			name:     "mixed: uses AverageValue, ignores Value",
+			specs:    []v2.MetricSpec{valueSpec(10, "val_m"), avgSpec(10, "avg_m")},
+			records:  map[string]metricscache.MetricsRecord{"val_m": makeRecord(100), "avg_m": makeRecord(25)},
+			expected: func() *int32 { v := int32(3); return &v }(),
+		},
+		{
+			name: "skips non-External specs",
+			specs: []v2.MetricSpec{
+				{Resource: &v2.ResourceMetricSource{}},
+				avgSpec(10, "rps"),
+			},
+			records:  map[string]metricscache.MetricsRecord{"rps": makeRecord(25)},
+			expected: func() *int32 { v := int32(3); return &v }(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := computeDesiredReplicasFromMetrics(tt.specs, tt.records)
+			if tt.expected == nil {
+				assert.Nil(t, result)
+			} else {
+				assert.NotNil(t, result)
+				assert.Equal(t, *tt.expected, *result)
+			}
+		})
+	}
 }
