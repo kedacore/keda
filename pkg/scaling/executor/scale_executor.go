@@ -68,7 +68,7 @@ func NewScaleExecutor(client runtimeclient.Client, scaleClient scale.ScalesGette
 	}
 }
 
-func (e *scaleExecutor) updateLastActiveTime(ctx context.Context, logger logr.Logger, object interface{}) error {
+func (e *scaleExecutor) updateLastActiveTime(ctx context.Context, logger logr.Logger, object runtimeclient.Object) error {
 	now := metav1.Now()
 	transform := func(runtimeObj runtimeclient.Object, target interface{}) error {
 		now, ok := target.(metav1.Time)
@@ -87,7 +87,7 @@ func (e *scaleExecutor) updateLastActiveTime(ctx context.Context, logger logr.Lo
 	return kedastatus.TransformObject(ctx, e.client, logger, object, now, transform)
 }
 
-func (e *scaleExecutor) setCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, message string, setCondition func(kedav1alpha1.Conditions, metav1.ConditionStatus, string, string)) error {
+func (e *scaleExecutor) setCondition(ctx context.Context, logger logr.Logger, object runtimeclient.Object, status metav1.ConditionStatus, reason string, message string, setCondition func(kedav1alpha1.Conditions, metav1.ConditionStatus, string, string)) error {
 	type transformStruct struct {
 		status  metav1.ConditionStatus
 		reason  string
@@ -112,21 +112,21 @@ func (e *scaleExecutor) setCondition(ctx context.Context, logger logr.Logger, ob
 	return kedastatus.TransformObject(ctx, e.client, logger, object, &target, transform)
 }
 
-func (e *scaleExecutor) setReadyCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, message string) error {
+func (e *scaleExecutor) setReadyCondition(ctx context.Context, logger logr.Logger, object runtimeclient.Object, status metav1.ConditionStatus, reason string, message string) error {
 	active := func(conditions kedav1alpha1.Conditions, status metav1.ConditionStatus, reason string, message string) {
 		conditions.SetReadyCondition(status, reason, message)
 	}
 	return e.setCondition(ctx, logger, object, status, reason, message, active)
 }
 
-func (e *scaleExecutor) setActiveCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, message string) error {
+func (e *scaleExecutor) setActiveCondition(ctx context.Context, logger logr.Logger, object runtimeclient.Object, status metav1.ConditionStatus, reason string, message string) error {
 	active := func(conditions kedav1alpha1.Conditions, status metav1.ConditionStatus, reason string, message string) {
 		conditions.SetActiveCondition(status, reason, message)
 	}
 	return e.setCondition(ctx, logger, object, status, reason, message, active)
 }
 
-func (e *scaleExecutor) updateTriggersActivity(ctx context.Context, logger logr.Logger, object interface{}, activeTriggers []string) error {
+func (e *scaleExecutor) updateTriggersActivity(ctx context.Context, logger logr.Logger, object runtimeclient.Object, activeTriggers []string) error {
 	// Get the current status to check if update is needed
 	var triggersActivity map[string]kedav1alpha1.TriggerActivityStatus
 	var allTriggerNames []string
