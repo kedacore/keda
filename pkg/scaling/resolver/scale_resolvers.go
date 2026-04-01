@@ -218,6 +218,9 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 						fmt.Errorf("roleArn can't be set if KEDA isn't identity owner, current value: '%s'", *podIdentity.IdentityOwner)
 				}
 				authParams["awsRoleArn"] = *podIdentity.RoleArn
+				if podIdentity.ExternalID != nil {
+					authParams["awsRoleExternalId"] = *podIdentity.ExternalID
+				}
 			}
 			if podIdentity.IsWorkloadIdentityOwner() {
 				value, err := resolveServiceAccountAnnotation(ctx, client, podTemplateSpec.Spec.ServiceAccountName, namespace, kedav1alpha1.PodIdentityAnnotationEKS, true)

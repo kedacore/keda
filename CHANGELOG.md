@@ -79,6 +79,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Add CRD-level validation markers (Minimum, MinLength, MinItems, Enum) for ScaledObject, ScaledJob, ScaleTriggers, and TriggerAuthentication API types ([#7533](https://github.com/kedacore/keda/pull/7533))
 - **General**: Add `--leader-election-id` flag to allow configuring the leader election Lease name ([#7564](https://github.com/kedacore/keda/issues/7564))
 - **General**: Make APIService cert injections optional ([#7559](https://github.com/kedacore/keda/pull/7559))
+- **AWS Scalers**: Add support for `externalId` in AssumeRole via TriggerAuthentication spec field ([#7388](https://github.com/kedacore/keda/pull/7388))
 - **Elasticsearch Scaler**: Add HTTP status check for Elasticsearch errors ([#7480](https://github.com/kedacore/keda/pull/7480))
 - **Kubernetes Workload Scaler**: Add `groupByNode` parameter ([#7628](https://github.com/kedacore/keda/issues/7628))
 

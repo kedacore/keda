@@ -120,3 +120,46 @@ func TestCredentialsShouldBeCachedPerRegion(t *testing.T) {
 	assert.NoError(t, err2)
 	assert.NotEqual(t, cred1, cred2, "Credentials should be stored per region")
 }
+
+func TestCredentialsShouldBeCachedPerExternalID(t *testing.T) {
+	cache := newSharedConfigsCache()
+	cache.logger = logr.Discard()
+	awsAuthorization1 := AuthorizationMetadata{
+		TriggerUniqueKey:  "test5-key",
+		AwsRegion:         "test5-region",
+		AwsRoleArn:        "arn:aws:iam::123456789012:role/TestRole",
+		AwsRoleExternalID: "external-id-1",
+	}
+	awsAuthorization2 := AuthorizationMetadata{
+		TriggerUniqueKey:  "test5-key",
+		AwsRegion:         "test5-region",
+		AwsRoleArn:        "arn:aws:iam::123456789012:role/TestRole",
+		AwsRoleExternalID: "external-id-2",
+	}
+	cacheKey1 := cache.getCacheKey(awsAuthorization1)
+	cacheKey2 := cache.getCacheKey(awsAuthorization2)
+
+	assert.NotEqual(t, cacheKey1, cacheKey2, "Cache keys should be different for different external IDs")
+}
+
+func TestCacheKeyIncludesExternalID(t *testing.T) {
+	cache := newSharedConfigsCache()
+	cache.logger = logr.Discard()
+
+	authWithExternalID := AuthorizationMetadata{
+		TriggerUniqueKey:  "test6-key",
+		AwsRegion:         "us-east-1",
+		AwsRoleArn:        "arn:aws:iam::123456789012:role/TestRole",
+		AwsRoleExternalID: "my-external-id",
+	}
+	authWithoutExternalID := AuthorizationMetadata{
+		TriggerUniqueKey: "test6-key",
+		AwsRegion:        "us-east-1",
+		AwsRoleArn:       "arn:aws:iam::123456789012:role/TestRole",
+	}
+
+	keyWithExternalID := cache.getCacheKey(authWithExternalID)
+	keyWithoutExternalID := cache.getCacheKey(authWithoutExternalID)
+
+	assert.NotEqual(t, keyWithExternalID, keyWithoutExternalID, "Cache key should include external ID")
+}
