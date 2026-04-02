@@ -252,6 +252,7 @@ func getMatchedAgentMetaData(url string) *azurePipelinesMetadata {
 	meta.OrganizationURL = url
 	meta.Parent = "dotnet60-keda-template"
 	meta.authContext.pat = "testPAT"
+	meta.authContext.authType = azurePipelinesAuthTypePAT
 	meta.PoolID = 1
 	meta.TargetPipelinesQueueLength = 1
 
@@ -556,6 +557,7 @@ func TestAzurePipelinesQueueURLTest(t *testing.T) {
 			meta.OrganizationName = "testOrg"
 			meta.OrganizationURL = apiStub.URL
 			meta.authContext.pat = "testPAT"
+			meta.authContext.authType = azurePipelinesAuthTypePAT
 			meta.PoolID = 1
 			meta.TargetPipelinesQueueLength = 1
 

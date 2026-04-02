@@ -139,9 +139,9 @@ type azurePipelinesMetadata struct {
 	PersonalAccessToken                  string `keda:"name=personalAccessToken, order=authParams;resolvedEnv, optional"`
 	TenantID                             string `keda:"name=tenantId, order=authParams;triggerMetadata;resolvedEnv, optional"`
 	ClientID                             string `keda:"name=clientId, order=authParams;triggerMetadata;resolvedEnv, optional"`
-	ClientSecret                         string `keda:"name=clientSecret, order=authParams;triggerMetadata;resolvedEnv, optional"`
-	ClientCertificate                    string `keda:"name=clientCertificate, order=authParams;triggerMetadata;resolvedEnv, optional"`
-	ClientCertificatePassword            string `keda:"name=clientCertificatePassword, order=authParams;triggerMetadata;resolvedEnv, optional"`
+	ClientSecret                         string `keda:"name=clientSecret, order=authParams;resolvedEnv, optional"`
+	ClientCertificate                    string `keda:"name=clientCertificate, order=authParams;resolvedEnv, optional"`
+	ClientCertificatePassword            string `keda:"name=clientCertificatePassword, order=authParams;resolvedEnv, optional"`
 	authContext                          authContext
 	Parent                               string `keda:"name=parent, order=triggerMetadata, optional"`
 	Demands                              string `keda:"name=demands, order=triggerMetadata, optional"`
@@ -391,16 +391,6 @@ func getAzurePipelineRequest(ctx context.Context, logger logr.Logger, urlString 
 	}
 
 	authType := metadata.authContext.authType
-	if authType == "" {
-		switch {
-		case metadata.authContext.pat != "":
-			authType = azurePipelinesAuthTypePAT
-		case metadata.authContext.cred != nil && podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload:
-			authType = azurePipelinesAuthTypeWorkloadIdentity
-		case metadata.authContext.cred != nil:
-			authType = azurePipelinesAuthTypeServicePrincipal
-		}
-	}
 
 	switch authType {
 	case azurePipelinesAuthTypePAT:

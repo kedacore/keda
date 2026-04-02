@@ -984,7 +984,20 @@
                     "name": "clientSecret",
                     "type": "string",
                     "optional": true,
-                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "clientCertificate",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "clientCertificatePassword",
+                    "type": "string",
+                    "optional": true,
                     "envVariableReadable": true,
                     "triggerAuthenticationVariableReadable": true
                 },
