@@ -319,9 +319,9 @@ func parseAzurePipelinesMetadata(ctx context.Context, logger logr.Logger, config
 	return meta, podIdentity, nil
 }
 
-func getPoolIDFromName(ctx context.Context, logger logr.Logger, poolName string, metadata *azurePipelinesMetadata, podIdentity kedav1alpha1.AuthPodIdentity, httpClient *http.Client) (int, error) {
+func getPoolIDFromName(ctx context.Context, logger logr.Logger, poolName string, metadata *azurePipelinesMetadata, _ kedav1alpha1.AuthPodIdentity, httpClient *http.Client) (int, error) {
 	urlString := fmt.Sprintf("%s/_apis/distributedtask/pools?poolName=%s", metadata.OrganizationURL, url.QueryEscape(poolName))
-	body, err := getAzurePipelineRequest(ctx, logger, urlString, metadata, podIdentity, httpClient)
+	body, err := getAzurePipelineRequest(ctx, logger, urlString, metadata, httpClient)
 
 	if err != nil {
 		return -1, err
@@ -345,9 +345,9 @@ func getPoolIDFromName(ctx context.Context, logger logr.Logger, poolName string,
 	return result.Value[0].ID, nil
 }
 
-func validatePoolID(ctx context.Context, logger logr.Logger, poolID int, metadata *azurePipelinesMetadata, podIdentity kedav1alpha1.AuthPodIdentity, httpClient *http.Client) (int, error) {
+func validatePoolID(ctx context.Context, logger logr.Logger, poolID int, metadata *azurePipelinesMetadata, _ kedav1alpha1.AuthPodIdentity, httpClient *http.Client) (int, error) {
 	urlString := fmt.Sprintf("%s/_apis/distributedtask/pools?poolID=%d", metadata.OrganizationURL, poolID)
-	body, err := getAzurePipelineRequest(ctx, logger, urlString, metadata, podIdentity, httpClient)
+	body, err := getAzurePipelineRequest(ctx, logger, urlString, metadata, httpClient)
 
 	if err != nil {
 		return -1, fmt.Errorf("agent pool with id `%d` not found: %w", poolID, err)
@@ -384,7 +384,7 @@ func getToken(ctx context.Context, metadata *azurePipelinesMetadata, scope strin
 	return metadata.authContext.token.Token, nil
 }
 
-func getAzurePipelineRequest(ctx context.Context, logger logr.Logger, urlString string, metadata *azurePipelinesMetadata, podIdentity kedav1alpha1.AuthPodIdentity, httpClient *http.Client) ([]byte, error) {
+func getAzurePipelineRequest(ctx context.Context, logger logr.Logger, urlString string, metadata *azurePipelinesMetadata, httpClient *http.Client) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", urlString, nil)
 	if err != nil {
 		return []byte{}, err
@@ -463,7 +463,7 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 		return -1, err
 	}
 
-	body, err := getAzurePipelineRequest(ctx, s.logger, urlString, s.metadata, s.podIdentity, s.httpClient)
+	body, err := getAzurePipelineRequest(ctx, s.logger, urlString, s.metadata, s.httpClient)
 	if err != nil {
 		return -1, err
 	}

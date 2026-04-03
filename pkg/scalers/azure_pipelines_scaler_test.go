@@ -12,7 +12,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/go-logr/logr"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
@@ -598,7 +597,7 @@ func TestAzurePipelinesRequestUsesBearerTokenForServicePrincipal(t *testing.T) {
 		},
 	}
 
-	_, err := getAzurePipelineRequest(context.Background(), logr.Discard(), apiStub.URL, meta, kedav1alpha1.AuthPodIdentity{}, http.DefaultClient)
+	_, err := getAzurePipelineRequest(context.Background(), logr.Discard(), apiStub.URL, meta, http.DefaultClient)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
