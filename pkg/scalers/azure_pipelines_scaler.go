@@ -302,13 +302,13 @@ func parseAzurePipelinesMetadata(ctx context.Context, logger logr.Logger, config
 	meta.authContext.token = nil
 
 	if meta.PoolName != "" {
-		poolID, err := getPoolIDFromName(ctx, logger, meta.PoolName, meta, podIdentity, httpClient)
+		poolID, err := getPoolIDFromName(ctx, logger, meta.PoolName, meta, httpClient)
 		if err != nil {
 			return nil, kedav1alpha1.AuthPodIdentity{}, err
 		}
 		meta.PoolID = poolID
 	} else if meta.PoolID != 0 {
-		_, err := validatePoolID(ctx, logger, meta.PoolID, meta, podIdentity, httpClient)
+		_, err := validatePoolID(ctx, logger, meta.PoolID, meta, httpClient)
 		if err != nil {
 			return nil, kedav1alpha1.AuthPodIdentity{}, err
 		}
@@ -319,7 +319,7 @@ func parseAzurePipelinesMetadata(ctx context.Context, logger logr.Logger, config
 	return meta, podIdentity, nil
 }
 
-func getPoolIDFromName(ctx context.Context, logger logr.Logger, poolName string, metadata *azurePipelinesMetadata, _ kedav1alpha1.AuthPodIdentity, httpClient *http.Client) (int, error) {
+func getPoolIDFromName(ctx context.Context, logger logr.Logger, poolName string, metadata *azurePipelinesMetadata, httpClient *http.Client) (int, error) {
 	urlString := fmt.Sprintf("%s/_apis/distributedtask/pools?poolName=%s", metadata.OrganizationURL, url.QueryEscape(poolName))
 	body, err := getAzurePipelineRequest(ctx, logger, urlString, metadata, httpClient)
 
@@ -345,7 +345,7 @@ func getPoolIDFromName(ctx context.Context, logger logr.Logger, poolName string,
 	return result.Value[0].ID, nil
 }
 
-func validatePoolID(ctx context.Context, logger logr.Logger, poolID int, metadata *azurePipelinesMetadata, _ kedav1alpha1.AuthPodIdentity, httpClient *http.Client) (int, error) {
+func validatePoolID(ctx context.Context, logger logr.Logger, poolID int, metadata *azurePipelinesMetadata, httpClient *http.Client) (int, error) {
 	urlString := fmt.Sprintf("%s/_apis/distributedtask/pools?poolID=%d", metadata.OrganizationURL, poolID)
 	body, err := getAzurePipelineRequest(ctx, logger, urlString, metadata, httpClient)
 
