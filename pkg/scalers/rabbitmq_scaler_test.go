@@ -830,3 +830,55 @@ func TestConnectionName(t *testing.T) {
 		t.Error("Expected connection name to be keda-test-namespace-test-name but got", connectionName)
 	}
 }
+
+func TestRabbitMQBuildAMQPConfig(t *testing.T) {
+	tests := []struct {
+		name              string
+		meta              *rabbitMQMetadata
+		wantSASLMechanism string
+		wantSASLNil       bool
+	}{
+		{
+			name: "TLS enabled without credentials uses EXTERNAL SASL",
+			meta: &rabbitMQMetadata{
+				EnableTLS: rmqTLSEnable,
+				Username:  "",
+				Password:  "",
+			},
+			wantSASLMechanism: "EXTERNAL",
+		},
+		{
+			name: "TLS enabled with credentials does not set SASL",
+			meta: &rabbitMQMetadata{
+				EnableTLS: rmqTLSEnable,
+				Username:  "user",
+				Password:  "pass",
+			},
+			wantSASLNil: true,
+		},
+		{
+			name: "TLS disabled does not set SASL",
+			meta: &rabbitMQMetadata{
+				EnableTLS: rmqTLSDisable,
+				Username:  "",
+				Password:  "",
+			},
+			wantSASLNil: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config, err := buildAMQPConfig(tt.meta)
+			assert.NoError(t, err)
+
+			if tt.wantSASLNil {
+				assert.Nil(t, config.SASL)
+				return
+			}
+
+			assert.Len(t, config.SASL, 1)
+			assert.Equal(t, tt.wantSASLMechanism, config.SASL[0].Mechanism())
+		})
+	}
+}

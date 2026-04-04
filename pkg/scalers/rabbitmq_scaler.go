@@ -357,19 +357,9 @@ func parseRabbitMQMetadata(config *scalersconfig.ScalerConfig) (*rabbitMQMetadat
 // the given ceClient cert, ceClient key,and CA certificate. If clientKeyPassword is not empty the provided password will be used to
 // decrypt the given key. If enableTLS is disabled then amqp connection will be created without tls.
 func getConnectionAndChannel(host string, meta *rabbitMQMetadata) (*amqp.Connection, *amqp.Channel, error) {
-	amqpConfig := amqp.Config{
-		Properties: amqp.Table{
-			"connection_name": meta.connectionName,
-		},
-	}
-
-	if meta.EnableTLS == rmqTLSEnable {
-		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.Ca, meta.UnsafeSsl)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		amqpConfig.TLSClientConfig = tlsConfig
+	amqpConfig, err := buildAMQPConfig(meta)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	conn, err := amqp.DialConfig(host, amqpConfig)
@@ -383,6 +373,28 @@ func getConnectionAndChannel(host string, meta *rabbitMQMetadata) (*amqp.Connect
 	}
 
 	return conn, channel, nil
+}
+
+func buildAMQPConfig(meta *rabbitMQMetadata) (amqp.Config, error) {
+	config := amqp.Config{
+		Properties: amqp.Table{
+			"connection_name": meta.connectionName,
+		},
+	}
+
+	if meta.EnableTLS == rmqTLSEnable {
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.Ca, meta.UnsafeSsl)
+		if err != nil {
+			return amqp.Config{}, err
+		}
+		config.TLSClientConfig = tlsConfig
+
+		if meta.Username == "" && meta.Password == "" {
+			config.SASL = []amqp.Authentication{&amqp.ExternalAuth{}}
+		}
+	}
+
+	return config, nil
 }
 
 // Close disposes of RabbitMQ connections

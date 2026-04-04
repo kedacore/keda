@@ -94,6 +94,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Loki Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **Prometheus Scaler**: Handle NaN results in the same manner as Inf ([#7475](https://github.com/kedacore/keda/issues/7475))
 - **Prometheus Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
+- **RabbitMQ Scaler**: Use SASL EXTERNAL for RabbitMQ AMQP TLS without credentials ([#6840](https://github.com/kedacore/keda/issues/6840))
 - **Solr Scaler**: Use net/url to safely encode query parameters ([#7467](https://github.com/kedacore/keda/pull/7467))
 
 ### Deprecations
