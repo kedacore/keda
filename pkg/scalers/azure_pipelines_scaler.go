@@ -126,11 +126,10 @@ type azurePipelinesPoolIDResponse struct {
 }
 
 type azurePipelinesScaler struct {
-	metricType  v2.MetricTargetType
-	metadata    *azurePipelinesMetadata
-	httpClient  *http.Client
-	podIdentity kedav1alpha1.AuthPodIdentity
-	logger      logr.Logger
+	metricType v2.MetricTargetType
+	metadata   *azurePipelinesMetadata
+	httpClient *http.Client
+	logger     logr.Logger
 }
 
 type azurePipelinesMetadata struct {
@@ -203,25 +202,24 @@ func NewAzurePipelinesScaler(ctx context.Context, config *scalersconfig.ScalerCo
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
-	meta, podIdentity, err := parseAzurePipelinesMetadata(ctx, logger, config, httpClient)
+	meta, err := parseAzurePipelinesMetadata(ctx, logger, config, httpClient)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure Pipelines metadata: %w", err)
 	}
 
 	return &azurePipelinesScaler{
-		metricType:  metricType,
-		metadata:    meta,
-		httpClient:  httpClient,
-		podIdentity: podIdentity,
-		logger:      logger,
+		metricType: metricType,
+		metadata:   meta,
+		httpClient: httpClient,
+		logger:     logger,
 	}, nil
 }
 
-func getAuthMethod(logger logr.Logger, config *scalersconfig.ScalerConfig, meta *azurePipelinesMetadata) (azcore.TokenCredential, kedav1alpha1.AuthPodIdentity, error) {
+func getAuthMethod(logger logr.Logger, config *scalersconfig.ScalerConfig, meta *azurePipelinesMetadata) (azcore.TokenCredential, error) {
 	if meta.PersonalAccessToken != "" {
 		meta.authContext.pat = strings.TrimSuffix(meta.PersonalAccessToken, "\n")
 		meta.authContext.authType = azurePipelinesAuthTypePAT
-		return nil, kedav1alpha1.AuthPodIdentity{}, nil
+		return nil, nil
 	}
 
 	if meta.TenantID != "" || meta.ClientID != "" || meta.ClientSecret != "" || meta.ClientCertificate != "" || meta.ClientCertificatePassword != "" {
@@ -235,16 +233,16 @@ func getAuthMethod(logger logr.Logger, config *scalersconfig.ScalerConfig, meta 
 		usingClientSecret := meta.ClientSecret != ""
 		usingClientCertificate := meta.ClientCertificate != ""
 		if usingClientSecret && usingClientCertificate {
-			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("clientSecret and clientCertificate are mutually exclusive")
+			return nil, fmt.Errorf("clientSecret and clientCertificate are mutually exclusive")
 		}
 		if !usingClientSecret && !usingClientCertificate {
 			missing = append(missing, "one of clientSecret or clientCertificate")
 		}
 		if meta.ClientCertificatePassword != "" && !usingClientCertificate {
-			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("clientCertificatePassword requires clientCertificate")
+			return nil, fmt.Errorf("clientCertificatePassword requires clientCertificate")
 		}
 		if len(missing) != 0 {
-			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("incomplete service principal configuration, missing %s", strings.Join(missing, ", "))
+			return nil, fmt.Errorf("incomplete service principal configuration, missing %s", strings.Join(missing, ", "))
 		}
 
 		var (
@@ -257,45 +255,45 @@ func getAuthMethod(logger logr.Logger, config *scalersconfig.ScalerConfig, meta 
 			cred, err = newAzurePipelinesClientSecretCredential(meta.TenantID, meta.ClientID, meta.ClientSecret)
 		}
 		if err != nil {
-			return nil, kedav1alpha1.AuthPodIdentity{}, err
+			return nil, err
 		}
 		meta.authContext.authType = azurePipelinesAuthTypeServicePrincipal
-		return cred, kedav1alpha1.AuthPodIdentity{}, nil
+		return cred, nil
 	}
 
 	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no personalAccessToken, service principal credentials, or PodIdentity provider configured")
+		return nil, fmt.Errorf("no personalAccessToken, service principal credentials, or PodIdentity provider configured")
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		cred, err := azure.NewChainedCredential(logger, config.PodIdentity)
 		if err != nil {
-			return nil, kedav1alpha1.AuthPodIdentity{}, err
+			return nil, err
 		}
 		meta.authContext.authType = azurePipelinesAuthTypeWorkloadIdentity
-		return cred, kedav1alpha1.AuthPodIdentity{Provider: config.PodIdentity.Provider}, nil
+		return cred, nil
 	default:
-		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("pod identity %s not supported for azure pipelines", config.PodIdentity.Provider)
+		return nil, fmt.Errorf("pod identity %s not supported for azure pipelines", config.PodIdentity.Provider)
 	}
 }
 
-func parseAzurePipelinesMetadata(ctx context.Context, logger logr.Logger, config *scalersconfig.ScalerConfig, httpClient *http.Client) (*azurePipelinesMetadata, kedav1alpha1.AuthPodIdentity, error) {
+func parseAzurePipelinesMetadata(ctx context.Context, logger logr.Logger, config *scalersconfig.ScalerConfig, httpClient *http.Client) (*azurePipelinesMetadata, error) {
 	if config.TriggerMetadata["jobsToFetch"] != "" && config.TriggerMetadata["fetchUnfinishedJobsOnly"] != "" {
-		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("cannot specify both jobsToFetch and fetchUnfinishedJobsOnly at the same time")
+		return nil, fmt.Errorf("cannot specify both jobsToFetch and fetchUnfinishedJobsOnly at the same time")
 	}
 	if config.TriggerMetadata["jobsToFetch"] != "" && config.TriggerMetadata["parent"] != "" {
-		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("cannot specify both jobsToFetch and parent at the same time")
+		return nil, fmt.Errorf("cannot specify both jobsToFetch and parent at the same time")
 	}
 
 	meta := &azurePipelinesMetadata{}
 	if err := config.TypedConfig(meta); err != nil {
-		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("error parsing azure pipeline metadata: %w", err)
+		return nil, fmt.Errorf("error parsing azure pipeline metadata: %w", err)
 	}
 
 	meta.triggerIndex = config.TriggerIndex
 
-	cred, podIdentity, err := getAuthMethod(logger, config, meta)
+	cred, err := getAuthMethod(logger, config, meta)
 	if err != nil {
-		return nil, kedav1alpha1.AuthPodIdentity{}, err
+		return nil, err
 	}
 
 	meta.authContext.cred = cred
@@ -304,19 +302,19 @@ func parseAzurePipelinesMetadata(ctx context.Context, logger logr.Logger, config
 	if meta.PoolName != "" {
 		poolID, err := getPoolIDFromName(ctx, logger, meta.PoolName, meta, httpClient)
 		if err != nil {
-			return nil, kedav1alpha1.AuthPodIdentity{}, err
+			return nil, err
 		}
 		meta.PoolID = poolID
 	} else if meta.PoolID != 0 {
 		_, err := validatePoolID(ctx, logger, meta.PoolID, meta, httpClient)
 		if err != nil {
-			return nil, kedav1alpha1.AuthPodIdentity{}, err
+			return nil, err
 		}
 	} else {
-		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no poolName or poolID given")
+		return nil, fmt.Errorf("no poolName or poolID given")
 	}
 
-	return meta, podIdentity, nil
+	return meta, nil
 }
 
 func getPoolIDFromName(ctx context.Context, logger logr.Logger, poolName string, metadata *azurePipelinesMetadata, httpClient *http.Client) (int, error) {
@@ -404,7 +402,7 @@ func getAzurePipelineRequest(ctx context.Context, logger logr.Logger, urlString 
 		logger.V(1).Info("making request to ADO REST API using bearer token", "authMethod", authMethod)
 		aadToken, err := getToken(ctx, metadata, devopsResource)
 		if err != nil {
-			return []byte{}, fmt.Errorf("cannot create %s credentials: %w", authMethod, err)
+			return []byte{}, fmt.Errorf("cannot acquire %s token: %w", authMethod, err)
 		}
 		logger.V(1).Info("token acquired setting auth header as 'bearer XXXXXX'")
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", aadToken))
