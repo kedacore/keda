@@ -493,7 +493,7 @@ func WaitForAllPodRunningInNamespace(t *testing.T, kc *kubernetes.Clientset, nam
 // Waits until the target number of pods is running. If running pod count differs from target, returns false.
 func WaitForRunningPodCount(t *testing.T, kc *kubernetes.Clientset, scaledJobName, namespace string, target, iterations, interval int) bool {
 	for i := 0; i < iterations; i++ {
-		jobs, err := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
+		pods, err := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("scaledjob.keda.sh/name=%s", scaledJobName),
 		})
 		if err != nil {
@@ -501,8 +501,8 @@ func WaitForRunningPodCount(t *testing.T, kc *kubernetes.Clientset, scaledJobNam
 		}
 
 		runningPodCount := 0
-		for _, job := range jobs.Items {
-			if job.Status.Active > 0 {
+		for _, pod := range pods.Items {
+			if pod.Status.Phase == corev1.PodRunning {
 				runningPodCount++
 			}
 		}
