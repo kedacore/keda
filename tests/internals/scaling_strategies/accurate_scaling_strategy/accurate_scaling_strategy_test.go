@@ -170,11 +170,3 @@ func enqueueMessages(ctx context.Context, t *testing.T, client *azqueue.QueueCli
 		t.Logf("Message queued")
 	}
 }
-
-func dequeueMessages(ctx context.Context, t *testing.T, client *azqueue.QueueClient, count int) {
-	for i := 0; i < count; i++ {
-		_, err := client.DequeueMessage(ctx, nil)
-		assert.NoErrorf(t, err, "cannot dequeue message - %s", err)
-		t.Logf("Message dequeued")
-	}
-}
