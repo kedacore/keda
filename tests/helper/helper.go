@@ -334,33 +334,6 @@ func WaitForAllJobsSuccess(t *testing.T, kc *kubernetes.Clientset, namespace str
 	return false
 }
 
-func WaitForRunningJobCount(t *testing.T, kc *kubernetes.Clientset, scaledJobName, namespace string, target, iterations, interval int) bool {
-	for i := 0; i < iterations; i++ {
-		jobs, err := kc.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("scaledjob.keda.sh/name=%s", scaledJobName),
-		})
-		if err != nil {
-			t.Logf("cannot list jobs - %s", err)
-		}
-
-		runningJobCount := 0
-		for _, job := range jobs.Items {
-			if job.Status.Active > 0 {
-				runningJobCount++
-			}
-		}
-
-		t.Logf("Waiting for running jobs. Namespace - %s, Current - %d, Target - %d",
-			namespace, runningJobCount, target)
-		if runningJobCount >= target {
-			return true
-		}
-
-		time.Sleep(time.Duration(interval) * time.Second)
-	}
-	return false
-}
-
 func WaitForNamespaceDeletion(t *testing.T, nsName string) bool {
 	for i := 0; i < 120; i++ {
 		t.Logf("waiting for namespace %s deletion", nsName)
@@ -514,6 +487,36 @@ func WaitForAllPodRunningInNamespace(t *testing.T, kc *kubernetes.Clientset, nam
 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
 	}
 
+	return false
+}
+
+// Waits until the target number of pods is running. If running pod count differs from target, returns false.
+func WaitForRunningPodCount(t *testing.T, kc *kubernetes.Clientset, scaledJobName, namespace string, target, iterations, interval int) bool {
+	for i := 0; i < iterations; i++ {
+		jobs, err := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("scaledjob.keda.sh/name=%s", scaledJobName),
+		})
+		if err != nil {
+			t.Logf("cannot list pods - %s", err)
+		}
+
+		runningPodCount := 0
+		for _, job := range jobs.Items {
+			if job.Status.Active > 0 {
+				runningPodCount++
+			}
+		}
+
+		t.Logf("Waiting for running pods. Namespace - %s, Current - %d, Target - %d",
+			namespace, runningPodCount, target)
+		if runningPodCount == target {
+			return true
+		} else if runningPodCount > target {
+			return false
+		}
+
+		time.Sleep(time.Duration(interval) * time.Second)
+	}
 	return false
 }
 
