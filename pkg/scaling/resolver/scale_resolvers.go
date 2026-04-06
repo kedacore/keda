@@ -32,6 +32,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/scale"
@@ -157,6 +158,17 @@ func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, sc
 			}
 			podTemplateSpec.ObjectMeta = withPods.ObjectMeta
 			podTemplateSpec.Spec = withPods.Spec.Template.Spec
+
+			// If there are no containers, the custom resource (e.g. Argo Rollout) may use
+			// a workloadRef to point to another resource that holds the pod template.
+			// Follow the reference to resolve the pod spec from the underlying workload.
+			if len(podTemplateSpec.Spec.Containers) == 0 {
+				if refPodTemplateSpec, err := resolveWorkloadRef(ctx, kubeClient, unstruct, obj.Namespace, logger); err != nil {
+					logger.V(1).Info("failed to resolve workloadRef from custom resource", "error", err)
+				} else if refPodTemplateSpec != nil {
+					podTemplateSpec = *refPodTemplateSpec
+				}
+			}
 		}
 
 		if len(podTemplateSpec.Spec.Containers) == 0 {
@@ -170,6 +182,78 @@ func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, sc
 	default:
 		return nil, "", fmt.Errorf("unknown scalable object type %v", scalableObject)
 	}
+}
+
+// resolveWorkloadRef checks if an unstructured object contains a spec.workloadRef field
+// (as used by Argo Rollouts) and fetches the referenced resource to extract its pod template.
+// This enables KEDA to resolve *FromEnv trigger metadata when the ScaledObject targets a
+// custom resource that delegates its pod spec to another workload via workloadRef.
+func resolveWorkloadRef(ctx context.Context, kubeClient client.Client, unstruct *unstructured.Unstructured, namespace string, logger logr.Logger) (*corev1.PodTemplateSpec, error) {
+	spec, ok := unstruct.Object["spec"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("cannot extract spec from unstructured object")
+	}
+
+	workloadRef, ok := spec["workloadRef"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("no workloadRef found in spec")
+	}
+
+	refAPIVersion, _ := workloadRef["apiVersion"].(string)
+	refKind, _ := workloadRef["kind"].(string)
+	refName, _ := workloadRef["name"].(string)
+
+	if refAPIVersion == "" || refKind == "" || refName == "" {
+		return nil, fmt.Errorf("workloadRef is incomplete: apiVersion=%q, kind=%q, name=%q", refAPIVersion, refKind, refName)
+	}
+
+	logger.V(1).Info("following workloadRef to resolve pod spec", "apiVersion", refAPIVersion, "kind", refKind, "name", refName)
+
+	podTemplateSpec := corev1.PodTemplateSpec{}
+	refObjKey := client.ObjectKey{Namespace: namespace, Name: refName}
+
+	// Use typed clients for known core types to benefit from informer caching
+	switch {
+	case refAPIVersion == "apps/v1" && refKind == "Deployment":
+		deployment := &appsv1.Deployment{}
+		if err := kubeClient.Get(ctx, refObjKey, deployment); err != nil {
+			return nil, fmt.Errorf("cannot get referenced Deployment %q: %w", refName, err)
+		}
+		podTemplateSpec.ObjectMeta = deployment.ObjectMeta
+		podTemplateSpec.Spec = deployment.Spec.Template.Spec
+	case refAPIVersion == "apps/v1" && refKind == "StatefulSet":
+		statefulSet := &appsv1.StatefulSet{}
+		if err := kubeClient.Get(ctx, refObjKey, statefulSet); err != nil {
+			return nil, fmt.Errorf("cannot get referenced StatefulSet %q: %w", refName, err)
+		}
+		podTemplateSpec.ObjectMeta = statefulSet.ObjectMeta
+		podTemplateSpec.Spec = statefulSet.Spec.Template.Spec
+	default:
+		// For other workload types, use unstructured + duck typing
+		refUnstruct := &unstructured.Unstructured{}
+		refUnstruct.SetGroupVersionKind(parseGVK(refAPIVersion, refKind))
+		if err := kubeClient.Get(ctx, refObjKey, refUnstruct); err != nil {
+			return nil, fmt.Errorf("cannot get referenced resource %s/%s %q: %w", refAPIVersion, refKind, refName, err)
+		}
+		withPods := &duckv1.WithPod{}
+		if err := duck.FromUnstructured(refUnstruct, withPods); err != nil {
+			return nil, fmt.Errorf("cannot convert referenced resource into PodSpecable Duck-type: %w", err)
+		}
+		podTemplateSpec.ObjectMeta = withPods.ObjectMeta
+		podTemplateSpec.Spec = withPods.Spec.Template.Spec
+	}
+
+	return &podTemplateSpec, nil
+}
+
+// parseGVK splits an apiVersion string (e.g. "apps/v1") into group and version,
+// and returns a schema.GroupVersionKind.
+func parseGVK(apiVersion, kind string) schema.GroupVersionKind {
+	parts := strings.SplitN(apiVersion, "/", 2)
+	if len(parts) == 2 {
+		return schema.GroupVersionKind{Group: parts[0], Version: parts[1], Kind: kind}
+	}
+	return schema.GroupVersionKind{Version: apiVersion, Kind: kind}
 }
 
 // ResolveContainerEnv resolves all environment variables in a container.
