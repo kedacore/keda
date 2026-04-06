@@ -224,8 +224,9 @@ func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 			return nil, fmt.Errorf("oauth2.clientSecret.valueFrom.secretKeyRef.key is required")
 		}
 
-		if _, err := url.Parse(oauth2.TokenURL); err != nil {
-			return nil, fmt.Errorf("oauth2.tokenUrl must be a valid URL: %w", err)
+		parsedURL, err := url.Parse(oauth2.TokenURL)
+		if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
+			return nil, fmt.Errorf("oauth2.tokenUrl must be a valid http or https URL")
 		}
 	}
 
