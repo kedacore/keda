@@ -16,6 +16,7 @@ type parseMSSQLMetadataTestData struct {
 	authParams               map[string]string
 	expectedError            string
 	expectedConnectionString string
+	expectedDriverName       string
 	expectedMetricName       string
 }
 
@@ -92,21 +93,24 @@ var testMSSQLMetadata = []parseMSSQLMetadataTestData{
 		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "example.database.windows.net", "username": "user4"},
 		resolvedEnv:              map[string]string{},
 		authParams:               map[string]string{"password": "Password#4"},
-		expectedConnectionString: "sqlserver://user4:Password%233@example.database.windows.net",
+		expectedDriverName:       "sqlserver",
+		expectedConnectionString: "sqlserver://user4:Password%234@example.database.windows.net",
 	},
 	{
 		name:                     "sqlserver driver selected",
 		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "example.database.windows.net", "username": "user5"},
 		resolvedEnv:              map[string]string{},
 		authParams:               map[string]string{"password": "Password#5", "driverName": "sqlserver"},
-		expectedConnectionString: "sqlserver://user5:Password%233@example.database.windows.net",
+		expectedDriverName:       "sqlserver",
+		expectedConnectionString: "sqlserver://user5:Password%235@example.database.windows.net",
 	},
 	{
 		name:                     "azuresql driver selected",
 		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "example.database.windows.net", "username": "user6"},
 		resolvedEnv:              map[string]string{},
 		authParams:               map[string]string{"password": "Password#6", "driverName": "azuresql"},
-		expectedConnectionString: "sqlserver://user6:Password%233@example.database.windows.net",
+		expectedDriverName:       "azuresql",
+		expectedConnectionString: "sqlserver://user6:Password%236@example.database.windows.net",
 	},
 	{
 		name:          "Error: missing query",
@@ -154,7 +158,37 @@ func TestParseMSSQLMetadata(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, meta)
+
+				if testData.expectedDriverName != "" {
+					assert.Equal(t, testData.expectedDriverName, meta.DriverName)
+				}
 			}
+		})
+	}
+}
+
+func TestMSSQLConnectionStringGeneration(t *testing.T) {
+	for _, testData := range testMSSQLMetadata {
+		t.Run(testData.name, func(t *testing.T) {
+			if testData.expectedError != "" {
+				return
+			}
+
+			meta, err := parseMSSQLMetadata(&scalersconfig.ScalerConfig{
+				TriggerMetadata: testData.metadata,
+				ResolvedEnv:     testData.resolvedEnv,
+				AuthParams:      testData.authParams,
+			})
+
+			assert.NoError(t, err)
+
+			mockMSSQLScaler := mssqlScaler{
+				metadata: meta,
+			}
+
+			connStr := getMSSQLConnectionString(&mockMSSQLScaler)
+
+			assert.Equal(t, testData.expectedConnectionString, connStr)
 		})
 	}
 }
