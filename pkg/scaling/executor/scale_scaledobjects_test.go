@@ -20,6 +20,7 @@ import (
 	"context"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -679,6 +680,161 @@ func TestNoScaleFromMinReplicasWhenActiveAndPausedScaleOutAnnotationSet(t *testi
 	result := scaleExecutor.RequestScale(context.TODO(), &scaledObject, true, false, ScaleExecutorOptions{})
 
 	assert.Equal(t, int32(0), scale.Spec.Replicas)
+	condition := result.Conditions.GetActiveCondition()
+	assert.Equal(t, true, condition.IsTrue())
+}
+
+func TestSkipRedundantLastActiveTimeUpdate(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	client := mock_client.NewMockClient(ctrl)
+	recorder := record.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
+
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+
+	minReplicas := int32(1)
+	recentTime := v1.NewTime(time.Now().Add(-5 * time.Second))
+
+	scaledObject := v1alpha1.ScaledObject{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: v1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &v1alpha1.ScaleTarget{
+				Name: "name",
+			},
+			MinReplicaCount: &minReplicas,
+		},
+		Status: v1alpha1.ScaledObjectStatus{
+			ScaleTargetGVKR: &v1alpha1.GroupVersionKindResource{
+				Group: "apps",
+				Kind:  "Deployment",
+			},
+			LastActiveTime: &recentTime,
+		},
+	}
+
+	numberOfReplicas := int32(3)
+
+	client.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, appsv1.Deployment{
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &numberOfReplicas,
+		},
+	})
+
+	mockScaleClient.EXPECT().Scales(gomock.Any()).Return(mockScaleInterface).Times(0)
+
+	// LastActiveTime update is skipped because lastActiveTime (5s ago) is
+	// within the default polling interval (30s), so result.LastActiveTime is nil.
+	result := scaleExecutor.RequestScale(context.Background(), &scaledObject, true, false, ScaleExecutorOptions{})
+
+	assert.Nil(t, result.LastActiveTime)
+	condition := result.Conditions.GetActiveCondition()
+	assert.Equal(t, true, condition.IsTrue())
+}
+
+func TestSkipRedundantLastActiveTimeUpdateWithCustomPollingInterval(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	client := mock_client.NewMockClient(ctrl)
+	recorder := record.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
+
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+
+	minReplicas := int32(1)
+	pollingInterval := int32(10)
+	recentTime := v1.NewTime(time.Now().Add(-5 * time.Second))
+
+	scaledObject := v1alpha1.ScaledObject{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: v1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &v1alpha1.ScaleTarget{
+				Name: "name",
+			},
+			MinReplicaCount: &minReplicas,
+			PollingInterval: &pollingInterval,
+		},
+		Status: v1alpha1.ScaledObjectStatus{
+			ScaleTargetGVKR: &v1alpha1.GroupVersionKindResource{
+				Group: "apps",
+				Kind:  "Deployment",
+			},
+			LastActiveTime: &recentTime,
+		},
+	}
+
+	numberOfReplicas := int32(3)
+
+	client.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, appsv1.Deployment{
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &numberOfReplicas,
+		},
+	})
+
+	mockScaleClient.EXPECT().Scales(gomock.Any()).Return(mockScaleInterface).Times(0)
+
+	// LastActiveTime update is skipped because lastActiveTime (5s ago) is
+	// within the custom polling interval (10s), so result.LastActiveTime is nil.
+	result := scaleExecutor.RequestScale(context.Background(), &scaledObject, true, false, ScaleExecutorOptions{})
+
+	assert.Nil(t, result.LastActiveTime)
+	condition := result.Conditions.GetActiveCondition()
+	assert.Equal(t, true, condition.IsTrue())
+}
+
+func TestUpdateLastActiveTimeWhenExpired(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	client := mock_client.NewMockClient(ctrl)
+	recorder := record.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
+
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+
+	minReplicas := int32(1)
+	oldTime := v1.NewTime(time.Now().Add(-60 * time.Second))
+
+	scaledObject := v1alpha1.ScaledObject{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: v1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &v1alpha1.ScaleTarget{
+				Name: "name",
+			},
+			MinReplicaCount: &minReplicas,
+		},
+		Status: v1alpha1.ScaledObjectStatus{
+			ScaleTargetGVKR: &v1alpha1.GroupVersionKindResource{
+				Group: "apps",
+				Kind:  "Deployment",
+			},
+			LastActiveTime: &oldTime,
+		},
+	}
+
+	numberOfReplicas := int32(3)
+
+	client.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, appsv1.Deployment{
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &numberOfReplicas,
+		},
+	})
+
+	mockScaleClient.EXPECT().Scales(gomock.Any()).Return(mockScaleInterface).Times(0)
+
+	// lastActiveTime (60s ago) exceeds the default polling interval (30s),
+	// so result.LastActiveTime should be set.
+	result := scaleExecutor.RequestScale(context.Background(), &scaledObject, true, false, ScaleExecutorOptions{})
+
+	assert.NotNil(t, result.LastActiveTime)
 	condition := result.Conditions.GetActiveCondition()
 	assert.Equal(t, true, condition.IsTrue())
 }

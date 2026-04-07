@@ -27,8 +27,9 @@ import (
 )
 
 const (
-	// Default polling interval for a ScaledObject triggers if no pollingInterval is defined.
-	defaultPollingInterval = 30
+	// DefaultPollingInterval is the default polling interval (in seconds)
+	// for a ScaledObject's triggers when no pollingInterval is defined.
+	DefaultPollingInterval = 30
 )
 
 // +kubebuilder:object:root=true
@@ -86,7 +87,7 @@ func (t *WithTriggers) GetPollingInterval() time.Duration {
 		return time.Second * time.Duration(*t.Spec.PollingInterval)
 	}
 
-	return time.Second * time.Duration(defaultPollingInterval)
+	return time.Second * time.Duration(DefaultPollingInterval)
 }
 
 // GenerateIdentifier returns identifier for the object in for "kind.namespace.name"

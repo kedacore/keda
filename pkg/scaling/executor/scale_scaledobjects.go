@@ -76,6 +76,27 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			logger.V(1).Info("Some triggers defined in ScaledObject are not working correctly")
 		default:
 			// triggers are active, but we didn't need to scale (replica count > 0)
+
+			// Guard: skip redundant lastActiveTime writes when the timestamp was
+			// already updated within the current polling interval. Under API
+			// throttling, the operator may re-evaluate objects whose previous
+			// status PATCH hasn't been applied yet, causing lastActiveTime to be
+			// refreshed even though the trigger went inactive. This resets the
+			// cooldown timer and delays scale-to-zero indefinitely.
+			// See https://github.com/kedacore/keda/issues/7613
+			if scaledObject.Status.LastActiveTime != nil {
+				pollingInterval := time.Duration(kedav1alpha1.DefaultPollingInterval) * time.Second
+				if scaledObject.Spec.PollingInterval != nil {
+					pollingInterval = time.Duration(*scaledObject.Spec.PollingInterval) * time.Second
+				}
+				if time.Since(scaledObject.Status.LastActiveTime.Time) < pollingInterval {
+					logger.V(1).Info("Skipping redundant lastActiveTime update",
+						"LastActiveTime", scaledObject.Status.LastActiveTime,
+						"PollingInterval", pollingInterval)
+					break
+				}
+			}
+
 			result.LastActiveTime = &metav1.Time{Time: time.Now()}
 		}
 	} else {
