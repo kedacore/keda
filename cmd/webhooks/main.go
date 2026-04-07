@@ -98,7 +98,8 @@ func main() {
 			CertDir: certDir,
 			TLSOpts: []func(tlsConfig *tls.Config){
 				func(tlsConfig *tls.Config) {
-					tlsConfig.MinVersion = kedautil.GetMinTLSVersion()
+					tlsConfig.MinVersion = kedautil.GetServiceMinTLSVersion()
+					tlsConfig.CipherSuites = kedautil.GetServiceTLSCipherList()
 				},
 			},
 		}),
