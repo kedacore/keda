@@ -79,7 +79,7 @@ func (c *Client) initializeQueryClient(hostPortURL string, secure bool, proxyURL
 		}
 	}
 
-	client, err := flight.NewClientWithMiddleware(hostPortURL, nil, nil, opts...)
+	client, err := flight.NewClientWithMiddleware(hostPortURL, nil, c.config.Middleware, opts...)
 	if err != nil {
 		return fmt.Errorf("flight: %w", err)
 	}

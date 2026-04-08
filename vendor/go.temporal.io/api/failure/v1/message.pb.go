@@ -493,6 +493,7 @@ func (x *ChildWorkflowExecutionFailureInfo) GetRetryState() v11.RetryState {
 	return v11.RetryState(0)
 }
 
+// Representation of the Temporal SDK NexusOperationError object that is returned to workflow callers.
 type NexusOperationFailureInfo struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The NexusOperationScheduled event ID.

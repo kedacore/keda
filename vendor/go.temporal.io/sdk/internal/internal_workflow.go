@@ -90,8 +90,8 @@ type (
 		Close()             // Destroys all coroutines without waiting for their completion
 		StackTrace() string // Stack trace of all coroutines owned by the Dispatcher instance
 
-		// Create coroutine. To be called from within other coroutine.
-		// Used by the interceptors
+		// NewCoroutine creates a new coroutine. To be called from within another coroutine.
+		// Used by the interceptors.
 		NewCoroutine(ctx Context, name string, highPriority bool, f func(ctx Context)) Context
 	}
 
@@ -210,8 +210,9 @@ type (
 		queryHandlers            map[string]*queryHandler
 		updateHandlers           map[string]*updateHandler
 		// runningUpdatesHandles is a map of update handlers that are currently running.
-		runningUpdatesHandles map[string]UpdateInfo
-		VersioningIntent      VersioningIntent
+		runningUpdatesHandles     map[string]UpdateInfo
+		VersioningIntent          VersioningIntent
+		InitialVersioningBehavior ContinueAsNewVersioningBehavior
 		// currentDetails is the user-set string returned on metadata query as
 		// WorkflowMetadata.current_details
 		currentDetails string
@@ -1018,8 +1019,8 @@ func (c *channelImpl) assignValue(from interface{}, to interface{}) error {
 	return err
 }
 
-// initialYield called at the beginning of the coroutine execution
-// stackDepth is the depth of top of the stack to omit when stack trace is generated
+// initialYield is called at the beginning of coroutine execution.
+// stackDepth is the depth of the top of the stack to omit when a stack trace is generated,
 // to hide frames internal to the framework.
 func (s *coroutineState) initialYield(stackDepth int, status string) {
 	if s.blocked.Swap(true) {
@@ -1034,9 +1035,34 @@ func (s *coroutineState) initialYield(stackDepth int, status string) {
 	s.blocked.Swap(false)
 }
 
+// isPanicking reports whether the current goroutine is executing during panic unwinding. It checks
+// for runtime.gopanic on the call stack via runtime.Callers().
+func isPanicking() bool {
+	var pcs [20]uintptr
+	n := runtime.Callers(1, pcs[:])
+	frames := runtime.CallersFrames(pcs[:n])
+	for {
+		frame, more := frames.Next()
+		if frame.Function == "runtime.gopanic" {
+			return true
+		}
+		if !more {
+			break
+		}
+	}
+	return false
+}
+
 // yield indicates that coroutine cannot make progress and should sleep
 // this call blocks
 func (s *coroutineState) yield(status string) {
+	if isPanicking() {
+		// Unfortunately we lose the real panic message here, but the stack trace will still contain
+		// the right lines.
+		panic(errors.New(
+			"yield during panic unwinding: a deferred function attempted to block " +
+				"the coroutine while a panic was in progress"))
+	}
 	s.aboutToBlock <- true
 	s.initialYield(3, status) // omit three levels of stack. To adjust change to 0 and count the lines to remove.
 	s.keptBlocked = true
@@ -1401,27 +1427,28 @@ func (s *selectorImpl) Select(ctx Context) {
 		if pair.receiveFunc != nil {
 			f := *pair.receiveFunc
 			c := pair.channel
+			hasDefault := s.defaultFunc != nil
 			callback := &receiveCallback{
 				fn: func(v interface{}, more bool) bool {
 					if readyBranch != nil {
 						return false
 					}
-					// readyBranch is not executed when AddDefault is specified,
-					// setting the value here prevents the signal from being dropped
 					env := getWorkflowEnvironment(ctx)
-					var dropSignalFlag bool
-					if unblockSelectorSignal {
-						dropSignalFlag = env.TryUse(SDKFlagBlockedSelectorSignalReceive)
-					} else {
-						dropSignalFlag = env.GetFlag(SDKFlagBlockedSelectorSignalReceive)
-					}
+					dropSignalFlag := env.TryUse(SDKFlagBlockedSelectorSignalReceive)
+					channelLostMsgFlag := env.TryUse(SDKFlagWorkflowNewChannelLostMessages)
 
-					if dropSignalFlag {
+					// Pre-store c.recValue to prevent signal loss when AddDefault
+					// blocks. Without channelLostMsgFlag, always pre-store (original
+					// #1624 fix). With channelLostMsgFlag, only pre-store when a
+					// default branch exists to avoid overwriting c.recValue when
+					// multiple selectors are blocked on the same channel.
+					storeNow := dropSignalFlag && (!channelLostMsgFlag || hasDefault)
+					if storeNow {
 						c.recValue = &v
 					}
 
 					readyBranch = func() {
-						if !dropSignalFlag {
+						if !storeNow {
 							c.recValue = &v
 						}
 						f(c, more)

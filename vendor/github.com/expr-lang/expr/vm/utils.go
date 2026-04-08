@@ -20,6 +20,28 @@ type Scope struct {
 	Len   int
 	Count int
 	Acc   any
+	// Fast paths
+	Ints    []int
+	Floats  []float64
+	Strings []string
+	Anys    []any
+}
+
+// Item returns the current element from the scope using fast paths when available.
+func (s *Scope) Item() any {
+	if s.Ints != nil {
+		return s.Ints[s.Index]
+	}
+	if s.Floats != nil {
+		return s.Floats[s.Index]
+	}
+	if s.Strings != nil {
+		return s.Strings[s.Index]
+	}
+	if s.Anys != nil {
+		return s.Anys[s.Index]
+	}
+	return s.Array.Index(s.Index).Interface()
 }
 
 type groupBy = map[any][]any

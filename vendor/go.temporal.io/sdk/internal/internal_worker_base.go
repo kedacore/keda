@@ -53,7 +53,7 @@ type (
 	// LocalActivityResultHandler that returns local activity result
 	LocalActivityResultHandler func(lar *LocalActivityResultWrapper)
 
-	// LocalActivityResultWrapper contains result of a local activity
+	// LocalActivityResultWrapper contains the result of a local activity
 	LocalActivityResultWrapper struct {
 		Err     error
 		Result  *commonpb.Payloads
@@ -134,8 +134,6 @@ type (
 		DrainUnhandledUpdates() bool
 		// TryUse returns true if this flag may currently be used.
 		TryUse(flag sdkFlag) bool
-		// GetFlag returns if the flag is currently used.
-		GetFlag(flag sdkFlag) bool
 	}
 
 	// WorkflowDefinitionFactory factory for creating WorkflowDefinition instances.
@@ -326,6 +324,9 @@ func newBaseWorker(
 ) *baseWorker {
 	ctx, cancel := context.WithCancel(context.Background())
 	logger := log.With(options.logger, tagWorkerType, options.workerType)
+	if heartbeatHandler, isHeartbeat := options.metricsHandler.(*heartbeatMetricsHandler); isHeartbeat {
+		options.metricsHandler = heartbeatHandler.forWorker(options.workerType)
+	}
 	metricsHandler := options.metricsHandler.WithTags(metrics.WorkerTags(options.workerType))
 	tss := newTrackingSlotSupplier(options.slotSupplier, trackingSlotSupplierOptions{
 		logger:         logger,
@@ -693,13 +694,6 @@ func (bw *baseWorker) Stop() {
 	}
 	close(bw.stopCh)
 	bw.limiterContextCancel()
-
-	for _, taskWorker := range bw.options.taskPollers {
-		err := taskWorker.taskPoller.Cleanup()
-		if err != nil {
-			bw.logger.Error("Couldn't cleanup task worker", tagError, err)
-		}
-	}
 
 	if success := awaitWaitGroup(&bw.stopWG, bw.options.stopTimeout); !success {
 		traceLog(func() {

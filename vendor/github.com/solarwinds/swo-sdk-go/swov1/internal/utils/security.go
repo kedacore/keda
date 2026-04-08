@@ -266,6 +266,8 @@ func parseSecuritySchemeValue(headers, queryParams map[string]string, schemeTag 
 		switch schemeTag.SubType {
 		case "bearer":
 			headers[secTag.Name] = prefixBearer(valToString(val))
+		case "basic":
+			headers[secTag.Name] = valToString(val)
 		case "custom":
 		default:
 			panic("not supported")
