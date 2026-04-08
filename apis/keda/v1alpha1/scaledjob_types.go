@@ -76,6 +76,12 @@ type ScaledJobSpec struct {
 	// +optional
 	// +kubebuilder:validation:Minimum=1
 	MaxReplicaCount *int32 `json:"maxReplicaCount,omitempty"`
+	// JobCreationCooldownPeriod defines the minimum time (in seconds) to wait after the last active
+	// time before creating new jobs on re-activation. This prevents duplicate job creation caused by
+	// eventually consistent metrics. Defaults to 0 (disabled).
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	JobCreationCooldownPeriod *int32 `json:"jobCreationCooldownPeriod,omitempty"`
 	// +optional
 	ScalingStrategy ScalingStrategy `json:"scalingStrategy,omitempty"`
 	// +kubebuilder:validation:MinItems=1
@@ -163,6 +169,14 @@ func (s ScaledJob) MinReplicaCount() int64 {
 		return int64(*s.Spec.MinReplicaCount)
 	}
 	return defaultScaledJobMinReplicaCount
+}
+
+// JobCreationCooldownPeriod returns the job creation cooldown period duration, or 0 if not set
+func (s ScaledJob) JobCreationCooldownPeriod() int32 {
+	if s.Spec.JobCreationCooldownPeriod != nil {
+		return *s.Spec.JobCreationCooldownPeriod
+	}
+	return 0
 }
 
 func (s *ScaledJob) GenerateIdentifier() string {
