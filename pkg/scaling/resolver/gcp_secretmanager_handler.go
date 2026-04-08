@@ -74,7 +74,7 @@ func (vh *GCPSecretManagerHandler) Initialize(ctx context.Context, client client
 			return missingErr
 		}
 
-		gcpCredentials, err := google.CredentialsFromJSON(ctx, []byte(clientSecret), secretmanager.DefaultAuthScopes()...)
+		gcpCredentials, err := google.CredentialsFromJSONWithType(ctx, []byte(clientSecret), google.ServiceAccount, secretmanager.DefaultAuthScopes()...)
 		if err != nil {
 			return fmt.Errorf("failed to get credentials from json, %w", err)
 		}
