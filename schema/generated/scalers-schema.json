@@ -757,6 +757,59 @@
             ]
         },
         {
+            "type": "azure-data-explorer",
+            "parameters": [
+                {
+                    "name": "databaseName",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "endpoint",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "query",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "threshold",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "activationThreshold",
+                    "type": "string",
+                    "default": "0",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "tenantId",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "clientId",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "clientSecret",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                }
+            ]
+        },
+        {
             "type": "azure-eventhub",
             "parameters": [
                 {
