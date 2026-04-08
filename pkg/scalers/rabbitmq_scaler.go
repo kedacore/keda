@@ -388,11 +388,12 @@ func buildAMQPConfig(meta *rabbitMQMetadata) (amqp.Config, error) {
 			return amqp.Config{}, err
 		}
 		config.TLSClientConfig = tlsConfig
-
-		if meta.Username == "" && meta.Password == "" {
+		if meta.Username == "" && meta.Password == "" && meta.Cert != "" && meta.Key != "" {
 			useExternal := true
-			if u, err := url.Parse(meta.Host); err == nil && u.User != nil && u.User.Username() != "" {
-				useExternal = false
+			if u, err := url.Parse(meta.Host); err == nil && u.User != nil {
+				if _, hasPassword := u.User.Password(); hasPassword {
+					useExternal = false
+				}
 			}
 			if useExternal {
 				config.SASL = []amqp.Authentication{&amqp.ExternalAuth{}}
