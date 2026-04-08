@@ -876,6 +876,16 @@ func TestRabbitMQBuildAMQPConfig(t *testing.T) {
 			wantSASLNil: true,
 		},
 		{
+			name: "TLS enabled with username-only userinfo in host URI does not set EXTERNAL",
+			meta: &rabbitMQMetadata{
+				EnableTLS: rmqTLSEnable,
+				Host:      "amqps://CN=username@rabbit:5671/",
+				Username:  "",
+				Password:  "",
+			},
+			wantSASLNil: true,
+		},
+		{
 			name: "TLS enabled, no credentials in host URI, uses EXTERNAL",
 			meta: &rabbitMQMetadata{
 				EnableTLS: rmqTLSEnable,
