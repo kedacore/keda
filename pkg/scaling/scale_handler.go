@@ -287,6 +287,26 @@ func (h *scaleHandler) handleResult(ctx context.Context, obj kedav1alpha1.Scalab
 		logger.Error(result.Error, "error during scaling")
 	}
 
+	// Compute the triggers activity delta by comparing the executor's desired state against the baseline
+	// the delta is then safely applied to the freshly fetched object on retries
+	var activityUpdates map[string]kedav1alpha1.TriggerActivityStatus
+	var activityRemovals map[string]struct{}
+	if result.TriggersActivity != nil {
+		baseline := obj.GetStatusTriggersActivity()
+		activityUpdates = make(map[string]kedav1alpha1.TriggerActivityStatus)
+		for k, v := range result.TriggersActivity {
+			if existing, ok := baseline[k]; !ok || existing != v {
+				activityUpdates[k] = v
+			}
+		}
+		activityRemovals = make(map[string]struct{})
+		for k := range baseline {
+			if _, ok := result.TriggersActivity[k]; !ok {
+				activityRemovals[k] = struct{}{}
+			}
+		}
+	}
+
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		current := reflect.New(reflect.TypeOf(obj).Elem()).Interface().(kedav1alpha1.ScalableObject)
 		if err := h.client.Get(ctx, types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, current); err != nil {
@@ -309,9 +329,16 @@ func (h *scaleHandler) handleResult(ctx context.Context, obj kedav1alpha1.Scalab
 		// apply paused replica count (no-op for ScaledJob)
 		current.SetStatusPausedReplicaCount(result.PauseReplicas)
 
-		// apply triggers activity
-		if result.TriggersActivity != nil {
-			current.SetStatusTriggersActivity(result.TriggersActivity)
+		// apply triggers activity delta
+		if activityUpdates != nil || activityRemovals != nil {
+			existing := current.GetStatusTriggersActivity()
+			for k, v := range activityUpdates {
+				existing[k] = v
+			}
+			for k := range activityRemovals {
+				delete(existing, k)
+			}
+			current.SetStatusTriggersActivity(existing)
 		}
 
 		// skip the patch if nothing changed

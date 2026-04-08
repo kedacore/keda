@@ -86,7 +86,7 @@ func getTriggersActivity(object kedav1alpha1.ScalableObject, options ScaleExecut
 	triggersActivity := make(map[string]kedav1alpha1.TriggerActivityStatus)
 
 	if isPushScaler {
-		// for push scaler, copy existing activity and only update the specific metric
+		// for push scaler, copy existing activity and update the specific metric
 		for k, v := range object.GetStatusTriggersActivity() {
 			triggersActivity[k] = v
 		}

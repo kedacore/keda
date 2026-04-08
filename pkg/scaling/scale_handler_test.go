@@ -47,6 +47,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache/metricscache"
+	"github.com/kedacore/keda/v2/pkg/scaling/executor"
 )
 
 const testNamespaceGlobal = "testNamespace"
@@ -1078,4 +1079,254 @@ func expectNoStatusPatch(ctrl *gomock.Controller) {
 // (mock executor returns a zero ScaleResult which causes no status changes).
 func expectHandleResult(mockClient *mock_client.MockClient) {
 	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+}
+
+func TestHandleResult_PatchesWhenConditionsChange(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	sh := scaleHandler{client: mockClient}
+
+	existingSO := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "ns"},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			Conditions: kedav1alpha1.Conditions{
+				{Type: kedav1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "old"},
+			},
+		},
+	}
+
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...interface{}) error {
+			*obj = *existingSO.DeepCopy()
+			return nil
+		})
+	mockClient.EXPECT().Status().Return(statusWriter)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+
+	result := executor.ScaleResult{
+		Conditions: kedav1alpha1.Conditions{},
+	}
+	result.Conditions.SetReadyCondition(metav1.ConditionFalse, "SomeError", "something went wrong")
+
+	sh.handleResult(context.TODO(), &existingSO, result)
+}
+
+func TestHandleResult_SkipsPatchWhenUnchanged(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+
+	sh := scaleHandler{client: mockClient}
+
+	existingSO := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "ns"},
+	}
+
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...interface{}) error {
+			*obj = *existingSO.DeepCopy()
+			return nil
+		})
+	// no Status().Patch expectation - if handleResult tries to patch, the test will fail
+
+	result := executor.ScaleResult{}
+	sh.handleResult(context.TODO(), &existingSO, result)
+}
+
+func TestHandleResult_SetsLastActiveTime(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	sh := scaleHandler{client: mockClient}
+
+	existingSO := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "ns"},
+	}
+
+	now := metav1.Now()
+	var patchedObj *kedav1alpha1.ScaledObject
+
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...interface{}) error {
+			*obj = *existingSO.DeepCopy()
+			return nil
+		})
+	mockClient.EXPECT().Status().Return(statusWriter)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ interface{}, _ ...interface{}) error {
+			patchedObj = obj
+			return nil
+		})
+
+	result := executor.ScaleResult{
+		LastActiveTime: &now,
+	}
+	sh.handleResult(context.TODO(), &existingSO, result)
+
+	assert.NotNil(t, patchedObj)
+	assert.Equal(t, &now, patchedObj.Status.LastActiveTime)
+}
+
+func TestHandleResult_TriggersActivityUpdatesAndRemovals(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	sh := scaleHandler{client: mockClient}
+
+	// baseline object (obj) has triggers a, b, c - all active
+	baselineSO := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "ns"},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			TriggersActivity: map[string]kedav1alpha1.TriggerActivityStatus{
+				"trigger-a": {IsActive: true},
+				"trigger-b": {IsActive: true},
+				"trigger-c": {IsActive: true},
+			},
+		},
+	}
+
+	var patchedObj *kedav1alpha1.ScaledObject
+
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...interface{}) error {
+			*obj = *baselineSO.DeepCopy()
+			return nil
+		})
+	mockClient.EXPECT().Status().Return(statusWriter)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ interface{}, _ ...interface{}) error {
+			patchedObj = obj
+			return nil
+		})
+
+	// standard scaler result: trigger-c removed, trigger-b deactivated
+	result := executor.ScaleResult{
+		TriggersActivity: map[string]kedav1alpha1.TriggerActivityStatus{
+			"trigger-a": {IsActive: true},
+			"trigger-b": {IsActive: false},
+		},
+	}
+	sh.handleResult(context.TODO(), &baselineSO, result)
+
+	assert.NotNil(t, patchedObj)
+	assert.Len(t, patchedObj.Status.TriggersActivity, 2)
+	assert.True(t, patchedObj.Status.TriggersActivity["trigger-a"].IsActive)
+	assert.False(t, patchedObj.Status.TriggersActivity["trigger-b"].IsActive)
+	_, exists := patchedObj.Status.TriggersActivity["trigger-c"]
+	assert.False(t, exists, "trigger-c should be removed")
+}
+
+func TestHandleResult_PushScalerDeltaMerge(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	sh := scaleHandler{client: mockClient}
+
+	// baseline object: trigger-a active, trigger-b inactive, trigger-c active
+	baselineSO := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "ns"},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			TriggersActivity: map[string]kedav1alpha1.TriggerActivityStatus{
+				"trigger-a": {IsActive: true},
+				"trigger-b": {IsActive: false},
+				"trigger-c": {IsActive: true},
+			},
+		},
+	}
+
+	var patchedObj *kedav1alpha1.ScaledObject
+
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...interface{}) error {
+			*obj = *baselineSO.DeepCopy()
+			return nil
+		})
+	mockClient.EXPECT().Status().Return(statusWriter)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ interface{}, _ ...interface{}) error {
+			patchedObj = obj
+			return nil
+		})
+
+	// push scaler result: full map copied from baseline + trigger-b activated
+	// (this is what getTriggersActivity produces for push scalers)
+	result := executor.ScaleResult{
+		TriggersActivity: map[string]kedav1alpha1.TriggerActivityStatus{
+			"trigger-a": {IsActive: true},
+			"trigger-b": {IsActive: true}, // changed by push scaler
+			"trigger-c": {IsActive: true},
+		},
+	}
+	sh.handleResult(context.TODO(), &baselineSO, result)
+
+	assert.NotNil(t, patchedObj)
+	assert.Len(t, patchedObj.Status.TriggersActivity, 3)
+	assert.True(t, patchedObj.Status.TriggersActivity["trigger-a"].IsActive, "trigger-a preserved")
+	assert.True(t, patchedObj.Status.TriggersActivity["trigger-b"].IsActive, "trigger-b updated by push scaler")
+	assert.True(t, patchedObj.Status.TriggersActivity["trigger-c"].IsActive, "trigger-c preserved")
+}
+
+func TestHandleResult_DeltaDoesNotOverwriteConcurrentChanges(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	sh := scaleHandler{client: mockClient}
+
+	// baseline object (stale snapshot from before the lock, used by executor):
+	// trigger-a=false, trigger-b=false
+	baselineSO := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "ns"},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			TriggersActivity: map[string]kedav1alpha1.TriggerActivityStatus{
+				"trigger-a": {IsActive: false},
+				"trigger-b": {IsActive: false},
+			},
+		},
+	}
+
+	// the fresh object returned by Get (concurrent polling loop updated trigger-a to true)
+	freshSO := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "ns"},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			TriggersActivity: map[string]kedav1alpha1.TriggerActivityStatus{
+				"trigger-a": {IsActive: true},
+				"trigger-b": {IsActive: false},
+			},
+		},
+	}
+
+	var patchedObj *kedav1alpha1.ScaledObject
+
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...interface{}) error {
+			*obj = *freshSO.DeepCopy()
+			return nil
+		})
+	mockClient.EXPECT().Status().Return(statusWriter)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ interface{}, _ ...interface{}) error {
+			patchedObj = obj
+			return nil
+		})
+
+	// push scaler result: full map copied from baseline + trigger-b activated
+	// trigger-a is false (stale), trigger-b is true (changed by push scaler)
+	result := executor.ScaleResult{
+		TriggersActivity: map[string]kedav1alpha1.TriggerActivityStatus{
+			"trigger-a": {IsActive: false}, // stale copy from baseline
+			"trigger-b": {IsActive: true},  // changed by push scaler
+		},
+	}
+	sh.handleResult(context.TODO(), &baselineSO, result)
+
+	assert.NotNil(t, patchedObj)
+	// delta = diff(result, baseline) = {trigger-b: true} (trigger-a unchanged from baseline)
+	// applied to fresh current: trigger-a stays true (concurrent update preserved), trigger-b set to true
+	assert.True(t, patchedObj.Status.TriggersActivity["trigger-a"].IsActive, "concurrent update to trigger-a must be preserved")
+	assert.True(t, patchedObj.Status.TriggersActivity["trigger-b"].IsActive, "trigger-b updated by push scaler")
 }
