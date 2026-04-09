@@ -89,7 +89,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Fix ScaledObject admission webhook to return validation error from `verifyReplicaCount`, preventing invalid ScaledObjects from being created ([#5954](https://github.com/kedacore/keda/issues/5954))
 - **Azure Data Explorer Scaler**: Remove clientSecretFromEnv support ([#7554](https://github.com/kedacore/keda/pull/7554))
 - **Cron Scaler**: Fix metric name generation so cron expressions with comma-separated values no longer produce invalid metric names ([#7448](https://github.com/kedacore/keda/issues/7448))
-- **External Scaler**: - Fix race condition in `TestWaitForState` causing flaky test under `-race` detector ([#7542](https://github.com/kedacore/keda/issues/7542))
+- **External Scaler**: Fix race condition in `TestWaitForState` causing flaky test under `-race` detector ([#7542](https://github.com/kedacore/keda/issues/7542))
 - **Forgejo Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **GCP Cloud Tasks Scaler**: Implement escapeFilterValue for metric filtering ([#7482](https://github.com/kedacore/keda/pull/7482))
 - **GCP Scaler**: Validate Pub/Sub resource name in BuildMQLQuery ([#7468](https://github.com/kedacore/keda/pull/7468))
