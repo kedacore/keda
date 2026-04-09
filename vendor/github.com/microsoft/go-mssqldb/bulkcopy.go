@@ -99,11 +99,12 @@ func (b *Bulk) sendBulkCommand(ctx context.Context) (err error) {
 
 	//columns definitions
 	var col_defs bytes.Buffer
+	q := TSQLQuoter{}
 	for i, col := range b.bulkColumns {
 		if i != 0 {
 			col_defs.WriteString(", ")
 		}
-		col_defs.WriteString("[" + col.ColName + "] " + makeDecl(col.ti))
+		col_defs.WriteString(q.ID(col.ColName) + " " + makeDecl(col.ti))
 	}
 
 	//options

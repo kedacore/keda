@@ -26,6 +26,7 @@ func init() {
 const (
 	SEC_E_OK                        = 0
 	SECPKG_CRED_OUTBOUND            = 2
+	SECPKG_ATTR_UNIQUE_BINDINGS     = 25
 	SEC_WINNT_AUTH_IDENTITY_UNICODE = 2
 	ISC_REQ_DELEGATE                = 0x00000001
 	ISC_REQ_REPLAY_DETECT           = 0x00000004
@@ -38,6 +39,7 @@ const (
 	SEC_I_COMPLETE_AND_CONTINUE     = 0x00090314
 	SECBUFFER_VERSION               = 0
 	SECBUFFER_TOKEN                 = 2
+	SECBUFFER_CHANNEL_BINDINGS      = 14
 	NTLMBUF_LEN                     = 12000
 )
 
@@ -110,12 +112,22 @@ type SecBufferDesc struct {
 }
 
 type Auth struct {
-	Domain   string
-	UserName string
-	Password string
-	Service  string
-	cred     SecHandle
-	ctxt     SecHandle
+	Domain         string
+	UserName       string
+	Password       string
+	Service        string
+	cred           SecHandle
+	ctxt           SecHandle
+	channelBinding *integratedauth.SEC_CHANNEL_BINDINGS
+}
+
+type SecPkgContext_Bindings struct {
+	BindingsLength uint64
+	Bindings       *byte
+}
+
+func (auth *Auth) SetChannelBinding(channelBinding *integratedauth.ChannelBindings) {
+	auth.channelBinding = channelBinding.AsSSPI_SEC_CHANNEL_BINDINGS()
 }
 
 // getAuth returns an authentication handle Auth to provide authentication content
@@ -133,6 +145,7 @@ func getAuth(config msdsn.Config) (integratedauth.IntegratedAuthenticator, error
 		UserName: domainUser[1],
 		Password: config.Password,
 		Service:  config.ServerSPN,
+		channelBinding: nil,
 	}, nil
 }
 
@@ -212,18 +225,33 @@ func (auth *Auth) InitialBytes() ([]byte, error) {
 func (auth *Auth) NextBytes(bytes []byte) ([]byte, error) {
 	var in_buf, out_buf SecBuffer
 	var in_desc, out_desc SecBufferDesc
-
-	in_desc.ulVersion = SECBUFFER_VERSION
-	in_desc.cBuffers = 1
-	in_desc.pBuffers = &in_buf
+	// Use fixed-size array instead of slice to ensure memory stability
+	var in_desc_buffers [2]SecBuffer
+	bufferCount := 0
 
 	out_desc.ulVersion = SECBUFFER_VERSION
 	out_desc.cBuffers = 1
 	out_desc.pBuffers = &out_buf
 
+	// First buffer: input token
 	in_buf.BufferType = SECBUFFER_TOKEN
 	in_buf.pvBuffer = &bytes[0]
 	in_buf.cbBuffer = uint32(len(bytes))
+	in_desc_buffers[bufferCount] = in_buf
+	bufferCount++
+
+	// Second buffer: channel bindings (if present)
+	if auth.channelBinding != nil {
+		channelBindingBytes := auth.channelBinding.ToBytes()
+		in_desc_buffers[bufferCount].BufferType = SECBUFFER_CHANNEL_BINDINGS 
+		in_desc_buffers[bufferCount].pvBuffer = &channelBindingBytes[0]
+		in_desc_buffers[bufferCount].cbBuffer = uint32(len(channelBindingBytes))
+		bufferCount++
+	}
+
+	in_desc.ulVersion = SECBUFFER_VERSION
+	in_desc.cBuffers = uint32(bufferCount)
+	in_desc.pBuffers = &in_desc_buffers[0]
 
 	outbuf := make([]byte, NTLMBUF_LEN)
 	out_buf.BufferType = SECBUFFER_TOKEN

@@ -1,0 +1,16 @@
+coverage:
+  status:
+    project:
+      default:
+        target: 80%
+        threshold: 0%  # Strict 80% minimum - no drops allowed
+        if_ci_failed: error
+    patch:
+      default:
+        target: 80%
+        threshold: 0%  # New code must be 80% covered
+
+comment:
+  layout: "reach,diff,flags,files"
+  behavior: default
+  require_changes: true

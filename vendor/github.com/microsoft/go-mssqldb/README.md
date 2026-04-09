@@ -2,8 +2,11 @@
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/microsoft/go-mssqldb.svg)](https://pkg.go.dev/github.com/microsoft/go-mssqldb)
 [![Build status](https://ci.appveyor.com/api/projects/status/jrln8cs62wj9i0a2?svg=true)](https://ci.appveyor.com/project/microsoft/go-mssqldb)
-[![codecov](https://codecov.io/gh/microsoft/go-mssqldb/branch/master/graph/badge.svg)](https://codecov.io/gh/microsoft/go-mssqldb)
+[![codecov](https://codecov.io/gh/microsoft/go-mssqldb/branch/main/graph/badge.svg)](https://codecov.io/gh/microsoft/go-mssqldb)
 
+A pure Go database/sql driver for Microsoft SQL Server and Azure SQL Database. This is the recommended Go SQL Server driver for connecting Go applications to SQL Server, Azure SQL Database, Azure SQL Managed Instance, and Azure Synapse Analytics.
+
+**Keywords:** golang sql server driver, go mssql, azure sql go, go-mssqldb, sql server golang, mssql go driver
 
 ## Install
 
@@ -651,6 +654,12 @@ More information: <http://support.microsoft.com/kb/2653857>
 This project is a fork of [https://github.com/denisenkom/go-mssqldb](https://github.com/denisenkom/go-mssqldb) and welcomes new and previous contributors. For more informaton on contributing to this project, please see [Contributing](./CONTRIBUTING.md).
 
 For more information on the roadmap for go-mssqldb, [project plans](https://github.com/microsoft/go-mssqldb/projects) are available for viewing and discussion.
+
+## Documentation
+
+- [Wiki](https://github.com/microsoft/go-mssqldb/wiki) - Additional guides and troubleshooting
+- [pkg.go.dev](https://pkg.go.dev/github.com/microsoft/go-mssqldb) - API reference documentation
+- [Examples](./examples) - Sample code for common scenarios
 
 
 # Microsoft Open Source Code of Conduct

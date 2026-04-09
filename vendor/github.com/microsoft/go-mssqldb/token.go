@@ -779,7 +779,8 @@ func readCekTableEntry(r *tdsBuffer) cekTableEntry {
 
 // http://msdn.microsoft.com/en-us/library/dd357254.aspx
 func parseRow(ctx context.Context, r *tdsBuffer, s *tdsSession, columns []columnStruct, row []interface{}) error {
-	for i, column := range columns {
+	for i := range columns {
+		column := &columns[i]
 		columnContent := column.ti.Reader(&column.ti, r, nil, s.encoding)
 		if columnContent == nil {
 			row[i] = columnContent
@@ -816,7 +817,7 @@ func (R RWCBuffer) Close() error {
 	return nil
 }
 
-func decryptColumn(ctx context.Context, column columnStruct, s *tdsSession, columnContent interface{}) (*tdsBuffer, error) {
+func decryptColumn(ctx context.Context, column *columnStruct, s *tdsSession, columnContent interface{}) (*tdsBuffer, error) {
 	encType := encryption.From(column.cryptoMeta.encType)
 	cekValue := column.cryptoMeta.entry.cekValues[column.cryptoMeta.ordinal]
 	if (s.logFlags & uint64(msdsn.LogDebug)) == uint64(msdsn.LogDebug) {
@@ -860,7 +861,8 @@ func parseNbcRow(ctx context.Context, r *tdsBuffer, s *tdsSession, columns []col
 	bitlen := (len(columns) + 7) / 8
 	pres := make([]byte, bitlen)
 	r.ReadFull(pres)
-	for i, col := range columns {
+	for i := range columns {
+		col := &columns[i]
 		if pres[i/8]&(1<<(uint(i)%8)) != 0 {
 			row[i] = nil
 			continue

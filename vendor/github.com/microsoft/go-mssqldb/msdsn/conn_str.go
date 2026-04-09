@@ -88,6 +88,7 @@ const (
 	NoTraceID              = "notraceid"
 	GuidConversion         = "guid conversion"
 	Timezone               = "timezone"
+	EpaEnabled             = "epa enabled"
 )
 
 type EncodeParameters struct {
@@ -161,6 +162,8 @@ type Config struct {
 	NoTraceID bool
 	// Parameters related to type encoding
 	Encoding EncodeParameters
+	// EPA mode determines how the Channel Bindings are calculated.
+	EpaEnabled bool
 }
 
 func readDERFile(filename string) ([]byte, error) {
@@ -637,6 +640,19 @@ func Parse(dsn string) (Config, error) {
 	} else {
 		// set to false for backward compatibility
 		p.Encoding.GuidConversion = false
+	}
+
+	p.EpaEnabled = false
+	epaString, ok := params[EpaEnabled]
+	if !ok {
+		epaString = os.Getenv("MSSQL_USE_EPA")
+	}
+	if epaString !=  "" {
+		epaEnabled, err := strconv.ParseBool(epaString)
+		if err != nil {
+			return p, fmt.Errorf("invalid epa enabled value '%s': %v", epaString, err)
+		}
+		p.EpaEnabled = epaEnabled
 	}
 
 	return p, nil
