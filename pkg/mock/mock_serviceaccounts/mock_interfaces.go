@@ -6,7 +6,7 @@
 // Package mock_v1 is a generated GoMock package from various generated sources and edited to remove unnecessary code.
 //
 
-package mock_v1 //nolint:revive
+package mock_v1
 
 import (
 	context "context"

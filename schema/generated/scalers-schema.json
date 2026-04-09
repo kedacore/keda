@@ -683,6 +683,91 @@
             ]
         },
         {
+            "type": "azure-app-insights",
+            "parameters": [
+                {
+                    "name": "targetValue",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "activationTargetValue",
+                    "type": "string",
+                    "default": "0",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "metricId",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "metricAggregationTimespan",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "metricAggregationType",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "metricFilter",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "ignoreNullValues",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "cloud",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "appInsightsResourceURL",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "applicationInsightsId",
+                    "type": "string",
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "tenantId",
+                    "type": "string",
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "activeDirectoryClientId",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "activeDirectoryClientPassword",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                }
+            ]
+        },
+        {
             "type": "azure-blob",
             "parameters": [
                 {
@@ -753,6 +838,59 @@
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
+                }
+            ]
+        },
+        {
+            "type": "azure-data-explorer",
+            "parameters": [
+                {
+                    "name": "databaseName",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "endpoint",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "query",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "threshold",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "activationThreshold",
+                    "type": "string",
+                    "default": "0",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "tenantId",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "clientId",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "clientSecret",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
                 }
             ]
         },
@@ -2436,6 +2574,227 @@
             ]
         },
         {
+            "type": "kafka",
+            "parameters": [
+                {
+                    "name": "bootstrapServers",
+                    "type": "string",
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "consumerGroup",
+                    "type": "string",
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "topic",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "partitionLimitation",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "lagThreshold",
+                    "type": "string",
+                    "default": "10",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "activationLagThreshold",
+                    "type": "string",
+                    "default": "0",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "offsetResetPolicy",
+                    "type": "string",
+                    "default": "latest",
+                    "allowedValue": [
+                        "latest",
+                        "earliest"
+                    ],
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "allowIdleConsumers",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "excludePersistentLag",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "scaleToZeroOnInvalidOffset",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "limitToPartitionsWithLag",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "ensureEvenDistributionOfPartitions",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "version",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "tls",
+                    "type": "string",
+                    "default": "disable",
+                    "allowedValue": [
+                        "enable",
+                        "disable"
+                    ],
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "ca",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "cert",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "key",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "keyPassword",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "sasl",
+                    "type": "string",
+                    "optional": true,
+                    "allowedValue": [
+                        "none",
+                        "plaintext",
+                        "scram_sha256",
+                        "scram_sha512",
+                        "oauthbearer",
+                        "gssapi"
+                    ],
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "saslTokenProvider",
+                    "type": "string",
+                    "optional": true,
+                    "allowedValue": [
+                        "bearer",
+                        "aws_msk_iam"
+                    ],
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "scopes",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "oauthTokenEndpointUri",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "oauthExtensions",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "keytab",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "realm",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "kerberosConfig",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "kerberosServiceName",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "kerberosDisableFAST",
+                    "type": "string",
+                    "default": "false",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "awsRegion",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                }
+            ]
+        },
+        {
             "type": "kubernetes-resource",
             "parameters": [
                 {
@@ -2516,6 +2875,12 @@
                     "name": "activationValue",
                     "type": "string",
                     "default": "0",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "groupByNode",
+                    "type": "string",
+                    "default": "false",
                     "metadataVariableReadable": true
                 }
             ]

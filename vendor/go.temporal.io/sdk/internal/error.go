@@ -142,11 +142,26 @@ type (
 		cause                error
 	}
 
+	// CanceledErrorOptions should be used to set all the desired attributes of a new CanceledError
+	//
+	// Exposed as: [go.temporal.io/sdk/temporal.CanceledErrorOptions]
+	CanceledErrorOptions struct {
+		// Message is the error message.
+		// Defaults to "canceled" if not set.
+		Message string
+		// Details is a list of arbitrary values that can be used to provide additional context to the error.
+		Details []any
+		// Cause is the original error that caused this error.
+		Cause error
+	}
+
 	// CanceledError returned when operation was canceled.
 	//
 	// Exposed as: [go.temporal.io/sdk/temporal.CanceledError]
 	CanceledError struct {
 		temporalError
+		msg     string
+		cause   error
 		details converter.EncodedValues
 	}
 
@@ -191,7 +206,14 @@ type (
 
 		// VersioningIntent specifies whether the continued workflow should run on a worker with a
 		// compatible build ID or not. See VersioningIntent.
+		//
+		// Deprecated: Use Worker Deployment Versioning instead. See https://docs.temporal.io/worker-versioning
 		VersioningIntent VersioningIntent
+
+		// InitialVersioningBehavior specifies the versioning behavior that the first task of the new run should use.
+		// For example, choose to AutoUpgrade on continue-as-new instead of inheriting the pinned version of the previous run.
+		// NOTE: Upgrade-on-Continue-as-New is currently experimental.
+		InitialVersioningBehavior ContinueAsNewVersioningBehavior
 
 		// This is by default nil but may be overridden using NewContinueAsNewErrorWithOptions.
 		// It specifies the retry policy which gets carried over to the next run.
@@ -212,6 +234,11 @@ type (
 		// RetryPolicy specifies the retry policy to be used for the next run.
 		// If nil, the current workflow's retry policy will be used.
 		RetryPolicy *RetryPolicy
+
+		// InitialVersioningBehavior specifies the versioning behavior that the first task of the new run should use.
+		// For example, choose to AutoUpgrade on continue-as-new instead of inheriting the pinned version of the previous run.
+		// NOTE: Upgrade-on-Continue-as-New is currently experimental.
+		InitialVersioningBehavior ContinueAsNewVersioningBehavior
 	}
 
 	// UnknownExternalWorkflowExecutionError can be returned when external workflow doesn't exist
@@ -437,12 +464,34 @@ func NewHeartbeatTimeoutError(details ...interface{}) error {
 //
 // Exposed as: [go.temporal.io/sdk/temporal.NewCanceledError]
 func NewCanceledError(details ...interface{}) error {
-	if len(details) == 1 {
-		if d, ok := details[0].(*EncodedValues); ok {
-			return &CanceledError{details: d}
+	return NewCanceledErrorWithOptions(CanceledErrorOptions{
+		Details: details,
+	})
+}
+
+// NewCanceledErrorWithOptions creates CanceledError instance.
+//
+// Exposed as: [go.temporal.io/sdk/temporal.NewCanceledErrorWithOptions]
+func NewCanceledErrorWithOptions(options CanceledErrorOptions) error {
+	msg := options.Message
+	if msg == "" {
+		msg = "canceled"
+	}
+
+	if len(options.Details) == 1 {
+		if d, ok := options.Details[0].(*EncodedValues); ok {
+			return &CanceledError{
+				msg:     msg,
+				details: d,
+				cause:   options.Cause,
+			}
 		}
 	}
-	return &CanceledError{details: ErrorDetailsValues(details)}
+	return &CanceledError{
+		msg:     msg,
+		details: ErrorDetailsValues(options.Details),
+		cause:   options.Cause,
+	}
 }
 
 // NewServerError create new instance of *ServerError with message.
@@ -555,6 +604,7 @@ func NewContinueAsNewErrorWithOptions(ctx Context, options ContinueAsNewErrorOpt
 		if options.RetryPolicy != nil {
 			continueAsNewErr.RetryPolicy = options.RetryPolicy
 		}
+		continueAsNewErr.InitialVersioningBehavior = options.InitialVersioningBehavior
 	}
 
 	return err
@@ -582,15 +632,16 @@ func (wc *workflowEnvironmentInterceptor) NewContinueAsNewError(
 	}
 
 	return &ContinueAsNewError{
-		WorkflowType:             workflowType,
-		Input:                    input,
-		Header:                   header,
-		TaskQueueName:            options.TaskQueueName,
-		WorkflowExecutionTimeout: options.WorkflowExecutionTimeout,
-		WorkflowRunTimeout:       options.WorkflowRunTimeout,
-		WorkflowTaskTimeout:      options.WorkflowTaskTimeout,
-		VersioningIntent:         options.VersioningIntent,
-		RetryPolicy:              nil, // The retry policy can't be propagated like other options due to #676.
+		WorkflowType:              workflowType,
+		Input:                     input,
+		Header:                    header,
+		TaskQueueName:             options.TaskQueueName,
+		WorkflowExecutionTimeout:  options.WorkflowExecutionTimeout,
+		WorkflowRunTimeout:        options.WorkflowRunTimeout,
+		WorkflowTaskTimeout:       options.WorkflowTaskTimeout,
+		VersioningIntent:          options.VersioningIntent,
+		RetryPolicy:               nil, // The retry policy can't be propagated like other options due to #676.
+		InitialVersioningBehavior: options.InitialVersioningBehavior,
 	}
 }
 
@@ -705,7 +756,11 @@ func (e *CanceledError) Error() string {
 }
 
 func (e *CanceledError) message() string {
-	return "canceled"
+	return e.msg
+}
+
+func (e *CanceledError) Unwrap() error {
+	return e.cause
 }
 
 // HasDetails return if this error has strong typed detail data.

@@ -9,5 +9,5 @@ package hooks
  */
 
 func initHooks(h *Hooks) {
-	h.registerBeforeRequestHook(&VersionHook{})
+	h.registerSDKInitHook(&VersionHook{})
 }

@@ -25,9 +25,9 @@ const (
 )
 
 var (
-	jsonEncodingRegex       = regexp.MustCompile(`(application|text)\/.*?\+*json.*`)
-	multipartEncodingRegex  = regexp.MustCompile(`multipart\/.*`)
-	urlEncodedEncodingRegex = regexp.MustCompile(`application\/x-www-form-urlencoded.*`)
+	jsonEncodingRegex       = regexp.MustCompile(`^(application|text)\/([^+]+\+)*json.*`)
+	multipartEncodingRegex  = regexp.MustCompile(`^multipart\/.*`)
+	urlEncodedEncodingRegex = regexp.MustCompile(`^application\/x-www-form-urlencoded.*`)
 )
 
 func SerializeRequestBody(_ context.Context, request interface{}, nullable, optional bool, requestFieldName, serializationMethod, tag string) (io.Reader, string, error) {
