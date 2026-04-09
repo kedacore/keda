@@ -379,6 +379,7 @@ func getConnectionAndChannel(host string, meta *rabbitMQMetadata) (*amqp.Connect
 
 	channel, err := conn.Channel()
 	if err != nil {
+		conn.Close()
 		return nil, nil, err
 	}
 
@@ -387,12 +388,18 @@ func getConnectionAndChannel(host string, meta *rabbitMQMetadata) (*amqp.Connect
 
 // Close disposes of RabbitMQ connections
 func (s *rabbitMQScaler) Close(context.Context) error {
+	if s.channel != nil {
+		if err := s.channel.Close(); err != nil {
+			s.logger.V(1).Info("Error closing RabbitMQ channel, may already be closed", "error", err)
+		}
+		s.channel = nil
+	}
 	if s.connection != nil {
-		err := s.connection.Close()
-		if err != nil {
+		if err := s.connection.Close(); err != nil {
 			s.logger.Error(err, "Error closing RabbitMQ connection")
 			return err
 		}
+		s.connection = nil
 	}
 	if s.httpClient != nil {
 		s.httpClient.CloseIdleConnections()
@@ -415,12 +422,11 @@ func (s *rabbitMQScaler) getQueueStatus(ctx context.Context) (int64, float64, fl
 		return int64(info.Messages), info.MessageStat.PublishDetail.Rate, info.MessageStat.DeliverGetDetail.Rate, nil
 	}
 
-	// QueueDeclarePassive assumes that the queue exists and fails if it doesn't
+	// QueueDeclarePassive assumes that the queue exists and fails if it doesn't.
 	items, err := s.channel.QueueDeclarePassive(s.metadata.QueueName, false, false, false, false, amqp.Table{})
 	if err != nil {
 		return -1, -1, -1, err
 	}
-
 	return int64(items.Messages), 0, 0, nil
 }
 

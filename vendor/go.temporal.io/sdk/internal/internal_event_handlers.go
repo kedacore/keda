@@ -232,7 +232,7 @@ func newWorkflowExecutionEventHandler(
 		deadlockDetectionTimeout:     deadlockDetectionTimeout,
 		protocols:                    protocol.NewRegistry(),
 		mutableSideEffectCallCounter: make(map[string]int),
-		sdkFlags:                     newSDKFlags(capabilities),
+		sdkFlags:                     newSDKFlagSet(capabilities),
 		bufferedUpdateRequests:       make(map[string][]func()),
 	}
 	// Attempt to skip 1 log level to remove the ReplayLogger from the stack.
@@ -484,7 +484,7 @@ func validateAndSerializeSearchAttributes(attributes map[string]interface{}) (*c
 
 func (wc *workflowEnvironmentImpl) UpsertMemo(memoMap map[string]interface{}) error {
 	// This has to be used in WorkflowEnvironment implementations instead of in Workflow for testsuite mock purpose.
-	memo, err := validateAndSerializeMemo(memoMap, wc.dataConverter)
+	memo, err := validateAndSerializeMemo(memoMap, wc.dataConverter, wc.TryUse(SDKFlagMemoUserDCEncode))
 	if err != nil {
 		return err
 	}
@@ -520,11 +520,11 @@ func mergeMemo(current, upsert *commonpb.Memo) *commonpb.Memo {
 	return current
 }
 
-func validateAndSerializeMemo(memoMap map[string]interface{}, dc converter.DataConverter) (*commonpb.Memo, error) {
+func validateAndSerializeMemo(memoMap map[string]interface{}, dc converter.DataConverter, useUserDC bool) (*commonpb.Memo, error) {
 	if len(memoMap) == 0 {
 		return nil, errMemoNotSet
 	}
-	return getWorkflowMemo(memoMap, dc)
+	return getWorkflowMemo(memoMap, dc, useUserDC)
 }
 
 func (wc *workflowEnvironmentImpl) RegisterCancelHandler(handler func()) {
@@ -540,7 +540,7 @@ func (wc *workflowEnvironmentImpl) ExecuteChildWorkflow(
 	if params.WorkflowID == "" {
 		params.WorkflowID = wc.workflowInfo.currentRunID + "_" + wc.GenerateSequenceID()
 	}
-	memo, err := getWorkflowMemo(params.Memo, wc.dataConverter)
+	memo, err := getWorkflowMemo(params.Memo, wc.dataConverter, wc.TryUse(SDKFlagMemoUserDCEncode))
 	if err != nil {
 		if wc.sdkFlags.tryUse(SDKFlagChildWorkflowErrorExecution, !wc.isReplay) {
 			startedHandler(WorkflowExecution{}, &ChildWorkflowExecutionAlreadyStartedError{})
@@ -614,6 +614,8 @@ func (wc *workflowEnvironmentImpl) ExecuteNexusOperation(params executeNexusOper
 		Operation:              params.operation,
 		Input:                  params.input,
 		ScheduleToCloseTimeout: durationpb.New(params.options.ScheduleToCloseTimeout),
+		ScheduleToStartTimeout: durationpb.New(params.options.ScheduleToStartTimeout),
+		StartToCloseTimeout:    durationpb.New(params.options.StartToCloseTimeout),
 		NexusHeader:            params.nexusHeader,
 	}
 
@@ -975,10 +977,6 @@ func (wc *workflowEnvironmentImpl) TryUse(flag sdkFlag) bool {
 	return wc.sdkFlags.tryUse(flag, !wc.isReplay)
 }
 
-func (wc *workflowEnvironmentImpl) GetFlag(flag sdkFlag) bool {
-	return wc.sdkFlags.getFlag(flag)
-}
-
 func (wc *workflowEnvironmentImpl) QueueUpdate(name string, f func()) {
 	wc.bufferedUpdateRequests[name] = append(wc.bufferedUpdateRequests[name], f)
 }
@@ -1207,6 +1205,10 @@ func (weh *workflowExecutionEventHandlerImpl) ProcessEvent(
 		// Update workflow info fields
 		weh.workflowInfo.currentHistoryLength = int(event.EventId)
 		weh.workflowInfo.continueAsNewSuggested = event.GetWorkflowTaskStartedEventAttributes().GetSuggestContinueAsNew()
+		weh.workflowInfo.continueAsNewSuggestedReasons = convertContinueAsNewSuggestedReasonsFromProto(
+			event.GetWorkflowTaskStartedEventAttributes().GetSuggestContinueAsNewReasons(),
+		)
+		weh.workflowInfo.targetWorkerDeploymentVersionChanged = event.GetWorkflowTaskStartedEventAttributes().GetTargetWorkerDeploymentVersionChanged()
 		weh.workflowInfo.currentHistorySize = int(event.GetWorkflowTaskStartedEventAttributes().GetHistorySizeBytes())
 		// Reset the counter on command helper used for generating ID for commands
 		weh.commandsHelper.setCurrentWorkflowTaskStartedEventID(event.GetEventId())
@@ -2161,4 +2163,14 @@ func (weh *workflowExecutionEventHandlerImpl) protocolConstructorForMessage(
 		}, nil
 	}
 	return nil, fmt.Errorf("unsupported protocol: %v", protoName)
+}
+
+func convertContinueAsNewSuggestedReasonsFromProto(
+	reasons []enumspb.SuggestContinueAsNewReason,
+) []ContinueAsNewSuggestedReason {
+	converted := make([]ContinueAsNewSuggestedReason, 0, len(reasons))
+	for _, reason := range reasons {
+		converted = append(converted, ContinueAsNewSuggestedReason(reason))
+	}
+	return converted
 }
