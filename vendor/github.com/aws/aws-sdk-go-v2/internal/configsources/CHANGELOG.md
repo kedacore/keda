@@ -1,10 +1,7 @@
-<<<<<<< HEAD
 # v1.4.21 (2026-03-26)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-=======
->>>>>>> 025a918d3 (Add AWS Parameter Store support to TriggerAuthentication)
 # v1.4.20 (2026-03-13)
 
 * **Dependency Update**: Updated to the latest SDK module versions
