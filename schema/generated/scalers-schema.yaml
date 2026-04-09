@@ -1882,6 +1882,10 @@ scalers:
           type: string
           default: "0"
           metadataVariableReadable: true
+        - name: groupByNode
+          type: string
+          default: "false"
+          metadataVariableReadable: true
     - type: liiklus
       parameters:
         - name: lagThreshold
