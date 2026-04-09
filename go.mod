@@ -143,7 +143,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.23.3
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20260405152528-6210f847b2c1
 	sigs.k8s.io/controller-tools v0.20.1
-	sigs.k8s.io/custom-metrics-apiserver v1.34.0
+	sigs.k8s.io/custom-metrics-apiserver v1.35.0
 	sigs.k8s.io/kustomize/kustomize/v5 v5.8.1
 )
 
