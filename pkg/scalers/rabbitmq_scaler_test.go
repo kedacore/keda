@@ -2,7 +2,14 @@ package scalers
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -11,6 +18,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -832,6 +840,8 @@ func TestConnectionName(t *testing.T) {
 }
 
 func TestRabbitMQBuildAMQPConfig(t *testing.T) {
+	certPEM, keyPEM := generateTestCertAndKey(t)
+
 	tests := []struct {
 		name              string
 		meta              *rabbitMQMetadata
@@ -842,8 +852,8 @@ func TestRabbitMQBuildAMQPConfig(t *testing.T) {
 			name: "TLS enabled without credentials uses EXTERNAL SASL",
 			meta: &rabbitMQMetadata{
 				EnableTLS: rmqTLSEnable,
-				Cert:      "cert-data",
-				Key:       "key-data",
+				Cert:      certPEM,
+				Key:       keyPEM,
 				Username:  "",
 				Password:  "",
 			},
@@ -862,8 +872,14 @@ func TestRabbitMQBuildAMQPConfig(t *testing.T) {
 			name: "TLS disabled does not set SASL",
 			meta: &rabbitMQMetadata{
 				EnableTLS: rmqTLSDisable,
-				Username:  "",
-				Password:  "",
+			},
+			wantSASLNil: true,
+		},
+		{
+			name: "TLS enabled with CA only does not set EXTERNAL",
+			meta: &rabbitMQMetadata{
+				EnableTLS: rmqTLSEnable,
+				Ca:        certPEM, // CA only, no client cert
 			},
 			wantSASLNil: true,
 		},
@@ -872,8 +888,8 @@ func TestRabbitMQBuildAMQPConfig(t *testing.T) {
 			meta: &rabbitMQMetadata{
 				EnableTLS: rmqTLSEnable,
 				Host:      "amqps://user:pass@rabbit:5671/",
-				Username:  "",
-				Password:  "",
+				Cert:      certPEM,
+				Key:       keyPEM,
 			},
 			wantSASLNil: true,
 		},
@@ -882,20 +898,18 @@ func TestRabbitMQBuildAMQPConfig(t *testing.T) {
 			meta: &rabbitMQMetadata{
 				EnableTLS: rmqTLSEnable,
 				Host:      "amqps://CN=username@rabbit:5671/",
-				Username:  "",
-				Password:  "",
+				Cert:      certPEM,
+				Key:       keyPEM,
 			},
-			wantSASLNil: true,
+			wantSASLMechanism: "EXTERNAL",
 		},
 		{
 			name: "TLS enabled, no credentials in host URI, uses EXTERNAL",
 			meta: &rabbitMQMetadata{
 				EnableTLS: rmqTLSEnable,
 				Host:      "amqps://rabbit.namespace.svc:5671/",
-				Cert:      "cert-data",
-				Key:       "key-data",
-				Username:  "",
-				Password:  "",
+				Cert:      certPEM,
+				Key:       keyPEM,
 			},
 			wantSASLMechanism: "EXTERNAL",
 		},
@@ -915,4 +929,27 @@ func TestRabbitMQBuildAMQPConfig(t *testing.T) {
 			assert.Equal(t, tt.wantSASLMechanism, config.SASL[0].Mechanism())
 		})
 	}
+}
+
+func generateTestCertAndKey(t *testing.T) (string, string) {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{CommonName: "test"},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(time.Hour),
+	}
+	certDER, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	require.NoError(t, err)
+
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+
+	keyDER, err := x509.MarshalECPrivateKey(key)
+	require.NoError(t, err)
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
+
+	return string(certPEM), string(keyPEM)
 }
