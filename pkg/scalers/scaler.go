@@ -20,12 +20,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
+	"math"
 	"strings"
 
 	"github.com/go-logr/logr"
 	metrics "github.com/rcrowley/go-metrics"
-	cast "github.com/spf13/cast"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -66,25 +65,7 @@ var (
 	// ErrScalerUnsupportedUtilizationMetricType is returned when v2.UtilizationMetricType
 	// is provided as the metric target type for scaler.
 	ErrScalerUnsupportedUtilizationMetricType = errors.New("'Utilization' metric type is unsupported for external metrics, allowed values are 'Value' or 'AverageValue'")
-
-	// ErrScalerConfigMissingField is returned when a required field is missing from the scaler config.
-	ErrScalerConfigMissingField = errors.New("missing required field in scaler config")
 )
-
-// GetFromAuthOrMeta helps to get a field from Auth or Meta sections
-func GetFromAuthOrMeta(config *scalersconfig.ScalerConfig, field string) (string, error) {
-	var result string
-	var err error
-	if config.AuthParams[field] != "" {
-		result = config.AuthParams[field]
-	} else if config.TriggerMetadata[field] != "" {
-		result = config.TriggerMetadata[field]
-	}
-	if result == "" {
-		err = fmt.Errorf("%w: no %s given", ErrScalerConfigMissingField, field)
-	}
-	return result, err
-}
 
 // GenerateMetricNameWithIndex helps to add the index prefix to the metric name
 func GenerateMetricNameWithIndex(triggerIndex int, metricName string) string {
@@ -146,13 +127,14 @@ func GetMetricTargetMili(metricType v2.MetricTargetType, metricValue float64) v2
 		Type: metricType,
 	}
 
-	// Construct the target size as a quantity
-	metricValueMili := int64(metricValue * 1000)
-	targetQty := resource.NewMilliQuantity(metricValueMili, resource.DecimalSI)
+	// Construct the target size as a quantity using string parsing to avoid
+	// int64 overflow when metricValue * 1000 exceeds math.MaxInt64 (~9.2e15 threshold).
+	// Treat NaN and Inf as zero to avoid a panic in resource.MustParse.
+	targetQty := quantityFromFloat64(metricValue)
 	if metricType == v2.AverageValueMetricType {
-		target.AverageValue = targetQty
+		target.AverageValue = &targetQty
 	} else {
-		target.Value = targetQty
+		target.Value = &targetQty
 	}
 
 	return target
@@ -160,216 +142,22 @@ func GetMetricTargetMili(metricType v2.MetricTargetType, metricValue float64) v2
 
 // GenerateMetricInMili returns a externalMetricValue with mili as metric scale
 func GenerateMetricInMili(metricName string, value float64) external_metrics.ExternalMetricValue {
-	valueMili := int64(value * 1000)
+	// Use string parsing to avoid int64 overflow when value * 1000 exceeds
+	// math.MaxInt64 (~9.2e15 threshold).
+	// Treat NaN and Inf as zero to avoid a panic in resource.MustParse.
+	qty := quantityFromFloat64(value)
 	return external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewMilliQuantity(valueMili, resource.DecimalSI),
+		Value:      qty,
 		Timestamp:  metav1.Now(),
 	}
 }
 
-// Option represents a function type that modifies a configOptions instance.
-type Option func(*configOptions)
-
-type configOptions struct {
-	useMetadata       bool        // Indicates whether to use metadata.
-	useAuthentication bool        // Indicates whether to use authentication.
-	useResolvedEnv    bool        // Indicates whether to use resolved environment variables.
-	isOptional        bool        // Indicates whether the configuration is optional.
-	defaultVal        interface{} // Default value for the configuration.
-}
-
-// UseMetadata is an Option function that sets the useMetadata field of configOptions.
-func UseMetadata(metadata bool) Option {
-	return func(opt *configOptions) {
-		opt.useMetadata = metadata
+// quantityFromFloat64 converts a float64 to a resource.Quantity with milli-precision.
+// NaN and Inf values are treated as zero to prevent panics.
+func quantityFromFloat64(value float64) resource.Quantity {
+	if math.IsNaN(value) || math.IsInf(value, 0) {
+		return resource.MustParse("0")
 	}
-}
-
-// UseAuthentication is an Option function that sets the useAuthentication field of configOptions.
-func UseAuthentication(auth bool) Option {
-	return func(opt *configOptions) {
-		opt.useAuthentication = auth
-	}
-}
-
-// UseResolvedEnv is an Option function that sets the useResolvedEnv field of configOptions.
-func UseResolvedEnv(resolvedEnv bool) Option {
-	return func(opt *configOptions) {
-		opt.useResolvedEnv = resolvedEnv
-	}
-}
-
-// IsOptional is an Option function that sets the isOptional field of configOptions.
-func IsOptional(optional bool) Option {
-	return func(opt *configOptions) {
-		opt.isOptional = optional
-	}
-}
-
-// WithDefaultVal is an Option function that sets the defaultVal field of configOptions.
-func WithDefaultVal(defaultVal interface{}) Option {
-	return func(opt *configOptions) {
-		opt.defaultVal = defaultVal
-	}
-}
-
-// getParameterFromConfigV2 retrieves a parameter value from the provided ScalerConfig object based on the specified parameter name, target type, and optional configuration options.
-//
-// This method searches for the parameter value in different places within the ScalerConfig object, such as authentication parameters, trigger metadata, and resolved environment variables, based on the provided options.
-// It then attempts to convert the found value to the specified target type and returns it.
-//
-// Parameters:
-//
-//	config: A pointer to a ScalerConfig object from which to retrieve the parameter value.
-//	parameter: A string representing the name of the parameter to retrieve.
-//	targetType: A reflect.Type representing the target type to which the parameter value should be converted.
-//	options: An optional variadic parameter that allows configuring the behavior of the method through Option functions.
-//
-// Returns:
-//   - An interface{} representing the retrieved parameter value, converted to the specified target type.
-//   - An error, if any occurred during the retrieval or conversion process.
-//
-// Example Usage:
-//
-//	To retrieve a parameter value from a ScalerConfig object, you can call this function with the necessary parameters and options
-//
-//	```
-//	val, err := getParameterFromConfigV2(scalerConfig, "parameterName", reflect.TypeOf(int64(0)), UseMetadata(true), UseAuthentication(true))
-//	if err != nil {
-//	    // Handle error
-//	}
-func getParameterFromConfigV2(config *scalersconfig.ScalerConfig, parameter string, targetType reflect.Type, options ...Option) (interface{}, error) {
-	opt := &configOptions{defaultVal: ""}
-	for _, option := range options {
-		option(opt)
-	}
-
-	foundCount := 0
-	var foundVal string
-	var convertedVal interface{}
-	var foundErr error
-
-	if val, ok := config.AuthParams[parameter]; ok && val != "" {
-		foundCount++
-		if opt.useAuthentication {
-			foundVal = val
-		}
-	}
-	if val, ok := config.TriggerMetadata[parameter]; ok && val != "" {
-		foundCount++
-		if opt.useMetadata {
-			foundVal = val
-		}
-	}
-	if envFromVal, envFromOk := config.TriggerMetadata[fmt.Sprintf("%sFromEnv", parameter)]; envFromOk {
-		if val, ok := config.ResolvedEnv[envFromVal]; ok && val != "" {
-			foundCount++
-			if opt.useResolvedEnv {
-				foundVal = val
-			}
-		}
-	}
-
-	convertedVal, foundErr = convertToType(foundVal, targetType)
-	switch {
-	case foundCount > 1:
-		return opt.defaultVal, fmt.Errorf("value for parameter '%s' found in more than one place", parameter)
-	case foundCount == 1:
-		if foundErr != nil {
-			return opt.defaultVal, foundErr
-		}
-		return convertedVal, nil
-	case opt.isOptional:
-		return opt.defaultVal, nil
-	default:
-		return opt.defaultVal, fmt.Errorf("key not found. Either set the correct key or set isOptional to true and set defaultVal")
-	}
-}
-
-func convertToType(input interface{}, targetType reflect.Type) (interface{}, error) {
-	switch targetType.Kind() {
-	case reflect.String:
-		return fmt.Sprintf("%v", input), nil
-	case reflect.Int:
-		val, err := cast.ToIntE(input)
-		if err != nil {
-			return nil, err
-		}
-		return val, nil
-	case reflect.Int8:
-		val, err := cast.ToInt8E(input)
-		if err != nil {
-			return nil, err
-		}
-		return val, nil
-	case reflect.Int16:
-		val, err := cast.ToInt16E(input)
-		if err != nil {
-			return nil, err
-		}
-		return val, nil
-	case reflect.Int32:
-		val, err := cast.ToInt32E(input)
-		if err != nil {
-			return nil, err
-		}
-		return val, nil
-	case reflect.Int64:
-		val, err := cast.ToInt64E(input)
-		if err != nil {
-			return nil, err
-		}
-		return val, nil
-	case reflect.Uint:
-		val, err := cast.ToUintE(input)
-		if err != nil {
-			return nil, err
-		}
-		return val, nil
-	case reflect.Uint8:
-		val, err := cast.ToUint8E(input)
-		if err != nil {
-			return nil, err
-		}
-		return val, nil
-	case reflect.Uint16:
-		val, err := cast.ToUint16E(input)
-		if err != nil {
-			return nil, err
-		}
-		return val, nil
-	case reflect.Uint32:
-		val, err := cast.ToUint32E(input)
-		if err != nil {
-			return nil, err
-		}
-		return val, nil
-	case reflect.Uint64:
-		val, err := cast.ToUint64E(input)
-		if err != nil {
-			return nil, err
-		}
-		return val, nil
-	case reflect.Float32:
-		val, err := cast.ToFloat32E(input)
-		if err != nil {
-			return nil, err
-		}
-		return val, nil
-	case reflect.Float64:
-		val, err := cast.ToFloat64E(input)
-		if err != nil {
-			return nil, err
-		}
-		return val, nil
-	case reflect.Bool:
-		val, err := cast.ToBoolE(input)
-		if err != nil {
-			return nil, err
-		}
-		return val, nil
-	default:
-		return nil, fmt.Errorf("unsupported target type: %v", targetType)
-	}
+	return resource.MustParse(fmt.Sprintf("%.3f", value))
 }

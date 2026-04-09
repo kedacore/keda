@@ -543,10 +543,13 @@ func (c *copyMethodMaker) genPointerDeepCopy(_ *namingInfo, pointerType *types.P
 
 	// pass-by-reference types get delegated to the main switch
 	if passesByReference(underlyingElem) {
-		c.Linef("*out = new(%s)", (&namingInfo{typeInfo: underlyingElem}).Syntax(c.pkg, c.importsList))
+		// Use the declared element type (pointerType.Elem()) when allocating and
+		// when generating the inner DeepCopyInto, so that type aliases are preserved
+		// (e.g. `MapAlias`, `Bars`) instead of using their underlying types.
+		c.Linef("*out = new(%s)", (&namingInfo{typeInfo: pointerType.Elem()}).Syntax(c.pkg, c.importsList))
 		c.If("**in != nil", func() {
 			c.Line("in, out := *in, *out")
-			c.genDeepCopyIntoBlock(&namingInfo{typeInfo: underlyingElem}, eventualUnderlyingType(underlyingElem))
+			c.genDeepCopyIntoBlock(&namingInfo{typeInfo: pointerType.Elem()}, pointerType.Elem())
 		})
 		return
 	}
@@ -782,11 +785,7 @@ func fineToShallowCopy(typeInfo types.Type) bool {
 // (except for interfaces, which are handled separately).
 func passesByReference(typeInfo types.Type) bool {
 	switch typeInfo.(type) {
-	case *types.Slice:
-		return true
-	case *types.Map:
-		return true
-	case *types.Pointer:
+	case *types.Slice, *types.Map, *types.Pointer:
 		return true
 	default:
 		return false

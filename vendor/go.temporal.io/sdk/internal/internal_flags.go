@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"math"
 	"os"
 
@@ -29,34 +30,69 @@ const (
 	// SDKFlagBlockedSelectorSignalReceive will cause a signal to not be lost
 	// when the Default path is blocked.
 	SDKFlagBlockedSelectorSignalReceive = 5
-	SDKFlagUnknown                      = math.MaxUint32
+	// SDKFlagCancelAwaitTimerOnCondition will cause AwaitWithTimeout and
+	// AwaitWithOptions to cancel the timer when the condition is satisfied
+	// before the timeout expires.
+	SDKFlagCancelAwaitTimerOnCondition = 6
+	// SDKFlagMemoUserDCEncode will use the user data converter when encoding a memo. If user data converter fails,
+	// we will fallback onto the default data converter. If the default DC fails, the user DC error will be returned.
+	SDKFlagMemoUserDCEncode               = 7
+	SDKFlagWorkflowNewChannelLostMessages = 8
+	SDKFlagUnknown                        = math.MaxUint32
 )
 
-// unblockSelectorSignal exists to allow us to configure the default behavior of
-// SDKFlagBlockedSelectorSignalReceive. This is primarily useful with tests.
-var unblockSelectorSignal = os.Getenv("UNBLOCK_SIGNAL_SELECTOR") != ""
+// sdkFlagsAllowed holds the enabled state for each flag.
+// Env vars can override these at init time via TEMPORAL_SDK_FLAG_<ID>=1|0.
+// New flags should default to false until at least one release after introduction.
+//
+// NOTE: The only time this setting is superseded is if a flag is already being used in history.
+var sdkFlagsAllowed = map[sdkFlag]bool{
+	SDKFlagLimitChangeVersionSASize:       true,
+	SDKFlagChildWorkflowErrorExecution:    true,
+	SDKFlagProtocolMessageCommand:         true,
+	SDKPriorityUpdateHandling:             true,
+	SDKFlagBlockedSelectorSignalReceive:   false,
+	SDKFlagCancelAwaitTimerOnCondition:    false,
+	SDKFlagMemoUserDCEncode:               false,
+	SDKFlagWorkflowNewChannelLostMessages: false,
+}
 
-func sdkFlagFromUint(value uint32) sdkFlag {
-	switch value {
-	case uint32(SDKFlagUnset):
-		return SDKFlagUnset
-	case uint32(SDKFlagLimitChangeVersionSASize):
-		return SDKFlagLimitChangeVersionSASize
-	case uint32(SDKFlagChildWorkflowErrorExecution):
-		return SDKFlagChildWorkflowErrorExecution
-	case uint32(SDKFlagProtocolMessageCommand):
-		return SDKFlagProtocolMessageCommand
-	case uint32(SDKPriorityUpdateHandling):
-		return SDKPriorityUpdateHandling
-	case uint32(SDKFlagBlockedSelectorSignalReceive):
-		return SDKFlagBlockedSelectorSignalReceive
-	default:
-		return SDKFlagUnknown
+func init() {
+	loadFlagOverridesFromEnv(sdkFlagsAllowed)
+}
+
+// loadFlagOverridesFromEnv loads flag overrides from environment variables into the provided map.
+// Env var format: TEMPORAL_SDK_FLAG_<FLAG_ID>=1|0
+// Example: TEMPORAL_SDK_FLAG_5=1 (enables SDKFlagBlockedSelectorSignalReceive)
+//
+// NOTE: Using env vars to set flags is strongly discouraged, but this utility is built in
+// as an emergency mechanism in case there is an unanticipated bug with a flag flip, so
+// users would not have to wait until the next release to upgrade.
+func loadFlagOverridesFromEnv(defaults map[sdkFlag]bool) {
+	for flag := range defaults {
+		envKey := fmt.Sprintf("TEMPORAL_SDK_FLAG_%d", flag)
+		if val := os.Getenv(envKey); val != "" {
+			switch val {
+			case "1":
+				defaults[flag] = true
+			case "0":
+				defaults[flag] = false
+			}
+		}
 	}
 }
 
+func sdkFlagFromUint(value uint32) sdkFlag {
+	flag := sdkFlag(value)
+	if _, ok := sdkFlagsAllowed[flag]; ok {
+		return flag
+	}
+	return SDKFlagUnknown
+}
+
 func (f sdkFlag) isValid() bool {
-	return f != SDKFlagUnset && f != SDKFlagUnknown
+	_, ok := sdkFlagsAllowed[f]
+	return ok
 }
 
 // sdkFlags represents all the flags that are currently set in a workflow execution.
@@ -69,7 +105,7 @@ type sdkFlags struct {
 	newFlags map[sdkFlag]bool
 }
 
-func newSDKFlags(capabilities *workflowservice.GetSystemInfoResponse_Capabilities) *sdkFlags {
+func newSDKFlagSet(capabilities *workflowservice.GetSystemInfoResponse_Capabilities) *sdkFlags {
 	return &sdkFlags{
 		capabilities: capabilities,
 		currentFlags: make(map[sdkFlag]bool),
@@ -84,18 +120,20 @@ func (sf *sdkFlags) tryUse(flag sdkFlag, record bool) bool {
 		return false
 	}
 
-	if record && !sf.currentFlags[flag] {
-		// Only set new flags
-		sf.newFlags[flag] = true
+	if sf.currentFlags[flag] || sf.newFlags[flag] {
 		return true
-	} else {
-		return sf.currentFlags[flag]
 	}
-}
 
-// getFlag returns true if the flag is currently set.
-func (sf *sdkFlags) getFlag(flag sdkFlag) bool {
-	return sf.currentFlags[flag] || sf.newFlags[flag]
+	if !record {
+		return false
+	}
+
+	if !sdkFlagsAllowed[flag] {
+		return false
+	}
+
+	sf.newFlags[flag] = true
+	return true
 }
 
 // set marks a flag as in current use regardless of replay status.
@@ -116,17 +154,11 @@ func (sf *sdkFlags) markSDKFlagsSent() {
 	sf.newFlags = make(map[sdkFlag]bool)
 }
 
-// gatherNewSDKFlags returns all sdkFlags set since the last call to markSDKFlagsSent.
+// gatherNewSDKFlags returns all sdkFlagsAllowed set since the last call to markSDKFlagsSent.
 func (sf *sdkFlags) gatherNewSDKFlags() []sdkFlag {
 	flags := make([]sdkFlag, 0, len(sf.newFlags))
 	for flag := range sf.newFlags {
 		flags = append(flags, flag)
 	}
 	return flags
-}
-
-// SetUnblockSelectorSignal toggles the flag to unblock the selector signal.
-// For test use only.
-func SetUnblockSelectorSignal(unblockSignal bool) {
-	unblockSelectorSignal = unblockSignal
 }

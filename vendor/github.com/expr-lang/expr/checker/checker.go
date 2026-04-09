@@ -15,15 +15,16 @@ import (
 )
 
 var (
-	anyType      = reflect.TypeOf(new(any)).Elem()
-	boolType     = reflect.TypeOf(true)
-	intType      = reflect.TypeOf(0)
-	floatType    = reflect.TypeOf(float64(0))
-	stringType   = reflect.TypeOf("")
-	arrayType    = reflect.TypeOf([]any{})
-	mapType      = reflect.TypeOf(map[string]any{})
-	timeType     = reflect.TypeOf(time.Time{})
-	durationType = reflect.TypeOf(time.Duration(0))
+	anyType       = reflect.TypeOf(new(any)).Elem()
+	boolType      = reflect.TypeOf(true)
+	intType       = reflect.TypeOf(0)
+	floatType     = reflect.TypeOf(float64(0))
+	stringType    = reflect.TypeOf("")
+	arrayType     = reflect.TypeOf([]any{})
+	mapType       = reflect.TypeOf(map[string]any{})
+	timeType      = reflect.TypeOf(time.Time{})
+	durationType  = reflect.TypeOf(time.Duration(0))
+	byteSliceType = reflect.TypeOf([]byte(nil))
 
 	anyTypeSlice = []reflect.Type{anyType}
 )
@@ -194,6 +195,8 @@ func (v *Checker) visit(node ast.Node) Nature {
 		nt = v.config.NtCache.FromType(boolType)
 	case *ast.StringNode:
 		nt = v.config.NtCache.FromType(stringType)
+	case *ast.BytesNode:
+		nt = v.config.NtCache.FromType(byteSliceType)
 	case *ast.ConstantNode:
 		nt = v.config.NtCache.FromType(reflect.TypeOf(n.Value))
 	case *ast.UnaryNode:
@@ -648,6 +651,11 @@ func (v *Checker) callNode(node *ast.CallNode) Nature {
 		return *node.Nature()
 	}
 
+	// $env is not callable.
+	if id, ok := node.Callee.(*ast.IdentifierNode); ok && id.Value == "$env" {
+		return v.error(node, "%s is not callable", v.config.Env.String())
+	}
+
 	nt := v.visit(node.Callee)
 	if nt.IsUnknown(&v.config.NtCache) {
 		return Nature{}
@@ -890,7 +898,10 @@ func (v *Checker) builtinNode(node *ast.BuiltinNode) Nature {
 		v.end()
 
 		if len(node.Arguments) == 3 {
-			_ = v.visit(node.Arguments[2])
+			order := v.visit(node.Arguments[2])
+			if !order.IsString() && !order.IsUnknown(&v.config.NtCache) {
+				return v.error(node.Arguments[2], "sortBy order argument must be a string (got %v)", order.String())
+			}
 		}
 
 		if predicate.IsFunc() &&
@@ -1112,7 +1123,7 @@ func (v *Checker) checkArguments(
 		if isVariadic && i >= fnNumIn-1 {
 			// For variadic arguments fn(xs ...int), go replaces type of xs (int) with ([]int).
 			// As we compare arguments one by one, we need underling type.
-			in = fn.InElem(&v.config.NtCache, fnNumIn-1)
+			in = fn.InElem(&v.config.NtCache, fnNumIn-1+fnInOffset)
 		} else {
 			in = fn.In(&v.config.NtCache, i+fnInOffset)
 		}

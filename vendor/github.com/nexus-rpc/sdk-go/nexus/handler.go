@@ -107,10 +107,6 @@ type HandlerStartOperationResult[T any] interface {
 type HandlerStartOperationResultSync[T any] struct {
 	// Value is the output of the operation.
 	Value T
-	// Links to be associated with the operation.
-	//
-	// Deprecated: Use AddHandlerLinks instead.
-	Links []Link
 }
 
 func (*HandlerStartOperationResultSync[T]) mustImplementHandlerStartOperationResult() {}
@@ -122,16 +118,8 @@ func (r *HandlerStartOperationResultSync[T]) ValueAsAny() any {
 
 // HandlerStartOperationResultAsync indicates that an operation has been accepted and will complete asynchronously.
 type HandlerStartOperationResultAsync struct {
-	// OperationID is a unique ID to identify the operation.
-	//
-	// Deprecated: Use OperationToken instead.
-	OperationID string
 	// OperationToken is a unique token to identify the operation.
 	OperationToken string
-	// Links to be associated with the operation.
-	//
-	// Deprecated: Use AddHandlerLinks instead.
-	Links []Link
 }
 
 func (*HandlerStartOperationResultAsync) mustImplementHandlerStartOperationResult() {}
@@ -155,20 +143,5 @@ type Handler interface {
 	//  ignored by the underlying operation implemention.
 	//  2. idempotent - implementors should ignore duplicate cancelations for the same operation.
 	CancelOperation(ctx context.Context, service, operation, token string, options CancelOperationOptions) error
-	// GetOperationResult handles requests to get the result of an asynchronous operation. Return non error result
-	// to respond successfully - inline, or error with [ErrOperationStillRunning] to indicate that an asynchronous
-	// operation is still running. Return an [OperationError] to indicate that an operation completed as
-	// failed or canceled.
-	//
-	// When [GetOperationResultOptions.Wait] is greater than zero, this request should be treated as a long poll.
-	// Long poll requests have a server side timeout, configurable via [HandlerOptions.GetResultTimeout], and exposed
-	// via context deadline. The context deadline is decoupled from the application level Wait duration.
-	//
-	// Deprecated: Getting a result directly from a handler is no longer supported.
-	GetOperationResult(ctx context.Context, service, operation, token string, options GetOperationResultOptions) (any, error)
-	// GetOperationInfo handles requests to get information about an asynchronous operation.
-	//
-	// Deprecated: Getting info directly from a handler is no longer supported.
-	GetOperationInfo(ctx context.Context, service, operation, token string, options GetOperationInfoOptions) (*OperationInfo, error)
 	mustEmbedUnimplementedHandler()
 }
