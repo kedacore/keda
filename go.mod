@@ -148,6 +148,8 @@ require (
 	sigs.k8s.io/kustomize/kustomize/v5 v5.8.1
 )
 
+require github.com/aws/aws-sdk-go-v2/service/ssm v1.68.3
+
 require (
 	cel.dev/expr v0.25.1 // indirect
 	cloud.google.com/go v0.123.0 // indirect
