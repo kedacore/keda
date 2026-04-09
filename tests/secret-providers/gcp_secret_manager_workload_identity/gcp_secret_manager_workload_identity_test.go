@@ -369,7 +369,7 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 func createGCPSecret(t *testing.T) error {
 	ctx := context.Background()
 
-	gcpCreds, err := google.CredentialsFromJSON(ctx, []byte(gcpKey), secretmanager.DefaultAuthScopes()...)
+	gcpCreds, err := google.CredentialsFromJSONWithType(ctx, []byte(gcpKey), google.ServiceAccount, secretmanager.DefaultAuthScopes()...)
 	if err != nil {
 		return fmt.Errorf("failed to get credentials from json: %w", err)
 	}
@@ -420,7 +420,7 @@ func createGCPSecret(t *testing.T) error {
 func deleteGCPSecret(t *testing.T) error {
 	ctx := context.Background()
 
-	gcpCreds, err := google.CredentialsFromJSON(ctx, []byte(gcpKey), secretmanager.DefaultAuthScopes()...)
+	gcpCreds, err := google.CredentialsFromJSONWithType(ctx, []byte(gcpKey), google.ServiceAccount, secretmanager.DefaultAuthScopes()...)
 	if err != nil {
 		return fmt.Errorf("failed to get credentials from json: %w", err)
 	}

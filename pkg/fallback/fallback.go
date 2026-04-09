@@ -93,8 +93,8 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, sc
 	}
 }
 
-func fallbackExistsInScaledObject(scaledObject *kedav1alpha1.ScaledObject) bool {
-	for _, element := range scaledObject.Status.Health {
+func fallbackExistsInStatus(scaledObject *kedav1alpha1.ScaledObject, status *kedav1alpha1.ScaledObjectStatus) bool {
+	for _, element := range status.Health {
 		if element.Status == kedav1alpha1.HealthStatusFailing && *element.NumberOfFailures > scaledObject.Spec.Fallback.FailureThreshold {
 			return true
 		}
@@ -240,7 +240,7 @@ func updateStatus(ctx context.Context, client runtimeclient.Client, scaledObject
 		return
 	}
 
-	if fallbackExistsInScaledObject(scaledObject) {
+	if fallbackExistsInStatus(scaledObject, status) {
 		status.Conditions.SetFallbackCondition(metav1.ConditionTrue, "FallbackExists", "At least one trigger is falling back on this scaled object")
 	} else {
 		status.Conditions.SetFallbackCondition(metav1.ConditionFalse, "NoFallbackFound", "No fallbacks are active on this scaled object")
