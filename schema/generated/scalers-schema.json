@@ -5709,6 +5709,13 @@
                     "envVariableReadable": true
                 },
                 {
+                    "name": "deploymentName",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
+                },
+                {
                     "name": "selectAllActive",
                     "type": "string",
                     "default": "false",
