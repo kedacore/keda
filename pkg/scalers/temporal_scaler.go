@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	deploymentpb "go.temporal.io/api/deployment/v1"
+	"go.temporal.io/api/workflowservice/v1"
 	sdk "go.temporal.io/sdk/client"
 	sdklog "go.temporal.io/sdk/log"
 	"google.golang.org/grpc"
@@ -42,6 +44,7 @@ type temporalMetadata struct {
 	TaskQueue                 string   `keda:"name=taskQueue,                 order=triggerMetadata;resolvedEnv"`
 	QueueTypes                []string `keda:"name=queueTypes,                order=triggerMetadata, optional"`
 	BuildID                   string   `keda:"name=buildId,                   order=triggerMetadata;resolvedEnv, optional"`
+	DeploymentName            string   `keda:"name=deploymentName,            order=triggerMetadata;resolvedEnv, optional"`
 	AllActive                 bool     `keda:"name=selectAllActive,           order=triggerMetadata, default=false"`
 	Unversioned               bool     `keda:"name=selectUnversioned,         order=triggerMetadata, default=false"`
 	APIKey                    string   `keda:"name=apiKey,                    order=authParams;resolvedEnv, optional"`
@@ -127,7 +130,15 @@ func (s *temporalScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 }
 
 func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	queueSize, err := s.getQueueSize(ctx)
+	var (
+		queueSize int64
+		err       error
+	)
+	if s.metadata.DeploymentName != "" {
+		queueSize, err = s.getDeploymentQueueSize(ctx)
+	} else {
+		queueSize, err = s.getQueueSize(ctx)
+	}
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to get Temporal queue size: %w", err)
 	}
@@ -160,6 +171,38 @@ func (s *temporalScaler) getQueueSize(ctx context.Context) (int64, error) {
 	}
 
 	return getCombinedBacklogCount(resp), nil
+}
+
+func (s *temporalScaler) getDeploymentQueueSize(ctx context.Context) (int64, error) {
+	queueSize, err := s.getDeploymentBacklogCount(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get Temporal deployment queue size: %w", err)
+	}
+	return queueSize, nil
+}
+
+func (s *temporalScaler) getDeploymentBacklogCount(ctx context.Context) (int64, error) {
+	resp, err := s.tcl.WorkflowService().DescribeWorkerDeploymentVersion(ctx,
+		&workflowservice.DescribeWorkerDeploymentVersionRequest{
+			Namespace: s.metadata.Namespace,
+			DeploymentVersion: &deploymentpb.WorkerDeploymentVersion{
+				DeploymentName: s.metadata.DeploymentName,
+				BuildId:        s.metadata.BuildID,
+			},
+			ReportTaskQueueStats: true,
+		},
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to describe worker deployment version: %w", err)
+	}
+
+	var totalBacklog int64
+	for _, tq := range resp.GetVersionTaskQueues() {
+		if stats := tq.GetStats(); stats != nil {
+			totalBacklog += stats.GetApproximateBacklogCount()
+		}
+	}
+	return totalBacklog, nil
 }
 
 func getQueueTypes(queueTypes []string) []sdk.TaskQueueType {
