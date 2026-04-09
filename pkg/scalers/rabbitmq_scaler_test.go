@@ -842,6 +842,8 @@ func TestRabbitMQBuildAMQPConfig(t *testing.T) {
 			name: "TLS enabled without credentials uses EXTERNAL SASL",
 			meta: &rabbitMQMetadata{
 				EnableTLS: rmqTLSEnable,
+				Cert:      "cert-data",
+				Key:       "key-data",
 				Username:  "",
 				Password:  "",
 			},
@@ -890,6 +892,8 @@ func TestRabbitMQBuildAMQPConfig(t *testing.T) {
 			meta: &rabbitMQMetadata{
 				EnableTLS: rmqTLSEnable,
 				Host:      "amqps://rabbit.namespace.svc:5671/",
+				Cert:      "cert-data",
+				Key:       "key-data",
 				Username:  "",
 				Password:  "",
 			},
