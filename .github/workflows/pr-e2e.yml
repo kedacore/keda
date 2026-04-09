@@ -75,7 +75,7 @@ jobs:
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
-        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
@@ -86,7 +86,7 @@ jobs:
             {"summary": "🚧 Tests are running. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Set status in-progress
-        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
@@ -97,7 +97,7 @@ jobs:
             {"summary": "🚧 Tests are running. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Set status in-progress
-        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
@@ -143,7 +143,7 @@ jobs:
           reaction: "-1"
 
       - name: Set status failure
-        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         if: steps.regex-validation.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -155,7 +155,7 @@ jobs:
             {"summary": "❌ Tests Failed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Set status failure
-        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         if: steps.regex-validation.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -167,7 +167,7 @@ jobs:
             {"summary": "❌ Tests Failed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Set status failure
-        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         if: steps.regex-validation.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -209,7 +209,7 @@ jobs:
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
-        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
@@ -286,7 +286,7 @@ jobs:
           reaction: "+1"
 
       - name: Set status success
-        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         if: steps.test.outcome == 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -306,7 +306,7 @@ jobs:
           reaction: "-1"
 
       - name: Set status failure
-        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         if: steps.test.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -331,7 +331,7 @@ jobs:
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
-        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
@@ -381,7 +381,7 @@ jobs:
           reaction: "+1"
 
       - name: Set status success
-        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         if: steps.test.outcome == 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -401,7 +401,7 @@ jobs:
           reaction: "-1"
 
       - name: Set status failure
-        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         if: steps.test.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -426,7 +426,7 @@ jobs:
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
-        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
@@ -483,7 +483,7 @@ jobs:
           reaction: "+1"
 
       - name: Set status success
-        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         if: steps.test.outcome == 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -503,7 +503,7 @@ jobs:
           reaction: "-1"
 
       - name: Set status failure
-        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         if: steps.test.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
