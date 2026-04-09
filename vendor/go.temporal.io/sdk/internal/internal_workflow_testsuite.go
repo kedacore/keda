@@ -69,6 +69,9 @@ type (
 		heartbeatDetails *commonpb.Payloads
 		token            testActivityToken
 		task             *workflowservice.PollActivityTaskQueueResponse
+		// Per-activity context-aware converters for async completion path.
+		dataConverter    converter.DataConverter
+		failureConverter converter.FailureConverter
 		// Timeout tracking
 		startTime         time.Time // when activity started executing
 		lastHeartbeatTime time.Time
@@ -454,7 +457,13 @@ func (env *testWorkflowEnvironmentImpl) newTestWorkflowEnvironmentForChild(
 	childEnv.testWorkflowEnvironmentShared = env.testWorkflowEnvironmentShared
 	childEnv.workerOptions = env.workerOptions
 	childEnv.dataConverter = params.DataConverter
-	childEnv.failureConverter = env.failureConverter
+	if childEnv.dataConverter == nil {
+		childEnv.dataConverter = env.dataConverter
+	}
+	childEnv.failureConverter = params.failureConverter
+	if childEnv.failureConverter == nil {
+		childEnv.failureConverter = env.failureConverter
+	}
 	childEnv.registry = env.registry
 	childEnv.detachedChildWaitDisabled = env.detachedChildWaitDisabled
 
@@ -582,7 +591,11 @@ func (env *testWorkflowEnvironmentImpl) executeWorkflow(workflowFn interface{}, 
 	if getKind(fType) == reflect.Func {
 		env.RegisterWorkflowWithOptions(workflowFn, RegisterWorkflowOptions{DisableAlreadyRegisteredCheck: true})
 	}
-	workflowType, input, err := getValidatedWorkflowFunction(workflowFn, args, env.GetDataConverter(), env.GetRegistry())
+	dc := converter.WithDataConverterSerializationContext(env.GetDataConverter(), converter.WorkflowSerializationContext{
+		Namespace:  env.workflowInfo.Namespace,
+		WorkflowID: env.workflowInfo.WorkflowExecution.ID,
+	})
+	workflowType, input, err := getValidatedWorkflowFunction(workflowFn, args, dc, env.GetRegistry())
 	if err != nil {
 		panic(err)
 	}
@@ -607,6 +620,20 @@ func (env *testWorkflowEnvironmentImpl) executeWorkflowInternal(delayStart time.
 	}
 	if wInfo.WorkflowTaskTimeout == 0 {
 		wInfo.WorkflowTaskTimeout = 1 * time.Second
+	}
+	if wInfo.currentRunID == "" {
+		wInfo.currentRunID = wInfo.WorkflowExecution.RunID
+	}
+	// For child workflows, the interceptor already wraps converters with the
+	// child's WorkflowSerializationContext before setting them on the child env.
+	// Only wrap for the root workflow to avoid double-wrapping.
+	if env.parentEnv == nil {
+		wfCtx := converter.WorkflowSerializationContext{
+			Namespace:  wInfo.Namespace,
+			WorkflowID: wInfo.WorkflowExecution.ID,
+		}
+		env.dataConverter = converter.WithDataConverterSerializationContext(env.dataConverter, wfCtx)
+		env.failureConverter = converter.WithFailureConverterSerializationContext(env.failureConverter, wfCtx)
 	}
 	env.locker.Unlock()
 
@@ -665,6 +692,10 @@ func (env *testWorkflowEnvironmentImpl) getWorkflowDefinition(wt WorkflowType) (
 
 func (env *testWorkflowEnvironmentImpl) TryUse(flag sdkFlag) bool {
 	return env.sdkFlags.tryUse(flag, true)
+}
+
+func (env *testWorkflowEnvironmentImpl) GenerateSequence() int64 {
+	return env.nextID()
 }
 
 func (env *testWorkflowEnvironmentImpl) QueueUpdate(name string, f func()) {
@@ -759,7 +790,7 @@ func (env *testWorkflowEnvironmentImpl) executeActivity(
 
 	// ensure activityFn is registered to defaultTestTaskQueue
 	taskHandler := env.newTestActivityTaskHandler(defaultTestTaskQueue, env.GetDataConverter())
-	env.addNewActivityHandle(task, func(result *commonpb.Payloads, err error) {})
+	env.addNewActivityHandle(task, func(result *commonpb.Payloads, err error) {}, env.GetDataConverter(), env.GetFailureConverter())
 	activityID := ActivityID{id: task.ActivityId}
 
 	result, err := taskHandler.Execute(defaultTestTaskQueue, task)
@@ -1231,8 +1262,8 @@ func (env *testWorkflowEnvironmentImpl) CompleteActivity(taskToken []byte, resul
 		// We do allow canceled error to be passed here
 		cancelAllowed := true
 		request := convertActivityResultToRespondRequest("test-identity", taskToken, data, err,
-			env.GetDataConverter(), env.GetFailureConverter(), defaultTestNamespace, cancelAllowed, nil, nil, nil)
-		env.handleActivityResult(activityHandle, request, env.GetDataConverter())
+			activityHandle.dataConverter, activityHandle.failureConverter, defaultTestNamespace, cancelAllowed, nil, nil, nil)
+		env.handleActivityResult(activityHandle, request, activityHandle.dataConverter)
 	}, false /* do not auto schedule workflow task, because activity might be still pending */)
 
 	return nil
@@ -1260,12 +1291,15 @@ func (env *testWorkflowEnvironmentImpl) GetContextPropagators() []ContextPropaga
 
 func (env *testWorkflowEnvironmentImpl) ExecuteActivity(parameters ExecuteActivityParams, callback ResultHandler) ActivityID {
 	ensureDefaultRetryPolicy(&parameters)
-	scheduleTaskAttr := &commandpb.ScheduleActivityTaskCommandAttributes{}
-	if parameters.ActivityID == "" {
-		scheduleTaskAttr.ActivityId = getStringID(env.nextID())
-	} else {
-		scheduleTaskAttr.ActivityId = parameters.ActivityID
+	// Backward compatibility: generate ScheduleID/ActivityID if not set by caller.
+	if parameters.ScheduleID == 0 {
+		parameters.ScheduleID = env.GenerateSequence()
 	}
+	if parameters.ActivityID == "" {
+		parameters.ActivityID = getStringID(parameters.ScheduleID)
+	}
+	scheduleTaskAttr := &commandpb.ScheduleActivityTaskCommandAttributes{}
+	scheduleTaskAttr.ActivityId = parameters.ActivityID
 	activityID := ActivityID{id: scheduleTaskAttr.GetActivityId()}
 	scheduleTaskAttr.ActivityType = &commonpb.ActivityType{Name: parameters.ActivityType.Name}
 	scheduleTaskAttr.TaskQueue = &taskqueuepb.TaskQueue{Name: parameters.TaskQueueName, Kind: enumspb.TASK_QUEUE_KIND_NORMAL}
@@ -1290,7 +1324,7 @@ func (env *testWorkflowEnvironmentImpl) ExecuteActivity(parameters ExecuteActivi
 	task.WorkflowType = &commonpb.WorkflowType{Name: env.workflowInfo.WorkflowType.Name}
 
 	taskHandler := env.newTestActivityTaskHandler(parameters.TaskQueueName, parameters.DataConverter)
-	activityHandle := env.addNewActivityHandle(task, callback)
+	activityHandle := env.addNewActivityHandle(task, callback, parameters.DataConverter, parameters.FailureConverter)
 	env.runningCount++
 	activityToken := activityHandle.token
 
@@ -1381,15 +1415,19 @@ func (env *testWorkflowEnvironmentImpl) ExecuteActivity(parameters ExecuteActivi
 			}
 
 			panicErr := recover()
+			fc := parameters.FailureConverter
+			if fc == nil {
+				fc = env.failureConverter
+			}
 			if result == nil && panicErr == nil {
 				failureErr := errors.New("activity called runtime.Goexit")
 				result = &workflowservice.RespondActivityTaskFailedRequest{
-					Failure: env.failureConverter.ErrorToFailure(failureErr),
+					Failure: fc.ErrorToFailure(failureErr),
 				}
 			} else if panicErr != nil {
 				failureErr := newPanicError(fmt.Sprintf("%v", panicErr), "")
 				result = &workflowservice.RespondActivityTaskFailedRequest{
-					Failure: env.failureConverter.ErrorToFailure(failureErr),
+					Failure: fc.ErrorToFailure(failureErr),
 				}
 			}
 
@@ -1575,7 +1613,7 @@ func (env *testWorkflowEnvironmentImpl) validateRetryPolicy(policy *commonpb.Ret
 	return nil
 }
 
-func (env *testWorkflowEnvironmentImpl) addNewActivityHandle(task *workflowservice.PollActivityTaskQueueResponse, callback func(result *commonpb.Payloads, err error)) *testActivityHandle {
+func (env *testWorkflowEnvironmentImpl) addNewActivityHandle(task *workflowservice.PollActivityTaskQueueResponse, callback func(result *commonpb.Payloads, err error), dc converter.DataConverter, fc converter.FailureConverter) *testActivityHandle {
 	token := testActivityToken{activityID: task.ActivityId}
 	if task.WorkflowExecution.GetWorkflowId() == "" {
 		token.runID = task.ActivityRunId
@@ -1590,6 +1628,8 @@ func (env *testWorkflowEnvironmentImpl) addNewActivityHandle(task *workflowservi
 		heartbeatDetails:  nil,
 		token:             token,
 		task:              task,
+		dataConverter:     dc,
+		failureConverter:  fc,
 		startTime:         now,
 		lastHeartbeatTime: now,
 	}
@@ -1649,7 +1689,11 @@ func (env *testWorkflowEnvironmentImpl) executeActivityWithRetryForTest(
 			}
 
 			p := fromProtoRetryPolicy(parameters.RetryPolicy)
-			backoff := getRetryBackoffWithNowTime(p, task.GetAttempt(), env.failureConverter.FailureToError(failure), env.Now(), expireTime)
+			retryFC := parameters.FailureConverter
+			if retryFC == nil {
+				retryFC = env.failureConverter
+			}
+			backoff := getRetryBackoffWithNowTime(p, task.GetAttempt(), retryFC.FailureToError(failure), env.Now(), expireTime)
 			if backoff > 0 {
 				// need a retry
 				waitCh := make(chan struct{})
@@ -1818,7 +1862,7 @@ func (env *testWorkflowEnvironmentImpl) handleActivityResult(activityHandle *tes
 			activityID,
 			activityType,
 			enumspb.RETRY_STATE_UNSPECIFIED,
-			env.failureConverter.FailureToError(request.GetFailure()),
+			activityHandle.failureConverter.FailureToError(request.GetFailure()),
 		)
 		activityHandle.callback(nil, err)
 	case *workflowservice.RespondActivityTaskCompletedRequest:
@@ -2731,7 +2775,7 @@ func (env *testWorkflowEnvironmentImpl) ExecuteNexusOperation(
 		response, failure, err := taskHandler.Execute(task)
 		if err != nil {
 			// No retries for operations, fail the operation immediately.
-			failure, err = taskHandler.fillInFailure(task.TaskToken, nexus.NewHandlerErrorf(nexus.HandlerErrorTypeInternal, err.Error()), false)
+			failure, err = taskHandler.fillInFailure(task.TaskToken, nexus.NewHandlerErrorf(nexus.HandlerErrorTypeInternal, "%s", err.Error()), false)
 		}
 		if failure != nil {
 			// Convert to a nexus HandlerError first to simulate the flow in the server.

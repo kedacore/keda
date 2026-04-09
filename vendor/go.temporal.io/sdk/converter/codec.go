@@ -231,6 +231,27 @@ func (e *CodecDataConverter) ToStrings(payloads *commonpb.Payloads) []string {
 	return strs
 }
 
+func (e *CodecDataConverter) WithSerializationContext(ctx SerializationContext) DataConverter {
+	parent := e.parent
+	if p, ok := parent.(DataConverterWithSerializationContext); ok {
+		parent = p.WithSerializationContext(ctx)
+	}
+	codecs := make([]PayloadCodec, len(e.codecs))
+	changed := parent != e.parent
+	for i, c := range e.codecs {
+		if cc, ok := c.(PayloadCodecWithSerializationContext); ok {
+			codecs[i] = cc.WithSerializationContext(ctx)
+			changed = changed || codecs[i] != c
+		} else {
+			codecs[i] = c
+		}
+	}
+	if !changed {
+		return e
+	}
+	return &CodecDataConverter{parent, codecs}
+}
+
 const remotePayloadCodecEncodePath = "/encode"
 const remotePayloadCodecDecodePath = "/decode"
 

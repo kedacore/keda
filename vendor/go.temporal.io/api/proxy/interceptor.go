@@ -24,7 +24,7 @@ import (
 	"go.temporal.io/api/sdk/v1"
 	"go.temporal.io/api/update/v1"
 	"go.temporal.io/api/workflow/v1"
-	"go.temporal.io/api/workflowservice/v1"
+	workflowservice "go.temporal.io/api/workflowservice/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -50,6 +50,13 @@ type VisitPayloadsOptions struct {
 	// Will be called for each Any encountered. If not set, the default is to recurse into the Any
 	// object, unmarshal it, visit, and re-marshal it always (even if there are no changes).
 	WellKnownAnyVisitor func(*VisitPayloadsContext, *anypb.Any) error
+	// ContextHook, if set, is called before visiting a proto message's payloads and children.
+	// The returned context replaces ctx.Context for the duration of visiting that message's
+	// subtree; the original is restored afterward. Use this to inject context values keyed to
+	// the message being entered. If nil, the context is not updated during traversal.
+	//
+	// NOTE: Experimental.
+	ContextHook func(context.Context, proto.Message) (context.Context, error)
 }
 
 // VisitPayloads calls the options.Visitor function for every Payload proto within msg.
@@ -323,6 +330,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -335,6 +350,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case []*activity.ActivityExecutionListInfo:
 			for _, x := range o {
@@ -349,6 +366,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -358,10 +383,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *activity.ActivityExecutionOutcome:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -374,10 +409,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *batch.BatchOperationReset:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -389,10 +434,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *batch.BatchOperationSignal:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -405,10 +460,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *batch.BatchOperationTermination:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -419,6 +484,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case *command.CancelWorkflowExecutionCommandAttributes:
 
@@ -426,6 +493,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -434,6 +509,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case []*command.Command:
 			for _, x := range o {
@@ -446,6 +523,14 @@ func visitPayloads(
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -468,10 +553,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *command.CompleteWorkflowExecutionCommandAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -483,10 +578,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *command.ContinueAsNewWorkflowExecutionCommandAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -503,10 +608,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *command.FailWorkflowExecutionCommandAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -518,10 +633,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *command.ModifyWorkflowPropertiesCommandAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -533,10 +658,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *command.RecordMarkerCommandAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -550,10 +685,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *command.ScheduleActivityTaskCommandAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -566,10 +711,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *command.ScheduleNexusOperationCommandAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 			if o.Input != nil {
 				no, err := visitPayload(ctx, options, o, o.Input)
@@ -579,10 +734,20 @@ func visitPayloads(
 				o.Input = no
 			}
 
+			ctx.Context = prevCtx
+
 		case *command.SignalExternalWorkflowExecutionCommandAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -595,10 +760,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *command.StartChildWorkflowExecutionCommandAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -613,10 +788,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *command.UpsertWorkflowSearchAttributesCommandAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -628,10 +813,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *common.Header:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -642,6 +837,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case *common.Memo:
 
@@ -649,6 +846,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -657,6 +862,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case *common.SearchAttributes:
 
@@ -668,6 +875,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -677,10 +892,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *deployment.DeploymentInfo:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -692,10 +917,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *deployment.UpdateDeploymentMetadata:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -707,10 +942,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *deployment.VersionMetadata:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -722,10 +967,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *deployment.WorkerDeploymentVersionInfo:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -737,10 +992,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *errordetails.MultiOperationExecutionFailure:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -751,6 +1016,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case []*errordetails.MultiOperationExecutionFailure_OperationStatus:
 			for _, x := range o {
@@ -765,6 +1032,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -774,10 +1049,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *errordetails.QueryFailedFailure:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -788,6 +1073,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case []*export.WorkflowExecution:
 			for _, x := range o {
@@ -802,6 +1089,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -811,10 +1106,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *export.WorkflowExecutions:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -826,10 +1131,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *failure.ApplicationFailureInfo:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -840,6 +1155,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case *failure.CanceledFailureInfo:
 
@@ -847,6 +1164,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -855,6 +1180,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case []*failure.Failure:
 			for _, x := range o {
@@ -867,6 +1194,14 @@ func visitPayloads(
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 			if o.EncodedAttributes != nil {
 				no, err := visitPayload(ctx, options, o, o.EncodedAttributes)
@@ -889,10 +1224,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *failure.ResetWorkflowFailureInfo:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -903,6 +1248,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case *failure.TimeoutFailureInfo:
 
@@ -910,6 +1257,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -919,10 +1274,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.ActivityTaskCanceledEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -934,10 +1299,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.ActivityTaskCompletedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -949,10 +1324,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.ActivityTaskFailedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -964,10 +1349,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.ActivityTaskScheduledEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -980,10 +1375,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.ActivityTaskStartedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -995,10 +1400,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.ActivityTaskTimedOutEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1010,10 +1425,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.ChildWorkflowExecutionCanceledEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1025,10 +1450,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.ChildWorkflowExecutionCompletedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1040,10 +1475,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.ChildWorkflowExecutionFailedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1055,10 +1500,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.ChildWorkflowExecutionStartedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1070,10 +1525,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.History:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1084,6 +1549,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case []*history.HistoryEvent:
 			for _, x := range o {
@@ -1096,6 +1563,14 @@ func visitPayloads(
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1141,10 +1616,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.MarkerRecordedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1158,10 +1643,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.NexusOperationCancelRequestFailedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1172,6 +1667,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case *history.NexusOperationCanceledEventAttributes:
 
@@ -1179,6 +1676,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -1188,10 +1693,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.NexusOperationCompletedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 			if o.Result != nil {
 				no, err := visitPayload(ctx, options, o, o.Result)
@@ -1201,10 +1716,20 @@ func visitPayloads(
 				o.Result = no
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.NexusOperationFailedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1216,10 +1741,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.NexusOperationScheduledEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 			if o.Input != nil {
 				no, err := visitPayload(ctx, options, o, o.Input)
@@ -1229,10 +1764,20 @@ func visitPayloads(
 				o.Input = no
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.NexusOperationTimedOutEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1244,10 +1789,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.SignalExternalWorkflowExecutionInitiatedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1260,10 +1815,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.StartChildWorkflowExecutionInitiatedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1278,10 +1843,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.UpsertWorkflowSearchAttributesEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1293,10 +1868,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.WorkflowExecutionCanceledEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1308,10 +1893,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.WorkflowExecutionCompletedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1323,10 +1918,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.WorkflowExecutionContinuedAsNewEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1343,10 +1948,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.WorkflowExecutionFailedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1358,10 +1973,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.WorkflowExecutionSignaledEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1374,10 +1999,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.WorkflowExecutionStartedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1394,10 +2029,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.WorkflowExecutionTerminatedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1409,10 +2054,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.WorkflowExecutionUpdateAcceptedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1424,10 +2079,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.WorkflowExecutionUpdateAdmittedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1439,10 +2104,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.WorkflowExecutionUpdateCompletedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1454,10 +2129,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.WorkflowExecutionUpdateRejectedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1470,10 +2155,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.WorkflowPropertiesModifiedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1484,6 +2179,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case *history.WorkflowPropertiesModifiedExternallyEventAttributes:
 
@@ -1491,6 +2188,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -1500,10 +2205,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *history.WorkflowTaskFailedEventAttributes:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1514,6 +2229,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case []*nexus.Endpoint:
 			for _, x := range o {
@@ -1528,6 +2245,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -1537,10 +2262,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *nexus.EndpointSpec:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 			if o.Description != nil {
 				no, err := visitPayload(ctx, options, o, o.Description)
@@ -1550,10 +2285,20 @@ func visitPayloads(
 				o.Description = no
 			}
 
+			ctx.Context = prevCtx
+
 		case *nexus.Request:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1564,6 +2309,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case *nexus.Response:
 
@@ -1571,6 +2318,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -1580,10 +2335,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *nexus.StartOperationRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 			if o.Payload != nil {
 				no, err := visitPayload(ctx, options, o, o.Payload)
@@ -1593,10 +2358,20 @@ func visitPayloads(
 				o.Payload = no
 			}
 
+			ctx.Context = prevCtx
+
 		case *nexus.StartOperationResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1609,10 +2384,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *nexus.StartOperationResponse_Sync:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 			if o.Payload != nil {
 				no, err := visitPayload(ctx, options, o, o.Payload)
@@ -1622,10 +2407,20 @@ func visitPayloads(
 				o.Payload = no
 			}
 
+			ctx.Context = prevCtx
+
 		case *operatorservice.CreateNexusEndpointRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1637,10 +2432,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *operatorservice.CreateNexusEndpointResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1651,6 +2456,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case *operatorservice.GetNexusEndpointResponse:
 
@@ -1658,6 +2465,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -1667,10 +2482,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *operatorservice.ListNexusEndpointsResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1682,10 +2507,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *operatorservice.UpdateNexusEndpointRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1697,10 +2532,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *operatorservice.UpdateNexusEndpointResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1711,6 +2556,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case []*protocol.Message:
 			for _, x := range o {
@@ -1725,6 +2572,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -1733,6 +2588,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case map[string]*query.WorkflowQuery:
 			for _, x := range o {
@@ -1747,6 +2604,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -1756,6 +2621,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case map[string]*query.WorkflowQueryResult:
 			for _, x := range o {
@@ -1770,6 +2637,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -1780,10 +2655,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *schedule.Schedule:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1795,10 +2680,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *schedule.ScheduleAction:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1809,6 +2704,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case []*schedule.ScheduleListEntry:
 			for _, x := range o {
@@ -1823,6 +2720,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -1833,10 +2738,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *sdk.UserMetadata:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 			if o.Details != nil {
 				no, err := visitPayload(ctx, options, o, o.Details)
@@ -1853,10 +2768,20 @@ func visitPayloads(
 				o.Summary = no
 			}
 
+			ctx.Context = prevCtx
+
 		case *update.Acceptance:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1868,10 +2793,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *update.Input:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1884,10 +2819,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *update.Outcome:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1900,10 +2845,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *update.Rejection:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1916,10 +2871,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *update.Request:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1931,10 +2896,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *update.Response:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1945,6 +2920,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case []*workflow.CallbackInfo:
 			for _, x := range o {
@@ -1959,6 +2936,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -1968,10 +2953,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflow.NewWorkflowExecutionInfo:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -1987,10 +2982,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflow.NexusOperationCancellationInfo:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2001,6 +3006,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case []*workflow.PendingActivityInfo:
 			for _, x := range o {
@@ -2015,6 +3022,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -2024,6 +3039,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case []*workflow.PendingNexusOperationInfo:
 			for _, x := range o {
@@ -2038,6 +3055,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -2047,6 +3072,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case []*workflow.PostResetOperation:
 			for _, x := range o {
@@ -2061,6 +3088,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -2070,10 +3105,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflow.PostResetOperation_SignalWorkflow:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2086,10 +3131,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflow.WorkflowExecutionConfig:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2100,6 +3155,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case []*workflow.WorkflowExecutionInfo:
 			for _, x := range o {
@@ -2114,6 +3171,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -2124,10 +3189,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.CountActivityExecutionsResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2138,6 +3213,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case []*workflowservice.CountActivityExecutionsResponse_AggregationGroup:
 			for _, x := range o {
@@ -2152,6 +3229,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -2161,10 +3246,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.CountSchedulesResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2175,6 +3270,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case []*workflowservice.CountSchedulesResponse_AggregationGroup:
 			for _, x := range o {
@@ -2189,6 +3286,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -2198,10 +3303,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.CountWorkflowExecutionsResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2212,6 +3327,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case []*workflowservice.CountWorkflowExecutionsResponse_AggregationGroup:
 			for _, x := range o {
@@ -2226,6 +3343,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -2235,10 +3360,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.CreateScheduleRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2252,10 +3387,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.DescribeActivityExecutionResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2269,10 +3414,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.DescribeDeploymentResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2284,10 +3439,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.DescribeScheduleResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2301,10 +3466,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.DescribeWorkerDeploymentVersionResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2316,10 +3491,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.DescribeWorkflowExecutionResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2335,10 +3520,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.ExecuteMultiOperationRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2349,6 +3544,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case []*workflowservice.ExecuteMultiOperationRequest_Operation:
 			for _, x := range o {
@@ -2363,6 +3560,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -2373,10 +3578,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.ExecuteMultiOperationResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2387,6 +3602,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case []*workflowservice.ExecuteMultiOperationResponse_Response:
 			for _, x := range o {
@@ -2401,6 +3618,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -2411,10 +3636,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.GetCurrentDeploymentResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2426,10 +3661,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.GetDeploymentReachabilityResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2441,10 +3686,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.GetWorkflowExecutionHistoryResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2455,6 +3710,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case *workflowservice.GetWorkflowExecutionHistoryReverseResponse:
 
@@ -2462,6 +3719,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -2471,10 +3736,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.ListActivityExecutionsResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2485,6 +3760,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case *workflowservice.ListArchivedWorkflowExecutionsResponse:
 
@@ -2492,6 +3769,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -2500,6 +3785,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case *workflowservice.ListClosedWorkflowExecutionsResponse:
 
@@ -2507,6 +3794,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -2515,6 +3810,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case *workflowservice.ListOpenWorkflowExecutionsResponse:
 
@@ -2522,6 +3819,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -2531,10 +3836,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.ListSchedulesResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2546,10 +3861,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.ListWorkflowExecutionsResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2561,10 +3886,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.PollActivityExecutionResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2575,6 +3910,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case []*workflowservice.PollActivityTaskQueueResponse:
 			for _, x := range o {
@@ -2589,6 +3926,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -2600,10 +3945,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.PollNexusTaskQueueResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2615,10 +3970,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.PollWorkflowExecutionUpdateResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2630,10 +3995,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.PollWorkflowTaskQueueResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2648,10 +4023,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.QueryWorkflowRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2663,10 +4048,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.QueryWorkflowResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2678,10 +4073,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.RecordActivityTaskHeartbeatByIdRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2692,6 +4097,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case *workflowservice.RecordActivityTaskHeartbeatRequest:
 
@@ -2699,6 +4106,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -2708,10 +4123,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.ResetWorkflowExecutionRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2723,10 +4148,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.RespondActivityTaskCanceledByIdRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2737,6 +4172,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case *workflowservice.RespondActivityTaskCanceledRequest:
 
@@ -2744,6 +4181,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -2753,10 +4198,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.RespondActivityTaskCompletedByIdRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2767,6 +4222,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case *workflowservice.RespondActivityTaskCompletedRequest:
 
@@ -2774,6 +4231,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -2783,10 +4248,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.RespondActivityTaskFailedByIdRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2798,6 +4273,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		case *workflowservice.RespondActivityTaskFailedByIdResponse:
 
@@ -2805,6 +4282,14 @@ func visitPayloads(
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
@@ -2814,10 +4299,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.RespondActivityTaskFailedRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2830,10 +4325,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.RespondActivityTaskFailedResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2845,10 +4350,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.RespondNexusTaskCompletedRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2860,10 +4375,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.RespondNexusTaskFailedRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2875,10 +4400,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.RespondQueryTaskCompletedRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2891,10 +4426,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.RespondWorkflowTaskCompletedRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2908,10 +4453,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.RespondWorkflowTaskCompletedResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2924,10 +4479,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.RespondWorkflowTaskFailedRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2940,10 +4505,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.ScanWorkflowExecutionsResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2955,10 +4530,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.SetCurrentDeploymentRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2970,10 +4555,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.SetCurrentDeploymentResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -2986,10 +4581,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.SignalWithStartWorkflowExecutionRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -3006,10 +4611,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.SignalWorkflowExecutionRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -3022,10 +4637,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.StartActivityExecutionRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -3040,10 +4665,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.StartBatchOperationRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -3057,10 +4692,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.StartWorkflowExecutionRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -3078,10 +4723,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.StartWorkflowExecutionResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -3093,10 +4748,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.TerminateWorkflowExecutionRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -3108,26 +4773,47 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.UpdateScheduleRequest:
 
 			if o == nil {
 				continue
 			}
 
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
+			}
+
 			if err := visitPayloads(
 				ctx,
 				options,
 				o,
+				o.GetMemo(),
 				o.GetSchedule(),
 				o.GetSearchAttributes(),
 			); err != nil {
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.UpdateWorkerDeploymentVersionMetadataRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -3139,10 +4825,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.UpdateWorkerDeploymentVersionMetadataResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -3154,10 +4850,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.UpdateWorkflowExecutionRequest:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -3169,10 +4875,20 @@ func visitPayloads(
 				return err
 			}
 
+			ctx.Context = prevCtx
+
 		case *workflowservice.UpdateWorkflowExecutionResponse:
 
 			if o == nil {
 				continue
+			}
+
+			prevCtx := ctx.Context
+			if options.ContextHook != nil {
+				var hookErr error
+				if ctx.Context, hookErr = options.ContextHook(prevCtx, o); hookErr != nil {
+					return hookErr
+				}
 			}
 
 			if err := visitPayloads(
@@ -3183,6 +4899,8 @@ func visitPayloads(
 			); err != nil {
 				return err
 			}
+
+			ctx.Context = prevCtx
 
 		}
 	}

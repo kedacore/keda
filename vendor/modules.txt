@@ -1843,7 +1843,7 @@ go.opentelemetry.io/proto/otlp/common/v1
 go.opentelemetry.io/proto/otlp/metrics/v1
 go.opentelemetry.io/proto/otlp/resource/v1
 go.opentelemetry.io/proto/otlp/trace/v1
-# go.temporal.io/api v1.62.2
+# go.temporal.io/api v1.62.7
 ## explicit; go 1.21
 go.temporal.io/api/activity/v1
 go.temporal.io/api/batch/v1
@@ -1868,6 +1868,7 @@ go.temporal.io/api/namespace/v1
 go.temporal.io/api/nexus/v1
 go.temporal.io/api/operatorservice/v1
 go.temporal.io/api/protocol/v1
+go.temporal.io/api/protometa/v1
 go.temporal.io/api/proxy
 go.temporal.io/api/query/v1
 go.temporal.io/api/replication/v1
@@ -1883,8 +1884,8 @@ go.temporal.io/api/worker/v1
 go.temporal.io/api/workflow/v1
 go.temporal.io/api/workflowservice/v1
 go.temporal.io/api/workflowservicemock/v1
-# go.temporal.io/sdk v1.41.1
-## explicit; go 1.23.0
+# go.temporal.io/sdk v1.42.0
+## explicit; go 1.24.0
 go.temporal.io/sdk/client
 go.temporal.io/sdk/converter
 go.temporal.io/sdk/internal

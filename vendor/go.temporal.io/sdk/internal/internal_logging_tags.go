@@ -34,4 +34,11 @@ const (
 	tagPanicStack                   = "PanicStack"
 	tagUpdateID                     = "UpdateID"
 	tagUpdateName                   = "UpdateName"
+	tagWorkflowTaskDuration         = "WorkflowTaskDuration"
+	tagPayloadDownloadCount         = "PayloadDownloadCount"
+	tagPayloadDownloadSize          = "PayloadDownloadSize"
+	tagPayloadDownloadDuration      = "PayloadDownloadDuration"
+	tagPayloadUploadCount           = "PayloadUploadCount"
+	tagPayloadUploadSize            = "PayloadUploadSize"
+	tagPayloadUploadDuration        = "PayloadUploadDuration"
 )

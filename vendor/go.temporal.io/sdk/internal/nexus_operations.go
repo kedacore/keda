@@ -464,13 +464,28 @@ func (t *testSuiteClientForNexusOperations) CompleteActivity(ctx context.Context
 	panic("not implemented in the test environment")
 }
 
+// CompleteActivityWithOptions implements Client.
+func (t *testSuiteClientForNexusOperations) CompleteActivityWithOptions(ctx context.Context, opts CompleteActivityOptions) error {
+	panic("not implemented in the test environment")
+}
+
 // CompleteActivityByID implements Client.
 func (t *testSuiteClientForNexusOperations) CompleteActivityByID(ctx context.Context, namespace string, workflowID string, runID string, activityID string, result interface{}, err error) error {
 	panic("not implemented in the test environment")
 }
 
-// CompleteActivityByID implements Client.
+// CompleteActivityByIDWithOptions implements Client.
+func (t *testSuiteClientForNexusOperations) CompleteActivityByIDWithOptions(ctx context.Context, opts CompleteActivityByIDOptions) error {
+	panic("not implemented in the test environment")
+}
+
+// CompleteActivityByActivityID implements Client.
 func (t *testSuiteClientForNexusOperations) CompleteActivityByActivityID(ctx context.Context, namespace string, activityID string, activityRunID string, result interface{}, err error) error {
+	panic("not implemented in the test environment")
+}
+
+// CompleteActivityByActivityIDWithOptions implements Client.
+func (t *testSuiteClientForNexusOperations) CompleteActivityByActivityIDWithOptions(ctx context.Context, opts CompleteActivityByActivityIDOptions) error {
 	panic("not implemented in the test environment")
 }
 
@@ -674,8 +689,18 @@ func (t *testSuiteClientForNexusOperations) RecordActivityHeartbeat(ctx context.
 	panic("not implemented in the test environment")
 }
 
+// RecordActivityHeartbeatWithOptions implements Client.
+func (t *testSuiteClientForNexusOperations) RecordActivityHeartbeatWithOptions(ctx context.Context, opts RecordActivityHeartbeatOptions) error {
+	panic("not implemented in the test environment")
+}
+
 // RecordActivityHeartbeatByID implements Client.
 func (t *testSuiteClientForNexusOperations) RecordActivityHeartbeatByID(ctx context.Context, namespace string, workflowID string, runID string, activityID string, details ...interface{}) error {
+	panic("not implemented in the test environment")
+}
+
+// RecordActivityHeartbeatByIDWithOptions implements Client.
+func (t *testSuiteClientForNexusOperations) RecordActivityHeartbeatByIDWithOptions(ctx context.Context, opts RecordActivityHeartbeatByIDOptions) error {
 	panic("not implemented in the test environment")
 }
 

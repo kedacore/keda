@@ -485,8 +485,10 @@ type NamespaceInfo_Capabilities struct {
 	// an empty response. When this flag is true, workers should allow polls to return gracefully
 	// rather than terminating any open polls on shutdown.
 	WorkerPollCompleteOnShutdown bool `protobuf:"varint,8,opt,name=worker_poll_complete_on_shutdown,json=workerPollCompleteOnShutdown,proto3" json:"worker_poll_complete_on_shutdown,omitempty"`
-	unknownFields                protoimpl.UnknownFields
-	sizeCache                    protoimpl.SizeCache
+	// True if the namespace supports poller autoscaling
+	PollerAutoscaling bool `protobuf:"varint,9,opt,name=poller_autoscaling,json=pollerAutoscaling,proto3" json:"poller_autoscaling,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *NamespaceInfo_Capabilities) Reset() {
@@ -575,6 +577,13 @@ func (x *NamespaceInfo_Capabilities) GetWorkerPollCompleteOnShutdown() bool {
 	return false
 }
 
+func (x *NamespaceInfo_Capabilities) GetPollerAutoscaling() bool {
+	if x != nil {
+		return x.PollerAutoscaling
+	}
+	return false
+}
+
 type NamespaceInfo_Limits struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Maximum size in bytes for payload fields in workflow history events
@@ -635,7 +644,7 @@ var File_temporal_api_namespace_v1_message_proto protoreflect.FileDescriptor
 
 const file_temporal_api_namespace_v1_message_proto_rawDesc = "" +
 	"\n" +
-	"'temporal/api/namespace/v1/message.proto\x12\x19temporal.api.namespace.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a%temporal/api/enums/v1/namespace.proto\"\x9c\b\n" +
+	"'temporal/api/namespace/v1/message.proto\x12\x19temporal.api.namespace.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a%temporal/api/enums/v1/namespace.proto\"\xcb\b\n" +
 	"\rNamespaceInfo\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12;\n" +
 	"\x05state\x18\x02 \x01(\x0e2%.temporal.api.enums.v1.NamespaceStateR\x05state\x12 \n" +
@@ -649,7 +658,7 @@ const file_temporal_api_namespace_v1_message_proto_rawDesc = "" +
 	"\x12supports_schedules\x18d \x01(\bR\x11supportsSchedules\x1a7\n" +
 	"\tDataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a\xa2\x03\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a\xd1\x03\n" +
 	"\fCapabilities\x120\n" +
 	"\x14eager_workflow_start\x18\x01 \x01(\bR\x12eagerWorkflowStart\x12\x1f\n" +
 	"\vsync_update\x18\x02 \x01(\bR\n" +
@@ -659,7 +668,8 @@ const file_temporal_api_namespace_v1_message_proto_rawDesc = "" +
 	"\"reported_problems_search_attribute\x18\x05 \x01(\bR\x1freportedProblemsSearchAttribute\x12%\n" +
 	"\x0eworkflow_pause\x18\x06 \x01(\bR\rworkflowPause\x123\n" +
 	"\x15standalone_activities\x18\a \x01(\bR\x14standaloneActivities\x12F\n" +
-	" worker_poll_complete_on_shutdown\x18\b \x01(\bR\x1cworkerPollCompleteOnShutdown\x1an\n" +
+	" worker_poll_complete_on_shutdown\x18\b \x01(\bR\x1cworkerPollCompleteOnShutdown\x12-\n" +
+	"\x12poller_autoscaling\x18\t \x01(\bR\x11pollerAutoscaling\x1an\n" +
 	"\x06Limits\x121\n" +
 	"\x15blob_size_limit_error\x18\x01 \x01(\x03R\x12blobSizeLimitError\x121\n" +
 	"\x15memo_size_limit_error\x18\x02 \x01(\x03R\x12memoSizeLimitError\"\xcf\x05\n" +

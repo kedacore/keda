@@ -218,6 +218,15 @@ type (
 		pollTimeTracker *pollTimeTracker
 
 		workerInstanceKey string
+
+		workerPollCompleteOnShutdown *atomic.Bool
+
+		// Set to true during start() when the namespace has the poller_autoscaling capability.
+		serverSupportsAutoscaling *atomic.Bool
+
+		inboundPayloadVisitor PayloadVisitor
+
+		outboundPayloadVisitor PayloadVisitor
 	}
 
 	// HistoryJSONOptions are options for HistoryFromJSON.
@@ -251,7 +260,6 @@ func ensureRequiredParams(params *workerExecutionParameters) {
 	if params.Logger == nil {
 		// create default logger if user does not supply one (should happen in tests only).
 		params.Logger = ilog.NewDefaultLogger()
-		params.Logger.Info("No logger configured for temporal worker. Created default one.")
 	}
 	if params.MetricsHandler == nil {
 		params.MetricsHandler = metrics.NopHandler
@@ -328,14 +336,14 @@ func newWorkflowTaskWorkerInternal(
 	switch params.WorkflowTaskPollerBehavior.(type) {
 	case *pollerBehaviorSimpleMaximum:
 		scalableTaskPollers = []scalableTaskPoller{
-			newScalableTaskPoller(taskProcessor.createPoller(Mixed), params.Logger, params.WorkflowTaskPollerBehavior),
+			newScalableTaskPoller(taskProcessor.createPoller(Mixed), params.Logger, params.WorkflowTaskPollerBehavior, params.serverSupportsAutoscaling),
 		}
 	case *pollerBehaviorAutoscaling:
 		scalableTaskPollers = []scalableTaskPoller{
-			newScalableTaskPoller(taskProcessor.createPoller(NonSticky), params.Logger, params.WorkflowTaskPollerBehavior),
+			newScalableTaskPoller(taskProcessor.createPoller(NonSticky), params.Logger, params.WorkflowTaskPollerBehavior, params.serverSupportsAutoscaling),
 		}
 		if taskProcessor.stickyCacheSize > 0 {
-			scalableTaskPollers = append(scalableTaskPollers, newScalableTaskPoller(taskProcessor.createPoller(Sticky), params.Logger, params.WorkflowTaskPollerBehavior))
+			scalableTaskPollers = append(scalableTaskPollers, newScalableTaskPoller(taskProcessor.createPoller(Sticky), params.Logger, params.WorkflowTaskPollerBehavior, params.serverSupportsAutoscaling))
 		}
 	}
 
@@ -385,7 +393,7 @@ func newWorkflowTaskWorkerInternal(
 				PollerBehaviorSimpleMaximumOptions{
 					MaximumNumberOfPollers: 2,
 				},
-			)),
+			), params.serverSupportsAutoscaling),
 		},
 		taskProcessor:  localActivityTaskPoller,
 		workerType:     "LocalActivityWorker",
@@ -433,6 +441,11 @@ func (ww *workflowWorker) Stop() {
 }
 
 func newSessionWorker(client *WorkflowClient, params workerExecutionParameters, env *registry, maxConcurrentSessionExecutionSize int) *sessionWorker {
+	// Session workers poll on resource-specific task queues not included in
+	// ShutdownWorker, so the server will never cancel their polls. Use the
+	// legacy immediate-cancel path instead of graceful shutdown.
+	params.workerPollCompleteOnShutdown = &atomic.Bool{}
+
 	if params.Identity == "" {
 		params.Identity = getWorkerIdentity(params.TaskQueue)
 	}
@@ -531,7 +544,7 @@ func newActivityWorker(
 		slotSupplier:     slotSupplier,
 		maxTaskPerSecond: params.WorkerActivitiesPerSecond,
 		taskPollers: []scalableTaskPoller{
-			newScalableTaskPoller(poller, params.Logger, params.ActivityTaskPollerBehavior),
+			newScalableTaskPoller(poller, params.Logger, params.ActivityTaskPollerBehavior, params.serverSupportsAutoscaling),
 		},
 		taskProcessor:           poller,
 		workerType:              "ActivityWorker",
@@ -1170,8 +1183,9 @@ type AggregatedWorker struct {
 	plugins               []WorkerPlugin
 	pluginRegistryOptions *WorkerPluginConfigureWorkerRegistryOptions // Never nil
 
-	heartbeatMetrics  *heartbeatMetricsHandler
-	heartbeatCallback func() *workerpb.WorkerHeartbeat
+	heartbeatMetrics             *heartbeatMetricsHandler
+	heartbeatCallback            func() *workerpb.WorkerHeartbeat
+	workerPollCompleteOnShutdown *atomic.Bool
 }
 
 // RegisterWorkflow registers workflow implementation with the AggregatedWorker
@@ -1281,8 +1295,16 @@ func (aw *AggregatedWorker) start() error {
 	}
 	proto.Merge(aw.capabilities, capabilities)
 
-	if _, err := aw.client.loadNamespaceCapabilities(aw.executionParams.MetricsHandler); err != nil {
+	nsCapabilities, err := aw.client.loadNamespaceCapabilities(aw.executionParams.MetricsHandler)
+	if err != nil {
 		return err
+	}
+	if nsCapabilities.GetWorkerPollCompleteOnShutdown() {
+		aw.workerPollCompleteOnShutdown.Store(true)
+	}
+
+	if nsCapabilities.GetPollerAutoscaling() {
+		aw.executionParams.serverSupportsAutoscaling.Store(true)
 	}
 
 	if !util.IsInterfaceNil(aw.workflowWorker) {
@@ -1443,8 +1465,24 @@ func (aw *AggregatedWorker) Stop() {
 	case <-aw.stopC:
 		return
 	default:
-		close(aw.stopC)
 	}
+
+	// Prevent pollers from re-polling before closing stopC. There is a race
+	// between stopC being closed and the ShutdownWorker RPC: a poll can
+	// complete naturally (e.g. long-poll timeout) right after stopC fires
+	// but before ShutdownWorker is sent, causing the poller to loop and
+	// re-poll.
+	if !util.IsInterfaceNil(aw.activityWorker) {
+		aw.activityWorker.worker.noRepoll.Store(true)
+	}
+	if !util.IsInterfaceNil(aw.workflowWorker) {
+		aw.workflowWorker.worker.noRepoll.Store(true)
+	}
+	if !util.IsInterfaceNil(aw.nexusWorker) {
+		aw.nexusWorker.worker.noRepoll.Store(true)
+	}
+
+	close(aw.stopC)
 
 	aw.shutdownWorker()
 
@@ -1525,6 +1563,8 @@ func (aw *AggregatedWorker) shutdownWorker() {
 		Reason:            "graceful shutdown",
 		WorkerHeartbeat:   heartbeat,
 		WorkerInstanceKey: aw.workerInstanceKey,
+		TaskQueue:         aw.executionParams.TaskQueue,
+		TaskQueueTypes:    aw.activeTaskQueueTypes(),
 	})
 
 	// Ignore unimplemented (server doesn't support it)
@@ -1537,6 +1577,40 @@ func (aw *AggregatedWorker) shutdownWorker() {
 	}
 }
 
+func (aw *AggregatedWorker) activeTaskQueueTypes() []enumspb.TaskQueueType {
+	var types []enumspb.TaskQueueType
+	if !util.IsInterfaceNil(aw.workflowWorker) {
+		types = append(types, enumspb.TASK_QUEUE_TYPE_WORKFLOW)
+	}
+	if !util.IsInterfaceNil(aw.activityWorker) {
+		types = append(types, enumspb.TASK_QUEUE_TYPE_ACTIVITY)
+	}
+	if !util.IsInterfaceNil(aw.nexusWorker) {
+		types = append(types, enumspb.TASK_QUEUE_TYPE_NEXUS)
+	}
+	return types
+}
+
+// replayStorageMetrics is a storageOperationCallback used by WorkflowReplayer.
+// It logs a warning once when storage references are encountered but no driver
+// is configured, and is otherwise a no-op.
+type replayStorageMetrics struct {
+	mu                 sync.Mutex
+	logger             log.Logger
+	warnedUnconfigured bool
+}
+
+func (c *replayStorageMetrics) PayloadBatchCompleted(_ int, _ int64, _ time.Duration) {}
+
+func (c *replayStorageMetrics) UnconfiguredStorageReference() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !c.warnedUnconfigured && c.logger != nil {
+		c.logger.Warn("[TMPRL1105] Detected externally stored payload(s) but no storage driver is configured.")
+		c.warnedUnconfigured = true
+	}
+}
+
 // WorkflowReplayer is used to replay workflow code from an event history
 type WorkflowReplayer struct {
 	registry                    *registry
@@ -1545,6 +1619,7 @@ type WorkflowReplayer struct {
 	contextPropagators          []ContextPropagator
 	enableLoggingInReplay       bool
 	disableDeadlockDetection    bool
+	inboundPayloadVisitor       PayloadVisitor
 	mu                          sync.Mutex
 	workflowExecutionResults    map[string]*commonpb.Payloads
 	workflowReplayerInstanceKey string
@@ -1593,6 +1668,14 @@ type WorkflowReplayerOptions struct {
 	//
 	// NOTE: Experimental
 	Plugins []WorkerPlugin
+
+	// ExternalStorage configures external payload storage for replay.
+	// Set this to the same ExternalStorage used by the original worker so that
+	// externally stored payloads in the history are resolved before being
+	// passed to the workflow code.
+	//
+	// NOTE: Experimental
+	ExternalStorage converter.ExternalStorage
 }
 
 // ReplayWorkflowHistoryOptions are options for replaying a workflow.
@@ -1617,6 +1700,11 @@ func NewWorkflowReplayer(options WorkflowReplayerOptions) (*WorkflowReplayer, er
 		}
 	}
 
+	storageParams, err := ExternalStorageToParams(options.ExternalStorage)
+	if err != nil {
+		return nil, fmt.Errorf("invalid ExternalStorage options: %w", err)
+	}
+
 	registry := newRegistryWithOptions(registryOptions{disableAliasing: options.DisableRegistrationAliasing})
 	registry.interceptors = options.Interceptors
 	return &WorkflowReplayer{
@@ -1626,6 +1714,7 @@ func NewWorkflowReplayer(options WorkflowReplayerOptions) (*WorkflowReplayer, er
 		contextPropagators:          options.ContextPropagators,
 		enableLoggingInReplay:       options.EnableLoggingInReplay,
 		disableDeadlockDetection:    options.DisableDeadlockDetection,
+		inboundPayloadVisitor:       NewExternalRetrievalVisitor(storageParams),
 		workflowExecutionResults:    make(map[string]*commonpb.Payloads),
 		workflowReplayerInstanceKey: workflowReplayerInstanceKey,
 		plugins:                     options.Plugins,
@@ -1848,12 +1937,15 @@ func (aw *WorkflowReplayer) replayWorkflowHistoryRoot(
 		PreviousStartedEventId: math.MaxInt64,
 	}
 
-	iterator := &historyIteratorImpl{
-		nextPageToken: task.NextPageToken,
-		execution:     task.WorkflowExecution,
-		namespace:     ReplayNamespace,
-		service:       service,
-		taskQueue:     taskQueue,
+	iterator := &retrievingHistoryIterator{
+		inner: &historyIteratorImpl{
+			nextPageToken: task.NextPageToken,
+			execution:     task.WorkflowExecution,
+			namespace:     ReplayNamespace,
+			service:       service,
+			taskQueue:     taskQueue,
+		},
+		inboundVisitor: aw.inboundPayloadVisitor,
 	}
 	cache := NewWorkerCache()
 	params := workerExecutionParameters{
@@ -1883,6 +1975,14 @@ func (aw *WorkflowReplayer) replayWorkflowHistoryRoot(
 	if aw.disableDeadlockDetection {
 		params.DeadlockDetectionTimeout = math.MaxInt64
 	}
+	// Resolve externally stored payloads in the history before passing to the
+	// task handler. This mirrors what processWorkflowTask does for live workers.
+	replayStorageCb := &replayStorageMetrics{logger: logger}
+	inboundPayloadVisitorCtx := context.WithValue(context.Background(), storageOperationCallbackContextKey, replayStorageCb)
+	if err := visitProtoPayloads(inboundPayloadVisitorCtx, aw.inboundPayloadVisitor, task); err != nil {
+		return err
+	}
+
 	taskHandler := newWorkflowTaskHandler(params, nil, aw.registry)
 	wfctx, err := taskHandler.GetOrCreateWorkflowContext(task, iterator)
 	defer wfctx.Unlock(err)
@@ -2102,6 +2202,7 @@ func NewAggregatedWorker(client *WorkflowClient, taskQueue string, options Worke
 	}
 
 	cache := NewWorkerCache()
+	workerPollCompleteOnShutdown := &atomic.Bool{}
 	workerParams := workerExecutionParameters{
 		Namespace:                        client.namespace,
 		TaskQueue:                        taskQueue,
@@ -2134,9 +2235,13 @@ func NewAggregatedWorker(client *WorkflowClient, taskQueue string, options Worke
 			taskQueue:     taskQueue,
 			maxConcurrent: options.MaxConcurrentEagerActivityExecutionSize,
 		}),
-		capabilities:      &capabilities,
-		pollTimeTracker:   &pollTimeTracker{},
-		workerInstanceKey: workerInstanceKey,
+		capabilities:                 &capabilities,
+		pollTimeTracker:              &pollTimeTracker{},
+		workerInstanceKey:            workerInstanceKey,
+		workerPollCompleteOnShutdown: workerPollCompleteOnShutdown,
+		serverSupportsAutoscaling: &atomic.Bool{},
+		inboundPayloadVisitor:     client.inboundPayloadVisitor,
+		outboundPayloadVisitor:    client.outboundPayloadVisitor,
 	}
 
 	if options.MaxConcurrentWorkflowTaskPollers != 0 {
@@ -2238,6 +2343,7 @@ func NewAggregatedWorker(client *WorkflowClient, taskQueue string, options Worke
 		pid := strconv.Itoa(os.Getpid())
 		previousHeartbeatTime := time.Now()
 		pluginInfos := collectPluginInfos(client.clientPluginNames, plugins)
+		driverInfos := collectStorageDriverInfos(client.storageDriverTypes)
 
 		var prevWorkflowProcessed, prevWorkflowFailed int64
 		var prevActivityProcessed, prevActivityFailed int64
@@ -2313,6 +2419,7 @@ func NewAggregatedWorker(client *WorkflowClient, taskQueue string, options Worke
 				HeartbeatTime:             timestamppb.New(heartbeatTime),
 				ElapsedSinceLastHeartbeat: durationpb.New(elapsedSinceLastHeartbeat),
 				Plugins:                   pluginInfos,
+				Drivers:                   driverInfos,
 			}
 			aw.heartbeatMetrics.PopulateHeartbeat(hb, populateOpts)
 
@@ -2321,20 +2428,21 @@ func NewAggregatedWorker(client *WorkflowClient, taskQueue string, options Worke
 	}
 
 	aw = &AggregatedWorker{
-		client:                client,
-		workflowWorker:        workflowWorker,
-		activityWorker:        activityWorker,
-		sessionWorker:         sessionWorker,
-		logger:                workerParams.Logger,
-		registry:              registry,
-		stopC:                 make(chan struct{}),
-		capabilities:          &capabilities,
-		executionParams:       workerParams,
-		workerInstanceKey:     workerInstanceKey,
-		plugins:               plugins,
-		pluginRegistryOptions: &pluginRegistryOptions,
-		heartbeatMetrics:      heartbeatMetrics,
-		heartbeatCallback:     heartbeatCallback,
+		client:                       client,
+		workflowWorker:               workflowWorker,
+		activityWorker:               activityWorker,
+		sessionWorker:                sessionWorker,
+		logger:                       workerParams.Logger,
+		registry:                     registry,
+		stopC:                        make(chan struct{}),
+		capabilities:                 &capabilities,
+		executionParams:              workerParams,
+		workerInstanceKey:            workerInstanceKey,
+		plugins:                      plugins,
+		pluginRegistryOptions:        &pluginRegistryOptions,
+		heartbeatMetrics:             heartbeatMetrics,
+		heartbeatCallback:            heartbeatCallback,
+		workerPollCompleteOnShutdown: workerPollCompleteOnShutdown,
 	}
 
 	// Set memoized start as a once-value that invokes plugins first
@@ -2700,5 +2808,16 @@ func collectPluginInfos(clientPluginNames []string, workerPlugins []WorkerPlugin
 		return result[i].Name < result[j].Name
 	})
 
+	return result
+}
+
+func collectStorageDriverInfos(driverTypes []string) []*workerpb.StorageDriverInfo {
+	if len(driverTypes) == 0 {
+		return nil
+	}
+	result := make([]*workerpb.StorageDriverInfo, len(driverTypes))
+	for i, t := range driverTypes {
+		result[i] = &workerpb.StorageDriverInfo{Type: t}
+	}
 	return result
 }
