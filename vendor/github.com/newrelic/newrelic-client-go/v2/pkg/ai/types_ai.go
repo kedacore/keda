@@ -199,6 +199,8 @@ type AiNotificationsDestinationFilter struct {
 	ID string `json:"id,omitempty"`
 	// Name
 	Name string `json:"name,omitempty"`
+	// ExactName - exact match for destination name
+	ExactName string `json:"exactName,omitempty"`
 }
 
 // SecureValue - The `SecureValue` scalar represents a secure value, ie a password, an API key, etc.
