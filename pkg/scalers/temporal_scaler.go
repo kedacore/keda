@@ -182,12 +182,16 @@ func (s *temporalScaler) getDeploymentQueueSize(ctx context.Context) (int64, err
 }
 
 func (s *temporalScaler) getDeploymentBacklogCount(ctx context.Context) (int64, error) {
-	resp, err := s.tcl.WorkflowService().DescribeWorkerDeploymentVersion(ctx,
+	return describeDeploymentBacklogCount(ctx, s.tcl.WorkflowService(), s.metadata.Namespace, s.metadata.DeploymentName, s.metadata.BuildID)
+}
+
+func describeDeploymentBacklogCount(ctx context.Context, svc workflowservice.WorkflowServiceClient, namespace, deploymentName, buildID string) (int64, error) {
+	resp, err := svc.DescribeWorkerDeploymentVersion(ctx,
 		&workflowservice.DescribeWorkerDeploymentVersionRequest{
-			Namespace: s.metadata.Namespace,
+			Namespace: namespace,
 			DeploymentVersion: &deploymentpb.WorkerDeploymentVersion{
-				DeploymentName: s.metadata.DeploymentName,
-				BuildId:        s.metadata.BuildID,
+				DeploymentName: deploymentName,
+				BuildId:        buildID,
 			},
 			ReportTaskQueueStats: true,
 		},

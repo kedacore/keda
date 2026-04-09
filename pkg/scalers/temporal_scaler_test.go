@@ -2,10 +2,15 @@ package scalers
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/go-logr/logr"
+	gomock "github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	taskqueuepb "go.temporal.io/api/taskqueue/v1"
+	"go.temporal.io/api/workflowservice/v1"
+	workflowservicemock "go.temporal.io/api/workflowservicemock/v1"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -360,4 +365,83 @@ func TestTemporalDefaultQueueTypes(t *testing.T) {
 
 	metadata.QueueTypes = []string{"workflow"}
 	assert.Len(t, getQueueTypes(metadata.QueueTypes), 1, "only one type should be there")
+}
+
+func makeVersionTaskQueue(backlog int64) *workflowservice.DescribeWorkerDeploymentVersionResponse_VersionTaskQueue {
+	return &workflowservice.DescribeWorkerDeploymentVersionResponse_VersionTaskQueue{
+		Stats: &taskqueuepb.TaskQueueStats{
+			ApproximateBacklogCount: backlog,
+		},
+	}
+}
+
+func TestDescribeDeploymentBacklogCount(t *testing.T) {
+	cases := []struct {
+		name          string
+		taskQueues    []*workflowservice.DescribeWorkerDeploymentVersionResponse_VersionTaskQueue
+		svcErr        error
+		wantBacklog   int64
+		wantErr       bool
+	}{
+		{
+			name:        "single task queue",
+			taskQueues:  []*workflowservice.DescribeWorkerDeploymentVersionResponse_VersionTaskQueue{makeVersionTaskQueue(42)},
+			wantBacklog: 42,
+		},
+		{
+			name: "multiple task queues summed",
+			taskQueues: []*workflowservice.DescribeWorkerDeploymentVersionResponse_VersionTaskQueue{
+				makeVersionTaskQueue(10),
+				makeVersionTaskQueue(20),
+				makeVersionTaskQueue(5),
+			},
+			wantBacklog: 35,
+		},
+		{
+			name:        "no task queues returns zero",
+			taskQueues:  nil,
+			wantBacklog: 0,
+		},
+		{
+			name: "nil stats entry skipped",
+			taskQueues: []*workflowservice.DescribeWorkerDeploymentVersionResponse_VersionTaskQueue{
+				{Stats: nil},
+				makeVersionTaskQueue(7),
+			},
+			wantBacklog: 7,
+		},
+		{
+			name:    "service error propagated",
+			svcErr:  errors.New("rpc error"),
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockSvc := workflowservicemock.NewMockWorkflowServiceClient(ctrl)
+			if tc.svcErr != nil {
+				mockSvc.EXPECT().
+					DescribeWorkerDeploymentVersion(gomock.Any(), gomock.Any()).
+					Return(nil, tc.svcErr)
+			} else {
+				mockSvc.EXPECT().
+					DescribeWorkerDeploymentVersion(gomock.Any(), gomock.Any()).
+					Return(&workflowservice.DescribeWorkerDeploymentVersionResponse{
+						VersionTaskQueues: tc.taskQueues,
+					}, nil)
+			}
+
+			got, err := describeDeploymentBacklogCount(context.Background(), mockSvc, "default", "my-deployment", "v1.0.0")
+			if tc.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.wantBacklog, got)
+			}
+		})
+	}
 }

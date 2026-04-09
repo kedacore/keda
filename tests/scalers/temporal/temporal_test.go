@@ -30,13 +30,14 @@ var (
 )
 
 type templateData struct {
-	WorkFlowCommand        string
-	WorkFlowIterations     int
-	BuildID                string
-	DeploymentName         string
-	TestNamespace          string
-	TemporalDeploymentName string
-	ScaledObjectName       string
+	WorkFlowCommand              string
+	WorkFlowIterations           int
+	BuildID                      string
+	DeploymentName               string
+	TemporalWorkerDeploymentName string
+	TestNamespace                string
+	TemporalDeploymentName       string
+	ScaledObjectName             string
 }
 
 const (
@@ -212,6 +213,69 @@ spec:
      restartPolicy: OnFailure
  backoffLimit: 10
 `
+
+	deploymentWorkerDeploymentVersionTemplate = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.DeploymentName}}-deployment-version
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}-deployment-version
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: {{.DeploymentName}}-deployment-version
+  template:
+    metadata:
+      labels:
+        app: {{.DeploymentName}}-deployment-version
+    spec:
+      containers:
+      - name: worker
+        image: "temporaliotest/omes:go-latest"
+        imagePullPolicy: Always
+        command: ["/app/temporal-omes"]
+        args:
+        - "run-worker"
+        - "--language=go"
+        - "--server-address={{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233"
+        - "--run-id=test"
+        - "--scenario=workflow_with_single_noop_activity"
+        - "--dir-name=prepared"
+        - "--build-id={{.BuildID}}"
+        - "--deployment-name={{.TemporalWorkerDeploymentName}}"
+`
+
+	scaledObjectDeploymentVersionTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}-deployment-version
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}-deployment-version
+  pollingInterval: 5
+  cooldownPeriod: 10
+  minReplicaCount: 0
+  maxReplicaCount: 1
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 10
+  triggers:
+  - type: temporal
+    metadata:
+      namespace: default
+      taskQueue: "omes-test"
+      targetQueueSize: "2"
+      endpoint: {{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233
+      deploymentName: {{.TemporalWorkerDeploymentName}}
+      buildId: {{.BuildID}}
+`
 )
 
 func getTemplateData() (templateData, []Template) {
@@ -318,4 +382,55 @@ func updateWorkerVersion(t *testing.T, kc *kubernetes.Clientset, data templateDa
 	assert.True(t, WaitForJobCount(t, kc, testNamespace, numJobs, 60, 3), "job update-build-id count in namespace should be 1")
 	assert.True(t, WaitForJobSuccess(t, kc, "update-worker-version", testNamespace, 3, 30), "job update-build-id should be successful")
 	KubectlDeleteWithTemplate(t, data, "jobUpdateBuildID", jobUpdateBuildIDTemplate)
+}
+
+func TestTemporalDeploymentVersionScaler(t *testing.T) {
+	kc := GetKubernetesClient(t)
+	data := templateData{
+		WorkFlowCommand:              "run-scenario",
+		WorkFlowIterations:           3,
+		BuildID:                      "v2.0.0",
+		DeploymentName:               deploymentName,
+		TemporalWorkerDeploymentName: "omes-deployment",
+		TestNamespace:                testNamespace,
+		TemporalDeploymentName:       temporalDeploymentName,
+		ScaledObjectName:             scaledObjectName,
+	}
+	templates := []Template{
+		{Name: "deploymentWorkerDeploymentVersionTemplate", Config: deploymentWorkerDeploymentVersionTemplate},
+		{Name: "scaledObjectDeploymentVersionTemplate", Config: scaledObjectDeploymentVersionTemplate},
+	}
+
+	CreateNamespace(t, kc, testNamespace)
+
+	KubectlApplyWithTemplate(t, data, "temporalServiceTemplate", temporalServiceTemplate)
+	KubectlApplyWithTemplate(t, data, "temporalDeploymentTemplate", temporalDeploymentTemplate)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, temporalDeploymentName, testNamespace, 1, 30, 4), "temporal is not in a ready state")
+
+	KubectlApplyWithTemplate(t, data, "deploymentWorkerDeploymentVersionTemplate", deploymentWorkerDeploymentVersionTemplate)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName+"-deployment-version", testNamespace, 0, 30, 2), "deployment should exist with 0 replicas")
+	KubectlApplyWithTemplate(t, data, "scaledObjectDeploymentVersionTemplate", scaledObjectDeploymentVersionTemplate)
+
+	testDeploymentVersionScaleOut(t, kc, data)
+	testDeploymentVersionScaleIn(t, kc, data)
+
+	DeleteKubernetesResources(t, testNamespace, data, templates)
+}
+
+func testDeploymentVersionScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing deployment version scale out ---")
+
+	KubectlApplyWithTemplate(t, data, "jobWorkFlow", jobWorkFlowTemplate)
+	assert.True(t, WaitForJobCount(t, kc, testNamespace, 1, 60, 3), "job count in namespace should be 1")
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName+"-deployment-version", testNamespace, 1, 60, 3),
+		"replica count for deployment %s build %s should be %d after 3 minutes", data.TemporalWorkerDeploymentName, data.BuildID, 1)
+}
+
+func testDeploymentVersionScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing deployment version scale in ---")
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName+"-deployment-version", testNamespace, 0, 60, 5),
+		"replica count for deployment %s build %s should be %d after 5 minutes", data.TemporalWorkerDeploymentName, data.BuildID, 0)
+	KubectlDeleteWithTemplate(t, data, "jobWorkFlow", jobWorkFlowTemplate)
 }
