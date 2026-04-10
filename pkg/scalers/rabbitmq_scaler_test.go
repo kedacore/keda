@@ -952,4 +952,291 @@ func generateTestCertAndKey(t *testing.T) (string, string) {
 	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
 
 	return string(certPEM), string(keyPEM)
+
+func TestGetSum(t *testing.T) {
+	tests := []struct {
+		name                string
+		queues              []queueInfo
+		expectedMessages    int
+		expectedReady       int
+		expectedPublishRate float64
+		expectedDeliverRate float64
+	}{
+		{
+			name:                "empty",
+			queues:              nil,
+			expectedMessages:    0,
+			expectedReady:       0,
+			expectedPublishRate: 0,
+			expectedDeliverRate: 0,
+		},
+		{
+			name: "single queue",
+			queues: []queueInfo{
+				{
+					Messages:      10,
+					MessagesReady: 5,
+					MessageStat: messageStat{
+						PublishDetail:    publishDetail{Rate: 1.5},
+						DeliverGetDetail: deliverGetDetail{Rate: 2.5},
+					},
+				},
+			},
+			expectedMessages:    10,
+			expectedReady:       5,
+			expectedPublishRate: 1.5,
+			expectedDeliverRate: 2.5,
+		},
+		{
+			name: "multiple queues",
+			queues: []queueInfo{
+				{
+					Messages:      10,
+					MessagesReady: 5,
+					MessageStat: messageStat{
+						PublishDetail:    publishDetail{Rate: 1.0},
+						DeliverGetDetail: deliverGetDetail{Rate: 2.0},
+					},
+				},
+				{
+					Messages:      20,
+					MessagesReady: 15,
+					MessageStat: messageStat{
+						PublishDetail:    publishDetail{Rate: 3.0},
+						DeliverGetDetail: deliverGetDetail{Rate: 4.0},
+					},
+				},
+			},
+			expectedMessages:    30,
+			expectedReady:       20,
+			expectedPublishRate: 4.0,
+			expectedDeliverRate: 6.0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msgs, ready, pubRate, delRate := getSum(tt.queues)
+			assert.Equal(t, tt.expectedMessages, msgs)
+			assert.Equal(t, tt.expectedReady, ready)
+			assert.InDelta(t, tt.expectedPublishRate, pubRate, 0.001)
+			assert.InDelta(t, tt.expectedDeliverRate, delRate, 0.001)
+		})
+	}
+}
+
+func TestGetAverage(t *testing.T) {
+	tests := []struct {
+		name                string
+		queues              []queueInfo
+		expectedMessages    int
+		expectedReady       int
+		expectedPublishRate float64
+		expectedDeliverRate float64
+	}{
+		{
+			name: "single queue",
+			queues: []queueInfo{
+				{
+					Messages:      10,
+					MessagesReady: 6,
+					MessageStat: messageStat{
+						PublishDetail:    publishDetail{Rate: 2.0},
+						DeliverGetDetail: deliverGetDetail{Rate: 4.0},
+					},
+				},
+			},
+			expectedMessages:    10,
+			expectedReady:       6,
+			expectedPublishRate: 2.0,
+			expectedDeliverRate: 4.0,
+		},
+		{
+			name: "two queues integer truncation",
+			queues: []queueInfo{
+				{
+					Messages:      5,
+					MessagesReady: 3,
+					MessageStat: messageStat{
+						PublishDetail:    publishDetail{Rate: 1.0},
+						DeliverGetDetail: deliverGetDetail{Rate: 3.0},
+					},
+				},
+				{
+					Messages:      6,
+					MessagesReady: 4,
+					MessageStat: messageStat{
+						PublishDetail:    publishDetail{Rate: 3.0},
+						DeliverGetDetail: deliverGetDetail{Rate: 5.0},
+					},
+				},
+			},
+			// (5+6)/2 = 5 (integer truncation), (3+4)/2 = 3 (integer truncation)
+			expectedMessages:    5,
+			expectedReady:       3,
+			expectedPublishRate: 2.0,
+			expectedDeliverRate: 4.0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msgs, ready, pubRate, delRate := getAverage(tt.queues)
+			assert.Equal(t, tt.expectedMessages, msgs)
+			assert.Equal(t, tt.expectedReady, ready)
+			assert.InDelta(t, tt.expectedPublishRate, pubRate, 0.001)
+			assert.InDelta(t, tt.expectedDeliverRate, delRate, 0.001)
+		})
+	}
+}
+
+func TestGetMaximum(t *testing.T) {
+	tests := []struct {
+		name                string
+		queues              []queueInfo
+		expectedMessages    int
+		expectedReady       int
+		expectedPublishRate float64
+		expectedDeliverRate float64
+	}{
+		{
+			name: "single queue",
+			queues: []queueInfo{
+				{
+					Messages:      7,
+					MessagesReady: 3,
+					MessageStat: messageStat{
+						PublishDetail:    publishDetail{Rate: 1.5},
+						DeliverGetDetail: deliverGetDetail{Rate: 2.5},
+					},
+				},
+			},
+			expectedMessages:    7,
+			expectedReady:       3,
+			expectedPublishRate: 1.5,
+			expectedDeliverRate: 2.5,
+		},
+		{
+			name: "max picked independently per field",
+			queues: []queueInfo{
+				{
+					Messages:      30,
+					MessagesReady: 5,
+					MessageStat: messageStat{
+						PublishDetail:    publishDetail{Rate: 1.0},
+						DeliverGetDetail: deliverGetDetail{Rate: 9.0},
+					},
+				},
+				{
+					Messages:      10,
+					MessagesReady: 20,
+					MessageStat: messageStat{
+						PublishDetail:    publishDetail{Rate: 7.0},
+						DeliverGetDetail: deliverGetDetail{Rate: 3.0},
+					},
+				},
+			},
+			expectedMessages:    30,
+			expectedReady:       20,
+			expectedPublishRate: 7.0,
+			expectedDeliverRate: 9.0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msgs, ready, pubRate, delRate := getMaximum(tt.queues)
+			assert.Equal(t, tt.expectedMessages, msgs)
+			assert.Equal(t, tt.expectedReady, ready)
+			assert.InDelta(t, tt.expectedPublishRate, pubRate, 0.001)
+			assert.InDelta(t, tt.expectedDeliverRate, delRate, 0.001)
+		})
+	}
+}
+
+func TestGetComposedQueue(t *testing.T) {
+	queues := []queueInfo{
+		{
+			Messages:      10,
+			MessagesReady: 4,
+			MessageStat: messageStat{
+				PublishDetail:    publishDetail{Rate: 2.0},
+				DeliverGetDetail: deliverGetDetail{Rate: 6.0},
+			},
+		},
+		{
+			Messages:      20,
+			MessagesReady: 8,
+			MessageStat: messageStat{
+				PublishDetail:    publishDetail{Rate: 4.0},
+				DeliverGetDetail: deliverGetDetail{Rate: 2.0},
+			},
+		},
+	}
+
+	tests := []struct {
+		name            string
+		operation       string
+		queues          []queueInfo
+		expectedMsgs    int
+		expectedReady   int
+		expectedPubRate float64
+		expectedDelRate float64
+		wantErr         bool
+	}{
+		{
+			name:            "sum operation",
+			operation:       sumOperation,
+			queues:          queues,
+			expectedMsgs:    30,
+			expectedReady:   12,
+			expectedPubRate: 6.0,
+			expectedDelRate: 8.0,
+		},
+		{
+			name:            "avg operation",
+			operation:       avgOperation,
+			queues:          queues,
+			expectedMsgs:    15,
+			expectedReady:   6,
+			expectedPubRate: 3.0,
+			expectedDelRate: 4.0,
+		},
+		{
+			name:            "max operation",
+			operation:       maxOperation,
+			queues:          queues,
+			expectedMsgs:    20,
+			expectedReady:   8,
+			expectedPubRate: 4.0,
+			expectedDelRate: 6.0,
+		},
+		{
+			name:          "empty queue list returns zeros",
+			operation:     sumOperation,
+			queues:        []queueInfo{},
+			expectedMsgs:  0,
+			expectedReady: 0,
+		},
+		{
+			name:      "invalid operation returns error",
+			operation: "invalid",
+			queues:    queues,
+			wantErr:   true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &rabbitMQScaler{
+				metadata: &rabbitMQMetadata{Operation: tt.operation},
+			}
+			result, err := getComposedQueue(s, tt.queues)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedMsgs, result.Messages)
+			assert.Equal(t, tt.expectedReady, result.MessagesReady)
+			assert.InDelta(t, tt.expectedPubRate, result.MessageStat.PublishDetail.Rate, 0.001)
+			assert.InDelta(t, tt.expectedDelRate, result.MessageStat.DeliverGetDetail.Rate, 0.001)
+		})
+	}
 }

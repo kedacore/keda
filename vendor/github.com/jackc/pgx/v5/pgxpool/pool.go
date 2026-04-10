@@ -558,7 +558,8 @@ func (p *Pool) checkMinConns() error {
 	// off this check
 
 	// Create the number of connections needed to get to both minConns and minIdleConns
-	toCreate := max(p.minConns-p.Stat().TotalConns(), p.minIdleConns-p.Stat().IdleConns())
+	stat := p.Stat()
+	toCreate := max(p.minConns-stat.TotalConns(), p.minIdleConns-stat.IdleConns())
 	if toCreate > 0 {
 		return p.createIdleResources(context.Background(), int(toCreate))
 	}
@@ -620,14 +621,15 @@ func (p *Pool) Acquire(ctx context.Context) (c *Conn, err error) {
 
 		shouldPingParams := ShouldPingParams{Conn: cr.conn, IdleDuration: res.IdleDuration()}
 		if p.shouldPing(ctx, shouldPingParams) {
-			pingCtx := ctx
-			if p.pingTimeout > 0 {
-				var cancel context.CancelFunc
-				pingCtx, cancel = context.WithTimeout(ctx, p.pingTimeout)
-				defer cancel()
-			}
-
-			err := cr.conn.Ping(pingCtx)
+			err := func() error {
+				pingCtx := ctx
+				if p.pingTimeout > 0 {
+					var cancel context.CancelFunc
+					pingCtx, cancel = context.WithTimeout(ctx, p.pingTimeout)
+					defer cancel()
+				}
+				return cr.conn.Ping(pingCtx)
+			}()
 			if err != nil {
 				res.Destroy()
 				continue
@@ -652,7 +654,7 @@ func (p *Pool) Acquire(ctx context.Context) (c *Conn, err error) {
 
 		return cr.getConn(p, res), nil
 	}
-	return nil, errors.New("pgxpool: detected infinite loop acquiring connection; likely bug in PrepareConn or BeforeAcquire hook")
+	return nil, errors.New("pgxpool: too many failed attempts acquiring connection; likely bug in PrepareConn, BeforeAcquire, or ShouldPing hook")
 }
 
 // AcquireFunc acquires a *Conn and calls f with that *Conn. ctx will only affect the Acquire. It has no effect on the

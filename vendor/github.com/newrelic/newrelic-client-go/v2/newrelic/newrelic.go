@@ -6,6 +6,7 @@ import (
 
 	"github.com/newrelic/newrelic-client-go/v2/pkg/entityrelationship"
 	"github.com/newrelic/newrelic-client-go/v2/pkg/users"
+	"github.com/newrelic/newrelic-client-go/v2/pkg/workflowautomation"
 
 	"github.com/newrelic/newrelic-client-go/v2/pkg/accountmanagement"
 	"github.com/newrelic/newrelic-client-go/v2/pkg/accounts"
@@ -24,6 +25,7 @@ import (
 	"github.com/newrelic/newrelic-client-go/v2/pkg/entities"
 	"github.com/newrelic/newrelic-client-go/v2/pkg/events"
 	"github.com/newrelic/newrelic-client-go/v2/pkg/eventstometrics"
+	"github.com/newrelic/newrelic-client-go/v2/pkg/fleetcontrol"
 	"github.com/newrelic/newrelic-client-go/v2/pkg/installevents"
 	"github.com/newrelic/newrelic-client-go/v2/pkg/keytransaction"
 	"github.com/newrelic/newrelic-client-go/v2/pkg/logconfigurations"
@@ -62,6 +64,7 @@ type NewRelic struct {
 	Entities                entities.Entities
 	Events                  events.Events
 	EventsToMetrics         eventstometrics.EventsToMetrics
+	FleetControl            fleetcontrol.Fleetcontrol
 	InstallEvents           installevents.Installevents
 	Logs                    logs.Logs
 	Logconfigurations       logconfigurations.Logconfigurations
@@ -81,6 +84,7 @@ type NewRelic struct {
 	KeyTransaction          keytransaction.Keytransaction
 	EntityRelationship      entityrelationship.Entityrelationship
 	Users                   users.Users
+	WorkflowAutomation      workflowautomation.Workflowautomation
 
 	config config.Config
 }
@@ -113,6 +117,7 @@ func New(opts ...ConfigOption) (*NewRelic, error) {
 		Entities:                entities.New(cfg),
 		Events:                  events.New(cfg),
 		EventsToMetrics:         eventstometrics.New(cfg),
+		FleetControl:            fleetcontrol.New(cfg),
 		InstallEvents:           installevents.New(cfg),
 		Logs:                    logs.New(cfg),
 		Logconfigurations:       logconfigurations.New(cfg),
@@ -132,6 +137,7 @@ func New(opts ...ConfigOption) (*NewRelic, error) {
 		KeyTransaction:          keytransaction.New(cfg),
 		EntityRelationship:      entityrelationship.New(cfg),
 		Users:                   users.New(cfg),
+		WorkflowAutomation:      workflowautomation.New(cfg),
 	}
 
 	return nr, nil

@@ -14,22 +14,12 @@ func (h UnimplementedHandler) mustEmbedUnimplementedHandler() {}
 
 // StartOperation implements the Handler interface.
 func (h UnimplementedHandler) StartOperation(ctx context.Context, service, operation string, input *LazyValue, options StartOperationOptions) (HandlerStartOperationResult[any], error) {
-	return nil, HandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
-}
-
-// GetOperationResult implements the Handler interface.
-func (h UnimplementedHandler) GetOperationResult(ctx context.Context, service, operation, token string, options GetOperationResultOptions) (any, error) {
-	return nil, HandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
-}
-
-// GetOperationInfo implements the Handler interface.
-func (h UnimplementedHandler) GetOperationInfo(ctx context.Context, service, operation, token string, options GetOperationInfoOptions) (*OperationInfo, error) {
-	return nil, HandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
+	return nil, NewHandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
 }
 
 // CancelOperation implements the Handler interface.
 func (h UnimplementedHandler) CancelOperation(ctx context.Context, service, operation, token string, options CancelOperationOptions) error {
-	return HandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
+	return NewHandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
 }
 
 // UnimplementedOperation must be embedded into any [Operation] implementation for future compatibility.
@@ -53,10 +43,10 @@ func (*UnimplementedOperation[I, O]) OutputType() reflect.Type {
 
 // Cancel implements Operation.
 func (*UnimplementedOperation[I, O]) Cancel(ctx context.Context, token string, options CancelOperationOptions) error {
-	return HandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
+	return NewHandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
 }
 
 // Start implements Operation.
 func (h *UnimplementedOperation[I, O]) Start(ctx context.Context, input I, options StartOperationOptions) (HandlerStartOperationResult[O], error) {
-	return nil, HandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
+	return nil, NewHandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
 }

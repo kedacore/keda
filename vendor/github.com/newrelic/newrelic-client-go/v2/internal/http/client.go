@@ -185,6 +185,30 @@ func (c *Client) Post(
 	return c.PostWithContext(context.Background(), url, queryParams, reqBody, respBody)
 }
 
+func getRequestCustomHeadersFromQueryParams(queryParams interface{}) (map[string]string, interface{}) {
+	if queryParams == nil {
+		return nil, nil
+	}
+
+	customHeaders, ok := queryParams.(map[string]interface{})
+	if !ok {
+		return nil, queryParams
+	}
+	if ch, exists := customHeaders["x-newrelic-client-go-custom-headers"]; exists {
+		if headersMap, ok := ch.(map[string]string); ok {
+			return headersMap, nil
+		}
+	}
+
+	return nil, queryParams
+}
+
+func setRequestCustomHeaders(req *Request, customHeaders map[string]string) {
+	for key, value := range customHeaders {
+		req.SetHeader(key, value)
+	}
+}
+
 // PostWithContext represents an HTTP POST request to a New Relic API.
 // The queryParams argument can be used to add query string parameters to the requested URL.
 // The reqBody argument will be marshaled to JSON from the type provided and included in the request body.
@@ -197,9 +221,15 @@ func (c *Client) PostWithContext(
 	reqBody interface{},
 	respBody interface{},
 ) (*http.Response, error) {
+	customHeaders, queryParams := getRequestCustomHeadersFromQueryParams(queryParams)
+
 	req, err := c.NewRequest(http.MethodPost, url, queryParams, reqBody, respBody)
 	if err != nil {
 		return nil, err
+	}
+
+	if customHeaders != nil {
+		setRequestCustomHeaders(req, customHeaders)
 	}
 
 	req.WithContext(ctx)

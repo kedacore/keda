@@ -73,12 +73,16 @@ type SubscribeToShardInput struct {
 	// This member is required.
 	StartingPosition *types.StartingPosition
 
+	// Not Implemented. Reserved for future use.
+	StreamId *string
+
 	noSmithyDocumentSerde
 }
 
 func (in *SubscribeToShardInput) bindEndpointParams(p *EndpointParameters) {
 
 	p.ConsumerARN = in.ConsumerARN
+	p.StreamId = in.StreamId
 	p.OperationType = ptr.String("data")
 }
 
@@ -133,7 +137,7 @@ func (c *Client) addOperationSubscribeToShardMiddlewares(stack *middleware.Stack
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
@@ -149,9 +153,6 @@ func (c *Client) addOperationSubscribeToShardMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {

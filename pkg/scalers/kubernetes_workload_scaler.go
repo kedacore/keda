@@ -35,6 +35,7 @@ type kubernetesWorkloadMetadata struct {
 	PodSelector     string  `keda:"name=podSelector,     order=triggerMetadata"`
 	Value           float64 `keda:"name=value,           order=triggerMetadata, default=0"`
 	ActivationValue float64 `keda:"name=activationValue, order=triggerMetadata, default=0"`
+	GroupByNode     bool    `keda:"name=groupByNode,     order=triggerMetadata, default=false"`
 
 	namespace      string
 	triggerIndex   int
@@ -131,6 +132,10 @@ func (s *kubernetesWorkloadScaler) getMetricValue(ctx context.Context) (int64, e
 		return 0, err
 	}
 
+	if s.metadata.GroupByNode {
+		return getUniqueNodeCount(podList.Items), nil
+	}
+
 	var count int64
 	for _, pod := range podList.Items {
 		count += getCountValue(pod)
@@ -140,10 +145,33 @@ func (s *kubernetesWorkloadScaler) getMetricValue(ctx context.Context) (int64, e
 }
 
 func getCountValue(pod corev1.Pod) int64 {
+	if !shouldCountPod(pod) {
+		return 0
+	}
+
+	return 1
+}
+
+func getUniqueNodeCount(pods []corev1.Pod) int64 {
+	countedNodes := make(map[string]struct{})
+
+	for _, pod := range pods {
+		if !shouldCountPod(pod) || pod.Spec.NodeName == "" {
+			continue
+		}
+
+		countedNodes[pod.Spec.NodeName] = struct{}{}
+	}
+
+	return int64(len(countedNodes))
+}
+
+func shouldCountPod(pod corev1.Pod) bool {
 	for _, ignore := range phasesCountedAsTerminated {
 		if pod.Status.Phase == ignore {
-			return 0
+			return false
 		}
 	}
-	return 1
+
+	return true
 }
