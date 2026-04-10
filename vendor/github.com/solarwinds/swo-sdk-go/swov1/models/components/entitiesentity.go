@@ -39,6 +39,9 @@ func (e *Category) UnmarshalJSON(data []byte) error {
 	}
 }
 
+// Healthscore
+//
+// Deprecated: This will be removed in a future release, please migrate away from it as soon as possible.
 type Healthscore struct {
 	// Health score value from 0 to 100.
 	Score *int `json:"score,omitempty"`
@@ -60,6 +63,61 @@ func (h *Healthscore) GetCategory() *Category {
 	return h.Category
 }
 
+// State - Health state of the entity.
+type State string
+
+const (
+	StateGood     State = "GOOD"
+	StateModerate State = "MODERATE"
+	StateAtRisk   State = "AT_RISK"
+	StateDegraded State = "DEGRADED"
+	StateBad      State = "BAD"
+	StateUnknown  State = "UNKNOWN"
+	StateDisabled State = "DISABLED"
+)
+
+func (e State) ToPointer() *State {
+	return &e
+}
+func (e *State) UnmarshalJSON(data []byte) error {
+	var v string
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+	switch v {
+	case "GOOD":
+		fallthrough
+	case "MODERATE":
+		fallthrough
+	case "AT_RISK":
+		fallthrough
+	case "DEGRADED":
+		fallthrough
+	case "BAD":
+		fallthrough
+	case "UNKNOWN":
+		fallthrough
+	case "DISABLED":
+		*e = State(v)
+		return nil
+	default:
+		return fmt.Errorf("invalid value for State: %v", v)
+	}
+}
+
+// HealthState - Health state of the entity.
+type HealthState struct {
+	// Health state of the entity.
+	State *State `json:"state,omitempty"`
+}
+
+func (h *HealthState) GetState() *State {
+	if h == nil {
+		return nil
+	}
+	return h.State
+}
+
 type EntitiesEntity struct {
 	// The ID of the entity.
 	ID string `json:"id"`
@@ -76,8 +134,11 @@ type EntitiesEntity struct {
 	// Date and time when the entity has last received telemetry in UTC.
 	LastSeenTime time.Time `json:"lastSeenTime"`
 	// Flag telling if given entity is in maintenance mode.
-	InMaintenance bool         `json:"inMaintenance"`
-	Healthscore   *Healthscore `json:"healthscore,omitempty"`
+	InMaintenance bool `json:"inMaintenance"`
+	// Deprecated: This will be removed in a future release, please migrate away from it as soon as possible.
+	Healthscore *Healthscore `json:"healthscore,omitempty"`
+	// Health state of the entity.
+	HealthState *HealthState `json:"healthState,omitempty"`
 	// Entity tags. Tag is a key-value pair, where there may be only a single tag value for the same key.
 	Tags map[string]*string `json:"tags"`
 	// Map of available attributes.
@@ -156,6 +217,13 @@ func (e *EntitiesEntity) GetHealthscore() *Healthscore {
 		return nil
 	}
 	return e.Healthscore
+}
+
+func (e *EntitiesEntity) GetHealthState() *HealthState {
+	if e == nil {
+		return nil
+	}
+	return e.HealthState
 }
 
 func (e *EntitiesEntity) GetTags() map[string]*string {

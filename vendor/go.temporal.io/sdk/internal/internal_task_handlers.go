@@ -1884,16 +1884,17 @@ func (wth *workflowTaskHandlerImpl) completeWorkflow(
 		useCompat := determineInheritBuildIdFlagForCommand(
 			contErr.VersioningIntent, workflowContext.workflowInfo.TaskQueueName, contErr.TaskQueueName)
 		closeCommand.Attributes = &commandpb.Command_ContinueAsNewWorkflowExecutionCommandAttributes{ContinueAsNewWorkflowExecutionCommandAttributes: &commandpb.ContinueAsNewWorkflowExecutionCommandAttributes{
-			WorkflowType:        &commonpb.WorkflowType{Name: contErr.WorkflowType.Name},
-			Input:               contErr.Input,
-			TaskQueue:           &taskqueuepb.TaskQueue{Name: contErr.TaskQueueName, Kind: enumspb.TASK_QUEUE_KIND_NORMAL},
-			WorkflowRunTimeout:  durationpb.New(contErr.WorkflowRunTimeout),
-			WorkflowTaskTimeout: durationpb.New(contErr.WorkflowTaskTimeout),
-			Header:              contErr.Header,
-			Memo:                workflowContext.workflowInfo.Memo,
-			SearchAttributes:    workflowContext.workflowInfo.SearchAttributes,
-			RetryPolicy:         convertToPBRetryPolicy(retryPolicy),
-			InheritBuildId:      useCompat,
+			WorkflowType:              &commonpb.WorkflowType{Name: contErr.WorkflowType.Name},
+			Input:                     contErr.Input,
+			TaskQueue:                 &taskqueuepb.TaskQueue{Name: contErr.TaskQueueName, Kind: enumspb.TASK_QUEUE_KIND_NORMAL},
+			WorkflowRunTimeout:        durationpb.New(contErr.WorkflowRunTimeout),
+			WorkflowTaskTimeout:       durationpb.New(contErr.WorkflowTaskTimeout),
+			Header:                    contErr.Header,
+			Memo:                      workflowContext.workflowInfo.Memo,
+			SearchAttributes:          workflowContext.workflowInfo.SearchAttributes,
+			RetryPolicy:               convertToPBRetryPolicy(retryPolicy),
+			InheritBuildId:            useCompat,
+			InitialVersioningBehavior: continueAsNewVersioningBehaviorToProto(contErr.InitialVersioningBehavior),
 		}}
 	} else if workflowContext.err != nil {
 		// Workflow failures
@@ -2246,12 +2247,22 @@ func newServiceInvoker(
 // Execute executes an implementation of the activity.
 func (ath *activityTaskHandlerImpl) Execute(taskQueue string, t *workflowservice.PollActivityTaskQueueResponse) (result interface{}, err error) {
 	traceLog(func() {
-		ath.logger.Debug("Processing new activity task",
-			tagWorkflowID, t.WorkflowExecution.GetWorkflowId(),
-			tagRunID, t.WorkflowExecution.GetRunId(),
-			tagActivityType, t.ActivityType.GetName(),
-			tagAttempt, t.Attempt,
-		)
+		if t.WorkflowExecution.GetWorkflowId() == "" {
+			ath.logger.Debug("Processing new standalone activity task",
+				tagActivityID, t.ActivityId,
+				tagActivityRunID, t.ActivityRunId,
+				tagActivityType, t.ActivityType.GetName(),
+				tagAttempt, t.Attempt,
+			)
+		} else {
+			ath.logger.Debug("Processing new workflow activity task",
+				tagWorkflowID, t.WorkflowExecution.GetWorkflowId(),
+				tagRunID, t.WorkflowExecution.GetRunId(),
+				tagActivityID, t.ActivityId,
+				tagActivityType, t.ActivityType.GetName(),
+				tagAttempt, t.Attempt,
+			)
+		}
 	})
 	// The root context is only cancelled when the worker is finished shutting down.
 	rootCtx := ath.backgroundContext

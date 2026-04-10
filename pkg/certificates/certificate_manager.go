@@ -38,28 +38,35 @@ import (
 // +kubebuilder:rbac:groups="",namespace=keda,resources=secrets,verbs=get;list;watch;create;update;patch;delete
 
 type CertManager struct {
-	SecretName            string
-	CertDir               string
-	OperatorService       string
-	MetricsServerService  string
-	WebhookService        string
-	K8sClusterDomain      string
-	CAName                string
-	CAOrganization        string
-	ValidatingWebhookName string
-	APIServiceName        string
-	Logger                logr.Logger
-	Ready                 chan struct{}
-	EnableWebhookPatching bool
+	SecretName               string
+	CertDir                  string
+	OperatorService          string
+	MetricsServerService     string
+	WebhookService           string
+	K8sClusterDomain         string
+	CAName                   string
+	CAOrganization           string
+	ValidatingWebhookName    string
+	APIServiceName           string
+	Logger                   logr.Logger
+	Ready                    chan struct{}
+	EnableWebhookPatching    bool
+	EnableAPIServicePatching bool
 }
 
 // AddCertificateRotation registers all needed services to generate the certificates and patches needed resources with the caBundle
 func (cm CertManager) AddCertificateRotation(ctx context.Context, mgr manager.Manager) error {
-	rotatorHooks := []rotator.WebhookInfo{
-		{
-			Name: cm.APIServiceName,
-			Type: rotator.APIService,
-		},
+	rotatorHooks := []rotator.WebhookInfo{}
+
+	if cm.EnableAPIServicePatching {
+		rotatorHooks = append(rotatorHooks,
+			rotator.WebhookInfo{
+				Name: cm.APIServiceName,
+				Type: rotator.APIService,
+			},
+		)
+	} else {
+		cm.Logger.V(1).Info("APIService patching is disabled, skipping APIService certificates")
 	}
 
 	if cm.EnableWebhookPatching {

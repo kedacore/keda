@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -417,18 +418,26 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 	page := 1
 	var repoList []string
 
+	safeOwner := url.PathEscape(s.metadata.Owner)
+
 	for {
-		var url string
+		var apiURL string
 		switch s.metadata.RunnerScope {
 		case ORG, ENT:
-			url = fmt.Sprintf("%s/orgs/%s/repos?page=%s", s.metadata.GithubAPIURL, s.metadata.Owner, strconv.Itoa(page))
+			apiURL = fmt.Sprintf("%s/orgs/%s/repos?page=%s",
+				s.metadata.GithubAPIURL,
+				safeOwner,
+				strconv.Itoa(page))
 		case REPO:
-			url = fmt.Sprintf("%s/users/%s/repos?page=%s", s.metadata.GithubAPIURL, s.metadata.Owner, strconv.Itoa(page))
+			apiURL = fmt.Sprintf("%s/users/%s/repos?page=%s",
+				s.metadata.GithubAPIURL,
+				safeOwner,
+				strconv.Itoa(page))
 		default:
 			return nil, fmt.Errorf("runnerScope %s not supported", s.metadata.RunnerScope)
 		}
 
-		body, statusCode, err := s.getGithubRequest(ctx, url, s.metadata, s.httpClient)
+		body, statusCode, err := s.getGithubRequest(ctx, apiURL, s.metadata, s.httpClient)
 		if err != nil {
 			return nil, err
 		}
@@ -466,8 +475,8 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 	return repoList, nil
 }
 
-func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, metadata *githubRunnerMetadata, httpClient *http.Client) ([]byte, int, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, apiURL string, metadata *githubRunnerMetadata, httpClient *http.Client) ([]byte, int, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
 	if err != nil {
 		return []byte{}, -1, err
 	}
@@ -480,7 +489,7 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, m
 	}
 
 	if s.metadata.EnableEtags {
-		if etag, found := s.etags[url]; found {
+		if etag, found := s.etags[apiURL]; found {
 			req.Header.Set("If-None-Match", etag)
 		}
 	}
@@ -494,7 +503,7 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, m
 	if r.StatusCode != 200 {
 		if r.StatusCode == 304 && s.metadata.EnableEtags {
 			_, _ = io.Copy(io.Discard, r.Body)
-			s.logger.V(1).Info(fmt.Sprintf("The github rest api for the url: %s returned status %d %s", url, r.StatusCode, http.StatusText(r.StatusCode)))
+			s.logger.V(1).Info(fmt.Sprintf("The github rest api for the url: %s returned status %d %s", apiURL, r.StatusCode, http.StatusText(r.StatusCode)))
 			return []byte{}, r.StatusCode, nil
 		}
 
@@ -507,8 +516,9 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, m
 				return []byte{}, r.StatusCode, fmt.Errorf("GitHub API rate limit exceeded, resets at %s", time.Unix(resetTime, 0))
 			}
 		}
+
 		_, _ = io.Copy(io.Discard, r.Body)
-		return []byte{}, r.StatusCode, fmt.Errorf("the GitHub REST API returned error. url: %s status: %d", url, r.StatusCode)
+		return []byte{}, r.StatusCode, fmt.Errorf("the GitHub REST API returned error. url: %s status: %d", apiURL, r.StatusCode)
 	}
 
 	b, err := io.ReadAll(r.Body)
@@ -518,7 +528,7 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, m
 
 	if s.metadata.EnableEtags {
 		if etag := r.Header.Get("ETag"); etag != "" {
-			s.etags[url] = etag
+			s.etags[apiURL] = etag
 		}
 	}
 
@@ -539,8 +549,13 @@ func stripDeadRuns(allWfrs []WorkflowRuns) []WorkflowRun {
 
 // getWorkflowRunJobs returns a list of jobs for a given workflow run
 func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRunID int64, repoName string) ([]Job, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=100", s.metadata.GithubAPIURL, s.metadata.Owner, repoName, workflowRunID)
-	body, statusCode, err := s.getGithubRequest(ctx, url, s.metadata, s.httpClient)
+	apiURL := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=100",
+		s.metadata.GithubAPIURL,
+		url.PathEscape(s.metadata.Owner),
+		url.PathEscape(repoName),
+		workflowRunID)
+
+	body, statusCode, err := s.getGithubRequest(ctx, apiURL, s.metadata, s.httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -567,8 +582,13 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 
 // getWorkflowRuns returns a list of workflow runs for a given repository
 func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName string, status string) (*WorkflowRuns, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs?status=%s&per_page=100", s.metadata.GithubAPIURL, s.metadata.Owner, repoName, status)
-	body, statusCode, err := s.getGithubRequest(ctx, url, s.metadata, s.httpClient)
+	apiURL := fmt.Sprintf("%s/repos/%s/%s/actions/runs?status=%s&per_page=100",
+		s.metadata.GithubAPIURL,
+		url.PathEscape(s.metadata.Owner),
+		url.PathEscape(repoName),
+		url.QueryEscape(status))
+
+	body, statusCode, err := s.getGithubRequest(ctx, apiURL, s.metadata, s.httpClient)
 	if err != nil && statusCode == 404 {
 		return nil, nil
 	} else if err != nil {

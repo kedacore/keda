@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-logr/logr"
-
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -267,7 +265,7 @@ func TestAzureAppInsightsGetMetricSpecForScaling(t *testing.T) {
 		ctx := context.Background()
 		if !testData.isError {
 			testData.config.TriggerIndex = triggerIndex
-			meta, err := parseAzureAppInsightsMetadata(&testData.config, logr.Discard())
+			meta, err := parseAzureAppInsightsMetadata(&testData.config)
 			if err != nil {
 				t.Fatal("Could not parse metadata:", err)
 			}
