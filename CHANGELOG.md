@@ -114,8 +114,8 @@ New deprecation(s):
 
 ### Other
 
-- **External Scaler**: Fix race condition in `TestWaitForState` causing flaky test under `-race` detector ([#7542](https://github.com/kedacore/keda/issues/7542))
 - **General**: Use informer cache for ReplicaSet lookups in GetCurrentReplicas to reduce API server load ([#7466](https://github.com/kedacore/keda/pull/7466))
+- **External Scaler**: Fix race condition in `TestWaitForState` causing flaky test under `-race` detector ([#7542](https://github.com/kedacore/keda/issues/7542))
 - **GCP scaler**: Replaced credentialsFromJSON to credentialsFromJSONWithType ([#7523](https://github.com/kedacore/keda/pull/7523))
 - **Kafka Scaler**: Refactor Kafka Scaler ([#7528](https://github.com/kedacore/keda/pull/7528))
 
