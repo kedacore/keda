@@ -206,16 +206,17 @@ func parseSolaceMetadata(config *scalersconfig.ScalerConfig) (*SolaceMetadata, e
 			sempURL,
 			solaceAPIName,
 			solaceAPIVersion,
-			meta.MessageVpn,
+			url.PathEscape(meta.MessageVpn),
 			solaceAPIObjectTypeQueue,
-			url.QueryEscape(meta.QueueName),
+			url.PathEscape(meta.QueueName),
 		))
+
 		meta.vpnStateURLsList = append(meta.vpnStateURLsList, fmt.Sprintf(
 			solaceSempVpnStateURLTemplate,
 			sempURL,
 			solaceAPIName,
 			solaceAPIVersion,
-			url.QueryEscape(meta.MessageVpn),
+			url.PathEscape(meta.MessageVpn),
 		))
 	}
 
