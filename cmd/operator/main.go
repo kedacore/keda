@@ -120,6 +120,9 @@ func main() {
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 
+	// Register klog flags on flag.CommandLine so they can be set programmatically.
+	klog.InitFlags(nil)
+
 	// Opt into the new klog behavior so that -stderrthreshold is honored even
 	// when -logtostderr=true (the default). Without this, all log levels are
 	// unconditionally sent to stderr and users cannot filter by severity.
