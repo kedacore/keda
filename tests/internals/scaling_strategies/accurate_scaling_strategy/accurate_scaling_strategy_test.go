@@ -62,7 +62,7 @@ spec:
             image: docker.io/library/busybox
             command:
             - sleep
-            - "30"
+            - "120"
             imagePullPolicy: IfNotPresent
             envFrom:
             - secretRef:
@@ -134,32 +134,40 @@ func testAccurateScaling(ctx context.Context, t *testing.T, kc *kubernetes.Clien
 
 	// Base case (number of scale = maxScale since pendingJobs = 0). Enqueue up 4 messages
 	enqueueMessages(ctx, t, client, 4)
+
+	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 4, iterationCount, 1),
+		"job count should be %d after %d iterations", 4, iterationCount)
+
+	// Clear the messages to simulate message consumption and wait for the job pods to be Running
+	_, err := client.ClearMessages(ctx, nil)
+	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
 	assert.True(t, WaitForRunningPodCount(t, kc, scaledJobName, testNamespace, 4, iterationCount, 1),
 		"running pod count should be %d after %d iterations", 4, iterationCount)
 
-	// Clear the messages to simulate message consumption
-	_, err := client.ClearMessages(ctx, nil)
-	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
-
 	// Wait for job completion
-	WaitForAllJobsSuccess(t, kc, testNamespace, 90, 1)
+	WaitForAllJobsSuccess(t, kc, testNamespace, 120, 1)
 
 	// Test the cap condition (maxScale + runningJobs > maxReplicaCount). Enqueue 4 messages
 	enqueueMessages(ctx, t, client, 4)
+	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 8, iterationCount, 1),
+		"job count should be %d after %d iterations", 8, iterationCount)
+
+	// Clear the messages to simulate message consumption and wait for the job pods to be Running
+	_, err = client.ClearMessages(ctx, nil)
+	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
 	assert.True(t, WaitForRunningPodCount(t, kc, scaledJobName, testNamespace, 4, iterationCount, 1),
 		"running pod count should be %d after %d iterations", 4, iterationCount)
 
-	// Clear the messages to simulate message consumption
-	_, err = client.ClearMessages(ctx, nil)
-	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
-
 	// Enqueue 8 more messages to trigger the cap condition
 	enqueueMessages(ctx, t, client, 8)
-	assert.True(t, WaitForRunningPodCount(t, kc, scaledJobName, testNamespace, 10, iterationCount, 1),
-		"running pod count should be %d after %d iterations", 10, iterationCount)
+	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 14, iterationCount, 1),
+		"job count should be %d after %d iterations", 14, iterationCount)
 
+	// Clear the messages to simulate message consumption and wait for the job pods to be Running
 	_, err = client.ClearMessages(ctx, nil)
 	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
+	assert.True(t, WaitForRunningPodCount(t, kc, scaledJobName, testNamespace, 10, iterationCount, 1),
+		"running pod count should be %d after %d iterations", 10, iterationCount)
 
 	// Message cleanup and wait for jobs to complete
 	WaitForAllJobsSuccess(t, kc, testNamespace, 120, 1)
