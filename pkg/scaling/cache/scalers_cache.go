@@ -31,6 +31,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 var log = logf.Log.WithName("scalers_cache")
@@ -156,6 +157,11 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 	if err != nil {
 		return nil, false, -1, err
 	}
+	ctx = context.WithValue(ctx, kedautil.ScalerContextKey, sb.ScalerConfig.TriggerType)
+	ctx = context.WithValue(ctx, kedautil.TriggerNameContextKey, sb.ScalerConfig.TriggerName)
+	ctx = context.WithValue(ctx, kedautil.MetricNameContextKey, metricName)
+	ctx = context.WithValue(ctx, kedautil.NamespaceContextKey, sb.ScalerConfig.ScalableObjectNamespace)
+	ctx = context.WithValue(ctx, kedautil.ScaledResourceContextKey, sb.ScalerConfig.ScalableObjectName)
 	startTime := time.Now()
 	metric, activity, err := sb.Scaler.GetMetricsAndActivity(ctx, metricName)
 	if err == nil {

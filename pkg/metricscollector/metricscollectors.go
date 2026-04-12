@@ -82,6 +82,11 @@ type MetricsCollector interface {
 
 	// RecordEmptyUpstreamResponse counts the number of times a query returns an empty result
 	RecordEmptyUpstreamResponse(namespace, scaledResource, triggerName, metricName, resourceType string, ignoreNullValues bool)
+
+	// RecordHTTPClientRequest records the duration and outcome of an outbound HTTP request
+	// made by one of KEDA's internal HTTP clients. scaler, triggerName, and metricName
+	// are read from context keys set in util package; empty string if unset.
+	RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string)
 }
 
 func NewMetricsCollectors(enablePrometheusMetrics bool, enableOpenTelemetryMetrics bool) {
@@ -212,6 +217,15 @@ func RecordCloudEventQueueStatus(namespace string, value int) {
 func RecordEmptyUpstreamResponse(namespace, scaledResource, triggerName, metricName, resourceType string, ignoreNullValues bool) {
 	for _, element := range collectors {
 		element.RecordEmptyUpstreamResponse(namespace, scaledResource, triggerName, metricName, resourceType, ignoreNullValues)
+	}
+}
+
+// RecordHTTPClientRequest records the duration and outcome of an outbound HTTP request
+// made by one of KEDA's internal HTTP clients. scaler, triggerName, and metricName
+// are read from context keys set in util package; empty string if unset.
+func RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string) {
+	for _, element := range collectors {
+		element.RecordHTTPClientRequest(durationSeconds, statusCode, isError, scaler, triggerName, metricName, namespace, scaledResource)
 	}
 }
 

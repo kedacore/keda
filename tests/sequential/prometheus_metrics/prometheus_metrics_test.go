@@ -536,6 +536,7 @@ func TestPrometheusMetrics(t *testing.T) {
 	testCloudEventEmitted(t, data)
 	testCloudEventEmittedError(t, data)
 	testEmptyUpstreamResponse(t, data)
+	testHTTPClientMetrics(t, data)
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
@@ -1560,4 +1561,55 @@ func testEmptyUpstreamResponse(t *testing.T, data templateData) {
 	metric := families["keda_scaler_empty_upstream_responses_total"]
 
 	assert.True(t, familyValidator(metric))
+}
+
+func testHTTPClientMetrics(t *testing.T, data templateData) {
+	t.Log("--- testing HTTP client metrics ---")
+
+	// The wrongScaledObject uses a prometheus-type scaler that makes real HTTP
+	// requests on every poll interval, so its records should be present once at
+	// least one poll cycle has completed.
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
+	defer func() {
+		KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
+		KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	}()
+
+	matchLabels := func(labels []*prommodel.LabelPair) bool {
+		return ExtractPrometheusLabelValue("namespace", labels) == testNamespace &&
+			ExtractPrometheusLabelValue("scaled_resource", labels) == wrongScaledObjectName &&
+			ExtractPrometheusLabelValue("scaler", labels) == "prometheus" &&
+			ExtractPrometheusLabelValue("trigger_name", labels) == wrongScalerName &&
+			ExtractPrometheusLabelValue("metric_name", labels) == "s0-prometheus"
+	}
+
+	familyValidator := func(family *prommodel.MetricFamily) bool {
+		for _, metric := range family.GetMetric() {
+			if matchLabels(metric.GetLabel()) && metric.GetCounter().GetValue() >= 1 {
+				return true
+			}
+		}
+		return false
+	}
+
+	families := WaitForPrometheusMetric(t, "keda_http_client_requests_total", familyValidator)
+	assert.True(t, familyValidator(families["keda_http_client_requests_total"]),
+		"expected keda_http_client_requests_total with namespace=%s, scaled_resource=%s, scaler=prometheus, trigger_name=%s, metric_name=s0-prometheus",
+		testNamespace, wrongScaledObjectName, wrongScalerName)
+
+	family, ok := families["keda_http_client_request_duration_seconds"]
+	assert.True(t, ok, "keda_http_client_request_duration_seconds not present")
+	if ok {
+		var found bool
+		for _, metric := range family.GetMetric() {
+			if matchLabels(metric.GetLabel()) {
+				assert.Greater(t, metric.GetHistogram().GetSampleCount(), uint64(0),
+					"keda_http_client_request_duration_seconds sample count should be > 0")
+				found = true
+				break
+			}
+		}
+		assert.True(t, found, "expected keda_http_client_request_duration_seconds histogram for prometheus scaler")
+	}
 }
