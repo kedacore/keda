@@ -17,6 +17,7 @@ limitations under the License.
 package metricscollector
 
 import (
+	"strconv"
 	"time"
 
 	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
@@ -217,6 +218,13 @@ func RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bo
 	for _, element := range collectors {
 		element.RecordHTTPClientRequest(durationSeconds, statusCode, isError, scaler, triggerName, metricName, namespace, scaledResource)
 	}
+}
+
+func httpStatusCodeLabel(code int, isError bool) string {
+	if isError {
+		return "error"
+	}
+	return strconv.Itoa(code)
 }
 
 // Returns the ServerMetrics object for GRPC Server metrics. Used to initialize the GRPC server with the proper intercepts

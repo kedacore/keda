@@ -359,12 +359,6 @@ func (p *PromMetrics) RecordHTTPClientRequest(durationSeconds float64, statusCod
 	httpClientRequestDuration.WithLabelValues(namespace, scaledResource, scaler, triggerName, metricName, code).Observe(durationSeconds)
 }
 
-func httpStatusCodeLabel(code int, isError bool) string {
-	if isError {
-		return "error"
-	}
-	return strconv.Itoa(code)
-}
 
 // Returns a grpcprom server Metrics object and registers the metrics. The object contains
 // interceptors to chain to the server so that all requests served are observed. Intended to be called
