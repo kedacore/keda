@@ -150,6 +150,15 @@ func (c *ScalersCache) GetMetricSpecForScalingForScaler(ctx context.Context, ind
 	return metricSpecs, err
 }
 
+func buildScalerRequestCtx(ctx context.Context, sb ScalerBuilder, metricName string) context.Context {
+	requestCtx := context.WithValue(ctx, kedautil.ScalerContextKey, sb.ScalerConfig.TriggerType)
+	requestCtx = context.WithValue(requestCtx, kedautil.TriggerNameContextKey, sb.ScalerConfig.TriggerName)
+	requestCtx = context.WithValue(requestCtx, kedautil.MetricNameContextKey, metricName)
+	requestCtx = context.WithValue(requestCtx, kedautil.NamespaceContextKey, sb.ScalerConfig.ScalableObjectNamespace)
+	requestCtx = context.WithValue(requestCtx, kedautil.ScaledResourceContextKey, sb.ScalerConfig.ScalableObjectName)
+	return requestCtx
+}
+
 // GetMetricsAndActivityForScaler returns metric value, activity and latency for a scaler identified by the metric name
 // and by the input index (from the list of scalers in this ScaledObject)
 func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index int, metricName string) ([]external_metrics.ExternalMetricValue, bool, time.Duration, error) {
@@ -157,13 +166,9 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 	if err != nil {
 		return nil, false, -1, err
 	}
-	ctx = context.WithValue(ctx, kedautil.ScalerContextKey, sb.ScalerConfig.TriggerType)
-	ctx = context.WithValue(ctx, kedautil.TriggerNameContextKey, sb.ScalerConfig.TriggerName)
-	ctx = context.WithValue(ctx, kedautil.MetricNameContextKey, metricName)
-	ctx = context.WithValue(ctx, kedautil.NamespaceContextKey, sb.ScalerConfig.ScalableObjectNamespace)
-	ctx = context.WithValue(ctx, kedautil.ScaledResourceContextKey, sb.ScalerConfig.ScalableObjectName)
+	requestCtx := buildScalerRequestCtx(ctx, sb, metricName)
 	startTime := time.Now()
-	metric, activity, err := sb.Scaler.GetMetricsAndActivity(ctx, metricName)
+	metric, activity, err := sb.Scaler.GetMetricsAndActivity(requestCtx, metricName)
 	if err == nil {
 		return metric, activity, time.Since(startTime), nil
 	}
@@ -172,8 +177,13 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 	if err != nil {
 		return nil, false, -1, err
 	}
+	newSb, err := c.getScalerBuilder(index)
+	if err != nil {
+		return nil, false, -1, err
+	}
+	requestCtx = buildScalerRequestCtx(ctx, newSb, metricName)
 	startTime = time.Now()
-	metric, activity, err = ns.GetMetricsAndActivity(ctx, metricName)
+	metric, activity, err = ns.GetMetricsAndActivity(requestCtx, metricName)
 	return metric, activity, time.Since(startTime), err
 }
 
