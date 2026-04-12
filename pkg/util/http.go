@@ -60,13 +60,13 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 
 // CreateHTTPTransport returns a new HTTP Transport with Proxy, Keep alives
 // unsafeSsl parameter allows to avoid tls cert validation if it's required
-func CreateHTTPTransport(unsafeSsl bool) *http.Transport {
+func CreateHTTPTransport(unsafeSsl bool) http.RoundTripper {
 	return CreateHTTPTransportWithTLSConfig(CreateTLSClientConfig(unsafeSsl))
 }
 
 // CreateHTTPTransportWithTLSConfig returns a new HTTP Transport with Proxy, Keep alives
-// using given tls.Config
-func CreateHTTPTransportWithTLSConfig(config *tls.Config) *http.Transport {
+// using given tls.Config, wrapped with instrumentation for HTTP client metrics.
+func CreateHTTPTransportWithTLSConfig(config *tls.Config) http.RoundTripper {
 	transport := &http.Transport{
 		TLSClientConfig: config,
 		Proxy:           http.ProxyFromEnvironment,
@@ -76,5 +76,5 @@ func CreateHTTPTransportWithTLSConfig(config *tls.Config) *http.Transport {
 		transport.DisableKeepAlives = true
 		transport.IdleConnTimeout = 100 * time.Second
 	}
-	return transport
+	return NewInstrumentedRoundTripper(transport)
 }
