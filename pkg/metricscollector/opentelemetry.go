@@ -524,7 +524,7 @@ func CloudeventQueueStatusCallback(_ context.Context, obsrv api.Float64Observer)
 // RecordHTTPClientRequest records the duration and outcome of a single outbound HTTP request.
 func (o *OtelMetrics) RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string) {
 	code := httpStatusCodeLabel(statusCode, isError)
-	opt := api.WithAttributes(
+	counterOpt := api.WithAttributes(
 		attribute.Key("namespace").String(namespace),
 		attribute.Key("scaled_resource").String(scaledResource),
 		attribute.Key("scaler").String(scaler),
@@ -532,8 +532,12 @@ func (o *OtelMetrics) RecordHTTPClientRequest(durationSeconds float64, statusCod
 		attribute.Key("metric_name").String(metricName),
 		attribute.Key("status_code").String(code),
 	)
-	otHTTPClientRequestsCounter.Add(context.Background(), 1, opt)
-	otHTTPClientRequestDuration.Record(context.Background(), durationSeconds, opt)
+	histOpt := api.WithAttributes(
+		attribute.Key("scaler").String(scaler),
+		attribute.Key("status_code").String(code),
+	)
+	otHTTPClientRequestsCounter.Add(context.Background(), 1, counterOpt)
+	otHTTPClientRequestDuration.Record(context.Background(), durationSeconds, histOpt)
 }
 
 // RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting

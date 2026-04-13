@@ -82,7 +82,7 @@ func TestPromMetrics_RecordHTTPClientRequest(t *testing.T) {
 	require.NoError(t, counter.Write(m))
 	assert.EqualValues(t, 1, m.Counter.GetValue())
 
-	hist, err := httpClientRequestDuration.GetMetricWithLabelValues("default", "my-so", "prometheus", "my-trigger", "my-metric", "200")
+	hist, err := httpClientRequestDuration.GetMetricWithLabelValues("prometheus", "200")
 	require.NoError(t, err)
 	require.NoError(t, hist.(prometheus.Metric).Write(m))
 	assert.EqualValues(t, 1, m.Histogram.GetSampleCount())
