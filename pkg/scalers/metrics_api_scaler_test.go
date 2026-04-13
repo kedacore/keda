@@ -3,8 +3,10 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	discoveryV1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -38,6 +41,15 @@ var testMetricsAPIMetadata = []metricsAPIMetadataTestData{
 	{metadata: map[string]string{"valueLocation": "metric", "targetValue": "aa"}, raisesError: true},
 	// Missing targetValue
 	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric"}, raisesError: true},
+	// OK with just aggregateFromKubeServiceEndpoints
+	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric.test", "targetValue": "42",
+		"aggregateFromKubeServiceEndpoints": "true"}, raisesError: false},
+	// OK with aggregateFromKubeServiceEndpoints AND zeroOnMissingEndpoints
+	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric.test", "targetValue": "42",
+		"aggregateFromKubeServiceEndpoints": "true", "zeroOnMissingEndpoints": "true"}, raisesError: false},
+	// Invalid configuration: zeroOnMissingEndpoints requires aggregateFromKubeServiceEndpoints
+	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric.test", "targetValue": "42",
+		"aggregateFromKubeServiceEndpoints": "false", "zeroOnMissingEndpoints": "true"}, raisesError: true},
 }
 
 type metricAPIAuthMetadataTestData struct {
@@ -242,6 +254,151 @@ func (m *MockHTTPRoundTripper) RoundTrip(request *http.Request) (*http.Response,
 	resp := args.Get(0).(*http.Response)
 	resp.Request = request
 	return resp, args.Error(1)
+}
+
+func newMockTransport() *MockHTTPRoundTripper {
+	m := &MockHTTPRoundTripper{}
+	m.On("RoundTrip", mock.Anything).Return(&http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(strings.NewReader(`{"metric": 42}`)),
+	}, nil)
+	return m
+}
+
+func TestGetMetricValueZeroOnMissingEndpoints(t *testing.T) {
+	readyTrue := true
+	readyFalse := false
+	port80 := int32(80)
+
+	tests := []struct {
+		name           string
+		zeroOnMissing  bool
+		endpointSlices []discoveryV1.EndpointSlice
+		wantValue      float64
+		wantErr        bool
+		wantErrMsg     string
+	}{
+		{
+			name:           "no endpoints, zeroOnMissingEndpoints=true returns 0",
+			zeroOnMissing:  true,
+			endpointSlices: nil,
+			wantValue:      0,
+			wantErr:        false,
+		},
+		{
+			name:           "no endpoints, zeroOnMissingEndpoints=false returns error",
+			zeroOnMissing:  false,
+			endpointSlices: nil,
+			wantValue:      0,
+			wantErr:        true,
+			wantErrMsg:     "no endpoints URLs were given for the service name",
+		},
+		{
+			name:          "only not-ready endpoints, zeroOnMissingEndpoints=true returns 0",
+			zeroOnMissing: true,
+			endpointSlices: []discoveryV1.EndpointSlice{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "svc-abc",
+						Namespace: "ns",
+						Labels:    map[string]string{discoveryV1.LabelServiceName: "svc"},
+					},
+					Endpoints: []discoveryV1.Endpoint{
+						{
+							Addresses:  []string{"10.0.0.1"},
+							Conditions: discoveryV1.EndpointConditions{Ready: &readyFalse},
+						},
+					},
+					Ports: []discoveryV1.EndpointPort{
+						{Port: &port80},
+					},
+				},
+			},
+			wantValue: 0,
+			wantErr:   false,
+		},
+		{
+			name:          "only not-ready endpoints, zeroOnMissingEndpoints=false returns error",
+			zeroOnMissing: false,
+			endpointSlices: []discoveryV1.EndpointSlice{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "svc-abc",
+						Namespace: "ns",
+						Labels:    map[string]string{discoveryV1.LabelServiceName: "svc"},
+					},
+					Endpoints: []discoveryV1.Endpoint{
+						{
+							Addresses:  []string{"10.0.0.1"},
+							Conditions: discoveryV1.EndpointConditions{Ready: &readyFalse},
+						},
+					},
+					Ports: []discoveryV1.EndpointPort{
+						{Port: &port80},
+					},
+				},
+			},
+			wantValue:  0,
+			wantErr:    true,
+			wantErrMsg: "no endpoints URLs were given for the service name",
+		},
+		{
+			name:          "endpoints present, zeroOnMissingEndpoints=true fetches metrics normally",
+			zeroOnMissing: true,
+			endpointSlices: []discoveryV1.EndpointSlice{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "svc-abc",
+						Namespace: "ns",
+						Labels:    map[string]string{discoveryV1.LabelServiceName: "svc"},
+					},
+					Endpoints: []discoveryV1.Endpoint{
+						{
+							Addresses:  []string{"10.0.0.1"},
+							Conditions: discoveryV1.EndpointConditions{Ready: &readyTrue},
+						},
+					},
+					Ports: []discoveryV1.EndpointPort{
+						{Port: &port80},
+					},
+				},
+			},
+			wantValue: 42,
+			wantErr:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var runtimeObjects []client.Object
+			for i := range tt.endpointSlices {
+				runtimeObjects = append(runtimeObjects, &tt.endpointSlices[i])
+			}
+			kubeClient := fake.NewClientBuilder().WithObjects(runtimeObjects...).Build()
+
+			s := metricsAPIScaler{
+				metadata: &metricsAPIScalerMetadata{
+					URL:                               "http://svc.ns.svc.cluster.local:80/metrics",
+					ValueLocation:                     "metric",
+					Format:                            JSONFormat,
+					AggregateFromKubeServiceEndpoints: true,
+					ZeroOnMissingEndpoints:            tt.zeroOnMissing,
+				},
+				httpClient: &http.Client{Transport: newMockTransport()},
+				logger:     InitializeLogger(&scalersconfig.ScalerConfig{}, "metrics_api_scaler"),
+				kubeClient: kubeClient,
+			}
+
+			val, err := s.getMetricValue(t.Context())
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErrMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tt.wantValue, val)
+		})
+	}
 }
 
 func TestGetMetricValueErrorMessage(t *testing.T) {
