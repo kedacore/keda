@@ -1467,12 +1467,15 @@ func testHTTPClientMetrics(t *testing.T, data templateData) {
 		"expected keda_scaler_http_requests_total with namespace=%s, scaled_resource=%s, scaler=prometheus, trigger_name=%s, metric_name=s0-prometheus",
 		testNamespace, wrongScaledObjectName, wrongScalerName)
 
+	matchHistogramLabels := func(labels []*prommodel.LabelPair) bool {
+		return ExtractPrometheusLabelValue("scaler", labels) == "prometheus"
+	}
 	family, ok := families["keda_scaler_http_request_duration_seconds"]
 	assert.True(t, ok, "keda_scaler_http_request_duration_seconds not present")
 	if ok {
 		var found bool
 		for _, metric := range family.GetMetric() {
-			if matchLabels(metric.GetLabel()) {
+			if matchHistogramLabels(metric.GetLabel()) {
 				assert.Greater(t, metric.GetHistogram().GetSampleCount(), uint64(0),
 					"keda_scaler_http_request_duration_seconds sample count should be > 0")
 				found = true

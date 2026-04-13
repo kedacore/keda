@@ -171,7 +171,7 @@ var (
 			Help:      "Duration in seconds of outbound HTTP requests issued during scaler metric collection.",
 			Buckets:   []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
 		},
-		[]string{"namespace", "scaled_resource", "scaler", "trigger_name", "metric_name", "status_code"},
+		[]string{"scaler", "status_code"},
 	)
 )
 
@@ -356,7 +356,7 @@ func (p *PromMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
 func (p *PromMetrics) RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string) {
 	code := httpStatusCodeLabel(statusCode, isError)
 	httpClientRequestsTotal.WithLabelValues(namespace, scaledResource, scaler, triggerName, metricName, code).Inc()
-	httpClientRequestDuration.WithLabelValues(namespace, scaledResource, scaler, triggerName, metricName, code).Observe(durationSeconds)
+	httpClientRequestDuration.WithLabelValues(scaler, code).Observe(durationSeconds)
 }
 
 
