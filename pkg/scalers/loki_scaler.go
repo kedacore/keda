@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"path"
 	"strconv"
+	"strings"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -116,11 +117,10 @@ func (s *lokiScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 }
 
 func (s *lokiScaler) ExecuteLokiQuery(ctx context.Context) (float64, error) {
-	u, err := url.ParseRequestURI(s.metadata.ServerAddress)
+	u, err := getServerAddress(&s.metadata)
 	if err != nil {
 		return -1, err
 	}
-	u.Path = path.Join(u.Path, "/loki/api/v1/query")
 	u.RawQuery = url.Values{"query": []string{s.metadata.Query}}.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
@@ -218,4 +218,21 @@ func (s *lokiScaler) GetMetricsAndActivity(ctx context.Context, metricName strin
 
 	metric := GenerateMetricInMili(metricName, val)
 	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.ActivationThreshold, nil
+}
+
+func getServerAddress(metadata *lokiMetadata) (url.URL, error) {
+	loki_path := "/loki/api/v1/query"
+	u, err := url.ParseRequestURI(metadata.ServerAddress)
+	if err != nil {
+		return url.URL{}, err
+	}
+
+	if strings.HasPrefix(loki_path, u.Path) {
+		remaining := strings.TrimPrefix(loki_path, u.Path)
+		u.Path = path.Join(u.Path, remaining)
+	} else {
+		u.Path = path.Join(u.Path, loki_path)
+	}
+
+	return *u, nil
 }
