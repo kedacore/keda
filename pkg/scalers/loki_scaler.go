@@ -221,17 +221,17 @@ func (s *lokiScaler) GetMetricsAndActivity(ctx context.Context, metricName strin
 }
 
 func getServerAddress(metadata *lokiMetadata) (url.URL, error) {
-	loki_path := "/loki/api/v1/query"
+	const lokiPath = "/loki/api/v1/query"
 	u, err := url.ParseRequestURI(metadata.ServerAddress)
 	if err != nil {
 		return url.URL{}, err
 	}
 
-	if strings.HasPrefix(loki_path, u.Path) {
-		remaining := strings.TrimPrefix(loki_path, u.Path)
+	if strings.HasPrefix(lokiPath, u.Path) {
+		remaining := strings.TrimPrefix(lokiPath, u.Path)
 		u.Path = path.Join(u.Path, remaining)
 	} else {
-		u.Path = path.Join(u.Path, loki_path)
+		u.Path = path.Join(u.Path, lokiPath)
 	}
 
 	return *u, nil
