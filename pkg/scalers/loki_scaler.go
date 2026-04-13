@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"path"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -119,7 +120,7 @@ func (s *lokiScaler) ExecuteLokiQuery(ctx context.Context) (float64, error) {
 	if err != nil {
 		return -1, err
 	}
-	u.Path = "/loki/api/v1/query"
+	u.Path = path.Join(u.Path, "/loki/api/v1/query")
 	u.RawQuery = url.Values{"query": []string{s.metadata.Query}}.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
