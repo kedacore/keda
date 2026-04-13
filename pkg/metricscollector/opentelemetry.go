@@ -101,7 +101,7 @@ func NewOtelMetrics(options ...metric.Option) *OtelMetrics {
 
 func initMeters() {
 	var err error
-	msg := "create opentelemetry counter failed"
+	msg := "failed to create OpenTelemetry instrument"
 
 	otScalerErrorsCounter, err = meter.Int64Counter("keda.scaler.errors", api.WithDescription("Number of scaler errors"))
 	if err != nil {
