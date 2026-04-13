@@ -1290,8 +1290,8 @@ func testHTTPClientMetrics(t *testing.T, data templateData) {
 			ExtractPrometheusLabelValue("metric_name", labels) == "s0-prometheus"
 	}
 
-	val, ok := family["keda_http_client_requests_count_total"]
-	assert.True(t, ok, "keda_http_client_requests_count_total not available")
+	val, ok := family["keda_scaler_http_requests_count_total"]
+	assert.True(t, ok, "keda_scaler_http_requests_count_total not available")
 	if ok {
 		var found bool
 		for _, metric := range val.GetMetric() {
@@ -1302,20 +1302,20 @@ func testHTTPClientMetrics(t *testing.T, data templateData) {
 			}
 		}
 		assert.True(t, found,
-			"expected keda_http_client_requests_count_total with namespace=%s, scaled_resource=%s, scaler=prometheus, trigger_name=%s, metric_name=s0-prometheus",
+			"expected keda_scaler_http_requests_count_total with namespace=%s, scaled_resource=%s, scaler=prometheus, trigger_name=%s, metric_name=s0-prometheus",
 			data.TestNamespace, wrongScaledObjectName, wrongScalerName)
 	}
 
-	if val, ok := family["keda_http_client_request_duration_seconds"]; ok {
+	if val, ok := family["keda_scaler_http_request_duration_seconds"]; ok {
 		var found bool
 		for _, metric := range val.GetMetric() {
 			if matchLabels(metric.GetLabel()) {
 				assert.Greater(t, metric.GetHistogram().GetSampleCount(), uint64(0),
-					"keda_http_client_request_duration_seconds sample count should be > 0")
+					"keda_scaler_http_request_duration_seconds sample count should be > 0")
 				found = true
 				break
 			}
 		}
-		assert.True(t, found, "expected keda_http_client_request_duration_seconds histogram for prometheus scaler")
+		assert.True(t, found, "expected keda_scaler_http_request_duration_seconds histogram for prometheus scaler")
 	}
 }

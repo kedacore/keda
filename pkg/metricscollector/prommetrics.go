@@ -156,9 +156,9 @@ var (
 	httpClientRequestsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: DefaultPromMetricsNamespace,
-			Subsystem: "http_client",
+			Subsystem: "scaler_http",
 			Name:      "requests_total",
-			Help:      "Total number of outbound HTTP requests issued by KEDA's HTTP clients.",
+			Help:      "Total number of outbound HTTP requests issued during scaler metric fetches.",
 		},
 		[]string{"namespace", "scaled_resource", "scaler", "trigger_name", "metric_name", "status_code"},
 	)
@@ -166,9 +166,9 @@ var (
 	httpClientRequestDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: DefaultPromMetricsNamespace,
-			Subsystem: "http_client",
+			Subsystem: "scaler_http",
 			Name:      "request_duration_seconds",
-			Help:      "Duration in seconds of outbound HTTP requests issued by KEDA's HTTP clients.",
+			Help:      "Duration in seconds of outbound HTTP requests issued during scaler metric fetches.",
 			Buckets:   []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
 		},
 		[]string{"namespace", "scaled_resource", "scaler", "trigger_name", "metric_name", "status_code"},
