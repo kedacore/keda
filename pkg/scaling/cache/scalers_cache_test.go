@@ -22,8 +22,8 @@ import (
 
 	. "github.com/onsi/gomega"
 
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 func TestBuildScalerRequestCtx(t *testing.T) {
