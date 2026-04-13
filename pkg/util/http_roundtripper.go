@@ -80,7 +80,7 @@ func (r *InstrumentedRoundTripper) RoundTrip(req *http.Request) (*http.Response,
 	namespace, nsOK := ctx.Value(NamespaceContextKey).(string)
 	scaledResource, srOK := ctx.Value(ScaledResourceContextKey).(string)
 
-	// Only record metrics for scaler metric-fetch requests, identified by the
+	// Only record metrics for scaler metric collection requests, identified by the
 	// presence of all five context keys injected by buildScalerRequestCtx.
 	// Other HTTP calls (e.g. during scaler initialization) are not recorded.
 	if !scalerOK || !triggerOK || !metricOK || !nsOK || !srOK {
