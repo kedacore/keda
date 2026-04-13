@@ -359,7 +359,6 @@ func (p *PromMetrics) RecordHTTPClientRequest(durationSeconds float64, statusCod
 	httpClientRequestDuration.WithLabelValues(scaler, code).Observe(durationSeconds)
 }
 
-
 // Returns a grpcprom server Metrics object and registers the metrics. The object contains
 // interceptors to chain to the server so that all requests served are observed. Intended to be called
 // as part of initialization of metricscollector, hence why this function is not exported
