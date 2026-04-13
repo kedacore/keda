@@ -79,6 +79,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Improvements
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Metrics API Scaler**: Add `zeroOnMissingEndpoints` option for aggregated endpoint scaling ([#7651](https://github.com/kedacore/keda/issues/7651))
 
 ### Fixes
 
