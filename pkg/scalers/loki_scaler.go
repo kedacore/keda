@@ -227,7 +227,11 @@ func getServerAddress(metadata *lokiMetadata) (url.URL, error) {
 		return url.URL{}, err
 	}
 
-	if strings.HasPrefix(lokiPath, u.Path) {
+	if u.Path == lokiPath {
+		return *u, nil
+	}
+
+	if strings.HasPrefix(lokiPath, u.Path+"/") {
 		remaining := strings.TrimPrefix(lokiPath, u.Path)
 		u.Path = path.Join(u.Path, remaining)
 	} else {
