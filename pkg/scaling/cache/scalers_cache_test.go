@@ -21,7 +21,31 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
+
+func TestBuildScalerRequestCtx(t *testing.T) {
+	RegisterTestingT(t)
+
+	sb := ScalerBuilder{
+		ScalerConfig: scalersconfig.ScalerConfig{
+			TriggerType:             "prometheus",
+			TriggerName:             "my-trigger",
+			ScalableObjectNamespace: "my-namespace",
+			ScalableObjectName:      "my-scaled-object",
+		},
+	}
+
+	ctx := buildScalerRequestCtx(context.Background(), sb, "my-metric")
+
+	Expect(ctx.Value(kedautil.ScalerContextKey)).To(Equal("prometheus"))
+	Expect(ctx.Value(kedautil.TriggerNameContextKey)).To(Equal("my-trigger"))
+	Expect(ctx.Value(kedautil.MetricNameContextKey)).To(Equal("my-metric"))
+	Expect(ctx.Value(kedautil.NamespaceContextKey)).To(Equal("my-namespace"))
+	Expect(ctx.Value(kedautil.ScaledResourceContextKey)).To(Equal("my-scaled-object"))
+}
 
 func TestEmptyScalersCache(t *testing.T) {
 	RegisterTestingT(t)
