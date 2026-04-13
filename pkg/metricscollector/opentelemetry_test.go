@@ -125,7 +125,7 @@ func TestRecordHTTPClientRequest(t *testing.T) {
 			assert.Nil(t, err)
 
 			scopeMetrics := got.ScopeMetrics[0]
-			requestCount := retrieveMetric(scopeMetrics.Metrics, "keda.http.client.requests.count")
+			requestCount := retrieveMetric(scopeMetrics.Metrics, "keda.scaler.http.requests.count")
 			assert.NotNil(t, requestCount)
 
 			var found bool
@@ -149,7 +149,7 @@ func TestRecordHTTPClientRequest(t *testing.T) {
 			}
 			assert.True(t, found, "expected data point with status_code=%q", tt.wantStatusCode)
 
-			requestDuration := retrieveMetric(scopeMetrics.Metrics, "keda.http.client.request.duration.seconds")
+			requestDuration := retrieveMetric(scopeMetrics.Metrics, "keda.scaler.http.request.duration.seconds")
 			assert.NotNil(t, requestDuration)
 			assert.Equal(t, "s", requestDuration.Unit)
 		})

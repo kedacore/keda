@@ -74,14 +74,18 @@ func (r *InstrumentedRoundTripper) RoundTrip(req *http.Request) (*http.Response,
 	duration := time.Since(start).Seconds()
 
 	ctx := req.Context()
-	scaler, ok := ctx.Value(ScalerContextKey).(string)
-	if !ok || scaler == "" {
-		scaler = "unknown"
+	scaler, scalerOK := ctx.Value(ScalerContextKey).(string)
+	triggerName, triggerOK := ctx.Value(TriggerNameContextKey).(string)
+	metricName, metricOK := ctx.Value(MetricNameContextKey).(string)
+	namespace, nsOK := ctx.Value(NamespaceContextKey).(string)
+	scaledResource, srOK := ctx.Value(ScaledResourceContextKey).(string)
+
+	// Only record metrics for scaler metric-fetch requests, identified by the
+	// presence of all five context keys injected by buildScalerRequestCtx.
+	// Other HTTP calls (e.g. during scaler initialization) are not recorded.
+	if !scalerOK || !triggerOK || !metricOK || !nsOK || !srOK {
+		return resp, err
 	}
-	triggerName, _ := ctx.Value(TriggerNameContextKey).(string)
-	metricName, _ := ctx.Value(MetricNameContextKey).(string)
-	namespace, _ := ctx.Value(NamespaceContextKey).(string)
-	scaledResource, _ := ctx.Value(ScaledResourceContextKey).(string)
 
 	if err != nil {
 		metricscollector.RecordHTTPClientRequest(duration, 0, true, scaler, triggerName, metricName, namespace, scaledResource)
