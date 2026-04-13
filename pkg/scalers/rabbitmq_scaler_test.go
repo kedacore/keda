@@ -952,6 +952,7 @@ func generateTestCertAndKey(t *testing.T) (string, string) {
 	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
 
 	return string(certPEM), string(keyPEM)
+}
 
 func TestGetSum(t *testing.T) {
 	tests := []struct {
