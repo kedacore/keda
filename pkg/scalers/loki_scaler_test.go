@@ -290,6 +290,12 @@ var testGetServerAddressData = []getServerAddressTestData{
 		isError:       false,
 	},
 	{
+		name:          "URL with full loki path and trailing slash",
+		serverAddress: "http://localhost:3100/loki/api/v1/query/",
+		expectedPath:  "/loki/api/v1/query",
+		isError:       false,
+	},
+	{
 		name:          "URL with custom prefix",
 		serverAddress: "http://localhost:3100/custom",
 		expectedPath:  "/custom/loki/api/v1/query",
