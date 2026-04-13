@@ -320,6 +320,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		}
 		logger.Info("Initializing Scaling logic according to ScaledObject Specification")
 	}
+
 	return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
 }
 
