@@ -226,7 +226,7 @@ func initMeters() {
 
 	otHTTPClientRequestsCounter, err = meter.Int64Counter(
 		"keda.scaler.http.requests.count",
-		api.WithDescription("Total number of outbound HTTP requests issued during scaler metric fetches, labeled by status class."),
+		api.WithDescription("Total number of outbound HTTP requests issued during scaler metric collection, labeled by status class."),
 	)
 	if err != nil {
 		otLog.Error(err, msg)
@@ -234,7 +234,7 @@ func initMeters() {
 
 	otHTTPClientRequestDuration, err = meter.Float64Histogram(
 		"keda.scaler.http.request.duration.seconds",
-		api.WithDescription("Duration in seconds of outbound HTTP requests issued during scaler metric fetches."),
+		api.WithDescription("Duration in seconds of outbound HTTP requests issued during scaler metric collection."),
 		api.WithUnit("s"),
 	)
 	if err != nil {
