@@ -76,7 +76,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
-- **General**: Add scaler HTTP request metrics (`keda_scaler_http_requests_total`, `keda_scaler_http_request_duration_seconds`) for outbound HTTP requests made during scaler metric fetches ([#6600](https://github.com/kedacore/keda/issues/6600))
+- **General**: Add scaler HTTP request metrics (`keda_scaler_http_requests_total`, `keda_scaler_http_request_duration_seconds`) for outbound HTTP requests made during scaler metric collection ([#6600](https://github.com/kedacore/keda/issues/6600))
 - **General**: Add CRD-level validation markers (Minimum, MinLength, MinItems, Enum) for ScaledObject, ScaledJob, ScaleTriggers, and TriggerAuthentication API types ([#7533](https://github.com/kedacore/keda/pull/7533))
 - **General**: Add `--leader-election-id` flag to allow configuring the leader election Lease name ([#7564](https://github.com/kedacore/keda/issues/7564))
 - **General**: Make APIService cert injections optional ([#7559](https://github.com/kedacore/keda/pull/7559))
