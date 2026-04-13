@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"path"
 	"net/http"
 	"net/url"
+	"path"
 	"strconv"
 
 	"github.com/go-logr/logr"
