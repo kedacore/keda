@@ -31,7 +31,7 @@ import (
 )
 
 // SetStatusConditions patches given object with passed list of conditions based on the object's type or returns an error.
-func SetStatusConditions(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, object interface{}, conditions *kedav1alpha1.Conditions) error {
+func SetStatusConditions(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, object runtimeclient.Object, conditions *kedav1alpha1.Conditions) error {
 	transform := func(runtimeObj runtimeclient.Object, target interface{}) error {
 		conditions, ok := target.(*kedav1alpha1.Conditions)
 		if !ok {
@@ -64,7 +64,7 @@ func UpdateScaledJobStatus(ctx context.Context, client runtimeclient.StatusClien
 }
 
 // updateObjectStatus patches the given ScaledObject with the updated status passed to it or returns an error.
-func updateObjectStatus(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, object interface{}, status interface{}) error {
+func updateObjectStatus(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, object runtimeclient.Object, status interface{}) error {
 	transform := func(runtimeObj runtimeclient.Object, target interface{}) error {
 		switch obj := runtimeObj.(type) {
 		case *kedav1alpha1.ScaledObject:
@@ -169,11 +169,10 @@ func UpdateTriggerAuthenticationStatusFromTriggers(ctx context.Context, logger l
 }
 
 // TransformObject patches the given object with the targeted passed to it through a transformer function or returns an error.
-func TransformObject(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, object interface{}, target interface{}, transform func(runtimeclient.Object, interface{}) error) error {
+func TransformObject(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, object runtimeclient.Object, target interface{}, transform func(runtimeclient.Object, interface{}) error) error {
 	var patch runtimeclient.Patch
 
-	runtimeObj := object.(runtimeclient.Object)
-	switch obj := runtimeObj.(type) {
+	switch obj := object.(type) {
 	case *kedav1alpha1.ScaledObject:
 		patch = runtimeclient.MergeFrom(obj.DeepCopy())
 		if err := transform(obj, target); err != nil {
@@ -216,7 +215,7 @@ func TransformObject(ctx context.Context, client runtimeclient.StatusClient, log
 		return err
 	}
 
-	err := client.Status().Patch(ctx, runtimeObj, patch)
+	err := client.Status().Patch(ctx, object, patch)
 	if err != nil {
 		logger.Error(err, "failed to patch Objects")
 	}
