@@ -229,7 +229,7 @@ func getServerAddress(metadata *lokiMetadata) (url.URL, error) {
 
 	u.Path = strings.TrimRight(u.Path, "/")
 
-	if u.Path == lokiPath {
+	if strings.HasSuffix(u.Path, lokiPath) {
 		return *u, nil
 	}
 

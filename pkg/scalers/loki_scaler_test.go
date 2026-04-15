@@ -302,6 +302,12 @@ var testGetServerAddressData = []getServerAddressTestData{
 		isError:       false,
 	},
 	{
+		name:          "URL with custom prefix",
+		serverAddress: "http://localhost:3100/custom/loki/api/v1/query",
+		expectedPath:  "/custom/loki/api/v1/query",
+		isError:       false,
+	},
+	{
 		name:          "URL with partial loki path not on segment boundary",
 		serverAddress: "http://localhost:3100/lo",
 		expectedPath:  "/lo/loki/api/v1/query",
