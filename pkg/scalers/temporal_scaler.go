@@ -232,15 +232,7 @@ func (s *temporalScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 }
 
 func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	var (
-		queueSize int64
-		err       error
-	)
-	if s.metadata.WorkerVersioningType == versioningTypeDeployment {
-		queueSize, err = describeDeploymentBacklogCount(ctx, s.client.WorkflowService(), s.metadata.Namespace, s.metadata.DeploymentName, s.metadata.BuildID)
-	} else {
-		queueSize, err = s.getQueueSize(ctx)
-	}
+	queueSize, err := s.getBacklogCount(ctx)
 	if err != nil {
 		s.logger.Error(err, "failed to get Temporal queue size")
 		return nil, false, fmt.Errorf("failed to get Temporal queue size: %w", err)
@@ -256,34 +248,51 @@ func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 
 // Backlog query helpers
 
-func (s *temporalScaler) getQueueSize(ctx context.Context) (int64, error) {
-	var selection *sdk.TaskQueueVersionSelection
-	if s.metadata.AllActive || s.metadata.Unversioned || s.metadata.BuildID != "" {
-		selection = &sdk.TaskQueueVersionSelection{
-			AllActive:   s.metadata.AllActive,
-			Unversioned: s.metadata.Unversioned,
-		}
-		if s.metadata.BuildID != "" {
-			selection.BuildIDs = []string{s.metadata.BuildID}
-		}
+func (s *temporalScaler) getBacklogCount(ctx context.Context) (int64, error) {
+	switch s.metadata.WorkerVersioningType {
+	case versioningTypeDeployment:
+		return getDeploymentBacklogCount(ctx, s.client.WorkflowService(), s.metadata.Namespace, s.metadata.DeploymentName, s.metadata.BuildID)
+	case versioningTypeBuildID:
+		return getBuildIDBacklogCount(ctx, s.client, s.metadata.TaskQueue, s.metadata.QueueTypes, s.metadata.BuildID, s.metadata.AllActive, s.metadata.Unversioned)
+	default:
+		return getUnversionedBacklogCount(ctx, s.client, s.metadata.TaskQueue, s.metadata.QueueTypes)
 	}
+}
 
-	queueTypes := getQueueTypes(s.metadata.QueueTypes)
-
-	resp, err := s.client.DescribeTaskQueueEnhanced(ctx, sdk.DescribeTaskQueueEnhancedOptions{
-		TaskQueue:      s.metadata.TaskQueue,
+func getUnversionedBacklogCount(ctx context.Context, client temporalBacklogClient, taskQueue string, queueTypes []string) (int64, error) {
+	resp, err := client.DescribeTaskQueueEnhanced(ctx, sdk.DescribeTaskQueueEnhancedOptions{
+		TaskQueue:      taskQueue,
 		ReportStats:    true,
-		Versions:       selection,
-		TaskQueueTypes: queueTypes,
+		TaskQueueTypes: getQueueTypes(queueTypes),
 	})
 	if err != nil {
-		return 0, fmt.Errorf("failed to get Temporal queue size: %w", err)
+		return 0, fmt.Errorf("failed to describe task queue: %w", err)
 	}
-
 	return getCombinedBacklogCount(resp), nil
 }
 
-func describeDeploymentBacklogCount(ctx context.Context, svc workflowservice.WorkflowServiceClient, namespace, deploymentName, buildID string) (int64, error) {
+func getBuildIDBacklogCount(ctx context.Context, client temporalBacklogClient, taskQueue string, queueTypes []string, buildID string, allActive, unversioned bool) (int64, error) {
+	selection := &sdk.TaskQueueVersionSelection{
+		AllActive:   allActive,
+		Unversioned: unversioned,
+	}
+	if buildID != "" {
+		selection.BuildIDs = []string{buildID}
+	}
+
+	resp, err := client.DescribeTaskQueueEnhanced(ctx, sdk.DescribeTaskQueueEnhancedOptions{
+		TaskQueue:      taskQueue,
+		ReportStats:    true,
+		Versions:       selection,
+		TaskQueueTypes: getQueueTypes(queueTypes),
+	})
+	if err != nil {
+		return 0, fmt.Errorf("failed to describe task queue: %w", err)
+	}
+	return getCombinedBacklogCount(resp), nil
+}
+
+func getDeploymentBacklogCount(ctx context.Context, svc workflowservice.WorkflowServiceClient, namespace, deploymentName, buildID string) (int64, error) {
 	resp, err := svc.DescribeWorkerDeploymentVersion(ctx,
 		&workflowservice.DescribeWorkerDeploymentVersionRequest{
 			Namespace: namespace,

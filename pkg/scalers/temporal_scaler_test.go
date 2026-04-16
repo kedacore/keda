@@ -404,7 +404,7 @@ func makeVersionTaskQueue(backlog int64) *workflowservice.DescribeWorkerDeployme
 	}
 }
 
-func TestDescribeDeploymentBacklogCount(t *testing.T) {
+func TestGetDeploymentBacklogCount(t *testing.T) {
 	cases := []struct {
 		name          string
 		taskQueues    []*workflowservice.DescribeWorkerDeploymentVersionResponse_VersionTaskQueue
@@ -464,7 +464,7 @@ func TestDescribeDeploymentBacklogCount(t *testing.T) {
 					}, nil)
 			}
 
-			got, err := describeDeploymentBacklogCount(context.Background(), mockSvc, "default", "my-deployment", "v1.0.0")
+			got, err := getDeploymentBacklogCount(context.Background(), mockSvc, "default", "my-deployment", "v1.0.0")
 			if tc.wantErr {
 				assert.Error(t, err)
 			} else {
