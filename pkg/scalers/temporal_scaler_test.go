@@ -72,6 +72,8 @@ var testTemporalMetadata = []parseTemporalMetadataTestData{
 var temporalMetricIdentifiers = []temporalMetricIdentifier{
 	{&testTemporalMetadata[5], 0, "s0-temporal-v2-default"},
 	{&testTemporalMetadata[5], 1, "s1-temporal-v2-default"},
+	{&testTemporalMetadata[14], 0, "s0-temporal-v2-default-my-deploy-v1"},
+	{&testTemporalMetadata[15], 0, "s0-temporal-v2-default-v1"},
 }
 
 func TestTemporalParseMetadata(t *testing.T) {
@@ -141,6 +143,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
 				MinConnectTimeout:         5,
+				GRPCTimeout:               10,
 			},
 			wantErr: false,
 		},
@@ -159,6 +162,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 12,
 				MinConnectTimeout:         5,
+				GRPCTimeout:               10,
 			},
 			wantErr: false,
 		},
@@ -177,6 +181,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				ActivationTargetQueueSize: 0,
 				APIKey:                    "test01",
 				MinConnectTimeout:         5,
+				GRPCTimeout:               10,
 			},
 			authParams: map[string]string{
 				"apiKey": "test01",
@@ -199,6 +204,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				ActivationTargetQueueSize: 0,
 				QueueTypes:                []string{"workflow", "activity"},
 				MinConnectTimeout:         5,
+				GRPCTimeout:               10,
 			},
 			wantErr: false,
 		},
@@ -222,6 +228,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				ActivationTargetQueueSize: 0,
 				APIKey:                    "test01",
 				MinConnectTimeout:         5,
+				GRPCTimeout:               10,
 			},
 			authParams: map[string]string{
 				"apiKey": "test01",
@@ -244,6 +251,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				ActivationTargetQueueSize: 0,
 				APIKey:                    "test-api-key",
 				MinConnectTimeout:         5,
+				GRPCTimeout:               10,
 			},
 			authParams: map[string]string{
 				"apiKey": "test-api-key",
@@ -265,6 +273,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
 				MinConnectTimeout:         5,
+				GRPCTimeout:               10,
 				TLSServerName:             "my-namespace.tmpr.cloud",
 			},
 			wantErr: false,
@@ -288,6 +297,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				ActivationTargetQueueSize: 0,
 				APIKey:                    "test01",
 				MinConnectTimeout:         5,
+				GRPCTimeout:               10,
 				TLSServerName:             "my-namespace.tmpr.cloud",
 			},
 			wantErr: false,
@@ -317,6 +327,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				KeyPassword:               "password",
 				CA:                        "ca-data",
 				MinConnectTimeout:         5,
+				GRPCTimeout:               10,
 				TLSServerName:             "my-namespace.tmpr.cloud",
 			},
 			wantErr: false,

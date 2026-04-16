@@ -48,6 +48,7 @@ var temporalDefaultQueueTypes = []sdk.TaskQueueType{
 type temporalBacklogClient interface {
 	DescribeTaskQueueEnhanced(ctx context.Context, options sdk.DescribeTaskQueueEnhancedOptions) (sdk.TaskQueueDescription, error)
 	WorkflowService() workflowservice.WorkflowServiceClient
+	CheckHealth(ctx context.Context, request *sdk.CheckHealthRequest) (*sdk.CheckHealthResponse, error)
 	Close()
 }
 
@@ -56,6 +57,7 @@ type temporalScaler struct {
 	metadata   *temporalMetadata
 	client     temporalBacklogClient
 	logger     logr.Logger
+	wasActive  bool
 }
 
 type temporalMetadata struct {
@@ -63,6 +65,7 @@ type temporalMetadata struct {
 	Endpoint          string `keda:"name=endpoint,          order=triggerMetadata;resolvedEnv"`
 	Namespace         string `keda:"name=namespace,         order=triggerMetadata;resolvedEnv, default=default"`
 	MinConnectTimeout int    `keda:"name=minConnectTimeout, order=triggerMetadata, default=5"`
+	GRPCTimeout       int    `keda:"name=grpcTimeout,       order=triggerMetadata, default=10"`
 
 	// Scaling
 	TaskQueue                 string `keda:"name=taskQueue,                 order=triggerMetadata;resolvedEnv"`
@@ -96,6 +99,9 @@ func (a *temporalMetadata) Validate() error {
 	}
 	if a.MinConnectTimeout < 0 {
 		return fmt.Errorf("minConnectTimeout must be a non-negative number")
+	}
+	if a.GRPCTimeout <= 0 {
+		return fmt.Errorf("grpcTimeout must be a positive number")
 	}
 
 	if err := a.validateTLS(); err != nil {
@@ -166,6 +172,13 @@ func NewTemporalScaler(ctx context.Context, config *scalersconfig.ScalerConfig) 
 		return nil, fmt.Errorf("failed to create Temporal client connection: %w", err)
 	}
 
+	healthCtx, healthCancel := context.WithTimeout(ctx, time.Duration(meta.MinConnectTimeout)*time.Second)
+	defer healthCancel()
+	if _, err := c.CheckHealth(healthCtx, &sdk.CheckHealthRequest{}); err != nil {
+		c.Close()
+		return nil, fmt.Errorf("failed to connect to Temporal server: %w", err)
+	}
+
 	switch meta.WorkerVersioningType {
 	case versioningTypeDeployment:
 		logger.Info("using deployment versioning", "namespace", meta.Namespace, "taskQueue", meta.TaskQueue, "deploymentName", meta.DeploymentName, "buildId", meta.BuildID)
@@ -201,7 +214,16 @@ func (s *temporalScaler) Close(_ context.Context) error {
 }
 
 func (s *temporalScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	metricName := kedautil.NormalizeString(fmt.Sprintf("temporal-%s-%s", s.metadata.Namespace, s.metadata.TaskQueue))
+	var metricName string
+	switch s.metadata.WorkerVersioningType {
+	case versioningTypeDeployment:
+		metricName = fmt.Sprintf("temporal-%s-%s-%s-%s", s.metadata.Namespace, s.metadata.TaskQueue, s.metadata.DeploymentName, s.metadata.BuildID)
+	case versioningTypeBuildID:
+		metricName = fmt.Sprintf("temporal-%s-%s-%s", s.metadata.Namespace, s.metadata.TaskQueue, s.metadata.BuildID)
+	default:
+		metricName = fmt.Sprintf("temporal-%s-%s", s.metadata.Namespace, s.metadata.TaskQueue)
+	}
+	metricName = kedautil.NormalizeString(metricName)
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
@@ -229,12 +251,23 @@ func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 
 	s.logger.V(1).Info("polled backlog", "backlogCount", queueSize, "targetQueueSize", s.metadata.TargetQueueSize, "activationThreshold", s.metadata.ActivationTargetQueueSize, "isActive", isActive)
 
+	if isActive && !s.wasActive {
+		s.logger.Info("scaler activated", "backlogCount", queueSize)
+	}
+	if !isActive && s.wasActive {
+		s.logger.Info("scaler deactivated", "backlogCount", queueSize)
+	}
+	s.wasActive = isActive
+
 	return []external_metrics.ExternalMetricValue{metric}, isActive, nil
 }
 
 // Backlog query helpers
 
 func (s *temporalScaler) getBacklogCount(ctx context.Context) (int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(s.metadata.GRPCTimeout)*time.Second)
+	defer cancel()
+
 	switch s.metadata.WorkerVersioningType {
 	case versioningTypeDeployment:
 		return getDeploymentBacklogCount(ctx, s.client.WorkflowService(), s.metadata.Namespace, s.metadata.DeploymentName, s.metadata.BuildID)
