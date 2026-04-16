@@ -8,8 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	discoveryV1 "k8s.io/api/discovery/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -254,4 +258,53 @@ func TestGetMetricValueErrorMessage(t *testing.T) {
 	_, err := s.getMetricValue(context.TODO())
 
 	assert.Equal(t, err.Error(), "/api/v1/: api returned 418")
+}
+
+func TestGetEndpointsUrlsFromServiceURL_SelectorFiltersCorrectly(t *testing.T) {
+	ready := true
+	port8080 := int32(8080)
+
+	targetSlice := &discoveryV1.EndpointSlice{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-service-abc",
+			Namespace: "my-namespace",
+			Labels: map[string]string{
+				discoveryV1.LabelServiceName: "my-service",
+			},
+		},
+		Ports: []discoveryV1.EndpointPort{{Port: &port8080}},
+		Endpoints: []discoveryV1.Endpoint{{
+			Addresses:  []string{"10.0.0.1"},
+			Conditions: discoveryV1.EndpointConditions{Ready: &ready},
+		}},
+	}
+
+	unrelatedSlice := &discoveryV1.EndpointSlice{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "other-service-xyz",
+			Namespace: "my-namespace",
+			Labels: map[string]string{
+				discoveryV1.LabelServiceName: "other-service",
+			},
+		},
+		Ports: []discoveryV1.EndpointPort{{Port: &port8080}},
+		Endpoints: []discoveryV1.Endpoint{{
+			Addresses:  []string{"10.0.0.99"},
+			Conditions: discoveryV1.EndpointConditions{Ready: &ready},
+		}},
+	}
+
+	kubeClient := fake.NewClientBuilder().
+		WithLists(&discoveryV1.EndpointSliceList{Items: []discoveryV1.EndpointSlice{*targetSlice, *unrelatedSlice}}).
+		Build()
+
+	s := metricsAPIScaler{
+		kubeClient: kubeClient,
+		logger:     logr.Discard(),
+	}
+
+	urls, err := s.getEndpointsUrlsFromServiceURL(t.Context(), "http://my-service.my-namespace.svc:8080/metrics")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"http://10.0.0.1:8080/metrics"}, urls,
+		"should only return endpoints from my-service, not other-service")
 }

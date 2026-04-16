@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
@@ -324,12 +325,15 @@ func getTemplateData() (templateData, []Template) {
 	}, []Template{}
 }
 
-func checkingEvent(t *testing.T, namespace string, scaledObject string, index int, eventReason string, message string) {
-	result, err := ExecuteCommand(fmt.Sprintf("kubectl get events -n %s --field-selector involvedObject.name=%s --sort-by=.metadata.creationTimestamp -o jsonpath=\"{.items[%d].reason}:{.items[%d].message}\"", namespace, scaledObject, index, index))
-
-	assert.NoError(t, err)
-	lastEventMessage := strings.Trim(string(result), "\"")
-	assert.Contains(t, lastEventMessage, eventReason+":"+message)
+func checkingEvent(t *testing.T, namespace string, scaledObject string, index int, eventReason string, msg string) {
+	assert.Eventually(t, func() bool {
+		result, err := ExecuteCommand(fmt.Sprintf("kubectl get events -n %s --field-selector involvedObject.name=%s --sort-by=.metadata.creationTimestamp -o jsonpath=\"{.items[%d].reason}:{.items[%d].message}\"", namespace, scaledObject, index, index))
+		if err != nil {
+			return false
+		}
+		lastEventMessage := strings.Trim(string(result), "\"")
+		return strings.Contains(lastEventMessage, eventReason+":"+msg)
+	}, 60*time.Second, 2*time.Second, "expected event %s:%s for %s/%s[%d]", eventReason, msg, namespace, scaledObject, index)
 }
 
 func testNormalEvent(t *testing.T, kc *kubernetes.Clientset, data templateData) {
