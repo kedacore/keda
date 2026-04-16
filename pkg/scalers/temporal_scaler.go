@@ -125,63 +125,26 @@ func (a *temporalMetadata) validateTLS() error {
 	return nil
 }
 
-type versioningFieldFlags struct {
-	buildID        bool
-	deploymentName bool
-	queueTypes     bool
-}
-
-// versioningAllowed defines which fields are allowed per workerVersioningType.
-// Fields not listed are forbidden. Required fields are checked separately.
-var versioningAllowed = map[string]versioningFieldFlags{
-	"":                       {queueTypes: true},
-	versioningTypeNone:       {queueTypes: true},
-	versioningTypeBuildID:    {buildID: true, queueTypes: true},
-	versioningTypeDeployment: {buildID: true, deploymentName: true},
-}
-
-// versioningRequired defines which fields must be set per workerVersioningType.
-var versioningRequired = map[string]versioningFieldFlags{
-	versioningTypeDeployment: {buildID: true, deploymentName: true},
-}
-
 func (a *temporalMetadata) validateVersioning() error {
-	allowed, ok := versioningAllowed[a.WorkerVersioningType]
-	if !ok {
+	switch a.WorkerVersioningType {
+	case "", versioningTypeNone:
+		if a.BuildID != "" || a.DeploymentName != "" {
+			return fmt.Errorf("buildId and deploymentName require a workerVersioningType")
+		}
+	case versioningTypeBuildID:
+		if a.DeploymentName != "" {
+			return fmt.Errorf("deploymentName cannot be used with workerVersioningType=%s", versioningTypeBuildID)
+		}
+	case versioningTypeDeployment:
+		if a.BuildID == "" || a.DeploymentName == "" {
+			return fmt.Errorf("both buildId and deploymentName are required when workerVersioningType=%s", versioningTypeDeployment)
+		}
+		if len(a.QueueTypes) > 0 {
+			return fmt.Errorf("queueTypes cannot be used with workerVersioningType=%s", versioningTypeDeployment)
+		}
+	default:
 		return fmt.Errorf("unknown workerVersioningType %q, must be one of: %s, %s, %s", a.WorkerVersioningType, versioningTypeNone, versioningTypeBuildID, versioningTypeDeployment)
 	}
-
-	set := versioningFieldFlags{
-		buildID:        a.BuildID != "",
-		deploymentName: a.DeploymentName != "",
-		queueTypes:     len(a.QueueTypes) > 0,
-	}
-
-	type fieldCheck struct {
-		name    string
-		set     bool
-		allowed bool
-	}
-	for _, f := range []fieldCheck{
-		{"buildId", set.buildID, allowed.buildID},
-		{"deploymentName", set.deploymentName, allowed.deploymentName},
-		{"queueTypes", set.queueTypes, allowed.queueTypes},
-	} {
-		if f.set && !f.allowed {
-			return fmt.Errorf("%s cannot be used with workerVersioningType=%s", f.name, a.WorkerVersioningType)
-		}
-	}
-
-	required := versioningRequired[a.WorkerVersioningType]
-	for _, f := range []fieldCheck{
-		{"buildId", set.buildID, required.buildID},
-		{"deploymentName", set.deploymentName, required.deploymentName},
-	} {
-		if f.allowed && !f.set {
-			return fmt.Errorf("%s is required when workerVersioningType=%s", f.name, a.WorkerVersioningType)
-		}
-	}
-
 	return nil
 }
 
