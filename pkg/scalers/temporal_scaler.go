@@ -224,10 +224,10 @@ func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 		return nil, false, fmt.Errorf("failed to get Temporal queue size: %w", err)
 	}
 
-	s.logger.V(1).Info("found queue size", "queueSize", queueSize, "activationThreshold", s.metadata.ActivationTargetQueueSize, "isActive", isActive)
-
 	metric := GenerateMetricInMili(metricName, float64(queueSize))
 	isActive := queueSize > s.metadata.ActivationTargetQueueSize
+
+	s.logger.V(1).Info("polled backlog", "backlogCount", queueSize, "targetQueueSize", s.metadata.TargetQueueSize, "activationThreshold", s.metadata.ActivationTargetQueueSize, "isActive", isActive)
 
 	return []external_metrics.ExternalMetricValue{metric}, isActive, nil
 }
