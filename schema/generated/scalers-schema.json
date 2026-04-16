@@ -5722,12 +5722,6 @@
                     "metadataVariableReadable": true
                 },
                 {
-                    "name": "selectUnversioned",
-                    "type": "string",
-                    "default": "false",
-                    "metadataVariableReadable": true
-                },
-                {
                     "name": "apiKey",
                     "type": "string",
                     "optional": true,

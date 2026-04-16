@@ -73,7 +73,6 @@ type temporalMetadata struct {
 	WorkerVersioningType string   `keda:"name=workerVersioningType, order=triggerMetadata, optional"`
 	BuildID              string   `keda:"name=buildId,              order=triggerMetadata;resolvedEnv, optional"`
 	DeploymentName       string   `keda:"name=deploymentName,       order=triggerMetadata;resolvedEnv, optional"`
-	Unversioned bool `keda:"name=selectUnversioned, order=triggerMetadata, default=false"`
 	QueueTypes           []string `keda:"name=queueTypes,           order=triggerMetadata, optional"`
 
 	// Auth / TLS
@@ -129,7 +128,6 @@ func (a *temporalMetadata) validateTLS() error {
 type versioningFieldFlags struct {
 	buildID        bool
 	deploymentName bool
-	unversioned    bool
 	queueTypes     bool
 }
 
@@ -138,7 +136,7 @@ type versioningFieldFlags struct {
 var versioningAllowed = map[string]versioningFieldFlags{
 	"":                       {queueTypes: true},
 	versioningTypeNone:       {queueTypes: true},
-	versioningTypeBuildID:    {buildID: true, unversioned: true, queueTypes: true},
+	versioningTypeBuildID:    {buildID: true, queueTypes: true},
 	versioningTypeDeployment: {buildID: true, deploymentName: true},
 }
 
@@ -156,7 +154,6 @@ func (a *temporalMetadata) validateVersioning() error {
 	set := versioningFieldFlags{
 		buildID:        a.BuildID != "",
 		deploymentName: a.DeploymentName != "",
-		unversioned:    a.Unversioned,
 		queueTypes:     len(a.QueueTypes) > 0,
 	}
 
@@ -168,7 +165,6 @@ func (a *temporalMetadata) validateVersioning() error {
 	for _, f := range []fieldCheck{
 		{"buildId", set.buildID, allowed.buildID},
 		{"deploymentName", set.deploymentName, allowed.deploymentName},
-		{"selectUnversioned", set.unversioned, allowed.unversioned},
 		{"queueTypes", set.queueTypes, allowed.queueTypes},
 	} {
 		if f.set && !f.allowed {
@@ -280,7 +276,7 @@ func (s *temporalScaler) getBacklogCount(ctx context.Context) (int64, error) {
 	case versioningTypeDeployment:
 		return getDeploymentBacklogCount(ctx, s.client.WorkflowService(), s.metadata.Namespace, s.metadata.DeploymentName, s.metadata.BuildID)
 	case versioningTypeBuildID:
-		return getBuildIDBacklogCount(ctx, s.client, s.metadata.TaskQueue, s.metadata.QueueTypes, s.metadata.BuildID, s.metadata.Unversioned)
+		return getBuildIDBacklogCount(ctx, s.client, s.metadata.TaskQueue, s.metadata.QueueTypes, s.metadata.BuildID)
 	default:
 		return getUnversionedBacklogCount(ctx, s.client, s.metadata.TaskQueue, s.metadata.QueueTypes)
 	}
@@ -298,10 +294,8 @@ func getUnversionedBacklogCount(ctx context.Context, client temporalBacklogClien
 	return getCombinedBacklogCount(resp), nil
 }
 
-func getBuildIDBacklogCount(ctx context.Context, client temporalBacklogClient, taskQueue string, queueTypes []string, buildID string, unversioned bool) (int64, error) {
-	selection := &sdk.TaskQueueVersionSelection{
-		Unversioned: unversioned,
-	}
+func getBuildIDBacklogCount(ctx context.Context, client temporalBacklogClient, taskQueue string, queueTypes []string, buildID string) (int64, error) {
+	selection := &sdk.TaskQueueVersionSelection{}
 	if buildID != "" {
 		selection.BuildIDs = []string{buildID}
 	}
