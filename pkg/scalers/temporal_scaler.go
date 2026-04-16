@@ -168,11 +168,11 @@ func NewTemporalScaler(ctx context.Context, config *scalersconfig.ScalerConfig) 
 
 	switch meta.WorkerVersioningType {
 	case versioningTypeDeployment:
-		logger.Info("using deployment versioning", "deploymentName", meta.DeploymentName, "buildId", meta.BuildID)
+		logger.Info("using deployment versioning", "namespace", meta.Namespace, "taskQueue", meta.TaskQueue, "deploymentName", meta.DeploymentName, "buildId", meta.BuildID)
 	case versioningTypeBuildID:
-		logger.Info("using build-id versioning", "buildId", meta.BuildID)
+		logger.Info("using build-id versioning", "namespace", meta.Namespace, "taskQueue", meta.TaskQueue, "buildId", meta.BuildID)
 	default:
-		logger.Info("using unversioned mode")
+		logger.Info("using unversioned mode", "namespace", meta.Namespace, "taskQueue", meta.TaskQueue)
 	}
 
 	return &temporalScaler{
@@ -224,7 +224,7 @@ func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 		return nil, false, fmt.Errorf("failed to get Temporal queue size: %w", err)
 	}
 
-	s.logger.V(1).Info("found queue size", "queueSize", queueSize, "namespace", s.metadata.Namespace, "taskQueue", s.metadata.TaskQueue)
+	s.logger.V(1).Info("found queue size", "queueSize", queueSize, "activationThreshold", s.metadata.ActivationTargetQueueSize, "isActive", isActive)
 
 	metric := GenerateMetricInMili(metricName, float64(queueSize))
 	isActive := queueSize > s.metadata.ActivationTargetQueueSize
