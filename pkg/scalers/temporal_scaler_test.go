@@ -10,6 +10,7 @@ import (
 	taskqueuepb "go.temporal.io/api/taskqueue/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	workflowservicemock "go.temporal.io/api/workflowservicemock/v1"
+	sdk "go.temporal.io/sdk/client"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -450,6 +451,256 @@ func TestGetDeploymentBacklogCount(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.Equal(t, tc.wantBacklog, got)
+			}
+		})
+	}
+}
+
+// mockBacklogClient implements temporalBacklogClient for testing the
+// unversioned and build-id backlog paths.
+type mockBacklogClient struct {
+	resp sdk.TaskQueueDescription
+	err  error
+}
+
+func (m *mockBacklogClient) DescribeTaskQueueEnhanced(_ context.Context, _ sdk.DescribeTaskQueueEnhancedOptions) (sdk.TaskQueueDescription, error) {
+	return m.resp, m.err
+}
+
+func (m *mockBacklogClient) WorkflowService() workflowservice.WorkflowServiceClient { return nil }
+func (m *mockBacklogClient) CheckHealth(_ context.Context, _ *sdk.CheckHealthRequest) (*sdk.CheckHealthResponse, error) {
+	return nil, nil
+}
+func (m *mockBacklogClient) Close() {}
+
+func makeTaskQueueDescription(backlogs ...int64) sdk.TaskQueueDescription {
+	typesInfo := make(map[sdk.TaskQueueType]sdk.TaskQueueTypeInfo)
+	for i, b := range backlogs {
+		typesInfo[sdk.TaskQueueType(i)] = sdk.TaskQueueTypeInfo{
+			Stats: &sdk.TaskQueueStats{ApproximateBacklogCount: b},
+		}
+	}
+	return sdk.TaskQueueDescription{
+		VersionsInfo: map[string]sdk.TaskQueueVersionInfo{
+			"": {TypesInfo: typesInfo},
+		},
+	}
+}
+
+func TestGetUnversionedBacklogCount(t *testing.T) {
+	cases := []struct {
+		name        string
+		resp        sdk.TaskQueueDescription
+		err         error
+		wantBacklog int64
+		wantErr     bool
+	}{
+		{
+			name:        "returns backlog count",
+			resp:        makeTaskQueueDescription(10, 20),
+			wantBacklog: 30,
+		},
+		{
+			name:        "empty response returns zero",
+			resp:        sdk.TaskQueueDescription{},
+			wantBacklog: 0,
+		},
+		{
+			name:    "service error propagated",
+			err:     errors.New("rpc error"),
+			wantErr: true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			client := &mockBacklogClient{resp: tc.resp, err: tc.err}
+			got, err := getUnversionedBacklogCount(context.Background(), client, "test-queue", nil)
+			if tc.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.wantBacklog, got)
+			}
+		})
+	}
+}
+
+func TestGetBuildIDBacklogCount(t *testing.T) {
+	cases := []struct {
+		name        string
+		resp        sdk.TaskQueueDescription
+		err         error
+		buildID     string
+		wantBacklog int64
+		wantErr     bool
+	}{
+		{
+			name:        "returns backlog count with build ID",
+			resp:        makeTaskQueueDescription(15),
+			buildID:     "v1.0",
+			wantBacklog: 15,
+		},
+		{
+			name:        "empty build ID still works",
+			resp:        makeTaskQueueDescription(5),
+			buildID:     "",
+			wantBacklog: 5,
+		},
+		{
+			name:    "service error propagated",
+			err:     errors.New("rpc error"),
+			buildID: "v1.0",
+			wantErr: true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			client := &mockBacklogClient{resp: tc.resp, err: tc.err}
+			got, err := getBuildIDBacklogCount(context.Background(), client, "test-queue", nil, tc.buildID)
+			if tc.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.wantBacklog, got)
+			}
+		})
+	}
+}
+
+func TestGetCombinedBacklogCount(t *testing.T) {
+	cases := []struct {
+		name        string
+		description sdk.TaskQueueDescription
+		want        int64
+	}{
+		{
+			name:        "empty versions info",
+			description: sdk.TaskQueueDescription{},
+			want:        0,
+		},
+		{
+			name:        "single version single type",
+			description: makeTaskQueueDescription(42),
+			want:        42,
+		},
+		{
+			name:        "single version multiple types summed",
+			description: makeTaskQueueDescription(10, 20, 5),
+			want:        35,
+		},
+		{
+			name: "multiple versions summed",
+			description: sdk.TaskQueueDescription{
+				VersionsInfo: map[string]sdk.TaskQueueVersionInfo{
+					"v1": {TypesInfo: map[sdk.TaskQueueType]sdk.TaskQueueTypeInfo{
+						sdk.TaskQueueTypeWorkflow: {Stats: &sdk.TaskQueueStats{ApproximateBacklogCount: 10}},
+					}},
+					"v2": {TypesInfo: map[sdk.TaskQueueType]sdk.TaskQueueTypeInfo{
+						sdk.TaskQueueTypeActivity: {Stats: &sdk.TaskQueueStats{ApproximateBacklogCount: 7}},
+					}},
+				},
+			},
+			want: 17,
+		},
+		{
+			name: "nil stats entry skipped",
+			description: sdk.TaskQueueDescription{
+				VersionsInfo: map[string]sdk.TaskQueueVersionInfo{
+					"": {TypesInfo: map[sdk.TaskQueueType]sdk.TaskQueueTypeInfo{
+						sdk.TaskQueueTypeWorkflow: {Stats: nil},
+						sdk.TaskQueueTypeActivity: {Stats: &sdk.TaskQueueStats{ApproximateBacklogCount: 3}},
+					}},
+				},
+			},
+			want: 3,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, getCombinedBacklogCount(tc.description))
+		})
+	}
+}
+
+func TestValidateTLS(t *testing.T) {
+	cases := []struct {
+		name    string
+		meta    temporalMetadata
+		wantErr bool
+	}{
+		{
+			name: "no TLS fields is valid",
+			meta: temporalMetadata{},
+		},
+		{
+			name:    "cert without key",
+			meta:    temporalMetadata{Cert: "cert-data"},
+			wantErr: true,
+		},
+		{
+			name:    "key without cert",
+			meta:    temporalMetadata{Key: "key-data"},
+			wantErr: true,
+		},
+		{
+			name: "cert and key together is valid",
+			meta: temporalMetadata{Cert: "cert-data", Key: "key-data"},
+		},
+		{
+			name:    "apiKey and cert conflict",
+			meta:    temporalMetadata{APIKey: "key", Cert: "cert-data", Key: "key-data"},
+			wantErr: true,
+		},
+		{
+			name: "apiKey alone is valid",
+			meta: temporalMetadata{APIKey: "key"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.meta.validateTLS()
+			if tc.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestBuildTLSConfig(t *testing.T) {
+	cases := []struct {
+		name           string
+		meta           temporalMetadata
+		wantNil        bool
+		wantServerName string
+	}{
+		{
+			name:    "no auth returns nil",
+			meta:    temporalMetadata{},
+			wantNil: true,
+		},
+		{
+			name: "apiKey returns TLS config",
+			meta: temporalMetadata{APIKey: "key"},
+		},
+		{
+			name:           "apiKey with server name",
+			meta:           temporalMetadata{APIKey: "key", TLSServerName: "my-server"},
+			wantServerName: "my-server",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := buildTLSConfig(&tc.meta)
+			assert.NoError(t, err)
+			if tc.wantNil {
+				assert.Nil(t, cfg)
+			} else {
+				assert.NotNil(t, cfg)
+				if tc.wantServerName != "" {
+					assert.Equal(t, tc.wantServerName, cfg.ServerName)
+				}
 			}
 		})
 	}
