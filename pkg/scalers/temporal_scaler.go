@@ -45,6 +45,7 @@ type temporalMetadata struct {
 	QueueTypes                []string `keda:"name=queueTypes,                order=triggerMetadata, optional"`
 	BuildID                   string   `keda:"name=buildId,                   order=triggerMetadata;resolvedEnv, optional"`
 	DeploymentName            string   `keda:"name=deploymentName,            order=triggerMetadata;resolvedEnv, optional"`
+	WorkerVersioningType      string   `keda:"name=workerVersioningType,      order=triggerMetadata, optional"`
 	AllActive                 bool     `keda:"name=selectAllActive,           order=triggerMetadata, default=false"`
 	Unversioned               bool     `keda:"name=selectUnversioned,         order=triggerMetadata, default=false"`
 	APIKey                    string   `keda:"name=apiKey,                    order=authParams;resolvedEnv, optional"`
@@ -76,6 +77,38 @@ func (a *temporalMetadata) Validate() error {
 		return fmt.Errorf("minConnectTimeout must be a positive number")
 	}
 
+	switch a.WorkerVersioningType {
+	case "", "none":
+		if a.DeploymentName != "" {
+			return fmt.Errorf("deploymentName requires workerVersioningType=deployment")
+		}
+		if a.BuildID != "" || a.AllActive || a.Unversioned {
+			return fmt.Errorf("buildId, selectAllActive, and selectUnversioned require workerVersioningType=build-id")
+		}
+	case "build-id":
+		if a.DeploymentName != "" {
+			return fmt.Errorf("deploymentName cannot be used with workerVersioningType=build-id")
+		}
+	case "deployment":
+		if a.BuildID == "" {
+			return fmt.Errorf("buildId is required when workerVersioningType=deployment")
+		}
+		if a.DeploymentName == "" {
+			return fmt.Errorf("deploymentName is required when workerVersioningType=deployment")
+		}
+		if a.AllActive {
+			return fmt.Errorf("selectAllActive cannot be used with workerVersioningType=deployment")
+		}
+		if a.Unversioned {
+			return fmt.Errorf("selectUnversioned cannot be used with workerVersioningType=deployment")
+		}
+		if len(a.QueueTypes) > 0 {
+			return fmt.Errorf("queueTypes cannot be used with workerVersioningType=deployment")
+		}
+	default:
+		return fmt.Errorf("unknown workerVersioningType %q, must be one of: none, build-id, deployment", a.WorkerVersioningType)
+	}
+
 	return nil
 }
 
@@ -95,6 +128,15 @@ func NewTemporalScaler(ctx context.Context, config *scalersconfig.ScalerConfig) 
 	c, err := getTemporalClient(ctx, meta, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Temporal client connection: %w", err)
+	}
+
+	switch meta.WorkerVersioningType {
+	case "deployment":
+		logger.Info("using deployment versioning", "deploymentName", meta.DeploymentName, "buildId", meta.BuildID)
+	case "build-id":
+		logger.Info("using build-id versioning", "buildId", meta.BuildID)
+	default:
+		logger.Info("using unversioned mode")
 	}
 
 	return &temporalScaler{
@@ -134,18 +176,22 @@ func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 		queueSize int64
 		err       error
 	)
-	if s.metadata.DeploymentName != "" {
-		queueSize, err = s.getDeploymentQueueSize(ctx)
+	if s.metadata.WorkerVersioningType == "deployment" {
+		queueSize, err = describeDeploymentBacklogCount(ctx, s.tcl.WorkflowService(), s.metadata.Namespace, s.metadata.DeploymentName, s.metadata.BuildID)
 	} else {
 		queueSize, err = s.getQueueSize(ctx)
 	}
 	if err != nil {
+		s.logger.Error(err, "failed to get Temporal queue size")
 		return nil, false, fmt.Errorf("failed to get Temporal queue size: %w", err)
 	}
 
-	metric := GenerateMetricInMili(metricName, float64(queueSize))
+	s.logger.V(1).Info(fmt.Sprintf("Found queue size %d for namespace %s, task queue %s", queueSize, s.metadata.Namespace, s.metadata.TaskQueue))
 
-	return []external_metrics.ExternalMetricValue{metric}, queueSize > s.metadata.ActivationTargetQueueSize, nil
+	metric := GenerateMetricInMili(metricName, float64(queueSize))
+	isActive := queueSize > s.metadata.ActivationTargetQueueSize
+
+	return []external_metrics.ExternalMetricValue{metric}, isActive, nil
 }
 
 func (s *temporalScaler) getQueueSize(ctx context.Context) (int64, error) {
@@ -171,18 +217,6 @@ func (s *temporalScaler) getQueueSize(ctx context.Context) (int64, error) {
 	}
 
 	return getCombinedBacklogCount(resp), nil
-}
-
-func (s *temporalScaler) getDeploymentQueueSize(ctx context.Context) (int64, error) {
-	queueSize, err := s.getDeploymentBacklogCount(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get Temporal deployment queue size: %w", err)
-	}
-	return queueSize, nil
-}
-
-func (s *temporalScaler) getDeploymentBacklogCount(ctx context.Context) (int64, error) {
-	return describeDeploymentBacklogCount(ctx, s.tcl.WorkflowService(), s.metadata.Namespace, s.metadata.DeploymentName, s.metadata.BuildID)
 }
 
 func describeDeploymentBacklogCount(ctx context.Context, svc workflowservice.WorkflowServiceClient, namespace, deploymentName, buildID string) (int64, error) {

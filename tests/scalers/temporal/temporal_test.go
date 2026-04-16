@@ -118,6 +118,7 @@ spec:
       activationTargetQueueSize: "3"
       endpoint: {{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233
       {{- if ne .BuildID "" }}
+      workerVersioningType: build-id
       buildId: {{.BuildID}}
     {{- end}}
 `
@@ -273,6 +274,7 @@ spec:
       taskQueue: "omes-test"
       targetQueueSize: "2"
       endpoint: {{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233
+      workerVersioningType: deployment
       deploymentName: {{.TemporalWorkerDeploymentName}}
       buildId: {{.BuildID}}
 `

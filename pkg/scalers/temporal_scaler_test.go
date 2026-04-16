@@ -49,6 +49,28 @@ var testTemporalMetadata = []parseTemporalMetadataTestData{
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace}, false},
 	// All good + activationLagThreshold
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "activationTargetQueueSize": "10"}, false},
+	// workerVersioningType=deployment without buildId
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerVersioningType": "deployment", "deploymentName": "my-deploy"}, true},
+	// workerVersioningType=deployment without deploymentName
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerVersioningType": "deployment", "buildId": "v1"}, true},
+	// workerVersioningType=deployment + selectAllActive
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerVersioningType": "deployment", "deploymentName": "my-deploy", "buildId": "v1", "selectAllActive": "true"}, true},
+	// workerVersioningType=deployment + selectUnversioned
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerVersioningType": "deployment", "deploymentName": "my-deploy", "buildId": "v1", "selectUnversioned": "true"}, true},
+	// workerVersioningType=deployment + queueTypes
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerVersioningType": "deployment", "deploymentName": "my-deploy", "buildId": "v1", "queueTypes": "workflow"}, true},
+	// workerVersioningType=build-id + deploymentName
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerVersioningType": "build-id", "buildId": "v1", "deploymentName": "my-deploy"}, true},
+	// unversioned + buildId (missing workerVersioningType)
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "buildId": "v1"}, true},
+	// unversioned + deploymentName (missing workerVersioningType)
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "deploymentName": "my-deploy"}, true},
+	// unknown workerVersioningType
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerVersioningType": "invalid"}, true},
+	// valid deployment config
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerVersioningType": "deployment", "deploymentName": "my-deploy", "buildId": "v1"}, false},
+	// valid build-id config
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerVersioningType": "build-id", "buildId": "v1"}, false},
 }
 
 var temporalMetricIdentifiers = []temporalMetricIdentifier{

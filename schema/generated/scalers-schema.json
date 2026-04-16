@@ -5716,6 +5716,12 @@
                     "envVariableReadable": true
                 },
                 {
+                    "name": "workerVersioningType",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
                     "name": "selectAllActive",
                     "type": "string",
                     "default": "false",
