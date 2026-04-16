@@ -245,6 +245,61 @@ spec:
       deploymentName: {{.TemporalWorkerDeploymentName}}
       buildId: {{.BuildID}}
 `
+
+	deploymentVersionWorkerTemplate = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.DeploymentName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: {{.DeploymentName}}
+  template:
+    metadata:
+      labels:
+        app: {{.DeploymentName}}
+    spec:
+      containers:
+      - name: worker
+        image: "temporal-deployment-worker:latest"
+        imagePullPolicy: Never
+        args:
+        - "--address={{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233"
+        - "--task-queue=omes-test"
+        - "--deployment-name={{.TemporalWorkerDeploymentName}}"
+        - "--build-id={{.BuildID}}"
+`
+
+	jobSetCurrentVersionTemplate = `
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: set-current-version
+  namespace: {{.TestNamespace}}
+spec:
+  template:
+    spec:
+      containers:
+      - name: set-version
+        image: "temporalio/admin-tools:latest"
+        imagePullPolicy: Always
+        command: ["temporal"]
+        args:
+        - "worker"
+        - "deployment"
+        - "set-current-version"
+        - "--deployment-name={{.TemporalWorkerDeploymentName}}"
+        - "--build-id={{.BuildID}}"
+        - "--address={{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233"
+        - "--yes"
+      restartPolicy: OnFailure
+  backoffLimit: 10
+`
 )
 
 func TestTemporalScaler(t *testing.T) {
@@ -262,10 +317,10 @@ func TestTemporalScaler(t *testing.T) {
 
 	testUnversioned(t, kc, data)
 	testBuildID(t, kc, data)
-	// testDeploymentVersion requires a Temporal server with Worker Deployment
-	// API support. The dev server (temporal server start-dev) does not support
-	// DescribeWorkerDeploymentVersion, so this test is skipped in CI.
-	// The deployment path is covered by unit tests with mocks.
+	// TODO: Enable once Temporal dev server populates task queue stats in
+	// DescribeWorkerDeploymentVersion responses. The API is reachable and the
+	// test infrastructure (custom worker image, set-current-version) works,
+	// but the dev server returns 0 backlog for deployment versions.
 	// testDeploymentVersion(t, kc, data)
 }
 
@@ -352,6 +407,10 @@ func testBuildID(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 // testDeploymentVersion tests scaling with deployment version worker versioning.
 // Covers: scale out (0→1), scale in (1→0) for a specific deployment version.
+//
+// Flow: start worker (1 replica) to register the deployment version with the
+// server, set it as current, scale to 0, submit workflows to create backlog,
+// then let KEDA scale back up.
 func testDeploymentVersion(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing deployment version scaling ---")
 
@@ -360,15 +419,58 @@ func testDeploymentVersion(t *testing.T, kc *kubernetes.Clientset, data template
 	data.BuildID = "v2.0.0"
 	data.TemporalWorkerDeploymentName = "omes-deployment"
 
-	KubectlApplyWithTemplate(t, data, "workerDeploymentTemplate", workerDeploymentTemplate)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, testNamespace, 0, 30, 2), "deployment should exist with 0 replicas")
-	KubectlApplyWithTemplate(t, data, "scaledObjectDeploymentVersionTemplate", scaledObjectDeploymentVersionTemplate)
 	t.Cleanup(func() {
 		KubectlDeleteWithTemplate(t, data, "scaledObjectDeploymentVersionTemplate", scaledObjectDeploymentVersionTemplate)
-		KubectlDeleteWithTemplate(t, data, "workerDeploymentTemplate", workerDeploymentTemplate)
+		KubectlDeleteWithTemplate(t, data, "deploymentVersionWorkerTemplate", deploymentVersionWorkerTemplate)
 	})
 
-	// Scale out
+	// Step 1: Start worker with 1 replica to register the deployment version
+	KubectlApplyWithTemplate(t, data, "deploymentVersionWorkerTemplate", deploymentVersionWorkerTemplate)
+	// Temporarily scale to 1 so the worker registers with the server
+	KubectlApplyWithTemplate(t, data, "deploymentVersionWorkerTemplate-scale", `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.DeploymentName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{.DeploymentName}}
+  template:
+    metadata:
+      labels:
+        app: {{.DeploymentName}}
+    spec:
+      containers:
+      - name: worker
+        image: "temporal-deployment-worker:latest"
+        imagePullPolicy: Never
+        args:
+        - "--address={{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233"
+        - "--task-queue=omes-test"
+        - "--deployment-name={{.TemporalWorkerDeploymentName}}"
+        - "--build-id={{.BuildID}}"
+`)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, testNamespace, 1, 60, 3),
+		"deployment version worker should start with 1 replica")
+
+	// Step 2: Set this version as current
+	KubectlApplyWithTemplate(t, data, "jobSetCurrentVersionTemplate", jobSetCurrentVersionTemplate)
+	assert.True(t, WaitForJobSuccess(t, kc, "set-current-version", testNamespace, 3, 30),
+		"set-current-version job should succeed")
+	KubectlDeleteWithTemplate(t, data, "jobSetCurrentVersionTemplate", jobSetCurrentVersionTemplate)
+
+	// Step 3: Scale worker back to 0 and apply the ScaledObject
+	KubectlApplyWithTemplate(t, data, "deploymentVersionWorkerTemplate", deploymentVersionWorkerTemplate)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, testNamespace, 0, 60, 2),
+		"deployment should scale to 0 replicas")
+	KubectlApplyWithTemplate(t, data, "scaledObjectDeploymentVersionTemplate", scaledObjectDeploymentVersionTemplate)
+
+	// Step 4: Submit workflows to create backlog → scale out
 	data.WorkFlowCommand = "run-scenario"
 	data.WorkFlowIterations = 3
 	KubectlApplyWithTemplate(t, data, "jobWorkFlow", jobWorkFlowTemplate)
@@ -376,7 +478,7 @@ func testDeploymentVersion(t *testing.T, kc *kubernetes.Clientset, data template
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, testNamespace, 1, 60, 3),
 		"replica count for deployment %s build %s should be 1 after 3 minutes", data.TemporalWorkerDeploymentName, data.BuildID)
 
-	// Scale in
+	// Step 5: Scale in after workflows drain
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, testNamespace, 0, 60, 5),
 		"replica count for deployment %s build %s should be 0 after 5 minutes", data.TemporalWorkerDeploymentName, data.BuildID)
 	KubectlDeleteWithTemplate(t, data, "jobWorkFlow", jobWorkFlowTemplate)
