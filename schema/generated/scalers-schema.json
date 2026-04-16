@@ -5735,12 +5735,6 @@
                     "metadataVariableReadable": true
                 },
                 {
-                    "name": "grpcTimeout",
-                    "type": "string",
-                    "default": "10",
-                    "metadataVariableReadable": true
-                },
-                {
                     "name": "unsafeSsl",
                     "type": "string",
                     "optional": true,

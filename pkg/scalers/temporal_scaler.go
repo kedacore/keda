@@ -64,8 +64,7 @@ type temporalMetadata struct {
 	// Connection
 	Endpoint          string `keda:"name=endpoint,          order=triggerMetadata;resolvedEnv"`
 	Namespace         string `keda:"name=namespace,         order=triggerMetadata;resolvedEnv, default=default"`
-	MinConnectTimeout int    `keda:"name=minConnectTimeout, order=triggerMetadata, default=5"`
-	GRPCTimeout       int    `keda:"name=grpcTimeout,       order=triggerMetadata, default=10"`
+	MinConnectTimeout int `keda:"name=minConnectTimeout, order=triggerMetadata, default=5"`
 
 	// Scaling
 	TaskQueue                 string `keda:"name=taskQueue,                 order=triggerMetadata;resolvedEnv"`
@@ -99,9 +98,6 @@ func (a *temporalMetadata) Validate() error {
 	}
 	if a.MinConnectTimeout < 0 {
 		return fmt.Errorf("minConnectTimeout must be a non-negative number")
-	}
-	if a.GRPCTimeout <= 0 {
-		return fmt.Errorf("grpcTimeout must be a positive number")
 	}
 
 	if err := a.validateTLS(); err != nil {
@@ -265,7 +261,7 @@ func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 // Backlog query helpers
 
 func (s *temporalScaler) getBacklogCount(ctx context.Context) (int64, error) {
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(s.metadata.GRPCTimeout)*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(s.metadata.MinConnectTimeout)*time.Second)
 	defer cancel()
 
 	switch s.metadata.WorkerVersioningType {
