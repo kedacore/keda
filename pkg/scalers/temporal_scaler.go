@@ -21,94 +21,144 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
-var (
-	temporalDefauleQueueTypes = []sdk.TaskQueueType{
-		sdk.TaskQueueTypeActivity,
-		sdk.TaskQueueTypeWorkflow,
-		sdk.TaskQueueTypeNexus,
-	}
+const (
+	versioningTypeNone       = "none"
+	versioningTypeBuildID    = "build-id"
+	versioningTypeDeployment = "deployment"
+
+	queueTypeWorkflow = "workflow"
+	queueTypeActivity = "activity"
+	queueTypeNexus    = "nexus"
 )
+
+var queueTypeMap = map[string]sdk.TaskQueueType{
+	queueTypeWorkflow: sdk.TaskQueueTypeWorkflow,
+	queueTypeActivity: sdk.TaskQueueTypeActivity,
+	queueTypeNexus:    sdk.TaskQueueTypeNexus,
+}
+
+var temporalDefaultQueueTypes = []sdk.TaskQueueType{
+	sdk.TaskQueueTypeActivity,
+	sdk.TaskQueueTypeWorkflow,
+	sdk.TaskQueueTypeNexus,
+}
+
+// temporalBacklogClient is the subset of sdk.Client used by the scaler,
+// extracted as an interface for testability.
+type temporalBacklogClient interface {
+	DescribeTaskQueueEnhanced(ctx context.Context, options sdk.DescribeTaskQueueEnhancedOptions) (sdk.TaskQueueDescription, error)
+	WorkflowService() workflowservice.WorkflowServiceClient
+	Close()
+}
 
 type temporalScaler struct {
 	metricType v2.MetricTargetType
 	metadata   *temporalMetadata
-	tcl        sdk.Client
+	client     temporalBacklogClient
 	logger     logr.Logger
 }
 
 type temporalMetadata struct {
-	Endpoint                  string   `keda:"name=endpoint,                  order=triggerMetadata;resolvedEnv"`
-	Namespace                 string   `keda:"name=namespace,                 order=triggerMetadata;resolvedEnv, default=default"`
-	ActivationTargetQueueSize int64    `keda:"name=activationTargetQueueSize, order=triggerMetadata, default=0"`
-	TargetQueueSize           int64    `keda:"name=targetQueueSize,           order=triggerMetadata, default=5"`
-	TaskQueue                 string   `keda:"name=taskQueue,                 order=triggerMetadata;resolvedEnv"`
-	QueueTypes                []string `keda:"name=queueTypes,                order=triggerMetadata, optional"`
-	BuildID                   string   `keda:"name=buildId,                   order=triggerMetadata;resolvedEnv, optional"`
-	DeploymentName            string   `keda:"name=deploymentName,            order=triggerMetadata;resolvedEnv, optional"`
-	WorkerVersioningType      string   `keda:"name=workerVersioningType,      order=triggerMetadata, optional"`
-	AllActive                 bool     `keda:"name=selectAllActive,           order=triggerMetadata, default=false"`
-	Unversioned               bool     `keda:"name=selectUnversioned,         order=triggerMetadata, default=false"`
-	APIKey                    string   `keda:"name=apiKey,                    order=authParams;resolvedEnv, optional"`
-	MinConnectTimeout         int      `keda:"name=minConnectTimeout,         order=triggerMetadata, default=5"`
+	// Connection
+	Endpoint          string `keda:"name=endpoint,          order=triggerMetadata;resolvedEnv"`
+	Namespace         string `keda:"name=namespace,         order=triggerMetadata;resolvedEnv, default=default"`
+	MinConnectTimeout int    `keda:"name=minConnectTimeout, order=triggerMetadata, default=5"`
 
-	UnsafeSsl     bool   `keda:"name=unsafeSsl,                 order=triggerMetadata, optional"`
-	Cert          string `keda:"name=cert,                      order=authParams, optional"`
-	Key           string `keda:"name=key,                       order=authParams, optional"`
-	KeyPassword   string `keda:"name=keyPassword,               order=authParams, optional"`
-	CA            string `keda:"name=ca,                        order=authParams, optional"`
-	TLSServerName string `keda:"name=tlsServerName,             order=triggerMetadata, optional"`
+	// Scaling
+	TaskQueue                 string `keda:"name=taskQueue,                 order=triggerMetadata;resolvedEnv"`
+	TargetQueueSize           int64  `keda:"name=targetQueueSize,           order=triggerMetadata, default=5"`
+	ActivationTargetQueueSize int64  `keda:"name=activationTargetQueueSize, order=triggerMetadata, default=0"`
+
+	// Versioning
+	WorkerVersioningType string   `keda:"name=workerVersioningType, order=triggerMetadata, optional"`
+	BuildID              string   `keda:"name=buildId,              order=triggerMetadata;resolvedEnv, optional"`
+	DeploymentName       string   `keda:"name=deploymentName,       order=triggerMetadata;resolvedEnv, optional"`
+	AllActive            bool     `keda:"name=selectAllActive,      order=triggerMetadata, default=false"`
+	Unversioned          bool     `keda:"name=selectUnversioned,    order=triggerMetadata, default=false"`
+	QueueTypes           []string `keda:"name=queueTypes,           order=triggerMetadata, optional"`
+
+	// Auth / TLS
+	APIKey        string `keda:"name=apiKey,        order=authParams;resolvedEnv, optional"`
+	UnsafeSsl     bool   `keda:"name=unsafeSsl,     order=triggerMetadata, optional"`
+	Cert          string `keda:"name=cert,          order=authParams, optional"`
+	Key           string `keda:"name=key,           order=authParams, optional"`
+	KeyPassword   string `keda:"name=keyPassword,   order=authParams, optional"`
+	CA            string `keda:"name=ca,            order=authParams, optional"`
+	TLSServerName string `keda:"name=tlsServerName, order=triggerMetadata, optional"`
 
 	triggerIndex int
 }
 
 func (a *temporalMetadata) Validate() error {
 	if a.TargetQueueSize < 0 {
-		return fmt.Errorf("targetQueueSize must be a positive number")
+		return fmt.Errorf("targetQueueSize must be a non-negative number")
 	}
 	if a.ActivationTargetQueueSize < 0 {
-		return fmt.Errorf("activationTargetQueueSize must be a positive number")
+		return fmt.Errorf("activationTargetQueueSize must be a non-negative number")
+	}
+	if a.MinConnectTimeout < 0 {
+		return fmt.Errorf("minConnectTimeout must be a non-negative number")
 	}
 
+	if err := a.validateTLS(); err != nil {
+		return err
+	}
+
+	for _, qt := range a.QueueTypes {
+		if _, ok := queueTypeMap[qt]; !ok {
+			return fmt.Errorf("unknown queueType %q, must be one of: %s, %s, %s", qt, queueTypeWorkflow, queueTypeActivity, queueTypeNexus)
+		}
+	}
+
+	if err := a.validateVersioning(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a *temporalMetadata) validateTLS() error {
 	if (a.Cert == "") != (a.Key == "") {
 		return fmt.Errorf("both cert and key must be provided when using TLS")
 	}
-
-	if a.MinConnectTimeout < 0 {
-		return fmt.Errorf("minConnectTimeout must be a positive number")
+	if a.APIKey != "" && a.Cert != "" {
+		return fmt.Errorf("apiKey and cert/key cannot be used together")
 	}
+	return nil
+}
 
+func (a *temporalMetadata) validateVersioning() error {
 	switch a.WorkerVersioningType {
-	case "", "none":
+	case "", versioningTypeNone:
 		if a.DeploymentName != "" {
-			return fmt.Errorf("deploymentName requires workerVersioningType=deployment")
+			return fmt.Errorf("deploymentName requires workerVersioningType=%s", versioningTypeDeployment)
 		}
 		if a.BuildID != "" || a.AllActive || a.Unversioned {
-			return fmt.Errorf("buildId, selectAllActive, and selectUnversioned require workerVersioningType=build-id")
+			return fmt.Errorf("buildId, selectAllActive, and selectUnversioned require workerVersioningType=%s", versioningTypeBuildID)
 		}
-	case "build-id":
+	case versioningTypeBuildID:
 		if a.DeploymentName != "" {
-			return fmt.Errorf("deploymentName cannot be used with workerVersioningType=build-id")
+			return fmt.Errorf("deploymentName cannot be used with workerVersioningType=%s", versioningTypeBuildID)
 		}
-	case "deployment":
+	case versioningTypeDeployment:
 		if a.BuildID == "" {
-			return fmt.Errorf("buildId is required when workerVersioningType=deployment")
+			return fmt.Errorf("buildId is required when workerVersioningType=%s", versioningTypeDeployment)
 		}
 		if a.DeploymentName == "" {
-			return fmt.Errorf("deploymentName is required when workerVersioningType=deployment")
+			return fmt.Errorf("deploymentName is required when workerVersioningType=%s", versioningTypeDeployment)
 		}
 		if a.AllActive {
-			return fmt.Errorf("selectAllActive cannot be used with workerVersioningType=deployment")
+			return fmt.Errorf("selectAllActive cannot be used with workerVersioningType=%s", versioningTypeDeployment)
 		}
 		if a.Unversioned {
-			return fmt.Errorf("selectUnversioned cannot be used with workerVersioningType=deployment")
+			return fmt.Errorf("selectUnversioned cannot be used with workerVersioningType=%s", versioningTypeDeployment)
 		}
 		if len(a.QueueTypes) > 0 {
-			return fmt.Errorf("queueTypes cannot be used with workerVersioningType=deployment")
+			return fmt.Errorf("queueTypes cannot be used with workerVersioningType=%s", versioningTypeDeployment)
 		}
 	default:
-		return fmt.Errorf("unknown workerVersioningType %q, must be one of: none, build-id, deployment", a.WorkerVersioningType)
+		return fmt.Errorf("unknown workerVersioningType %q, must be one of: %s, %s, %s", a.WorkerVersioningType, versioningTypeNone, versioningTypeBuildID, versioningTypeDeployment)
 	}
-
 	return nil
 }
 
@@ -120,7 +170,7 @@ func NewTemporalScaler(ctx context.Context, config *scalersconfig.ScalerConfig) 
 		return nil, fmt.Errorf("failed to get scaler metric type: %w", err)
 	}
 
-	meta, err := parseTemporalMetadata(config, logger)
+	meta, err := parseTemporalMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse Temporal metadata: %w", err)
 	}
@@ -131,9 +181,9 @@ func NewTemporalScaler(ctx context.Context, config *scalersconfig.ScalerConfig) 
 	}
 
 	switch meta.WorkerVersioningType {
-	case "deployment":
+	case versioningTypeDeployment:
 		logger.Info("using deployment versioning", "deploymentName", meta.DeploymentName, "buildId", meta.BuildID)
-	case "build-id":
+	case versioningTypeBuildID:
 		logger.Info("using build-id versioning", "buildId", meta.BuildID)
 	default:
 		logger.Info("using unversioned mode")
@@ -142,14 +192,24 @@ func NewTemporalScaler(ctx context.Context, config *scalersconfig.ScalerConfig) 
 	return &temporalScaler{
 		metricType: metricType,
 		metadata:   meta,
-		tcl:        c,
+		client:     c,
 		logger:     logger,
 	}, nil
 }
 
+func parseTemporalMetadata(config *scalersconfig.ScalerConfig) (*temporalMetadata, error) {
+	meta := &temporalMetadata{triggerIndex: config.TriggerIndex}
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("failed to parse Temporal metadata: %w", err)
+	}
+	return meta, nil
+}
+
+// Scaler interface methods
+
 func (s *temporalScaler) Close(_ context.Context) error {
-	if s.tcl != nil {
-		s.tcl.Close()
+	if s.client != nil {
+		s.client.Close()
 	}
 	return nil
 }
@@ -176,8 +236,8 @@ func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 		queueSize int64
 		err       error
 	)
-	if s.metadata.WorkerVersioningType == "deployment" {
-		queueSize, err = describeDeploymentBacklogCount(ctx, s.tcl.WorkflowService(), s.metadata.Namespace, s.metadata.DeploymentName, s.metadata.BuildID)
+	if s.metadata.WorkerVersioningType == versioningTypeDeployment {
+		queueSize, err = describeDeploymentBacklogCount(ctx, s.client.WorkflowService(), s.metadata.Namespace, s.metadata.DeploymentName, s.metadata.BuildID)
 	} else {
 		queueSize, err = s.getQueueSize(ctx)
 	}
@@ -186,7 +246,7 @@ func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 		return nil, false, fmt.Errorf("failed to get Temporal queue size: %w", err)
 	}
 
-	s.logger.V(1).Info(fmt.Sprintf("Found queue size %d for namespace %s, task queue %s", queueSize, s.metadata.Namespace, s.metadata.TaskQueue))
+	s.logger.V(1).Info("found queue size", "queueSize", queueSize, "namespace", s.metadata.Namespace, "taskQueue", s.metadata.TaskQueue)
 
 	metric := GenerateMetricInMili(metricName, float64(queueSize))
 	isActive := queueSize > s.metadata.ActivationTargetQueueSize
@@ -194,23 +254,27 @@ func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 	return []external_metrics.ExternalMetricValue{metric}, isActive, nil
 }
 
+// Backlog query helpers
+
 func (s *temporalScaler) getQueueSize(ctx context.Context) (int64, error) {
 	var selection *sdk.TaskQueueVersionSelection
 	if s.metadata.AllActive || s.metadata.Unversioned || s.metadata.BuildID != "" {
 		selection = &sdk.TaskQueueVersionSelection{
 			AllActive:   s.metadata.AllActive,
 			Unversioned: s.metadata.Unversioned,
-			BuildIDs:    []string{s.metadata.BuildID},
+		}
+		if s.metadata.BuildID != "" {
+			selection.BuildIDs = []string{s.metadata.BuildID}
 		}
 	}
 
-	queueType := getQueueTypes(s.metadata.QueueTypes)
+	queueTypes := getQueueTypes(s.metadata.QueueTypes)
 
-	resp, err := s.tcl.DescribeTaskQueueEnhanced(ctx, sdk.DescribeTaskQueueEnhancedOptions{
+	resp, err := s.client.DescribeTaskQueueEnhanced(ctx, sdk.DescribeTaskQueueEnhancedOptions{
 		TaskQueue:      s.metadata.TaskQueue,
 		ReportStats:    true,
 		Versions:       selection,
-		TaskQueueTypes: queueType,
+		TaskQueueTypes: queueTypes,
 	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to get Temporal queue size: %w", err)
@@ -243,30 +307,21 @@ func describeDeploymentBacklogCount(ctx context.Context, svc workflowservice.Wor
 	return totalBacklog, nil
 }
 
-func getQueueTypes(queueTypes []string) []sdk.TaskQueueType {
-	var taskQueueTypes []sdk.TaskQueueType
-	for _, t := range queueTypes {
-		var taskQueueType sdk.TaskQueueType
-		switch t {
-		case "workflow":
-			taskQueueType = sdk.TaskQueueTypeWorkflow
-		case "activity":
-			taskQueueType = sdk.TaskQueueTypeActivity
-		case "nexus":
-			taskQueueType = sdk.TaskQueueTypeNexus
-		}
-		taskQueueTypes = append(taskQueueTypes, taskQueueType)
-	}
+// Pure utility functions
 
-	if len(taskQueueTypes) == 0 {
-		return temporalDefauleQueueTypes
+func getQueueTypes(queueTypes []string) []sdk.TaskQueueType {
+	if len(queueTypes) == 0 {
+		return temporalDefaultQueueTypes
 	}
-	return taskQueueTypes
+	result := make([]sdk.TaskQueueType, 0, len(queueTypes))
+	for _, t := range queueTypes {
+		result = append(result, queueTypeMap[t])
+	}
+	return result
 }
 
 func getCombinedBacklogCount(description sdk.TaskQueueDescription) int64 {
 	var count int64
-
 	for _, versionInfo := range description.VersionsInfo {
 		for _, typeInfo := range versionInfo.TypesInfo {
 			if typeInfo.Stats != nil {
@@ -277,6 +332,42 @@ func getCombinedBacklogCount(description sdk.TaskQueueDescription) int64 {
 	return count
 }
 
+// Client setup
+
+func namespaceInterceptor(namespace string) grpc.UnaryClientInterceptor {
+	return func(ctx context.Context, method string, req any, reply any,
+		cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption,
+	) error {
+		return invoker(
+			metadata.AppendToOutgoingContext(ctx, "temporal-namespace", namespace),
+			method, req, reply, cc, opts...,
+		)
+	}
+}
+
+func buildTLSConfig(meta *temporalMetadata) (*tls.Config, error) {
+	if meta.Cert != "" && meta.Key != "" {
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.CA, meta.UnsafeSsl)
+		if err != nil {
+			return nil, err
+		}
+		if meta.TLSServerName != "" {
+			tlsConfig.ServerName = meta.TLSServerName
+		}
+		return tlsConfig, nil
+	}
+
+	if meta.APIKey != "" {
+		tlsConfig := kedautil.CreateTLSClientConfig(meta.UnsafeSsl)
+		if meta.TLSServerName != "" {
+			tlsConfig.ServerName = meta.TLSServerName
+		}
+		return tlsConfig, nil
+	}
+
+	return nil, nil
+}
+
 func getTemporalClient(ctx context.Context, meta *temporalMetadata, log logr.Logger) (sdk.Client, error) {
 	logHandler := logr.ToSlogHandler(log)
 	options := sdk.Options{
@@ -285,59 +376,24 @@ func getTemporalClient(ctx context.Context, meta *temporalMetadata, log logr.Log
 		Logger:    sdklog.NewStructuredLogger(slog.New(logHandler)),
 	}
 
-	dialOptions := []grpc.DialOption{
-		grpc.WithConnectParams(grpc.ConnectParams{
-			MinConnectTimeout: time.Duration(meta.MinConnectTimeout) * time.Second,
-		}),
-	}
-
-	dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(
-		func(ctx context.Context, method string, req any, reply any,
-			cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption,
-		) error {
-			return invoker(
-				metadata.AppendToOutgoingContext(ctx, "temporal-namespace", meta.Namespace),
-				method,
-				req,
-				reply,
-				cc,
-				opts...,
-			)
-		},
-	))
-
-	var tlsConfig *tls.Config
-
 	if meta.APIKey != "" {
 		options.Credentials = sdk.NewAPIKeyStaticCredentials(meta.APIKey)
-		tlsConfig = kedautil.CreateTLSClientConfig(meta.UnsafeSsl)
 	}
 
-	if meta.Cert != "" && meta.Key != "" {
-		var err error
-		tlsConfig, err = kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.CA, meta.UnsafeSsl)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if tlsConfig != nil && meta.TLSServerName != "" {
-		tlsConfig.ServerName = meta.TLSServerName
+	tlsConfig, err := buildTLSConfig(meta)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build TLS config: %w", err)
 	}
 
 	options.ConnectionOptions = sdk.ConnectionOptions{
-		DialOptions: dialOptions,
-		TLS:         tlsConfig,
+		DialOptions: []grpc.DialOption{
+			grpc.WithConnectParams(grpc.ConnectParams{
+				MinConnectTimeout: time.Duration(meta.MinConnectTimeout) * time.Second,
+			}),
+			grpc.WithUnaryInterceptor(namespaceInterceptor(meta.Namespace)),
+		},
+		TLS: tlsConfig,
 	}
 
 	return sdk.DialContext(ctx, options)
-}
-
-func parseTemporalMetadata(config *scalersconfig.ScalerConfig, _ logr.Logger) (*temporalMetadata, error) {
-	meta := &temporalMetadata{triggerIndex: config.TriggerIndex}
-	if err := config.TypedConfig(meta); err != nil {
-		return meta, fmt.Errorf("error parsing temporal metadata: %w", err)
-	}
-
-	return meta, nil
 }

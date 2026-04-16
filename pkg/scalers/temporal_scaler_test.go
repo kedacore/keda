@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/go-logr/logr"
 	gomock "github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	taskqueuepb "go.temporal.io/api/taskqueue/v1"
@@ -20,7 +19,6 @@ var (
 	temporalNamespace = "v2"
 	temporalQueueName = "default"
 
-	logger = logr.Discard()
 )
 
 type parseTemporalMetadataTestData struct {
@@ -71,6 +69,8 @@ var testTemporalMetadata = []parseTemporalMetadataTestData{
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerVersioningType": "deployment", "deploymentName": "my-deploy", "buildId": "v1"}, false},
 	// valid build-id config
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerVersioningType": "build-id", "buildId": "v1"}, false},
+	// invalid queueType value
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "queueTypes": "worflow"}, true},
 }
 
 var temporalMetricIdentifiers = []temporalMetricIdentifier{
@@ -81,7 +81,7 @@ var temporalMetricIdentifiers = []temporalMetricIdentifier{
 func TestTemporalParseMetadata(t *testing.T) {
 	for _, testData := range testTemporalMetadata {
 		metadata := &scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata}
-		_, err := parseTemporalMetadata(metadata, logger)
+		_, err := parseTemporalMetadata(metadata)
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got err", err)
@@ -97,7 +97,7 @@ func TestTemporalGetMetricSpecForScaling(t *testing.T) {
 		metadata, err := parseTemporalMetadata(&scalersconfig.ScalerConfig{
 			TriggerMetadata: testData.metadataTestData.metadata,
 			TriggerIndex:    testData.triggerIndex,
-		}, logger)
+		})
 
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
@@ -129,17 +129,8 @@ func TestParseTemporalMetadata(t *testing.T) {
 				"endpoint":  "test:7233",
 				"namespace": "default",
 			},
-			wantMeta: &temporalMetadata{
-				Endpoint:                  "test:7233",
-				Namespace:                 "default",
-				TaskQueue:                 "",
-				TargetQueueSize:           5,
-				ActivationTargetQueueSize: 0,
-				AllActive:                 false,
-				Unversioned:               false,
-				MinConnectTimeout:         5,
-			},
-			wantErr: true,
+			wantMeta: nil,
+			wantErr:  true,
 		},
 		{
 			name: "empty namespace",
@@ -352,6 +343,21 @@ func TestParseTemporalMetadata(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "apiKey and cert cannot be used together",
+			metadata: map[string]string{
+				"endpoint":  "test:7233",
+				"namespace": "default",
+				"taskQueue": "testxx",
+			},
+			authParams: map[string]string{
+				"apiKey": "test-api-key",
+				"cert":   "cert-data",
+				"key":    "key-data",
+			},
+			wantMeta: nil,
+			wantErr:  true,
+		},
 	}
 
 	for _, testCase := range cases {
@@ -362,13 +368,14 @@ func TestParseTemporalMetadata(t *testing.T) {
 				AuthParams:      c.authParams,
 				ResolvedEnv:     c.resolvedEnv,
 			}
-			meta, err := parseTemporalMetadata(config, logger)
-			if c.wantErr == true && err != nil {
-				t.Log("Expected error, got err")
+			meta, err := parseTemporalMetadata(config)
+			if c.wantErr {
+				assert.Error(t, err)
+				assert.Nil(t, meta)
 			} else {
 				assert.NoError(t, err)
+				assert.Equal(t, c.wantMeta, meta)
 			}
-			assert.Equal(t, c.wantMeta, meta)
 		})
 	}
 }
@@ -378,7 +385,7 @@ func TestTemporalDefaultQueueTypes(t *testing.T) {
 		TriggerMetadata: map[string]string{
 			"endpoint": "localhost:7233", "taskQueue": "testcc",
 		},
-	}, logger)
+	})
 
 	assert.NoError(t, err, "error should be nil")
 	assert.Empty(t, metadata.QueueTypes, "queueTypes should be empty")
