@@ -408,10 +408,12 @@ type BoundServiceAccountToken struct {
 
 type OAuth2 struct {
 	// +kubebuilder:validation:Enum=clientCredentials
+	// +kubebuilder:default=clientCredentials
 	Type OAuth2GrantType `json:"type"`
 
 	ClientID string `json:"clientId"`
 
+	// +optional
 	ClientSecret OAuth2ClientSecret `json:"clientSecret"`
 
 	TokenURL string `json:"tokenUrl"`
