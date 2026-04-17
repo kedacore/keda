@@ -559,12 +559,12 @@ spec:
                       type: string
                     type: object
                   type:
+                    default: clientCredentials
                     enum:
                     - clientCredentials
                     type: string
                 required:
                 - clientId
-                - clientSecret
                 - tokenUrl
                 - type
                 type: object
