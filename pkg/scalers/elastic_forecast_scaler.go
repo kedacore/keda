@@ -33,12 +33,12 @@ type elasticForecastScaler struct {
 	metadata   elasticForecastMetadata
 	esClient   *elasticsearch.Client
 	logger     logr.Logger
+	cancel     context.CancelFunc
 
 	mu                 sync.Mutex
 	forecastID         string    // ID of the current active forecast
 	forecastExpiry     time.Time // when the current forecast documents expire
 	previousForecastID string    // ID of the forecast before the most recent renewal
-	renewalInProgress  bool      // guards against concurrent renewals
 
 	// createForecastFn is the function called to create a new ML forecast.
 	createForecastFn func(ctx context.Context) error
@@ -120,14 +120,70 @@ func NewElasticForecastScaler(config *scalersconfig.ScalerConfig) (Scaler, error
 		return nil, fmt.Errorf("error creating elasticsearch client: %w", err)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	s := &elasticForecastScaler{
 		metricType: metricType,
 		metadata:   meta,
 		esClient:   esClient,
 		logger:     logger,
+		cancel:     cancel,
 	}
 	s.createForecastFn = s.createForecast
+
+	go s.forecastRenewal(ctx)
+
 	return s, nil
+}
+
+// forecastRenewal creating an initial forecast immediately and renewing it whenever less than renewThreshold of the window remains.
+func (s *elasticForecastScaler) forecastRenewal(ctx context.Context) {
+	if err := s.createForecastFn(ctx); err != nil {
+		s.logger.Error(err, "initial forecast creation failed", "jobID", s.metadata.JobID)
+	}
+
+	// Check twice per lookAhead window so we never miss the renewal threshold.
+	renewInterval := s.metadata.LookAhead / 2
+	ticker := time.NewTicker(renewInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			duration := s.metadata.forecastDuration()
+			renewThreshold := time.Duration(float64(duration) * forecastRenewThreshold)
+
+			s.mu.Lock()
+			needsRenewal := s.forecastID == "" || time.Until(s.forecastExpiry) < renewThreshold
+			s.mu.Unlock()
+
+			if !needsRenewal {
+				continue
+			}
+
+			s.mu.Lock()
+			currentID := s.forecastID
+			remainingWindow := time.Until(s.forecastExpiry).Round(time.Second)
+			s.mu.Unlock()
+
+			if currentID == "" {
+				s.logger.Info("retrying initial ML forecast", "jobID", s.metadata.JobID)
+			} else {
+				s.logger.Info("renewing ML forecast (window near expiry)",
+					"jobID", s.metadata.JobID,
+					"currentForecastID", currentID,
+					"remainingWindow", remainingWindow,
+					"renewThreshold", renewThreshold,
+				)
+			}
+
+			if err := s.createForecastFn(ctx); err != nil {
+				s.logger.Error(err, "forecast renewal failed", "jobID", s.metadata.JobID)
+			}
+		}
+	}
 }
 
 func parseElasticForecastMetadata(config *scalersconfig.ScalerConfig) (elasticForecastMetadata, error) {
@@ -182,43 +238,6 @@ func checkHTTPError(statusCode int) error {
 	default:
 		return fmt.Errorf("elasticsearch returned HTTP %d", statusCode)
 	}
-}
-
-// ensureForecastValid checks whether a new forecast needs to be created.
-func (s *elasticForecastScaler) ensureForecastValid(ctx context.Context) error {
-	duration := s.metadata.forecastDuration()
-	renewThreshold := time.Duration(float64(duration) * forecastRenewThreshold)
-
-	s.mu.Lock()
-	needsRenewal := s.forecastID == "" || time.Until(s.forecastExpiry) < renewThreshold
-	if !needsRenewal || s.renewalInProgress {
-		s.mu.Unlock()
-		return nil
-	}
-
-	currentID := s.forecastID
-	remainingWindow := time.Until(s.forecastExpiry).Round(time.Second)
-	s.renewalInProgress = true
-	s.mu.Unlock()
-
-	if currentID == "" {
-		s.logger.Info("creating initial ML forecast", "jobID", s.metadata.JobID)
-	} else {
-		s.logger.Info("renewing ML forecast (window near expiry)",
-			"jobID", s.metadata.JobID,
-			"currentForecastID", currentID,
-			"remainingWindow", remainingWindow,
-			"renewThreshold", renewThreshold,
-		)
-	}
-
-	err := s.createForecastFn(ctx)
-
-	s.mu.Lock()
-	s.renewalInProgress = false
-	s.mu.Unlock()
-
-	return err
 }
 
 // createForecast calls the Elasticsearch ML forecast API.
@@ -291,7 +310,7 @@ func (s *elasticForecastScaler) getForecastedValue(ctx context.Context) (float64
 	s.mu.Unlock()
 
 	if forecastID == "" {
-		// Initial creation is still in progress
+		// Initial forecast is still being created by the renewal goroutine.
 		s.logger.V(1).Info("initial forecast not yet available, returning 0/inactive",
 			"jobID", s.metadata.JobID,
 		)
@@ -331,7 +350,7 @@ func (s *elasticForecastScaler) getForecastedValue(ctx context.Context) (float64
 	return 0, nil
 }
 
-// queryForecastBucket returns the forecast_prediction
+// queryForecastBucket returns the forecast_prediction for the bucket covering now + lookAhead.
 func (s *elasticForecastScaler) queryForecastBucket(ctx context.Context, forecastID string) (float64, bool, error) {
 	targetMs := time.Now().Add(s.metadata.LookAhead).UnixMilli()
 
@@ -433,6 +452,7 @@ func (s *elasticForecastScaler) queryForecastBucket(ctx context.Context, forecas
 }
 
 func (s *elasticForecastScaler) Close(_ context.Context) error {
+	s.cancel()
 	return nil
 }
 
@@ -447,12 +467,8 @@ func (s *elasticForecastScaler) GetMetricSpecForScaling(context.Context) []v2.Me
 	}
 }
 
-// GetMetricsAndActivity ensures a valid forecast exists, then queries the predicted value for now + lookAhead.
+// GetMetricsAndActivity queries the predicted value for now + lookAhead.
 func (s *elasticForecastScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	if err := s.ensureForecastValid(ctx); err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error ensuring ML forecast is valid: %w", err)
-	}
-
 	val, err := s.getForecastedValue(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error reading elastic forecast value: %w", err)
