@@ -19,7 +19,6 @@ package keda
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"sync"
 
 	"github.com/go-logr/logr"
@@ -242,53 +241,26 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 
 	switch {
 	case needsToPause:
-		scaledToPausedCount := true
-		if isPausedInStatus {
-			// If scaledobject is in paused condition but replica count is not equal to paused replica count, the following scaling logic needs to be trigger again.
-			scaledToPausedCount = r.checkIfTargetResourceReachPausedCount(ctx, logger, scaledObject)
-			if scaledToPausedCount {
-				return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
-			}
-		}
+		return r.handlePause(ctx, logger, scaledObject, conditions, isPausedInStatus)
 
-		if scaledToPausedCount {
-			msg := kedav1alpha1.ScaledObjectConditionPausedMessage
-
-			if !isPausedInStatus {
-				// Write status FIRST before any operations that might trigger new reconciles
-				logger.Info("Setting Paused condition before stopping scale loop")
-				conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionPausedReason, msg)
-				if err := kedastatus.SetStatusConditions(ctx, r.Client, logger, scaledObject, conditions); err != nil {
-					return "failed to update paused status", err
-				}
-			}
-
-			// Now safe to perform operations - any triggered reconcile will see paused status
-			if err := r.stopScaleLoop(ctx, logger, scaledObject); err != nil {
-				msg = "failed to stop the scale loop for paused ScaledObject"
-				return msg, err
-			}
-			if deleted, err := r.ensureHPAForScaledObjectIsDeleted(ctx, logger, scaledObject); !deleted {
-				msg = "failed to delete HPA for paused ScaledObject"
-				return msg, err
-			}
-
-			// Condition already set above, just ensure it's still set in conditions object
-			conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionPausedReason, msg)
-			if !isPausedInStatus {
-				r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectPausedType, eventreason.ScaledObjectPaused, kedav1alpha1.ScaledObjectConditionPausedMessage)
-			}
-			return msg, nil
-		}
 	case scaledObject.NeedToPauseScaleIn() || scaledObject.NeedToPauseScaleOut():
 		conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionPausedReason, kedav1alpha1.ScaledObjectConditionPausedMessage)
 		if !isPausedInStatus {
 			r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectPausedType, eventreason.ScaledObjectPaused, kedav1alpha1.ScaledObjectConditionPausedMessage)
 		}
+
 	case isPausedInStatus:
 		unpausedMessage := "pause annotation removed for ScaledObject"
 		conditions.SetPausedCondition(metav1.ConditionFalse, "ScaledObjectUnpaused", unpausedMessage)
 		r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectUnpausedType, eventreason.ScaledObjectUnpaused, unpausedMessage)
+		// Explicitly clear PausedReplicaCount from status
+		if scaledObject.Status.PausedReplicaCount != nil {
+			status := scaledObject.Status.DeepCopy()
+			status.PausedReplicaCount = nil
+			if err := kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status); err != nil {
+				return "failed to clear paused replica count status", err
+			}
+		}
 	}
 
 	// Check scale target Name is specified
@@ -347,9 +319,6 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		}
 		logger.Info("Initializing Scaling logic according to ScaledObject Specification")
 	}
-	if scaledObject.NeedToBePausedByAnnotation() && conditions.GetPausedCondition().Status != metav1.ConditionTrue {
-		return "ScaledObject paused replicas are being scaled", fmt.Errorf("ScaledObject paused replicas are being scaled")
-	}
 	return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
 }
 
@@ -370,32 +339,91 @@ func (r *ScaledObjectReconciler) ensureScaledObjectLabel(ctx context.Context, lo
 	return r.Client.Update(ctx, scaledObject)
 }
 
-func (r *ScaledObjectReconciler) checkIfTargetResourceReachPausedCount(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) bool {
-	pausedReplicaCount, pausedReplicasAnnotationFound := scaledObject.GetAnnotations()[kedav1alpha1.PausedReplicasAnnotation]
-	if !pausedReplicasAnnotationFound {
-		return true
+// handlePause stops scaling and sets the target to the paused replica count if specified.
+func (r *ScaledObjectReconciler) handlePause(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, conditions *kedav1alpha1.Conditions, isPausedInStatus bool) (string, error) {
+	msg := kedav1alpha1.ScaledObjectConditionPausedMessage
+
+	// Set Paused condition before any operations to prevent races with new reconciles
+	if !isPausedInStatus {
+		logger.Info("Setting Paused condition before stopping scale loop")
+		conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionPausedReason, msg)
+		if err := kedastatus.SetStatusConditions(ctx, r.Client, logger, scaledObject, conditions); err != nil {
+			return "failed to update paused status", err
+		}
+		r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectPausedType, eventreason.ScaledObjectPaused, msg)
 	}
-	pausedReplicaCountNum, err := strconv.ParseInt(pausedReplicaCount, 10, 32)
+
+	if err := r.stopScaleLoop(ctx, logger, scaledObject); err != nil {
+		return "failed to stop the scale loop for paused ScaledObject", err
+	}
+
+	if deleted, err := r.ensureHPAForScaledObjectIsDeleted(ctx, logger, scaledObject); !deleted {
+		return "failed to delete HPA for paused ScaledObject", err
+	}
+
+	if err := r.scaleTargetToPausedCount(ctx, logger, scaledObject); err != nil {
+		return "failed to scale target to paused replica count", err
+	}
+
+	if err := r.syncPausedReplicaCountStatus(ctx, logger, scaledObject); err != nil {
+		return "failed to update paused replica count status", err
+	}
+
+	conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionPausedReason, msg)
+	return msg, nil
+}
+
+// syncPausedReplicaCountStatus updates PausedReplicaCount in status if it differs from the annotation.
+func (r *ScaledObjectReconciler) syncPausedReplicaCountStatus(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
+	pausedCount, err := scaledObject.GetPausedReplicaCount()
 	if err != nil {
-		return true
+		return fmt.Errorf("failed to parse paused replica count: %w", err)
+	}
+	if (scaledObject.Status.PausedReplicaCount == nil && pausedCount != nil) ||
+		(scaledObject.Status.PausedReplicaCount != nil && pausedCount == nil) ||
+		(scaledObject.Status.PausedReplicaCount != nil && pausedCount != nil && *scaledObject.Status.PausedReplicaCount != *pausedCount) {
+		status := scaledObject.Status.DeepCopy()
+		status.PausedReplicaCount = pausedCount
+		if err := kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// scaleTargetToPausedCount scales the target directly to the paused replica count, no-op if only paused=true is set.
+func (r *ScaledObjectReconciler) scaleTargetToPausedCount(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
+	pausedCount, err := scaledObject.GetPausedReplicaCount()
+	if err != nil {
+		return fmt.Errorf("failed to parse paused replica count: %w", err)
+	}
+	if pausedCount == nil {
+		// paused=true without specific count — freeze at current replicas, nothing to scale
+		return nil
 	}
 
 	gvkr, err := kedav1alpha1.ParseGVKR(r.restMapper, scaledObject.Spec.ScaleTargetRef.APIVersion, scaledObject.Spec.ScaleTargetRef.Kind)
 	if err != nil {
-		logger.Error(err, "failed to parse Group, Version, Kind, Resource", "apiVersion", scaledObject.Spec.ScaleTargetRef.APIVersion, "kind", scaledObject.Spec.ScaleTargetRef.Kind)
-		return true
+		return fmt.Errorf("failed to parse Group, Version, Kind, Resource: %w", err)
 	}
-	gvkString := gvkr.GVKString()
-	logger.V(1).Info("Parsed Group, Version, Kind, Resource", "GVK", gvkString, "Resource", gvkr.Resource)
 
-	// check if we already know.
-	var scale *autoscalingv1.Scale
 	gr := gvkr.GroupResource()
-	scale, errScale := (r.ScaleClient).Scales(scaledObject.Namespace).Get(ctx, gr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
-	if errScale != nil {
-		return true
+	scale, err := r.ScaleClient.Scales(scaledObject.Namespace).Get(ctx, gr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get scale for target resource: %w", err)
 	}
-	return scale.Spec.Replicas == int32(pausedReplicaCountNum)
+
+	if scale.Spec.Replicas == *pausedCount {
+		return nil
+	}
+
+	logger.Info("Scaling target to paused replica count", "currentReplicas", scale.Spec.Replicas, "pausedReplicas", *pausedCount)
+	scale.Spec.Replicas = *pausedCount
+	_, err = r.ScaleClient.Scales(scaledObject.Namespace).Update(ctx, gr, scale, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to scale target to paused replica count: %w", err)
+	}
+	return nil
 }
 
 // checkTargetResourceIsScalable checks if resource targeted for scaling exists and exposes /scale subresource

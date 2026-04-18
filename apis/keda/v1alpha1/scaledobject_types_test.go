@@ -643,6 +643,92 @@ func TestGetHPAReplicas(t *testing.T) {
 	}
 }
 
+func TestGetPausedReplicaCount(t *testing.T) {
+	tests := []struct {
+		name      string
+		so        *ScaledObject
+		wantNil   bool
+		wantValue int32
+		wantErr   bool
+	}{
+		{
+			name:    "nil annotations returns nil",
+			so:      &ScaledObject{},
+			wantNil: true,
+		},
+		{
+			name: "annotation absent returns nil",
+			so: func() *ScaledObject {
+				so := &ScaledObject{}
+				so.Annotations = map[string]string{"other-annotation": "value"}
+				return so
+			}(),
+			wantNil: true,
+		},
+		{
+			name: "valid integer annotation returns pointer to value",
+			so: func() *ScaledObject {
+				so := &ScaledObject{}
+				so.Annotations = map[string]string{
+					PausedReplicasAnnotation: "5",
+				}
+				return so
+			}(),
+			wantNil:   false,
+			wantValue: 5,
+		},
+		{
+			name: "zero value annotation returns pointer to zero",
+			so: func() *ScaledObject {
+				so := &ScaledObject{}
+				so.Annotations = map[string]string{
+					PausedReplicasAnnotation: "0",
+				}
+				return so
+			}(),
+			wantNil:   false,
+			wantValue: 0,
+		},
+		{
+			name: "invalid string annotation returns error",
+			so: func() *ScaledObject {
+				so := &ScaledObject{}
+				so.Annotations = map[string]string{
+					PausedReplicasAnnotation: "not-a-number",
+				}
+				return so
+			}(),
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := tt.so.GetPausedReplicaCount()
+			if tt.wantErr {
+				if err == nil {
+					t.Error("Expected error but got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("Expected no error but got: %v", err)
+				return
+			}
+			if tt.wantNil {
+				if result != nil {
+					t.Errorf("Expected nil but got %d", *result)
+				}
+			} else {
+				if result == nil {
+					t.Error("Expected non-nil result but got nil")
+				} else if *result != tt.wantValue {
+					t.Errorf("Expected %d but got %d", tt.wantValue, *result)
+				}
+			}
+		})
+	}
+}
+
 // Helper function to check if a string contains a substring
 func contains(s, substr string) bool {
 	return strings.Contains(s, substr)

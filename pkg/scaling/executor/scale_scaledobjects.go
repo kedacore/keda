@@ -19,7 +19,6 @@ package executor
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -49,7 +48,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		return result
 	}
 
-	// check if SO is paused, and if it is then update the scale to the desired count and return early without performing any other checks or updates
+	// Return early if paused to skip normal scaling logic
 	if e.handlePaused(ctx, scaledObject, currentReplicas, &result) {
 		return result
 	}
@@ -242,32 +241,13 @@ func (e *scaleExecutor) updateScaleOnScaleTarget(ctx context.Context, scaledObje
 	return currentReplicas, err
 }
 
-// handlePaused checks if the ScaledObject is paused and if it is, it scales the target to the paused replica count and returns true. If the ScaledObject is not paused, it returns false.
-func (e *scaleExecutor) handlePaused(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, currentReplicas int32, scaleResult *ScaleResult) bool {
-	pausedCount, err := GetPausedReplicaCount(scaledObject)
-	if err != nil {
-		scaleResult.Conditions.SetReadyCondition(metav1.ConditionFalse, "ErrorPausing", fmt.Sprintf("Failed to pause: %v", err))
-		scaleResult.Conditions.SetPausedCondition(metav1.ConditionTrue, "ErrorGettingPausedReplicas", fmt.Sprintf("Paused annotation present but failed to determine paused replica count: %v", err))
-		scaleResult.Error = fmt.Errorf("paused annotation present but failed to determine paused replica count: %w", err)
+// handlePaused skips normal scaling logic while the ScaledObject is paused.
+func (e *scaleExecutor) handlePaused(_ context.Context, scaledObject *kedav1alpha1.ScaledObject, _ int32, scaleResult *ScaleResult) bool {
+	if scaledObject.NeedToBePausedByAnnotation() {
+		scaleResult.Conditions.SetPausedCondition(metav1.ConditionTrue, "ScaledObjectPaused", "ScaledObject is paused")
 		return true
 	}
-	if pausedCount == nil {
-		// ScaledObject is not paused by replica annotation; the controller manages the Paused condition lifecycle, so we leave it untouched here.
-		return false
-	}
-
-	// ScaledObject is paused, scale to the paused replica count and set status accordingly
-	scaleResult.PauseReplicas = pausedCount
-	if *pausedCount != currentReplicas {
-		if _, err := e.updateScaleOnScaleTarget(ctx, scaledObject, *pausedCount); err != nil {
-			scaleResult.Conditions.SetReadyCondition(metav1.ConditionFalse, "ErrorScalingToPausedReplicas", fmt.Sprintf("ScaledObject is paused but failed to scale to paused replica count: %v", err))
-			scaleResult.Conditions.SetPausedCondition(metav1.ConditionTrue, "ScaledObjectPaused", "ScaledObject is paused")
-			scaleResult.Error = fmt.Errorf("ScaledObject is paused but failed to scale to paused replica count: %w", err)
-			return true
-		}
-	}
-	scaleResult.Conditions.SetPausedCondition(metav1.ConditionTrue, "ScaledObjectPaused", "ScaledObject is paused")
-	return true
+	return false
 }
 
 // getIdleOrMinimumReplicaCount returns true if the second value returned is from IdleReplicaCount
@@ -282,20 +262,4 @@ func getIdleOrMinimumReplicaCount(scaledObject *kedav1alpha1.ScaledObject) (bool
 	}
 
 	return false, *scaledObject.Spec.MinReplicaCount
-}
-
-// GetPausedReplicaCount returns the paused replica count of the ScaledObject.
-// If not paused, it returns nil.
-func GetPausedReplicaCount(scaledObject *kedav1alpha1.ScaledObject) (*int32, error) {
-	if scaledObject.Annotations != nil {
-		if val, ok := scaledObject.Annotations[kedav1alpha1.PausedReplicasAnnotation]; ok {
-			conv, err := strconv.ParseInt(val, 10, 32)
-			if err != nil {
-				return nil, err
-			}
-			count := int32(conv)
-			return &count, nil
-		}
-	}
-	return nil, nil
 }
