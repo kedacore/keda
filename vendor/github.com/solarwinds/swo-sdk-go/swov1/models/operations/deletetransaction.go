@@ -19,8 +19,6 @@ func (d *DeleteTransactionRequest) GetEntityID() string {
 
 type DeleteTransactionResponse struct {
 	HTTPMeta components.HTTPMetadata `json:"-"`
-	// The request has succeeded.
-	CommonEntityID *components.CommonEntityID
 }
 
 func (d *DeleteTransactionResponse) GetHTTPMeta() components.HTTPMetadata {
@@ -28,11 +26,4 @@ func (d *DeleteTransactionResponse) GetHTTPMeta() components.HTTPMetadata {
 		return components.HTTPMetadata{}
 	}
 	return d.HTTPMeta
-}
-
-func (d *DeleteTransactionResponse) GetCommonEntityID() *components.CommonEntityID {
-	if d == nil {
-		return nil
-	}
-	return d.CommonEntityID
 }

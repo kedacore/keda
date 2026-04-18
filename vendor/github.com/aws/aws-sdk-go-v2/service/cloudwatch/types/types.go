@@ -68,6 +68,53 @@ type AlarmHistoryItem struct {
 	noSmithyDocumentSerde
 }
 
+// Summary information about an alarm mute rule, including its name, status, and
+// configuration details.
+type AlarmMuteRuleSummary struct {
+
+	// The Amazon Resource Name (ARN) of the alarm mute rule.
+	AlarmMuteRuleArn *string
+
+	// The date and time when the mute rule expires and is no longer evaluated. This
+	// field is only present if an expiration date was configured.
+	ExpireDate *time.Time
+
+	// The date and time when the mute rule was last updated.
+	LastUpdatedTimestamp *time.Time
+
+	// Indicates whether the mute rule is one-time or recurring. Valid values are
+	// ONE_TIME or RECURRING .
+	MuteType *string
+
+	// The current status of the alarm mute rule. Valid values are SCHEDULED , ACTIVE ,
+	// or EXPIRED .
+	Status AlarmMuteRuleStatus
+
+	noSmithyDocumentSerde
+}
+
+// Contains the configuration that determines how a PromQL alarm evaluates its
+// contributors, including the query to run and the durations that define when
+// contributors transition between states.
+type AlarmPromQLCriteria struct {
+
+	// The PromQL query that the alarm evaluates. The query must return a result of
+	// vector type. Each entry in the vector result represents an alarm contributor.
+	//
+	// This member is required.
+	Query *string
+
+	// The duration, in seconds, that a contributor must be continuously breaching
+	// before it transitions to the ALARM state.
+	PendingPeriod *int32
+
+	// The duration, in seconds, that a contributor must continuously not be breaching
+	// before it transitions back to the OK state.
+	RecoveryPeriod *int32
+
+	noSmithyDocumentSerde
+}
+
 // An anomaly detection model associated with a particular CloudWatch metric,
 // statistic, or metric math expression. You can use the model to display a band of
 // expected, normal values when the metric is graphed.
@@ -377,6 +424,25 @@ type EntityMetricData struct {
 
 	noSmithyDocumentSerde
 }
+
+// The evaluation criteria for an alarm. This is a union type that currently
+// supports PromQLCriteria .
+//
+// The following types satisfy this interface:
+//
+//	EvaluationCriteriaMemberPromQLCriteria
+type EvaluationCriteria interface {
+	isEvaluationCriteria()
+}
+
+// The PromQL criteria for the alarm evaluation.
+type EvaluationCriteriaMemberPromQLCriteria struct {
+	Value AlarmPromQLCriteria
+
+	noSmithyDocumentSerde
+}
+
+func (*EvaluationCriteriaMemberPromQLCriteria) isEvaluationCriteria() {}
 
 // This structure contains the definition for a Contributor Insights rule. For
 // more information about this rule, see[Using Constributor Insights to analyze high-cardinality data] in the Amazon CloudWatch User Guide.
@@ -702,12 +768,25 @@ type MetricAlarm struct {
 	// possibly changes state no matter how many data points are available.
 	EvaluateLowSampleCountPercentile *string
 
+	// The evaluation criteria for the alarm.
+	EvaluationCriteria EvaluationCriteria
+
+	// The frequency, in seconds, at which the alarm is evaluated.
+	EvaluationInterval *int32
+
 	// The number of periods over which data is compared to the specified threshold.
 	EvaluationPeriods *int32
 
-	// If the value of this field is PARTIAL_DATA , the alarm is being evaluated based
-	// on only partial data. This happens if the query used for the alarm returns more
-	// than 10,000 metrics. For more information, see [Create alarms on Metrics Insights queries].
+	// If the value of this field is PARTIAL_DATA , it indicates that not all the
+	// available data was able to be retrieved due to quota limitations. For more
+	// information, see [Create alarms on Metrics Insights queries].
+	//
+	// If the value of this field is EVALUATION_ERROR , it indicates configuration
+	// errors in alarm setup that require review and correction. Refer to StateReason
+	// field of the alarm for more details.
+	//
+	// If the value of this field is EVALUATION_FAILURE , it indicates temporary
+	// CloudWatch issues. We recommend manual monitoring until the issue is resolved
 	//
 	// [Create alarms on Metrics Insights queries]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Create_Metrics_Insights_Alarm.html
 	EvaluationState EvaluationState
@@ -772,6 +851,8 @@ type MetricAlarm struct {
 	// breaching , notBreaching , ignore , and missing . For more information, see [Configuring how CloudWatch alarms treat missing data].
 	//
 	// If this parameter is omitted, the default behavior of missing is used.
+	//
+	// This parameter is not applicable to PromQL alarms.
 	//
 	// [Configuring how CloudWatch alarms treat missing data]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/AlarmThatSendsEmail.html#alarms-and-missing-data
 	TreatMissingData *string
@@ -1185,6 +1266,25 @@ type MetricStreamStatisticsMetric struct {
 	noSmithyDocumentSerde
 }
 
+// Specifies which alarms an alarm mute rule applies to.
+//
+// You can target up to 100 specific alarms by name. When a mute rule is active,
+// the targeted alarms continue to evaluate metrics and transition between states,
+// but their configured actions are muted.
+type MuteTargets struct {
+
+	// The list of alarm names that this mute rule targets. You can specify up to 100
+	// alarm names.
+	//
+	// Each alarm name must be between 1 and 255 characters in length. The alarm names
+	// must match existing alarms in your Amazon Web Services account and region.
+	//
+	// This member is required.
+	AlarmNames []string
+
+	noSmithyDocumentSerde
+}
+
 // This array is empty if the API operation was successful for all the rules
 // specified in the request. If the operation could not process one of the rules,
 // the following data is returned for each of those rules.
@@ -1220,6 +1320,119 @@ type Range struct {
 	//
 	// This member is required.
 	StartTime *time.Time
+
+	noSmithyDocumentSerde
+}
+
+// Defines the schedule configuration for an alarm mute rule.
+//
+// The rule contains a schedule that specifies when and how long alarms should be
+// muted. The schedule can be a recurring pattern using cron expressions or a
+// one-time mute window using at expressions.
+type Rule struct {
+
+	// The schedule configuration that defines when the mute rule activates and how
+	// long it remains active.
+	//
+	// This member is required.
+	Schedule *Schedule
+
+	noSmithyDocumentSerde
+}
+
+// Specifies when and how long an alarm mute rule is active.
+//
+// The schedule uses either a cron expression for recurring mute windows or an at
+// expression for one-time mute windows. When the schedule activates, the mute rule
+// mutes alarm actions for the specified duration.
+type Schedule struct {
+
+	// The length of time that alarms remain muted when the schedule activates. The
+	// duration must be between 1 and 50 characters in length.
+	//
+	// Specify the duration using ISO 8601 duration format with a minimum of 1 minute (
+	// PT1M ) and maximum of 15 days ( P15D ).
+	//
+	// Examples:
+	//
+	//   - PT4H - 4 hours for weekly system maintenance
+	//
+	//   - P2DT12H - 2 days and 12 hours for weekend muting from Friday 6:00 PM to
+	//   Monday 6:00 AM
+	//
+	//   - PT6H - 6 hours for monthly database maintenance
+	//
+	//   - PT2H - 2 hours for nightly backup operations
+	//
+	//   - P7D - 7 days for annual company shutdown
+	//
+	// The duration begins when the schedule expression time is reached. For recurring
+	// schedules, the duration applies to each occurrence.
+	//
+	// This member is required.
+	Duration *string
+
+	// The schedule expression that defines when the mute rule activates. The
+	// expression must be between 1 and 256 characters in length.
+	//
+	// You can use one of two expression formats:
+	//
+	//   - Cron expressions - For recurring mute windows. Format: cron(Minutes Hours
+	//   Day-of-month Month Day-of-week)
+	//
+	// Examples:
+	//
+	//   - cron(0 2 * * *) - Activates daily at 2:00 AM
+	//
+	//   - cron(0 2 * * SUN) - Activates every Sunday at 2:00 AM for weekly system
+	//   maintenance
+	//
+	//   - cron(0 1 1 * *) - Activates on the first day of each month at 1:00 AM for
+	//   monthly database maintenance
+	//
+	//   - cron(0 18 * * FRI) - Activates every Friday at 6:00 PM
+	//
+	//   - cron(0 23 * * *) - Activates every day at 11:00 PM during nightly backup
+	//   operations
+	//
+	// The characters * , - , and , are supported in all fields. English names can be
+	//   used for the month (JAN-DEC) and day of week (SUN-SAT) fields.
+	//
+	//   - At expressions - For one-time mute windows. Format: at(yyyy-MM-ddThh:mm)
+	//
+	// Examples:
+	//
+	//   - at(2024-05-10T14:00) - Activates once on May 10, 2024 at 2:00 PM during an
+	//   active incident response session
+	//
+	//   - at(2024-12-23T00:00) - Activates once on December 23, 2024 at midnight
+	//   during annual company shutdown
+	//
+	// This member is required.
+	Expression *string
+
+	// The time zone to use when evaluating the schedule expression. The time zone
+	// must be between 1 and 50 characters in length.
+	//
+	// Specify the time zone using standard timezone identifiers (for example,
+	// America/New_York , Europe/London , or Asia/Tokyo ).
+	//
+	// If you don't specify a time zone, UTC is used by default. The time zone affects
+	// how cron and at expressions are interpreted, as well as start and expire dates
+	// you specify
+	//
+	// Examples:
+	//
+	//   - America/New_York - Eastern Time (US)
+	//
+	//   - America/Los_Angeles - Pacific Time (US)
+	//
+	//   - Europe/London - British Time
+	//
+	//   - Asia/Tokyo - Japan Standard Time
+	//
+	//   - UTC - Coordinated Universal Time
+	Timezone *string
 
 	noSmithyDocumentSerde
 }
@@ -1294,3 +1507,14 @@ type Tag struct {
 }
 
 type noSmithyDocumentSerde = smithydocument.NoSerde
+
+// UnknownUnionMember is returned when a union member is returned over the wire,
+// but has an unknown tag.
+type UnknownUnionMember struct {
+	Tag   string
+	Value []byte
+
+	noSmithyDocumentSerde
+}
+
+func (*UnknownUnionMember) isEvaluationCriteria() {}
