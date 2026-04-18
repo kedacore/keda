@@ -573,9 +573,66 @@ func (c *ClientOutboundInterceptorBase) DescribeWorkflow(
 	return c.Next.DescribeWorkflow(ctx, in)
 }
 
-// ExecuteWorkflow implements ClientOutboundInterceptor.CreateSchedule.
+// CreateSchedule implements ClientOutboundInterceptor.CreateSchedule.
 func (c *ClientOutboundInterceptorBase) CreateSchedule(ctx context.Context, in *ScheduleClientCreateInput) (ScheduleHandle, error) {
 	return c.Next.CreateSchedule(ctx, in)
+}
+
+// ExecuteActivity implements ClientOutboundInterceptor.ExecuteActivity.
+func (c *ClientOutboundInterceptorBase) ExecuteActivity(
+	ctx context.Context,
+	in *ClientExecuteActivityInput,
+) (ClientActivityHandle, error) {
+	return c.Next.ExecuteActivity(ctx, in)
+}
+
+// GetActivityHandle implements ClientOutboundInterceptor.GetActivityHandle.
+//
+// NOTE: Experimental
+func (c *ClientOutboundInterceptorBase) GetActivityHandle(
+	in *ClientGetActivityHandleInput,
+) ClientActivityHandle {
+	return c.Next.GetActivityHandle(in)
+}
+
+// CancelActivity implements ClientOutboundInterceptor.CancelActivity.
+//
+// NOTE: Experimental
+func (c *ClientOutboundInterceptorBase) CancelActivity(
+	ctx context.Context,
+	in *ClientCancelActivityInput,
+) error {
+	return c.Next.CancelActivity(ctx, in)
+}
+
+// TerminateActivity implements ClientOutboundInterceptor.TerminateActivity.
+//
+// NOTE: Experimental
+func (c *ClientOutboundInterceptorBase) TerminateActivity(
+	ctx context.Context,
+	in *ClientTerminateActivityInput,
+) error {
+	return c.Next.TerminateActivity(ctx, in)
+}
+
+// DescribeActivity implements ClientOutboundInterceptor.DescribeActivity.
+//
+// NOTE: Experimental
+func (c *ClientOutboundInterceptorBase) DescribeActivity(
+	ctx context.Context,
+	in *ClientDescribeActivityInput,
+) (*ClientDescribeActivityOutput, error) {
+	return c.Next.DescribeActivity(ctx, in)
+}
+
+// PollActivityResult implements ClientOutboundInterceptor.PollActivityResult.
+//
+// NOTE: Experimental
+func (c *ClientOutboundInterceptorBase) PollActivityResult(
+	ctx context.Context,
+	in *ClientPollActivityResultInput,
+) (*ClientPollActivityResultOutput, error) {
+	return c.Next.PollActivityResult(ctx, in)
 }
 
 func (*ClientOutboundInterceptorBase) mustEmbedClientOutboundInterceptorBase() {}

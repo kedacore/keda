@@ -148,13 +148,14 @@ func (s *lokiScaler) ExecuteLokiQuery(ctx context.Context) (float64, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return -1, fmt.Errorf("loki query api returned error. status: %d", resp.StatusCode)
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return -1, err
-	}
-
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return -1, fmt.Errorf("loki query api returned error. status: %d response: %s", resp.StatusCode, string(body))
 	}
 
 	var result lokiQueryResult

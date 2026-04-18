@@ -325,10 +325,9 @@ func (s *metricsAPIScaler) getEndpointsUrlsFromServiceURL(ctx context.Context, s
 	}
 	// get service serviceEndpointsSlices
 	serviceEndpointsSlices := &discoveryV1.EndpointSliceList{}
-	serviceNameSelector := labels.NewSelector()
-	serviceNameSelector.Matches(labels.Set(map[string]string{
+	serviceNameSelector := labels.SelectorFromSet(labels.Set{
 		discoveryV1.LabelServiceName: serviceName,
-	}))
+	})
 	err = s.kubeClient.List(ctx, serviceEndpointsSlices, &client.ListOptions{
 		LabelSelector: serviceNameSelector,
 		Namespace:     namespace,

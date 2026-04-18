@@ -104,6 +104,12 @@ type StringNode struct {
 	Value string // Value of the string.
 }
 
+// BytesNode represents a byte slice.
+type BytesNode struct {
+	base
+	Value []byte // Value of the byte slice.
+}
+
 // ConstantNode represents a constant.
 // Constants are predefined values like nil, true, false, array, map, etc.
 // The parser.Parse will never generate ConstantNode, it is only generated
@@ -181,6 +187,7 @@ type BuiltinNode struct {
 	Arguments []Node // Arguments of the builtin function.
 	Throws    bool   // If true then accessing a field or array index can throw an error. Used by optimizer.
 	Map       Node   // Used by optimizer to fold filter() and map() builtins.
+	Threshold *int   // Used by optimizer for count() early termination.
 }
 
 // PredicateNode represents a predicate.

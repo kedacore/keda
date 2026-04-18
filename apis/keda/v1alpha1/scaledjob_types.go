@@ -54,24 +54,32 @@ const ScaledJobExcludedLabelsAnnotation = "scaledjob.keda.sh/job-excluded-labels
 type ScaledJobSpec struct {
 	JobTargetRef *batchv1.JobSpec `json:"jobTargetRef"`
 	// +optional
+	// +kubebuilder:validation:Minimum=1
 	PollingInterval *int32 `json:"pollingInterval,omitempty"`
 	// +optional
+	// +kubebuilder:validation:Minimum=0
 	SuccessfulJobsHistoryLimit *int32 `json:"successfulJobsHistoryLimit,omitempty"`
 	// +optional
+	// +kubebuilder:validation:Minimum=0
 	FailedJobsHistoryLimit *int32 `json:"failedJobsHistoryLimit,omitempty"`
+	// Deprecated: Use Rollout.Strategy instead (see https://github.com/kedacore/keda/issues/3596).
 	// +optional
+	// +kubebuilder:validation:Enum=gradual;immediate
 	RolloutStrategy string `json:"rolloutStrategy,omitempty"`
 	// +optional
 	Rollout Rollout `json:"rollout,omitempty"`
 	// +optional
 	EnvSourceContainerName string `json:"envSourceContainerName,omitempty"`
 	// +optional
+	// +kubebuilder:validation:Minimum=0
 	MinReplicaCount *int32 `json:"minReplicaCount,omitempty"`
 	// +optional
+	// +kubebuilder:validation:Minimum=1
 	MaxReplicaCount *int32 `json:"maxReplicaCount,omitempty"`
 	// +optional
 	ScalingStrategy ScalingStrategy `json:"scalingStrategy,omitempty"`
-	Triggers        []ScaleTriggers `json:"triggers"`
+	// +kubebuilder:validation:MinItems=1
+	Triggers []ScaleTriggers `json:"triggers"`
 }
 
 // ScaledJobStatus defines the observed state of ScaledJob
@@ -105,6 +113,7 @@ type ScaledJobList struct {
 // +optional
 type ScalingStrategy struct {
 	// +optional
+	// +kubebuilder:validation:Enum=custom;accurate;eager
 	Strategy string `json:"strategy,omitempty"`
 	// +optional
 	CustomScalingQueueLengthDeduction *int32 `json:"customScalingQueueLengthDeduction,omitempty"`
@@ -113,6 +122,7 @@ type ScalingStrategy struct {
 	// +optional
 	PendingPodConditions []string `json:"pendingPodConditions,omitempty"`
 	// +optional
+	// +kubebuilder:validation:Enum=min;avg;sum;max
 	MultipleScalersCalculation string `json:"multipleScalersCalculation,omitempty"`
 }
 
@@ -120,8 +130,10 @@ type ScalingStrategy struct {
 // +optional
 type Rollout struct {
 	// +optional
+	// +kubebuilder:validation:Enum=gradual;immediate
 	Strategy string `json:"strategy,omitempty"`
 	// +optional
+	// +kubebuilder:validation:Enum=foreground;background
 	PropagationPolicy string `json:"propagationPolicy,omitempty"`
 }
 
@@ -155,4 +167,31 @@ func (s ScaledJob) MinReplicaCount() int64 {
 
 func (s *ScaledJob) GenerateIdentifier() string {
 	return GenerateIdentifier("ScaledJob", s.Namespace, s.Name)
+}
+
+// GetStatusConditions returns a pointer to the status conditions for in-place modification.
+func (s *ScaledJob) GetStatusConditions() *Conditions { return &s.Status.Conditions }
+
+// SetStatusLastActiveTime sets the LastActiveTime in the status.
+func (s *ScaledJob) SetStatusLastActiveTime(t *metav1.Time) { s.Status.LastActiveTime = t }
+
+// SetStatusPausedReplicaCount is a no-op for ScaledJob (no paused replica count).
+func (s *ScaledJob) SetStatusPausedReplicaCount(_ *int32) {}
+
+// GetStatusTriggersActivity returns the TriggersActivity map from the ScaledJob status, initializing it if it is nil.
+func (s *ScaledJob) GetStatusTriggersActivity() map[string]TriggerActivityStatus {
+	if s.Status.TriggersActivity == nil {
+		s.Status.TriggersActivity = make(map[string]TriggerActivityStatus)
+	}
+	return s.Status.TriggersActivity
+}
+
+// SetStatusTriggersActivity sets the triggers activity map in the status.
+func (s *ScaledJob) SetStatusTriggersActivity(m map[string]TriggerActivityStatus) {
+	s.Status.TriggersActivity = m
+}
+
+// GetStatusExternalMetricNames returns the ExternalMetricNames slice from the ScaledJob status
+func (s *ScaledJob) GetStatusExternalMetricNames() []string {
+	return s.Status.ExternalMetricNames
 }

@@ -279,6 +279,8 @@ type Organization struct {
 	TelemetryId string `json:"telemetryId,omitempty"`
 	// This field provides access to UserManagement data.
 	UserManagement UserManagementOrganizationStitchedFields `json:"userManagement,omitempty"`
+	// This field provides access to WorkflowAutomation data.
+	WorkflowAutomation WorkflowAutomationOrganizationStitchedFields `json:"workflowAutomation,omitempty"`
 }
 
 // OrganizationAccountShares - An organization's shared accounts, both given and received.
@@ -705,7 +707,36 @@ type UserManagementUsers struct {
 	Users []UserManagementUser `json:"users"`
 }
 
+type WorkflowAutomationOrganizationStitchedFields struct {
+	// Retrieves an existing workflow definition
+	Workflow WorkflowAutomationWorkflowResponse `json:"workflow,omitempty"`
+}
+
+// WorkflowAutomationWorkflowDefinition - Workflow definition
+type WorkflowAutomationWorkflowDefinition struct {
+	// Entity ID of the workflow definition
+	DefinitionId string `json:"definitionId"`
+	// Description of the workflow definition
+	Description string `json:"description,omitempty"`
+	// Name of the workflow definition
+	Name string `json:"name"`
+	// Version of the workflow definition
+	Version int `json:"version"`
+	// The YAML string for the workflow definition
+	Yaml SecureValue `json:"yaml"`
+}
+
+// WorkflowAutomationWorkflowResponse - Response for retrieving a workflow definition
+type WorkflowAutomationWorkflowResponse struct {
+	// Workflow definition
+	Definition WorkflowAutomationWorkflowDefinition `json:"definition,omitempty"`
+}
+
 type organizationResponse struct {
+	Actor Actor `json:"actor"`
+}
+
+type workflowResponse struct {
 	Actor Actor `json:"actor"`
 }
 
@@ -731,3 +762,6 @@ type NRQL string
 
 // Seconds - The `Seconds` scalar represents a duration in seconds
 type Seconds string
+
+// SecureValue - The `SecureValue` scalar represents a secure value, ie a password, an API key, etc.
+type SecureValue string

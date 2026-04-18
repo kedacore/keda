@@ -78,10 +78,6 @@ func newNexusWorker(opts nexusWorkerOptions) (*nexusWorker, error) {
 
 // Start the worker.
 func (w *nexusWorker) Start() error {
-	err := verifyNamespaceExist(w.workflowService, w.executionParameters.MetricsHandler, w.executionParameters.Namespace, w.worker.logger)
-	if err != nil {
-		return err
-	}
 	w.worker.Start()
 	return nil
 }

@@ -43,9 +43,11 @@ func (m *MockScaleExecutor) EXPECT() *MockScaleExecutorMockRecorder {
 }
 
 // RequestJobScale mocks base method.
-func (m *MockScaleExecutor) RequestJobScale(ctx context.Context, scaledJob *v1alpha1.ScaledJob, isActive, isError bool, scaleTo, maxScale int64, options *executor.ScaleExecutorOptions) {
+func (m *MockScaleExecutor) RequestJobScale(ctx context.Context, scaledJob *v1alpha1.ScaledJob, isActive, isError bool, scaleTo, maxScale int64, options executor.ScaleExecutorOptions) executor.ScaleResult {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RequestJobScale", ctx, scaledJob, isActive, isError, scaleTo, maxScale, options)
+	ret := m.ctrl.Call(m, "RequestJobScale", ctx, scaledJob, isActive, isError, scaleTo, maxScale, options)
+	ret0, _ := ret[0].(executor.ScaleResult)
+	return ret0
 }
 
 // RequestJobScale indicates an expected call of RequestJobScale.
@@ -55,9 +57,11 @@ func (mr *MockScaleExecutorMockRecorder) RequestJobScale(ctx, scaledJob, isActiv
 }
 
 // RequestScale mocks base method.
-func (m *MockScaleExecutor) RequestScale(ctx context.Context, scaledObject *v1alpha1.ScaledObject, isActive, isError bool, options *executor.ScaleExecutorOptions) {
+func (m *MockScaleExecutor) RequestScale(ctx context.Context, scaledObject *v1alpha1.ScaledObject, isActive, isError bool, options executor.ScaleExecutorOptions) executor.ScaleResult {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RequestScale", ctx, scaledObject, isActive, isError, options)
+	ret := m.ctrl.Call(m, "RequestScale", ctx, scaledObject, isActive, isError, options)
+	ret0, _ := ret[0].(executor.ScaleResult)
+	return ret0
 }
 
 // RequestScale indicates an expected call of RequestScale.

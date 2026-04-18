@@ -27,6 +27,7 @@ type Region struct {
 	syntheticsBaseURL     string
 	insightsKeysBaseURL   string
 	metricsBaseURL        string
+	blobServiceBaseURL    string
 }
 
 // String returns a human readable value for the specified Region Name
@@ -65,6 +66,33 @@ func (r *Region) NerdGraphURL(path ...string) string {
 	if err != nil {
 		log.Errorf("unable to make URL with error: %s", err)
 		return r.nerdGraphBaseURL
+	}
+
+	return url
+}
+
+//
+// Blob Service
+//
+
+// SetBlobServiceBaseURL Allows overriding the REST Base URL
+func (r *Region) SetBlobServiceBaseURL(url string) {
+	if r != nil && url != "" {
+		r.blobServiceBaseURL = url
+	}
+}
+
+// BlobServiceURL returns the Full URL for REST API Calls, with any additional path elements appended
+func (r *Region) BlobServiceURL(path ...string) string {
+	if r == nil {
+		log.Errorf("call to nil region.BlobServiceURL")
+		return ""
+	}
+
+	url, err := concatURLPaths(r.blobServiceBaseURL, path)
+	if err != nil {
+		log.Errorf("unable to make URL with error: %s", err)
+		return r.blobServiceBaseURL
 	}
 
 	return url
