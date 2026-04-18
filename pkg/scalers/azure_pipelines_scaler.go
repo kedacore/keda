@@ -216,53 +216,53 @@ func NewAzurePipelinesScaler(ctx context.Context, config *scalersconfig.ScalerCo
 }
 
 func getAuthMethod(logger logr.Logger, config *scalersconfig.ScalerConfig, meta *azurePipelinesMetadata) (azcore.TokenCredential, error) {
-	if meta.PersonalAccessToken != "" {
-		meta.authContext.pat = strings.TrimSuffix(meta.PersonalAccessToken, "\n")
-		meta.authContext.authType = azurePipelinesAuthTypePAT
-		return nil, nil
-	}
-
-	if meta.TenantID != "" || meta.ClientID != "" || meta.ClientSecret != "" || meta.ClientCertificate != "" || meta.ClientCertificatePassword != "" {
-		missing := make([]string, 0, 3)
-		if meta.TenantID == "" {
-			missing = append(missing, "tenantId")
-		}
-		if meta.ClientID == "" {
-			missing = append(missing, "clientId")
-		}
-		usingClientSecret := meta.ClientSecret != ""
-		usingClientCertificate := meta.ClientCertificate != ""
-		if usingClientSecret && usingClientCertificate {
-			return nil, fmt.Errorf("clientSecret and clientCertificate are mutually exclusive")
-		}
-		if !usingClientSecret && !usingClientCertificate {
-			missing = append(missing, "one of clientSecret or clientCertificate")
-		}
-		if meta.ClientCertificatePassword != "" && !usingClientCertificate {
-			return nil, fmt.Errorf("clientCertificatePassword requires clientCertificate")
-		}
-		if len(missing) != 0 {
-			return nil, fmt.Errorf("incomplete service principal configuration, missing %s", strings.Join(missing, ", "))
-		}
-
-		var (
-			cred azcore.TokenCredential
-			err  error
-		)
-		if usingClientCertificate {
-			cred, err = newAzurePipelinesClientCertificateCredential(meta.TenantID, meta.ClientID, meta.ClientCertificate, meta.ClientCertificatePassword)
-		} else {
-			cred, err = newAzurePipelinesClientSecretCredential(meta.TenantID, meta.ClientID, meta.ClientSecret)
-		}
-		if err != nil {
-			return nil, err
-		}
-		meta.authContext.authType = azurePipelinesAuthTypeServicePrincipal
-		return cred, nil
-	}
-
 	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
+		if meta.PersonalAccessToken != "" {
+			meta.authContext.pat = strings.TrimSuffix(meta.PersonalAccessToken, "\n")
+			meta.authContext.authType = azurePipelinesAuthTypePAT
+			return nil, nil
+		}
+
+		if meta.TenantID != "" || meta.ClientID != "" || meta.ClientSecret != "" || meta.ClientCertificate != "" || meta.ClientCertificatePassword != "" {
+			missing := make([]string, 0, 3)
+			if meta.TenantID == "" {
+				missing = append(missing, "tenantId")
+			}
+			if meta.ClientID == "" {
+				missing = append(missing, "clientId")
+			}
+			usingClientSecret := meta.ClientSecret != ""
+			usingClientCertificate := meta.ClientCertificate != ""
+			if usingClientSecret && usingClientCertificate {
+				return nil, fmt.Errorf("clientSecret and clientCertificate are mutually exclusive")
+			}
+			if !usingClientSecret && !usingClientCertificate {
+				missing = append(missing, "one of clientSecret or clientCertificate")
+			}
+			if meta.ClientCertificatePassword != "" && !usingClientCertificate {
+				return nil, fmt.Errorf("clientCertificatePassword requires clientCertificate")
+			}
+			if len(missing) != 0 {
+				return nil, fmt.Errorf("incomplete service principal configuration, missing %s", strings.Join(missing, ", "))
+			}
+
+			var (
+				cred azcore.TokenCredential
+				err  error
+			)
+			if usingClientCertificate {
+				cred, err = newAzurePipelinesClientCertificateCredential(meta.TenantID, meta.ClientID, meta.ClientCertificate, meta.ClientCertificatePassword)
+			} else {
+				cred, err = newAzurePipelinesClientSecretCredential(meta.TenantID, meta.ClientID, meta.ClientSecret)
+			}
+			if err != nil {
+				return nil, err
+			}
+			meta.authContext.authType = azurePipelinesAuthTypeServicePrincipal
+			return cred, nil
+		}
+
 		return nil, fmt.Errorf("no personalAccessToken, service principal credentials, or PodIdentity provider configured")
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		cred, err := azure.NewChainedCredential(logger, config.PodIdentity)
