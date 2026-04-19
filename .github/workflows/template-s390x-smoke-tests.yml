@@ -3,6 +3,9 @@ name: Reusable workflow to run smoke tests on s390x
 on:
   workflow_call:
 
+permissions:
+  contents: read
+
 jobs:
   smoke-tests-s390x:
     name: Validate k8s

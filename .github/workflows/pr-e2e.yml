@@ -3,6 +3,9 @@ on:
   issue_comment:
     types: [created]
 
+permissions:
+  contents: read
+
 env:
   E2E_CHECK_NAME: e2e tests
   ARM_SMOKE_CHECK_NAME: ARM smoke tests
