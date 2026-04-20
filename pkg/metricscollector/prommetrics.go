@@ -104,13 +104,14 @@ var (
 		},
 		[]string{"namespace", "scaledJob"},
 	)
-	emptyUpstreamResponse = prometheus.NewCounter(
+	emptyUpstreamResponse = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
 			Name:      "empty_upstream_responses_total",
 			Help:      "Number of times a query returns an empty result",
 		},
+		[]string{"namespace", "scaledObject", "triggerName"},
 	)
 	triggerRegistered = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -338,8 +339,8 @@ func (p *PromMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
 }
 
 // RecordEmptyUpstreamResponse counts the number of times a query returns an empty result
-func (p *PromMetrics) RecordEmptyUpstreamResponse() {
-	emptyUpstreamResponse.Inc()
+func (p *PromMetrics) RecordEmptyUpstreamResponse(namespace, scaledObject, triggerName string) {
+	emptyUpstreamResponse.With(prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject, "triggerName": triggerName}).Inc()
 }
 
 // Returns a grpcprom server Metrics object and registers the metrics. The object contains

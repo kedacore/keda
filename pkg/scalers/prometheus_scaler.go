@@ -27,10 +27,13 @@ import (
 )
 
 type prometheusScaler struct {
-	metricType v2.MetricTargetType
-	metadata   *prometheusMetadata
-	httpClient *http.Client
-	logger     logr.Logger
+	metricType          v2.MetricTargetType
+	metadata            *prometheusMetadata
+	httpClient          *http.Client
+	logger              logr.Logger
+	scalableObjectName  string
+	scalableObjectNS    string
+	triggerName         string
 }
 
 // IgnoreNullValues - sometimes should consider there is an error we can accept
@@ -139,10 +142,13 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 
 	return &prometheusScaler{
-		metricType: metricType,
-		metadata:   meta,
-		httpClient: httpClient,
-		logger:     logger,
+		metricType:         metricType,
+		metadata:           meta,
+		httpClient:         httpClient,
+		logger:             logger,
+		scalableObjectName: config.ScalableObjectName,
+		scalableObjectNS:   config.ScalableObjectNamespace,
+		triggerName:        config.TriggerName,
 	}, nil
 }
 
@@ -259,7 +265,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		if s.metadata.IgnoreNullValues {
 			return 0, nil
 		}
-		metricscollector.RecordEmptyUpstreamResponse()
+		metricscollector.RecordEmptyUpstreamResponse(s.scalableObjectNS, s.scalableObjectName, s.triggerName)
 		return -1, fmt.Errorf("prometheus metrics 'prometheus' target may be lost, the result is empty")
 	} else if len(result.Data.Result) > 1 {
 		return -1, fmt.Errorf("prometheus query %s returned multiple elements", s.metadata.Query)
@@ -270,7 +276,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		if s.metadata.IgnoreNullValues {
 			return 0, nil
 		}
-		metricscollector.RecordEmptyUpstreamResponse()
+		metricscollector.RecordEmptyUpstreamResponse(s.scalableObjectNS, s.scalableObjectName, s.triggerName)
 		return -1, fmt.Errorf("prometheus metrics 'prometheus' target may be lost, the value list is empty")
 	} else if valueLen < 2 {
 		return -1, fmt.Errorf("prometheus query %s didn't return enough values", s.metadata.Query)

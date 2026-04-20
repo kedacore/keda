@@ -514,6 +514,10 @@ func (o *OtelMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
 }
 
 // RecordEmptyUpstreamResponse counts the number of times a query returns an empty result
-func (o *OtelMetrics) RecordEmptyUpstreamResponse() {
-	otEmptyUpstreamResponses.Add(context.Background(), 1, nil)
+func (o *OtelMetrics) RecordEmptyUpstreamResponse(namespace, scaledObject, triggerName string) {
+	otEmptyUpstreamResponses.Add(context.Background(), 1, api.WithAttributes(
+		attribute.Key("namespace").String(namespace),
+		attribute.Key("scaledObject").String(scaledObject),
+		attribute.Key("triggerName").String(triggerName),
+	))
 }

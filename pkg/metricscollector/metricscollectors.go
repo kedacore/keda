@@ -81,7 +81,7 @@ type MetricsCollector interface {
 	RecordCloudEventQueueStatus(namespace string, value int)
 
 	// RecordEmptyUpstreamResponse counts the number of times a query returns an empty result
-	RecordEmptyUpstreamResponse()
+	RecordEmptyUpstreamResponse(namespace, scaledObject, triggerName string)
 }
 
 func NewMetricsCollectors(enablePrometheusMetrics bool, enableOpenTelemetryMetrics bool) {
@@ -208,10 +208,10 @@ func RecordCloudEventQueueStatus(namespace string, value int) {
 	}
 }
 
-// RecordEmptyPrometheusMetricError counts the number of times a query returns an empty result
-func RecordEmptyUpstreamResponse() {
+// RecordEmptyUpstreamResponse counts the number of times a query returns an empty result
+func RecordEmptyUpstreamResponse(namespace, scaledObject, triggerName string) {
 	for _, element := range collectors {
-		element.RecordEmptyUpstreamResponse()
+		element.RecordEmptyUpstreamResponse(namespace, scaledObject, triggerName)
 	}
 }
 
