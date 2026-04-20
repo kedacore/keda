@@ -18,8 +18,8 @@ package v1alpha1
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"reflect"
 	"slices"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -83,18 +83,16 @@ var _ webhook.CustomValidator = &CloudEventSourceCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (ces *CloudEventSource) ValidateCreate(_ *bool) (admission.Warnings, error) {
-	val, _ := json.MarshalIndent(ces, "", "  ")
-	cloudeventsourcelog.Info(fmt.Sprintf("validating cloudeventsource creation for %s", string(val)))
+	cloudeventsourcelog.Info("validating cloudeventsource creation", "namespace", ces.Namespace, "name", ces.Name, "cloudeventsource", ces)
 	return validateSpec(&ces.Spec)
 }
 
 func (ces *CloudEventSource) ValidateUpdate(old runtime.Object, _ *bool) (admission.Warnings, error) {
-	val, _ := json.MarshalIndent(ces, "", "  ")
-	cloudeventsourcelog.V(1).Info(fmt.Sprintf("validating cloudeventsource update for %s", string(val)))
+	cloudeventsourcelog.V(1).Info("validating cloudeventsource update", "namespace", ces.Namespace, "name", ces.Name, "cloudeventsource", ces)
 
 	oldCes := old.(*CloudEventSource)
 	if isCloudEventSourceRemovingFinalizer(ces.ObjectMeta, oldCes.ObjectMeta, ces.Spec, oldCes.Spec) {
-		cloudeventsourcelog.V(1).Info("finalizer removal, skipping validation")
+		cloudeventsourcelog.V(1).Info("finalizer removal, skipping validation", "namespace", ces.Namespace, "name", ces.Name)
 		return nil, nil
 	}
 	return validateSpec(&ces.Spec)
@@ -141,18 +139,16 @@ var _ webhook.CustomValidator = &ClusterCloudEventSourceCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (cces *ClusterCloudEventSource) ValidateCreate(_ *bool) (admission.Warnings, error) {
-	val, _ := json.MarshalIndent(cces, "", "  ")
-	cloudeventsourcelog.Info(fmt.Sprintf("validating clustercloudeventsource creation for %s", string(val)))
+	cloudeventsourcelog.Info("validating clustercloudeventsource creation", "name", cces.Name, "clustercloudeventsource", cces)
 	return validateSpec(&cces.Spec)
 }
 
 func (cces *ClusterCloudEventSource) ValidateUpdate(old runtime.Object, _ *bool) (admission.Warnings, error) {
-	val, _ := json.MarshalIndent(cces, "", "  ")
-	cloudeventsourcelog.V(1).Info(fmt.Sprintf("validating clustercloudeventsource update for %s", string(val)))
+	cloudeventsourcelog.V(1).Info("validating clustercloudeventsource update", "name", cces.Name, "clustercloudeventsource", cces)
 
 	oldCes := old.(*ClusterCloudEventSource)
 	if isCloudEventSourceRemovingFinalizer(cces.ObjectMeta, oldCes.ObjectMeta, cces.Spec, oldCes.Spec) {
-		cloudeventsourcelog.V(1).Info("finalizer removal, skipping validation")
+		cloudeventsourcelog.V(1).Info("finalizer removal, skipping validation", "name", cces.Name)
 		return nil, nil
 	}
 	return validateSpec(&cces.Spec)
@@ -163,12 +159,7 @@ func (cces *ClusterCloudEventSource) ValidateDelete(_ *bool) (admission.Warnings
 }
 
 func isCloudEventSourceRemovingFinalizer(om metav1.ObjectMeta, oldOm metav1.ObjectMeta, spec CloudEventSourceSpec, oldSpec CloudEventSourceSpec) bool {
-	cesSpec, _ := json.MarshalIndent(spec, "", "  ")
-	oldCesSpec, _ := json.MarshalIndent(oldSpec, "", "  ")
-	cesSpecString := string(cesSpec)
-	oldCesSpecString := string(oldCesSpec)
-
-	return len(om.Finalizers) == 0 && len(oldOm.Finalizers) == 1 && cesSpecString == oldCesSpecString
+	return len(om.Finalizers) == 0 && len(oldOm.Finalizers) == 1 && reflect.DeepEqual(spec, oldSpec)
 }
 
 func validateSpec(spec *CloudEventSourceSpec) (admission.Warnings, error) {
