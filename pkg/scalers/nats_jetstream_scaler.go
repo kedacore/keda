@@ -419,15 +419,15 @@ func (s *natsJetStreamScaler) getNATSJetStreamMonitoringNodeURLByNode(node strin
 	return nodeURL.String(), nil
 }
 
-func (s *natsJetStreamScaler) getMaxMsgLag() int64 {
+func (s *natsJetStreamScaler) getMaxMsgLag() (int64, error) {
 	consumerName := s.metadata.Consumer
 
 	for _, consumer := range s.stream.Consumers {
 		if consumer.Name == consumerName {
-			return int64(consumer.NumPending + consumer.NumAckPending)
+			return int64(consumer.NumPending + consumer.NumAckPending), nil
 		}
 	}
-	return s.stream.State.LastSequence
+	return 0, fmt.Errorf("consumer %q not found in stream %q", consumerName, s.metadata.Stream)
 }
 
 func (s *natsJetStreamScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
@@ -455,7 +455,10 @@ func (s *natsJetStreamScaler) GetMetricsAndActivity(ctx context.Context, metricN
 		return []external_metrics.ExternalMetricValue{}, false, errors.New("stream not found")
 	}
 
-	totalLag := s.getMaxMsgLag()
+	totalLag, err := s.getMaxMsgLag()
+	if err != nil {
+		return []external_metrics.ExternalMetricValue{}, false, err
+	}
 	s.logger.V(1).Info("NATS JetStream Scaler: Providing metrics based on totalLag, threshold", "totalLag", totalLag, "lagThreshold", s.metadata.LagThreshold)
 
 	metric := GenerateMetricInMili(metricName, float64(totalLag))
