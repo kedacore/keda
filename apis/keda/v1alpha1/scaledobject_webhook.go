@@ -18,9 +18,9 @@ package v1alpha1
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -123,17 +123,15 @@ var _ webhook.CustomValidator = &ScaledObjectCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (so *ScaledObject) ValidateCreate(dryRun *bool) (admission.Warnings, error) {
-	val, _ := json.MarshalIndent(so, "", "  ")
-	scaledobjectlog.V(1).Info(fmt.Sprintf("validating scaledobject creation for %s", string(val)))
+	scaledobjectlog.V(1).Info("validating scaledobject creation", "namespace", so.Namespace, "name", so.Name, "scaledobject", so)
 	return validateWorkload(so, "create", *dryRun)
 }
 
 func (so *ScaledObject) ValidateUpdate(old runtime.Object, dryRun *bool) (admission.Warnings, error) {
-	val, _ := json.MarshalIndent(so, "", "  ")
-	scaledobjectlog.V(1).Info(fmt.Sprintf("validating scaledobject update for %s", string(val)))
+	scaledobjectlog.V(1).Info("validating scaledobject update", "namespace", so.Namespace, "name", so.Name, "scaledobject", so)
 
 	if isRemovingFinalizer(so, old) {
-		scaledobjectlog.V(1).Info("finalizer removal, skipping validation")
+		scaledobjectlog.V(1).Info("finalizer removal, skipping validation", "namespace", so.Namespace, "name", so.Name)
 		return nil, nil
 	}
 
@@ -146,13 +144,7 @@ func (so *ScaledObject) ValidateDelete(_ *bool) (admission.Warnings, error) {
 
 func isRemovingFinalizer(so *ScaledObject, old runtime.Object) bool {
 	oldSo := old.(*ScaledObject)
-
-	soSpec, _ := json.MarshalIndent(so.Spec, "", "  ")
-	oldSoSpec, _ := json.MarshalIndent(oldSo.Spec, "", "  ")
-	soSpecString := string(soSpec)
-	oldSoSpecString := string(oldSoSpec)
-
-	return len(so.Finalizers) < len(oldSo.Finalizers) && soSpecString == oldSoSpecString
+	return len(so.Finalizers) < len(oldSo.Finalizers) && reflect.DeepEqual(so.Spec, oldSo.Spec)
 }
 
 func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.Warnings, error) {
@@ -167,7 +159,7 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 	}
 
 	for functionName, function := range verifyFunctions {
-		scaledobjectlog.V(1).Info(fmt.Sprintf("calling %s to validate %s", functionName, so.Name))
+		scaledobjectlog.V(1).Info("validating scaledobject", "function", functionName, "name", so.Name)
 		err := function(so, action, dryRun)
 		if err != nil {
 			return nil, err
@@ -179,14 +171,14 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 	}
 
 	for functionName, function := range verifyCommonFunctions {
-		scaledobjectlog.V(1).Info(fmt.Sprintf("calling %s to validate %s", functionName, so.Name))
+		scaledobjectlog.V(1).Info("validating scaledobject", "function", functionName, "name", so.Name)
 		err := function(so, action, dryRun)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	scaledobjectlog.V(1).Info(fmt.Sprintf("scaledobject %s is valid", so.Name))
+	scaledobjectlog.V(1).Info("scaledobject is valid", "namespace", so.Namespace, "name", so.Name)
 	return nil, nil
 }
 
@@ -254,8 +246,7 @@ func verifyHpas(incomingSo *ScaledObject, action string, _ bool) error {
 		if hpa.Annotations[ValidationsHpaOwnershipAnnotation] == "false" {
 			continue
 		}
-		val, _ := json.MarshalIndent(hpa, "", "  ")
-		scaledobjectlog.V(1).Info(fmt.Sprintf("checking hpa %s: %v", hpa.Name, string(val)))
+		scaledobjectlog.V(1).Info("checking hpa", "name", hpa.Name, "namespace", hpa.Namespace, "hpa", hpa)
 
 		hpaGvkr, err := ParseGVKR(restMapper, hpa.Spec.ScaleTargetRef.APIVersion, hpa.Spec.ScaleTargetRef.Kind)
 		if err != nil {
@@ -318,8 +309,7 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) error 
 		if so.Name == incomingSo.Name {
 			continue
 		}
-		val, _ := json.MarshalIndent(so, "", "  ")
-		scaledobjectlog.V(1).Info(fmt.Sprintf("checking scaledobject %s: %v", so.Name, string(val)))
+		scaledobjectlog.V(1).Info("checking scaledobject", "name", so.Name, "namespace", so.Namespace, "scaledobject", so)
 
 		soGckr, err := ParseGVKR(restMapper, so.Spec.ScaleTargetRef.APIVersion, so.Spec.ScaleTargetRef.Kind)
 		if err != nil {
