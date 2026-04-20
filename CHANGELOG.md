@@ -81,6 +81,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Make APIService cert injections optional ([#7559](https://github.com/kedacore/keda/pull/7559))
 - **Elasticsearch Scaler**: Add HTTP status check for Elasticsearch errors ([#7480](https://github.com/kedacore/keda/pull/7480))
 - **Kubernetes Workload Scaler**: Add `groupByNode` parameter ([#7628](https://github.com/kedacore/keda/issues/7628))
+- **Temporal Scaler**: Add support for scaling based on Worker Deployment Version backlog via new `workerDeploymentName` and `workerDeploymentBuildId` fields. Deprecate `buildId`, `selectAllActive`, and `selectUnversioned`.
 
 ### Fixes
 
