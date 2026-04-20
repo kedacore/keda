@@ -68,8 +68,8 @@ func GetAwsConfig(ctx context.Context, awsAuthorization AuthorizationMetadata) (
 	if awsAuthorization.AwsRoleArn != "" {
 		stsSvc := sts.NewFromConfig(cfg)
 		stsCredentialProvider := stscreds.NewAssumeRoleProvider(stsSvc, awsAuthorization.AwsRoleArn, func(options *stscreds.AssumeRoleOptions) {
-			if awsAuthorization.AwsExternalId != "" {
-				options.ExternalID = &awsAuthorization.AwsExternalId
+			if awsAuthorization.AwsExternalID != "" {
+				options.ExternalID = &awsAuthorization.AwsExternalID
 			}
 		})
 		cfg.Credentials = aws.NewCredentialsCache(stsCredentialProvider)
@@ -91,7 +91,7 @@ func GetAwsAuthorization(uniqueKey, awsRegion string, podIdentity kedav1alpha1.A
 			meta.AwsRoleArn = val
 		}
 		if val, ok := authParams["awsExternalId"]; ok && val != "" {
-			meta.AwsExternalId = val
+			meta.AwsExternalID = val
 		}
 		return meta, nil
 	}
@@ -106,7 +106,7 @@ func GetAwsAuthorization(uniqueKey, awsRegion string, podIdentity kedav1alpha1.A
 			meta.AwsRoleArn = val
 		}
 		if val, ok := authParams["awsExternalId"]; ok && val != "" {
-			meta.AwsExternalId = val
+			meta.AwsExternalID = val
 		}
 	case "", "pod":
 		meta.PodIdentityOwner = true
@@ -114,7 +114,7 @@ func GetAwsAuthorization(uniqueKey, awsRegion string, podIdentity kedav1alpha1.A
 		case authParams["awsRoleArn"] != "":
 			meta.AwsRoleArn = authParams["awsRoleArn"]
 			if val, ok := authParams["awsExternalId"]; ok && val != "" {
-				meta.AwsExternalId = val
+				meta.AwsExternalID = val
 			}
 		case authParams["awsAccessKeyID"] != "" || authParams["awsAccessKeyId"] != "":
 			meta.AwsAccessKeyID = authParams["awsAccessKeyID"]

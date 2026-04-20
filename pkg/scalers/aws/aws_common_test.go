@@ -39,7 +39,7 @@ func TestGetAwsAuthorization_OperatorWithRoleAndExternalId(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, "arn:aws:iam::123456789012:role/test-role", meta.AwsRoleArn)
-	assert.Equal(t, "test-external-id", meta.AwsExternalId)
+	assert.Equal(t, "test-external-id", meta.AwsExternalID)
 	assert.False(t, meta.PodIdentityOwner)
 }
 
@@ -57,7 +57,7 @@ func TestGetAwsAuthorization_OperatorWithoutExternalId(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, "arn:aws:iam::123456789012:role/test-role", meta.AwsRoleArn)
-	assert.Empty(t, meta.AwsExternalId)
+	assert.Empty(t, meta.AwsExternalID)
 	assert.False(t, meta.PodIdentityOwner)
 }
 
@@ -72,7 +72,7 @@ func TestGetAwsAuthorization_OperatorWithoutRoleArn(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Empty(t, meta.AwsRoleArn)
-	assert.Empty(t, meta.AwsExternalId)
+	assert.Empty(t, meta.AwsExternalID)
 	assert.False(t, meta.PodIdentityOwner)
 }
 
@@ -91,7 +91,7 @@ func TestGetAwsAuthorization_PodWithRoleAndExternalId(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, "arn:aws:iam::123456789012:role/pod-role", meta.AwsRoleArn)
-	assert.Equal(t, "pod-external-id", meta.AwsExternalId)
+	assert.Equal(t, "pod-external-id", meta.AwsExternalID)
 	assert.True(t, meta.PodIdentityOwner)
 }
 
@@ -107,7 +107,7 @@ func TestGetAwsAuthorization_PodIdentityProviderAwsWithExternalId(t *testing.T) 
 
 	assert.NoError(t, err)
 	assert.Equal(t, "arn:aws:iam::123456789012:role/aws-role", meta.AwsRoleArn)
-	assert.Equal(t, "aws-external-id", meta.AwsExternalId)
+	assert.Equal(t, "aws-external-id", meta.AwsExternalID)
 	assert.True(t, meta.UsingPodIdentity)
 }
 
@@ -123,7 +123,7 @@ func TestGetAwsAuthorization_DefaultIdentityOwnerIsPod(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, "arn:aws:iam::123456789012:role/default-role", meta.AwsRoleArn)
-	assert.Equal(t, "default-external-id", meta.AwsExternalId)
+	assert.Equal(t, "default-external-id", meta.AwsExternalID)
 	assert.True(t, meta.PodIdentityOwner)
 }
 
@@ -132,12 +132,12 @@ func TestCacheKeyIncludesExternalId(t *testing.T) {
 
 	meta1 := AuthorizationMetadata{
 		AwsRoleArn:    "arn:aws:iam::123456789012:role/role",
-		AwsExternalId: "ext-id-1",
+		AwsExternalID: "ext-id-1",
 		AwsRegion:     "us-east-1",
 	}
 	meta2 := AuthorizationMetadata{
 		AwsRoleArn:    "arn:aws:iam::123456789012:role/role",
-		AwsExternalId: "ext-id-2",
+		AwsExternalID: "ext-id-2",
 		AwsRegion:     "us-east-1",
 	}
 
