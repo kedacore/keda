@@ -250,3 +250,87 @@ func TestLokiScalerTenantHeader(t *testing.T) {
 	_, err := scaler.ExecuteLokiQuery(context.TODO())
 	assert.NoError(t, err)
 }
+
+type getServerAddressTestData struct {
+	name          string
+	serverAddress string
+	expectedPath  string
+	isError       bool
+}
+
+var testGetServerAddressData = []getServerAddressTestData{
+	{
+		name:          "no path in URL",
+		serverAddress: "http://localhost:3100",
+		expectedPath:  "/loki/api/v1/query",
+		isError:       false,
+	},
+	{
+		name:          "URL with trailing slash",
+		serverAddress: "http://localhost:3100/",
+		expectedPath:  "/loki/api/v1/query",
+		isError:       false,
+	},
+	{
+		name:          "URL with partial loki path",
+		serverAddress: "http://localhost:3100/loki",
+		expectedPath:  "/loki/api/v1/query",
+		isError:       false,
+	},
+	{
+		name:          "URL with longer partial loki path",
+		serverAddress: "http://localhost:3100/loki/api/v1",
+		expectedPath:  "/loki/api/v1/query",
+		isError:       false,
+	},
+	{
+		name:          "URL with full loki path already present",
+		serverAddress: "http://localhost:3100/loki/api/v1/query",
+		expectedPath:  "/loki/api/v1/query",
+		isError:       false,
+	},
+	{
+		name:          "URL with full loki path and trailing slash",
+		serverAddress: "http://localhost:3100/loki/api/v1/query/",
+		expectedPath:  "/loki/api/v1/query",
+		isError:       false,
+	},
+	{
+		name:          "URL with custom prefix",
+		serverAddress: "http://localhost:3100/custom",
+		expectedPath:  "/custom/loki/api/v1/query",
+		isError:       false,
+	},
+	{
+		name:          "URL with custom prefix and full loki path already present",
+		serverAddress: "http://localhost:3100/custom/loki/api/v1/query",
+		expectedPath:  "/custom/loki/api/v1/query",
+		isError:       false,
+	},
+	{
+		name:          "URL with partial loki path not on segment boundary",
+		serverAddress: "http://localhost:3100/lo",
+		expectedPath:  "/lo/loki/api/v1/query",
+		isError:       false,
+	},
+	{
+		name:          "invalid URL",
+		serverAddress: "not-a-url",
+		isError:       true,
+	},
+}
+
+func TestGetServerAddress(t *testing.T) {
+	for _, testData := range testGetServerAddressData {
+		t.Run(testData.name, func(t *testing.T) {
+			meta := &lokiMetadata{ServerAddress: testData.serverAddress}
+			u, err := getServerAddress(meta)
+			if testData.isError {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, testData.expectedPath, u.Path)
+		})
+	}
+}
