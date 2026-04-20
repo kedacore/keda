@@ -159,9 +159,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	err := r.Client.Get(ctx, req.NamespacedName, scaledObject)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
+			r.updatePromMetricsOnDelete(req.String())
 			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
@@ -176,12 +174,13 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if scaledObject.GetDeletionTimestamp() != nil {
 		return ctrl.Result{}, r.finalizeScaledObject(ctx, reqLogger, scaledObject, req.String())
 	}
-	r.updatePromMetrics(scaledObject, req.String())
 
 	// ensure finalizer is set on this CR
 	if err := r.ensureFinalizer(ctx, reqLogger, scaledObject); err != nil {
 		return ctrl.Result{}, err
 	}
+
+	r.updatePromMetrics(scaledObject, req.String())
 
 	// ensure Status Conditions are initialized
 	if !scaledObject.Status.Conditions.AreInitialized() {
