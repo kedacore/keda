@@ -43,9 +43,9 @@ var (
 	wrongScaledObjectName          = fmt.Sprintf("%s-so-wrong", testName)
 	scaledJobName                  = fmt.Sprintf("%s-sj", testName)
 	wrongScaledJobName             = fmt.Sprintf("%s-sj-wrong", testName)
-	wrongScalerName                       = fmt.Sprintf("%s-wrong-scaler", testName)
-	emptyUpstreamScaledObjectName         = fmt.Sprintf("%s-so-empty-upstream", testName)
-	cronScaledJobName                     = fmt.Sprintf("%s-cron-sj", testName)
+	wrongScalerName                = fmt.Sprintf("%s-wrong-scaler", testName)
+	emptyUpstreamScaledObjectName  = fmt.Sprintf("%s-so-empty-upstream", testName)
+	cronScaledJobName              = fmt.Sprintf("%s-cron-sj", testName)
 	clientName                     = fmt.Sprintf("%s-client", testName)
 	cloudEventSourceName           = fmt.Sprintf("%s-ce", testName)
 	wrongCloudEventSourceName      = fmt.Sprintf("%s-ce-w", testName)
@@ -59,23 +59,23 @@ var (
 )
 
 type templateData struct {
-	TestName                   string
-	TestNamespace              string
-	DeploymentName             string
-	ScaledObjectName           string
-	ScaledJobName              string
-	WrongScaledObjectName      string
-	WrongScaledJobName         string
-	WrongScalerName                  string
-	EmptyUpstreamScaledObjectName    string
-	CronScaledJobName          string
-	MonitoredDeploymentName    string
-	ClientName                 string
-	CloudEventSourceName       string
-	WrongCloudEventSourceName  string
-	CloudEventHTTPReceiverName string
-	CloudEventHTTPServiceName  string
-	CloudEventHTTPServiceURL   string
+	TestName                      string
+	TestNamespace                 string
+	DeploymentName                string
+	ScaledObjectName              string
+	ScaledJobName                 string
+	WrongScaledObjectName         string
+	WrongScaledJobName            string
+	WrongScalerName               string
+	EmptyUpstreamScaledObjectName string
+	CronScaledJobName             string
+	MonitoredDeploymentName       string
+	ClientName                    string
+	CloudEventSourceName          string
+	WrongCloudEventSourceName     string
+	CloudEventHTTPReceiverName    string
+	CloudEventHTTPServiceName     string
+	CloudEventHTTPServiceURL      string
 }
 
 const (
@@ -542,23 +542,23 @@ func TestPrometheusMetrics(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestName:                   testName,
-			TestNamespace:              testNamespace,
-			DeploymentName:             deploymentName,
-			ScaledObjectName:           scaledObjectName,
-			WrongScaledObjectName:      wrongScaledObjectName,
-			ScaledJobName:              scaledJobName,
-			WrongScaledJobName:         wrongScaledJobName,
-			WrongScalerName:                  wrongScalerName,
-			EmptyUpstreamScaledObjectName:    emptyUpstreamScaledObjectName,
-			MonitoredDeploymentName:    monitoredDeploymentName,
-			ClientName:                 clientName,
-			CronScaledJobName:          cronScaledJobName,
-			CloudEventSourceName:       cloudEventSourceName,
-			WrongCloudEventSourceName:  wrongCloudEventSourceName,
-			CloudEventHTTPReceiverName: cloudEventHTTPReceiverName,
-			CloudEventHTTPServiceName:  cloudEventHTTPServiceName,
-			CloudEventHTTPServiceURL:   cloudEventHTTPServiceURL,
+			TestName:                      testName,
+			TestNamespace:                 testNamespace,
+			DeploymentName:                deploymentName,
+			ScaledObjectName:              scaledObjectName,
+			WrongScaledObjectName:         wrongScaledObjectName,
+			ScaledJobName:                 scaledJobName,
+			WrongScaledJobName:            wrongScaledJobName,
+			WrongScalerName:               wrongScalerName,
+			EmptyUpstreamScaledObjectName: emptyUpstreamScaledObjectName,
+			MonitoredDeploymentName:       monitoredDeploymentName,
+			ClientName:                    clientName,
+			CronScaledJobName:             cronScaledJobName,
+			CloudEventSourceName:          cloudEventSourceName,
+			WrongCloudEventSourceName:     wrongCloudEventSourceName,
+			CloudEventHTTPReceiverName:    cloudEventHTTPReceiverName,
+			CloudEventHTTPServiceName:     cloudEventHTTPServiceName,
+			CloudEventHTTPServiceURL:      cloudEventHTTPServiceURL,
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},

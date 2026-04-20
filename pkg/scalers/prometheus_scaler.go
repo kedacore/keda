@@ -27,13 +27,13 @@ import (
 )
 
 type prometheusScaler struct {
-	metricType          v2.MetricTargetType
-	metadata            *prometheusMetadata
-	httpClient          *http.Client
-	logger              logr.Logger
-	scalableObjectName  string
-	scalableObjectNS    string
-	triggerName         string
+	metricType         v2.MetricTargetType
+	metadata           *prometheusMetadata
+	httpClient         *http.Client
+	logger             logr.Logger
+	scalableObjectName string
+	scalableObjectNS   string
+	triggerName        string
 }
 
 // IgnoreNullValues - sometimes should consider there is an error we can accept

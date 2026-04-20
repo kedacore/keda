@@ -66,24 +66,24 @@ var (
 )
 
 type templateData struct {
-	TestName                   string
-	TestNamespace              string
-	DeploymentName             string
-	ScaledObjectName           string
-	ScaledJobName              string
-	ScaledObjectGrpcName       string
-	WrongScaledObjectName      string
-	WrongScaledJobName         string
-	WrongScalerName                  string
-	EmptyUpstreamScaledObjectName    string
-	CronScaledJobName          string
-	MonitoredDeploymentName    string
-	ClientName                 string
-	CloudEventSourceName       string
-	WrongCloudEventSourceName  string
-	CloudEventHTTPReceiverName string
-	CloudEventHTTPServiceName  string
-	CloudEventHTTPServiceURL   string
+	TestName                      string
+	TestNamespace                 string
+	DeploymentName                string
+	ScaledObjectName              string
+	ScaledJobName                 string
+	ScaledObjectGrpcName          string
+	WrongScaledObjectName         string
+	WrongScaledJobName            string
+	WrongScalerName               string
+	EmptyUpstreamScaledObjectName string
+	CronScaledJobName             string
+	MonitoredDeploymentName       string
+	ClientName                    string
+	CloudEventSourceName          string
+	WrongCloudEventSourceName     string
+	CloudEventHTTPReceiverName    string
+	CloudEventHTTPServiceName     string
+	CloudEventHTTPServiceURL      string
 }
 
 const (
@@ -583,24 +583,24 @@ func TestOpenTelemetryMetrics(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestName:                   testName,
-			TestNamespace:              testNamespace,
-			DeploymentName:             deploymentName,
-			ScaledObjectName:           scaledObjectName,
-			WrongScaledObjectName:      wrongScaledObjectName,
-			ScaledObjectGrpcName:       scaledObjectGrpcName,
-			ScaledJobName:              scaledJobName,
-			WrongScaledJobName:         wrongScaledJobName,
-			WrongScalerName:                  wrongScalerName,
-			EmptyUpstreamScaledObjectName:    emptyUpstreamScaledObjectName,
-			MonitoredDeploymentName:    monitoredDeploymentName,
-			ClientName:                 clientName,
-			CronScaledJobName:          cronScaledJobName,
-			CloudEventSourceName:       cloudEventSourceName,
-			WrongCloudEventSourceName:  wrongCloudEventSourceName,
-			CloudEventHTTPReceiverName: cloudEventHTTPReceiverName,
-			CloudEventHTTPServiceName:  cloudEventHTTPServiceName,
-			CloudEventHTTPServiceURL:   cloudEventHTTPServiceURL,
+			TestName:                      testName,
+			TestNamespace:                 testNamespace,
+			DeploymentName:                deploymentName,
+			ScaledObjectName:              scaledObjectName,
+			WrongScaledObjectName:         wrongScaledObjectName,
+			ScaledObjectGrpcName:          scaledObjectGrpcName,
+			ScaledJobName:                 scaledJobName,
+			WrongScaledJobName:            wrongScaledJobName,
+			WrongScalerName:               wrongScalerName,
+			EmptyUpstreamScaledObjectName: emptyUpstreamScaledObjectName,
+			MonitoredDeploymentName:       monitoredDeploymentName,
+			ClientName:                    clientName,
+			CronScaledJobName:             cronScaledJobName,
+			CloudEventSourceName:          cloudEventSourceName,
+			WrongCloudEventSourceName:     wrongCloudEventSourceName,
+			CloudEventHTTPReceiverName:    cloudEventHTTPReceiverName,
+			CloudEventHTTPServiceName:     cloudEventHTTPServiceName,
+			CloudEventHTTPServiceURL:      cloudEventHTTPServiceURL,
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
