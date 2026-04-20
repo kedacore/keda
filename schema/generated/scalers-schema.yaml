@@ -3739,6 +3739,16 @@ scalers:
           optional: true
           metadataVariableReadable: true
           envVariableReadable: true
+        - name: workerDeploymentName
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
+        - name: workerDeploymentBuildId
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
         - name: selectAllActive
           type: string
           default: "false"

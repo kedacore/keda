@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	deploymentpb "go.temporal.io/api/deployment/v1"
+	"go.temporal.io/api/workflowservice/v1"
 	sdk "go.temporal.io/sdk/client"
 	sdklog "go.temporal.io/sdk/log"
 	"google.golang.org/grpc"
@@ -42,6 +44,8 @@ type temporalMetadata struct {
 	TaskQueue                 string   `keda:"name=taskQueue,                 order=triggerMetadata;resolvedEnv"`
 	QueueTypes                []string `keda:"name=queueTypes,                order=triggerMetadata, optional"`
 	BuildID                   string   `keda:"name=buildId,                   order=triggerMetadata;resolvedEnv, optional"`
+	WorkerDeploymentName      string   `keda:"name=workerDeploymentName,      order=triggerMetadata;resolvedEnv, optional"`
+	WorkerDeploymentBuildID   string   `keda:"name=workerDeploymentBuildId,   order=triggerMetadata;resolvedEnv, optional"`
 	AllActive                 bool     `keda:"name=selectAllActive,           order=triggerMetadata, default=false"`
 	Unversioned               bool     `keda:"name=selectUnversioned,         order=triggerMetadata, default=false"`
 	APIKey                    string   `keda:"name=apiKey,                    order=authParams;resolvedEnv, optional"`
@@ -73,6 +77,15 @@ func (a *temporalMetadata) Validate() error {
 		return fmt.Errorf("minConnectTimeout must be a positive number")
 	}
 
+	if a.WorkerDeploymentName != "" || a.WorkerDeploymentBuildID != "" {
+		if a.WorkerDeploymentName == "" || a.WorkerDeploymentBuildID == "" {
+			return fmt.Errorf("workerDeploymentName and workerDeploymentBuildId must both be set")
+		}
+		if a.BuildID != "" || a.AllActive || a.Unversioned {
+			return fmt.Errorf("workerDeploymentName/workerDeploymentBuildId cannot be combined with buildId, selectAllActive, or selectUnversioned")
+		}
+	}
+
 	return nil
 }
 
@@ -87,6 +100,16 @@ func NewTemporalScaler(ctx context.Context, config *scalersconfig.ScalerConfig) 
 	meta, err := parseTemporalMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse Temporal metadata: %w", err)
+	}
+
+	if meta.BuildID != "" {
+		logger.Info("Warning: buildId is deprecated, use workerDeploymentName and workerDeploymentBuildId instead")
+	}
+	if meta.AllActive {
+		logger.Info("Warning: selectAllActive is deprecated, use workerDeploymentName and workerDeploymentBuildId instead")
+	}
+	if meta.Unversioned {
+		logger.Info("Warning: selectUnversioned is deprecated, use workerDeploymentName and workerDeploymentBuildId instead")
 	}
 
 	c, err := getTemporalClient(ctx, meta, logger)
@@ -127,7 +150,15 @@ func (s *temporalScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 }
 
 func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	queueSize, err := s.getQueueSize(ctx)
+	var (
+		queueSize int64
+		err       error
+	)
+	if s.metadata.WorkerDeploymentName != "" {
+		queueSize, err = s.getDeploymentBacklogCount(ctx)
+	} else {
+		queueSize, err = s.getQueueSize(ctx)
+	}
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to get Temporal queue size: %w", err)
 	}
@@ -160,6 +191,30 @@ func (s *temporalScaler) getQueueSize(ctx context.Context) (int64, error) {
 	}
 
 	return getCombinedBacklogCount(resp), nil
+}
+
+func (s *temporalScaler) getDeploymentBacklogCount(ctx context.Context) (int64, error) {
+	resp, err := s.tcl.WorkflowService().DescribeWorkerDeploymentVersion(ctx,
+		&workflowservice.DescribeWorkerDeploymentVersionRequest{
+			Namespace: s.metadata.Namespace,
+			DeploymentVersion: &deploymentpb.WorkerDeploymentVersion{
+				DeploymentName: s.metadata.WorkerDeploymentName,
+				BuildId:        s.metadata.WorkerDeploymentBuildID,
+			},
+			ReportTaskQueueStats: true,
+		},
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to describe worker deployment version: %w", err)
+	}
+
+	var totalBacklog int64
+	for _, tq := range resp.GetVersionTaskQueues() {
+		if stats := tq.GetStats(); stats != nil {
+			totalBacklog += stats.GetApproximateBacklogCount()
+		}
+	}
+	return totalBacklog, nil
 }
 
 func getQueueTypes(queueTypes []string) []sdk.TaskQueueType {
