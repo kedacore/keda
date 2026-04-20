@@ -393,11 +393,11 @@ func TestSumDeploymentBacklog(t *testing.T) {
 	}
 
 	cases := []struct {
-		name           string
-		taskQueues     []*workflowservice.DescribeWorkerDeploymentVersionResponse_VersionTaskQueue
-		taskQueueName  string
-		queueTypes     []string
-		want           int64
+		name          string
+		taskQueues    []*workflowservice.DescribeWorkerDeploymentVersionResponse_VersionTaskQueue
+		taskQueueName string
+		queueTypes    []string
+		want          int64
 	}{
 		{
 			name:       "no filters sums everything",
