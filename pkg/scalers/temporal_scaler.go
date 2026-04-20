@@ -105,13 +105,13 @@ func NewTemporalScaler(ctx context.Context, config *scalersconfig.ScalerConfig) 
 	}
 
 	if meta.BuildID != "" {
-		logger.Info("Warning: buildId is deprecated, use workerDeploymentName and workerDeploymentBuildId instead")
+		logger.Info("Warning: buildId is deprecated because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs, use workerDeploymentName and workerDeploymentBuildId instead")
 	}
 	if meta.AllActive {
-		logger.Info("Warning: selectAllActive is deprecated, use workerDeploymentName and workerDeploymentBuildId instead")
+		logger.Info("Warning: selectAllActive is deprecated because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs, use workerDeploymentName and workerDeploymentBuildId instead")
 	}
 	if meta.Unversioned {
-		logger.Info("Warning: selectUnversioned is deprecated, use workerDeploymentName and workerDeploymentBuildId instead")
+		logger.Info("Warning: selectUnversioned is deprecated because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs, use workerDeploymentName and workerDeploymentBuildId instead")
 	}
 
 	c, err := getTemporalClient(ctx, meta, logger)
@@ -135,7 +135,14 @@ func (s *temporalScaler) Close(_ context.Context) error {
 }
 
 func (s *temporalScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	metricName := kedautil.NormalizeString(fmt.Sprintf("temporal-%s-%s", s.metadata.Namespace, s.metadata.TaskQueue))
+	metricName := fmt.Sprintf("temporal-%s-%s", s.metadata.Namespace, s.metadata.TaskQueue)
+	if s.metadata.WorkerDeploymentName != "" {
+		metricName = fmt.Sprintf("%s-%s-%s", metricName, s.metadata.WorkerDeploymentName, s.metadata.WorkerDeploymentBuildID)
+	} else if s.metadata.BuildID != "" {
+		metricName = fmt.Sprintf("%s-%s", metricName, s.metadata.BuildID)
+	}
+	metricName = kedautil.NormalizeString(metricName)
+
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
