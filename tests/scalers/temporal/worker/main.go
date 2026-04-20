@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"time"
 
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
@@ -66,9 +65,4 @@ func main() {
 	<-sigCh
 
 	w.Stop()
-}
-
-func init() {
-	// Ensure activity context has a reasonable timeout for the no-op.
-	_ = time.Second
 }
