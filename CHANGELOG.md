@@ -81,7 +81,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Make APIService cert injections optional ([#7559](https://github.com/kedacore/keda/pull/7559))
 - **Elasticsearch Scaler**: Add HTTP status check for Elasticsearch errors ([#7480](https://github.com/kedacore/keda/pull/7480))
 - **Kubernetes Workload Scaler**: Add `groupByNode` parameter ([#7628](https://github.com/kedacore/keda/issues/7628))
-- **Temporal Scaler**: Add support for scaling based on Worker Deployment Version backlog via new `workerDeploymentName` and `workerDeploymentBuildId` fields. Deprecate `buildId`, `selectAllActive`, and `selectUnversioned`.
+- **Temporal Scaler**: Add support for scaling based on Worker Deployment Version backlog via new `workerDeploymentName` and `workerDeploymentBuildId` fields. Deprecate `buildId`, `selectAllActive`, and `selectUnversioned` because those parameters are used for Rules-Based Worker Versioning, which was a short-lived experimental feature that has been deprecated in the Temporal server since December 2024 and will stop being supported soon. Users of Rules-Based Worker Versioning should use [Worker Deployments](https://docs.temporal.io/production-deployment/worker-deployments) instead. Worker Deployment APIs are [Generally Available](https://docs.temporal.io/evaluate/development-production-features/release-stages) and stable.
 
 ### Fixes
 
