@@ -6,6 +6,9 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+	enumspb "go.temporal.io/api/enums/v1"
+	taskqueuepb "go.temporal.io/api/taskqueue/v1"
+	"go.temporal.io/api/workflowservice/v1"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -370,4 +373,81 @@ func TestTemporalDefaultQueueTypes(t *testing.T) {
 
 	metadata.QueueTypes = []string{"workflow"}
 	assert.Len(t, getQueueTypes(metadata.QueueTypes), 1, "only one type should be there")
+}
+
+func makeVersionTaskQueue(name string, qt enumspb.TaskQueueType, backlog int64) *workflowservice.DescribeWorkerDeploymentVersionResponse_VersionTaskQueue {
+	return &workflowservice.DescribeWorkerDeploymentVersionResponse_VersionTaskQueue{
+		Name:  name,
+		Type:  qt,
+		Stats: &taskqueuepb.TaskQueueStats{ApproximateBacklogCount: backlog},
+	}
+}
+
+func TestSumDeploymentBacklog(t *testing.T) {
+	all := []*workflowservice.DescribeWorkerDeploymentVersionResponse_VersionTaskQueue{
+		makeVersionTaskQueue("queue-a", enumspb.TASK_QUEUE_TYPE_WORKFLOW, 10),
+		makeVersionTaskQueue("queue-a", enumspb.TASK_QUEUE_TYPE_ACTIVITY, 20),
+		makeVersionTaskQueue("queue-a", enumspb.TASK_QUEUE_TYPE_NEXUS, 5),
+		makeVersionTaskQueue("queue-b", enumspb.TASK_QUEUE_TYPE_WORKFLOW, 100),
+		{Name: "queue-a", Type: enumspb.TASK_QUEUE_TYPE_WORKFLOW, Stats: nil},
+	}
+
+	cases := []struct {
+		name           string
+		taskQueues     []*workflowservice.DescribeWorkerDeploymentVersionResponse_VersionTaskQueue
+		taskQueueName  string
+		queueTypes     []string
+		want           int64
+	}{
+		{
+			name:       "no filters sums everything",
+			taskQueues: all,
+			want:       135,
+		},
+		{
+			name:          "filter by task queue name",
+			taskQueues:    all,
+			taskQueueName: "queue-a",
+			want:          35,
+		},
+		{
+			name:       "filter by queue type workflow",
+			taskQueues: all,
+			queueTypes: []string{"workflow"},
+			want:       110,
+		},
+		{
+			name:          "filter by name and type",
+			taskQueues:    all,
+			taskQueueName: "queue-a",
+			queueTypes:    []string{"activity"},
+			want:          20,
+		},
+		{
+			name:          "filter matches nothing",
+			taskQueues:    all,
+			taskQueueName: "nonexistent",
+			want:          0,
+		},
+		{
+			name:       "nil stats entry skipped",
+			taskQueues: all,
+			queueTypes: []string{"workflow"},
+			// queue-a workflow=10, queue-a workflow with nil stats=skipped, queue-b workflow=100
+			want: 110,
+		},
+		{
+			name:       "multiple type filter",
+			taskQueues: all,
+			queueTypes: []string{"workflow", "activity"},
+			want:       130,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := sumDeploymentBacklog(tc.taskQueues, tc.taskQueueName, tc.queueTypes)
+			assert.Equal(t, tc.want, got)
+		})
+	}
 }

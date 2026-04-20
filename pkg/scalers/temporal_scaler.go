@@ -9,6 +9,8 @@ import (
 
 	"github.com/go-logr/logr"
 	deploymentpb "go.temporal.io/api/deployment/v1"
+	enumspb "go.temporal.io/api/enums/v1"
+	taskqueuepb "go.temporal.io/api/taskqueue/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	sdk "go.temporal.io/sdk/client"
 	sdklog "go.temporal.io/sdk/log"
@@ -154,10 +156,13 @@ func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 		queueSize int64
 		err       error
 	)
-	if s.metadata.WorkerDeploymentName != "" {
+	switch {
+	case s.metadata.WorkerDeploymentName != "":
 		queueSize, err = s.getDeploymentBacklogCount(ctx)
-	} else {
+	case s.metadata.BuildID != "" || s.metadata.AllActive || s.metadata.Unversioned:
 		queueSize, err = s.getQueueSize(ctx)
+	default:
+		queueSize, err = s.getUnversionedQueueSize(ctx)
 	}
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to get Temporal queue size: %w", err)
@@ -193,6 +198,29 @@ func (s *temporalScaler) getQueueSize(ctx context.Context) (int64, error) {
 	return getCombinedBacklogCount(resp), nil
 }
 
+// getUnversionedQueueSize queries DescribeTaskQueue for each configured queue
+// type and returns the summed backlog count. This replaces DescribeTaskQueueEnhanced
+// for the unversioned path, which is deprecated and returns the default Build ID's
+// backlog when no Versions selector is provided (not the unversioned queue).
+func (s *temporalScaler) getUnversionedQueueSize(ctx context.Context) (int64, error) {
+	var total int64
+	for _, qt := range getQueueTypes(s.metadata.QueueTypes) {
+		resp, err := s.tcl.WorkflowService().DescribeTaskQueue(ctx, &workflowservice.DescribeTaskQueueRequest{
+			Namespace:     s.metadata.Namespace,
+			TaskQueue:     &taskqueuepb.TaskQueue{Name: s.metadata.TaskQueue, Kind: enumspb.TASK_QUEUE_KIND_NORMAL},
+			TaskQueueType: enumspb.TaskQueueType(qt),
+			ReportStats:   true,
+		})
+		if err != nil {
+			return 0, fmt.Errorf("failed to describe task queue: %w", err)
+		}
+		if stats := resp.GetStats(); stats != nil {
+			total += stats.GetApproximateBacklogCount()
+		}
+	}
+	return total, nil
+}
+
 func (s *temporalScaler) getDeploymentBacklogCount(ctx context.Context) (int64, error) {
 	resp, err := s.tcl.WorkflowService().DescribeWorkerDeploymentVersion(ctx,
 		&workflowservice.DescribeWorkerDeploymentVersionRequest{
@@ -208,13 +236,46 @@ func (s *temporalScaler) getDeploymentBacklogCount(ctx context.Context) (int64, 
 		return 0, fmt.Errorf("failed to describe worker deployment version: %w", err)
 	}
 
+	return sumDeploymentBacklog(resp.GetVersionTaskQueues(), s.metadata.TaskQueue, s.metadata.QueueTypes), nil
+}
+
+// sumDeploymentBacklog sums ApproximateBacklogCount across the provided task
+// queues, optionally filtered by taskQueueName and allowedQueueTypes. An empty
+// taskQueueName means no name filter; an empty allowedQueueTypes means no type filter.
+func sumDeploymentBacklog(tqs []*workflowservice.DescribeWorkerDeploymentVersionResponse_VersionTaskQueue, taskQueueName string, allowedQueueTypes []string) int64 {
+	allowedTypes := queueTypeSet(allowedQueueTypes) // nil == allow all
+
 	var totalBacklog int64
-	for _, tq := range resp.GetVersionTaskQueues() {
+	for _, tq := range tqs {
+		if allowedTypes != nil && !allowedTypes[tq.GetType()] {
+			continue
+		}
+		if taskQueueName != "" && tq.GetName() != taskQueueName {
+			continue
+		}
 		if stats := tq.GetStats(); stats != nil {
 			totalBacklog += stats.GetApproximateBacklogCount()
 		}
 	}
-	return totalBacklog, nil
+	return totalBacklog
+}
+
+func queueTypeSet(queueTypes []string) map[enumspb.TaskQueueType]bool {
+	if len(queueTypes) == 0 {
+		return nil
+	}
+	set := make(map[enumspb.TaskQueueType]bool, len(queueTypes))
+	for _, t := range queueTypes {
+		switch t {
+		case "workflow":
+			set[enumspb.TASK_QUEUE_TYPE_WORKFLOW] = true
+		case "activity":
+			set[enumspb.TASK_QUEUE_TYPE_ACTIVITY] = true
+		case "nexus":
+			set[enumspb.TASK_QUEUE_TYPE_NEXUS] = true
+		}
+	}
+	return set
 }
 
 func getQueueTypes(queueTypes []string) []sdk.TaskQueueType {
