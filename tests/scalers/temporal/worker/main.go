@@ -4,8 +4,6 @@ import (
 	"context"
 	"flag"
 	"log"
-	"os"
-	"os/signal"
 
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
@@ -54,15 +52,8 @@ func main() {
 	})
 	w.RegisterActivityWithOptions(noopActivity, activity.RegisterOptions{Name: "noop_activity"})
 
-	if err := w.Start(); err != nil {
-		log.Fatal("unable to start worker:", err)
+	log.Printf("worker starting on %s (deployment=%s, build=%s)", *taskQueue, *deploymentName, *buildID)
+	if err := w.Run(worker.InterruptCh()); err != nil {
+		log.Fatal("worker exited with error:", err)
 	}
-
-	log.Printf("worker started on %s (deployment=%s, build=%s)", *taskQueue, *deploymentName, *buildID)
-
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt)
-	<-sigCh
-
-	w.Stop()
 }
