@@ -53,7 +53,7 @@ func main() {
 	w.RegisterActivityWithOptions(noopActivity, activity.RegisterOptions{Name: "noop_activity"})
 
 	log.Printf("worker starting on %s (deployment=%s, build=%s)", *taskQueue, *deploymentName, *buildID)
-	if err := w.Run(worker.InterruptCh()); err != nil {
+	if err := w.Run(nil); err != nil {
 		log.Fatal("worker exited with error:", err)
 	}
 }
