@@ -45,6 +45,11 @@ const (
 	ScaledObjectConditionPausedReason = "ScaledObjectPaused"
 	// ScaledObjectConditionPausedMessage defines the default Message for paused ScaledObject
 	ScaledObjectConditionPausedMessage = "ScaledObject is paused"
+
+	// ScaledObjectConditionHPAMetricsUnavailableReason is the Ready condition reason when the HPA cannot fetch metrics
+	ScaledObjectConditionHPAMetricsUnavailableReason = "HPAMetricsUnavailable"
+	// ScaledObjectConditionScalingDegradedReason is the Ready condition reason when both scalers and HPA are unhealthy
+	ScaledObjectConditionScalingDegradedReason = "ScalingDegraded"
 )
 
 const (
