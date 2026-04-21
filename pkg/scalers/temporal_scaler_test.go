@@ -66,8 +66,8 @@ var temporalMetricIdentifiers = []temporalMetricIdentifier{
 	{&testTemporalMetadata[5], 1, "s1-temporal-v2-default"},
 	// deployment version: metric name includes workerDeploymentName + workerDeploymentBuildId
 	{&testTemporalMetadata[11], 0, "s0-temporal-v2-default-my-deploy-v1"},
-	// legacy buildId: metric name includes buildId
-	{&testTemporalMetadata[12], 0, "s0-temporal-v2-default-v1"},
+	// legacy buildId: metric name is unchanged from unversioned (backward compat)
+	{&testTemporalMetadata[12], 0, "s0-temporal-v2-default"},
 }
 
 func TestTemporalParseMetadata(t *testing.T) {
