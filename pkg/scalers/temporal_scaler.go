@@ -46,11 +46,11 @@ type temporalMetadata struct {
 	TargetQueueSize           int64    `keda:"name=targetQueueSize,           order=triggerMetadata, default=5"`
 	TaskQueue                 string   `keda:"name=taskQueue,                 order=triggerMetadata;resolvedEnv"`
 	QueueTypes                []string `keda:"name=queueTypes,                order=triggerMetadata, optional"`
-	BuildID                   string   `keda:"name=buildId,                   order=triggerMetadata;resolvedEnv, optional"`
+	BuildID                   string   `keda:"name=buildId,                   order=triggerMetadata;resolvedEnv, optional, deprecatedAnnounce=The 'buildId' setting is deprecated because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead"`
 	WorkerDeploymentName      string   `keda:"name=workerDeploymentName,      order=triggerMetadata;resolvedEnv, optional"`
 	WorkerDeploymentBuildID   string   `keda:"name=workerDeploymentBuildId,   order=triggerMetadata;resolvedEnv, optional"`
-	AllActive                 bool     `keda:"name=selectAllActive,           order=triggerMetadata, default=false"`
-	Unversioned               bool     `keda:"name=selectUnversioned,         order=triggerMetadata, default=false"`
+	AllActive                 bool     `keda:"name=selectAllActive,           order=triggerMetadata, default=false, deprecatedAnnounce=The 'selectAllActive' setting is deprecated because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead"`
+	Unversioned               bool     `keda:"name=selectUnversioned,         order=triggerMetadata, default=false, deprecatedAnnounce=The 'selectUnversioned' setting is deprecated because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs - Remove it if your workers are unversioned. If you're migrating to Worker Deployment Versioning use 'workerDeploymentName' and 'workerDeploymentBuildId' instead"`
 	APIKey                    string   `keda:"name=apiKey,                    order=authParams;resolvedEnv, optional"`
 	MinConnectTimeout         int      `keda:"name=minConnectTimeout,         order=triggerMetadata, default=5"`
 
@@ -80,13 +80,11 @@ func (a *temporalMetadata) Validate() error {
 		return fmt.Errorf("minConnectTimeout must be a positive number")
 	}
 
-	if a.WorkerDeploymentName != "" || a.WorkerDeploymentBuildID != "" {
-		if a.WorkerDeploymentName == "" || a.WorkerDeploymentBuildID == "" {
-			return fmt.Errorf("workerDeploymentName and workerDeploymentBuildId must both be set")
-		}
-		if a.BuildID != "" || a.AllActive || a.Unversioned {
-			return fmt.Errorf("workerDeploymentName/workerDeploymentBuildId cannot be combined with buildId, selectAllActive, or selectUnversioned")
-		}
+	if (a.WorkerDeploymentName == "") != (a.WorkerDeploymentBuildID == "") {
+		return fmt.Errorf("workerDeploymentName and workerDeploymentBuildId must both be set")
+	}
+	if a.WorkerDeploymentName != "" && (a.BuildID != "" || a.AllActive || a.Unversioned) {
+		return fmt.Errorf("workerDeploymentName/workerDeploymentBuildId cannot be combined with buildId, selectAllActive, or selectUnversioned")
 	}
 
 	return nil
@@ -103,16 +101,6 @@ func NewTemporalScaler(ctx context.Context, config *scalersconfig.ScalerConfig) 
 	meta, err := parseTemporalMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse Temporal metadata: %w", err)
-	}
-
-	if meta.BuildID != "" {
-		logger.Info("Warning: buildId is deprecated because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs, use workerDeploymentName and workerDeploymentBuildId instead")
-	}
-	if meta.AllActive {
-		logger.Info("Warning: selectAllActive is deprecated because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs, use workerDeploymentName and workerDeploymentBuildId instead")
-	}
-	if meta.Unversioned {
-		logger.Info("Warning: selectUnversioned is deprecated because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs, use workerDeploymentName and workerDeploymentBuildId instead")
 	}
 
 	c, err := getTemporalClient(ctx, meta, logger)
@@ -164,8 +152,6 @@ func (s *temporalScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 	metricName := fmt.Sprintf("temporal-%s-%s", s.metadata.Namespace, s.metadata.TaskQueue)
 	if s.metadata.WorkerDeploymentName != "" {
 		metricName = fmt.Sprintf("%s-%s-%s", metricName, s.metadata.WorkerDeploymentName, s.metadata.WorkerDeploymentBuildID)
-	} else if s.metadata.BuildID != "" {
-		metricName = fmt.Sprintf("%s-%s", metricName, s.metadata.BuildID)
 	}
 	metricName = kedautil.NormalizeString(metricName)
 
@@ -224,22 +210,17 @@ func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 }
 
 func (s *temporalScaler) getBuildIDBacklogCount(ctx context.Context) (int64, error) {
-	var selection *sdk.TaskQueueVersionSelection
-	if s.metadata.AllActive || s.metadata.Unversioned || s.metadata.BuildID != "" {
-		selection = &sdk.TaskQueueVersionSelection{
-			AllActive:   s.metadata.AllActive,
-			Unversioned: s.metadata.Unversioned,
-			BuildIDs:    []string{s.metadata.BuildID},
-		}
+	selection := &sdk.TaskQueueVersionSelection{
+		AllActive:   s.metadata.AllActive,
+		Unversioned: s.metadata.Unversioned,
+		BuildIDs:    []string{s.metadata.BuildID},
 	}
-
-	queueType := getQueueTypes(s.metadata.QueueTypes)
 
 	resp, err := s.tcl.DescribeTaskQueueEnhanced(ctx, sdk.DescribeTaskQueueEnhancedOptions{
 		TaskQueue:      s.metadata.TaskQueue,
 		ReportStats:    true,
 		Versions:       selection,
-		TaskQueueTypes: queueType,
+		TaskQueueTypes: getQueueTypes(s.metadata.QueueTypes),
 	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to describe task queue enhanced (taskQueue=%q, buildId=%q): %w", s.metadata.TaskQueue, s.metadata.BuildID, err)
