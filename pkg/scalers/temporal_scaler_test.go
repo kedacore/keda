@@ -57,11 +57,17 @@ var testTemporalMetadata = []parseTemporalMetadataTestData{
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerDeploymentName": "my-deploy", "workerDeploymentBuildId": "v1", "selectAllActive": "true"}, true},
 	// valid deployment config
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerDeploymentName": "my-deploy", "workerDeploymentBuildId": "v1"}, false},
+	// valid legacy buildId config
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "buildId": "v1"}, false},
 }
 
 var temporalMetricIdentifiers = []temporalMetricIdentifier{
 	{&testTemporalMetadata[5], 0, "s0-temporal-v2-default"},
 	{&testTemporalMetadata[5], 1, "s1-temporal-v2-default"},
+	// deployment version: metric name includes workerDeploymentName + workerDeploymentBuildId
+	{&testTemporalMetadata[11], 0, "s0-temporal-v2-default-my-deploy-v1"},
+	// legacy buildId: metric name includes buildId
+	{&testTemporalMetadata[12], 0, "s0-temporal-v2-default-v1"},
 }
 
 func TestTemporalParseMetadata(t *testing.T) {
