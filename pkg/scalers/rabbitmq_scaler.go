@@ -214,8 +214,10 @@ func (r *rabbitMQMetadata) validateOAuth2() error {
 		return fmt.Errorf("OAuth2 authentication is only supported with HTTP protocol, not AMQP")
 	}
 
-	// OAuth2 is exclusive - don't mix with other auth methods
-	if r.hasBasicAuth || r.hasWorkloadIdentity {
+	// OAuth2 is exclusive - don't mix with other auth methods.
+	// Compute directly here rather than relying on hasBasicAuth/hasWorkloadIdentity
+	// because determineAuthMethod() is called after Validate() in parseRabbitMQMetadata.
+	if (r.Username != "" && r.Password != "") || r.WorkloadIdentityResource != "" {
 		return fmt.Errorf("OAuth2 authentication cannot be combined with username/password authentication or Azure Workload Identity")
 	}
 
@@ -489,25 +491,35 @@ func (s *rabbitMQScaler) createOAuth2HTTPClient(timeout time.Duration, meta *rab
 		}
 	}
 
+	// Build a base transport using kedautil so that ProxyFromEnvironment and
+	// keep-alive behaviour stay consistent with the non-OAuth2 HTTP path.
+	var baseTransport *http.Transport
+	if meta.EnableTLS == rmqTLSEnable {
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.Ca, meta.UnsafeSsl)
+		if err != nil {
+			s.logger.Error(err, "Failed to configure TLS for OAuth2 client, proceeding without TLS")
+			baseTransport = kedautil.CreateHTTPTransportWithTLSConfig(nil)
+		} else {
+			baseTransport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
+		}
+	} else {
+		baseTransport = kedautil.CreateHTTPTransportWithTLSConfig(nil)
+	}
+	baseTransport.IdleConnTimeout = timeout
+
+	// Pass the base client via context so the oauth2 library uses it for token
+	// endpoint requests too (applying the same timeout and transport settings).
+	baseClient := &http.Client{
+		Timeout:   timeout,
+		Transport: baseTransport,
+	}
+	ctx := context.WithValue(context.Background(), oauth2.HTTPClient, baseClient)
+
 	// Create OAuth2 client with automatic token management
-	oauth2Client := config.Client(context.Background())
+	oauth2Client := config.Client(ctx)
 
-	// Apply timeout and optional TLS config
+	// Also set the base transport for API requests forwarded by the oauth2.Transport.
 	if transport, ok := oauth2Client.Transport.(*oauth2.Transport); ok {
-		baseTransport := &http.Transport{
-			IdleConnTimeout: timeout,
-		}
-
-		// Apply TLS configuration if enabled
-		if meta.EnableTLS == rmqTLSEnable {
-			tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.Ca, meta.UnsafeSsl)
-			if err != nil {
-				s.logger.Error(err, "Failed to configure TLS for OAuth2 client, proceeding without TLS")
-			} else {
-				baseTransport.TLSClientConfig = tlsConfig
-			}
-		}
-
 		transport.Base = baseTransport
 	}
 

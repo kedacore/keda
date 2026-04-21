@@ -414,7 +414,7 @@ type OAuth2 struct {
 	ClientID string `json:"clientId"`
 
 	// +optional
-	ClientSecret OAuth2ClientSecret `json:"clientSecret"`
+	ClientSecret OAuth2ClientSecret `json:"clientSecret,omitempty"`
 
 	TokenURL string `json:"tokenUrl"`
 
