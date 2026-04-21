@@ -16,6 +16,7 @@ import (
 	sdklog "go.temporal.io/sdk/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -180,27 +181,32 @@ func (s *temporalScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 
 func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	var (
-		queueSize int64
-		err       error
+		backlogCount int64
+		err          error
 	)
 	switch {
 	case s.metadata.WorkerDeploymentName != "":
-		queueSize, err = s.getDeploymentBacklogCount(ctx)
+		backlogCount, err = s.getDeploymentBacklogCount(ctx)
 	case s.metadata.BuildID != "" || s.metadata.AllActive || s.metadata.Unversioned:
-		queueSize, err = s.getQueueSize(ctx)
+		backlogCount, err = s.getBuildIDBacklogCount(ctx)
 	default:
-		queueSize, err = s.getUnversionedQueueSize(ctx)
+		backlogCount, err = s.getUnversionedBacklogCount(ctx)
 	}
 	if err != nil {
-		return nil, false, fmt.Errorf("failed to get Temporal queue size: %w", err)
+		s.logger.Error(err, "failed to get Temporal backlog count",
+			"mode", scalerMode(s.metadata),
+			"namespace", s.metadata.Namespace,
+			"taskQueue", s.metadata.TaskQueue,
+			"grpcCode", status.Code(err).String())
+		return nil, false, fmt.Errorf("failed to get Temporal backlog count: %w", err)
 	}
 
-	metric := GenerateMetricInMili(metricName, float64(queueSize))
+	metric := GenerateMetricInMili(metricName, float64(backlogCount))
 
-	return []external_metrics.ExternalMetricValue{metric}, queueSize > s.metadata.ActivationTargetQueueSize, nil
+	return []external_metrics.ExternalMetricValue{metric}, backlogCount > s.metadata.ActivationTargetQueueSize, nil
 }
 
-func (s *temporalScaler) getQueueSize(ctx context.Context) (int64, error) {
+func (s *temporalScaler) getBuildIDBacklogCount(ctx context.Context) (int64, error) {
 	var selection *sdk.TaskQueueVersionSelection
 	if s.metadata.AllActive || s.metadata.Unversioned || s.metadata.BuildID != "" {
 		selection = &sdk.TaskQueueVersionSelection{
@@ -219,27 +225,28 @@ func (s *temporalScaler) getQueueSize(ctx context.Context) (int64, error) {
 		TaskQueueTypes: queueType,
 	})
 	if err != nil {
-		return 0, fmt.Errorf("failed to get Temporal queue size: %w", err)
+		return 0, fmt.Errorf("failed to describe task queue enhanced (buildId=%q): %w", s.metadata.BuildID, err)
 	}
 
 	return getCombinedBacklogCount(resp), nil
 }
 
-// getUnversionedQueueSize queries DescribeTaskQueue for each configured queue
+// getUnversionedBacklogCount queries DescribeTaskQueue for each configured queue
 // type and returns the summed backlog count. This replaces DescribeTaskQueueEnhanced
 // for the unversioned path, which is deprecated and returns the default Build ID's
 // backlog when no Versions selector is provided (not the unversioned queue).
-func (s *temporalScaler) getUnversionedQueueSize(ctx context.Context) (int64, error) {
+func (s *temporalScaler) getUnversionedBacklogCount(ctx context.Context) (int64, error) {
 	var total int64
 	for _, qt := range getQueueTypes(s.metadata.QueueTypes) {
+		tqt := enumspb.TaskQueueType(qt)
 		resp, err := s.tcl.WorkflowService().DescribeTaskQueue(ctx, &workflowservice.DescribeTaskQueueRequest{
 			Namespace:     s.metadata.Namespace,
 			TaskQueue:     &taskqueuepb.TaskQueue{Name: s.metadata.TaskQueue, Kind: enumspb.TASK_QUEUE_KIND_NORMAL},
-			TaskQueueType: enumspb.TaskQueueType(qt),
+			TaskQueueType: tqt,
 			ReportStats:   true,
 		})
 		if err != nil {
-			return 0, fmt.Errorf("failed to describe task queue: %w", err)
+			return 0, fmt.Errorf("failed to describe task queue %q (type %s): %w", s.metadata.TaskQueue, tqt, err)
 		}
 		if stats := resp.GetStats(); stats != nil {
 			total += stats.GetApproximateBacklogCount()
@@ -260,7 +267,7 @@ func (s *temporalScaler) getDeploymentBacklogCount(ctx context.Context) (int64, 
 		},
 	)
 	if err != nil {
-		return 0, fmt.Errorf("failed to describe worker deployment version: %w", err)
+		return 0, fmt.Errorf("failed to describe worker deployment version %q/%q: %w", s.metadata.WorkerDeploymentName, s.metadata.WorkerDeploymentBuildID, err)
 	}
 
 	s.logger.V(1).Info("described worker deployment version",
