@@ -457,3 +457,41 @@ func TestSumDeploymentBacklog(t *testing.T) {
 		})
 	}
 }
+
+func TestScalerMode(t *testing.T) {
+	cases := []struct {
+		name string
+		meta temporalMetadata
+		want string
+	}{
+		{"no versioning fields", temporalMetadata{}, "unversioned"},
+		{"workerDeploymentName set", temporalMetadata{WorkerDeploymentName: "d"}, "deployment-version"},
+		{"deployment takes precedence over buildId", temporalMetadata{WorkerDeploymentName: "d", BuildID: "v1"}, "deployment-version"},
+		{"buildId set", temporalMetadata{BuildID: "v1"}, "build-id"},
+		{"selectAllActive set", temporalMetadata{AllActive: true}, "build-id"},
+		{"selectUnversioned set", temporalMetadata{Unversioned: true}, "build-id"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, scalerMode(&tc.meta))
+		})
+	}
+}
+
+func TestAuthType(t *testing.T) {
+	cases := []struct {
+		name string
+		meta temporalMetadata
+		want string
+	}{
+		{"nothing set", temporalMetadata{}, "none"},
+		{"apiKey set", temporalMetadata{APIKey: "secret"}, "apiKey"},
+		{"cert set", temporalMetadata{Cert: "cert-data"}, "mtls"},
+		{"apiKey takes precedence over cert", temporalMetadata{APIKey: "secret", Cert: "cert-data"}, "apiKey"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, authType(&tc.meta))
+		})
+	}
+}
