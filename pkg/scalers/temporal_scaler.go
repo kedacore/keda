@@ -128,6 +128,10 @@ func NewTemporalScaler(ctx context.Context, config *scalersconfig.ScalerConfig) 
 		"targetQueueSize", meta.TargetQueueSize,
 		"activationTargetQueueSize", meta.ActivationTargetQueueSize,
 		"authType", authType(meta),
+		"unsafeSsl", meta.UnsafeSsl,
+	}
+	if meta.TLSServerName != "" {
+		kv = append(kv, "tlsServerName", meta.TLSServerName)
 	}
 	if meta.BuildID != "" {
 		kv = append(kv, "buildId", meta.BuildID)
@@ -149,6 +153,7 @@ func NewTemporalScaler(ctx context.Context, config *scalersconfig.ScalerConfig) 
 }
 
 func (s *temporalScaler) Close(_ context.Context) error {
+	s.logger.V(1).Info("closing Temporal scaler")
 	if s.tcl != nil {
 		s.tcl.Close()
 	}
