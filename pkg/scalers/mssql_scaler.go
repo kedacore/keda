@@ -230,7 +230,7 @@ func (s *mssqlScaler) GetMetricsAndActivity(ctx context.Context, metricName stri
 
 func (s *mssqlScaler) getQueryResult(ctx context.Context) (float64, error) {
 	if s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
-		if s.metadata.azureAuthContext.token.ExpiresOn.Before(time.Now()) {
+		if s.metadata.azureAuthContext.token != nil && s.metadata.azureAuthContext.token.ExpiresOn.Before(time.Now()) {
 			s.logger.Info("Azure access token expired, reconnecting to MSSQL")
 			s.connection.Close()
 			newConnection, err := newMSSQLConnection(ctx, s)
