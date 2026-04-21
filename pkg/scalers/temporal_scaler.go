@@ -243,6 +243,18 @@ func (s *temporalScaler) getDeploymentBacklogCount(ctx context.Context) (int64, 
 		return 0, fmt.Errorf("failed to describe worker deployment version: %w", err)
 	}
 
+	s.logger.V(1).Info("described worker deployment version",
+		"deploymentName", s.metadata.WorkerDeploymentName,
+		"buildId", s.metadata.WorkerDeploymentBuildID,
+		"versionTaskQueueCount", len(resp.GetVersionTaskQueues()))
+	for _, tq := range resp.GetVersionTaskQueues() {
+		s.logger.V(1).Info("deployment version task queue",
+			"name", tq.GetName(),
+			"type", tq.GetType().String(),
+			"hasStats", tq.GetStats() != nil,
+			"backlog", tq.GetStats().GetApproximateBacklogCount())
+	}
+
 	return sumDeploymentBacklog(resp.GetVersionTaskQueues(), s.metadata.TaskQueue, s.metadata.QueueTypes), nil
 }
 

@@ -30,14 +30,15 @@ var (
 )
 
 type templateData struct {
-	WorkFlowCommand              string
-	WorkFlowIterations           int
-	BuildID                      string
-	DeploymentName               string
-	TemporalWorkerDeploymentName string
-	TestNamespace                string
-	TemporalDeploymentName       string
-	ScaledObjectName             string
+	WorkFlowCommand                 string
+	WorkFlowIterations              int
+	BuildID                         string
+	DeploymentName                  string
+	TemporalWorkerDeploymentName    string
+	TemporalWorkerDeploymentBuildID string
+	TestNamespace                   string
+	TemporalDeploymentName          string
+	ScaledObjectName                string
 }
 
 const (
@@ -77,7 +78,7 @@ spec:
     spec:
       containers:
         - name: temporal
-          image: temporalio/admin-tools:latest
+          image: temporalio/admin-tools:1.30.4
           command: ["temporal", "server", "start-dev", "--ip", "0.0.0.0", "--dynamic-config-value", "frontend.workerVersioningWorkflowAPIs=true", "--dynamic-config-value", "frontend.workerVersioningRuleAPIs=true", "--dynamic-config-value", "frontend.enableDeployments=true", "--dynamic-config-value", "system.enableDeploymentVersions=true"]
           ports:
             - containerPort: 7233
@@ -198,7 +199,7 @@ spec:
    spec:
      containers:
      - name: workflow
-       image: "temporalio/admin-tools:latest"
+       image: "temporalio/admin-tools:1.30.4"
        imagePullPolicy: Always
        command: ["temporal"]
        args:
@@ -240,7 +241,7 @@ spec:
         - "--address={{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233"
         - "--task-queue=omes-test"
         - "--deployment-name={{.TemporalWorkerDeploymentName}}"
-        - "--build-id={{.BuildID}}"
+        - "--build-id={{.TemporalWorkerDeploymentBuildID}}"
 `
 
 	deploymentVersionWorkerScaleUpTemplate = `
@@ -269,7 +270,7 @@ spec:
         - "--address={{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233"
         - "--task-queue=omes-test"
         - "--deployment-name={{.TemporalWorkerDeploymentName}}"
-        - "--build-id={{.BuildID}}"
+        - "--build-id={{.TemporalWorkerDeploymentBuildID}}"
 `
 
 	scaledObjectDeploymentVersionTemplate = `
@@ -298,7 +299,7 @@ spec:
       targetQueueSize: "2"
       endpoint: {{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233
       workerDeploymentName: {{.TemporalWorkerDeploymentName}}
-      workerDeploymentBuildId: {{.BuildID}}
+      workerDeploymentBuildId: {{.TemporalWorkerDeploymentBuildID}}
 `
 
 	jobSetCurrentVersionTemplate = `
@@ -312,7 +313,7 @@ spec:
     spec:
       containers:
       - name: set-version
-        image: "temporalio/admin-tools:latest"
+        image: "temporalio/admin-tools:1.30.4"
         imagePullPolicy: Always
         command: ["temporal"]
         args:
@@ -320,7 +321,7 @@ spec:
         - "deployment"
         - "set-current-version"
         - "--deployment-name={{.TemporalWorkerDeploymentName}}"
-        - "--build-id={{.BuildID}}"
+        - "--build-id={{.TemporalWorkerDeploymentBuildID}}"
         - "--address={{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233"
         - "--yes"
       restartPolicy: OnFailure
@@ -358,12 +359,7 @@ func TestTemporalScaler(t *testing.T) {
 	testScaleOut(t, kc, data)
 	testScaleIn(t, kc, data)
 	testWorkerVersioning(t, kc, data)
-	// testDeploymentVersion is disabled: the Temporal dev server (used in this
-	// e2e test) does not populate task queue backlog stats for deployment
-	// versions. The code path is covered by unit tests; the infrastructure to
-	// enable it here (custom worker image, set-current-version job) is in
-	// place for when the dev server supports it.
-	_ = testDeploymentVersion
+	testDeploymentVersion(t, kc, data)
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
@@ -452,8 +448,8 @@ func testDeploymentVersion(t *testing.T, kc *kubernetes.Clientset, data template
 
 	data.DeploymentName = deploymentName
 	data.ScaledObjectName = scaledObjectName
-	data.BuildID = "v2.0.0"
 	data.TemporalWorkerDeploymentName = "omes-deployment"
+	data.TemporalWorkerDeploymentBuildID = "v2.0.0"
 
 	// Step 1: Start worker with 1 replica to register the deployment version
 	KubectlApplyWithTemplate(t, data, "deploymentVersionWorkerScaleUpTemplate", deploymentVersionWorkerScaleUpTemplate)
@@ -478,11 +474,11 @@ func testDeploymentVersion(t *testing.T, kc *kubernetes.Clientset, data template
 	KubectlApplyWithTemplate(t, data, "jobWorkFlow", jobWorkFlowTemplate)
 	assert.True(t, WaitForJobCount(t, kc, testNamespace, 1, 60, 3), "job count in namespace should be 1")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName+"-deploy-ver", testNamespace, 1, 60, 3),
-		"replica count for deployment %s build %s should be 1 after 3 minutes", data.TemporalWorkerDeploymentName, data.BuildID)
+		"replica count for deployment %s build %s should be 1 after 3 minutes", data.TemporalWorkerDeploymentName, data.TemporalWorkerDeploymentBuildID)
 
 	// Step 5: Scale in after workflows drain
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName+"-deploy-ver", testNamespace, 0, 60, 5),
-		"replica count for deployment %s build %s should be 0 after 5 minutes", data.TemporalWorkerDeploymentName, data.BuildID)
+		"replica count for deployment %s build %s should be 0 after 5 minutes", data.TemporalWorkerDeploymentName, data.TemporalWorkerDeploymentBuildID)
 	KubectlDeleteWithTemplate(t, data, "jobWorkFlow", jobWorkFlowTemplate)
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectDeploymentVersionTemplate", scaledObjectDeploymentVersionTemplate)
