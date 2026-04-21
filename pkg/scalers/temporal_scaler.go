@@ -119,6 +119,26 @@ func NewTemporalScaler(ctx context.Context, config *scalersconfig.ScalerConfig) 
 		return nil, fmt.Errorf("failed to create Temporal client connection: %w", err)
 	}
 
+	kv := []any{
+		"mode", scalerMode(meta),
+		"endpoint", meta.Endpoint,
+		"namespace", meta.Namespace,
+		"taskQueue", meta.TaskQueue,
+		"targetQueueSize", meta.TargetQueueSize,
+		"activationTargetQueueSize", meta.ActivationTargetQueueSize,
+		"authType", authType(meta),
+	}
+	if meta.BuildID != "" {
+		kv = append(kv, "buildId", meta.BuildID)
+	}
+	if meta.WorkerDeploymentName != "" {
+		kv = append(kv, "workerDeploymentName", meta.WorkerDeploymentName, "workerDeploymentBuildId", meta.WorkerDeploymentBuildID)
+	}
+	if len(meta.QueueTypes) > 0 {
+		kv = append(kv, "queueTypes", meta.QueueTypes)
+	}
+	logger.Info("Temporal scaler initialized", kv...)
+
 	return &temporalScaler{
 		metricType: metricType,
 		metadata:   meta,
@@ -295,6 +315,28 @@ func queueTypeSet(queueTypes []string) map[enumspb.TaskQueueType]bool {
 		}
 	}
 	return set
+}
+
+func scalerMode(m *temporalMetadata) string {
+	switch {
+	case m.WorkerDeploymentName != "":
+		return "deployment-version"
+	case m.BuildID != "" || m.AllActive || m.Unversioned:
+		return "build-id"
+	default:
+		return "unversioned"
+	}
+}
+
+func authType(m *temporalMetadata) string {
+	switch {
+	case m.APIKey != "":
+		return "apiKey"
+	case m.Cert != "":
+		return "mtls"
+	default:
+		return "none"
+	}
 }
 
 func getQueueTypes(queueTypes []string) []sdk.TaskQueueType {
