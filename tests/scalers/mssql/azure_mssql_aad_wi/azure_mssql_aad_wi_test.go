@@ -225,7 +225,7 @@ func TestAzureMSSQLWorkloadIdentityScaler(t *testing.T) {
 		dropTableSQL := fmt.Sprintf(
 			"/opt/mssql-tools18/bin/sqlcmd -S %s -C -U %s -P \"%s\" -d %s -Q \"DROP TABLE IF EXISTS tasks\"",
 			azureMSSQLFQDN, azureMSSQLAdminUsername, azureMSSQLAdminPassword, azureMSSQLDatabase)
-		WaitForSuccessfulExecCommandOnSpecificPod(t, mssqlHelperPodName, testNamespace, dropTableSQL, 60, 3)
+		_, _, _, _ = WaitForSuccessfulExecCommandOnSpecificPod(t, mssqlHelperPodName, testNamespace, dropTableSQL, 60, 3)
 
 		KubectlDeleteMultipleWithTemplate(t, data, templates)
 		DeleteKubernetesResources(t, testNamespace, data, helperTemplates)
