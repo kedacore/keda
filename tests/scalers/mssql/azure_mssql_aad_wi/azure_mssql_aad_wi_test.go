@@ -211,11 +211,11 @@ spec:
 )
 
 func TestAzureMSSQLWorkloadIdentityScaler(t *testing.T) {
-	require.NotEmpty(t, azureMSSQLFQDN, "TF_AZURE_MSSQL_FQDN env variable is required for this test")
-	require.NotEmpty(t, azureMSSQLAdminUsername, "TF_AZURE_MSSQL_ADMIN_USERNAME env variable is required for this test")
-	require.NotEmpty(t, azureMSSQLAdminPassword, "TF_AZURE_MSSQL_ADMIN_PASSWORD env variable is required for this test")
-	require.NotEmpty(t, azureMSSQLDatabase, "TF_AZURE_MSSQL_DB_NAME env variable is required for this test")
-	require.NotEmpty(t, azureMSSQLUamiName, "TF_AZURE_IDENTITY_1_NAME env variable is required for this test")
+	if azureMSSQLFQDN == "" || azureMSSQLAdminUsername == "" ||
+		azureMSSQLAdminPassword == "" || azureMSSQLDatabase == "" ||
+		azureMSSQLUamiName == "" {
+		t.Skip("Skipping: Azure MSSQL AAD WI test requires TF_AZURE_MSSQL_* and TF_AZURE_IDENTITY_1_NAME env vars")
+	}
 
 	kc := GetKubernetesClient(t)
 	_, helperTemplates := getHelperTemplateData()
