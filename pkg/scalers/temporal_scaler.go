@@ -202,8 +202,20 @@ func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(backlogCount))
+	isActive := backlogCount > s.metadata.ActivationTargetQueueSize
 
-	return []external_metrics.ExternalMetricValue{metric}, backlogCount > s.metadata.ActivationTargetQueueSize, nil
+	s.logger.V(1).Info("polled Temporal backlog",
+		"mode", scalerMode(s.metadata),
+		"namespace", s.metadata.Namespace,
+		"taskQueue", s.metadata.TaskQueue,
+		"buildId", s.metadata.BuildID,
+		"workerDeploymentName", s.metadata.WorkerDeploymentName,
+		"workerDeploymentBuildId", s.metadata.WorkerDeploymentBuildID,
+		"backlogCount", backlogCount,
+		"activationThreshold", s.metadata.ActivationTargetQueueSize,
+		"isActive", isActive)
+
+	return []external_metrics.ExternalMetricValue{metric}, isActive, nil
 }
 
 func (s *temporalScaler) getBuildIDBacklogCount(ctx context.Context) (int64, error) {
