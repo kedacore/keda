@@ -225,7 +225,7 @@ func (s *temporalScaler) getBuildIDBacklogCount(ctx context.Context) (int64, err
 		TaskQueueTypes: queueType,
 	})
 	if err != nil {
-		return 0, fmt.Errorf("failed to describe task queue enhanced (buildId=%q): %w", s.metadata.BuildID, err)
+		return 0, fmt.Errorf("failed to describe task queue enhanced (taskQueue=%q, buildId=%q): %w", s.metadata.TaskQueue, s.metadata.BuildID, err)
 	}
 
 	return getCombinedBacklogCount(resp), nil
@@ -267,19 +267,8 @@ func (s *temporalScaler) getDeploymentBacklogCount(ctx context.Context) (int64, 
 		},
 	)
 	if err != nil {
-		return 0, fmt.Errorf("failed to describe worker deployment version %q/%q: %w", s.metadata.WorkerDeploymentName, s.metadata.WorkerDeploymentBuildID, err)
-	}
-
-	s.logger.V(1).Info("described worker deployment version",
-		"deploymentName", s.metadata.WorkerDeploymentName,
-		"buildId", s.metadata.WorkerDeploymentBuildID,
-		"versionTaskQueueCount", len(resp.GetVersionTaskQueues()))
-	for _, tq := range resp.GetVersionTaskQueues() {
-		s.logger.V(1).Info("deployment version task queue",
-			"name", tq.GetName(),
-			"type", tq.GetType().String(),
-			"hasStats", tq.GetStats() != nil,
-			"backlog", tq.GetStats().GetApproximateBacklogCount())
+		return 0, fmt.Errorf("failed to describe worker deployment version (taskQueue=%q, deploymentName=%q, buildId=%q): %w",
+			s.metadata.TaskQueue, s.metadata.WorkerDeploymentName, s.metadata.WorkerDeploymentBuildID, err)
 	}
 
 	return sumDeploymentBacklog(resp.GetVersionTaskQueues(), s.metadata.TaskQueue, s.metadata.QueueTypes), nil
