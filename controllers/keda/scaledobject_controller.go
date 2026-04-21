@@ -19,6 +19,7 @@ package keda
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sync"
 
 	"github.com/go-logr/logr"
@@ -379,9 +380,7 @@ func (r *ScaledObjectReconciler) syncPausedReplicaCountStatus(ctx context.Contex
 	if err != nil {
 		return fmt.Errorf("failed to parse paused replica count: %w", err)
 	}
-	if (scaledObject.Status.PausedReplicaCount == nil && pausedCount != nil) ||
-		(scaledObject.Status.PausedReplicaCount != nil && pausedCount == nil) ||
-		(scaledObject.Status.PausedReplicaCount != nil && pausedCount != nil && *scaledObject.Status.PausedReplicaCount != *pausedCount) {
+	if !reflect.DeepEqual(scaledObject.Status.PausedReplicaCount, pausedCount) {
 		status := scaledObject.Status.DeepCopy()
 		status.PausedReplicaCount = pausedCount
 		if err := kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status); err != nil {

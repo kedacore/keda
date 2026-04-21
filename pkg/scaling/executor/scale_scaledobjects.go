@@ -49,7 +49,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	}
 
 	// Return early if paused to skip normal scaling logic
-	if e.handlePaused(ctx, scaledObject, currentReplicas, &result) {
+	if e.handlePaused(scaledObject, &result) {
 		return result
 	}
 	// if scaledObject.Spec.MinReplicaCount is not set, then set the default value (0)
@@ -242,7 +242,7 @@ func (e *scaleExecutor) updateScaleOnScaleTarget(ctx context.Context, scaledObje
 }
 
 // handlePaused skips normal scaling logic while the ScaledObject is paused.
-func (e *scaleExecutor) handlePaused(_ context.Context, scaledObject *kedav1alpha1.ScaledObject, _ int32, scaleResult *ScaleResult) bool {
+func (e *scaleExecutor) handlePaused(scaledObject *kedav1alpha1.ScaledObject, scaleResult *ScaleResult) bool {
 	if scaledObject.NeedToBePausedByAnnotation() {
 		scaleResult.Conditions.SetPausedCondition(metav1.ConditionTrue, "ScaledObjectPaused", "ScaledObject is paused")
 		return true
