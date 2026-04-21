@@ -68,7 +68,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **MSSQL Scaler**: Add Azure Workload Identity support for Azure SQL authentication ([#6104](https://github.com/kedacore/keda/issues/6104))
 
 #### Experimental
 
