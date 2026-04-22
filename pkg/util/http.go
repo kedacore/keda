@@ -50,7 +50,7 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 	if timeout <= 0 {
 		timeout = 300 * time.Millisecond
 	}
-	transport := CreateHTTPTransport(unsafeSsl)
+	transport := CreateRT(unsafeSsl)
 	httpClient := &http.Client{
 		Timeout:   timeout,
 		Transport: transport,
@@ -58,15 +58,15 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 	return httpClient
 }
 
-// CreateHTTPTransport returns a new instrumented HTTP RoundTripper with Proxy and Keep-alive settings.
+// CreateRT returns a new instrumented HTTP RoundTripper with Proxy and Keep-alive settings.
 // unsafeSsl parameter allows to avoid tls cert validation if it's required.
-func CreateHTTPTransport(unsafeSsl bool) http.RoundTripper {
-	return CreateHTTPTransportWithTLSConfig(CreateTLSClientConfig(unsafeSsl))
+func CreateRT(unsafeSsl bool) http.RoundTripper {
+	return CreateRTWithTLSConfig(CreateTLSClientConfig(unsafeSsl))
 }
 
-// CreateHTTPTransportWithTLSConfig returns a new instrumented HTTP RoundTripper with Proxy and
+// CreateRTWithTLSConfig returns a new instrumented HTTP RoundTripper with Proxy and
 // Keep-alive settings using the given tls.Config.
-func CreateHTTPTransportWithTLSConfig(config *tls.Config) http.RoundTripper {
+func CreateRTWithTLSConfig(config *tls.Config) http.RoundTripper {
 	transport := &http.Transport{
 		TLSClientConfig: config,
 		Proxy:           http.ProxyFromEnvironment,
