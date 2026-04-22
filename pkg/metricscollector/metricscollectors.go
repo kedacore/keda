@@ -82,8 +82,9 @@ type MetricsCollector interface {
 	RecordCloudEventQueueStatus(namespace string, value int)
 
 	// RecordHTTPClientRequest records the duration and outcome of an outbound HTTP request
-	// made by one of KEDA's internal HTTP clients. scaler, triggerName, and metricName
-	// are read from context keys set in util package; empty string if unset.
+	// made by one of KEDA's internal HTTP clients. The scaler, triggerName, metricName,
+	// namespace, and scaledResource values are extracted from context keys by
+	// InstrumentedRoundTripper in the util package before this method is called.
 	RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string)
 }
 
@@ -212,8 +213,8 @@ func RecordCloudEventQueueStatus(namespace string, value int) {
 }
 
 // RecordHTTPClientRequest records the duration and outcome of an outbound HTTP request
-// made by one of KEDA's internal HTTP clients. scaler, triggerName, and metricName
-// are read from context keys set in util package; empty string if unset.
+// made by one of KEDA's internal HTTP clients. Called by InstrumentedRoundTripper in
+// the util package after extracting label values from the request context.
 func RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string) {
 	for _, element := range collectors {
 		element.RecordHTTPClientRequest(durationSeconds, statusCode, isError, scaler, triggerName, metricName, namespace, scaledResource)
