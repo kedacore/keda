@@ -81,7 +81,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Make APIService cert injections optional ([#7559](https://github.com/kedacore/keda/pull/7559))
 - **Elasticsearch Scaler**: Add HTTP status check for Elasticsearch errors ([#7480](https://github.com/kedacore/keda/pull/7480))
 - **Kubernetes Workload Scaler**: Add `groupByNode` parameter ([#7628](https://github.com/kedacore/keda/issues/7628))
-- **Prometheus Scaler**: Emit metric tracking empty responses from prometheus ([#7060](https://github.com/kedacore/keda/pull/7060))
+- **Prometheus Scaler**: Emit metric tracking empty responses from Prometheus ([#7062](https://github.com/kedacore/keda/issues/7062))
 
 ### Fixes
 

@@ -34,6 +34,8 @@ type prometheusScaler struct {
 	scalableObjectName string
 	scalableObjectNS   string
 	triggerName        string
+	metricName         string
+	resourceType       string
 }
 
 // IgnoreNullValues - sometimes should consider there is an error we can accept
@@ -149,6 +151,8 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		scalableObjectName: config.ScalableObjectName,
 		scalableObjectNS:   config.ScalableObjectNamespace,
 		triggerName:        config.TriggerName,
+		metricName:         GenerateMetricNameWithIndex(meta.triggerIndex, kedautil.NormalizeString("prometheus")),
+		resourceType:       config.ScalableObjectType,
 	}, nil
 }
 
@@ -262,10 +266,10 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 
 	// allow for zero element or single element result sets
 	if len(result.Data.Result) == 0 {
+		metricscollector.RecordEmptyUpstreamResponse(s.scalableObjectNS, s.scalableObjectName, s.triggerName, s.metricName, s.resourceType, s.metadata.IgnoreNullValues)
 		if s.metadata.IgnoreNullValues {
 			return 0, nil
 		}
-		metricscollector.RecordEmptyUpstreamResponse(s.scalableObjectNS, s.scalableObjectName, s.triggerName)
 		return -1, fmt.Errorf("prometheus metrics 'prometheus' target may be lost, the result is empty")
 	} else if len(result.Data.Result) > 1 {
 		return -1, fmt.Errorf("prometheus query %s returned multiple elements", s.metadata.Query)
@@ -273,10 +277,10 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 
 	valueLen := len(result.Data.Result[0].Value)
 	if valueLen == 0 {
+		metricscollector.RecordEmptyUpstreamResponse(s.scalableObjectNS, s.scalableObjectName, s.triggerName, s.metricName, s.resourceType, s.metadata.IgnoreNullValues)
 		if s.metadata.IgnoreNullValues {
 			return 0, nil
 		}
-		metricscollector.RecordEmptyUpstreamResponse(s.scalableObjectNS, s.scalableObjectName, s.triggerName)
 		return -1, fmt.Errorf("prometheus metrics 'prometheus' target may be lost, the value list is empty")
 	} else if valueLen < 2 {
 		return -1, fmt.Errorf("prometheus query %s didn't return enough values", s.metadata.Query)
