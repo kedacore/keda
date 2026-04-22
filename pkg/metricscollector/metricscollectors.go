@@ -82,9 +82,9 @@ type MetricsCollector interface {
 	RecordCloudEventQueueStatus(namespace string, value int)
 
 	// RecordHTTPClientRequest records the duration and outcome of an outbound HTTP request
-	// made by one of KEDA's internal HTTP clients. The scaler, triggerName, metricName,
-	// namespace, and scaledResource values are extracted from context keys by
-	// InstrumentedRoundTripper in the util package before this method is called.
+	// made by one of KEDA's internal HTTP clients. scaler, triggerName, metricName,
+	// namespace, and scaledResource are provided explicitly by the caller; upstream
+	// instrumentation may derive them from context before invoking the collector.
 	RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string)
 }
 
