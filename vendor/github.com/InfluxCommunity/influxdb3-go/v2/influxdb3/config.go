@@ -31,6 +31,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/apache/arrow-go/v18/arrow/flight"
 	"github.com/influxdata/line-protocol/v2/lineprotocol"
 )
 
@@ -149,6 +150,9 @@ type ClientConfig struct {
 
 	// Proxy URL
 	Proxy string
+
+	// Flight client middleware
+	Middleware []flight.ClientMiddleware
 }
 
 // validate validates the config.

@@ -274,10 +274,33 @@ func nexusOperationFailure(params executeNexusOperationParams, token string, cau
 	}
 }
 
-// nexusFailureToAPIFailure converts a Nexus Failure to an API proto Failure.
+// temporalFailureToNexusFailure converts an API proto Failure to a Nexus SDK Failure setting the metadata "type" field to
+// the proto fullname of the temporal API Failure message or the standard Nexus SDK failure types.
+// Returns an error if the failure cannot be converted.
+func temporalFailureToNexusFailure(failure *failurepb.Failure) (*nexus.Failure, error) {
+	message := failure.Message
+	stackTrack := failure.StackTrace
+	failure.Message = ""
+	failure.StackTrace = ""
+	b, err := protojson.Marshal(failure)
+	if err != nil {
+		return nil, err
+	}
+	failure.Message = message
+	failure.StackTrace = stackTrack
+	return &nexus.Failure{
+		Message:    message,
+		StackTrace: stackTrack,
+		Metadata:   nexusFailureMetadata,
+		Details:    b,
+	}, nil
+
+}
+
+// nexusFailureToTemporalFailure converts a Nexus Failure to an API proto Failure.
 // If the failure metadata "type" field is set to the fullname of the temporal API Failure message, the failure is
 // reconstructed using protojson.Unmarshal on the failure details field.
-func nexusFailureToAPIFailure(failure nexus.Failure, retryable bool) (*failurepb.Failure, error) {
+func nexusFailureToTemporalFailure(failure nexus.Failure, retryable bool) (*failurepb.Failure, error) {
 	apiFailure := &failurepb.Failure{}
 
 	if failure.Metadata != nil && failure.Metadata["type"] == failureTypeString {
@@ -300,6 +323,7 @@ func nexusFailureToAPIFailure(failure nexus.Failure, retryable bool) (*failurepb
 	}
 	// Ensure this always gets written.
 	apiFailure.Message = failure.Message
+	apiFailure.StackTrace = failure.StackTrace
 	return apiFailure, nil
 }
 
@@ -349,7 +373,7 @@ func apiHandlerErrorToNexusHandlerError(apiErr *nexuspb.HandlerError, failureCon
 		RetryBehavior: retryBehavior,
 	}
 
-	failure, err := nexusFailureToAPIFailure(protoFailureToNexusFailure(apiErr.GetFailure()), nexusErr.Retryable())
+	failure, err := nexusFailureToTemporalFailure(protoFailureToNexusFailure(apiErr.GetFailure()), nexusErr.Retryable())
 	if err != nil {
 		return nil, err
 	}
@@ -369,7 +393,7 @@ func operationErrorToTemporalFailure(opErr *nexus.OperationError) (*failurepb.Fa
 	// Canceled must be translated into a CanceledFailure to match the SDK expectation.
 	if opErr.State == nexus.OperationStateCanceled {
 		if nexusFailure.Metadata != nil && nexusFailure.Metadata["type"] == failureTypeString {
-			temporalFailure, err := nexusFailureToAPIFailure(nexusFailure, false)
+			temporalFailure, err := nexusFailureToTemporalFailure(nexusFailure, false)
 			if err != nil {
 				return nil, err
 			}
@@ -394,7 +418,7 @@ func operationErrorToTemporalFailure(opErr *nexus.OperationError) (*failurepb.Fa
 		}, nil
 	}
 
-	return nexusFailureToAPIFailure(nexusFailure, false)
+	return nexusFailureToTemporalFailure(nexusFailure, false)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -442,6 +466,11 @@ func (t *testSuiteClientForNexusOperations) CompleteActivity(ctx context.Context
 
 // CompleteActivityByID implements Client.
 func (t *testSuiteClientForNexusOperations) CompleteActivityByID(ctx context.Context, namespace string, workflowID string, runID string, activityID string, result interface{}, err error) error {
+	panic("not implemented in the test environment")
+}
+
+// CompleteActivityByID implements Client.
+func (t *testSuiteClientForNexusOperations) CompleteActivityByActivityID(ctx context.Context, namespace string, activityID string, activityRunID string, result interface{}, err error) error {
 	panic("not implemented in the test environment")
 }
 
@@ -699,6 +728,22 @@ func (t *testSuiteClientForNexusOperations) UpdateWorkerBuildIdCompatibility(ctx
 
 // UpdateWorkerVersioningRules implements Client.
 func (t *testSuiteClientForNexusOperations) UpdateWorkerVersioningRules(ctx context.Context, options UpdateWorkerVersioningRulesOptions) (*WorkerVersioningRules, error) {
+	panic("unimplemented in the test environment")
+}
+
+func (t *testSuiteClientForNexusOperations) ExecuteActivity(ctx context.Context, options ClientStartActivityOptions, activity any, args ...any) (ClientActivityHandle, error) {
+	panic("unimplemented in the test environment")
+}
+
+func (t *testSuiteClientForNexusOperations) GetActivityHandle(options ClientGetActivityHandleOptions) ClientActivityHandle {
+	panic("unimplemented in the test environment")
+}
+
+func (t *testSuiteClientForNexusOperations) ListActivities(ctx context.Context, options ClientListActivitiesOptions) (ClientListActivitiesResult, error) {
+	panic("unimplemented in the test environment")
+}
+
+func (t *testSuiteClientForNexusOperations) CountActivities(ctx context.Context, options ClientCountActivitiesOptions) (*ClientCountActivitiesResult, error) {
 	panic("unimplemented in the test environment")
 }
 

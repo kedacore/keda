@@ -227,7 +227,8 @@ type AuthEnvironment struct {
 type HashiCorpVault struct {
 	Address        string              `json:"address"`
 	Authentication VaultAuthentication `json:"authentication"`
-	Secrets        []VaultSecret       `json:"secrets"`
+	// +kubebuilder:validation:MinItems=1
+	Secrets []VaultSecret `json:"secrets"`
 
 	// +optional
 	Namespace string `json:"namespace,omitempty"`
@@ -255,6 +256,7 @@ type Credential struct {
 }
 
 // VaultAuthentication contains the list of Hashicorp Vault authentication methods
+// +kubebuilder:validation:Enum=token;kubernetes
 type VaultAuthentication string
 
 // Client authenticating to Vault
@@ -265,6 +267,7 @@ const (
 )
 
 // VaultSecretType defines the type of vault secret
+// +kubebuilder:validation:Enum="";secretV2;secret;pki
 type VaultSecretType string
 
 const (
@@ -296,8 +299,9 @@ type VaultSecret struct {
 
 // AzureKeyVault is used to authenticate using Azure Key Vault
 type AzureKeyVault struct {
-	VaultURI string                `json:"vaultUri"`
-	Secrets  []AzureKeyVaultSecret `json:"secrets"`
+	VaultURI string `json:"vaultUri"`
+	// +kubebuilder:validation:MinItems=1
+	Secrets []AzureKeyVaultSecret `json:"secrets"`
 	// +optional
 	Credentials *AzureKeyVaultCredentials `json:"credentials"`
 	// +optional
@@ -341,6 +345,7 @@ type AzureKeyVaultCloudInfo struct {
 }
 
 type GCPSecretManager struct {
+	// +kubebuilder:validation:MinItems=1
 	Secrets []GCPSecretManagerSecret `json:"secrets"`
 	// +optional
 	Credentials *GCPCredentials `json:"credentials"`
@@ -365,6 +370,7 @@ type GCPSecretManagerSecret struct {
 
 // AwsSecretManager is used to authenticate using AwsSecretManager
 type AwsSecretManager struct {
+	// +kubebuilder:validation:MinItems=1
 	Secrets []AwsSecretManagerSecret `json:"secrets"`
 	// +optional
 	Credentials *AwsSecretManagerCredentials `json:"credentials"`

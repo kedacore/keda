@@ -444,8 +444,9 @@ func convertToTypedSearchAttributes(logger log.Logger, attributes map[string]*co
 		if payload.Data == nil {
 			continue
 		}
-		valueType := enumspb.IndexedValueType(
-			enumspb.IndexedValueType_shorthandValue[string(payload.GetMetadata()["type"])])
+		// The type metadata is usually in PascalCase (e.g. "KeywordList") but in
+		// rare cases may be in SCREAMING_SNAKE_CASE (e.g. "INDEXED_VALUE_TYPE_KEYWORD_LIST").
+		valueType, _ := enumspb.IndexedValueTypeFromString(string(payload.GetMetadata()["type"]))
 		// For TemporalChangeVersion, we imply the value type
 		if valueType == 0 && key == TemporalChangeVersion {
 			valueType = enumspb.INDEXED_VALUE_TYPE_KEYWORD_LIST

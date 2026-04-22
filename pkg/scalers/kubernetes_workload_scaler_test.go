@@ -25,6 +25,7 @@ var parseWorkloadMetadataTestDataset = []workloadMetadataTestData{
 	{map[string]string{"value": "1", "podSelector": "app=demo"}, "default", false},
 	{map[string]string{"value": "1", "podSelector": "app in (demo1, demo2)"}, "test", false},
 	{map[string]string{"value": "1", "podSelector": "app in (demo1, demo2),deploy in (deploy1, deploy2)"}, "test", false},
+	{map[string]string{"value": "1", "podSelector": "app=demo", "groupByNode": "true"}, "test", false},
 	{map[string]string{"podSelector": "app=demo"}, "test", true},
 	{map[string]string{"podSelector": "app=demo"}, "default", true},
 	{map[string]string{"value": "1"}, "test", true},
@@ -34,6 +35,7 @@ var parseWorkloadMetadataTestDataset = []workloadMetadataTestData{
 	{map[string]string{"value": "0", "podSelector": "app=demo"}, "test", true},
 	{map[string]string{"value": "0", "podSelector": "app=demo"}, "default", true},
 	{map[string]string{"value": "1", "activationValue": "aa", "podSelector": "app=demo"}, "test", true},
+	{map[string]string{"value": "1", "podSelector": "app=demo", "groupByNode": "invalid"}, "test", true},
 }
 
 func TestParseWorkloadMetadata(t *testing.T) {
@@ -206,5 +208,137 @@ func TestWorkloadPhase(t *testing.T) {
 		if !active && isActive {
 			t.Errorf("Expected inactive for phase %s but got active", phase)
 		}
+	}
+}
+
+func TestWorkloadGroupByNode(t *testing.T) {
+	podList := &v1.PodList{
+		Items: []v1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "demo-pod-node-a-1",
+					Namespace: "default",
+					Labels: map[string]string{
+						"app": "demo",
+					},
+				},
+				Spec: v1.PodSpec{
+					NodeName: "node-a",
+				},
+				Status: v1.PodStatus{
+					Phase: v1.PodRunning,
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "demo-pod-node-a-2",
+					Namespace: "default",
+					Labels: map[string]string{
+						"app": "demo",
+					},
+				},
+				Spec: v1.PodSpec{
+					NodeName: "node-a",
+				},
+				Status: v1.PodStatus{
+					Phase: v1.PodRunning,
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "demo-pod-node-b",
+					Namespace: "default",
+					Labels: map[string]string{
+						"app": "demo",
+					},
+				},
+				Spec: v1.PodSpec{
+					NodeName: "node-b",
+				},
+				Status: v1.PodStatus{
+					Phase: v1.PodRunning,
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "demo-pod-pending",
+					Namespace: "default",
+					Labels: map[string]string{
+						"app": "demo",
+					},
+				},
+				Status: v1.PodStatus{
+					Phase: v1.PodPending,
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "demo-pod-failed",
+					Namespace: "default",
+					Labels: map[string]string{
+						"app": "demo",
+					},
+				},
+				Spec: v1.PodSpec{
+					NodeName: "node-c",
+				},
+				Status: v1.PodStatus{
+					Phase: v1.PodFailed,
+				},
+			},
+		},
+	}
+
+	testCases := []struct {
+		name     string
+		metadata map[string]string
+		expected int64
+	}{
+		{
+			name: "count all matching pods",
+			metadata: map[string]string{
+				"podSelector": "app=demo",
+				"value":       "1",
+			},
+			expected: 4,
+		},
+		{
+			name: "count unique nodes for scheduled matching pods",
+			metadata: map[string]string{
+				"podSelector": "app=demo",
+				"value":       "1",
+				"groupByNode": "true",
+			},
+			expected: 2,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			s, err := NewKubernetesWorkloadScaler(
+				fake.NewClientBuilder().WithRuntimeObjects(podList).Build(),
+				&scalersconfig.ScalerConfig{
+					TriggerMetadata:         testCase.metadata,
+					ScalableObjectNamespace: "default",
+				},
+			)
+			if err != nil {
+				t.Fatalf("Error creating scaler: %v", err)
+			}
+
+			workloadScaler, ok := s.(*kubernetesWorkloadScaler)
+			if !ok {
+				t.Fatalf("Expected *kubernetesWorkloadScaler and got %T", s)
+			}
+
+			count, err := workloadScaler.getMetricValue(context.Background())
+			if err != nil {
+				t.Fatalf("Error getting metric value: %v", err)
+			}
+
+			if count != testCase.expected {
+				t.Fatalf("Expected count %d and got %d", testCase.expected, count)
+			}
+		})
 	}
 }

@@ -7,7 +7,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"strconv"
+	"strings"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -115,11 +117,10 @@ func (s *lokiScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 }
 
 func (s *lokiScaler) ExecuteLokiQuery(ctx context.Context) (float64, error) {
-	u, err := url.ParseRequestURI(s.metadata.ServerAddress)
+	u, err := getServerAddress(&s.metadata)
 	if err != nil {
 		return -1, err
 	}
-	u.Path = "/loki/api/v1/query"
 	u.RawQuery = url.Values{"query": []string{s.metadata.Query}}.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
@@ -148,13 +149,14 @@ func (s *lokiScaler) ExecuteLokiQuery(ctx context.Context) (float64, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return -1, fmt.Errorf("loki query api returned error. status: %d", resp.StatusCode)
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return -1, err
-	}
-
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return -1, fmt.Errorf("loki query api returned error. status: %d response: %s", resp.StatusCode, string(body))
 	}
 
 	var result lokiQueryResult
@@ -216,4 +218,27 @@ func (s *lokiScaler) GetMetricsAndActivity(ctx context.Context, metricName strin
 
 	metric := GenerateMetricInMili(metricName, val)
 	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.ActivationThreshold, nil
+}
+
+func getServerAddress(metadata *lokiMetadata) (url.URL, error) {
+	const lokiPath = "/loki/api/v1/query"
+	u, err := url.ParseRequestURI(metadata.ServerAddress)
+	if err != nil {
+		return url.URL{}, err
+	}
+
+	u.Path = strings.TrimRight(u.Path, "/")
+
+	if strings.HasSuffix(u.Path, lokiPath) {
+		return *u, nil
+	}
+
+	if strings.HasPrefix(lokiPath, u.Path+"/") {
+		remaining := strings.TrimPrefix(lokiPath, u.Path)
+		u.Path = path.Join(u.Path, remaining)
+	} else {
+		u.Path = path.Join(u.Path, lokiPath)
+	}
+
+	return *u, nil
 }

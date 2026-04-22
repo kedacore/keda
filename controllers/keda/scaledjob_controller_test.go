@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -154,10 +155,8 @@ var _ = Describe("ScaledJobController", func() {
 
 		// Fix issue 5520
 		It("create scaledjob with empty triggers should be blocked", func() {
-			// Create the ScaledJob without specifying name.
 			jobName := "empty-triggers-sj-name"
 			sjName := "sj-" + jobName
-			// create object already paused
 			sj := &kedav1alpha1.ScaledJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      sjName,
@@ -169,17 +168,23 @@ var _ = Describe("ScaledJobController", func() {
 				},
 			}
 
+			// CRD-level MinItems=1 validation on spec.triggers rejects the
+			// request before it reaches the webhook or controller.
 			err := k8sClient.Create(context.Background(), sj)
-			Expect(err).ToNot(HaveOccurred())
-
-			// wait to check sj's ready condition Not Ready
-			Eventually(func() metav1.ConditionStatus {
-				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: sjName, Namespace: "default"}, sj)
-				if err != nil {
-					return metav1.ConditionUnknown
+			Expect(err).To(HaveOccurred())
+			Expect(apierrors.IsInvalid(err)).To(BeTrue())
+			statusErr, ok := err.(*apierrors.StatusError)
+			Expect(ok).To(BeTrue())
+			Expect(statusErr.ErrStatus.Details).ToNot(BeNil())
+			Expect(statusErr.ErrStatus.Details.Causes).ToNot(BeEmpty())
+			foundTriggersField := false
+			for _, cause := range statusErr.ErrStatus.Details.Causes {
+				if cause.Field == "spec.triggers" {
+					foundTriggersField = true
+					break
 				}
-				return sj.Status.Conditions.GetReadyCondition().Status
-			}).Should(Equal(metav1.ConditionFalse))
+			}
+			Expect(foundTriggersField).To(BeTrue())
 		})
 	})
 })

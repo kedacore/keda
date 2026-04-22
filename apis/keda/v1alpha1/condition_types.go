@@ -50,11 +50,11 @@ const (
 const (
 	// ScaledJobConditionPausedReason defines the default Reason for paused ScaledJob
 	ScaledJobConditionPausedReason = "ScaledJobPaused"
-	// ScaledJobConditionPausedReason defines the default Reason for paused ScaledJob
+	// ScaledJobConditionUnpausedReason defines the default Reason for unpaused ScaledJob
 	ScaledJobConditionUnpausedReason = "ScaledJobUnpaused"
 	// ScaledJobConditionPausedMessage defines the default Message for paused ScaledJob
 	ScaledJobConditionPausedMessage = "ScaledJob is paused"
-	// ScaledJobConditionPausedMessage defines the default Message for paused ScaledJob
+	// ScaledJobConditionUnpausedMessage defines the default Message for unpaused ScaledJob
 	ScaledJobConditionUnpausedMessage = "ScaledJob is unpaused"
 )
 
@@ -150,39 +150,39 @@ func (c *Condition) IsUnknown() bool {
 // SetReadyCondition modifies Ready Condition according to input parameters
 func (c *Conditions) SetReadyCondition(status metav1.ConditionStatus, reason string, message string) {
 	if *c == nil {
-		c = GetInitializedConditions()
+		*c = *GetInitializedConditions()
 	}
-	c.setCondition(ConditionReady, status, reason, message)
+	c.SetCondition(ConditionReady, status, reason, message)
 }
 
 // SetActiveCondition modifies Active Condition according to input parameters
 func (c *Conditions) SetActiveCondition(status metav1.ConditionStatus, reason string, message string) {
 	if *c == nil {
-		c = GetInitializedConditions()
+		*c = *GetInitializedConditions()
 	}
-	c.setCondition(ConditionActive, status, reason, message)
+	c.SetCondition(ConditionActive, status, reason, message)
 }
 
 // SetFallbackCondition modifies Fallback Condition according to input parameters
 func (c *Conditions) SetFallbackCondition(status metav1.ConditionStatus, reason string, message string) {
 	if *c == nil {
-		c = GetInitializedConditions()
+		*c = *GetInitializedConditions()
 	}
-	c.setCondition(ConditionFallback, status, reason, message)
+	c.SetCondition(ConditionFallback, status, reason, message)
 }
 
 // SetPausedCondition modifies Paused Condition according to input parameters
 func (c *Conditions) SetPausedCondition(status metav1.ConditionStatus, reason string, message string) {
 	if *c == nil {
-		c = GetInitializedConditions()
+		*c = *GetInitializedConditions()
 	}
-	c.setCondition(ConditionPaused, status, reason, message)
+	c.SetCondition(ConditionPaused, status, reason, message)
 }
 
 // GetActiveCondition returns Condition of type Active
 func (c *Conditions) GetActiveCondition() Condition {
 	if *c == nil {
-		c = GetInitializedConditions()
+		*c = *GetInitializedConditions()
 	}
 	return c.getCondition(ConditionActive)
 }
@@ -190,7 +190,7 @@ func (c *Conditions) GetActiveCondition() Condition {
 // GetReadyCondition returns Condition of type Ready
 func (c *Conditions) GetReadyCondition() Condition {
 	if *c == nil {
-		c = GetInitializedConditions()
+		*c = *GetInitializedConditions()
 	}
 	return c.getCondition(ConditionReady)
 }
@@ -198,7 +198,7 @@ func (c *Conditions) GetReadyCondition() Condition {
 // GetFallbackCondition returns Condition of type Fallback
 func (c *Conditions) GetFallbackCondition() Condition {
 	if *c == nil {
-		c = GetInitializedConditions()
+		*c = *GetInitializedConditions()
 	}
 	return c.getCondition(ConditionFallback)
 }
@@ -206,7 +206,7 @@ func (c *Conditions) GetFallbackCondition() Condition {
 // GetPausedCondition returns Condition of type Paused
 func (c *Conditions) GetPausedCondition() Condition {
 	if *c == nil {
-		c = GetInitializedConditions()
+		*c = *GetInitializedConditions()
 	}
 	return c.getCondition(ConditionPaused)
 }
@@ -220,12 +220,27 @@ func (c Conditions) getCondition(conditionType ConditionType) Condition {
 	return Condition{}
 }
 
-func (c Conditions) setCondition(conditionType ConditionType, status metav1.ConditionStatus, reason string, message string) {
-	for i := range c {
-		if c[i].Type == conditionType {
-			c[i].Status = status
-			c[i].Reason = reason
-			c[i].Message = message
+func (c *Conditions) SetCondition(conditionType ConditionType, status metav1.ConditionStatus, reason string, message string) {
+	for i := range *c {
+		if (*c)[i].Type == conditionType {
+			(*c)[i].Status = status
+			(*c)[i].Reason = reason
+			(*c)[i].Message = message
+			return
+		}
+	}
+	*c = append(*c, Condition{Type: conditionType, Status: status, Reason: reason, Message: message})
+}
+
+// RemoveCondition removes a condition of the given type from the Conditions slice.
+func (c *Conditions) RemoveCondition(conditionType ConditionType) {
+	for i := range *c {
+		if (*c)[i].Type == conditionType {
+			ret := (*c)[:i]
+			if i+1 < len(*c) {
+				ret = append(ret, (*c)[i+1:]...)
+			}
+			*c = ret
 			break
 		}
 	}

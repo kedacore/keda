@@ -203,7 +203,9 @@ func ParseConfigWithOptions(connString string, options ParseConfigOptions) (*Con
 		case "simple_protocol":
 			defaultQueryExecMode = QueryExecModeSimpleProtocol
 		default:
-			return nil, pgconn.NewParseConfigError(connString, "invalid default_query_exec_mode", err)
+			return nil, pgconn.NewParseConfigError(
+				connString, "invalid default_query_exec_mode", fmt.Errorf("unknown value %q", s),
+			)
 		}
 	}
 
@@ -608,7 +610,7 @@ func (c *Conn) execPrepared(ctx context.Context, sd *pgconn.StatementDescription
 		return pgconn.CommandTag{}, err
 	}
 
-	result := c.pgConn.ExecPrepared(ctx, sd.Name, c.eqb.ParamValues, c.eqb.ParamFormats, c.eqb.ResultFormats).Read()
+	result := c.pgConn.ExecStatement(ctx, sd, c.eqb.ParamValues, c.eqb.ParamFormats, c.eqb.ResultFormats).Read()
 	c.eqb.reset() // Allow c.eqb internal memory to be GC'ed as soon as possible.
 	return result.CommandTag, result.Err
 }
@@ -842,7 +844,7 @@ optionLoop:
 		if !explicitPreparedStatement && mode == QueryExecModeCacheDescribe {
 			rows.resultReader = c.pgConn.ExecParams(ctx, sql, c.eqb.ParamValues, sd.ParamOIDs, c.eqb.ParamFormats, resultFormats)
 		} else {
-			rows.resultReader = c.pgConn.ExecPrepared(ctx, sd.Name, c.eqb.ParamValues, c.eqb.ParamFormats, resultFormats)
+			rows.resultReader = c.pgConn.ExecStatement(ctx, sd, c.eqb.ParamValues, c.eqb.ParamFormats, resultFormats)
 		}
 	} else if mode == QueryExecModeExec {
 		err := c.eqb.Build(c.typeMap, nil, args)
@@ -1192,7 +1194,7 @@ func (c *Conn) sendBatchExtendedWithDescription(ctx context.Context, b *Batch, d
 			for _, sd := range distinctNewQueries {
 				results, err := pipeline.GetResults()
 				if err != nil {
-					return err
+					return newErrPreprocessingBatch("prepare", sd.SQL, err)
 				}
 
 				resultSD, ok := results.(*pgconn.StatementDescription)
@@ -1226,15 +1228,18 @@ func (c *Conn) sendBatchExtendedWithDescription(ctx context.Context, b *Batch, d
 	for _, bi := range b.QueuedQueries {
 		err := c.eqb.Build(c.typeMap, bi.sd, bi.Arguments)
 		if err != nil {
-			// we wrap the error so we the user can understand which query failed inside the batch
-			err = fmt.Errorf("error building query %s: %w", bi.SQL, err)
+			err = newErrPreprocessingBatch("build", bi.SQL, err)
 			return &pipelineBatchResults{ctx: ctx, conn: c, err: err, closed: true}
 		}
 
 		if bi.sd.Name == "" {
 			pipeline.SendQueryParams(bi.sd.SQL, c.eqb.ParamValues, bi.sd.ParamOIDs, c.eqb.ParamFormats, c.eqb.ResultFormats)
 		} else {
-			pipeline.SendQueryPrepared(bi.sd.Name, c.eqb.ParamValues, c.eqb.ParamFormats, c.eqb.ResultFormats)
+			// Copy ResultFormats because SendQueryStatement stores the slice for later use, and eqb.Build reuses the
+			// backing array on the next iteration.
+			resultFormats := make([]int16, len(c.eqb.ResultFormats))
+			copy(resultFormats, c.eqb.ResultFormats)
+			pipeline.SendQueryStatement(bi.sd, c.eqb.ParamValues, c.eqb.ParamFormats, resultFormats)
 		}
 	}
 

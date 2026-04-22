@@ -71,23 +71,17 @@ type (
 	// NOTE: [WorkerDeploymentOptions.UseVersioning] must be set to enable Worker Deployment
 	// Versioning.
 	//
-	// NOTE: Experimental
-	//
 	// Exposed as: [go.temporal.io/sdk/worker.DeploymentOptions]
 	WorkerDeploymentOptions struct {
 		// If set, opts this worker into the Worker Deployment Versioning feature. It will only
 		// operate on workflows it claims to be compatible with. You must set [Version] if this flag
 		// is true.
 		//
-		// NOTE: Experimental
-		//
 		// NOTE: Cannot be enabled at the same time as [WorkerOptions.EnableSessionWorker]
 		UseVersioning bool
 
 		// Assign a Deployment Version identifier to this worker. If [Version] is set
 		// [WorkerOptions.BuildID] will be ignored.
-		//
-		// NOTE: Experimental
 		Version WorkerDeploymentVersion
 
 		// Optional: Provides a default Versioning Behavior to workflows that do not set one with
@@ -97,8 +91,6 @@ type (
 		// NOTE: When the new Deployment-based Worker Versioning feature is on, and
 		// [DefaultVersioningBehavior] is unspecified, workflows that do not set the Versioning
 		// Behavior will fail at registration time.
-		//
-		// NOTE: Experimental
 		DefaultVersioningBehavior VersioningBehavior
 	}
 
@@ -356,8 +348,6 @@ type (
 
 		// Optional: If set it configures Worker Versioning for this worker. See [WorkerDeploymentOptions]
 		// for more.
-		//
-		// NOTE: Experimental
 		DeploymentOptions WorkerDeploymentOptions
 
 		// Optional: If set, use a custom tuner for this worker. See WorkerTuner for more.

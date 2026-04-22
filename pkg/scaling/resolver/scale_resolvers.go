@@ -56,6 +56,7 @@ const (
 	appsGroup             = "apps"
 	deploymentKind        = "Deployment"
 	statefulSetKind       = "StatefulSet"
+	replicaSetKind        = "ReplicaSet"
 )
 
 var (
@@ -93,7 +94,7 @@ func isSecretAccessRestricted(logger logr.Logger) bool {
 // which could be almost any k8s resource (Deployment, StatefulSet, CustomResource...)
 // and for the given resource returns *corev1.PodTemplateSpec and a name of the container
 // which is being used for referencing environment variables
-func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, scalableObject any) (*corev1.PodTemplateSpec, string, error) {
+func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, scalableObject kedav1alpha1.ScalableObject) (*corev1.PodTemplateSpec, string, error) {
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
 		// Try to get a real object instance for better cache usage, but fall back to an Unstructured if needed.
@@ -748,7 +749,26 @@ func GetCurrentReplicas(ctx context.Context, client client.Client, scaleClient s
 			return 0, err
 		}
 		return *statefulSet.Spec.Replicas, nil
+	case targetGVKR.Group == appsGroup && targetGVKR.Kind == replicaSetKind:
+		replicaSet := &appsv1.ReplicaSet{}
+		if err := client.Get(ctx, types.NamespacedName{Name: targetName, Namespace: scaledObject.Namespace}, replicaSet); err != nil {
+			logger.Error(err, "target replicaset doesn't exist")
+			return 0, err
+		}
+		return *replicaSet.Spec.Replicas, nil
 	default:
+		// Try reading from the informer cache via Unstructured to avoid an API call.
+		unstruct := &unstructured.Unstructured{}
+		unstruct.SetGroupVersionKind(targetGVKR.GroupVersionKind())
+		if err := client.Get(ctx, types.NamespacedName{Name: targetName, Namespace: scaledObject.Namespace}, unstruct); err == nil {
+			// the path for scale spec is configurable on the CRD level, although in practice most implementations use "spec.replicas" and "status.replicas" to implement the /scale subresource
+			// there is no convenient way to know the paths without having RBAC to read the CRD, this is only a best effort heuristic to reduce API calls for common implementations
+			replicas, found, fieldErr := unstructured.NestedInt64(unstruct.Object, "spec", "replicas")
+			if fieldErr == nil && found {
+				return int32(replicas), nil
+			}
+		}
+		// Fall back to scale subresource if cache read or field extraction fails.
 		scale, err := scaleClient.Scales(scaledObject.Namespace).Get(ctx, targetGVKR.GroupResource(), targetName, metav1.GetOptions{})
 		if err != nil {
 			logger.Error(err, "error getting scale subresource")

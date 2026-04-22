@@ -195,9 +195,14 @@ func EnableBuiltin(name string) Option {
 
 // WithContext passes context to all functions calls with a context.Context argument.
 func WithContext(name string) Option {
-	return Patch(patcher.WithContext{
-		Name: name,
-	})
+	return func(c *conf.Config) {
+		c.Visitors = append(c.Visitors, patcher.WithContext{
+			Name:      name,
+			Functions: c.Functions,
+			Env:       &c.Env,
+			NtCache:   &c.NtCache,
+		})
+	}
 }
 
 // Timezone sets default timezone for date() and now() builtin functions.

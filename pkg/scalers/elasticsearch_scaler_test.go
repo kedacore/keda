@@ -374,7 +374,7 @@ func TestParseElasticsearchMetadata(t *testing.T) {
 	}
 }
 
-func TestUnsafeSslDefaultValue(t *testing.T) {
+func TestElasticsearchUnsafeSslDefaultValue(t *testing.T) {
 	tc := &parseElasticsearchMetadataTestData{
 		name: "all fields ok",
 		metadata: map[string]string{
@@ -411,7 +411,7 @@ func TestUnsafeSslDefaultValue(t *testing.T) {
 	assert.Equal(t, tc.expectedMetadata, &metadata)
 }
 
-func TestBuildQuery(t *testing.T) {
+func TestElasticsearchBuildQuery(t *testing.T) {
 	var testCases = []paramsTestData{
 		{
 			name: "no params",
@@ -536,7 +536,7 @@ func TestElasticsearchGetMetricSpecForScaling(t *testing.T) {
 	}
 }
 
-func TestIgnoreNullValues(t *testing.T) {
+func TestElasticsearchIgnoreNullValues(t *testing.T) {
 	// Test getValueFromSearch function
 	t.Run("getValueFromSearch handles null values based on ignoreNullValues", func(t *testing.T) {
 		jsonWithNull := []byte(`{
@@ -577,5 +577,51 @@ func TestIgnoreNullValues(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.True(t, metadata.IgnoreNullValues)
+	})
+
+	t.Run("getValueFromSearch returns null error on authorization failure response body", func(t *testing.T) {
+		// Authorization failure results in a response without hits, leading to a Null valueLocation.
+		// The actual HTTP status check (401/403) is handled in getQueryResult via checkHTTPStatus.
+		jsonAuthError := []byte(`{
+			"error": {
+				"type": "security_exception",
+				"reason": "unauthorized"
+			},
+			"status": 403
+		}`)
+
+		_, err := getValueFromSearch(jsonAuthError, "hits.total.value", false)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "valueLocation must point to value of type number but got: 'Null'")
+	})
+}
+
+func TestElasticsearchCheckHTTPStatus(t *testing.T) {
+	scaler := &elasticsearchScaler{}
+
+	t.Run("returns clear error on HTTP 401", func(t *testing.T) {
+		err := scaler.checkHTTPStatus(401)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "authentication failed")
+		assert.Contains(t, err.Error(), "HTTP 401")
+		assert.Contains(t, err.Error(), "check username and password")
+	})
+
+	t.Run("returns clear error on HTTP 403", func(t *testing.T) {
+		err := scaler.checkHTTPStatus(403)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "authorization failed")
+		assert.Contains(t, err.Error(), "HTTP 403")
+		assert.Contains(t, err.Error(), "insufficient permissions")
+	})
+
+	t.Run("returns nil for HTTP 200", func(t *testing.T) {
+		err := scaler.checkHTTPStatus(200)
+		assert.NoError(t, err)
+	})
+
+	t.Run("returns nil for other status codes", func(t *testing.T) {
+		err := scaler.checkHTTPStatus(404)
+		assert.NoError(t, err)
 	})
 }
