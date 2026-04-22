@@ -288,10 +288,8 @@ func main() {
 		return
 	}
 
-	err = kedautil.ConfigureMaxProcs(setupLog)
-	if err != nil {
-		setupLog.Error(err, "failed to set max procs")
-		return
+	if err := kedautil.ConfigureMaxProcs(setupLog); err != nil {
+		setupLog.Info("failed to set max procs, using default GOMAXPROCS", "error", err)
 	}
 
 	kedaProvider, err := cmd.makeProvider(ctx)
