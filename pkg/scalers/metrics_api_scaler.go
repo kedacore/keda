@@ -101,7 +101,7 @@ func NewMetricsAPIScaler(config *scalersconfig.ScalerConfig, kubeClient client.C
 		if err != nil {
 			return nil, err
 		}
-		httpClient.Transport = kedautil.CreateRTWithTLSConfig(tlsConfig)
+		httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
 	}
 
 	return &metricsAPIScaler{

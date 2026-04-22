@@ -55,7 +55,7 @@ func TryAndGetAzureManagedPrometheusHTTPRoundTripper(logger logr.Logger, podIden
 			return nil, err
 		}
 
-		transport := util.CreateRT(false)
+		transport := util.CreateHTTPTransport(false)
 		rt := &azureManagedPrometheusHTTPRoundTripper{
 			next:              transport,
 			chainedCredential: chainedCred,

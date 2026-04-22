@@ -165,7 +165,7 @@ func NewPulsarScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 			if err != nil {
 				return nil, err
 			}
-			client.Transport = kedautil.CreateRTWithTLSConfig(tlsConfig)
+			client.Transport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
 		}
 
 		if pulsarMetadata.PulsarAuth.EnabledBearerAuth() || pulsarMetadata.PulsarAuth.EnabledBasicAuth() {

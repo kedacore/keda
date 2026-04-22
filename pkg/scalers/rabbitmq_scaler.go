@@ -298,7 +298,7 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		if tlsErr != nil {
 			return nil, tlsErr
 		}
-		s.httpClient.Transport = kedautil.CreateRTWithTLSConfig(tlsConfig)
+		s.httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
 	}
 
 	if meta.Protocol == amqpProtocol {
