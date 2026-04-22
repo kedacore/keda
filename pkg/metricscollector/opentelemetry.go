@@ -226,7 +226,7 @@ func initMeters() {
 
 	otHTTPClientRequestsCounter, err = meter.Int64Counter(
 		"keda.scaler.http.requests.count",
-		api.WithDescription("Total number of outbound HTTP requests issued during scaler metric collection, labeled by status class."),
+		api.WithDescription("Total number of outbound HTTP requests issued during scaler metric collection, labeled by HTTP status code."),
 	)
 	if err != nil {
 		otLog.Error(err, msg)

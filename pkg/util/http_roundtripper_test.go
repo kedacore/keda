@@ -92,8 +92,8 @@ func TestInstrumentedRoundTripper_NilNextUsesDefault(t *testing.T) {
 }
 
 func TestInstrumentedRoundTripper_ScalerContextKey_Missing(t *testing.T) {
-	// When ScalerContextKey is absent the RoundTripper should not panic and
-	// should complete normally — "unknown" is used as the scaler label value.
+	// When one or more of the five required context keys are absent, the
+	// RoundTripper should not panic, complete normally, and skip metric recording.
 	rt := NewInstrumentedRoundTripper(&mockRoundTripper{resp: fakeResponse(200)})
 
 	resp, err := rt.RoundTrip(newRequest(context.Background()))
@@ -103,12 +103,17 @@ func TestInstrumentedRoundTripper_ScalerContextKey_Missing(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode)
 }
 
-func TestInstrumentedRoundTripper_ScalerContextKey(t *testing.T) {
-	// Requests with ScalerContextKey set should not panic or error — the key
-	// is read inside RoundTrip and forwarded to the metrics collector.
+func TestInstrumentedRoundTripper_AllContextKeys(t *testing.T) {
+	// When all five required context keys are present the RoundTripper should
+	// complete normally and forward the request to the underlying transport.
 	rt := NewInstrumentedRoundTripper(&mockRoundTripper{resp: fakeResponse(200)})
 
-	ctx := context.WithValue(context.Background(), ScalerContextKey, "prometheus")
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, ScalerContextKey, "prometheus")
+	ctx = context.WithValue(ctx, TriggerNameContextKey, "my-trigger")
+	ctx = context.WithValue(ctx, MetricNameContextKey, "my-metric")
+	ctx = context.WithValue(ctx, NamespaceContextKey, "default")
+	ctx = context.WithValue(ctx, ScaledResourceContextKey, "my-so")
 	resp, err := rt.RoundTrip(newRequest(ctx))
 
 	require.NoError(t, err)
@@ -122,8 +127,8 @@ func TestCreateHTTPClient_TransportIsInstrumented(t *testing.T) {
 	assert.True(t, ok, "expected CreateHTTPClient to wrap transport with InstrumentedRoundTripper")
 }
 
-func TestCreateHTTPTransportWithTLSConfig_IsInstrumented(t *testing.T) {
-	rt := CreateHTTPTransportWithTLSConfig(nil)
+func TestCreateRTWithTLSConfig_IsInstrumented(t *testing.T) {
+	rt := CreateRTWithTLSConfig(nil)
 	_, ok := rt.(*InstrumentedRoundTripper)
-	assert.True(t, ok, "expected CreateHTTPTransportWithTLSConfig to return an InstrumentedRoundTripper")
+	assert.True(t, ok, "expected CreateRTWithTLSConfig to return an InstrumentedRoundTripper")
 }
