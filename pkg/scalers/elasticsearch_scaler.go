@@ -130,7 +130,7 @@ func newElasticsearchClient(meta elasticsearchMetadata, logger logr.Logger) (*el
 		}
 	}
 
-	config.Transport = util.CreateRT(meta.UnsafeSsl)
+	config.Transport = util.CreateHTTPTransport(meta.UnsafeSsl)
 	esClient, err := elasticsearch.NewClient(config)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Found error when creating client: %s", err))

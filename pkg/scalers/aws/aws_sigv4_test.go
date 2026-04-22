@@ -36,7 +36,7 @@ import (
 )
 
 func TestSigV4RoundTripper(t *testing.T) {
-	transport := util.CreateRT(false)
+	transport := util.CreateHTTPTransport(false)
 
 	cli := &http.Client{Transport: transport}
 

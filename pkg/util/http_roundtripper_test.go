@@ -127,8 +127,8 @@ func TestCreateHTTPClient_TransportIsInstrumented(t *testing.T) {
 	assert.True(t, ok, "expected CreateHTTPClient to wrap transport with InstrumentedRoundTripper")
 }
 
-func TestCreateRTWithTLSConfig_IsInstrumented(t *testing.T) {
-	rt := CreateRTWithTLSConfig(nil)
+func TestCreateHTTPTransportWithTLSConfig_IsInstrumented(t *testing.T) {
+	rt := CreateHTTPTransportWithTLSConfig(nil)
 	_, ok := rt.(*InstrumentedRoundTripper)
-	assert.True(t, ok, "expected CreateRTWithTLSConfig to return an InstrumentedRoundTripper")
+	assert.True(t, ok, "expected CreateHTTPTransportWithTLSConfig to return an InstrumentedRoundTripper")
 }
