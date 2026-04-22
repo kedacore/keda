@@ -101,7 +101,7 @@ func NewSigV4RoundTripper(config *scalersconfig.ScalerConfig, awsRegion string) 
 	client := amp.NewFromConfig(*awsCfg, func(_ *amp.Options) {})
 	rt := &roundTripper{
 		client: client,
-		next:   httputils.CreateHTTPTransport(false),
+		next:   httputils.CreateRT(false),
 	}
 
 	return rt, nil
