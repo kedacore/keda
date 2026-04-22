@@ -3737,6 +3737,7 @@ scalers:
         - name: buildId
           type: string
           optional: true
+          deprecatedAnnounce: The 'buildId' setting is deprecated because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead
           metadataVariableReadable: true
           envVariableReadable: true
         - name: workerDeploymentName
@@ -3752,10 +3753,12 @@ scalers:
         - name: selectAllActive
           type: string
           default: "false"
+          deprecatedAnnounce: The 'selectAllActive' setting is deprecated because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead
           metadataVariableReadable: true
         - name: selectUnversioned
           type: string
           default: "false"
+          deprecatedAnnounce: The 'selectUnversioned' setting is deprecated because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs - Remove it if your workers are unversioned. If you're migrating to Worker Deployment Versioning use 'workerDeploymentName' and 'workerDeploymentBuildId' instead
           metadataVariableReadable: true
         - name: apiKey
           type: string
