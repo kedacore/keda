@@ -43,6 +43,7 @@ var (
 	postgreSQLDatabase         = "test_db"
 	postgreSQLConnectionString = fmt.Sprintf("postgresql://%s:%s@postgresql.%s.svc.cluster.local:5432/%s?sslmode=disable",
 		postgreSQLUsername, postgreSQLPassword, testNamespace, postgreSQLDatabase)
+	vaultTokenSecretName                   = fmt.Sprintf("%s-vault-token", testName)
 	prometheusServerName                   = fmt.Sprintf("%s-prom-server", testName)
 	minReplicaCount                        = 0
 	maxReplicaCount                        = 1
@@ -57,6 +58,7 @@ type templateData struct {
 	ScaledObjectName                       string
 	TriggerAuthenticationName              string
 	VaultSecretPath                        string
+	VaultTokenSecretName                   string
 	VaultPromDomain                        string
 	SecretName                             string
 	HashiCorpAuthentication                string
@@ -125,6 +127,17 @@ data:
   postgresql_conn_str: {{.PostgreSQLConnectionStringBase64}}
 `
 
+	vaultTokenSecretTemplate = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.VaultTokenSecretName}}
+  namespace: {{.TestNamespace}}
+type: Opaque
+stringData:
+  token: "{{.HashiCorpToken}}"
+`
+
 	triggerAuthenticationTemplate = `
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
@@ -137,9 +150,18 @@ spec:
     authentication: {{.HashiCorpAuthentication}}
     role: {{.VaultRole}}
     mount: kubernetes
+{{- if or (eq .HashiCorpAuthentication "token") .VaultServiceAccountName }}
     credential:
-      token: {{.HashiCorpToken}}
+{{- if eq .HashiCorpAuthentication "token" }}
+      tokenFrom:
+        secretKeyRef:
+          name: {{.VaultTokenSecretName}}
+          key: token
+{{- end }}
+{{- if .VaultServiceAccountName }}
       serviceAccountName: {{.VaultServiceAccountName}}
+{{- end }}
+{{- end }}
     secrets:
     - parameter: connection
       key: connectionString
@@ -350,8 +372,14 @@ spec:
     role: keda
     mount: kubernetes
     credential:
-      token: {{.HashiCorpToken}}
+{{- if eq .HashiCorpAuthentication "token" }}
+      tokenFrom:
+        secretKeyRef:
+          name: {{.VaultTokenSecretName}}
+          key: token
+{{- else }}
       serviceAccount: /var/run/secrets/kubernetes.io/serviceaccount/token
+{{- end }}
     secrets:
       - key: "ca_chain"
         parameter: "ca"
@@ -723,6 +751,7 @@ var data = templateData{
 	MaxReplicaCount:                        maxReplicaCount,
 	TriggerAuthenticationName:              triggerAuthenticationName,
 	SecretName:                             secretName,
+	VaultTokenSecretName:                   vaultTokenSecretName,
 	PostgreSQLUsername:                     postgreSQLUsername,
 	PostgreSQLPassword:                     postgreSQLPassword,
 	PostgreSQLDatabase:                     postgreSQLDatabase,
@@ -746,6 +775,7 @@ func getPostgreSQLTemplateData() (templateData, []Template) {
 
 func getPrometheusTemplateData() (templateData, []Template) {
 	return data, []Template{
+		{Name: "vaultTokenSecretTemplate", Config: vaultTokenSecretTemplate},
 		{Name: "triggerAuthenticationTemplate", Config: prometheusTriggerAuthenticationTemplate},
 		{Name: "deploymentTemplate", Config: prometheusDeploymentTemplate},
 		{Name: "monitoredAppDeploymentTemplate", Config: monitoredAppDeploymentTemplate},
@@ -757,6 +787,7 @@ func getPrometheusTemplateData() (templateData, []Template) {
 func getTemplateData() (templateData, []Template) {
 	return data, []Template{
 		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "vaultTokenSecretTemplate", Config: vaultTokenSecretTemplate},
 		{Name: "deploymentTemplate", Config: deploymentTemplate},
 		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
 		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
