@@ -2,7 +2,11 @@ package scalers
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
@@ -166,4 +170,68 @@ func TestOpenstackMetricAuthenticationInvalidAuthMetadata(t *testing.T) {
 			assert.NotNil(t, err)
 		})
 	}
+}
+
+func TestOpenstackMetricReadUsesPastTimeWindow(t *testing.T) {
+	t.Helper()
+
+	var recordedStart time.Time
+	metricID := "003bb589-166d-439d-8c31-cbf098d863de"
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		switch request.Method {
+		case http.MethodPost:
+			writer.Header().Set("X-Subject-Token", "test-token")
+			writer.WriteHeader(http.StatusCreated)
+		case http.MethodHead:
+			writer.WriteHeader(http.StatusNoContent)
+		case http.MethodGet:
+			assert.Equal(t, fmt.Sprintf("/v1/metric/%s/measures", metricID), request.URL.Path)
+			assert.Equal(t, "300", request.URL.Query().Get("granularity"))
+			assert.Equal(t, "mean", request.URL.Query().Get("aggregation"))
+
+			start := request.URL.Query().Get("start")
+			parsedStart, err := time.Parse("2006-01-02T15:04:05", start)
+			if assert.NoError(t, err) {
+				recordedStart = parsedStart
+			}
+
+			writer.WriteHeader(http.StatusOK)
+			_, err = writer.Write([]byte(`[["2026-04-23T00:00:00+00:00",300.0,10.0]]`))
+			assert.NoError(t, err)
+		default:
+			writer.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	}))
+	defer server.Close()
+
+	keystoneAuth, err := openstack.NewPasswordAuth(server.URL, "user-id", "password", "project-id", 30)
+	assert.NoError(t, err)
+
+	metricClient, err := keystoneAuth.RequestClient(context.Background())
+	assert.NoError(t, err)
+
+	scaler := openstackMetricScaler{
+		metadata: &openstackMetricMetadata{
+			MetricsURL:        server.URL + "/v1/metric",
+			MetricID:          metricID,
+			AggregationMethod: "mean",
+			Granularity:       300,
+		},
+		metricClient: metricClient,
+		logger:       logr.Discard(),
+	}
+
+	beforeCall := time.Now().UTC()
+	value, err := scaler.readOpenstackMetrics(context.Background())
+	afterCall := time.Now().UTC()
+
+	assert.NoError(t, err)
+	assert.Equal(t, 10.0, value)
+	assert.False(t, recordedStart.IsZero())
+	assert.True(t, recordedStart.Before(afterCall), "expected start to be in the past, got %s", recordedStart)
+
+	expectedEarliest := beforeCall.Add(-5 * time.Minute)
+	expectedLatest := afterCall.Add(-3 * time.Minute)
+	assert.False(t, recordedStart.Before(expectedEarliest), "expected start within previous granularity bucket, got %s", recordedStart)
+	assert.False(t, recordedStart.After(expectedLatest), "expected start within previous granularity bucket, got %s", recordedStart)
 }

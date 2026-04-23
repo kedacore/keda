@@ -235,7 +235,7 @@ func (s *openstackMetricScaler) readOpenstackMetrics(ctx context.Context) (float
 	var currTimeWithWindow string
 
 	if granularity > 0 {
-		currTimeWithWindow = time.Now().Add(time.Minute * time.Duration(granularity)).Format(time.RFC3339)
+		currTimeWithWindow = time.Now().Add(-time.Minute * time.Duration(granularity)).Format(time.RFC3339)
 	} else {
 		currTimeWithWindow = time.Now().Format(time.RFC3339)
 	}
