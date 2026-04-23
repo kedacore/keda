@@ -173,8 +173,6 @@ func TestOpenstackMetricAuthenticationInvalidAuthMetadata(t *testing.T) {
 }
 
 func TestOpenstackMetricReadUsesPastTimeWindow(t *testing.T) {
-	t.Helper()
-
 	var recordedStart time.Time
 	metricID := "003bb589-166d-439d-8c31-cbf098d863de"
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
