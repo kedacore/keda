@@ -29,9 +29,9 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 var log = logf.Log.WithName("scalers_cache")
@@ -150,15 +150,6 @@ func (c *ScalersCache) GetMetricSpecForScalingForScaler(ctx context.Context, ind
 	return metricSpecs, err
 }
 
-func buildScalerRequestCtx(ctx context.Context, sb ScalerBuilder, metricName string) context.Context {
-	requestCtx := context.WithValue(ctx, kedautil.ScalerContextKey, sb.ScalerConfig.TriggerType)
-	requestCtx = context.WithValue(requestCtx, kedautil.TriggerNameContextKey, sb.ScalerConfig.TriggerName)
-	requestCtx = context.WithValue(requestCtx, kedautil.MetricNameContextKey, metricName)
-	requestCtx = context.WithValue(requestCtx, kedautil.NamespaceContextKey, sb.ScalerConfig.ScalableObjectNamespace)
-	requestCtx = context.WithValue(requestCtx, kedautil.ScaledResourceContextKey, sb.ScalerConfig.ScalableObjectName)
-	return requestCtx
-}
-
 // GetMetricsAndActivityForScaler returns metric value, activity and latency for a scaler identified by the metric name
 // and by the input index (from the list of scalers in this ScaledObject)
 func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index int, metricName string) ([]external_metrics.ExternalMetricValue, bool, time.Duration, error) {
@@ -166,7 +157,7 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 	if err != nil {
 		return nil, false, -1, err
 	}
-	requestCtx := buildScalerRequestCtx(ctx, sb, metricName)
+	requestCtx := metricscollector.BuildScalerRequestCtx(ctx, sb.ScalerConfig, metricName)
 	startTime := time.Now()
 	metric, activity, err := sb.Scaler.GetMetricsAndActivity(requestCtx, metricName)
 	if err == nil {
@@ -181,7 +172,7 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 	if err != nil {
 		return nil, false, -1, err
 	}
-	requestCtx = buildScalerRequestCtx(ctx, newSb, metricName)
+	requestCtx = metricscollector.BuildScalerRequestCtx(ctx, newSb.ScalerConfig, metricName)
 	startTime = time.Now()
 	metric, activity, err = ns.GetMetricsAndActivity(requestCtx, metricName)
 	return metric, activity, time.Since(startTime), err
