@@ -114,11 +114,16 @@ func newOpensearchAPIClientWithTLS(meta opensearchMetadata, logger logr.Logger) 
 }
 
 func newOpensearchAPIClientWithBasicAuth(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, error) {
+	tlsConfig, err := util.NewTLSConfig("", "", meta.CACert, meta.UnsafeSsl)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create TLS config: %w", err)
+	}
+
 	return newOpensearchAPIClientFromConfig(opensearch.Config{
 		Addresses: meta.Addresses,
 		Username:  meta.Username,
 		Password:  meta.Password,
-		Transport: util.CreateHTTPTransport(meta.UnsafeSsl),
+		Transport: util.CreateHTTPTransportWithTLSConfig(tlsConfig),
 	}, logger)
 }
 
