@@ -67,6 +67,142 @@ spec:
           spec:
             description: TriggerAuthenticationSpec defines the various ways to authenticate
             properties:
+              awsParameterStore:
+                description: AwsParameterStore is used to authenticate using AWS Systems
+                  Manager Parameter Store
+                properties:
+                  credentials:
+                    properties:
+                      accessKey:
+                        properties:
+                          valueFrom:
+                            properties:
+                              secretKeyRef:
+                                properties:
+                                  key:
+                                    type: string
+                                  name:
+                                    type: string
+                                required:
+                                - key
+                                - name
+                                type: object
+                            required:
+                            - secretKeyRef
+                            type: object
+                        required:
+                        - valueFrom
+                        type: object
+                      accessSecretKey:
+                        properties:
+                          valueFrom:
+                            properties:
+                              secretKeyRef:
+                                properties:
+                                  key:
+                                    type: string
+                                  name:
+                                    type: string
+                                required:
+                                - key
+                                - name
+                                type: object
+                            required:
+                            - secretKeyRef
+                            type: object
+                        required:
+                        - valueFrom
+                        type: object
+                      accessToken:
+                        properties:
+                          valueFrom:
+                            properties:
+                              secretKeyRef:
+                                properties:
+                                  key:
+                                    type: string
+                                  name:
+                                    type: string
+                                required:
+                                - key
+                                - name
+                                type: object
+                            required:
+                            - secretKeyRef
+                            type: object
+                        required:
+                        - valueFrom
+                        type: object
+                    required:
+                    - accessKey
+                    - accessSecretKey
+                    type: object
+                  parameters:
+                    items:
+                      description: |-
+                        WithDecryption defaults to true if not specified.
+                        For SecureString parameters, this must be true to retrieve the plaintext value.
+                        Set to false for SecureString parameters to retrieve the encrypted value.
+                        For String parameters, this setting has no effect.
+                      properties:
+                        name:
+                          type: string
+                        parameter:
+                          type: string
+                        withDecryption:
+                          type: boolean
+                      required:
+                      - name
+                      - parameter
+                      type: object
+                    minItems: 1
+                    type: array
+                  podIdentity:
+                    description: |-
+                      AuthPodIdentity allows users to select the platform native identity
+                      mechanism
+                    properties:
+                      identityAuthorityHost:
+                        description: Set identityAuthorityHost to override the default
+                          Azure authority host. If this is set, then the IdentityTenantID
+                          must also be set
+                        type: string
+                      identityId:
+                        type: string
+                      identityOwner:
+                        description: IdentityOwner configures which identity has to
+                          be used during auto discovery, keda or the scaled workload.
+                          Mutually exclusive with roleArn
+                        enum:
+                        - keda
+                        - workload
+                        type: string
+                      identityTenantId:
+                        description: Set identityTenantId to override the default
+                          Azure tenant id. If this is set, then the IdentityID must
+                          also be set
+                        type: string
+                      provider:
+                        description: PodIdentityProvider contains the list of providers
+                        enum:
+                        - azure-workload
+                        - gcp
+                        - aws
+                        - aws-eks
+                        - none
+                        type: string
+                      roleArn:
+                        description: RoleArn sets the AWS RoleArn to be used. Mutually
+                          exclusive with IdentityOwner
+                        type: string
+                    required:
+                    - provider
+                    type: object
+                  region:
+                    type: string
+                required:
+                - parameters
+                type: object
               awsSecretManager:
                 description: AwsSecretManager is used to authenticate using AwsSecretManager
                 properties:

@@ -103,6 +103,9 @@ type TriggerAuthenticationSpec struct {
 	AwsSecretManager *AwsSecretManager `json:"awsSecretManager,omitempty"`
 
 	// +optional
+	AwsParameterStore *AwsParameterStore `json:"awsParameterStore,omitempty"`
+
+	// +optional
 	BoundServiceAccountToken []BoundServiceAccountToken `json:"boundServiceAccountToken,omitempty"`
 }
 
@@ -396,6 +399,40 @@ type AwsSecretManagerSecret struct {
 	VersionStage string `json:"versionStage,omitempty"`
 	// +optional
 	SecretKey string `json:"secretKey,omitempty"`
+}
+
+// AwsParameterStore is used to authenticate using AWS Systems Manager Parameter Store
+type AwsParameterStore struct {
+	// +kubebuilder:validation:MinItems=1
+	Parameters []AwsParameterStoreParameter `json:"parameters"`
+	// +optional
+	Credentials *AwsParameterStoreCredentials `json:"credentials"`
+	// +optional
+	PodIdentity *AuthPodIdentity `json:"podIdentity"`
+	// +optional
+	Region string `json:"region,omitempty"`
+}
+
+type AwsParameterStoreCredentials struct {
+	AccessKey       *AwsParameterStoreValue `json:"accessKey"`
+	AccessSecretKey *AwsParameterStoreValue `json:"accessSecretKey"`
+	// +optional
+	AccessToken *AwsParameterStoreValue `json:"accessToken,omitempty"`
+}
+
+type AwsParameterStoreValue struct {
+	ValueFrom ValueFromSecret `json:"valueFrom"`
+}
+
+// WithDecryption defaults to true if not specified.
+// For SecureString parameters, this must be true to retrieve the plaintext value.
+// Set to false for SecureString parameters to retrieve the encrypted value.
+// For String parameters, this setting has no effect.
+type AwsParameterStoreParameter struct {
+	Parameter string `json:"parameter"`
+	Name      string `json:"name"`
+	// +optional
+	WithDecryption *bool `json:"withDecryption,omitempty"`
 }
 
 type BoundServiceAccountToken struct {

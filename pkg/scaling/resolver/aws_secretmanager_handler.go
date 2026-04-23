@@ -88,40 +88,12 @@ func (ash *AwsSecretManagerHandler) Read(ctx context.Context, logger logr.Logger
 // Initialize sets up the AWS Secret Manager handler by configuring AWS credentials, AWS region, or using pod identity.
 // It initializes the AWS Secret Manager session and metadata.
 func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string, secretsLister corev1listers.SecretLister, podSpec *corev1.PodSpec) error {
-	ash.awsMetadata = awsutils.AuthorizationMetadata{
-		TriggerUniqueKey: fmt.Sprintf("aws-secret-manager-%s", triggerNamespace),
+	metadata, err := initializeAwsMetadata(ctx, client, logger, triggerNamespace, secretsLister, podSpec,
+		"aws-secret-manager", ash.secretManager.Region, ash.secretManager.PodIdentity, ash.secretManager.Credentials)
+	if err != nil {
+		return err
 	}
-	awsRegion := ""
-	if ash.secretManager.Region != "" {
-		awsRegion = ash.secretManager.Region
-	}
-	ash.awsMetadata.AwsRegion = awsRegion
-	podIdentity := ash.secretManager.PodIdentity
-	if podIdentity == nil {
-		podIdentity = &kedav1alpha1.AuthPodIdentity{}
-	}
-
-	switch podIdentity.Provider {
-	case "", kedav1alpha1.PodIdentityProviderNone:
-		ash.awsMetadata.AwsAccessKeyID = resolveAuthSecret(ctx, client, logger, ash.secretManager.Credentials.AccessKey.ValueFrom.SecretKeyRef.Name, triggerNamespace, ash.secretManager.Credentials.AccessKey.ValueFrom.SecretKeyRef.Key, secretsLister)
-		ash.awsMetadata.AwsSecretAccessKey = resolveAuthSecret(ctx, client, logger, ash.secretManager.Credentials.AccessSecretKey.ValueFrom.SecretKeyRef.Name, triggerNamespace, ash.secretManager.Credentials.AccessSecretKey.ValueFrom.SecretKeyRef.Key, secretsLister)
-		if ash.awsMetadata.AwsAccessKeyID == "" || ash.awsMetadata.AwsSecretAccessKey == "" {
-			return fmt.Errorf("AccessKeyID and AccessSecretKey are expected when not using a pod identity provider")
-		}
-	case kedav1alpha1.PodIdentityProviderAws:
-		ash.awsMetadata.UsingPodIdentity = true
-		if ash.secretManager.PodIdentity.IsWorkloadIdentityOwner() {
-			awsRoleArn, err := resolveServiceAccountAnnotation(ctx, client, podSpec.ServiceAccountName, triggerNamespace, kedav1alpha1.PodIdentityAnnotationEKS, true)
-			if err != nil {
-				return fmt.Errorf("error resolving role arn for aws: %w", err)
-			}
-			ash.awsMetadata.AwsRoleArn = awsRoleArn
-		} else if ash.secretManager.PodIdentity.RoleArn != nil {
-			ash.awsMetadata.AwsRoleArn = *ash.secretManager.PodIdentity.RoleArn
-		}
-	default:
-		return fmt.Errorf("pod identity provider %s not supported", podIdentity.Provider)
-	}
+	ash.awsMetadata = metadata
 
 	config, err := awsutils.GetAwsConfig(ctx, ash.awsMetadata)
 	if err != nil {
