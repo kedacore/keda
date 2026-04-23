@@ -238,8 +238,8 @@ func main() {
 	cmd.Flags().StringVar(&metricsServiceAddr, "metrics-service-address", generateDefaultMetricsServiceAddr(), "The address of the GRPC Metrics Service Server.")
 	cmd.Flags().StringVar(&metricsServiceGRPCAuthority, "metrics-service-grpc-authority", "", "Host Authority override for the Metrics Service if the Host Authority is not the same as the address used for the GRPC Metrics Service Server.")
 	cmd.Flags().StringVar(&profilingAddr, "profiling-bind-address", "", "The address the profiling would be exposed on.")
-	cmd.Flags().Float32Var(&adapterClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
-	cmd.Flags().IntVar(&adapterClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
+	cmd.Flags().Float32Var(&adapterClientRequestQPS, "kube-api-qps", 50.0, "Set the QPS rate for throttling requests sent to the apiserver")
+	cmd.Flags().IntVar(&adapterClientRequestBurst, "kube-api-burst", 100, "Set the burst for throttling requests sent to the apiserver")
 	cmd.Flags().BoolVar(&disableCompression, "disable-compression", true, "Disable response compression for k8s restAPI in client-go. ")
 
 	// legacy klogr flags handled for backwards compatibility. Default set to -1 so it doesn't override values set via zap options

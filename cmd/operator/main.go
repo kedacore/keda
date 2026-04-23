@@ -100,8 +100,8 @@ func main() {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	pflag.StringVar(&leaderElectionID, "leader-election-id", "operator.keda.sh", "Leader election ID for the controller manager. Defaults to operator.keda.sh")
-	pflag.Float32Var(&adapterClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
-	pflag.IntVar(&adapterClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
+	pflag.Float32Var(&adapterClientRequestQPS, "kube-api-qps", 50.0, "Set the QPS rate for throttling requests sent to the apiserver")
+	pflag.IntVar(&adapterClientRequestBurst, "kube-api-burst", 100, "Set the burst for throttling requests sent to the apiserver")
 	pflag.BoolVar(&disableCompression, "disable-compression", true, "Disable response compression for k8s restAPI in client-go. ")
 	pflag.StringVar(&certSecretName, "cert-secret-name", "kedaorg-certs", "KEDA certificates secret name. Defaults to kedaorg-certs")
 	pflag.StringVar(&certDir, "cert-dir", "/certs", "Webhook certificates dir to use. Defaults to /certs")
