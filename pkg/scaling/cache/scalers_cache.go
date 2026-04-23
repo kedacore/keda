@@ -23,8 +23,6 @@ import (
 	"time"
 
 	"github.com/expr-lang/expr/vm"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel/attribute"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -34,7 +32,6 @@ import (
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 var log = logf.Log.WithName("scalers_cache")
@@ -153,30 +150,6 @@ func (c *ScalersCache) GetMetricSpecForScalingForScaler(ctx context.Context, ind
 	return metricSpecs, err
 }
 
-func buildScalerRequestCtx(ctx context.Context, sb ScalerBuilder, metricName string) context.Context {
-	requestCtx := context.WithValue(ctx, kedautil.ScalerContextKey, sb.ScalerConfig.TriggerType)
-	requestCtx = context.WithValue(requestCtx, kedautil.TriggerNameContextKey, sb.ScalerConfig.TriggerName)
-	requestCtx = context.WithValue(requestCtx, kedautil.MetricNameContextKey, metricName)
-	requestCtx = context.WithValue(requestCtx, kedautil.NamespaceContextKey, sb.ScalerConfig.ScalableObjectNamespace)
-	requestCtx = context.WithValue(requestCtx, kedautil.ScaledResourceContextKey, sb.ScalerConfig.ScalableObjectName)
-
-	if !metricscollector.HTTPClientOpenTelemetryMetricsEnabled() {
-		return requestCtx
-	}
-
-	labeler := &otelhttp.Labeler{}
-	labeler.Add(
-		attribute.String("scaler", sb.ScalerConfig.TriggerType),
-		attribute.String("trigger_name", sb.ScalerConfig.TriggerName),
-		attribute.String("metric_name", metricName),
-		attribute.String("namespace", sb.ScalerConfig.ScalableObjectNamespace),
-		attribute.String("scaled_resource", sb.ScalerConfig.ScalableObjectName),
-	)
-
-	requestCtx = otelhttp.ContextWithLabeler(requestCtx, labeler)
-	return requestCtx
-}
-
 // GetMetricsAndActivityForScaler returns metric value, activity and latency for a scaler identified by the metric name
 // and by the input index (from the list of scalers in this ScaledObject)
 func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index int, metricName string) ([]external_metrics.ExternalMetricValue, bool, time.Duration, error) {
@@ -184,7 +157,7 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 	if err != nil {
 		return nil, false, -1, err
 	}
-	requestCtx := buildScalerRequestCtx(ctx, sb, metricName)
+	requestCtx := metricscollector.BuildScalerRequestCtx(ctx, sb.ScalerConfig, metricName)
 	startTime := time.Now()
 	metric, activity, err := sb.Scaler.GetMetricsAndActivity(requestCtx, metricName)
 	if err == nil {
@@ -199,7 +172,7 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 	if err != nil {
 		return nil, false, -1, err
 	}
-	requestCtx = buildScalerRequestCtx(ctx, newSb, metricName)
+	requestCtx = metricscollector.BuildScalerRequestCtx(ctx, newSb.ScalerConfig, metricName)
 	startTime = time.Now()
 	metric, activity, err = ns.GetMetricsAndActivity(requestCtx, metricName)
 	return metric, activity, time.Since(startTime), err

@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package metricscollector_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -29,14 +30,15 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
-type mockRoundTripper struct {
+type collectorMockRoundTripper struct {
 	resp *http.Response
 	err  error
 }
 
-func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+func (m *collectorMockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	if m.resp != nil && m.resp.Request == nil {
 		m.resp.Request = req
 	}
@@ -94,7 +96,7 @@ func TestInstrumentedRoundTripper_ResponseReturnedUnmodified(t *testing.T) {
 	metricscollector.ConfigureHTTPClientMetricsInstrumentation(false, false)
 
 	expected := fakeResponse(http.StatusAccepted)
-	rt := NewInstrumentedRoundTripper(&mockRoundTripper{resp: expected})
+	rt := metricscollector.NewInstrumentedRoundTripper(&collectorMockRoundTripper{resp: expected})
 
 	got, err := rt.RoundTrip(newRequest(context.Background()))
 
@@ -106,22 +108,21 @@ func TestInstrumentedRoundTripper_ResponseReturnedUnmodified(t *testing.T) {
 func TestInstrumentedRoundTripper_NilNextUsesDefault(t *testing.T) {
 	metricscollector.ConfigureHTTPClientMetricsInstrumentation(false, false)
 
-	rt := NewInstrumentedRoundTripper(nil)
-	_, ok := rt.(*scalerMetricsRoundTripper)
-	require.True(t, ok)
+	rt := metricscollector.NewInstrumentedRoundTripper(nil)
+	assert.Equal(t, "*metricscollector.scalerMetricsRoundTripper", fmt.Sprintf("%T", rt))
 }
 
 func TestInstrumentedRoundTripper_WithScalerContextRecordsPrometheusMetrics(t *testing.T) {
 	metricscollector.ConfigureHTTPClientMetricsInstrumentation(true, false)
 
-	rt := NewInstrumentedRoundTripper(&mockRoundTripper{resp: fakeResponse(http.StatusOK)})
+	rt := metricscollector.NewInstrumentedRoundTripper(&collectorMockRoundTripper{resp: fakeResponse(http.StatusOK)})
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, ScalerContextKey, "prometheus")
-	ctx = context.WithValue(ctx, TriggerNameContextKey, "my-trigger")
-	ctx = context.WithValue(ctx, MetricNameContextKey, "my-metric")
-	ctx = context.WithValue(ctx, NamespaceContextKey, "default")
-	ctx = context.WithValue(ctx, ScaledResourceContextKey, "my-so")
+	ctx = context.WithValue(ctx, metricscollector.ScalerContextKey, "prometheus")
+	ctx = context.WithValue(ctx, metricscollector.TriggerNameContextKey, "my-trigger")
+	ctx = context.WithValue(ctx, metricscollector.MetricNameContextKey, "my-metric")
+	ctx = context.WithValue(ctx, metricscollector.NamespaceContextKey, "default")
+	ctx = context.WithValue(ctx, metricscollector.ScaledResourceContextKey, "my-so")
 
 	resp, err := rt.RoundTrip(newRequest(ctx))
 	require.NoError(t, err)
@@ -153,15 +154,13 @@ func TestInstrumentedRoundTripper_WithScalerContextRecordsPrometheusMetrics(t *t
 func TestCreateHTTPClient_TransportIsInstrumented(t *testing.T) {
 	metricscollector.ConfigureHTTPClientMetricsInstrumentation(false, false)
 
-	client := CreateHTTPClient(0, false)
-	_, ok := client.Transport.(*scalerMetricsRoundTripper)
-	assert.True(t, ok, "expected CreateHTTPClient to wrap transport with scalerMetricsRoundTripper")
+	client := kedautil.CreateHTTPClient(0, false)
+	assert.Equal(t, "*metricscollector.scalerMetricsRoundTripper", fmt.Sprintf("%T", client.Transport))
 }
 
 func TestCreateRTWithTLSConfig_IsInstrumented(t *testing.T) {
 	metricscollector.ConfigureHTTPClientMetricsInstrumentation(false, false)
 
-	rt := CreateRTWithTLSConfig(nil)
-	_, ok := rt.(*scalerMetricsRoundTripper)
-	assert.True(t, ok, "expected CreateRTWithTLSConfig to return scalerMetricsRoundTripper")
+	rt := kedautil.CreateRTWithTLSConfig(nil)
+	assert.Equal(t, "*metricscollector.scalerMetricsRoundTripper", fmt.Sprintf("%T", rt))
 }

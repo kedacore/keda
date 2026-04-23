@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package metricscollector
 
 import (
 	"context"
@@ -22,8 +22,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-
-	"github.com/kedacore/keda/v2/pkg/metricscollector"
 )
 
 // contextKey is an unexported type for context keys defined in this package,
@@ -63,8 +61,8 @@ func NewInstrumentedRoundTripper(next http.RoundTripper) http.RoundTripper {
 		next = http.DefaultTransport
 	}
 
-	enablePrometheusMetrics := metricscollector.HTTPClientPrometheusMetricsEnabled()
-	enableOpenTelemetryMetrics := metricscollector.HTTPClientOpenTelemetryMetricsEnabled()
+	enablePrometheusMetrics := HTTPClientPrometheusMetricsEnabled()
+	enableOpenTelemetryMetrics := HTTPClientOpenTelemetryMetricsEnabled()
 
 	var instrumented http.RoundTripper = next
 
@@ -82,12 +80,12 @@ func NewInstrumentedRoundTripper(next http.RoundTripper) http.RoundTripper {
 		}
 
 		instrumented = promhttp.InstrumentRoundTripperCounter(
-			metricscollector.HTTPClientRequestsCollector(),
+			HTTPClientRequestsCollector(),
 			instrumented,
 			counterOpts...,
 		)
 		instrumented = promhttp.InstrumentRoundTripperDuration(
-			metricscollector.HTTPClientRequestDurationCollector(),
+			HTTPClientRequestDurationCollector(),
 			instrumented,
 			durationOpts...,
 		)

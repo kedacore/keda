@@ -15,7 +15,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 var (
@@ -143,11 +142,11 @@ func TestHTTPClientDurationMetric(t *testing.T) {
 	}()
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, kedautil.ScalerContextKey, "prometheus")
-	ctx = context.WithValue(ctx, kedautil.TriggerNameContextKey, "my-trigger")
-	ctx = context.WithValue(ctx, kedautil.MetricNameContextKey, "my-metric")
-	ctx = context.WithValue(ctx, kedautil.NamespaceContextKey, "default")
-	ctx = context.WithValue(ctx, kedautil.ScaledResourceContextKey, "my-so")
+	ctx = context.WithValue(ctx, metricscollector.ScalerContextKey, "prometheus")
+	ctx = context.WithValue(ctx, metricscollector.TriggerNameContextKey, "my-trigger")
+	ctx = context.WithValue(ctx, metricscollector.MetricNameContextKey, "my-metric")
+	ctx = context.WithValue(ctx, metricscollector.NamespaceContextKey, "default")
+	ctx = context.WithValue(ctx, metricscollector.ScaledResourceContextKey, "my-so")
 
 	labeler := &otelhttp.Labeler{}
 	labeler.Add(
@@ -162,7 +161,7 @@ func TestHTTPClientDurationMetric(t *testing.T) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", nil)
 	assert.NoError(t, err)
 
-	rt := kedautil.NewInstrumentedRoundTripper(mockRoundTripper{statusCode: http.StatusOK})
+	rt := metricscollector.NewInstrumentedRoundTripper(mockRoundTripper{statusCode: http.StatusOK})
 	resp, err := rt.RoundTrip(req)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
@@ -212,11 +211,11 @@ func TestHTTPClientDurationMetricDisabled(t *testing.T) {
 	}()
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, kedautil.ScalerContextKey, "prometheus")
-	ctx = context.WithValue(ctx, kedautil.TriggerNameContextKey, "my-trigger")
-	ctx = context.WithValue(ctx, kedautil.MetricNameContextKey, "my-metric")
-	ctx = context.WithValue(ctx, kedautil.NamespaceContextKey, "default")
-	ctx = context.WithValue(ctx, kedautil.ScaledResourceContextKey, "my-so")
+	ctx = context.WithValue(ctx, metricscollector.ScalerContextKey, "prometheus")
+	ctx = context.WithValue(ctx, metricscollector.TriggerNameContextKey, "my-trigger")
+	ctx = context.WithValue(ctx, metricscollector.MetricNameContextKey, "my-metric")
+	ctx = context.WithValue(ctx, metricscollector.NamespaceContextKey, "default")
+	ctx = context.WithValue(ctx, metricscollector.ScaledResourceContextKey, "my-so")
 
 	labeler := &otelhttp.Labeler{}
 	labeler.Add(
@@ -231,7 +230,7 @@ func TestHTTPClientDurationMetricDisabled(t *testing.T) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", nil)
 	assert.NoError(t, err)
 
-	rt := kedautil.NewInstrumentedRoundTripper(mockRoundTripper{statusCode: http.StatusOK})
+	rt := metricscollector.NewInstrumentedRoundTripper(mockRoundTripper{statusCode: http.StatusOK})
 	resp, err := rt.RoundTrip(req)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
