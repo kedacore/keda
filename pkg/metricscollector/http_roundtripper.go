@@ -17,8 +17,11 @@ limitations under the License.
 package metricscollector
 
 import (
+	"context"
 	"net/http"
 	"time"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 // contextKey is an unexported type for context keys defined in this package,
@@ -91,4 +94,15 @@ func (r *InstrumentedRoundTripper) RoundTrip(req *http.Request) (*http.Response,
 	}
 	RecordHTTPClientRequest(duration, resp.StatusCode, false, scaler, triggerName, metricName, namespace, scaledResource)
 	return resp, nil
+}
+
+// BuildScalerRequestCtx attaches scaler metadata used by HTTP client
+// instrumentation to the outbound request context.
+func BuildScalerRequestCtx(ctx context.Context, config scalersconfig.ScalerConfig, metricName string) context.Context {
+	requestCtx := context.WithValue(ctx, ScalerContextKey, config.TriggerType)
+	requestCtx = context.WithValue(requestCtx, TriggerNameContextKey, config.TriggerName)
+	requestCtx = context.WithValue(requestCtx, MetricNameContextKey, metricName)
+	requestCtx = context.WithValue(requestCtx, NamespaceContextKey, config.ScalableObjectNamespace)
+	requestCtx = context.WithValue(requestCtx, ScaledResourceContextKey, config.ScalableObjectName)
+	return requestCtx
 }
