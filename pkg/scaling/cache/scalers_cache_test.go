@@ -23,12 +23,14 @@ import (
 	. "github.com/onsi/gomega"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
-func TestBuildScalerRequestCtx(t *testing.T) {
+func TestBuildScalerRequestCtxWithOtelEnabled(t *testing.T) {
 	RegisterTestingT(t)
+	metricscollector.ConfigureHTTPClientMetricsInstrumentation(false, true)
 
 	sb := ScalerBuilder{
 		ScalerConfig: scalersconfig.ScalerConfig{
@@ -50,6 +52,31 @@ func TestBuildScalerRequestCtx(t *testing.T) {
 	labeler, ok := otelhttp.LabelerFromContext(ctx)
 	Expect(ok).To(BeTrue())
 	Expect(labeler.Get()).To(HaveLen(5))
+}
+
+func TestBuildScalerRequestCtxWithOtelDisabled(t *testing.T) {
+	RegisterTestingT(t)
+	metricscollector.ConfigureHTTPClientMetricsInstrumentation(false, false)
+
+	sb := ScalerBuilder{
+		ScalerConfig: scalersconfig.ScalerConfig{
+			TriggerType:             "prometheus",
+			TriggerName:             "my-trigger",
+			ScalableObjectNamespace: "my-namespace",
+			ScalableObjectName:      "my-scaled-object",
+		},
+	}
+
+	ctx := buildScalerRequestCtx(context.Background(), sb, "my-metric")
+
+	Expect(ctx.Value(kedautil.ScalerContextKey)).To(Equal("prometheus"))
+	Expect(ctx.Value(kedautil.TriggerNameContextKey)).To(Equal("my-trigger"))
+	Expect(ctx.Value(kedautil.MetricNameContextKey)).To(Equal("my-metric"))
+	Expect(ctx.Value(kedautil.NamespaceContextKey)).To(Equal("my-namespace"))
+	Expect(ctx.Value(kedautil.ScaledResourceContextKey)).To(Equal("my-scaled-object"))
+
+	_, ok := otelhttp.LabelerFromContext(ctx)
+	Expect(ok).To(BeFalse())
 }
 
 func TestEmptyScalersCache(t *testing.T) {

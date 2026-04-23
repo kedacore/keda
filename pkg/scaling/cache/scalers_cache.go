@@ -31,6 +31,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -158,6 +159,10 @@ func buildScalerRequestCtx(ctx context.Context, sb ScalerBuilder, metricName str
 	requestCtx = context.WithValue(requestCtx, kedautil.MetricNameContextKey, metricName)
 	requestCtx = context.WithValue(requestCtx, kedautil.NamespaceContextKey, sb.ScalerConfig.ScalableObjectNamespace)
 	requestCtx = context.WithValue(requestCtx, kedautil.ScaledResourceContextKey, sb.ScalerConfig.ScalableObjectName)
+
+	if !metricscollector.HTTPClientOpenTelemetryMetricsEnabled() {
+		return requestCtx
+	}
 
 	labeler := &otelhttp.Labeler{}
 	labeler.Add(
