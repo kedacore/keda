@@ -210,23 +210,23 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, client openstack.Client
 
 func getTemplateData(metricsURL, metricID string) (templateData, []Template) {
 	return templateData{
-			TestNamespace:             testNamespace,
-			DeploymentName:            deploymentName,
-			SecretName:                secretName,
-			TriggerAuthenticationName: triggerAuthenticationName,
-			ScaledObjectName:          scaledObjectName,
-			UserID:                    base64.StdEncoding.EncodeToString([]byte(userID)),
-			Password:                  base64.StdEncoding.EncodeToString([]byte(password)),
-			ProjectID:                 base64.StdEncoding.EncodeToString([]byte(projectID)),
-			AuthURL:                   base64.StdEncoding.EncodeToString([]byte(authURL)),
-			MetricsURL:                metricsURL,
-			MetricID:                  metricID,
-			MinReplicaCount:           minReplicaCount,
-			MaxReplicaCount:           maxReplicaCount,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:             testNamespace,
+		DeploymentName:            deploymentName,
+		SecretName:                secretName,
+		TriggerAuthenticationName: triggerAuthenticationName,
+		ScaledObjectName:          scaledObjectName,
+		UserID:                    base64.StdEncoding.EncodeToString([]byte(userID)),
+		Password:                  base64.StdEncoding.EncodeToString([]byte(password)),
+		ProjectID:                 base64.StdEncoding.EncodeToString([]byte(projectID)),
+		AuthURL:                   base64.StdEncoding.EncodeToString([]byte(authURL)),
+		MetricsURL:                metricsURL,
+		MetricID:                  metricID,
+		MinReplicaCount:           minReplicaCount,
+		MaxReplicaCount:           maxReplicaCount,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
