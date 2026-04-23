@@ -242,10 +242,10 @@ func (s *opensearchScaler) getValueFromSearchResultByValueLocation(responseBody 
 func (s *opensearchScaler) search(ctx context.Context) ([]byte, error) {
 	query := strings.TrimSpace(s.metadata.Query)
 	if query == "" {
-		return nil, fmt.Errorf("")
+		return nil, status.Error(codes.InvalidArgument, "query must be provided when searchTemplateName is empty")
 	}
 	if !json.Valid([]byte(query)) {
-		return nil, status.Error(codes.InvalidArgument, "invalid searchQuery JSON")
+		return nil, status.Error(codes.InvalidArgument, "invalid query JSON")
 	}
 
 	searchResponse, err := s.osAPIClient.Search(ctx, &opensearchapi.SearchReq{
@@ -265,7 +265,11 @@ func (s *opensearchScaler) search(ctx context.Context) ([]byte, error) {
 }
 
 func (s *opensearchScaler) searchTemplate(ctx context.Context) ([]byte, error) {
-	body, err := json.Marshal(s.buildQueryFromMetadata())
+	query, err := s.buildQueryFromMetadata()
+	if err != nil {
+		return nil, err
+	}
+	body, err := json.Marshal(query)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to encode search template request: %v", err)
 	}
@@ -286,13 +290,19 @@ func (s *opensearchScaler) searchTemplate(ctx context.Context) ([]byte, error) {
 	return responseBody, nil
 }
 
-func (s *opensearchScaler) buildQueryFromMetadata() map[string]interface{} {
+func (s *opensearchScaler) buildQueryFromMetadata() (map[string]interface{}, error) {
 	parameters := map[string]interface{}{}
 	for _, p := range s.metadata.Parameters {
 		if p != "" {
-			kv := strings.Split(p, ":")
+			kv := strings.SplitN(p, ":", 2)
+			if len(kv) != 2 {
+				return nil, fmt.Errorf("invalid parameter format %q, expected key:value", p)
+			}
 			key := strings.TrimSpace(kv[0])
 			value := strings.TrimSpace(kv[1])
+			if key == "" || value == "" {
+				return nil, fmt.Errorf("invalid parameter format %q, expected key:value", p)
+			}
 			parameters[key] = value
 		}
 	}
@@ -302,7 +312,7 @@ func (s *opensearchScaler) buildQueryFromMetadata() map[string]interface{} {
 	if len(parameters) > 0 {
 		query["params"] = parameters
 	}
-	return query
+	return query, nil
 }
 
 func (s *opensearchScaler) readResponseBody(resp *opensearch.Response) ([]byte, error) {
