@@ -52,7 +52,34 @@ var restMapper meta.RESTMapper
 var memoryString = "memory"
 var cpuString = "cpu"
 
+// Field index names used by verifyScaledObjects to avoid O(N) full-namespace
+// list scans on every SO admission. Without these indexes each admission must
+// DeepCopy every ScaledObject in the namespace to find conflicts; at 60k SOs
+// each admission allocates ~900 MiB, which is why the webhook OOMs under
+// creation bursts. The indexes narrow candidates to 0–1 objects.
+const (
+	scaleTargetRefNameIdx = "spec.scaleTargetRef.name"
+	hpaNameIdx            = "spec.hpaName"
+)
+
 func (so *ScaledObject) SetupWebhookWithManager(mgr ctrl.Manager, cacheMissFallback bool) error {
+	// Register field indexes before wiring the webhook so that
+	// verifyScaledObjects can issue O(1) indexed lookups instead of
+	// O(N) full-namespace list scans. See the constants above.
+	ctx := context.Background()
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &ScaledObject{}, scaleTargetRefNameIdx,
+		func(obj client.Object) []string {
+			return []string{obj.(*ScaledObject).Spec.ScaleTargetRef.Name}
+		}); err != nil {
+		return fmt.Errorf("failed to register index %q: %w", scaleTargetRefNameIdx, err)
+	}
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &ScaledObject{}, hpaNameIdx,
+		func(obj client.Object) []string {
+			return []string{getHpaName(*obj.(*ScaledObject))}
+		}); err != nil {
+		return fmt.Errorf("failed to register index %q: %w", hpaNameIdx, err)
+	}
+
 	err := setupKubernetesClients(mgr, cacheMissFallback)
 	if err != nil {
 		return fmt.Errorf("failed to setup kubernetes clients: %w", err)
@@ -298,49 +325,64 @@ func verifyHpas(incomingSo *ScaledObject, action string, _ bool) error {
 }
 
 func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) error {
-	soList := &ScaledObjectList{}
-	opt := &client.ListOptions{
-		Namespace: incomingSo.Namespace,
-	}
-	err := kc.List(context.Background(), soList, opt)
-	if err != nil {
-		return err
-	}
+	ctx := context.Background()
 
+	// Check 1: no other SO in this namespace already manages the same workload.
+	// Use the scaleTargetRef.name index so only SOs targeting the same resource
+	// name are fetched — typically 0 or 1 objects instead of the entire namespace.
 	incomingSoGckr, err := ParseGVKR(restMapper, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind)
 	if err != nil {
-		scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from incoming ScaledObject", "apiVersion", incomingSo.Spec.ScaleTargetRef.APIVersion, "kind", incomingSo.Spec.ScaleTargetRef.Kind)
+		scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from incoming ScaledObject",
+			"apiVersion", incomingSo.Spec.ScaleTargetRef.APIVersion, "kind", incomingSo.Spec.ScaleTargetRef.Kind)
 		return err
 	}
-
-	incomingSoHpaName := getHpaName(*incomingSo)
-	for _, so := range soList.Items {
+	targetCandidates := &ScaledObjectList{}
+	if err := kc.List(ctx, targetCandidates,
+		client.InNamespace(incomingSo.Namespace),
+		client.MatchingFields{scaleTargetRefNameIdx: incomingSo.Spec.ScaleTargetRef.Name},
+	); err != nil {
+		return err
+	}
+	for _, so := range targetCandidates.Items {
 		if so.Name == incomingSo.Name {
 			continue
 		}
-		val, _ := json.MarshalIndent(so, "", "  ")
-		scaledobjectlog.V(1).Info(fmt.Sprintf("checking scaledobject %s: %v", so.Name, string(val)))
-
+		scaledobjectlog.V(1).Info("checking scaledobject for duplicate scaleTarget",
+			"name", so.Name, "namespace", so.Namespace)
 		soGckr, err := ParseGVKR(restMapper, so.Spec.ScaleTargetRef.APIVersion, so.Spec.ScaleTargetRef.Kind)
 		if err != nil {
-			scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from ScaledObject", "soName", so.Name, "apiVersion", so.Spec.ScaleTargetRef.APIVersion, "kind", so.Spec.ScaleTargetRef.Kind)
+			scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from ScaledObject",
+				"soName", so.Name, "apiVersion", so.Spec.ScaleTargetRef.APIVersion, "kind", so.Spec.ScaleTargetRef.Kind)
 			return err
 		}
-
-		if soGckr.GVKString() == incomingSoGckr.GVKString() &&
-			so.Spec.ScaleTargetRef.Name == incomingSo.Spec.ScaleTargetRef.Name {
-			err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the ScaledObject '%s'", so.Spec.ScaleTargetRef.Name, incomingSoGckr.GVKString(), so.Name)
+		if soGckr.GVKString() == incomingSoGckr.GVKString() {
+			err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the ScaledObject '%s'",
+				so.Spec.ScaleTargetRef.Name, incomingSoGckr.GVKString(), so.Name)
 			scaledobjectlog.Error(err, "validation error")
 			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-scaled-object")
 			return err
 		}
+	}
 
-		if getHpaName(so) == incomingSoHpaName {
-			err = fmt.Errorf("the HPA '%s' is already managed by the ScaledObject '%s'", so.Spec.Advanced.HorizontalPodAutoscalerConfig.Name, so.Name)
-			scaledobjectlog.Error(err, "validation error")
-			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-scaled-object-hpa")
-			return err
+	// Check 2: no other SO already owns the same HPA name.
+	// Use the hpaName index for the same reason.
+	incomingSoHpaName := getHpaName(*incomingSo)
+	hpaCandidates := &ScaledObjectList{}
+	if err := kc.List(ctx, hpaCandidates,
+		client.InNamespace(incomingSo.Namespace),
+		client.MatchingFields{hpaNameIdx: incomingSoHpaName},
+	); err != nil {
+		return err
+	}
+	for _, so := range hpaCandidates.Items {
+		if so.Name == incomingSo.Name {
+			continue
 		}
+		err = fmt.Errorf("the HPA '%s' is already managed by the ScaledObject '%s'",
+			incomingSoHpaName, so.Name)
+		scaledobjectlog.Error(err, "validation error")
+		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-scaled-object-hpa")
+		return err
 	}
 
 	// verify ScalingModifiers structure if defined in ScaledObject
