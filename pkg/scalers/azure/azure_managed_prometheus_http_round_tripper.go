@@ -55,13 +55,13 @@ func TryAndGetAzureManagedPrometheusHTTPRoundTripper(logger logr.Logger, podIden
 			return nil, err
 		}
 
-		roundtripper := util.CreateRT(false)
-		rt := &azureManagedPrometheusHTTPRoundTripper{
-			next:              roundtripper,
+		rt := util.CreateRT(false)
+		managedPrometheusRT := &azureManagedPrometheusHTTPRoundTripper{
+			next:              rt,
 			chainedCredential: chainedCred,
 			resourceURL:       resourceURLBasedOnCloud,
 		}
-		return rt, nil
+		return managedPrometheusRT, nil
 	}
 
 	// Not azure managed prometheus. Don't create a round tripper and don't return error.

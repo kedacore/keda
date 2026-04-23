@@ -36,9 +36,9 @@ import (
 )
 
 func TestSigV4RoundTripper(t *testing.T) {
-	roundtripper := util.CreateRT(false)
+	rt := util.CreateRT(false)
 
-	cli := &http.Client{Transport: roundtripper}
+	cli := &http.Client{Transport: rt}
 
 	req, err := http.NewRequest(http.MethodGet, "https://aps-workspaces.us-west-2.amazonaws.com/workspaces/ws-38377ca8-8db3-4b58-812d-b65a81837bb8/api/v1/query?query=vector(10)", strings.NewReader("Hello, world!"))
 	require.NoError(t, err)
