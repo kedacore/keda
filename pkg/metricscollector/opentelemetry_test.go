@@ -185,11 +185,14 @@ func TestHTTPClientDurationMetric(t *testing.T) {
 		metricName, _ := dp.Attributes.Value("metric_name")
 		namespace, _ := dp.Attributes.Value("namespace")
 		scaledResource, _ := dp.Attributes.Value("scaled_resource")
+		statusCode, ok := dp.Attributes.Value("http.response.status_code")
+		assert.True(t, ok)
 
 		assert.Equal(t, "my-trigger", triggerName.AsString())
 		assert.Equal(t, "my-metric", metricName.AsString())
 		assert.Equal(t, "default", namespace.AsString())
 		assert.Equal(t, "my-so", scaledResource.AsString())
+		assert.Equal(t, int64(http.StatusOK), statusCode.AsInt64())
 		assert.Greater(t, dp.Count, uint64(0))
 		found = true
 		break
