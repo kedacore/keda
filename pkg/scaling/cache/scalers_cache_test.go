@@ -22,8 +22,8 @@ import (
 
 	. "github.com/onsi/gomega"
 
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 func TestBuildScalerRequestCtx(t *testing.T) {
@@ -38,13 +38,13 @@ func TestBuildScalerRequestCtx(t *testing.T) {
 		},
 	}
 
-	ctx := buildScalerRequestCtx(context.Background(), sb, "my-metric")
+	ctx := metricscollector.BuildScalerRequestCtx(context.Background(), sb.ScalerConfig, "my-metric")
 
-	Expect(ctx.Value(kedautil.ScalerContextKey)).To(Equal("prometheus"))
-	Expect(ctx.Value(kedautil.TriggerNameContextKey)).To(Equal("my-trigger"))
-	Expect(ctx.Value(kedautil.MetricNameContextKey)).To(Equal("my-metric"))
-	Expect(ctx.Value(kedautil.NamespaceContextKey)).To(Equal("my-namespace"))
-	Expect(ctx.Value(kedautil.ScaledResourceContextKey)).To(Equal("my-scaled-object"))
+	Expect(ctx.Value(metricscollector.ScalerContextKey)).To(Equal("prometheus"))
+	Expect(ctx.Value(metricscollector.TriggerNameContextKey)).To(Equal("my-trigger"))
+	Expect(ctx.Value(metricscollector.MetricNameContextKey)).To(Equal("my-metric"))
+	Expect(ctx.Value(metricscollector.NamespaceContextKey)).To(Equal("my-namespace"))
+	Expect(ctx.Value(metricscollector.ScaledResourceContextKey)).To(Equal("my-scaled-object"))
 }
 
 func TestEmptyScalersCache(t *testing.T) {

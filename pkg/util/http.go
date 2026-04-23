@@ -20,6 +20,8 @@ import (
 	"crypto/tls"
 	"net/http"
 	"time"
+
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 )
 
 var disableKeepAlives bool
@@ -76,5 +78,5 @@ func CreateRTWithTLSConfig(config *tls.Config) http.RoundTripper {
 		transport.DisableKeepAlives = true
 		transport.IdleConnTimeout = 100 * time.Second
 	}
-	return NewInstrumentedRoundTripper(transport)
+	return metricscollector.NewInstrumentedRoundTripper(transport)
 }

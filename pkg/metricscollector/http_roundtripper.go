@@ -14,13 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package metricscollector
 
 import (
 	"net/http"
 	"time"
-
-	"github.com/kedacore/keda/v2/pkg/metricscollector"
 )
 
 // contextKey is an unexported type for context keys defined in this package,
@@ -81,16 +79,16 @@ func (r *InstrumentedRoundTripper) RoundTrip(req *http.Request) (*http.Response,
 	scaledResource, srOK := ctx.Value(ScaledResourceContextKey).(string)
 
 	// Only record metrics for scaler metric collection requests, identified by the
-	// presence of all five context keys injected by buildScalerRequestCtx.
+	// presence of all five context keys injected by BuildScalerRequestCtx.
 	// Other HTTP calls (e.g. during scaler initialization) are not recorded.
 	if !scalerOK || !triggerOK || !metricOK || !nsOK || !srOK {
 		return resp, err
 	}
 
 	if err != nil {
-		metricscollector.RecordHTTPClientRequest(duration, 0, true, scaler, triggerName, metricName, namespace, scaledResource)
+		RecordHTTPClientRequest(duration, 0, true, scaler, triggerName, metricName, namespace, scaledResource)
 		return nil, err
 	}
-	metricscollector.RecordHTTPClientRequest(duration, resp.StatusCode, false, scaler, triggerName, metricName, namespace, scaledResource)
+	RecordHTTPClientRequest(duration, resp.StatusCode, false, scaler, triggerName, metricName, namespace, scaledResource)
 	return resp, nil
 }
