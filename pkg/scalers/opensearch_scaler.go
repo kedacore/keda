@@ -46,7 +46,8 @@ type opensearchMetadata struct {
 	TargetValue           float64  `keda:"name=targetValue,           order=authParams;triggerMetadata"`
 	ActivationTargetValue float64  `keda:"name=activationTargetValue, order=triggerMetadata, default=0"`
 	IgnoreNullValues      bool     `keda:"name=ignoreNullValues,      order=triggerMetadata, default=false"`
-	MetricName            string   `keda:"name=metricName,            order=triggerMetadata, optional"`
+
+	metricName string
 
 	TriggerIndex int
 }
@@ -152,9 +153,9 @@ func parseOpensearchMetadata(config *scalersconfig.ScalerConfig) (opensearchMeta
 	}
 
 	if meta.SearchTemplateName != "" {
-		meta.MetricName = GenerateMetricNameWithIndex(config.TriggerIndex, util.NormalizeString(fmt.Sprintf("opensearch-%s", meta.SearchTemplateName)))
+		meta.metricName = GenerateMetricNameWithIndex(config.TriggerIndex, util.NormalizeString(fmt.Sprintf("opensearch-%s", meta.SearchTemplateName)))
 	} else {
-		meta.MetricName = GenerateMetricNameWithIndex(config.TriggerIndex, "opensearch-query")
+		meta.metricName = GenerateMetricNameWithIndex(config.TriggerIndex, "opensearch-query")
 	}
 
 	return meta, nil
@@ -167,7 +168,7 @@ func (s *opensearchScaler) Close(_ context.Context) error {
 func (s *opensearchScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: s.metadata.MetricName,
+			Name: s.metadata.metricName,
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.TargetValue),
 	}
