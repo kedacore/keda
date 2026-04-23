@@ -347,8 +347,8 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 
 	if meta.ApplicationID != 0 && meta.InstallationID != 0 && meta.ApplicationKey != "" {
-		httpTrans := kedautil.CreateRT(false)
-		hc, err := gha.New(httpTrans, meta.ApplicationID, meta.InstallationID, []byte(meta.ApplicationKey))
+		roundtripper := kedautil.CreateRT(false)
+		hc, err := gha.New(roundtripper, meta.ApplicationID, meta.InstallationID, []byte(meta.ApplicationKey))
 		if err != nil {
 			return nil, fmt.Errorf("error creating GitHub App client: %w, \n appID: %d, instID: %d", err, meta.ApplicationID, meta.InstallationID)
 		}
