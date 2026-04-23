@@ -52,10 +52,10 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 	if timeout <= 0 {
 		timeout = 300 * time.Millisecond
 	}
-	transport := CreateRT(unsafeSsl)
+	rt := CreateRT(unsafeSsl)
 	httpClient := &http.Client{
 		Timeout:   timeout,
-		Transport: transport,
+		Transport: rt,
 	}
 	return httpClient
 }
