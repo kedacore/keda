@@ -29,6 +29,8 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"google.golang.org/grpc/credentials"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 var log = logf.Log.WithName("grpc_server_certificates")
@@ -127,7 +129,8 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 
 	// Create the credentials and return it
 	config := &tls.Config{
-		MinVersion: tls.VersionTLS13,
+		MinVersion:   kedautil.GetServiceMinTLSVersion(),
+		CipherSuites: kedautil.GetServiceTLSCipherList(),
 		GetCertificate: func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
 			certMutex.RLock()
 			defer certMutex.RUnlock()
