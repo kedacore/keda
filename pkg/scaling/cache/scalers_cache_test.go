@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -45,6 +46,10 @@ func TestBuildScalerRequestCtx(t *testing.T) {
 	Expect(ctx.Value(kedautil.MetricNameContextKey)).To(Equal("my-metric"))
 	Expect(ctx.Value(kedautil.NamespaceContextKey)).To(Equal("my-namespace"))
 	Expect(ctx.Value(kedautil.ScaledResourceContextKey)).To(Equal("my-scaled-object"))
+
+	labeler, ok := otelhttp.LabelerFromContext(ctx)
+	Expect(ok).To(BeTrue())
+	Expect(labeler.Get()).To(HaveLen(5))
 }
 
 func TestEmptyScalersCache(t *testing.T) {

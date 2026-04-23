@@ -47,9 +47,6 @@ var (
 
 	otelScalerActiveVals []OtelMetricFloat64Val
 	otelScalerPauseVals  []OtelMetricFloat64Val
-
-	otHTTPClientRequestsCounter api.Int64Counter
-	otHTTPClientRequestDuration api.Float64Histogram
 )
 
 type OtelMetrics struct {
@@ -219,23 +216,6 @@ func initMeters() {
 		"keda.scaled.object.paused",
 		api.WithDescription("Indicates whether a ScaledObject is paused"),
 		api.WithFloat64Callback(PausedStatusCallback),
-	)
-	if err != nil {
-		otLog.Error(err, msg)
-	}
-
-	otHTTPClientRequestsCounter, err = meter.Int64Counter(
-		"keda.scaler.http.requests.count",
-		api.WithDescription("Total number of outbound HTTP requests issued during scaler metric collection, labeled by HTTP status code."),
-	)
-	if err != nil {
-		otLog.Error(err, msg)
-	}
-
-	otHTTPClientRequestDuration, err = meter.Float64Histogram(
-		"keda.scaler.http.request.duration.seconds",
-		api.WithDescription("Duration in seconds of outbound HTTP requests issued during scaler metric collection."),
-		api.WithUnit("s"),
 	)
 	if err != nil {
 		otLog.Error(err, msg)
@@ -513,25 +493,6 @@ func CloudeventQueueStatusCallback(_ context.Context, obsrv api.Float64Observer)
 	}
 	otCloudEventQueueStatusVals = []OtelMetricFloat64Val{}
 	return nil
-}
-
-// RecordHTTPClientRequest records the duration and outcome of a single outbound HTTP request.
-func (o *OtelMetrics) RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string) {
-	code := httpStatusCodeLabel(statusCode, isError)
-	counterOpt := api.WithAttributes(
-		attribute.Key("namespace").String(namespace),
-		attribute.Key("scaled_resource").String(scaledResource),
-		attribute.Key("scaler").String(scaler),
-		attribute.Key("trigger_name").String(triggerName),
-		attribute.Key("metric_name").String(metricName),
-		attribute.Key("status_code").String(code),
-	)
-	histOpt := api.WithAttributes(
-		attribute.Key("scaler").String(scaler),
-		attribute.Key("status_code").String(code),
-	)
-	otHTTPClientRequestsCounter.Add(context.Background(), 1, counterOpt)
-	otHTTPClientRequestDuration.Record(context.Background(), durationSeconds, histOpt)
 }
 
 // RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting

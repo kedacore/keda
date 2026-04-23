@@ -1287,38 +1287,22 @@ func testHTTPClientMetrics(t *testing.T, data templateData) {
 			ExtractPrometheusLabelValue("scaled_resource", labels) == wrongScaledObjectName &&
 			ExtractPrometheusLabelValue("scaler", labels) == "prometheus" &&
 			ExtractPrometheusLabelValue("trigger_name", labels) == wrongScalerName &&
-			ExtractPrometheusLabelValue("metric_name", labels) == "s0-prometheus"
+			ExtractPrometheusLabelValue("metric_name", labels) == "s0-prometheus" &&
+			ExtractPrometheusLabelValue("http_request_method", labels) == "GET"
 	}
 
-	val, ok := family["keda_scaler_http_requests_count_total"]
-	assert.True(t, ok, "keda_scaler_http_requests_count_total not available")
+	val, ok := family["http_client_request_duration_seconds"]
+	assert.True(t, ok, "http_client_request_duration_seconds not present")
 	if ok {
 		var found bool
 		for _, metric := range val.GetMetric() {
 			if matchLabels(metric.GetLabel()) {
-				assert.GreaterOrEqual(t, metric.GetCounter().GetValue(), float64(1))
-				found = true
-				break
-			}
-		}
-		assert.True(t, found,
-			"expected keda_scaler_http_requests_count_total with namespace=%s, scaled_resource=%s, scaler=prometheus, trigger_name=%s, metric_name=s0-prometheus",
-			data.TestNamespace, wrongScaledObjectName, wrongScalerName)
-	}
-
-	matchHistogramLabels := func(labels []*prommodel.LabelPair) bool {
-		return ExtractPrometheusLabelValue("scaler", labels) == "prometheus"
-	}
-	if val, ok := family["keda_scaler_http_request_duration_seconds"]; ok {
-		var found bool
-		for _, metric := range val.GetMetric() {
-			if matchHistogramLabels(metric.GetLabel()) {
 				assert.Greater(t, metric.GetHistogram().GetSampleCount(), uint64(0),
-					"keda_scaler_http_request_duration_seconds sample count should be > 0")
+					"http_client_request_duration_seconds sample count should be > 0")
 				found = true
 				break
 			}
 		}
-		assert.True(t, found, "expected keda_scaler_http_request_duration_seconds histogram for prometheus scaler")
+		assert.True(t, found, "expected http_client_request_duration_seconds histogram for prometheus scaler")
 	}
 }

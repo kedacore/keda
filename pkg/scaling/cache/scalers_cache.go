@@ -23,6 +23,8 @@ import (
 	"time"
 
 	"github.com/expr-lang/expr/vm"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -156,6 +158,17 @@ func buildScalerRequestCtx(ctx context.Context, sb ScalerBuilder, metricName str
 	requestCtx = context.WithValue(requestCtx, kedautil.MetricNameContextKey, metricName)
 	requestCtx = context.WithValue(requestCtx, kedautil.NamespaceContextKey, sb.ScalerConfig.ScalableObjectNamespace)
 	requestCtx = context.WithValue(requestCtx, kedautil.ScaledResourceContextKey, sb.ScalerConfig.ScalableObjectName)
+
+	labeler := &otelhttp.Labeler{}
+	labeler.Add(
+		attribute.String("scaler", sb.ScalerConfig.TriggerType),
+		attribute.String("trigger_name", sb.ScalerConfig.TriggerName),
+		attribute.String("metric_name", metricName),
+		attribute.String("namespace", sb.ScalerConfig.ScalableObjectNamespace),
+		attribute.String("scaled_resource", sb.ScalerConfig.ScalableObjectName),
+	)
+
+	requestCtx = otelhttp.ContextWithLabeler(requestCtx, labeler)
 	return requestCtx
 }
 

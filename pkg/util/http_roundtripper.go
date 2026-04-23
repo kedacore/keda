@@ -17,8 +17,11 @@ limitations under the License.
 package util
 
 import (
+	"context"
 	"net/http"
-	"time"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 )
@@ -50,47 +53,80 @@ const (
 	ScaledResourceContextKey contextKey = "scaled_resource"
 )
 
-// InstrumentedRoundTripper wraps an http.RoundTripper and records outbound
-// HTTP request metrics after every completed round-trip. It reads known
-// context keys from the request context to populate metric dimensions. It
-// does not buffer or inspect the response body.
-type InstrumentedRoundTripper struct {
-	next http.RoundTripper
+type scalerMetricsRoundTripper struct {
+	next         http.RoundTripper
+	instrumented http.RoundTripper
 }
 
-// NewInstrumentedRoundTripper wraps next with a RoundTripper that records
-// HTTP request metrics after every request. If next is nil,
-// http.DefaultTransport is used.
 func NewInstrumentedRoundTripper(next http.RoundTripper) http.RoundTripper {
 	if next == nil {
 		next = http.DefaultTransport
 	}
-	return &InstrumentedRoundTripper{next: next}
+
+	enablePrometheusMetrics := metricscollector.HTTPClientPrometheusMetricsEnabled()
+	enableOpenTelemetryMetrics := metricscollector.HTTPClientOpenTelemetryMetricsEnabled()
+
+	var instrumented http.RoundTripper = next
+
+	if enablePrometheusMetrics {
+		counterOpts := []promhttp.Option{
+			promhttp.WithLabelFromCtx("namespace", labelFromCtx(NamespaceContextKey)),
+			promhttp.WithLabelFromCtx("scaled_resource", labelFromCtx(ScaledResourceContextKey)),
+			promhttp.WithLabelFromCtx("scaler", labelFromCtx(ScalerContextKey)),
+			promhttp.WithLabelFromCtx("trigger_name", labelFromCtx(TriggerNameContextKey)),
+			promhttp.WithLabelFromCtx("metric_name", labelFromCtx(MetricNameContextKey)),
+		}
+
+		durationOpts := []promhttp.Option{
+			promhttp.WithLabelFromCtx("scaler", labelFromCtx(ScalerContextKey)),
+		}
+
+		instrumented = promhttp.InstrumentRoundTripperCounter(
+			metricscollector.HTTPClientRequestsCollector(),
+			instrumented,
+			counterOpts...,
+		)
+		instrumented = promhttp.InstrumentRoundTripperDuration(
+			metricscollector.HTTPClientRequestDurationCollector(),
+			instrumented,
+			durationOpts...,
+		)
+	}
+
+	if enableOpenTelemetryMetrics {
+		instrumented = otelhttp.NewTransport(instrumented)
+	}
+
+	return &scalerMetricsRoundTripper{
+		next:         next,
+		instrumented: instrumented,
+	}
 }
 
-func (r *InstrumentedRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	start := time.Now()
-	resp, err := r.next.RoundTrip(req)
-	duration := time.Since(start).Seconds()
-
-	ctx := req.Context()
-	scaler, scalerOK := ctx.Value(ScalerContextKey).(string)
-	triggerName, triggerOK := ctx.Value(TriggerNameContextKey).(string)
-	metricName, metricOK := ctx.Value(MetricNameContextKey).(string)
-	namespace, nsOK := ctx.Value(NamespaceContextKey).(string)
-	scaledResource, srOK := ctx.Value(ScaledResourceContextKey).(string)
-
-	// Only record metrics for scaler metric collection requests, identified by the
-	// presence of all five context keys injected by buildScalerRequestCtx.
-	// Other HTTP calls (e.g. during scaler initialization) are not recorded.
-	if !scalerOK || !triggerOK || !metricOK || !nsOK || !srOK {
-		return resp, err
+func (r *scalerMetricsRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	if !hasScalerMetricsContext(req.Context()) {
+		return r.next.RoundTrip(req)
 	}
 
-	if err != nil {
-		metricscollector.RecordHTTPClientRequest(duration, 0, true, scaler, triggerName, metricName, namespace, scaledResource)
-		return nil, err
+	return r.instrumented.RoundTrip(req)
+}
+
+func hasScalerMetricsContext(ctx context.Context) bool {
+	_, scalerOK := ctx.Value(ScalerContextKey).(string)
+	_, triggerOK := ctx.Value(TriggerNameContextKey).(string)
+	_, metricOK := ctx.Value(MetricNameContextKey).(string)
+	_, nsOK := ctx.Value(NamespaceContextKey).(string)
+	_, resourceOK := ctx.Value(ScaledResourceContextKey).(string)
+
+	return scalerOK && triggerOK && metricOK && nsOK && resourceOK
+}
+
+func labelFromCtx(key contextKey) promhttp.LabelValueFromCtx {
+	return func(ctx context.Context) string {
+		if value, ok := ctx.Value(key).(string); ok {
+			return value
+		}
+
+		return ""
 	}
-	metricscollector.RecordHTTPClientRequest(duration, resp.StatusCode, false, scaler, triggerName, metricName, namespace, scaledResource)
-	return resp, nil
 }

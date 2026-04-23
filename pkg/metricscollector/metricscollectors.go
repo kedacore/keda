@@ -17,7 +17,7 @@ limitations under the License.
 package metricscollector
 
 import (
-	"strconv"
+	"sync/atomic"
 	"time"
 
 	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
@@ -34,8 +34,10 @@ const (
 )
 
 var (
-	collectors        []MetricsCollector
-	promServerMetrics *grpcprom.ServerMetrics
+	collectors                            []MetricsCollector
+	promServerMetrics                     *grpcprom.ServerMetrics
+	httpClientPrometheusMetricsEnabled    atomic.Bool
+	httpClientOpenTelemetryMetricsEnabled atomic.Bool
 )
 
 type MetricsCollector interface {
@@ -80,15 +82,11 @@ type MetricsCollector interface {
 
 	// RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting
 	RecordCloudEventQueueStatus(namespace string, value int)
-
-	// RecordHTTPClientRequest records the duration and outcome of an outbound HTTP request
-	// made by one of KEDA's internal HTTP clients. scaler, triggerName, metricName,
-	// namespace, and scaledResource are provided explicitly by the caller; upstream
-	// instrumentation may derive them from context before invoking the collector.
-	RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string)
 }
 
 func NewMetricsCollectors(enablePrometheusMetrics bool, enableOpenTelemetryMetrics bool) {
+	ConfigureHTTPClientMetricsInstrumentation(enablePrometheusMetrics, enableOpenTelemetryMetrics)
+
 	if enablePrometheusMetrics {
 		promometrics := NewPromMetrics()
 		collectors = append(collectors, promometrics)
@@ -102,6 +100,19 @@ func NewMetricsCollectors(enablePrometheusMetrics bool, enableOpenTelemetryMetri
 		otelmetrics := NewOtelMetrics()
 		collectors = append(collectors, otelmetrics)
 	}
+}
+
+func ConfigureHTTPClientMetricsInstrumentation(enablePrometheusMetrics bool, enableOpenTelemetryMetrics bool) {
+	httpClientPrometheusMetricsEnabled.Store(enablePrometheusMetrics)
+	httpClientOpenTelemetryMetricsEnabled.Store(enableOpenTelemetryMetrics)
+}
+
+func HTTPClientPrometheusMetricsEnabled() bool {
+	return httpClientPrometheusMetricsEnabled.Load()
+}
+
+func HTTPClientOpenTelemetryMetricsEnabled() bool {
+	return httpClientOpenTelemetryMetricsEnabled.Load()
 }
 
 // RecordScalerMetric create a measurement of the external metric used by the HPA
@@ -210,22 +221,6 @@ func RecordCloudEventQueueStatus(namespace string, value int) {
 	for _, element := range collectors {
 		element.RecordCloudEventQueueStatus(namespace, value)
 	}
-}
-
-// RecordHTTPClientRequest records the duration and outcome of an outbound HTTP request
-// made by one of KEDA's internal HTTP clients. Called by InstrumentedRoundTripper in
-// the util package after extracting label values from the request context.
-func RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string) {
-	for _, element := range collectors {
-		element.RecordHTTPClientRequest(durationSeconds, statusCode, isError, scaler, triggerName, metricName, namespace, scaledResource)
-	}
-}
-
-func httpStatusCodeLabel(code int, isError bool) string {
-	if isError {
-		return "error"
-	}
-	return strconv.Itoa(code)
 }
 
 // Returns the ServerMetrics object for GRPC Server metrics. Used to initialize the GRPC server with the proper intercepts

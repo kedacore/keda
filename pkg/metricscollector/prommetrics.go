@@ -160,7 +160,7 @@ var (
 			Name:      "requests_total",
 			Help:      "Total number of outbound HTTP requests issued during scaler metric collection.",
 		},
-		[]string{"namespace", "scaled_resource", "scaler", "trigger_name", "metric_name", "status_code"},
+		[]string{"code", "namespace", "scaled_resource", "scaler", "trigger_name", "metric_name"},
 	)
 
 	httpClientRequestDuration = prometheus.NewHistogramVec(
@@ -171,7 +171,7 @@ var (
 			Help:      "Duration in seconds of outbound HTTP requests issued during scaler metric collection.",
 			Buckets:   []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
 		},
-		[]string{"scaler", "status_code"},
+		[]string{"code", "scaler"},
 	)
 )
 
@@ -352,12 +352,9 @@ func (p *PromMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
 	cloudeventQueueStatus.With(prometheus.Labels{"namespace": namespace}).Set(float64(value))
 }
 
-// RecordHTTPClientRequest records the duration and outcome of a single outbound HTTP request.
-func (p *PromMetrics) RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string) {
-	code := httpStatusCodeLabel(statusCode, isError)
-	httpClientRequestsTotal.WithLabelValues(namespace, scaledResource, scaler, triggerName, metricName, code).Inc()
-	httpClientRequestDuration.WithLabelValues(scaler, code).Observe(durationSeconds)
-}
+func HTTPClientRequestsCollector() *prometheus.CounterVec { return httpClientRequestsTotal }
+
+func HTTPClientRequestDurationCollector() *prometheus.HistogramVec { return httpClientRequestDuration }
 
 
 // Returns a grpcprom server Metrics object and registers the metrics. The object contains

@@ -1446,7 +1446,8 @@ func testHTTPClientMetrics(t *testing.T, data templateData) {
 	}()
 
 	matchLabels := func(labels []*prommodel.LabelPair) bool {
-		return ExtractPrometheusLabelValue("namespace", labels) == testNamespace &&
+		return ExtractPrometheusLabelValue("code", labels) == "200" &&
+			ExtractPrometheusLabelValue("namespace", labels) == testNamespace &&
 			ExtractPrometheusLabelValue("scaled_resource", labels) == wrongScaledObjectName &&
 			ExtractPrometheusLabelValue("scaler", labels) == "prometheus" &&
 			ExtractPrometheusLabelValue("trigger_name", labels) == wrongScalerName &&
@@ -1468,7 +1469,8 @@ func testHTTPClientMetrics(t *testing.T, data templateData) {
 		testNamespace, wrongScaledObjectName, wrongScalerName)
 
 	matchHistogramLabels := func(labels []*prommodel.LabelPair) bool {
-		return ExtractPrometheusLabelValue("scaler", labels) == "prometheus"
+		return ExtractPrometheusLabelValue("code", labels) == "200" &&
+			ExtractPrometheusLabelValue("scaler", labels) == "prometheus"
 	}
 	family, ok := families["keda_scaler_http_request_duration_seconds"]
 	assert.True(t, ok, "keda_scaler_http_request_duration_seconds not present")

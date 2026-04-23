@@ -1,24 +1,32 @@
-package metricscollector
+package metricscollector_test
 
 import (
 	"context"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 var (
-	testOtel   *OtelMetrics
+	testOtel   *metricscollector.OtelMetrics
 	testReader metric.Reader
 )
 
 func init() {
 	testReader = metric.NewManualReader()
 	options := metric.WithReader(testReader)
-	testOtel = NewOtelMetrics(options)
+	testOtel = metricscollector.NewOtelMetrics(options)
 }
 
 func retrieveMetric(metrics []metricdata.Metrics, metricname string) *metricdata.Metrics {
@@ -27,6 +35,16 @@ func retrieveMetric(metrics []metricdata.Metrics, metricname string) *metricdata
 			return &m
 		}
 	}
+	return nil
+}
+
+func retrieveMetricFromScopes(scopeMetrics []metricdata.ScopeMetrics, metricname string) *metricdata.Metrics {
+	for _, scopeMetric := range scopeMetrics {
+		if metric := retrieveMetric(scopeMetric.Metrics, metricname); metric != nil {
+			return metric
+		}
+	}
+
 	return nil
 }
 
@@ -103,57 +121,124 @@ func TestLoopLatency(t *testing.T) {
 	assert.Equal(t, data.Value, float64(0.5))
 }
 
-func TestRecordHTTPClientRequest(t *testing.T) {
-	tests := []struct {
-		name           string
-		statusCode     int
-		isError        bool
-		wantStatusCode string
-	}{
-		{"200 success", 200, false, "200"},
-		{"301 redirect", 301, false, "301"},
-		{"404 client error", 404, false, "404"},
-		{"503 server error", 503, false, "503"},
-		{"transport error", 0, true, "error"},
+type mockRoundTripper struct {
+	statusCode int
+}
+
+func (m mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	return &http.Response{
+		StatusCode: m.statusCode,
+		Body:       io.NopCloser(strings.NewReader("")),
+		Request:    req,
+	}, nil
+}
+
+func TestHTTPClientDurationMetric(t *testing.T) {
+	metricscollector.ConfigureHTTPClientMetricsInstrumentation(false, true)
+	reader := metric.NewManualReader()
+	metricscollector.NewOtelMetrics(metric.WithReader(reader))
+	defer func() {
+		testReader = metric.NewManualReader()
+		testOtel = metricscollector.NewOtelMetrics(metric.WithReader(testReader))
+	}()
+
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, kedautil.ScalerContextKey, "prometheus")
+	ctx = context.WithValue(ctx, kedautil.TriggerNameContextKey, "my-trigger")
+	ctx = context.WithValue(ctx, kedautil.MetricNameContextKey, "my-metric")
+	ctx = context.WithValue(ctx, kedautil.NamespaceContextKey, "default")
+	ctx = context.WithValue(ctx, kedautil.ScaledResourceContextKey, "my-so")
+
+	labeler := &otelhttp.Labeler{}
+	labeler.Add(
+		attribute.String("scaler", "prometheus"),
+		attribute.String("trigger_name", "my-trigger"),
+		attribute.String("metric_name", "my-metric"),
+		attribute.String("namespace", "default"),
+		attribute.String("scaled_resource", "my-so"),
+	)
+	ctx = otelhttp.ContextWithLabeler(ctx, labeler)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", nil)
+	assert.NoError(t, err)
+
+	rt := kedautil.NewInstrumentedRoundTripper(mockRoundTripper{statusCode: http.StatusOK})
+	resp, err := rt.RoundTrip(req)
+	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
+
+	got := metricdata.ResourceMetrics{}
+	err = reader.Collect(context.Background(), &got)
+	assert.Nil(t, err)
+
+	requestDuration := retrieveMetricFromScopes(got.ScopeMetrics, "http.client.request.duration")
+	assert.NotNil(t, requestDuration)
+	assert.Equal(t, "s", requestDuration.Unit)
+
+	var found bool
+	for _, dp := range requestDuration.Data.(metricdata.Histogram[float64]).DataPoints {
+		scaler, ok := dp.Attributes.Value("scaler")
+		if !ok || scaler.AsString() != "prometheus" {
+			continue
+		}
+		triggerName, _ := dp.Attributes.Value("trigger_name")
+		metricName, _ := dp.Attributes.Value("metric_name")
+		namespace, _ := dp.Attributes.Value("namespace")
+		scaledResource, _ := dp.Attributes.Value("scaled_resource")
+
+		assert.Equal(t, "my-trigger", triggerName.AsString())
+		assert.Equal(t, "my-metric", metricName.AsString())
+		assert.Equal(t, "default", namespace.AsString())
+		assert.Equal(t, "my-so", scaledResource.AsString())
+		assert.Greater(t, dp.Count, uint64(0))
+		found = true
+		break
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			testOtel.RecordHTTPClientRequest(0.1, tt.statusCode, tt.isError, "prometheus", "my-trigger", "my-metric", "default", "my-so")
-			got := metricdata.ResourceMetrics{}
-			err := testReader.Collect(context.Background(), &got)
-			assert.Nil(t, err)
+	assert.True(t, found, "expected http.client.request.duration datapoint with scaler labels")
+}
 
-			scopeMetrics := got.ScopeMetrics[0]
-			requestCount := retrieveMetric(scopeMetrics.Metrics, "keda.scaler.http.requests.count")
-			assert.NotNil(t, requestCount)
+func TestHTTPClientDurationMetricDisabled(t *testing.T) {
+	metricscollector.ConfigureHTTPClientMetricsInstrumentation(false, false)
 
-			var found bool
-			for _, dp := range requestCount.Data.(metricdata.Sum[int64]).DataPoints {
-				code, ok := dp.Attributes.Value("status_code")
-				if !ok || code.AsString() != tt.wantStatusCode {
-					continue
-				}
-				scaler, _ := dp.Attributes.Value("scaler")
-				assert.Equal(t, "prometheus", scaler.AsString())
-				triggerName, _ := dp.Attributes.Value("trigger_name")
-				assert.Equal(t, "my-trigger", triggerName.AsString())
-				metricName, _ := dp.Attributes.Value("metric_name")
-				assert.Equal(t, "my-metric", metricName.AsString())
-				ns, _ := dp.Attributes.Value("namespace")
-				assert.Equal(t, "default", ns.AsString())
-				sr, _ := dp.Attributes.Value("scaled_resource")
-				assert.Equal(t, "my-so", sr.AsString())
-				found = true
-				break
-			}
-			assert.True(t, found, "expected data point with status_code=%q", tt.wantStatusCode)
+	reader := metric.NewManualReader()
+	metricscollector.NewOtelMetrics(metric.WithReader(reader))
+	defer func() {
+		testReader = metric.NewManualReader()
+		testOtel = metricscollector.NewOtelMetrics(metric.WithReader(testReader))
+	}()
 
-			requestDuration := retrieveMetric(scopeMetrics.Metrics, "keda.scaler.http.request.duration.seconds")
-			assert.NotNil(t, requestDuration)
-			assert.Equal(t, "s", requestDuration.Unit)
-		})
-	}
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, kedautil.ScalerContextKey, "prometheus")
+	ctx = context.WithValue(ctx, kedautil.TriggerNameContextKey, "my-trigger")
+	ctx = context.WithValue(ctx, kedautil.MetricNameContextKey, "my-metric")
+	ctx = context.WithValue(ctx, kedautil.NamespaceContextKey, "default")
+	ctx = context.WithValue(ctx, kedautil.ScaledResourceContextKey, "my-so")
+
+	labeler := &otelhttp.Labeler{}
+	labeler.Add(
+		attribute.String("scaler", "prometheus"),
+		attribute.String("trigger_name", "my-trigger"),
+		attribute.String("metric_name", "my-metric"),
+		attribute.String("namespace", "default"),
+		attribute.String("scaled_resource", "my-so"),
+	)
+	ctx = otelhttp.ContextWithLabeler(ctx, labeler)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", nil)
+	assert.NoError(t, err)
+
+	rt := kedautil.NewInstrumentedRoundTripper(mockRoundTripper{statusCode: http.StatusOK})
+	resp, err := rt.RoundTrip(req)
+	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
+
+	got := metricdata.ResourceMetrics{}
+	err = reader.Collect(context.Background(), &got)
+	assert.Nil(t, err)
+
+	requestDuration := retrieveMetricFromScopes(got.ScopeMetrics, "http.client.request.duration")
+	assert.Nil(t, requestDuration)
 }
 
 func TestContinuousMetrics(t *testing.T) {
@@ -167,7 +252,7 @@ func TestContinuousMetrics(t *testing.T) {
 	assert.NotEqual(t, len(scopeMetrics.Metrics), 0)
 	activeMetric := retrieveMetric(scopeMetrics.Metrics, "keda.scaler.active")
 
-	assert.NotNil(t, buildInfo)
+	assert.NotNil(t, activeMetric)
 
 	dataPoints := activeMetric.Data.(metricdata.Gauge[float64]).DataPoints
 	assert.Len(t, dataPoints, 2)

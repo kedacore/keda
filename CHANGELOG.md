@@ -79,6 +79,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Add scaler HTTP request metrics (`keda_scaler_http_requests_total`, `keda_scaler_http_request_duration_seconds`) for outbound HTTP requests made during scaler metric collection ([#6600](https://github.com/kedacore/keda/issues/6600))
 - **General**: Add CRD-level validation markers (Minimum, MinLength, MinItems, Enum) for ScaledObject, ScaledJob, ScaleTriggers, and TriggerAuthentication API types ([#7533](https://github.com/kedacore/keda/pull/7533))
 - **General**: Add `--leader-election-id` flag to allow configuring the leader election Lease name ([#7564](https://github.com/kedacore/keda/issues/7564))
+- **General**: Add scaler HTTP request metrics for outbound HTTP requests made during scaler metric collection, using `promhttp` for Prometheus (`keda_scaler_http_requests_total`, `keda_scaler_http_request_duration_seconds`) and `otelhttp` for OpenTelemetry HTTP client duration metrics ([#6600](https://github.com/kedacore/keda/issues/6600))
 - **General**: Make APIService cert injections optional ([#7559](https://github.com/kedacore/keda/pull/7559))
 - **Elasticsearch Scaler**: Add HTTP status check for Elasticsearch errors ([#7480](https://github.com/kedacore/keda/pull/7480))
 - **Kubernetes Workload Scaler**: Add `groupByNode` parameter ([#7628](https://github.com/kedacore/keda/issues/7628))
