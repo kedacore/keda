@@ -79,7 +79,8 @@ func TestInstrumentedRoundTripper_RecordsSuccessfulResponses(t *testing.T) {
 			metricName := fmt.Sprintf("metric-%d", tc.statusCode)
 			scaledResource := fmt.Sprintf("so-%d", tc.statusCode)
 
-			rt := NewInstrumentedRoundTripper(&mockRoundTripper{resp: fakeResponse(tc.statusCode)})
+			response := fakeResponse(tc.statusCode)
+			rt := NewInstrumentedRoundTripper(&mockRoundTripper{resp: response})
 
 			ctx := context.Background()
 			ctx = context.WithValue(ctx, ScalerContextKey, scalerName)
@@ -94,6 +95,8 @@ func TestInstrumentedRoundTripper_RecordsSuccessfulResponses(t *testing.T) {
 			resp, err := rt.RoundTrip(req)
 			Expect(err).To(BeNil())
 			Expect(resp).NotTo(BeNil())
+			Expect(resp).To(Equal(response))
+			defer resp.Body.Close()
 
 			counterValue, err := httpClientRequestsTotal.
 				GetMetricWithLabelValues("default", scaledResource, scalerName, triggerName, metricName, fmt.Sprintf("%d", tc.statusCode))
@@ -138,6 +141,9 @@ func TestInstrumentedRoundTripper_RecordsTransportErrors(t *testing.T) {
 	Expect(err).To(BeNil())
 
 	resp, err := rt.RoundTrip(req)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	Expect(err).To(Equal(transportErr))
 	Expect(resp).To(BeNil())
 
@@ -162,15 +168,16 @@ func TestInstrumentedRoundTripper_RecordsTransportErrors(t *testing.T) {
 func TestInstrumentedRoundTripper_ResponseReturnedUnmodified(t *testing.T) {
 	RegisterTestingT(t)
 
-	expected := fakeResponse(http.StatusAccepted)
-	rt := NewInstrumentedRoundTripper(&mockRoundTripper{resp: expected})
+	response := fakeResponse(http.StatusAccepted)
+	rt := NewInstrumentedRoundTripper(&mockRoundTripper{resp: response})
 
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://example.com", nil)
 	Expect(err).To(BeNil())
 
 	got, err := rt.RoundTrip(req)
 	Expect(err).To(BeNil())
-	Expect(got).To(Equal(expected))
+	Expect(got).To(Equal(response))
+	defer got.Body.Close()
 }
 
 func TestInstrumentedRoundTripper_NilNextUsesDefault(t *testing.T) {
@@ -182,7 +189,8 @@ func TestInstrumentedRoundTripper_NilNextUsesDefault(t *testing.T) {
 
 func TestInstrumentedRoundTripper_ScalerContextKey_Missing(t *testing.T) {
 	RegisterTestingT(t)
-	rt := NewInstrumentedRoundTripper(&mockRoundTripper{resp: fakeResponse(200)})
+	response := fakeResponse(200)
+	rt := NewInstrumentedRoundTripper(&mockRoundTripper{resp: response})
 
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://example.com", nil)
 	Expect(err).To(BeNil())
@@ -190,4 +198,6 @@ func TestInstrumentedRoundTripper_ScalerContextKey_Missing(t *testing.T) {
 	resp, err := rt.RoundTrip(req)
 	Expect(err).To(BeNil())
 	Expect(resp).NotTo(BeNil())
+	Expect(resp).To(Equal(response))
+	defer resp.Body.Close()
 }
