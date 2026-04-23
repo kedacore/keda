@@ -1,8 +1,10 @@
 package scalers
 
 import (
+	"context"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -161,7 +163,7 @@ func TestParseOpensearchMetadata(t *testing.T) {
 			name:     "query in TriggerMetadata: all fields parsed correctly",
 			metadata: baseConfig(nil),
 			check: func(t *testing.T, meta opensearchMetadata) {
-				assert.Equal(t, "s0-opensearch-query", meta.MetricName)
+				assert.Equal(t, "s0-opensearch-query", meta.metricName)
 				assert.Equal(t, `{"query":{"match_all":{}}}`, meta.Query)
 				assert.Equal(t, "admin", meta.Username)
 				assert.Equal(t, "secret", meta.Password)
@@ -175,7 +177,7 @@ func TestParseOpensearchMetadata(t *testing.T) {
 			name:     "searchTemplateName: metric name derived from template name",
 			metadata: baseConfig(map[string]string{"query": "", "searchTemplateName": "my-template"}),
 			check: func(t *testing.T, meta opensearchMetadata) {
-				assert.Equal(t, "s0-opensearch-my-template", meta.MetricName)
+				assert.Equal(t, "s0-opensearch-my-template", meta.metricName)
 				assert.Equal(t, "my-template", meta.SearchTemplateName)
 			},
 		},
@@ -425,6 +427,43 @@ func TestNewOpensearchAPIClientWithTLS(t *testing.T) {
 		assert.ErrorContains(t, err, "tls: first record does not look like a TLS handshake")
 		assert.Nil(t, client)
 	})
+}
+
+func TestGetMetricsAndActivity_InvalidParameters(t *testing.T) {
+	tests := []struct {
+		name      string
+		parameter string
+	}{
+		{
+			name:      "no colon",
+			parameter: "invalid-param",
+		},
+		{
+			name:      "colon at beginning",
+			parameter: ":value",
+		},
+		{
+			name:      "colon at end",
+			parameter: "key:",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			scaler := &opensearchScaler{
+				metadata: opensearchMetadata{
+					SearchTemplateName: "my-template",
+					Parameters:         []string{tt.parameter},
+					ValueLocation:      "hits.total.value",
+					TargetValue:        10,
+				},
+				logger: logr.Discard(),
+			}
+
+			_, _, err := scaler.GetMetricsAndActivity(context.Background(), "test-metric")
+			assert.ErrorContains(t, err, fmt.Sprintf("invalid parameter format %q", tt.parameter))
+		})
+	}
 }
 
 func TestOpensearchCheckHTTPStatus(t *testing.T) {
