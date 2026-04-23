@@ -60,6 +60,11 @@ var cpuString = "cpu"
 const (
 	scaleTargetRefNameIdx = "spec.scaleTargetRef.name"
 	hpaNameIdx            = "spec.hpaName"
+	// hpaScaleTargetNameIdx indexes HPA objects by spec.scaleTargetRef.name so
+	// verifyHpas can issue an O(1) lookup instead of listing every HPA in the
+	// namespace. Index names are scoped per-GVK so reusing the same path string
+	// as scaleTargetRefNameIdx is safe.
+	hpaScaleTargetNameIdx = "spec.scaleTargetRef.name"
 )
 
 func (so *ScaledObject) SetupWebhookWithManager(mgr ctrl.Manager, cacheMissFallback bool) error {
@@ -78,6 +83,12 @@ func (so *ScaledObject) SetupWebhookWithManager(mgr ctrl.Manager, cacheMissFallb
 			return []string{getHpaName(*obj.(*ScaledObject))}
 		}); err != nil {
 		return fmt.Errorf("failed to register index %q: %w", hpaNameIdx, err)
+	}
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &autoscalingv2.HorizontalPodAutoscaler{}, hpaScaleTargetNameIdx,
+		func(obj client.Object) []string {
+			return []string{obj.(*autoscalingv2.HorizontalPodAutoscaler).Spec.ScaleTargetRef.Name}
+		}); err != nil {
+		return fmt.Errorf("failed to register HPA index %q: %w", hpaScaleTargetNameIdx, err)
 	}
 
 	err := setupKubernetesClients(mgr, cacheMissFallback)
@@ -262,10 +273,12 @@ func verifyTriggers(incomingObject interface{}, action string, _ bool) error {
 
 func verifyHpas(incomingSo *ScaledObject, action string, _ bool) error {
 	hpaList := &autoscalingv2.HorizontalPodAutoscalerList{}
-	opt := &client.ListOptions{
-		Namespace: incomingSo.Namespace,
-	}
-	err := kc.List(context.Background(), hpaList, opt)
+	// Use the hpaScaleTargetNameIdx field index to narrow candidates to HPAs
+	// that target the same workload name, avoiding an O(N) full-namespace scan.
+	err := kc.List(context.Background(), hpaList,
+		client.InNamespace(incomingSo.Namespace),
+		client.MatchingFields{hpaScaleTargetNameIdx: incomingSo.Spec.ScaleTargetRef.Name},
+	)
 	if err != nil {
 		return err
 	}
@@ -281,8 +294,7 @@ func verifyHpas(incomingSo *ScaledObject, action string, _ bool) error {
 		if hpa.Annotations[ValidationsHpaOwnershipAnnotation] == "false" {
 			continue
 		}
-		val, _ := json.MarshalIndent(hpa, "", "  ")
-		scaledobjectlog.V(1).Info(fmt.Sprintf("checking hpa %s: %v", hpa.Name, string(val)))
+		scaledobjectlog.V(1).Info("checking hpa", "name", hpa.Name)
 
 		hpaGvkr, err := ParseGVKR(restMapper, hpa.Spec.ScaleTargetRef.APIVersion, hpa.Spec.ScaleTargetRef.Kind)
 		if err != nil {
