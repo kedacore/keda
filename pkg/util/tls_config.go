@@ -22,18 +22,37 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/youmark/pkcs8"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 var minTLSVersion uint16
+var tlsCipherList []uint16
+var serviceMinTLSVersion uint16
+var serviceTLSCipherList []uint16
 
 func init() {
 	var err error
 
-	if minTLSVersion, err = initMinTLSVersion(); err != nil {
-		ctrl.Log.WithName("tls_setup").Info(err.Error())
+	if minTLSVersion, err = ParseTLSVersion(os.Getenv("KEDA_HTTP_MIN_TLS_VERSION"), tls.VersionTLS12); err != nil {
+		ctrl.Log.WithName("tls_setup").Info("Error parsing environment variable KEDA_HTTP_MIN_TLS_VERSION", "value", os.Getenv("KEDA_HTTP_MIN_TLS_VERSION"), "error", err.Error())
+	}
+	tlsCipherList = ParseTLSCipherList(os.Getenv("KEDA_HTTP_TLS_CIPHER_LIST"))
+
+	if envvar, found := os.LookupEnv("KEDA_SERVICE_MIN_TLS_VERSION"); found {
+		if serviceMinTLSVersion, err = ParseTLSVersion(envvar, tls.VersionTLS13); err != nil {
+			ctrl.Log.WithName("tls_setup").Info("Error parsing environment variable KEDA_HTTP_MIN_TLS_VERSION", "value", os.Getenv("KEDA_SERVICE_MIN_TLS_VERSION"), "error", err.Error())
+		}
+	} else {
+		serviceMinTLSVersion = minTLSVersion // fall back since the old behavior was for the webhook to use KEDA_HTTP_MIN_TLS_VERSION
+	}
+
+	if envvar, found := os.LookupEnv("KEDA_SERVICE_TLS_CIPHER_LIST"); found {
+		serviceTLSCipherList = ParseTLSCipherList(envvar)
+	} else {
+		serviceTLSCipherList = tlsCipherList
 	}
 }
 
@@ -80,6 +99,7 @@ func CreateTLSClientConfig(unsafeSsl bool) *tls.Config {
 		InsecureSkipVerify: unsafeSsl,
 		RootCAs:            getRootCAs(),
 		MinVersion:         GetMinTLSVersion(),
+		CipherSuites:       GetTLSCipherList(),
 	}
 }
 
@@ -88,25 +108,63 @@ func GetMinTLSVersion() uint16 {
 	return minTLSVersion
 }
 
-func initMinTLSVersion() (uint16, error) {
-	version, _ := os.LookupEnv("KEDA_HTTP_MIN_TLS_VERSION")
+// GetTLSCipherList returns the TLS cipher list based on configurations
+func GetTLSCipherList() []uint16 {
+	return tlsCipherList
+}
 
+// GetServiceMinTLSVersion return the minimum TLS version that KEDA services are configured to use
+func GetServiceMinTLSVersion() uint16 {
+	return serviceMinTLSVersion
+}
+
+// GetServiceTLSCipherList return the TLS ciphersuites that KEDA services are configured to use
+func GetServiceTLSCipherList() []uint16 {
+	return serviceTLSCipherList
+}
+
+// ParseTLSCipherList parses a colon or comma-separated list of TLS cipher suite names
+// (as returned by crypto/tls CipherSuites()) into a slice of cipher suite IDs.
+// Unknown names are logged. Returns nil if no valid ciphers are found.
+func ParseTLSCipherList(ciphers string) []uint16 {
+	reverseCipherMap := make(map[string]uint16)
+	for _, c := range tls.CipherSuites() {
+		reverseCipherMap[c.Name] = c.ID
+	}
+	var ciphersuites []uint16
+	for c := range strings.SplitSeq(strings.ReplaceAll(ciphers, ",", ":"), ":") {
+		c = strings.TrimSpace(c)
+		if id, ok := reverseCipherMap[c]; ok {
+			ciphersuites = append(ciphersuites, id)
+		} else {
+			ctrl.Log.WithName("tls_setup").Info("Unrecognized TLS ciphersuite name while parsing list of ciphersuites", "value", c)
+		}
+	}
+	if len(ciphersuites) == 0 {
+		return nil
+	}
+	return ciphersuites
+}
+
+// ParseTLSVersion converts a TLS version string to a TLS version value
+func ParseTLSVersion(version string, defaultVersion uint16) (uint16, error) {
+	var ver uint16
 	switch version {
 	case "":
-		minTLSVersion = tls.VersionTLS12
+		ver = defaultVersion
 	case "TLS10":
-		minTLSVersion = tls.VersionTLS10
+		ver = tls.VersionTLS10
 	case "TLS11":
-		minTLSVersion = tls.VersionTLS11
+		ver = tls.VersionTLS11
 	case "TLS12":
-		minTLSVersion = tls.VersionTLS12
+		ver = tls.VersionTLS12
 	case "TLS13":
-		minTLSVersion = tls.VersionTLS13
+		ver = tls.VersionTLS13
 	default:
-		return tls.VersionTLS12, fmt.Errorf("%s is not a valid value, using `TLS12`. Allowed values are: `TLS13`,`TLS12`,`TLS11`,`TLS10`", version)
+		return defaultVersion, fmt.Errorf("%s is not a valid value, using `%s`. Allowed values are: `TLS13`,`TLS12`,`TLS11`,`TLS10`", version, strings.ReplaceAll(strings.ReplaceAll(tls.VersionName(defaultVersion), " ", ""), ".", ""))
 	}
 
-	return minTLSVersion, nil
+	return ver, nil
 }
 
 func decryptClientKey(clientKey, clientKeyPassword string) ([]byte, error) {
