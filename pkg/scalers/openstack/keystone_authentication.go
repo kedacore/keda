@@ -18,6 +18,8 @@ import (
 const tokensEndpoint = "/v3/auth/tokens"
 const catalogEndpoint = "/v3/auth/catalog"
 
+var getServiceTypes = openstackutil.GetServiceTypes
+
 // Client is a struct containing an authentication token and an HTTP client for HTTP requests.
 // It can also have a public URL for an specific OpenStack project or service.
 // "authMetadata" is an unexported attribute used to validate the current token or to renew it against Keystone when it is expired.
@@ -348,10 +350,10 @@ func (keystone *KeystoneAuthRequest) getCatalog(ctx context.Context, token strin
 
 // getServiceURL retrieves a public URL for an OpenStack project from the OpenStack catalog
 func (keystone *KeystoneAuthRequest) getServiceURL(ctx context.Context, token string, projectName string, region string) (string, error) {
-	serviceTypes, err := openstackutil.GetServiceTypes(ctx, projectName)
+	serviceTypes, err := getServiceTypes(ctx, projectName)
 
 	if err != nil {
-		return "", err
+		serviceTypes = []string{}
 	}
 
 	serviceCatalog, err := keystone.getCatalog(ctx, token)
