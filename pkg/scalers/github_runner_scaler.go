@@ -571,7 +571,7 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, apiURL string
 
 		_, _ = io.Copy(io.Discard, r.Body)
 
-		if s.rateLimit.Remaining == 0 && !s.rateLimit.ResetTime.IsZero() {
+		if s.rateLimit.Remaining == 0 && !s.rateLimit.ResetTime.IsZero() && time.Now().Before(s.rateLimit.ResetTime) {
 			return []byte{}, r.StatusCode, fmt.Errorf("GitHub API rate limit exceeded, reset time %s", s.rateLimit.ResetTime)
 		}
 
