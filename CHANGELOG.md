@@ -81,7 +81,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Allow more control of TLS versions & ciphers via `KEDA_HTTP_TLS_CIPHER_LIST`, `KEDA_SERVICE_TLS_CIPHER_LIST` and `KEDA_SERVICE_MIN_TLS_VERSION` env vars ([#7617](https://github.com/kedacore/keda/pull/7617))
 - **General**: Make APIService cert injections optional ([#7559](https://github.com/kedacore/keda/pull/7559))
 - **Elasticsearch Scaler**: Add HTTP status check for Elasticsearch errors ([#7480](https://github.com/kedacore/keda/pull/7480))
-- **Github Runner Scaler**: Handle rate limit errors by respecting `X-RateLimit-Reset` and `Retry-After` headers and returning cached queue length ([#7683](https://github.com/kedacore/keda/issues/7683))
+- **Github Runner Scaler**: Handle rate limit errors by respecting X-RateLimit-Reset and Retry-After headers and returning cached queue length ([#7683](https://github.com/kedacore/keda/issues/7683))
 - **Kubernetes Workload Scaler**: Add `groupByNode` parameter ([#7628](https://github.com/kedacore/keda/issues/7628))
 
 ### Fixes
