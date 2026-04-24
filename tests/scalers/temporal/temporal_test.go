@@ -235,13 +235,18 @@ spec:
     spec:
       containers:
       - name: worker
-        image: "temporal-deployment-worker:latest"
-        imagePullPolicy: Never
+        image: "docker.io/temporaliotest/omes:go-89ab7fe@sha256:791a2eecd942f78a207ce600a1c1c5d5800eb34167f6ec98c0722e91ea7d6771"
+        imagePullPolicy: IfNotPresent
+        command: ["/app/temporal-omes"]
         args:
-        - "--address={{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233"
-        - "--task-queue=omes-test"
+        - "run-worker"
+        - "--language=go"
+        - "--server-address={{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233"
+        - "--run-id=test"
+        - "--scenario=workflow_with_single_noop_activity"
+        - "--dir-name=prepared"
         - "--deployment-name={{.TemporalWorkerDeploymentName}}"
-        - "--build-id={{.TemporalWorkerDeploymentBuildID}}"
+        - "--deployment-build-id={{.TemporalWorkerDeploymentBuildID}}"
 `
 
 	deploymentVersionWorkerScaleUpTemplate = `
@@ -264,13 +269,18 @@ spec:
     spec:
       containers:
       - name: worker
-        image: "temporal-deployment-worker:latest"
-        imagePullPolicy: Never
+        image: "docker.io/temporaliotest/omes:go-89ab7fe@sha256:791a2eecd942f78a207ce600a1c1c5d5800eb34167f6ec98c0722e91ea7d6771"
+        imagePullPolicy: IfNotPresent
+        command: ["/app/temporal-omes"]
         args:
-        - "--address={{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233"
-        - "--task-queue=omes-test"
+        - "run-worker"
+        - "--language=go"
+        - "--server-address={{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233"
+        - "--run-id=test"
+        - "--scenario=workflow_with_single_noop_activity"
+        - "--dir-name=prepared"
         - "--deployment-name={{.TemporalWorkerDeploymentName}}"
-        - "--build-id={{.TemporalWorkerDeploymentBuildID}}"
+        - "--deployment-build-id={{.TemporalWorkerDeploymentBuildID}}"
 `
 
 	scaledObjectDeploymentVersionTemplate = `
