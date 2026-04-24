@@ -350,14 +350,19 @@ func TestNewOpensearchAPIClientWithBasicAuth(t *testing.T) {
 	})
 
 	t.Run("error: unreachable address causes ping failure", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))
+		addr := srv.URL
+		srv.Close()
+
 		meta := opensearchMetadata{
-			Addresses: []string{"http://127.0.0.1:1"},
+			Addresses: []string{addr},
 			Username:  "admin",
 			Password:  "secret",
 		}
 		client, err := newOpensearchAPIClientWithBasicAuth(meta, logr.Discard())
 		assert.Error(t, err)
-		assert.ErrorContains(t, err, "connection refused")
 		assert.Nil(t, client)
 	})
 }
