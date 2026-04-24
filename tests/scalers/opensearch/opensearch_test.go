@@ -30,6 +30,7 @@ var (
 	deploymentName           = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName         = fmt.Sprintf("%s-so", testName)
 	secretName               = fmt.Sprintf("%s-secret", testName)
+	triggerAuthName          = fmt.Sprintf("%s-trigger-auth", testName)
 	password                 = "Keda@12345!"
 	indexName                = "keda"
 	searchTemplateName       = "keda-search-template"
@@ -43,6 +44,7 @@ type templateData struct {
 	DeploymentName           string
 	ScaledObjectName         string
 	SecretName               string
+	TriggerAuthName          string
 	OpensearchPassword       string
 	OpensearchPasswordBase64 string
 	IndexName                string
@@ -62,7 +64,7 @@ data:
 	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
-  name: keda-trigger-auth-opensearch-secret
+  name: {{.TriggerAuthName}}
   namespace: {{.TestNamespace}}
 spec:
   secretTargetRef:
@@ -196,7 +198,7 @@ spec:
         activationTargetValue: "4"
         parameters: "dummy_value:1;dumb_value:oOooo"
       authenticationRef:
-        name: keda-trigger-auth-opensearch-secret
+        name: {{.TriggerAuthName}}
 `
 
 	scaledObjectTemplateQuery = `
@@ -244,7 +246,7 @@ spec:
         targetValue: "1"
         activationTargetValue: "4"
       authenticationRef:
-        name: keda-trigger-auth-opensearch-secret
+        name: {{.TriggerAuthName}}
 `
 
 	opensearchCreateIndex = `
@@ -400,6 +402,7 @@ func getTemplateData() (templateData, []Template) {
 			DeploymentName:           deploymentName,
 			ScaledObjectName:         scaledObjectName,
 			SecretName:               secretName,
+			TriggerAuthName:          triggerAuthName,
 			OpensearchPassword:       password,
 			OpensearchPasswordBase64: base64.StdEncoding.EncodeToString([]byte(password)),
 			IndexName:                indexName,
