@@ -337,7 +337,7 @@ type Job struct {
 
 // RateLimit holds rate limit information from GitHub API response headers
 type RateLimit struct {
-	Remaining      int       `json:"remaining"`
+	Remaining      int64     `json:"remaining"`
 	ResetTime      time.Time `json:"resetTime"`
 	RetryAfterTime time.Time `json:"retryAfterTime"`
 }
@@ -495,7 +495,7 @@ func (s *githubRunnerScaler) getRateLimit(header http.Header) (RateLimit, error)
 	var retryAfterTime time.Time
 
 	remainingStr := header.Get("X-RateLimit-Remaining")
-	remaining, err := strconv.Atoi(remainingStr)
+	remaining, err := strconv.ParseInt(remainingStr, 10, 64)
 	if err != nil {
 		return RateLimit{}, fmt.Errorf("failed to parse X-RateLimit-Remaining header: %w", err)
 	}
@@ -508,7 +508,7 @@ func (s *githubRunnerScaler) getRateLimit(header http.Header) (RateLimit, error)
 	resetTime := time.Unix(reset, 0)
 
 	if retryAfterStr := header.Get("Retry-After"); retryAfterStr != "" {
-		retrySeconds, err := strconv.Atoi(retryAfterStr)
+		retrySeconds, err := strconv.ParseInt(retryAfterStr, 10, 64)
 		if err != nil {
 			return RateLimit{}, fmt.Errorf("failed to parse Retry-After header: %w", err)
 		}
