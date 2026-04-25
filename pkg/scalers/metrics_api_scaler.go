@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/prometheus/common/expfmt"
@@ -48,6 +49,7 @@ type metricsAPIScalerMetadata struct {
 	UnsafeSsl                         bool            `keda:"name=unsafeSsl,order=triggerMetadata,default=false"`
 	AggregateFromKubeServiceEndpoints bool            `keda:"name=aggregateFromKubeServiceEndpoints,order=triggerMetadata,default=false"`
 	AggregationType                   AggregationType `keda:"name=aggregationType,order=triggerMetadata,default=average,enum=average;sum;max;min"`
+	Timeout                           time.Duration   `keda:"name=timeout, order=triggerMetadata, optional"`
 	// Authentication parameters for connecting to the metrics API
 	MetricsAPIAuth *authentication.Config `keda:"optional"`
 
@@ -93,7 +95,13 @@ func NewMetricsAPIScaler(config *scalersconfig.ScalerConfig, kubeClient client.C
 		return nil, fmt.Errorf("error parsing metric API metadata: %w", err)
 	}
 
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.UnsafeSsl)
+	// handle HTTP client timeout
+	httpClientTimeout := config.GlobalHTTPTimeout
+	if meta.Timeout > 0 {
+		httpClientTimeout = meta.Timeout
+	}
+
+	httpClient := kedautil.CreateHTTPClient(httpClientTimeout, meta.UnsafeSsl)
 
 	// Handle TLS configuration with authentication config
 	if meta.MetricsAPIAuth != nil && meta.MetricsAPIAuth.EnabledTLS() {

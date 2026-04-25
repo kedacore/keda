@@ -3096,6 +3096,12 @@
                         "min"
                     ],
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "timeout",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
                 }
             ]
         },
