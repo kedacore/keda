@@ -82,6 +82,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Make APIService cert injections optional ([#7559](https://github.com/kedacore/keda/pull/7559))
 - **Elasticsearch Scaler**: Add HTTP status check for Elasticsearch errors ([#7480](https://github.com/kedacore/keda/pull/7480))
 - **Kubernetes Workload Scaler**: Add `groupByNode` parameter ([#7628](https://github.com/kedacore/keda/issues/7628))
+- **RabbitMQ Scaler**: Add support for OAuth2 authentication for RabbitMQ over HTTP ([#7379](https://github.com/kedacore/keda/issues/7379))
 
 ### Fixes
 
