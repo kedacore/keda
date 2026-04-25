@@ -29,6 +29,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -118,6 +119,21 @@ func main() {
 	pflag.StringVar(&filePathAuthRootPath, "filepath-auth-root-path", "", "Allowed filesystem path for KEDA to read auth from.")
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
+
+	// Register klog flags on flag.CommandLine so they can be set programmatically.
+	klog.InitFlags(nil)
+
+	// Opt into the new klog behavior so that -stderrthreshold is honored even
+	// when -logtostderr=true (the default). Without this, all log levels are
+	// unconditionally sent to stderr and users cannot filter by severity.
+	// Requires klog v2.140.0+ (kubernetes/klog#432).
+	if err := flag.CommandLine.Set("legacy_stderr_threshold_behavior", "false"); err != nil {
+		klog.Fatalf("Failed to set legacy_stderr_threshold_behavior: %v", err)
+	}
+	if err := flag.CommandLine.Set("stderrthreshold", "INFO"); err != nil {
+		klog.Fatalf("Failed to set stderrthreshold: %v", err)
+	}
+
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 
