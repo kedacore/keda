@@ -8,10 +8,15 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	deploymentpb "go.temporal.io/api/deployment/v1"
+	enumspb "go.temporal.io/api/enums/v1"
+	taskqueuepb "go.temporal.io/api/taskqueue/v1"
+	"go.temporal.io/api/workflowservice/v1"
 	sdk "go.temporal.io/sdk/client"
 	sdklog "go.temporal.io/sdk/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -41,9 +46,11 @@ type temporalMetadata struct {
 	TargetQueueSize           int64    `keda:"name=targetQueueSize,           order=triggerMetadata, default=5"`
 	TaskQueue                 string   `keda:"name=taskQueue,                 order=triggerMetadata;resolvedEnv"`
 	QueueTypes                []string `keda:"name=queueTypes,                order=triggerMetadata, optional"`
-	BuildID                   string   `keda:"name=buildId,                   order=triggerMetadata;resolvedEnv, optional"`
-	AllActive                 bool     `keda:"name=selectAllActive,           order=triggerMetadata, default=false"`
-	Unversioned               bool     `keda:"name=selectUnversioned,         order=triggerMetadata, default=false"`
+	BuildID                   string   `keda:"name=buildId,                   order=triggerMetadata;resolvedEnv, optional, deprecatedAnnounce=The 'buildId' setting is deprecated because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead"`
+	WorkerDeploymentName      string   `keda:"name=workerDeploymentName,      order=triggerMetadata;resolvedEnv, optional"`
+	WorkerDeploymentBuildID   string   `keda:"name=workerDeploymentBuildId,   order=triggerMetadata;resolvedEnv, optional"`
+	AllActive                 bool     `keda:"name=selectAllActive,           order=triggerMetadata, default=false, deprecatedAnnounce=The 'selectAllActive' setting is deprecated because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead"`
+	Unversioned               bool     `keda:"name=selectUnversioned,         order=triggerMetadata, default=false, deprecatedAnnounce=The 'selectUnversioned' setting is deprecated because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs - Remove it if your workers are unversioned. If you're migrating to Worker Deployment Versioning use 'workerDeploymentName' and 'workerDeploymentBuildId' instead"`
 	APIKey                    string   `keda:"name=apiKey,                    order=authParams;resolvedEnv, optional"`
 	MinConnectTimeout         int      `keda:"name=minConnectTimeout,         order=triggerMetadata, default=5"`
 
@@ -73,6 +80,13 @@ func (a *temporalMetadata) Validate() error {
 		return fmt.Errorf("minConnectTimeout must be a positive number")
 	}
 
+	if (a.WorkerDeploymentName == "") != (a.WorkerDeploymentBuildID == "") {
+		return fmt.Errorf("workerDeploymentName and workerDeploymentBuildId must both be set")
+	}
+	if a.WorkerDeploymentName != "" && (a.BuildID != "" || a.AllActive || a.Unversioned) {
+		return fmt.Errorf("workerDeploymentName/workerDeploymentBuildId cannot be combined with buildId, selectAllActive, or selectUnversioned")
+	}
+
 	return nil
 }
 
@@ -94,6 +108,30 @@ func NewTemporalScaler(ctx context.Context, config *scalersconfig.ScalerConfig) 
 		return nil, fmt.Errorf("failed to create Temporal client connection: %w", err)
 	}
 
+	kv := []any{
+		"mode", scalerMode(meta),
+		"endpoint", meta.Endpoint,
+		"namespace", meta.Namespace,
+		"taskQueue", meta.TaskQueue,
+		"targetQueueSize", meta.TargetQueueSize,
+		"activationTargetQueueSize", meta.ActivationTargetQueueSize,
+		"authType", authType(meta),
+		"unsafeSsl", meta.UnsafeSsl,
+	}
+	if meta.TLSServerName != "" {
+		kv = append(kv, "tlsServerName", meta.TLSServerName)
+	}
+	if meta.BuildID != "" {
+		kv = append(kv, "buildId", meta.BuildID)
+	}
+	if meta.WorkerDeploymentName != "" {
+		kv = append(kv, "workerDeploymentName", meta.WorkerDeploymentName, "workerDeploymentBuildId", meta.WorkerDeploymentBuildID)
+	}
+	if len(meta.QueueTypes) > 0 {
+		kv = append(kv, "queueTypes", meta.QueueTypes)
+	}
+	logger.Info("Temporal scaler initialized", kv...)
+
 	return &temporalScaler{
 		metricType: metricType,
 		metadata:   meta,
@@ -103,6 +141,7 @@ func NewTemporalScaler(ctx context.Context, config *scalersconfig.ScalerConfig) 
 }
 
 func (s *temporalScaler) Close(_ context.Context) error {
+	s.logger.V(1).Info("closing Temporal scaler")
 	if s.tcl != nil {
 		s.tcl.Close()
 	}
@@ -110,7 +149,12 @@ func (s *temporalScaler) Close(_ context.Context) error {
 }
 
 func (s *temporalScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	metricName := kedautil.NormalizeString(fmt.Sprintf("temporal-%s-%s", s.metadata.Namespace, s.metadata.TaskQueue))
+	metricName := fmt.Sprintf("temporal-%s-%s", s.metadata.Namespace, s.metadata.TaskQueue)
+	if s.metadata.WorkerDeploymentName != "" {
+		metricName = fmt.Sprintf("%s-%s-%s", metricName, s.metadata.WorkerDeploymentName, s.metadata.WorkerDeploymentBuildID)
+	}
+	metricName = kedautil.NormalizeString(metricName)
+
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
@@ -127,39 +171,166 @@ func (s *temporalScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 }
 
 func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	queueSize, err := s.getQueueSize(ctx)
+	var (
+		backlogCount int64
+		err          error
+	)
+	switch {
+	case s.metadata.WorkerDeploymentName != "":
+		backlogCount, err = s.getDeploymentBacklogCount(ctx)
+	case s.metadata.BuildID != "" || s.metadata.AllActive || s.metadata.Unversioned:
+		backlogCount, err = s.getBuildIDBacklogCount(ctx)
+	default:
+		backlogCount, err = s.getUnversionedBacklogCount(ctx)
+	}
 	if err != nil {
-		return nil, false, fmt.Errorf("failed to get Temporal queue size: %w", err)
+		s.logger.Error(err, "failed to get Temporal backlog count",
+			"mode", scalerMode(s.metadata),
+			"namespace", s.metadata.Namespace,
+			"taskQueue", s.metadata.TaskQueue,
+			"grpcCode", status.Code(err).String())
+		return nil, false, fmt.Errorf("failed to get Temporal backlog count: %w", err)
 	}
 
-	metric := GenerateMetricInMili(metricName, float64(queueSize))
+	metric := GenerateMetricInMili(metricName, float64(backlogCount))
+	isActive := backlogCount > s.metadata.ActivationTargetQueueSize
 
-	return []external_metrics.ExternalMetricValue{metric}, queueSize > s.metadata.ActivationTargetQueueSize, nil
+	s.logger.V(1).Info("polled Temporal backlog",
+		"mode", scalerMode(s.metadata),
+		"namespace", s.metadata.Namespace,
+		"taskQueue", s.metadata.TaskQueue,
+		"buildId", s.metadata.BuildID,
+		"workerDeploymentName", s.metadata.WorkerDeploymentName,
+		"workerDeploymentBuildId", s.metadata.WorkerDeploymentBuildID,
+		"backlogCount", backlogCount,
+		"activationThreshold", s.metadata.ActivationTargetQueueSize,
+		"isActive", isActive)
+
+	return []external_metrics.ExternalMetricValue{metric}, isActive, nil
 }
 
-func (s *temporalScaler) getQueueSize(ctx context.Context) (int64, error) {
-	var selection *sdk.TaskQueueVersionSelection
-	if s.metadata.AllActive || s.metadata.Unversioned || s.metadata.BuildID != "" {
-		selection = &sdk.TaskQueueVersionSelection{
-			AllActive:   s.metadata.AllActive,
-			Unversioned: s.metadata.Unversioned,
-			BuildIDs:    []string{s.metadata.BuildID},
-		}
+func (s *temporalScaler) getBuildIDBacklogCount(ctx context.Context) (int64, error) {
+	selection := &sdk.TaskQueueVersionSelection{
+		AllActive:   s.metadata.AllActive,
+		Unversioned: s.metadata.Unversioned,
+		BuildIDs:    []string{s.metadata.BuildID},
 	}
-
-	queueType := getQueueTypes(s.metadata.QueueTypes)
 
 	resp, err := s.tcl.DescribeTaskQueueEnhanced(ctx, sdk.DescribeTaskQueueEnhancedOptions{
 		TaskQueue:      s.metadata.TaskQueue,
 		ReportStats:    true,
 		Versions:       selection,
-		TaskQueueTypes: queueType,
+		TaskQueueTypes: getQueueTypes(s.metadata.QueueTypes),
 	})
 	if err != nil {
-		return 0, fmt.Errorf("failed to get Temporal queue size: %w", err)
+		return 0, fmt.Errorf("failed to describe task queue enhanced (taskQueue=%q, buildId=%q): %w", s.metadata.TaskQueue, s.metadata.BuildID, err)
 	}
 
 	return getCombinedBacklogCount(resp), nil
+}
+
+// getUnversionedBacklogCount queries DescribeTaskQueue for each configured queue
+// type and returns the summed backlog count. This replaces DescribeTaskQueueEnhanced
+// for the unversioned path, which is deprecated and returns the default Build ID's
+// backlog when no Versions selector is provided (not the unversioned queue).
+func (s *temporalScaler) getUnversionedBacklogCount(ctx context.Context) (int64, error) {
+	var total int64
+	for _, qt := range getQueueTypes(s.metadata.QueueTypes) {
+		tqt := enumspb.TaskQueueType(qt)
+		resp, err := s.tcl.WorkflowService().DescribeTaskQueue(ctx, &workflowservice.DescribeTaskQueueRequest{
+			Namespace:     s.metadata.Namespace,
+			TaskQueue:     &taskqueuepb.TaskQueue{Name: s.metadata.TaskQueue, Kind: enumspb.TASK_QUEUE_KIND_NORMAL},
+			TaskQueueType: tqt,
+			ReportStats:   true,
+		})
+		if err != nil {
+			return 0, fmt.Errorf("failed to describe task queue %q (type %s): %w", s.metadata.TaskQueue, tqt, err)
+		}
+		if stats := resp.GetStats(); stats != nil {
+			total += stats.GetApproximateBacklogCount()
+		}
+	}
+	return total, nil
+}
+
+func (s *temporalScaler) getDeploymentBacklogCount(ctx context.Context) (int64, error) {
+	resp, err := s.tcl.WorkflowService().DescribeWorkerDeploymentVersion(ctx,
+		&workflowservice.DescribeWorkerDeploymentVersionRequest{
+			Namespace: s.metadata.Namespace,
+			DeploymentVersion: &deploymentpb.WorkerDeploymentVersion{
+				DeploymentName: s.metadata.WorkerDeploymentName,
+				BuildId:        s.metadata.WorkerDeploymentBuildID,
+			},
+			ReportTaskQueueStats: true,
+		},
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to describe worker deployment version (taskQueue=%q, deploymentName=%q, buildId=%q): %w",
+			s.metadata.TaskQueue, s.metadata.WorkerDeploymentName, s.metadata.WorkerDeploymentBuildID, err)
+	}
+
+	return sumDeploymentBacklog(resp.GetVersionTaskQueues(), s.metadata.TaskQueue, s.metadata.QueueTypes), nil
+}
+
+// sumDeploymentBacklog sums ApproximateBacklogCount across the provided task
+// queues, optionally filtered by taskQueueName and allowedQueueTypes. An empty
+// taskQueueName means no name filter; an empty allowedQueueTypes means no type filter.
+func sumDeploymentBacklog(tqs []*workflowservice.DescribeWorkerDeploymentVersionResponse_VersionTaskQueue, taskQueueName string, allowedQueueTypes []string) int64 {
+	allowedTypes := queueTypeSet(allowedQueueTypes) // nil == allow all
+
+	var totalBacklog int64
+	for _, tq := range tqs {
+		if allowedTypes != nil && !allowedTypes[tq.GetType()] {
+			continue
+		}
+		if taskQueueName != "" && tq.GetName() != taskQueueName {
+			continue
+		}
+		if stats := tq.GetStats(); stats != nil {
+			totalBacklog += stats.GetApproximateBacklogCount()
+		}
+	}
+	return totalBacklog
+}
+
+func queueTypeSet(queueTypes []string) map[enumspb.TaskQueueType]bool {
+	if len(queueTypes) == 0 {
+		return nil
+	}
+	set := make(map[enumspb.TaskQueueType]bool, len(queueTypes))
+	for _, t := range queueTypes {
+		switch t {
+		case "workflow":
+			set[enumspb.TASK_QUEUE_TYPE_WORKFLOW] = true
+		case "activity":
+			set[enumspb.TASK_QUEUE_TYPE_ACTIVITY] = true
+		case "nexus":
+			set[enumspb.TASK_QUEUE_TYPE_NEXUS] = true
+		}
+	}
+	return set
+}
+
+func scalerMode(m *temporalMetadata) string {
+	switch {
+	case m.WorkerDeploymentName != "":
+		return "deployment-version"
+	case m.BuildID != "" || m.AllActive || m.Unversioned:
+		return "build-id"
+	default:
+		return "unversioned"
+	}
+}
+
+func authType(m *temporalMetadata) string {
+	switch {
+	case m.APIKey != "":
+		return "apiKey"
+	case m.Cert != "":
+		return "mtls"
+	default:
+		return "none"
+	}
 }
 
 func getQueueTypes(queueTypes []string) []sdk.TaskQueueType {
