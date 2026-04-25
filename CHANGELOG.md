@@ -96,6 +96,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **GCP Scaler**: Validate Pub/Sub resource name in BuildMQLQuery ([#7468](https://github.com/kedacore/keda/pull/7468))
 - **Github Runner Scaler**: Improve URL construction and error handling ([#7495](https://github.com/kedacore/keda/pull/7495))
 - **Github Runner Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
+- **InfluxDB Scaler**: Make `authToken` optional to support unauthenticated InfluxDB instances ([#7616](https://github.com/kedacore/keda/issues/7616))
 - **Loki Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **Loki Scaler**: `serverAddress` now appends `/loki/api/v1/query` to the end of existing path instead of overriding ([#7648](https://github.com/kedacore/keda/pull/7648))
 - **Metrics API Scaler**: Fix `aggregateFromKubeServiceEndpoints` using empty label selector that matched all EndpointSlices in the namespace instead of only the target service's ([#7641](https://github.com/kedacore/keda/issues/7641))
