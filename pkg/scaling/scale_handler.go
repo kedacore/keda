@@ -182,6 +182,24 @@ func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1a
 	pollingInterval := withTriggers.GetPollingInterval()
 	logger.V(1).Info("Watching with pollingInterval", "PollingInterval", pollingInterval)
 
+	// Jitter the first tick to spread scale loops spawned in the same
+	// reconcile batch across the polling interval. Without this, a batch
+	// of ScalableObjects created in a short window (e.g. bulk apply, or
+	// operator restart re-spawning existing loops) poll on the same
+	// ~30-second boundary forever, creating a thundering herd against
+	// external metric sources. Keyed off the object UID so the phase is
+	// stable across operator restarts.
+	if offset := jitterOffset(withTriggers.UID, pollingInterval); offset > 0 {
+		jitter := time.NewTimer(offset)
+		select {
+		case <-jitter.C:
+		case <-ctx.Done():
+			jitter.Stop()
+			logger.V(1).Info("Context canceled before first poll")
+			return
+		}
+	}
+
 	_, isScaledObject := scalableObject.(*kedav1alpha1.ScaledObject)
 	next := time.Now()
 
