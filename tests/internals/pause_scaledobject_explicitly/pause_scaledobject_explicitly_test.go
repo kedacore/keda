@@ -4,11 +4,14 @@
 package pause_scaledobject_explicitly_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -25,6 +28,7 @@ var (
 	deploymentName          = fmt.Sprintf("%s-deployment", testName)
 	monitoredDeploymentName = fmt.Sprintf("%s-monitored", testName)
 	scaledObjectName        = fmt.Sprintf("%s-so", testName)
+	hpaName                 = fmt.Sprintf("keda-hpa-%s", scaledObjectName)
 	testScaleOutWaitMin     = 1
 	testPauseAtNWaitMin     = 1
 	testScaleInWaitMin      = 1
@@ -127,6 +131,10 @@ func TestScaler(t *testing.T) {
 		testPauseWhenScaleIn(t, kc)
 		testScaleIn(t, kc, unpauseMethod)
 		testBothPauseAnnotationActive(t, kc)
+		testHPANotExistWhilePaused(t, kc)
+		testHPANotExistWhilePausedReplicas(t, kc)
+		testChangePausedReplicasValue(t, kc)
+		testSwitchFromPausedReplicasToPaused(t, kc)
 
 		// cleanup
 		DeleteKubernetesResources(t, testNamespace, data, templates)
@@ -271,4 +279,74 @@ func testBothPauseAnnotationActive(t *testing.T, kc *kubernetes.Clientset) {
 		"monitoredDeploymentName replica count should be 0 after %d minute(s)", testPauseAtNWaitMin)
 	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 5, 60, testPauseAtNWaitMin),
 		"replica count should be 5 after %d minute(s)", testPauseAtNWaitMin)
+}
+
+func testHPANotExistWhilePaused(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing HPA does not exist while paused ---")
+
+	upsertScaledObjectPausedAnnotation(t)
+	time.Sleep(5 * time.Second)
+
+	_, err := kc.AutoscalingV2().HorizontalPodAutoscalers(testNamespace).Get(context.Background(), hpaName, metav1.GetOptions{})
+	assert.True(t, errors.IsNotFound(err), "HPA should not exist while paused with paused=true")
+
+	removeScaledObjectPausedAnnotation(t)
+	time.Sleep(5 * time.Second)
+}
+
+func testHPANotExistWhilePausedReplicas(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing HPA does not exist while paused-replicas is set ---")
+
+	upsertScaledObjectPausedReplicasAnnotation(t, 3)
+
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 3, 60, 1),
+		"replica count should be 3 after 1 minute")
+
+	_, err := kc.AutoscalingV2().HorizontalPodAutoscalers(testNamespace).Get(context.Background(), hpaName, metav1.GetOptions{})
+	assert.True(t, errors.IsNotFound(err), "HPA should not exist while paused with paused-replicas")
+
+	removeScaledObjectPausedReplicasAnnotation(t)
+	time.Sleep(5 * time.Second)
+}
+
+func testChangePausedReplicasValue(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing changing paused-replicas value while paused ---")
+
+	upsertScaledObjectPausedReplicasAnnotation(t, 3)
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 3, 60, 1),
+		"replica count should be 3 after 1 minute")
+
+	upsertScaledObjectPausedReplicasAnnotation(t, 7)
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 7, 60, 1),
+		"replica count should be 7 after 1 minute")
+
+	removeScaledObjectPausedReplicasAnnotation(t)
+	time.Sleep(5 * time.Second)
+}
+
+func testSwitchFromPausedReplicasToPaused(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing switching from paused-replicas to paused ---")
+
+	// Ensure a stable starting state: use paused-replicas to set replicas to 5
+	upsertScaledObjectPausedReplicasAnnotation(t, 5)
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 5, 60, 1),
+		"replica count should be 5 after 1 minute")
+
+	// Switch: remove paused-replicas, add paused=true
+	removeScaledObjectPausedReplicasAnnotation(t)
+	upsertScaledObjectPausedAnnotation(t)
+	time.Sleep(5 * time.Second)
+
+	// HPA should not exist after switch
+	_, err := kc.AutoscalingV2().HorizontalPodAutoscalers(testNamespace).Get(context.Background(), hpaName, metav1.GetOptions{})
+	assert.True(t, errors.IsNotFound(err), "HPA should not exist after switching to paused=true")
+
+	// Replicas should stay frozen at 5
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 5, 30)
+
+	// Cleanup
+	removeScaledObjectPausedAnnotation(t)
+	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+		"replica count should be 0 after 1 minute")
 }
