@@ -1103,6 +1103,43 @@
                     "triggerAuthenticationVariableReadable": true
                 },
                 {
+                    "name": "tenantId",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "clientId",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "clientSecret",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "clientCertificate",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "clientCertificatePassword",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
                     "name": "parent",
                     "type": "string",
                     "optional": true,

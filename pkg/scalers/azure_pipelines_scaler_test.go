@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/go-logr/logr"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -37,10 +39,20 @@ var testAzurePipelinesMetadata = []parseAzurePipelinesMetadataTestData{
 	{"using triggerAuthentication", map[string]string{"poolID": "1", "targetPipelinesQueueLength": "1"}, false, testAzurePipelinesResolvedEnv, map[string]string{"organizationURL": "https://dev.azure.com/sample", "personalAccessToken": "sample"}},
 	// using triggerAuthentication with personalAccessToken terminating in newline
 	{"using triggerAuthentication with personalAccessToken terminating in newline", map[string]string{"poolID": "1", "targetPipelinesQueueLength": "1"}, false, testAzurePipelinesResolvedEnv, map[string]string{"organizationURL": "https://dev.azure.com/sample", "personalAccessToken": "sample\n"}},
+	// using service principal authentication
+	{"using service principal authentication", map[string]string{"poolID": "1", "targetPipelinesQueueLength": "1"}, false, testAzurePipelinesResolvedEnv, map[string]string{"organizationURL": "https://dev.azure.com/sample", "tenantId": "tenant", "clientId": "client", "clientSecret": "secret"}},
+	// using service principal certificate authentication
+	{"using service principal certificate authentication", map[string]string{"poolID": "1", "targetPipelinesQueueLength": "1"}, false, testAzurePipelinesResolvedEnv, map[string]string{"organizationURL": "https://dev.azure.com/sample", "tenantId": "tenant", "clientId": "client", "clientCertificate": "cert-data", "clientCertificatePassword": "cert-password"}},
 	// missing organizationURL
 	{"missing organizationURL", map[string]string{"organizationURLFromEnv": "", "personalAccessTokenFromEnv": "sample", "poolID": "1", "targetPipelinesQueueLength": "1"}, true, testAzurePipelinesResolvedEnv, map[string]string{}},
-	// missing personalAccessToken
-	{"missing personalAccessToken", map[string]string{"organizationURLFromEnv": "AZP_URL", "poolID": "1", "targetPipelinesQueueLength": "1"}, true, testAzurePipelinesResolvedEnv, map[string]string{}},
+	// missing all auth methods
+	{"missing all auth methods", map[string]string{"organizationURLFromEnv": "AZP_URL", "poolID": "1", "targetPipelinesQueueLength": "1"}, true, testAzurePipelinesResolvedEnv, map[string]string{}},
+	// incomplete service principal
+	{"incomplete service principal", map[string]string{"poolID": "1", "targetPipelinesQueueLength": "1"}, true, testAzurePipelinesResolvedEnv, map[string]string{"organizationURL": "https://dev.azure.com/sample", "tenantId": "tenant", "clientId": "client"}},
+	// mutually exclusive secret and certificate
+	{"mutually exclusive service principal auth", map[string]string{"poolID": "1", "targetPipelinesQueueLength": "1"}, true, testAzurePipelinesResolvedEnv, map[string]string{"organizationURL": "https://dev.azure.com/sample", "tenantId": "tenant", "clientId": "client", "clientSecret": "secret", "clientCertificate": "cert-data"}},
+	// certificate password without certificate
+	{"certificate password without certificate", map[string]string{"poolID": "1", "targetPipelinesQueueLength": "1"}, true, testAzurePipelinesResolvedEnv, map[string]string{"organizationURL": "https://dev.azure.com/sample", "tenantId": "tenant", "clientId": "client", "clientCertificatePassword": "cert-password"}},
 	// missing poolID
 	{"missing poolID", map[string]string{"organizationURLFromEnv": "AZP_URL", "personalAccessTokenFromEnv": "AZP_TOKEN", "poolID": "", "targetPipelinesQueueLength": "1"}, true, testAzurePipelinesResolvedEnv, map[string]string{}},
 	// activationTargetPipelinesQueueLength malformed
@@ -64,13 +76,25 @@ func TestParseAzurePipelinesMetadata(t *testing.T) {
 	for _, testData := range testAzurePipelinesMetadata {
 		t.Run(testData.testName, func(t *testing.T) {
 			var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				personalAccessToken := strings.Split(r.Header["Authorization"][0], " ")[1]
-				if personalAccessToken != "" && personalAccessToken[len(personalAccessToken)-1:] == "\n" {
+				authHeader := r.Header.Get("Authorization")
+				switch {
+				case strings.HasPrefix(authHeader, "Basic "):
+					personalAccessToken := strings.Split(authHeader, " ")[1]
+					if personalAccessToken != "" && personalAccessToken[len(personalAccessToken)-1:] == "\n" {
+						w.WriteHeader(http.StatusUnauthorized)
+						return
+					}
+				case strings.HasPrefix(authHeader, "Bearer "):
+					if authHeader != "Bearer fake-token" {
+						w.WriteHeader(http.StatusUnauthorized)
+						return
+					}
+				default:
 					w.WriteHeader(http.StatusUnauthorized)
-				} else {
-					w.WriteHeader(http.StatusOK)
-					_, _ = w.Write([]byte(`{"count":1,"value":[{"id":1}]}`))
+					return
 				}
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"count":1,"value":[{"id":1}]}`))
 			}))
 
 			// set urls into local stub only if they are already defined
@@ -82,8 +106,26 @@ func TestParseAzurePipelinesMetadata(t *testing.T) {
 			}
 
 			logger := logr.Discard()
+			if testData.authParams["clientSecret"] != "" {
+				origNewClientSecretCredential := newAzurePipelinesClientSecretCredential
+				newAzurePipelinesClientSecretCredential = func(_, _, _ string) (azcore.TokenCredential, error) {
+					return fakeTokenCredential{token: "fake-token"}, nil
+				}
+				defer func() {
+					newAzurePipelinesClientSecretCredential = origNewClientSecretCredential
+				}()
+			}
+			if testData.authParams["clientCertificate"] != "" {
+				origNewClientCertificateCredential := newAzurePipelinesClientCertificateCredential
+				newAzurePipelinesClientCertificateCredential = func(_, _, _, _ string) (azcore.TokenCredential, error) {
+					return fakeTokenCredential{token: "fake-token"}, nil
+				}
+				defer func() {
+					newAzurePipelinesClientCertificateCredential = origNewClientCertificateCredential
+				}()
+			}
 
-			_, _, err := parseAzurePipelinesMetadata(context.TODO(), logger, &scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams}, http.DefaultClient)
+			_, err := parseAzurePipelinesMetadata(context.Background(), logger, &scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams}, http.DefaultClient)
 			if err != nil && !testData.isError {
 				t.Error("Expected success but got error", err)
 			}
@@ -92,6 +134,14 @@ func TestParseAzurePipelinesMetadata(t *testing.T) {
 			}
 		})
 	}
+}
+
+type fakeTokenCredential struct {
+	token string
+}
+
+func (f fakeTokenCredential) GetToken(context.Context, policy.TokenRequestOptions) (azcore.AccessToken, error) {
+	return azcore.AccessToken{Token: f.token}, nil
 }
 
 type validateAzurePipelinesPoolTestData struct {
@@ -137,7 +187,7 @@ func TestValidateAzurePipelinesPool(t *testing.T) {
 				"personalAccessToken": "PAT",
 			}
 			logger := logr.Discard()
-			_, _, err := parseAzurePipelinesMetadata(context.TODO(), logger, &scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: nil, AuthParams: authParams}, http.DefaultClient)
+			_, err := parseAzurePipelinesMetadata(context.Background(), logger, &scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: nil, AuthParams: authParams}, http.DefaultClient)
 			if err != nil && !testData.isError {
 				t.Error("Expected success but got error", err)
 			}
@@ -177,7 +227,7 @@ func TestAzurePipelinesGetMetricSpecForScaling(t *testing.T) {
 
 		logger := logr.Discard()
 
-		meta, _, err := parseAzurePipelinesMetadata(context.TODO(), logger, &scalersconfig.ScalerConfig{TriggerMetadata: metadata, ResolvedEnv: nil, AuthParams: authParams, TriggerIndex: testData.triggerIndex}, http.DefaultClient)
+		meta, err := parseAzurePipelinesMetadata(context.Background(), logger, &scalersconfig.ScalerConfig{TriggerMetadata: metadata, ResolvedEnv: nil, AuthParams: authParams, TriggerIndex: testData.triggerIndex}, http.DefaultClient)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -201,6 +251,7 @@ func getMatchedAgentMetaData(url string) *azurePipelinesMetadata {
 	meta.OrganizationURL = url
 	meta.Parent = "dotnet60-keda-template"
 	meta.authContext.pat = "testPAT"
+	meta.authContext.authType = azurePipelinesAuthTypePAT
 	meta.PoolID = 1
 	meta.TargetPipelinesQueueLength = 1
 
@@ -220,7 +271,7 @@ func TestAzurePipelinesMatchedAgent(t *testing.T) {
 		httpClient: http.DefaultClient,
 	}
 
-	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
+	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.Background())
 
 	if err != nil {
 		t.Fail()
@@ -296,7 +347,7 @@ func TestAzurePipelinesMatchedDemandAgent(t *testing.T) {
 		httpClient: http.DefaultClient,
 	}
 
-	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
+	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.Background())
 
 	if err != nil {
 		t.Fail()
@@ -321,7 +372,7 @@ func TestAzurePipelinesNonMatchedDemandAgent(t *testing.T) {
 		httpClient: http.DefaultClient,
 	}
 
-	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
+	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.Background())
 
 	if err != nil {
 		t.Fail()
@@ -346,7 +397,7 @@ func TestAzurePipelinesMatchedDemandAgentWithRequireAllDemands(t *testing.T) {
 		httpClient: http.DefaultClient,
 	}
 
-	queuelen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
+	queuelen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.Background())
 
 	if err != nil {
 		t.Fail()
@@ -372,8 +423,7 @@ func TestAzurePipelinesMatchedDemandAgentWithRequireAllDemandsAndIgnoreOthers(t 
 		httpClient: http.DefaultClient,
 	}
 
-	// nosemgrep: context-todo
-	queuelen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
+	queuelen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.Background())
 
 	if err != nil {
 		t.Fail()
@@ -400,8 +450,7 @@ func TestAzurePipelinesNotMatchedPartialRequiredTriggerDemands(t *testing.T) {
 		httpClient: http.DefaultClient,
 	}
 
-	// nosemgrep: context-todo
-	queuelen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
+	queuelen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.Background())
 
 	if err != nil {
 		t.Fail()
@@ -505,6 +554,7 @@ func TestAzurePipelinesQueueURLTest(t *testing.T) {
 			meta.OrganizationName = "testOrg"
 			meta.OrganizationURL = apiStub.URL
 			meta.authContext.pat = "testPAT"
+			meta.authContext.authType = azurePipelinesAuthTypePAT
 			meta.PoolID = 1
 			meta.TargetPipelinesQueueLength = 1
 
@@ -524,5 +574,29 @@ func TestAzurePipelinesQueueURLTest(t *testing.T) {
 				t.Fail()
 			}
 		})
+	}
+}
+
+func TestAzurePipelinesRequestUsesBearerTokenForServicePrincipal(t *testing.T) {
+	apiStub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Authorization"); got != "Bearer fake-token" {
+			t.Fatalf("expected bearer token auth, got %q", got)
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"count":1,"value":[{"id":1}]}`))
+	}))
+	defer apiStub.Close()
+
+	meta := &azurePipelinesMetadata{
+		OrganizationURL: apiStub.URL,
+		authContext: authContext{
+			cred:     fakeTokenCredential{token: "fake-token"},
+			authType: azurePipelinesAuthTypeServicePrincipal,
+		},
+	}
+
+	_, err := getAzurePipelineRequest(context.Background(), logr.Discard(), apiStub.URL, meta, http.DefaultClient)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
