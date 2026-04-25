@@ -1488,6 +1488,51 @@ scalers:
           type: string
           optional: true
           triggerAuthenticationVariableReadable: true
+    - type: gitlab-runner
+      parameters:
+        - name: gitlabAPIURL
+          type: string
+          default: https://gitlab.com
+          metadataVariableReadable: true
+        - name: personalAccessToken
+          type: string
+          triggerAuthenticationVariableReadable: true
+        - name: projectID
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: groupID
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: jobScopes
+          type: string
+          default: pending
+          metadataVariableReadable: true
+        - name: targetQueueLength
+          type: string
+          default: "1"
+          metadataVariableReadable: true
+        - name: activationTargetQueueLength
+          type: string
+          default: "0"
+          metadataVariableReadable: true
+        - name: includeSubgroups
+          type: string
+          default: "true"
+          metadataVariableReadable: true
+        - name: tagList
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: runUntagged
+          type: string
+          default: "false"
+          metadataVariableReadable: true
+        - name: unsafeSsl
+          type: string
+          default: "false"
+          metadataVariableReadable: true
     - type: graphite
       parameters:
         - name: serverAddress

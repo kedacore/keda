@@ -68,6 +68,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+- **General**: Introduce new GitLab Runner Scaler ([#5616](https://github.com/kedacore/keda/issues/5616))
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 #### Experimental
