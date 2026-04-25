@@ -5,9 +5,7 @@ on:
     branches: ["main"]
   pull_request: {}
 
-permissions:
-  contents: read
-  security-events: write
+permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -19,6 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     container: ghcr.io/kedacore/keda-tools:1.26.2
     if: (github.actor != 'dependabot[bot]')
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

@@ -3,6 +3,9 @@ name: Reusable workflow to run e2e tests on main branch
 on:
   workflow_call:
 
+permissions:
+  contents: read
+
 jobs:
   e2e-tests:
     name: Run e2e test

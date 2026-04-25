@@ -3,6 +3,9 @@ name: Reusable workflow to run smoke tests on different k8s versions
 on:
   workflow_call:
 
+permissions:
+  contents: read
+
 jobs:
   smoke-tests:
     name: ${{ matrix.arch }}
