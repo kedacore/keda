@@ -80,6 +80,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Add `--leader-election-id` flag to allow configuring the leader election Lease name ([#7564](https://github.com/kedacore/keda/issues/7564))
 - **General**: Allow more control of TLS versions & ciphers via `KEDA_HTTP_TLS_CIPHER_LIST`, `KEDA_SERVICE_TLS_CIPHER_LIST` and `KEDA_SERVICE_MIN_TLS_VERSION` env vars ([#7617](https://github.com/kedacore/keda/pull/7617))
 - **General**: Make APIService cert injections optional ([#7559](https://github.com/kedacore/keda/pull/7559))
+- **General**: Remove unconditional `json.MarshalIndent` calls from admission webhook validation hot paths; replace spec-comparison `MarshalIndent`-and-string-compare in `isRemovingFinalizer` variants with `reflect.DeepEqual`. Prevents webhook OOM under sustained admission load at large scale (observed at ~60k ScaledObjects) ([#7670](https://github.com/kedacore/keda/pull/7670))
 - **Elasticsearch Scaler**: Add HTTP status check for Elasticsearch errors ([#7480](https://github.com/kedacore/keda/pull/7480))
 - **Kubernetes Workload Scaler**: Add `groupByNode` parameter ([#7628](https://github.com/kedacore/keda/issues/7628))
 
