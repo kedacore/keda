@@ -186,6 +186,74 @@ var _ = Describe("ScaledJobController", func() {
 			}
 			Expect(foundTriggersField).To(BeTrue())
 		})
+
+		It("ScaledJob minReplicaCount defaults to nil when not set", func() {
+			jobName := "use-default-minreplicacount-value"
+			sjName := "sj-" + jobName
+			sj := &kedav1alpha1.ScaledJob{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      sjName,
+					Namespace: "default",
+				},
+				Spec: kedav1alpha1.ScaledJobSpec{
+					JobTargetRef: generateJobSpec(jobName),
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			pollingInterval := int32(5)
+			sj.Spec.PollingInterval = &pollingInterval
+			err := k8sClient.Create(context.Background(), sj)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Confirm the minReplicaCount is nil
+			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: sjName, Namespace: "default"}, sj)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sj.Spec.MinReplicaCount).To(BeNil())
+		})
+
+		It("ScaledJob maxReplicaCount defaults to nil when not set", func() {
+			jobName := "use-default-maxreplicacount-value"
+			sjName := "sj-" + jobName
+			sj := &kedav1alpha1.ScaledJob{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      sjName,
+					Namespace: "default",
+				},
+				Spec: kedav1alpha1.ScaledJobSpec{
+					JobTargetRef: generateJobSpec(jobName),
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			pollingInterval := int32(5)
+			sj.Spec.PollingInterval = &pollingInterval
+			err := k8sClient.Create(context.Background(), sj)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Confirm the maxReplicaCount is nil
+			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: sjName, Namespace: "default"}, sj)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sj.Spec.MaxReplicaCount).To(BeNil())
+		})
 	})
 })
 
