@@ -724,6 +724,23 @@ func resolveServiceAccountAnnotation(ctx context.Context, client client.Client, 
 
 // GetCurrentReplicas returns the current replica count for a ScaledObject
 func GetCurrentReplicas(ctx context.Context, client client.Client, scaleClient scale.ScalesGetter, scaledObject *kedav1alpha1.ScaledObject) (int32, error) {
+	// trying to prevent operator crashes, due to some race condition, sometimes scaledObject.Status.ScaleTargetGVKR is nil
+	// see https://github.com/kedacore/keda/issues/4389
+	// Tracking issue: https://github.com/kedacore/keda/issues/4955
+	if scaledObject.Status.ScaleTargetGVKR == nil {
+		freshSO := &kedav1alpha1.ScaledObject{}
+		if err := client.Get(ctx, types.NamespacedName{Name: scaledObject.Name, Namespace: scaledObject.Namespace}, freshSO); err != nil {
+			log.Error(err, "failed to get ScaledObject", "name", scaledObject.Name, "namespace", scaledObject.Namespace)
+			return 0, err
+		}
+		scaledObject = freshSO
+	}
+	if scaledObject.Status.ScaleTargetGVKR == nil {
+		err := fmt.Errorf("failed to get ScaledObject.Status.ScaleTargetGVKR, probably invalid ScaledObject cache")
+		log.Error(err, "failed to get ScaledObject.Status.ScaleTargetGVKR, probably invalid ScaledObject cache", "scaledObject.Name", scaledObject.Name, "scaledObject.Namespace", scaledObject.Namespace)
+		return 0, err
+	}
+
 	targetName := scaledObject.Spec.ScaleTargetRef.Name
 	targetGVKR := scaledObject.Status.ScaleTargetGVKR
 
