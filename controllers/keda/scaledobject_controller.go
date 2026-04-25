@@ -348,7 +348,8 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		logger.Info("Initializing Scaling logic according to ScaledObject Specification")
 	}
 	if scaledObject.NeedToBePausedByAnnotation() && conditions.GetPausedCondition().Status != metav1.ConditionTrue {
-		return "ScaledObject paused replicas are being scaled", fmt.Errorf("ScaledObject paused replicas are being scaled")
+		logger.Info("ScaledObject paused replicas are being scaled")
+		return "ScaledObject paused replicas are being scaled", nil
 	}
 	return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
 }
