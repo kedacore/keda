@@ -40,10 +40,12 @@ var (
 	deploymentName                 = fmt.Sprintf("%s-deployment", testName)
 	monitoredDeploymentName        = fmt.Sprintf("%s-monitored", testName)
 	scaledObjectName               = fmt.Sprintf("%s-so", testName)
+	httpClientScaledObjectName     = fmt.Sprintf("%s-so-http-client", testName)
 	wrongScaledObjectName          = fmt.Sprintf("%s-so-wrong", testName)
 	scaledJobName                  = fmt.Sprintf("%s-sj", testName)
 	wrongScaledJobName             = fmt.Sprintf("%s-sj-wrong", testName)
 	wrongScalerName                = fmt.Sprintf("%s-wrong-scaler", testName)
+	httpClientScalerName           = fmt.Sprintf("%s-http-client-scaler", testName)
 	cronScaledJobName              = fmt.Sprintf("%s-cron-sj", testName)
 	clientName                     = fmt.Sprintf("%s-client", testName)
 	cloudEventSourceName           = fmt.Sprintf("%s-ce", testName)
@@ -62,10 +64,12 @@ type templateData struct {
 	TestNamespace              string
 	DeploymentName             string
 	ScaledObjectName           string
+	HTTPClientScaledObjectName string
 	ScaledJobName              string
 	WrongScaledObjectName      string
 	WrongScaledJobName         string
 	WrongScalerName            string
+	HTTPClientScalerName       string
 	CronScaledJobName          string
 	MonitoredDeploymentName    string
 	ClientName                 string
@@ -166,6 +170,30 @@ spec:
         metricName: keda_scaler_errors_total
         threshold: '1'
         query: 'keda_scaler_errors_total{namespace="{{.TestNamespace}}",scaledObject="{{.WrongScaledObjectName}}"}'
+`
+
+	httpClientScaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.HTTPClientScaledObjectName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  pollingInterval: 2
+  idleReplicaCount: 0
+  minReplicaCount: 1
+  maxReplicaCount: 2
+  cooldownPeriod: 10
+  triggers:
+    - type: prometheus
+      name: {{.HTTPClientScalerName}}
+      metadata:
+        serverAddress: http://keda-prometheus.keda.svc.cluster.local:8080
+        metricName: keda_scaler_errors_total
+        threshold: '1'
+        query: 'keda_scaler_errors_total{namespace="{{.TestNamespace}}",scaledObject="{{.HTTPClientScaledObjectName}}"}'
 `
 
 	scaledJobTemplate = `
@@ -450,6 +478,7 @@ func TestPrometheusMetrics(t *testing.T) {
 	testScaledObjectPausedMetric(t, data)
 	testCloudEventEmitted(t, data)
 	testCloudEventEmittedError(t, data)
+	testHTTPClientMetrics(t, data)
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
@@ -460,10 +489,12 @@ func getTemplateData() (templateData, []Template) {
 			TestNamespace:              testNamespace,
 			DeploymentName:             deploymentName,
 			ScaledObjectName:           scaledObjectName,
+			HTTPClientScaledObjectName: httpClientScaledObjectName,
 			WrongScaledObjectName:      wrongScaledObjectName,
 			ScaledJobName:              scaledJobName,
 			WrongScaledJobName:         wrongScaledJobName,
 			WrongScalerName:            wrongScalerName,
+			HTTPClientScalerName:       httpClientScalerName,
 			MonitoredDeploymentName:    monitoredDeploymentName,
 			ClientName:                 clientName,
 			CronScaledJobName:          cronScaledJobName,
@@ -1429,4 +1460,58 @@ func testCloudEventEmittedError(t *testing.T, data templateData) {
 	metric := families["keda_cloudeventsource_events_emitted_total"]
 
 	assert.True(t, familyValidator(metric))
+}
+
+func testHTTPClientMetrics(t *testing.T, data templateData) {
+	t.Log("--- testing HTTP client metrics ---")
+
+	// The dedicated HTTP client metrics ScaledObject uses a prometheus-type
+	// scaler that makes real HTTP requests on every poll interval, so its
+	// records should be present once at least one poll cycle has completed.
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "httpClientScaledObjectTemplate", httpClientScaledObjectTemplate)
+	defer func() {
+		KubectlDeleteWithTemplate(t, data, "httpClientScaledObjectTemplate", httpClientScaledObjectTemplate)
+		KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	}()
+
+	matchLabels := func(labels []*prommodel.LabelPair) bool {
+		return ExtractPrometheusLabelValue("namespace", labels) == testNamespace &&
+			ExtractPrometheusLabelValue("scaled_resource", labels) == data.HTTPClientScaledObjectName &&
+			ExtractPrometheusLabelValue("scaler", labels) == "prometheus" &&
+			ExtractPrometheusLabelValue("trigger_name", labels) == data.HTTPClientScalerName &&
+			ExtractPrometheusLabelValue("metric_name", labels) == "s0-prometheus"
+	}
+
+	familyValidator := func(family *prommodel.MetricFamily) bool {
+		for _, metric := range family.GetMetric() {
+			if matchLabels(metric.GetLabel()) && metric.GetCounter().GetValue() >= 1 {
+				return true
+			}
+		}
+		return false
+	}
+
+	families := WaitForPrometheusMetric(t, "keda_scaler_http_requests_total", familyValidator)
+	assert.True(t, familyValidator(families["keda_scaler_http_requests_total"]),
+		"expected keda_scaler_http_requests_total with namespace=%s, scaled_resource=%s, scaler=prometheus, trigger_name=%s, metric_name=s0-prometheus",
+		testNamespace, data.HTTPClientScaledObjectName, data.HTTPClientScalerName)
+
+	matchHistogramLabels := func(labels []*prommodel.LabelPair) bool {
+		return ExtractPrometheusLabelValue("scaler", labels) == "prometheus"
+	}
+	family, ok := families["keda_scaler_http_request_duration_seconds"]
+	assert.True(t, ok, "keda_scaler_http_request_duration_seconds not present")
+	if ok {
+		var found bool
+		for _, metric := range family.GetMetric() {
+			if matchHistogramLabels(metric.GetLabel()) {
+				assert.Greater(t, metric.GetHistogram().GetSampleCount(), uint64(0),
+					"keda_scaler_http_request_duration_seconds sample count should be > 0")
+				found = true
+				break
+			}
+		}
+		assert.True(t, found, "expected keda_scaler_http_request_duration_seconds histogram for prometheus scaler")
+	}
 }

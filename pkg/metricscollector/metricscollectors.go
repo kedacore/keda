@@ -17,6 +17,7 @@ limitations under the License.
 package metricscollector
 
 import (
+	"strconv"
 	"time"
 
 	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
@@ -79,6 +80,12 @@ type MetricsCollector interface {
 
 	// RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting
 	RecordCloudEventQueueStatus(namespace string, value int)
+
+	// RecordHTTPClientRequest records the duration and outcome of an outbound HTTP request
+	// made by one of KEDA's internal HTTP clients. scaler, triggerName, metricName,
+	// namespace, and scaledResource are provided explicitly by the caller; upstream
+	// instrumentation may derive them from context before invoking the collector.
+	RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string)
 }
 
 func NewMetricsCollectors(enablePrometheusMetrics bool, enableOpenTelemetryMetrics bool) {
@@ -203,6 +210,22 @@ func RecordCloudEventQueueStatus(namespace string, value int) {
 	for _, element := range collectors {
 		element.RecordCloudEventQueueStatus(namespace, value)
 	}
+}
+
+// RecordHTTPClientRequest records the duration and outcome of an outbound HTTP request
+// made by one of KEDA's internal HTTP clients. Called by InstrumentedRoundTripper in
+// the util package after extracting label values from the request context.
+func RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string) {
+	for _, element := range collectors {
+		element.RecordHTTPClientRequest(durationSeconds, statusCode, isError, scaler, triggerName, metricName, namespace, scaledResource)
+	}
+}
+
+func httpStatusCodeLabel(code int, isError bool) string {
+	if isError {
+		return "error"
+	}
+	return strconv.Itoa(code)
 }
 
 // Returns the ServerMetrics object for GRPC Server metrics. Used to initialize the GRPC server with the proper intercepts
