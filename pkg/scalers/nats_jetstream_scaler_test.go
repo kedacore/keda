@@ -163,7 +163,7 @@ var testNATSJetStreamMockResponses = []parseNATSJetStreamMockResponsesTestData{
 		}, true, false,
 	},
 	{
-		"Not Active - Bad consumer name uses stream last sequence",
+		"Fail - stream exists but configured consumer missing",
 		&natsJetStreamMetricIdentifier{
 			&parseNATSJetStreamMetadataTestData{
 				testNATSJetStreamGoodMetadata, map[string]string{}, false,
@@ -174,11 +174,11 @@ var testNATSJetStreamMockResponses = []parseNATSJetStreamMockResponsesTestData{
 			Accounts: []accountDetail{{
 				Name: "$G",
 				Streams: []*streamDetail{{
-					Name: "mystream", State: streamState{LastSequence: 1},
+					Name: "mystream", State: streamState{LastSequence: 1000},
 					Consumers: []consumerDetail{{Name: "pull_consumer_bad", NumPending: 100}},
 				}},
 			}},
-		}, false, false,
+		}, false, true,
 	},
 	{
 		"Fail - Non-matching stream name",
@@ -468,6 +468,52 @@ func TestNATSJetStreamGetNATSJetstreamServerURL(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error for parsing monitoring server URL but got success")
 	}
+}
+
+func TestNATSJetStreamGetMaxMsgLag(t *testing.T) {
+	meta, err := parseNATSJetStreamMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testNATSJetStreamGoodMetadata, TriggerIndex: 0})
+	if err != nil {
+		t.Fatal("Could not parse metadata:", err)
+	}
+
+	t.Run("consumer present returns pending+ackPending", func(t *testing.T) {
+		scaler := natsJetStreamScaler{
+			metadata: meta,
+			stream: &streamDetail{
+				Name:  "mystream",
+				State: streamState{LastSequence: 9999},
+				Consumers: []consumerDetail{{
+					Name:          "pull_consumer",
+					NumPending:    7,
+					NumAckPending: 3,
+				}},
+			},
+		}
+
+		lag, err := scaler.getMaxMsgLag()
+		assert.NoError(t, err)
+		assert.Equal(t, int64(10), lag)
+	})
+
+	t.Run("stream exists but consumer missing returns error and zero lag", func(t *testing.T) {
+		scaler := natsJetStreamScaler{
+			metadata: meta,
+			stream: &streamDetail{
+				Name:  "mystream",
+				State: streamState{LastSequence: 9999},
+				Consumers: []consumerDetail{{
+					Name:       "some_other_consumer",
+					NumPending: 100,
+				}},
+			},
+		}
+
+		lag, err := scaler.getMaxMsgLag()
+		assert.Error(t, err)
+		assert.Equal(t, int64(0), lag, "must not fall back to stream LastSequence")
+		assert.Contains(t, err.Error(), "pull_consumer")
+		assert.Contains(t, err.Error(), "mystream")
+	})
 }
 
 func TestNATSJetStreamClose(t *testing.T) {
