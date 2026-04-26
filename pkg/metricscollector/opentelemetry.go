@@ -34,6 +34,8 @@ var (
 	otCrdTotalsCounterDeprecated     api.Int64UpDownCounter
 	otTriggerRegisteredTotalsCounter api.Int64UpDownCounter
 	otCrdRegisteredTotalsCounter     api.Int64UpDownCounter
+	otScalerMetricsDurationHistogram api.Float64Histogram
+	otInternalLoopDurationHistogram  api.Float64Histogram
 
 	otelScalerMetricVals                  []OtelMetricFloat64Val
 	otelScalerMetricsLatencyVals          []OtelMetricFloat64Val
@@ -154,9 +156,18 @@ func initMeters() {
 	}
 	_, err = meter.Float64ObservableGauge(
 		"keda.scaler.metrics.latency.seconds",
-		api.WithDescription("The latency of retrieving current metric from each scaler"),
+		api.WithDescription("DEPRECATED - use 'keda.scaler.metrics.duration.seconds' histogram instead. The latency of retrieving current metric from each scaler"),
 		api.WithUnit("s"),
 		api.WithFloat64Callback(ScalerMetricsLatencyCallback),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
+	otScalerMetricsDurationHistogram, err = meter.Float64Histogram(
+		"keda.scaler.metrics.duration.seconds",
+		api.WithDescription("Histogram of the latency of retrieving current metric from each scaler"),
+		api.WithUnit("s"),
 	)
 	if err != nil {
 		otLog.Error(err, msg)
@@ -172,9 +183,18 @@ func initMeters() {
 	}
 	_, err = meter.Float64ObservableGauge(
 		"keda.internal.scale.loop.latency.seconds",
-		api.WithDescription("Internal latency of ScaledObject/ScaledJob loop execution"),
+		api.WithDescription("DEPRECATED - use 'keda.internal.scale.loop.duration.seconds' histogram instead. Internal latency of ScaledObject/ScaledJob loop execution"),
 		api.WithUnit("s"),
 		api.WithFloat64Callback(ScalableObjectLatencyCallback),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
+	otInternalLoopDurationHistogram, err = meter.Float64Histogram(
+		"keda.internal.scale.loop.duration.seconds",
+		api.WithDescription("Histogram of the internal latency of ScaledObject/ScaledJob loop execution"),
+		api.WithUnit("s"),
 	)
 	if err != nil {
 		otLog.Error(err, msg)
@@ -278,17 +298,25 @@ func ScalerMetricsLatencyCallbackDeprecated(_ context.Context, obsrv api.Float64
 	return nil
 }
 
-// RecordScalerLatency create a measurement of the latency to external metric
+// RecordScalerLatency create a measurement of the latency to external metric.
+// Emits three streams: the existing deprecated ms gauge, the deprecated seconds
+// gauge, and the new `keda.scaler.metrics.duration.seconds` histogram.
 func (o *OtelMetrics) RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value time.Duration) {
+	measurementOption := getScalerMeasurementOption(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)
+
 	otelScalerMetricsLatency := OtelMetricFloat64Val{}
 	otelScalerMetricsLatency.val = value.Seconds()
-	otelScalerMetricsLatency.measurementOption = getScalerMeasurementOption(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)
+	otelScalerMetricsLatency.measurementOption = measurementOption
 	otelScalerMetricsLatencyVals = append(otelScalerMetricsLatencyVals, otelScalerMetricsLatency)
 
 	otelScalerMetricsLatencyValD := OtelMetricFloat64Val{}
 	otelScalerMetricsLatencyValD.val = float64(value.Milliseconds())
-	otelScalerMetricsLatencyValD.measurementOption = getScalerMeasurementOption(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)
+	otelScalerMetricsLatencyValD.measurementOption = measurementOption
 	otelScalerMetricsLatencyValDeprecated = append(otelScalerMetricsLatencyValDeprecated, otelScalerMetricsLatencyValD)
+
+	if otScalerMetricsDurationHistogram != nil {
+		otScalerMetricsDurationHistogram.Record(context.Background(), value.Seconds(), measurementOption)
+	}
 }
 
 func ScalableObjectLatencyCallback(_ context.Context, obsrv api.Float64Observer) error {
@@ -307,7 +335,9 @@ func ScalableObjectLatencyCallbackDeprecated(_ context.Context, obsrv api.Float6
 	return nil
 }
 
-// RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
+// RecordScalableObjectLatency create a measurement of the latency executing scalable object loop.
+// Emits three streams: the existing deprecated ms gauge, the deprecated seconds
+// gauge, and the new `keda.internal.scale.loop.duration.seconds` histogram.
 func (o *OtelMetrics) RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value time.Duration) {
 	resourceType := "scaledjob"
 	if isScaledObject {
@@ -323,6 +353,10 @@ func (o *OtelMetrics) RecordScalableObjectLatency(namespace string, name string,
 	otelInternalLoopLatency.val = value.Seconds()
 	otelInternalLoopLatency.measurementOption = opt
 	otelInternalLoopLatencyVals = append(otelInternalLoopLatencyVals, otelInternalLoopLatency)
+
+	if otInternalLoopDurationHistogram != nil {
+		otInternalLoopDurationHistogram.Record(context.Background(), value.Seconds(), opt)
+	}
 
 	otelInternalLoopLatencyD := OtelMetricFloat64Val{}
 	otelInternalLoopLatencyD.val = float64(value.Milliseconds())
