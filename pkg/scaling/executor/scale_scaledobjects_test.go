@@ -18,6 +18,7 @@ package executor
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"testing"
 
@@ -25,8 +26,12 @@ import (
 	"go.uber.org/mock/gomock"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
@@ -744,4 +749,336 @@ func TestNoScaleFromIdleReplicasToMinReplicasWhenActiveAndPausedScaleOutAnnotati
 	assert.Equal(t, int32(0), scale.Spec.Replicas)
 	condition := result.Conditions.GetActiveCondition()
 	assert.Equal(t, true, condition.IsTrue())
+}
+
+// --------------------------------------------------------------------------- //
+// ----------         getHPAHealth tests                             --------- //
+// --------------------------------------------------------------------------- //
+
+func newTestExecutor(client *mock_client.MockClient) *scaleExecutor {
+	return &scaleExecutor{
+		client:   client,
+		logger:   logf.Log.WithName("test"),
+		recorder: record.NewFakeRecorder(1),
+	}
+}
+
+func TestGetHPAHealth_NoHPAName(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	exec := newTestExecutor(mockClient)
+	logger := logf.Log.WithName("test")
+
+	so := &v1alpha1.ScaledObject{}
+	so.Status.HpaName = ""
+
+	healthy, msg := exec.getHPAHealth(context.TODO(), logger, so)
+	assert.True(t, healthy)
+	assert.Empty(t, msg)
+}
+
+func TestGetHPAHealth_HPAReadError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	exec := newTestExecutor(mockClient)
+	logger := logf.Log.WithName("test")
+
+	so := &v1alpha1.ScaledObject{}
+	so.Name = "test-so"
+	so.Namespace = "test-ns"
+	so.Status.HpaName = "my-hpa"
+
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "my-hpa", Namespace: "test-ns"}, gomock.Any()).
+		Return(errors.New("api unavailable"))
+
+	healthy, msg := exec.getHPAHealth(context.TODO(), logger, so)
+	assert.True(t, healthy, "should treat HPA read error as healthy to avoid flapping")
+	assert.Empty(t, msg)
+}
+
+func TestGetHPAHealth_ScalingActiveTrue(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	exec := newTestExecutor(mockClient)
+	logger := logf.Log.WithName("test")
+
+	so := &v1alpha1.ScaledObject{}
+	so.Name = "test-so"
+	so.Namespace = "test-ns"
+	so.Status.HpaName = "my-hpa"
+
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "my-hpa", Namespace: "test-ns"}, gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...interface{}) error {
+			obj.Status.Conditions = []autoscalingv2.HorizontalPodAutoscalerCondition{
+				{Type: autoscalingv2.ScalingActive, Status: corev1.ConditionTrue},
+			}
+			return nil
+		})
+
+	healthy, msg := exec.getHPAHealth(context.TODO(), logger, so)
+	assert.True(t, healthy)
+	assert.Empty(t, msg)
+}
+
+func TestGetHPAHealth_ScalingActiveFalse(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	exec := newTestExecutor(mockClient)
+	logger := logf.Log.WithName("test")
+
+	so := &v1alpha1.ScaledObject{}
+	so.Name = "test-so"
+	so.Namespace = "test-ns"
+	so.Status.HpaName = "my-hpa"
+
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "my-hpa", Namespace: "test-ns"}, gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...interface{}) error {
+			obj.Status.Conditions = []autoscalingv2.HorizontalPodAutoscalerCondition{
+				{Type: autoscalingv2.ScalingActive, Status: corev1.ConditionFalse, Reason: "FailedGetExternalMetric", Message: "unable to get metrics"},
+			}
+			return nil
+		})
+
+	healthy, msg := exec.getHPAHealth(context.TODO(), logger, so)
+	assert.False(t, healthy)
+	assert.Equal(t, "FailedGetExternalMetric", msg)
+}
+
+func TestGetHPAHealth_ScalingDisabled(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	exec := newTestExecutor(mockClient)
+	logger := logf.Log.WithName("test")
+
+	so := &v1alpha1.ScaledObject{}
+	so.Name = "test-so"
+	so.Namespace = "test-ns"
+	so.Status.HpaName = "my-hpa"
+
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "my-hpa", Namespace: "test-ns"}, gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...interface{}) error {
+			obj.Status.Conditions = []autoscalingv2.HorizontalPodAutoscalerCondition{
+				// ScalingDisabled is set by the HPA controller when the target has 0 replicas
+				// (scale-to-zero managed by KEDA). This should NOT be treated as unhealthy.
+				{Type: autoscalingv2.ScalingActive, Status: corev1.ConditionFalse, Reason: "ScalingDisabled", Message: "scaling is disabled since the replica count of the target is zero"},
+			}
+			return nil
+		})
+
+	healthy, msg := exec.getHPAHealth(context.TODO(), logger, so)
+	assert.True(t, healthy, "ScalingDisabled should be treated as healthy since KEDA manages scale-to-zero")
+	assert.Equal(t, "ScalingDisabled", msg)
+}
+
+func TestGetHPAHealth_WithinGracePeriod(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	exec := newTestExecutor(mockClient)
+	logger := logf.Log.WithName("test")
+
+	so := &v1alpha1.ScaledObject{}
+	so.Name = "test-so"
+	so.Namespace = "test-ns"
+	so.Status.HpaName = "my-hpa"
+
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "my-hpa", Namespace: "test-ns"}, gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...interface{}) error {
+			obj.CreationTimestamp = v1.Now() // just created
+			obj.Status.Conditions = []autoscalingv2.HorizontalPodAutoscalerCondition{
+				{Type: autoscalingv2.ScalingActive, Status: corev1.ConditionFalse, Reason: "FailedGetExternalMetric"},
+			}
+			return nil
+		})
+
+	healthy, msg := exec.getHPAHealth(context.TODO(), logger, so)
+	assert.True(t, healthy, "should be healthy within grace period even if ScalingActive=False")
+	assert.Empty(t, msg)
+}
+
+// --------------------------------------------------------------------------- //
+// ----------    HPA health aggregation in RequestScale tests        --------- //
+// --------------------------------------------------------------------------- //
+
+// newSOWithHPA creates a minimal ScaledObject with an HPA name for testing.
+func newSOWithHPA() v1alpha1.ScaledObject {
+	minReplicas := int32(1)
+	return v1alpha1.ScaledObject{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "test-so",
+			Namespace: "test-ns",
+		},
+		Spec: v1alpha1.ScaledObjectSpec{
+			ScaleTargetRef:  &v1alpha1.ScaleTarget{Name: "test-deploy"},
+			MinReplicaCount: &minReplicas,
+		},
+		Status: v1alpha1.ScaledObjectStatus{
+			HpaName: "my-hpa",
+			ScaleTargetGVKR: &v1alpha1.GroupVersionKindResource{
+				Group: "apps",
+				Kind:  "Deployment",
+			},
+		},
+	}
+}
+
+// mockHealthyHPA sets up the mock to return an HPA with ScalingActive=True.
+func mockHealthyHPA(mockClient *mock_client.MockClient) {
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "my-hpa", Namespace: "test-ns"}, gomock.AssignableToTypeOf(&autoscalingv2.HorizontalPodAutoscaler{})).
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...interface{}) error {
+			obj.Status.Conditions = []autoscalingv2.HorizontalPodAutoscalerCondition{
+				{Type: autoscalingv2.ScalingActive, Status: corev1.ConditionTrue},
+			}
+			obj.Status.CurrentMetrics = []autoscalingv2.MetricStatus{{}}
+			return nil
+		})
+}
+
+// mockUnhealthyHPA sets up the mock to return an HPA with ScalingActive=False.
+func mockUnhealthyHPA(mockClient *mock_client.MockClient) {
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "my-hpa", Namespace: "test-ns"}, gomock.AssignableToTypeOf(&autoscalingv2.HorizontalPodAutoscaler{})).
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...interface{}) error {
+			obj.Status.Conditions = []autoscalingv2.HorizontalPodAutoscalerCondition{
+				{Type: autoscalingv2.ScalingActive, Status: corev1.ConditionFalse, Reason: "FailedGetExternalMetric", Message: "metrics not available"},
+			}
+			return nil
+		})
+}
+
+// mockDeploymentGet sets up the mock for the deployment Get that resolver.GetCurrentReplicas calls.
+func mockDeploymentGet(mockClient *mock_client.MockClient) {
+	replicas := int32(1)
+	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&appsv1.Deployment{})).
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *appsv1.Deployment, _ ...interface{}) error {
+			obj.Spec.Replicas = &replicas
+			return nil
+		})
+}
+
+func TestRequestScale_AllHealthy_HPAHealthy(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := record.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+
+	so := newSOWithHPA()
+	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
+
+	// GetCurrentReplicas: return 1 replica (at minReplicas, so no scaling needed)
+	mockDeploymentGet(mockClient)
+	// HPA health check
+	mockHealthyHPA(mockClient)
+
+	result := exec.RequestScale(context.TODO(), &so, true, false, ScaleExecutorOptions{})
+
+	readyCond := result.Conditions.GetReadyCondition()
+	assert.True(t, readyCond.IsTrue())
+	assert.Equal(t, v1alpha1.ScaledObjectConditionReadySuccessReason, readyCond.Reason)
+}
+
+func TestRequestScale_ScalerError_HPAHealthy(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := record.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+
+	so := newSOWithHPA()
+	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
+
+	mockDeploymentGet(mockClient)
+	mockHealthyHPA(mockClient)
+
+	// isActive=false, isError=true, no fallback → TriggerError
+	result := exec.RequestScale(context.TODO(), &so, false, true, ScaleExecutorOptions{})
+
+	readyCond := result.Conditions.GetReadyCondition()
+	assert.True(t, readyCond.IsFalse())
+	assert.Equal(t, "TriggerError", readyCond.Reason)
+}
+
+func TestRequestScale_PartialError_HPAHealthy(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := record.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+
+	so := newSOWithHPA()
+	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
+
+	mockDeploymentGet(mockClient)
+	mockHealthyHPA(mockClient)
+
+	// isActive=true, isError=true → PartialTriggerError
+	result := exec.RequestScale(context.TODO(), &so, true, true, ScaleExecutorOptions{})
+
+	readyCond := result.Conditions.GetReadyCondition()
+	assert.True(t, readyCond.IsUnknown())
+	assert.Equal(t, "PartialTriggerError", readyCond.Reason)
+}
+
+func TestRequestScale_NoError_HPAUnhealthy(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := record.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+
+	so := newSOWithHPA()
+	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
+
+	mockDeploymentGet(mockClient)
+	mockUnhealthyHPA(mockClient)
+
+	result := exec.RequestScale(context.TODO(), &so, true, false, ScaleExecutorOptions{})
+
+	readyCond := result.Conditions.GetReadyCondition()
+	assert.True(t, readyCond.IsFalse())
+	assert.Equal(t, v1alpha1.ScaledObjectConditionHPAMetricsUnavailableReason, readyCond.Reason)
+	assert.Contains(t, readyCond.Message, "FailedGetExternalMetric")
+}
+
+func TestRequestScale_ScalerError_HPAUnhealthy(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := record.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+
+	so := newSOWithHPA()
+	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
+
+	mockDeploymentGet(mockClient)
+	mockUnhealthyHPA(mockClient)
+
+	// isActive=false, isError=true, no fallback → ScalingDegraded (both broken)
+	result := exec.RequestScale(context.TODO(), &so, false, true, ScaleExecutorOptions{})
+
+	readyCond := result.Conditions.GetReadyCondition()
+	assert.True(t, readyCond.IsFalse())
+	assert.Equal(t, v1alpha1.ScaledObjectConditionScalingDegradedReason, readyCond.Reason)
+	assert.Contains(t, readyCond.Message, "FailedGetExternalMetric")
+}
+
+func TestRequestScale_ScalerErrorWithFallback_HPAHealthy(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := record.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+
+	so := newSOWithHPA()
+	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
+	fallbackReplicas := int32(5)
+	so.Spec.Fallback = &v1alpha1.Fallback{Replicas: fallbackReplicas}
+
+	mockDeploymentGet(mockClient)
+	mockHealthyHPA(mockClient)
+
+	// isActive=false, isError=true, fallback configured → Ready stays True
+	result := exec.RequestScale(context.TODO(), &so, false, true, ScaleExecutorOptions{})
+
+	readyCond := result.Conditions.GetReadyCondition()
+	assert.Truef(t, readyCond.IsTrue(), "with fallback configured and HPA healthy, Ready should be True, got %s/%s", readyCond.Status, readyCond.Reason)
 }
