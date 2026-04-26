@@ -31,10 +31,10 @@ var (
 	secretName                = fmt.Sprintf("%s-secret", testName)
 	mssqlHelperName           = fmt.Sprintf("%s-helper", testName)
 	mssqlHelperPodName        = fmt.Sprintf("%s-0", mssqlHelperName)
-	azureMSSQLAdminUsername   = os.Getenv("TF_AZURE_MSSQL_ADMIN_USERNAME")
-	azureMSSQLAdminPassword   = os.Getenv("TF_AZURE_MSSQL_ADMIN_PASSWORD")
-	azureMSSQLFQDN            = os.Getenv("TF_AZURE_MSSQL_FQDN")
-	azureMSSQLDatabase        = os.Getenv("TF_AZURE_MSSQL_DB_NAME")
+	azureMSSQLAdminUsername   = os.Getenv("TF_AZURE_SQL_SERVER_ADMIN_USERNAME")
+	azureMSSQLAdminPassword   = os.Getenv("TF_AZURE_SQL_SERVER_ADMIN_PASSWORD")
+	azureMSSQLFQDN            = os.Getenv("TF_AZURE_SQL_SERVER_FQDN")
+	azureMSSQLDatabase        = os.Getenv("TF_AZURE_SQL_SERVER_DB_NAME")
 	azureMSSQLUamiName        = os.Getenv("TF_AZURE_IDENTITY_1_NAME")
 	minReplicaCount           = 0
 	maxReplicaCount           = 2
