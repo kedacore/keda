@@ -17,6 +17,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/aws"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
@@ -26,10 +27,15 @@ import (
 )
 
 type prometheusScaler struct {
-	metricType v2.MetricTargetType
-	metadata   *prometheusMetadata
-	httpClient *http.Client
-	logger     logr.Logger
+	metricType         v2.MetricTargetType
+	metadata           *prometheusMetadata
+	httpClient         *http.Client
+	logger             logr.Logger
+	scalableObjectName string
+	scalableObjectNS   string
+	triggerName        string
+	metricName         string
+	resourceType       string
 }
 
 // IgnoreNullValues - sometimes should consider there is an error we can accept
@@ -138,10 +144,15 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 
 	return &prometheusScaler{
-		metricType: metricType,
-		metadata:   meta,
-		httpClient: httpClient,
-		logger:     logger,
+		metricType:         metricType,
+		metadata:           meta,
+		httpClient:         httpClient,
+		logger:             logger,
+		scalableObjectName: config.ScalableObjectName,
+		scalableObjectNS:   config.ScalableObjectNamespace,
+		triggerName:        config.TriggerName,
+		metricName:         GenerateMetricNameWithIndex(meta.triggerIndex, kedautil.NormalizeString("prometheus")),
+		resourceType:       config.ScalableObjectType,
 	}, nil
 }
 
@@ -255,6 +266,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 
 	// allow for zero element or single element result sets
 	if len(result.Data.Result) == 0 {
+		metricscollector.RecordEmptyUpstreamResponse(s.scalableObjectNS, s.scalableObjectName, s.triggerName, s.metricName, s.resourceType, s.metadata.IgnoreNullValues)
 		if s.metadata.IgnoreNullValues {
 			return 0, nil
 		}
@@ -265,6 +277,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 
 	valueLen := len(result.Data.Result[0].Value)
 	if valueLen == 0 {
+		metricscollector.RecordEmptyUpstreamResponse(s.scalableObjectNS, s.scalableObjectName, s.triggerName, s.metricName, s.resourceType, s.metadata.IgnoreNullValues)
 		if s.metadata.IgnoreNullValues {
 			return 0, nil
 		}
