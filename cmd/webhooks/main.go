@@ -78,12 +78,9 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	err := kedautil.ConfigureMaxProcs(setupLog)
-	if err != nil {
-		setupLog.Error(err, "failed to set max procs")
-		os.Exit(1)
+	if err := kedautil.ConfigureMaxProcs(setupLog); err != nil {
+		setupLog.Info("failed to set max procs, using default GOMAXPROCS", "error", err)
 	}
-
 	ctx := ctrl.SetupSignalHandler()
 
 	cfg := ctrl.GetConfigOrDie()
@@ -101,7 +98,8 @@ func main() {
 			CertDir: certDir,
 			TLSOpts: []func(tlsConfig *tls.Config){
 				func(tlsConfig *tls.Config) {
-					tlsConfig.MinVersion = kedautil.GetMinTLSVersion()
+					tlsConfig.MinVersion = kedautil.GetServiceMinTLSVersion()
+					tlsConfig.CipherSuites = kedautil.GetServiceTLSCipherList()
 				},
 			},
 		}),

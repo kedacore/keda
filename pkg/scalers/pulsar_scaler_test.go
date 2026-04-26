@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
+	"net/url"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/api/equality"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -42,7 +43,7 @@ type parsePulsarAuthParamsTestData struct {
 	clientID               string
 	clientSecret           string
 	endpointParams         string
-	expectedEndpointParams map[string][]string
+	expectedEndpointParams url.Values
 }
 
 type pulsarMetricIdentifier struct {
@@ -108,8 +109,10 @@ var parsePulsarMetadataTestAuthTLSDataset = []parsePulsarAuthParamsTestData{
 	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "oauth"}, map[string]string{"ca": "cadata", "oauthTokenURI": "https5", "clientID": "id5", "clientSecret": "secret123"}, false, false, "", "", "cadata", "", "", "", false, "https5", "", "id5", "secret123", "", nil},
 	// Passes, invalid scopes provided
 	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "oauth", "scope": "   "}, map[string]string{"ca": "cadata", "oauthTokenURI": "https5", "scope": " , \n", "clientID": "id5", "clientSecret": "secret123"}, false, false, "", "", "cadata", "", "", "", false, "https5", "", "id5", "secret123", "", nil},
-	// Passes, with audience provided in endpointParams
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "oauth"}, map[string]string{"ca": "cadata", "oauthTokenURI": "https5", "clientID": "id5", "clientSecret": "secret123"}, false, false, "", "", "cadata", "", "", "", false, "https5", "", "id5", "secret123", "audience=abc", map[string][]string{"audience": {"abc"}}},
+	// Passes, with audience provided in endpointParams via authParams
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "oauth"}, map[string]string{"ca": "cadata", "oauthTokenURI": "https5", "clientID": "id5", "clientSecret": "secret123", "endpointParams": "audience=abc"}, false, false, "", "", "cadata", "", "", "", false, "https5", "", "id5", "secret123", "audience=abc", url.Values{"audience": {"abc"}}},
+	// Passes, with EndpointParams provided in triggerMetadata (backwards compat)
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "oauth", "oauthTokenURI": "https6", "clientID": "id6", "EndpointParams": "audience=xyz"}, map[string]string{"ca": "cadata"}, false, false, "", "", "cadata", "", "", "", false, "https6", "", "id6", "", "audience=xyz", url.Values{"audience": {"xyz"}}},
 }
 
 var pulsarMetricIdentifiers = []pulsarMetricIdentifier{
@@ -217,36 +220,36 @@ func TestPulsarAuthParams(t *testing.T) {
 			t.Error("Expected error but got success")
 		}
 
-		if meta == nil || meta.pulsarAuth == nil {
-			t.Log("meta.pulsarAuth is nil, skipping rest of validation of", testData)
+		if meta == nil || meta.PulsarAuth == nil {
+			t.Log("meta.PulsarAuth is nil, skipping rest of validation of", testData)
 			continue
 		}
 
-		if meta.pulsarAuth.EnableTLS != testData.enableTLS {
-			t.Errorf("Expected enableTLS to be set to %v but got %v\n", testData.enableTLS, meta.pulsarAuth.EnableTLS)
+		if meta.PulsarAuth.EnabledTLS() != testData.enableTLS {
+			t.Errorf("Expected enableTLS to be set to %v but got %v\n", testData.enableTLS, meta.PulsarAuth.EnabledTLS())
 		}
 
-		if meta.pulsarAuth.CA != testData.ca {
-			t.Errorf("Expected ca to be set to %s but got %s\n", testData.ca, meta.pulsarAuth.CA)
+		if meta.PulsarAuth.CA != testData.ca {
+			t.Errorf("Expected ca to be set to %s but got %s\n", testData.ca, meta.PulsarAuth.CA)
 		}
 
-		if meta.pulsarAuth.Cert != testData.cert {
-			t.Errorf("Expected cert to be set to %s but got %s\n", testData.cert, meta.pulsarAuth.Cert)
+		if meta.PulsarAuth.Cert != testData.cert {
+			t.Errorf("Expected cert to be set to %s but got %s\n", testData.cert, meta.PulsarAuth.Cert)
 		}
 
-		if meta.pulsarAuth.Key != testData.key {
-			t.Errorf("Expected key to be set to %s but got %s\n", testData.key, meta.pulsarAuth.Key)
+		if meta.PulsarAuth.Key != testData.key {
+			t.Errorf("Expected key to be set to %s but got %s\n", testData.key, meta.PulsarAuth.Key)
 		}
 
-		if meta.pulsarAuth.EnableBearerAuth != (testData.bearerToken != "") {
+		if meta.PulsarAuth.EnabledBearerAuth() != (testData.bearerToken != "") {
 			t.Errorf("Expected EnableBearerAuth to be true when bearerToken is %s\n", testData.bearerToken)
 		}
 
-		if meta.pulsarAuth.BearerToken != testData.bearerToken {
-			t.Errorf("Expected bearer token to be set to %s but got %s\n", testData.bearerToken, meta.pulsarAuth.BearerToken)
+		if meta.PulsarAuth.BearerToken != testData.bearerToken {
+			t.Errorf("Expected bearer token to be set to %s but got %s\n", testData.bearerToken, meta.PulsarAuth.BearerToken)
 		}
 
-		if meta.pulsarAuth.EnableBasicAuth != (testData.username != "" || testData.password != "") {
+		if meta.PulsarAuth.EnabledBasicAuth() != (testData.username != "" || testData.password != "") {
 			if testData.username != "" {
 				t.Errorf("Expected EnableBasicAuth to be true when username is %s\n", testData.username)
 			}
@@ -255,33 +258,33 @@ func TestPulsarAuthParams(t *testing.T) {
 			}
 		}
 
-		if meta.pulsarAuth.Username != testData.username {
-			t.Errorf("Expected username to be set to %s but got %s\n", testData.username, meta.pulsarAuth.Username)
+		if meta.PulsarAuth.Username != testData.username {
+			t.Errorf("Expected username to be set to %s but got %s\n", testData.username, meta.PulsarAuth.Username)
 		}
 
-		if meta.pulsarAuth.Password != testData.password {
-			t.Errorf("Expected password to be set to %s but got %s\n", testData.password, meta.pulsarAuth.Password)
+		if meta.PulsarAuth.Password != testData.password {
+			t.Errorf("Expected password to be set to %s but got %s\n", testData.password, meta.PulsarAuth.Password)
 		}
 	}
 }
 
 func TestPulsarOAuthParams(t *testing.T) {
-	for _, testData := range parsePulsarMetadataTestAuthTLSDataset {
+	for i, testData := range parsePulsarMetadataTestAuthTLSDataset {
 		meta, err := parsePulsarMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams})
 
 		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", testData.authParams, err)
+			t.Error("Expected success but got error", i, testData.authParams, err)
 		}
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
 		}
 
-		if meta == nil || meta.pulsarAuth == nil {
-			t.Log("meta.pulsarAuth is nil, skipping rest of validation of", testData)
+		if meta == nil || meta.PulsarAuth == nil {
+			t.Log("meta.PulsarAuth is nil, skipping rest of validation of", testData)
 			continue
 		}
 
-		if meta.pulsarAuth.EnableOAuth != (testData.clientID != "" || testData.clientSecret != "") {
+		if meta.PulsarAuth.EnabledOAuth() != (testData.clientID != "" || testData.clientSecret != "") {
 			if testData.clientID != "" {
 				t.Errorf("Expected EnableOAuth to be true when clientID is %s\n", testData.clientID)
 			}
@@ -290,31 +293,27 @@ func TestPulsarOAuthParams(t *testing.T) {
 			}
 		}
 
-		if meta.pulsarAuth.OauthTokenURI != testData.oauthTokenURI {
-			t.Errorf("Expected oauthTokenURI to be set to %s but got %s\n", testData.oauthTokenURI, meta.pulsarAuth.OauthTokenURI)
+		if meta.PulsarAuth.OauthTokenURI != testData.oauthTokenURI {
+			t.Errorf("Expected oauthTokenURI to be set to %s but got %s\n", testData.oauthTokenURI, meta.PulsarAuth.OauthTokenURI)
 		}
 
-		if testData.scope != "" && !compareScope(meta.pulsarAuth.Scopes, testData.scope) {
-			t.Errorf("Expected scopes %s but got %s\n", testData.scope, meta.pulsarAuth.Scopes)
+		if testData.scope != "" && !compareScope(meta.PulsarAuth.Scopes, testData.scope) {
+			t.Errorf("Expected scopes %s but got %v\n", testData.scope, meta.PulsarAuth.Scopes)
 		}
-		if testData.scope == "" && meta.pulsarAuth.Scopes != nil {
-			t.Errorf("Expected scopes to be null but got %s\n", meta.pulsarAuth.Scopes)
-		}
-
-		if meta.pulsarAuth.ClientID != testData.clientID {
-			t.Errorf("Expected clientID to be set to %s but got %s\n", testData.clientID, meta.pulsarAuth.ClientID)
+		if testData.scope == "" && len(meta.PulsarAuth.Scopes) != 0 {
+			t.Errorf("Expected scopes to be empty but got %v\n", meta.PulsarAuth.Scopes)
 		}
 
-		if meta.pulsarAuth.EnableOAuth && meta.pulsarAuth.ClientSecret == "" {
-			t.Errorf("Expected clientSecret not to be empty.\n")
+		if meta.PulsarAuth.ClientID != testData.clientID {
+			t.Errorf("Expected clientID to be set to %s but got %s\n", testData.clientID, meta.PulsarAuth.ClientID)
 		}
 
-		if testData.clientSecret != "" && strings.Compare(meta.pulsarAuth.ClientSecret, testData.clientSecret) != 0 {
-			t.Errorf("Expected clientSecret to be set to %s but got %s\n", testData.clientSecret, meta.pulsarAuth.ClientSecret)
+		if testData.clientSecret != "" && strings.Compare(meta.PulsarAuth.ClientSecret, testData.clientSecret) != 0 {
+			t.Errorf("Expected clientSecret to be set to %s but got %s\n", testData.clientSecret, meta.PulsarAuth.ClientSecret)
 		}
 
-		if reflect.DeepEqual(testData.expectedEndpointParams, meta.pulsarAuth.EndpointParams) {
-			t.Errorf("Expected endpointParams %s but got %s\n", testData.expectedEndpointParams, meta.pulsarAuth.EndpointParams)
+		if !equality.Semantic.DeepEqual(testData.expectedEndpointParams, meta.PulsarAuth.EndpointParams) {
+			t.Errorf("Expected endpointParams %v but got %v\n", testData.expectedEndpointParams, meta.PulsarAuth.EndpointParams)
 		}
 	}
 }

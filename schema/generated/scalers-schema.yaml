@@ -2547,26 +2547,6 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
-        - name: authModes
-          type: string
-          optional: true
-          metadataVariableReadable: true
-        - name: oauthTokenURI
-          type: string
-          optional: true
-          metadataVariableReadable: true
-        - name: scope
-          type: string
-          optional: true
-          metadataVariableReadable: true
-        - name: clientID
-          type: string
-          optional: true
-          metadataVariableReadable: true
-        - name: EndpointParams
-          type: string
-          optional: true
-          metadataVariableReadable: true
     - type: rabbitmq
       parameters:
         - name: queueName
