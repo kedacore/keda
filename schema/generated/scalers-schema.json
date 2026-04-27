@@ -3096,6 +3096,12 @@
                         "min"
                     ],
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "zeroOnMissingEndpoints",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
                 }
             ]
         },
