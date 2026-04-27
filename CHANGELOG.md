@@ -104,6 +104,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **NATS JetStream Scaler**: URL-encode user input in monitoring URL construction ([#7483](https://github.com/kedacore/keda/pull/7483))
 - **Prometheus Scaler**: Handle NaN results in the same manner as Inf ([#7475](https://github.com/kedacore/keda/issues/7475))
 - **Prometheus Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
+- **Pulsar Scaler**: Drop bearer/basic auth headers on redirects to a different host or on https->http downgrades to prevent credential leakage ([#7686](https://github.com/kedacore/keda/issues/7686))
 - **RabbitMQ Scaler**: Fix AMQP connection leak by recovering channels on the existing connection and closing connections properly ([#6266](https://github.com/kedacore/keda/issues/6266))
 - **RabbitMQ Scaler**: Use SASL EXTERNAL for RabbitMQ AMQP TLS without credentials ([#6840](https://github.com/kedacore/keda/issues/6840))
 - **Solace Scaler**: Fix URL escaping for Message VPN and Queue names ([#7481](https://github.com/kedacore/keda/pull/7481))
