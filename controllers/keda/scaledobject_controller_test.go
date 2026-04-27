@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -2059,6 +2060,76 @@ var _ = Describe("ScaledObjectController", func() {
 			return k8sClient.Get(context.Background(), types.NamespacedName{Name: fmt.Sprintf("keda-hpa-%s", soName), Namespace: "default"}, hpa)
 
 		}).Should(BeNil())
+	})
+
+	Describe("SSA metadata mutations", func() {
+		var (
+			patchReconciler ScaledObjectReconciler
+			mockClient      *mock_client.MockClient
+		)
+
+		BeforeEach(func() {
+			ctrl := gomock.NewController(util.GinkgoTestReporter{})
+			mockClient = mock_client.NewMockClient(ctrl)
+			patchReconciler = ScaledObjectReconciler{Client: mockClient}
+		})
+
+		Describe("ensureScaledObjectLabel", func() {
+			It("calls Patch when the labels map is nil", func() {
+				so := &kedav1alpha1.ScaledObject{
+					ObjectMeta: metav1.ObjectMeta{Name: "patch-label-nil", Namespace: "default"},
+				}
+				mockClient.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Eq(client.Apply), gomock.Any(), gomock.Any()).Return(nil)
+
+				Expect(patchReconciler.ensureScaledObjectLabel(context.Background(), testLogger, so)).To(Succeed())
+			})
+
+			It("calls Patch when the KEDA label is absent from an existing labels map", func() {
+				so := &kedav1alpha1.ScaledObject{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "patch-label-missing",
+						Namespace: "default",
+						Labels:    map[string]string{"some-other": "label"},
+					},
+				}
+				mockClient.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Eq(client.Apply), gomock.Any(), gomock.Any()).Return(nil)
+
+				Expect(patchReconciler.ensureScaledObjectLabel(context.Background(), testLogger, so)).To(Succeed())
+			})
+
+			It("skips Patch when the correct KEDA label already exists", func() {
+				so := &kedav1alpha1.ScaledObject{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "patch-label-present",
+						Namespace: "default",
+						Labels:    map[string]string{kedav1alpha1.ScaledObjectOwnerAnnotation: "patch-label-present"},
+					},
+				}
+				Expect(patchReconciler.ensureScaledObjectLabel(context.Background(), testLogger, so)).To(Succeed())
+			})
+		})
+
+		Describe("ensureFinalizer", func() {
+			It("calls Update when the finalizer is absent", func() {
+				so := &kedav1alpha1.ScaledObject{
+					ObjectMeta: metav1.ObjectMeta{Name: "patch-finalizer-add", Namespace: "default"},
+				}
+				mockClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+
+				Expect(patchReconciler.ensureFinalizer(context.Background(), testLogger, so)).To(Succeed())
+			})
+
+			It("skips Patch when the finalizer is already present", func() {
+				so := &kedav1alpha1.ScaledObject{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:       "patch-finalizer-present",
+						Namespace:  "default",
+						Finalizers: []string{scaledObjectFinalizer},
+					},
+				}
+				Expect(patchReconciler.ensureFinalizer(context.Background(), testLogger, so)).To(Succeed())
+			})
+		})
 	})
 
 	// Fix issue 5520

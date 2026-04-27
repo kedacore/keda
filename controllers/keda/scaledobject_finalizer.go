@@ -23,6 +23,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -75,8 +76,9 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logge
 
 		// Remove scaledObjectFinalizer. Once all finalizers have been
 		// removed, the object will be deleted.
+		patch := client.MergeFrom(scaledObject.DeepCopy())
 		scaledObject.SetFinalizers(util.Remove(scaledObject.GetFinalizers(), scaledObjectFinalizer))
-		if err := r.Client.Update(ctx, scaledObject); err != nil {
+		if err := r.Client.Patch(ctx, scaledObject, patch); err != nil {
 			logger.Error(err, "Failed to update ScaledObject after removing a finalizer", "finalizer", scaledObjectFinalizer)
 			return err
 		}

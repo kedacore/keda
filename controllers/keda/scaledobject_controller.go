@@ -356,18 +356,32 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 // ensureScaledObjectLabel ensures that scaledobject.keda.sh/name=<scaledObject.Name> label exist in the ScaledObject
 // This is how the MetricsAdapter will know which ScaledObject a metric is for when the HPA queries it.
 func (r *ScaledObjectReconciler) ensureScaledObjectLabel(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
-	if scaledObject.Labels == nil {
-		scaledObject.Labels = map[string]string{kedav1alpha1.ScaledObjectOwnerAnnotation: scaledObject.Name}
-	} else {
+	if scaledObject.Labels != nil {
 		value, found := scaledObject.Labels[kedav1alpha1.ScaledObjectOwnerAnnotation]
 		if found && value == scaledObject.Name {
 			return nil
 		}
-		scaledObject.Labels[kedav1alpha1.ScaledObjectOwnerAnnotation] = scaledObject.Name
 	}
 
 	logger.V(1).Info("Adding \"scaledobject.keda.sh/name\" label on ScaledObject", "value", scaledObject.Name)
-	return r.Client.Update(ctx, scaledObject)
+	patchObj := &unstructured.Unstructured{}
+	patchObj.SetAPIVersion(kedav1alpha1.GroupVersion.String())
+	patchObj.SetKind("ScaledObject")
+	patchObj.SetName(scaledObject.Name)
+	patchObj.SetNamespace(scaledObject.Namespace)
+	patchObj.SetLabels(map[string]string{kedav1alpha1.ScaledObjectOwnerAnnotation: scaledObject.Name})
+	if err := r.Client.Patch(ctx, patchObj, client.Apply, client.ForceOwnership, client.FieldOwner("keda-operator")); err != nil {
+		return err
+	}
+	scaledObject.ResourceVersion = patchObj.GetResourceVersion()
+	if scaledObject.Labels == nil {
+		scaledObject.Labels = patchObj.GetLabels()
+	} else {
+		for k, v := range patchObj.GetLabels() {
+			scaledObject.Labels[k] = v
+		}
+	}
+	return nil
 }
 
 func (r *ScaledObjectReconciler) checkIfTargetResourceReachPausedCount(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) bool {
