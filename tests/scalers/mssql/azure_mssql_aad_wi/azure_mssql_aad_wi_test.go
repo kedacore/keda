@@ -24,36 +24,39 @@ const (
 )
 
 var (
-	testNamespace             = fmt.Sprintf("%s-ns", testName)
-	deploymentName            = fmt.Sprintf("%s-deployment", testName)
-	scaledObjectName          = fmt.Sprintf("%s-so", testName)
-	triggerAuthenticationName = fmt.Sprintf("%s-ta", testName)
-	secretName                = fmt.Sprintf("%s-secret", testName)
-	mssqlHelperName           = fmt.Sprintf("%s-helper", testName)
-	mssqlHelperPodName        = fmt.Sprintf("%s-0", mssqlHelperName)
-	azureMSSQLAdminUsername   = os.Getenv("TF_AZURE_SQL_SERVER_ADMIN_USERNAME")
-	azureMSSQLAdminPassword   = os.Getenv("TF_AZURE_SQL_SERVER_ADMIN_PASSWORD")
-	azureMSSQLFQDN            = os.Getenv("TF_AZURE_SQL_SERVER_FQDN")
-	azureMSSQLDatabase        = os.Getenv("TF_AZURE_SQL_SERVER_DB_NAME")
-	azureMSSQLUamiName        = os.Getenv("TF_AZURE_IDENTITY_1_NAME")
-	minReplicaCount           = 0
-	maxReplicaCount           = 2
+	testNamespace              = fmt.Sprintf("%s-ns", testName)
+	deploymentName             = fmt.Sprintf("%s-deployment", testName)
+	scaledObjectName           = fmt.Sprintf("%s-so", testName)
+	triggerAuthenticationName  = fmt.Sprintf("%s-ta", testName)
+	secretName                 = fmt.Sprintf("%s-secret", testName)
+	mssqlHelperName            = fmt.Sprintf("%s-helper", testName)
+	mssqlHelperPodName         = fmt.Sprintf("%s-0", mssqlHelperName)
+	azureMSSQLAdminUsername    = os.Getenv("TF_AZURE_SQL_SERVER_ADMIN_USERNAME")
+	azureMSSQLAdminPassword    = os.Getenv("TF_AZURE_SQL_SERVER_ADMIN_PASSWORD")
+	azureMSSQLFQDN             = os.Getenv("TF_AZURE_SQL_SERVER_FQDN")
+	azureMSSQLDatabase         = os.Getenv("TF_AZURE_SQL_SERVER_DB_NAME")
+	azureMSSQLUamiName         = os.Getenv("TF_AZURE_IDENTITY_1_NAME")
+	azureMSSQLConnectionString = fmt.Sprintf("Server=%s;Database=%s;User ID=%s;Password=%s;Encrypt=true;TrustServerCertificate=false;",
+		azureMSSQLFQDN, azureMSSQLDatabase, azureMSSQLAdminUsername, azureMSSQLAdminPassword)
+	minReplicaCount = 0
+	maxReplicaCount = 2
 )
 
 type templateData struct {
-	TestNamespace             string
-	DeploymentName            string
-	ScaledObjectName          string
-	TriggerAuthenticationName string
-	SecretName                string
-	MssqlHelperName           string
-	AzureMSSQLAdminUsername   string
-	AzureMSSQLAdminPassword   string
-	AzureMSSQLFQDN            string
-	AzureMSSQLDatabase        string
-	AzureMSSQLUamiName        string
-	MinReplicaCount           int
-	MaxReplicaCount           int
+	TestNamespace              string
+	DeploymentName             string
+	ScaledObjectName           string
+	TriggerAuthenticationName  string
+	SecretName                 string
+	MssqlHelperName            string
+	AzureMSSQLAdminUsername    string
+	AzureMSSQLAdminPassword    string
+	AzureMSSQLFQDN             string
+	AzureMSSQLDatabase         string
+	AzureMSSQLUamiName         string
+	AzureMSSQLConnectionString string
+	MinReplicaCount            int
+	MaxReplicaCount            int
 }
 
 const (
@@ -78,8 +81,14 @@ spec:
       - image: ghcr.io/kedacore/tests-mssql:latest
         imagePullPolicy: Always
         name: mssql-consumer-worker
-        command: ["sleep"]
-        args: ["infinity"]
+        command: ["/app"]
+        args: ["-mode", "consumer"]
+        env:
+          - name: SQL_CONNECTION_STRING
+            valueFrom:
+              secretKeyRef:
+                name: {{.SecretName}}
+                key: mssql-connection-string
 `
 
 	secretTemplate = `apiVersion: v1
@@ -90,6 +99,7 @@ metadata:
 type: Opaque
 stringData:
   mssql-sa-password: {{.AzureMSSQLAdminPassword}}
+  mssql-connection-string: {{.AzureMSSQLConnectionString}}
 `
 
 	triggerAuthTemplate = `apiVersion: keda.sh/v1alpha1
@@ -290,19 +300,20 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 }
 
 var data = templateData{
-	TestNamespace:             testNamespace,
-	DeploymentName:            deploymentName,
-	ScaledObjectName:          scaledObjectName,
-	MinReplicaCount:           minReplicaCount,
-	MaxReplicaCount:           maxReplicaCount,
-	TriggerAuthenticationName: triggerAuthenticationName,
-	SecretName:                secretName,
-	MssqlHelperName:           mssqlHelperName,
-	AzureMSSQLAdminUsername:   azureMSSQLAdminUsername,
-	AzureMSSQLAdminPassword:   azureMSSQLAdminPassword,
-	AzureMSSQLFQDN:            azureMSSQLFQDN,
-	AzureMSSQLDatabase:        azureMSSQLDatabase,
-	AzureMSSQLUamiName:        azureMSSQLUamiName,
+	TestNamespace:              testNamespace,
+	DeploymentName:             deploymentName,
+	ScaledObjectName:           scaledObjectName,
+	MinReplicaCount:            minReplicaCount,
+	MaxReplicaCount:            maxReplicaCount,
+	TriggerAuthenticationName:  triggerAuthenticationName,
+	SecretName:                 secretName,
+	MssqlHelperName:            mssqlHelperName,
+	AzureMSSQLAdminUsername:    azureMSSQLAdminUsername,
+	AzureMSSQLAdminPassword:    azureMSSQLAdminPassword,
+	AzureMSSQLFQDN:             azureMSSQLFQDN,
+	AzureMSSQLDatabase:         azureMSSQLDatabase,
+	AzureMSSQLUamiName:         azureMSSQLUamiName,
+	AzureMSSQLConnectionString: azureMSSQLConnectionString,
 }
 
 func getHelperTemplateData() (templateData, []Template) {
