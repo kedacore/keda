@@ -3620,12 +3620,6 @@
                     "type": "string",
                     "default": "false",
                     "metadataVariableReadable": true
-                },
-                {
-                    "name": "metricName",
-                    "type": "string",
-                    "optional": true,
-                    "metadataVariableReadable": true
                 }
             ]
         },
