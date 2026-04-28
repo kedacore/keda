@@ -57,6 +57,20 @@ type azureCosmosDBMetadata struct {
 	TriggerIndex        int
 }
 
+func (m *azureCosmosDBMetadata) Validate() error {
+	// Default lease settings to data settings if not specified
+	if m.LeaseConnection == "" {
+		m.LeaseConnection = m.Connection
+	}
+	if m.LeaseEndpoint == "" {
+		m.LeaseEndpoint = m.Endpoint
+	}
+	if m.LeaseCosmosDBKey == "" {
+		m.LeaseCosmosDBKey = m.CosmosDBKey
+	}
+	return nil
+}
+
 // cosmosDBClient provides low-level access to Cosmos DB via the REST API
 // for querying lease documents and reading the change feed.
 type cosmosDBClient struct {
@@ -132,17 +146,6 @@ func parseAzureCosmosDBMetadata(config *scalersconfig.ScalerConfig) (*azureCosmo
 		}
 	default:
 		return nil, fmt.Errorf("pod identity %s not supported for azure cosmos db", config.PodIdentity.Provider)
-	}
-
-	// Default lease settings to data settings if not specified
-	if meta.LeaseConnection == "" {
-		meta.LeaseConnection = meta.Connection
-	}
-	if meta.LeaseEndpoint == "" {
-		meta.LeaseEndpoint = meta.Endpoint
-	}
-	if meta.LeaseCosmosDBKey == "" {
-		meta.LeaseCosmosDBKey = meta.CosmosDBKey
 	}
 
 	meta.TriggerIndex = config.TriggerIndex
