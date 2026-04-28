@@ -29,6 +29,11 @@ const (
 	ENT                  = "ent"
 	REPO                 = "repo"
 	githubDefaultPerPage = 30
+	// githubScalerMaxCacheEntries caps the etags and previousJobs maps. Without
+	// it the etags map grows once per workflow run for the lifetime of the
+	// operator pod (the URL contains the run ID), and previousJobs grows once
+	// per distinct workflow repository name returned by the API.
+	githubScalerMaxCacheEntries = 5000
 )
 
 var reservedLabels = []string{"self-hosted", "linux", "x64"}
@@ -743,6 +748,36 @@ func (s *githubRunnerScaler) getCachedQueueLength() (int64, error) {
 	return -1, fmt.Errorf("GitHub API rate limit exceeded. No cached queue length available")
 }
 
+// pruneCaches removes previousWfrs entries for repos missing from currentRepos
+// and caps all three caches to githubScalerMaxCacheEntries.
+func (s *githubRunnerScaler) pruneCaches(currentRepos []string) {
+	repoSet := make(map[string]struct{}, len(currentRepos))
+	for _, r := range currentRepos {
+		repoSet[r] = struct{}{}
+	}
+	for repo := range s.previousWfrs {
+		if _, ok := repoSet[repo]; !ok {
+			delete(s.previousWfrs, repo)
+		}
+	}
+	evictExcess(s.previousWfrs, githubScalerMaxCacheEntries)
+	evictExcess(s.previousJobs, githubScalerMaxCacheEntries)
+	evictExcess(s.etags, githubScalerMaxCacheEntries)
+}
+
+// evictExcess removes arbitrary entries from m until len(m) <= limit. Map
+// iteration is randomized in Go, so this is a simple bound rather than LRU.
+func evictExcess[K comparable, V any](m map[K]V, limit int) {
+	over := len(m) - limit
+	for k := range m {
+		if over <= 0 {
+			break
+		}
+		delete(m, k)
+		over--
+	}
+}
+
 // GetWorkflowQueueLength returns the number of workflow jobs in the queue
 func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64, error) {
 	if s.isRateLimited() {
@@ -758,6 +793,10 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 			return s.getCachedQueueLength()
 		}
 		return -1, err
+	}
+
+	if s.metadata.EnableEtags {
+		s.pruneCaches(repos)
 	}
 
 	var allWfrs []WorkflowRuns

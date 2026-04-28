@@ -863,6 +863,58 @@ var githubRunnerMetricIdentifiers = []githubRunnerMetricIdentifier{
 	{&testGitHubRunnerMetadata[1].metadata, 1, "s1-github-runner-ownername"},
 }
 
+func TestGithubRunnerPruneCachesDropsAbsentWfrRepos(t *testing.T) {
+	s := githubRunnerScaler{
+		metadata:     &githubRunnerMetadata{},
+		previousJobs: map[string][]Job{},
+		previousWfrs: map[string]map[string]*WorkflowRuns{
+			"keep-1": {"queued": &WorkflowRuns{}},
+			"drop-2": {"queued": &WorkflowRuns{}},
+		},
+		etags: map[string]string{},
+	}
+
+	s.pruneCaches([]string{"keep-1"})
+
+	if _, ok := s.previousWfrs["drop-2"]; ok {
+		t.Errorf("previousWfrs still contains drop-2 after prune")
+	}
+	if _, ok := s.previousWfrs["keep-1"]; !ok {
+		t.Errorf("previousWfrs lost keep-1 after prune")
+	}
+}
+
+func TestGithubRunnerPruneCachesBoundsMaps(t *testing.T) {
+	overflow := githubScalerMaxCacheEntries + 100
+	currentRepos := make([]string, overflow)
+
+	s := githubRunnerScaler{
+		metadata:     &githubRunnerMetadata{},
+		previousJobs: make(map[string][]Job, overflow),
+		previousWfrs: make(map[string]map[string]*WorkflowRuns, overflow),
+		etags:        make(map[string]string, overflow),
+	}
+	for i := 0; i < overflow; i++ {
+		repo := fmt.Sprintf("repo-%d", i)
+		currentRepos[i] = repo
+		s.etags[fmt.Sprintf("https://api.github.com/run/%d", i)] = "etag"
+		s.previousJobs[repo] = nil
+		s.previousWfrs[repo] = map[string]*WorkflowRuns{"queued": {}}
+	}
+
+	s.pruneCaches(currentRepos)
+
+	if got := len(s.etags); got > githubScalerMaxCacheEntries {
+		t.Errorf("etags map size %d exceeds cap %d after prune", got, githubScalerMaxCacheEntries)
+	}
+	if got := len(s.previousJobs); got > githubScalerMaxCacheEntries {
+		t.Errorf("previousJobs map size %d exceeds cap %d after prune", got, githubScalerMaxCacheEntries)
+	}
+	if got := len(s.previousWfrs); got > githubScalerMaxCacheEntries {
+		t.Errorf("previousWfrs map size %d exceeds cap %d after prune", got, githubScalerMaxCacheEntries)
+	}
+}
+
 func TestGithubRunnerGetMetricSpecForScaling(t *testing.T) {
 	for i, testData := range githubRunnerMetricIdentifiers {
 		ctx := context.Background()
