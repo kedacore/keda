@@ -60,18 +60,19 @@ type azureCosmosDBMetadata struct {
 // cosmosDBClient provides low-level access to Cosmos DB via the REST API
 // for querying lease documents and reading the change feed.
 type cosmosDBClient struct {
-	httpClient       *http.Client
-	dataEndpoint     string
-	dataKey          string
-	leaseEndpoint    string
-	leaseKey         string
-	leaseDatabaseID  string
-	leaseContainerID string
-	databaseID       string
-	containerID      string
-	processorName    string
-	credential       azcore.TokenCredential
-	logger           logr.Logger
+	httpClient          *http.Client
+	dataEndpoint        string
+	dataKey             string
+	leaseEndpoint       string
+	leaseKey            string
+	leaseDatabaseID     string
+	leaseContainerID    string
+	databaseID          string
+	containerID         string
+	processorName       string
+	cosmosDBResourceURL string
+	credential          azcore.TokenCredential
+	logger              logr.Logger
 }
 
 type leaseDocument struct {
@@ -101,7 +102,7 @@ func NewAzureCosmosDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) 
 		return nil, fmt.Errorf("error parsing azure cosmos db metadata: %w", err)
 	}
 
-	cosmosClient, err := newCosmosDBClient(meta, config.PodIdentity, logger, config.GlobalHTTPTimeout)
+	cosmosClient, err := newCosmosDBClient(meta, config.TriggerMetadata, config.PodIdentity, logger, config.GlobalHTTPTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("error creating cosmos db client: %w", err)
 	}
@@ -148,7 +149,7 @@ func parseAzureCosmosDBMetadata(config *scalersconfig.ScalerConfig) (*azureCosmo
 	return meta, nil
 }
 
-func newCosmosDBClient(meta *azureCosmosDBMetadata, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger, httpTimeout time.Duration) (*cosmosDBClient, error) {
+func newCosmosDBClient(meta *azureCosmosDBMetadata, triggerMetadata map[string]string, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger, httpTimeout time.Duration) (*cosmosDBClient, error) {
 	if httpTimeout == 0 {
 		httpTimeout = 30 * time.Second
 	}
@@ -195,6 +196,15 @@ func newCosmosDBClient(meta *azureCosmosDBMetadata, podIdentity kedav1alpha1.Aut
 
 	// Set up workload identity credential for bearer token auth
 	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload && client.dataKey == "" {
+		cosmosDBResourceURLProvider := func(env azure.AzEnvironment) (string, error) {
+			return env.ResourceIdentifiers.CosmosDB, nil
+		}
+		cosmosDBResourceURL, err := azure.ParseEnvironmentProperty(triggerMetadata, "cosmosDBResourceURL", cosmosDBResourceURLProvider)
+		if err != nil {
+			return nil, fmt.Errorf("error resolving cosmos db resource URL: %w", err)
+		}
+		client.cosmosDBResourceURL = cosmosDBResourceURL
+
 		cred, err := azure.NewChainedCredential(logger, podIdentity)
 		if err != nil {
 			return nil, fmt.Errorf("error creating azure credential for workload identity: %w", err)
@@ -238,7 +248,7 @@ func (c *cosmosDBClient) setAuthHeader(req *http.Request, verb, resourceType, re
 
 	if c.credential != nil {
 		tk, err := c.credential.GetToken(req.Context(), policy.TokenRequestOptions{
-			Scopes: []string{azure.PublicCloud.ResourceIdentifiers.CosmosDB + "/.default"},
+			Scopes: []string{c.cosmosDBResourceURL + "/.default"},
 		})
 		if err != nil {
 			return fmt.Errorf("error acquiring bearer token: %w", err)
