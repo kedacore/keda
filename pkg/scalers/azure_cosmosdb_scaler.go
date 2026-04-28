@@ -33,11 +33,10 @@ const (
 )
 
 type azureCosmosDBScaler struct {
-	metricType         v2.MetricTargetType
-	metadata           *azureCosmosDBMetadata
-	cosmosClient       *cosmosDBClient
-	logger             logr.Logger
-	lastPartitionCount int64
+	metricType   v2.MetricTargetType
+	metadata     *azureCosmosDBMetadata
+	cosmosClient *cosmosDBClient
+	logger       logr.Logger
 }
 
 type azureCosmosDBMetadata struct {
@@ -289,7 +288,11 @@ func (c *cosmosDBClient) queryLeases(ctx context.Context) ([]leaseDocument, erro
 	resourceLink := fmt.Sprintf("dbs/%s/colls/%s", c.leaseDatabaseID, c.leaseContainerID)
 	reqURL := fmt.Sprintf("%s/%s/docs", strings.TrimRight(c.leaseEndpoint, "/"), resourceLink)
 
-	body := fmt.Sprintf(`{"query":"SELECT * FROM c WHERE STARTSWITH(c.id, @prefix)","parameters":[{"name":"@prefix","value":"%s"}]}`, c.processorName)
+	prefixJSON, err := json.Marshal(c.processorName)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling processor name: %w", err)
+	}
+	body := fmt.Sprintf(`{"query":"SELECT * FROM c WHERE STARTSWITH(c.id, @prefix)","parameters":[{"name":"@prefix","value":%s}]}`, string(prefixJSON))
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqURL, strings.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
@@ -467,7 +470,7 @@ func (c *cosmosDBClient) estimatePartitionLag(ctx context.Context, lease leaseDo
 
 	// 410 Gone indicates partition split or merge
 	if cfResp.StatusCode == http.StatusGone {
-		return -1, true, nil
+		return 0, true, nil
 	}
 
 	// 304 Not Modified or empty results means processor is caught up
@@ -565,26 +568,10 @@ func getChangeFeedTotalLagRelatedToPartitionAmount(totalLag int64, partitionCoun
 }
 
 // GetMetricsAndActivity returns the metric value and activity status.
-// On error, returns the maximum possible metric (partitions * threshold) to scale
-// to max replicas, ensuring the system is not under-provisioned during failures.
 func (s *azureCosmosDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	totalLag, partitionCount, err := s.cosmosClient.estimateLag(ctx)
 	if err != nil {
-		if s.lastPartitionCount > 0 {
-			maxLag := s.lastPartitionCount * s.metadata.Threshold
-			s.logger.Error(err, fmt.Sprintf("error getting cosmos db change feed lag, using cached partition count (%d) for fallback, reporting lag=%d",
-				s.lastPartitionCount, maxLag))
-			metric := GenerateMetricInMili(metricName, float64(maxLag))
-			return []external_metrics.ExternalMetricValue{metric}, true, nil
-		}
-		// No cached partition count — propagate error to KEDA (standard behavior)
-		s.logger.Error(err, "error getting cosmos db change feed lag, no cached partition count available")
-		return []external_metrics.ExternalMetricValue{}, false, err
-	}
-
-	// Cache partition count for error fallback
-	if partitionCount > 0 {
-		s.lastPartitionCount = partitionCount
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting cosmos db change feed lag: %w", err)
 	}
 
 	// Don't scale out beyond the number of partitions
