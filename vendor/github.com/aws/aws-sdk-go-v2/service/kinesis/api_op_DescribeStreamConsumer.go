@@ -53,6 +53,9 @@ type DescribeStreamConsumerInput struct {
 	// [Amazon Resource Names (ARNs) and Amazon Web Services Service Namespaces]: https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arn-syntax-kinesis-streams
 	StreamARN *string
 
+	// Not Implemented. Reserved for future use.
+	StreamId *string
+
 	noSmithyDocumentSerde
 }
 
@@ -60,6 +63,7 @@ func (in *DescribeStreamConsumerInput) bindEndpointParams(p *EndpointParameters)
 
 	p.StreamARN = in.StreamARN
 	p.ConsumerARN = in.ConsumerARN
+	p.StreamId = in.StreamId
 	p.OperationType = ptr.String("control")
 }
 
@@ -110,7 +114,7 @@ func (c *Client) addOperationDescribeStreamConsumerMiddlewares(stack *middleware
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
@@ -132,9 +136,6 @@ func (c *Client) addOperationDescribeStreamConsumerMiddlewares(stack *middleware
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {

@@ -181,7 +181,9 @@ type WorkflowServiceClient interface {
 	// Upon failure, it returns `MultiOperationExecutionFailure` where the status code
 	// equals the status code of the *first* operation that failed to be started.
 	//
-	// NOTE: Experimental API.
+	// (-- api-linter: core::0127::http-annotation=disabled
+	//
+	//	aip.dev/not-precedent: To be exposed over HTTP in the future. --)
 	ExecuteMultiOperation(ctx context.Context, in *ExecuteMultiOperationRequest, opts ...grpc.CallOption) (*ExecuteMultiOperationResponse, error)
 	// GetWorkflowExecutionHistory returns the history of specified workflow execution. Fails with
 	// `NotFound` if the specified workflow execution is unknown to the service.
@@ -1886,7 +1888,9 @@ type WorkflowServiceServer interface {
 	// Upon failure, it returns `MultiOperationExecutionFailure` where the status code
 	// equals the status code of the *first* operation that failed to be started.
 	//
-	// NOTE: Experimental API.
+	// (-- api-linter: core::0127::http-annotation=disabled
+	//
+	//	aip.dev/not-precedent: To be exposed over HTTP in the future. --)
 	ExecuteMultiOperation(context.Context, *ExecuteMultiOperationRequest) (*ExecuteMultiOperationResponse, error)
 	// GetWorkflowExecutionHistory returns the history of specified workflow execution. Fails with
 	// `NotFound` if the specified workflow execution is unknown to the service.

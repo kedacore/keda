@@ -31,67 +31,28 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
-	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 )
 
-func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool, isError bool, options *ScaleExecutorOptions) {
-	logger := e.logger.WithValues("scaledobject.Name", scaledObject.Name,
-		"scaledObject.Namespace", scaledObject.Namespace,
-		"scaleTarget.Name", scaledObject.Spec.ScaleTargetRef.Name)
-	var currentScale *autoscalingv1.Scale
+func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool, isError bool, options ScaleExecutorOptions) ScaleResult {
+	logger := e.logger.WithValues("scaledobject.Name", scaledObject.Name, "scaledObject.Namespace", scaledObject.Namespace, "scaleTarget.Name", scaledObject.Spec.ScaleTargetRef.Name)
 	var currentReplicas int32
-	// Get the current replica count
+	result := ScaleResult{Conditions: kedav1alpha1.Conditions{}}
+	result.Conditions.SetReadyCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionReadySuccessReason, kedav1alpha1.ScaledObjectConditionReadySuccessMessage)
+	result.TriggersActivity = getTriggersActivity(scaledObject, options)
+
+	// get the current replica count
 	currentReplicas, err := resolver.GetCurrentReplicas(ctx, e.client, e.scaleClient, scaledObject)
 	if err != nil {
-		logger.Error(err, "Error getting information on the current Scale")
-		return
-	}
-	// if the ScaledObject's triggers aren't in the error state,
-	// but ScaledObject.Status.ReadyCondition is set not set to 'true' -> set it back to 'true'
-	readyCondition := scaledObject.Status.Conditions.GetReadyCondition()
-	if !isError && !readyCondition.IsTrue() {
-		if err := e.setReadyCondition(ctx, logger, scaledObject, metav1.ConditionTrue,
-			kedav1alpha1.ScaledObjectConditionReadySuccessReason, kedav1alpha1.ScaledObjectConditionReadySuccessMessage); err != nil {
-			logger.Error(err, "error setting ready condition")
-		}
+		logger.Error(err, "Error getting current replicas count for ScaleTarget")
+		result.Conditions.SetReadyCondition(metav1.ConditionFalse, "ErrorGettingCurrentReplicas", fmt.Sprintf("Error getting current replicas count for ScaleTarget: %v", err))
+		result.Error = fmt.Errorf("error getting current replicas count for ScaleTarget: %w", err)
+		return result
 	}
 
-	// Check if we are paused, and if we are then update the scale to the desired count.
-	pausedCount, err := GetPausedReplicaCount(scaledObject)
-	if err != nil {
-		if err := e.setReadyCondition(ctx, logger, scaledObject, metav1.ConditionFalse,
-			kedav1alpha1.ScaledObjectConditionReadySuccessReason, kedav1alpha1.ScaledObjectConditionReadySuccessMessage); err != nil {
-			logger.Error(err, "error setting ready condition")
-		}
-		logger.Error(err, "error getting the paused replica count on the current ScaledObject.")
-		return
+	// check if SO is paused, and if it is then update the scale to the desired count and return early without performing any other checks or updates
+	if e.handlePaused(ctx, scaledObject, currentReplicas, &result) {
+		return result
 	}
-	status := scaledObject.Status.DeepCopy()
-	if pausedCount != nil {
-		// Scale the target to the paused replica count
-		if *pausedCount != currentReplicas {
-			_, err := e.updateScaleOnScaleTarget(ctx, scaledObject, currentScale, *pausedCount)
-			if err != nil {
-				logger.Error(err, "error scaling target to paused replicas count", "paused replicas", *pausedCount)
-				if err := e.setReadyCondition(ctx, logger, scaledObject, metav1.ConditionUnknown,
-					kedav1alpha1.ScaledObjectConditionReadySuccessReason, kedav1alpha1.ScaledObjectConditionReadySuccessMessage); err != nil {
-					logger.Error(err, "error setting ready condition")
-				}
-				return
-			}
-		}
-		if *pausedCount != currentReplicas || status.PausedReplicaCount == nil {
-			status.PausedReplicaCount = pausedCount
-			err = kedastatus.UpdateScaledObjectStatus(ctx, e.client, logger, scaledObject, status)
-			if err != nil {
-				logger.Error(err, "error updating status paused replica count")
-				return
-			}
-			logger.Info("Successfully scaled target to paused replicas count", "paused replicas", *pausedCount)
-		}
-		return
-	}
-
 	// if scaledObject.Spec.MinReplicaCount is not set, then set the default value (0)
 	minReplicas := int32(0)
 	if scaledObject.Spec.MinReplicaCount != nil {
@@ -99,43 +60,27 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	}
 
 	if isActive || scaledObject.NeedToForceActivation() {
-		// A scale target is active if triggers are active or if activation is being forced via annotation
+		if scaledObject.NeedToForceActivation() {
+			result.Conditions.SetActiveCondition(metav1.ConditionTrue, "ScalerActive", "Scaling is performed because activation is being forced by annotation")
+		} else {
+			result.Conditions.SetActiveCondition(metav1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active")
+		}
+		// a scale target is active if triggers are active or if activation is being forced via annotation
 		switch {
-		case scaledObject.Spec.IdleReplicaCount != nil && currentReplicas < minReplicas,
-			// triggers are active, Idle Replicas mode is enabled
-			// AND
-			// replica count is less than minimum replica count
-
-			currentReplicas == 0:
-			// triggers are active
-			// AND
-			// replica count is equal to 0
-
-			// Scale the ScaleTarget up
-			e.scaleFromZeroOrIdle(ctx, logger, scaledObject, currentScale, options.ActiveTriggers)
+		case scaledObject.Spec.IdleReplicaCount != nil && currentReplicas < minReplicas, currentReplicas == 0:
+			// triggers are active, Idle Replicas mode is enabled AND replica count is less than minimum replica count => scale the ScaleTarget up
+			e.scaleFromZeroOrIdle(ctx, logger, scaledObject, options.ActiveTriggers, &result)
 		case isError:
 			// some triggers are active, but some responded with error
-
-			// Set ScaledObject.Status.ReadyCondition to Unknown
-			msg := "Some triggers defined in ScaledObject are not working correctly"
-			logger.V(1).Info(msg)
-			if !readyCondition.IsUnknown() {
-				if err := e.setReadyCondition(ctx, logger, scaledObject, metav1.ConditionUnknown, "PartialTriggerError", msg); err != nil {
-					logger.Error(err, "error setting ready condition")
-				}
-			}
+			result.Conditions.SetReadyCondition(metav1.ConditionUnknown, "PartialTriggerError", "Some triggers defined in ScaledObject are not working correctly")
+			logger.V(1).Info("Some triggers defined in ScaledObject are not working correctly")
 		default:
 			// triggers are active, but we didn't need to scale (replica count > 0)
-
-			// update LastActiveTime to now
-			err := e.updateLastActiveTime(ctx, logger, scaledObject)
-			if err != nil {
-				logger.Error(err, "Error updating last active time")
-				return
-			}
+			result.LastActiveTime = &metav1.Time{Time: time.Now()}
 		}
 	} else {
 		// isActive == false
+		result.Conditions.SetActiveCondition(metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active")
 		switch {
 		case isError && scaledObject.Spec.Fallback != nil && scaledObject.Spec.Fallback.Replicas != 0:
 			// We need to have this switch case even if just for logging.
@@ -145,90 +90,33 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			// https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#implicit-maintenance-mode-deactivation
 			logger.V(1).Info("ScaleTarget will fallback to Fallback.Replicas after Fallback.FailureThreshold")
 		case isError && scaledObject.Spec.Fallback == nil:
-			// there are no active triggers, but a scaler responded with an error
-			// AND
-			// there is not a fallback replicas count defined
-
-			// Set ScaledObject.Status.ReadyCondition to false
+			// there are no active triggers, but a scaler responded with an error AND there is not a fallback replicas count defined
 			msg := "Triggers defined in ScaledObject are not working correctly"
+			result.Conditions.SetReadyCondition(metav1.ConditionFalse, "TriggerError", msg)
 			logger.V(1).Info(msg)
-			if !readyCondition.IsFalse() {
-				if err := e.setReadyCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "TriggerError", msg); err != nil {
-					logger.Error(err, "error setting ready condition")
-				}
-			}
-		case scaledObject.Spec.IdleReplicaCount != nil && currentReplicas > *scaledObject.Spec.IdleReplicaCount,
-			// there are no active triggers, Idle Replicas mode is enabled
-			// AND
-			// current replicas count is greater than Idle Replicas count
-
-			currentReplicas > 0 && minReplicas == 0:
-			// there are no active triggers, but the ScaleTarget has replicas
-			// AND
-			// there is no minimum configured or minimum is set to ZERO
-
+		case scaledObject.Spec.IdleReplicaCount != nil && currentReplicas > *scaledObject.Spec.IdleReplicaCount, currentReplicas > 0 && minReplicas == 0:
+			// there are no active triggers, Idle Replicas mode is enabled AND current replicas count is greater than Idle Replicas count
 			// Try to scale the deployment down, HPA will handle other scale in operations
-			e.scaleToZeroOrIdle(ctx, logger, scaledObject, currentScale)
-		case currentReplicas < minReplicas && scaledObject.Spec.IdleReplicaCount == nil:
-			// there are no active triggers
-			// AND
-			// ScaleTarget replicas count is less than minimum replica count specified in ScaledObject
-			// AND
-			// Idle Replicas mode is disabled
-
+			e.scaleToZeroOrIdle(ctx, logger, scaledObject, &result)
+		case scaledObject.Spec.IdleReplicaCount == nil && currentReplicas < minReplicas:
+			// there are no active triggers AND ScaleTarget replicas count is less than minimum replica count specified in ScaledObject AND Idle Replicas mode is disabled
 			// ScaleTarget replicas count to correct value
-			_, err := e.updateScaleOnScaleTarget(ctx, scaledObject, currentScale, *scaledObject.Spec.MinReplicaCount)
+			_, err := e.updateScaleOnScaleTarget(ctx, scaledObject, *scaledObject.Spec.MinReplicaCount)
 			if err == nil {
-				logger.Info("Successfully set ScaleTarget replicas count to ScaledObject minReplicaCount",
-					"Original Replicas Count", currentReplicas,
-					"New Replicas Count", *scaledObject.Spec.MinReplicaCount)
+				msg := "Successfully set ScaleTarget replicas count to ScaledObject minReplicaCount"
+				logger.Info(msg, "Original Replicas Count", currentReplicas, "New Replicas Count", *scaledObject.Spec.MinReplicaCount)
 			}
 		default:
-			// there are no active triggers
-			// AND
-			// nothing needs to be done (eg. deployment is scaled down)
+			// there are no active triggers AND nothing needs to be done (eg. deployment is scaled down)
 			logger.V(1).Info("ScaleTarget no change")
 		}
 	}
-
-	activeTriggers := []string{}
-	if options != nil {
-		activeTriggers = options.ActiveTriggers
-	}
-
-	condition := scaledObject.Status.Conditions.GetActiveCondition()
-	if condition.IsUnknown() || condition.IsTrue() != (isActive || scaledObject.NeedToForceActivation()) {
-		switch {
-		case isActive:
-			// Scaler is active because of metrics
-			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active"); err != nil {
-				logger.Error(err, "Error setting active condition when triggers are active")
-				return
-			}
-		case scaledObject.NeedToForceActivation():
-			// Annotation is set to force scaler to activate
-			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because activation is being forced by annotation"); err != nil {
-				logger.Error(err, "Error setting active condition when activation is forced")
-				return
-			}
-		default:
-			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
-				logger.Error(err, "Error setting active condition when triggers are not active")
-				return
-			}
-		}
-	}
-
-	// Update triggers activity if individual trigger states have changed
-	if err := e.updateTriggersActivity(ctx, logger, scaledObject, activeTriggers); err != nil {
-		logger.Error(err, "Error updating triggers activity")
-		return
-	}
+	return result
 }
 
 // An object will be scaled down to 0 only if it's passed its cooldown period
 // or if LastActiveTime is nil and scale in is not paused
-func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale) {
+func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, result *ScaleResult) {
 	if scaledObject.NeedToPauseScaleIn() {
 		// The Pause Scale Down annotation is set so we should not scale down this target
 		logger.Info("Pause Scale Down annotation set on ScaledObject, no scaling down on inactive trigger")
@@ -249,11 +137,6 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 		cooldownPeriod = time.Second * time.Duration(defaultCooldownPeriod)
 	}
 
-	// If the ScaledObject was just created,CreationTimestamp is zero, set the CreationTimestamp to now
-	if scaledObject.CreationTimestamp.IsZero() {
-		scaledObject.CreationTimestamp = metav1.NewTime(time.Now())
-	}
-
 	// LastActiveTime can be nil if the ScaleTarget was scaled outside of KEDA.
 	// In this case we will ignore the cooldown period and scale it down
 	if (scaledObject.Status.LastActiveTime == nil && scaledObject.CreationTimestamp.Add(initialCooldownPeriod).Before(time.Now())) || (scaledObject.Status.LastActiveTime != nil &&
@@ -261,7 +144,7 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 		// or last time a trigger was active was > cooldown period, so scale in.
 		idleValue, scaleToReplicas := getIdleOrMinimumReplicaCount(scaledObject)
 
-		currentReplicas, err := e.updateScaleOnScaleTarget(ctx, scaledObject, scale, scaleToReplicas)
+		currentReplicas, err := e.updateScaleOnScaleTarget(ctx, scaledObject, scaleToReplicas)
 		if err == nil {
 			msg := "Successfully set ScaleTarget replicas count to ScaledObject"
 			if idleValue {
@@ -273,30 +156,18 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 
 			e.recorder.Eventf(scaledObject, corev1.EventTypeNormal, eventreason.KEDAScaleTargetDeactivated,
 				"Deactivated %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, scaleToReplicas)
-			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
-				logger.Error(err, "Error in setting active condition")
-				return
-			}
+			result.Conditions.SetActiveCondition(metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active")
 		} else {
 			e.recorder.Eventf(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScaleTargetDeactivationFailed,
 				"Failed to deactivate %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, scaleToReplicas)
 		}
 	} else {
-		logger.V(1).Info("ScaleTarget cooling down",
-			"LastActiveTime", scaledObject.Status.LastActiveTime,
-			"CoolDownPeriod", cooldownPeriod)
-
-		activeCondition := scaledObject.Status.Conditions.GetActiveCondition()
-		if !activeCondition.IsFalse() || activeCondition.Reason != "ScalerCooldown" {
-			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerCooldown", "Scaler cooling down because triggers are not active"); err != nil {
-				logger.Error(err, "Error in setting active condition")
-				return
-			}
-		}
+		logger.V(1).Info("ScaleTarget cooling down", "LastActiveTime", scaledObject.Status.LastActiveTime, "CoolDownPeriod", cooldownPeriod)
+		result.Conditions.SetActiveCondition(metav1.ConditionFalse, "ScalerCooldown", "Scaler cooling down because triggers are not active")
 	}
 }
 
-func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale, activeTriggers []string) {
+func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, activeTriggers []string, result *ScaleResult) {
 	if scaledObject.NeedToPauseScaleOut() {
 		// The Pause Scale Out annotation is set so we should not scale up (out) this target
 		logger.Info("Pause Scale Out annotation set on ScaledObject, no scaling out on active trigger")
@@ -310,7 +181,7 @@ func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Log
 		replicas = 1
 	}
 
-	currentReplicas, err := e.updateScaleOnScaleTarget(ctx, scaledObject, scale, replicas)
+	currentReplicas, err := e.updateScaleOnScaleTarget(ctx, scaledObject, replicas)
 
 	if err == nil {
 		logger.Info("Successfully updated ScaleTarget",
@@ -346,13 +217,10 @@ func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Log
 			eventMessage,
 		)
 
-		// Scale was successful. Update lastScaleTime and lastActiveTime on the scaledObject
-		if err := e.updateLastActiveTime(ctx, logger, scaledObject); err != nil {
-			logger.Error(err, "Error in Updating lastScaleTime and lastActiveTime on the scaledObject")
-			return
-		}
+		// Scale was successful. Record lastActiveTime in the result for the handler to persist.
+		result.LastActiveTime = &metav1.Time{Time: time.Now()}
 	} else {
-		e.recorder.Eventf(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScaleTargetActivationFailed, "Failed to scaled %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, replicas)
+		e.recorder.Eventf(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScaleTargetActivationFailed, "Failed to scale %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, replicas)
 	}
 }
 
@@ -360,22 +228,46 @@ func (e *scaleExecutor) getScaleTargetScale(ctx context.Context, scaledObject *k
 	return e.scaleClient.Scales(scaledObject.Namespace).Get(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
 }
 
-func (e *scaleExecutor) updateScaleOnScaleTarget(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale, replicas int32) (int32, error) {
-	if scale == nil {
-		// Wasn't retrieved earlier, grab it now.
-		var err error
-		scale, err = e.getScaleTargetScale(ctx, scaledObject)
-		if err != nil {
-			return -1, err
-		}
+func (e *scaleExecutor) updateScaleOnScaleTarget(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, replicas int32) (int32, error) {
+	scale, err := e.getScaleTargetScale(ctx, scaledObject)
+	if err != nil {
+		return -1, err
 	}
 
 	// Update with requested replicas.
 	currentReplicas := scale.Spec.Replicas
 	scale.Spec.Replicas = replicas
 
-	_, err := e.scaleClient.Scales(scaledObject.Namespace).Update(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scale, metav1.UpdateOptions{})
+	_, err = e.scaleClient.Scales(scaledObject.Namespace).Update(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scale, metav1.UpdateOptions{})
 	return currentReplicas, err
+}
+
+// handlePaused checks if the ScaledObject is paused and if it is, it scales the target to the paused replica count and returns true. If the ScaledObject is not paused, it returns false.
+func (e *scaleExecutor) handlePaused(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, currentReplicas int32, scaleResult *ScaleResult) bool {
+	pausedCount, err := GetPausedReplicaCount(scaledObject)
+	if err != nil {
+		scaleResult.Conditions.SetReadyCondition(metav1.ConditionFalse, "ErrorPausing", fmt.Sprintf("Failed to pause: %v", err))
+		scaleResult.Conditions.SetPausedCondition(metav1.ConditionTrue, "ErrorGettingPausedReplicas", fmt.Sprintf("Paused annotation present but failed to determine paused replica count: %v", err))
+		scaleResult.Error = fmt.Errorf("paused annotation present but failed to determine paused replica count: %w", err)
+		return true
+	}
+	if pausedCount == nil {
+		// ScaledObject is not paused by replica annotation; the controller manages the Paused condition lifecycle, so we leave it untouched here.
+		return false
+	}
+
+	// ScaledObject is paused, scale to the paused replica count and set status accordingly
+	scaleResult.PauseReplicas = pausedCount
+	if *pausedCount != currentReplicas {
+		if _, err := e.updateScaleOnScaleTarget(ctx, scaledObject, *pausedCount); err != nil {
+			scaleResult.Conditions.SetReadyCondition(metav1.ConditionFalse, "ErrorScalingToPausedReplicas", fmt.Sprintf("ScaledObject is paused but failed to scale to paused replica count: %v", err))
+			scaleResult.Conditions.SetPausedCondition(metav1.ConditionTrue, "ScaledObjectPaused", "ScaledObject is paused")
+			scaleResult.Error = fmt.Errorf("ScaledObject is paused but failed to scale to paused replica count: %w", err)
+			return true
+		}
+	}
+	scaleResult.Conditions.SetPausedCondition(metav1.ConditionTrue, "ScaledObjectPaused", "ScaledObject is paused")
+	return true
 }
 
 // getIdleOrMinimumReplicaCount returns true if the second value returned is from IdleReplicaCount

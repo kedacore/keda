@@ -255,11 +255,10 @@ func ContinueAsNewVersioningBehaviorFromString(s string) (ContinueAsNewVersionin
 
 var (
 	SuggestContinueAsNewReason_shorthandValue = map[string]int32{
-		"Unspecified":                          0,
-		"HistorySizeTooLarge":                  1,
-		"TooManyHistoryEvents":                 2,
-		"TooManyUpdates":                       3,
-		"TargetWorkerDeploymentVersionChanged": 4,
+		"Unspecified":          0,
+		"HistorySizeTooLarge":  1,
+		"TooManyHistoryEvents": 2,
+		"TooManyUpdates":       3,
 	}
 )
 

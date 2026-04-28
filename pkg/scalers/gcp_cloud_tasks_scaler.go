@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -87,6 +88,12 @@ func (s *gcpCloudTasksScaler) Close(context.Context) error {
 	return nil
 }
 
+func escapeFilterValue(value string) string {
+	value = strings.ReplaceAll(value, `\`, `\\`)
+	value = strings.ReplaceAll(value, `"`, `\"`)
+	return value
+}
+
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *gcpCloudTasksScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
@@ -139,14 +146,15 @@ func (s *gcpCloudTasksScaler) setStackdriverClient(ctx context.Context) error {
 // getMetrics gets metric type value from stackdriver api
 func (s *gcpCloudTasksScaler) getMetrics(ctx context.Context, metricType string) (float64, error) {
 	if s.client == nil {
-		err := s.setStackdriverClient(ctx)
-		if err != nil {
+		if err := s.setStackdriverClient(ctx); err != nil {
 			return -1, err
 		}
 	}
-	filter := `metric.type="` + metricType + `" AND resource.labels.queue_id="` + s.metadata.QueueName + `"`
 
 	// Cloud Tasks metrics are collected every 60 seconds so no need to aggregate them.
 	// See: https://cloud.google.com/monitoring/api/metrics_gcp#gcp-cloudtasks
+	safeQueueName := escapeFilterValue(s.metadata.QueueName)
+	filter := `metric.type="` + metricType + `" AND resource.labels.queue_id="` + safeQueueName + `"`
+
 	return s.client.GetMetrics(ctx, filter, s.metadata.ProjectID, nil, nil, s.metadata.FilterDuration)
 }

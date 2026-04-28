@@ -254,6 +254,8 @@ func (c *compiler) compile(node ast.Node) {
 		c.BoolNode(n)
 	case *ast.StringNode:
 		c.StringNode(n)
+	case *ast.BytesNode:
+		c.BytesNode(n)
 	case *ast.ConstantNode:
 		c.ConstantNode(n)
 	case *ast.UnaryNode:
@@ -407,6 +409,10 @@ func (c *compiler) BoolNode(node *ast.BoolNode) {
 }
 
 func (c *compiler) StringNode(node *ast.StringNode) {
+	c.emitPush(node.Value)
+}
+
+func (c *compiler) BytesNode(node *ast.BytesNode) {
 	c.emitPush(node.Value)
 }
 
@@ -931,6 +937,7 @@ func (c *compiler) BuiltinNode(node *ast.BuiltinNode) {
 		c.compile(node.Arguments[0])
 		c.derefInNeeded(node.Arguments[0])
 		c.emit(OpBegin)
+		var loopBreak int
 		c.emitLoop(func() {
 			if len(node.Arguments) == 2 {
 				c.compile(node.Arguments[1])
@@ -939,9 +946,25 @@ func (c *compiler) BuiltinNode(node *ast.BuiltinNode) {
 			}
 			c.emitCond(func() {
 				c.emit(OpIncrementCount)
+				// Early termination if threshold is set
+				if node.Threshold != nil {
+					c.emit(OpGetCount)
+					c.emit(OpInt, *node.Threshold)
+					c.emit(OpMoreOrEqual)
+					loopBreak = c.emit(OpJumpIfTrue, placeholder)
+					c.emit(OpPop)
+				}
 			})
 		})
 		c.emit(OpGetCount)
+		if node.Threshold != nil {
+			end := c.emit(OpJump, placeholder)
+			c.patchJump(loopBreak)
+			// Early exit path: pop the bool comparison result, push count
+			c.emit(OpPop)
+			c.emit(OpGetCount)
+			c.patchJump(end)
+		}
 		c.emit(OpEnd)
 		return
 
@@ -1101,9 +1124,18 @@ func (c *compiler) BuiltinNode(node *ast.BuiltinNode) {
 			c.derefInNeeded(node.Arguments[2])
 			c.emit(OpSetAcc)
 		} else {
+			// When no initial value is provided, we use the first element as the
+			// accumulator. But first we must check if the array is empty to avoid
+			// an index out of range panic.
+			empty := c.emit(OpJumpIfEnd, placeholder)
 			c.emit(OpPointer)
 			c.emit(OpIncrementIndex)
 			c.emit(OpSetAcc)
+			jumpPastError := c.emit(OpJump, placeholder)
+			c.patchJump(empty)
+			c.emit(OpPush, c.addConstant(fmt.Errorf("reduce of empty array with no initial value")))
+			c.emit(OpThrow)
+			c.patchJump(jumpPastError)
 		}
 		c.emitLoop(func() {
 			c.compile(node.Arguments[1])

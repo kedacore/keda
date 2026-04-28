@@ -102,35 +102,15 @@ func Abs(x any) any {
 			return x
 		}
 	case uint:
-		if x < 0 {
-			return -x
-		} else {
-			return x
-		}
+		return x
 	case uint8:
-		if x < 0 {
-			return -x
-		} else {
-			return x
-		}
+		return x
 	case uint16:
-		if x < 0 {
-			return -x
-		} else {
-			return x
-		}
+		return x
 	case uint32:
-		if x < 0 {
-			return -x
-		} else {
-			return x
-		}
+		return x
 	case uint64:
-		if x < 0 {
-			return -x
-		} else {
-			return x
-		}
+		return x
 	}
 	panic(fmt.Sprintf("invalid argument for abs (type %T)", x))
 }
@@ -259,6 +239,75 @@ func minMax(name string, fn func(any, any) bool, depth int, args ...any) (any, e
 	}
 	var val any
 	for _, arg := range args {
+		// Fast paths for common typed slices - avoid reflection and allocations
+		switch arr := arg.(type) {
+		case []int:
+			if len(arr) == 0 {
+				continue
+			}
+			m := arr[0]
+			for i := 1; i < len(arr); i++ {
+				if fn(m, arr[i]) {
+					m = arr[i]
+				}
+			}
+			if val == nil || fn(val, m) {
+				val = m
+			}
+			continue
+		case []float64:
+			if len(arr) == 0 {
+				continue
+			}
+			m := arr[0]
+			for i := 1; i < len(arr); i++ {
+				if fn(m, arr[i]) {
+					m = arr[i]
+				}
+			}
+			if val == nil || fn(val, m) {
+				val = m
+			}
+			continue
+		case []any:
+			// Fast path for []any with simple numeric types
+			for _, elem := range arr {
+				switch e := elem.(type) {
+				case int, int8, int16, int32, int64,
+					uint, uint8, uint16, uint32, uint64,
+					float32, float64:
+					if val == nil || fn(val, e) {
+						val = e
+					}
+				case []int, []float64, []any:
+					// Nested array - recurse
+					nested, err := minMax(name, fn, depth+1, e)
+					if err != nil {
+						return nil, err
+					}
+					if nested != nil && (val == nil || fn(val, nested)) {
+						val = nested
+					}
+				default:
+					// Could be another slice type, use reflection
+					rv := reflect.ValueOf(e)
+					if rv.Kind() == reflect.Slice || rv.Kind() == reflect.Array {
+						nested, err := minMax(name, fn, depth+1, e)
+						if err != nil {
+							return nil, err
+						}
+						if nested != nil && (val == nil || fn(val, nested)) {
+							val = nested
+						}
+					} else {
+						return nil, fmt.Errorf("invalid argument for %s (type %T)", name, e)
+					}
+				}
+			}
+			continue
+		}
+
+		// Slow path: use reflection for other types
 		rv := reflect.ValueOf(arg)
 		switch rv.Kind() {
 		case reflect.Array, reflect.Slice:
@@ -278,7 +327,6 @@ func minMax(name string, fn func(any, any) bool, depth int, args ...any) (any, e
 				default:
 					return nil, fmt.Errorf("invalid argument for %s (type %T)", name, elemVal)
 				}
-
 			}
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
@@ -305,6 +353,67 @@ func mean(depth int, args ...any) (int, float64, error) {
 	var count int
 
 	for _, arg := range args {
+		// Fast paths for common typed slices - avoid reflection and allocations
+		switch arr := arg.(type) {
+		case []int:
+			for _, v := range arr {
+				total += float64(v)
+			}
+			count += len(arr)
+			continue
+		case []float64:
+			for _, v := range arr {
+				total += v
+			}
+			count += len(arr)
+			continue
+		case []any:
+			// Fast path for []any - single pass without recursive calls for flat arrays
+			for _, elem := range arr {
+				switch e := elem.(type) {
+				case int:
+					total += float64(e)
+					count++
+				case float64:
+					total += e
+					count++
+				case []int, []float64, []any:
+					// Nested array - recurse
+					nestedCount, nestedSum, err := mean(depth+1, e)
+					if err != nil {
+						return 0, 0, err
+					}
+					total += nestedSum
+					count += nestedCount
+				default:
+					// Other numeric types or slices - use reflection
+					rv := reflect.ValueOf(e)
+					switch rv.Kind() {
+					case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+						total += float64(rv.Int())
+						count++
+					case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+						total += float64(rv.Uint())
+						count++
+					case reflect.Float32, reflect.Float64:
+						total += rv.Float()
+						count++
+					case reflect.Slice, reflect.Array:
+						nestedCount, nestedSum, err := mean(depth+1, e)
+						if err != nil {
+							return 0, 0, err
+						}
+						total += nestedSum
+						count += nestedCount
+					default:
+						return 0, 0, fmt.Errorf("invalid argument for mean (type %T)", e)
+					}
+				}
+			}
+			continue
+		}
+
+		// Slow path: use reflection for other types
 		rv := reflect.ValueOf(arg)
 		switch rv.Kind() {
 		case reflect.Array, reflect.Slice:
@@ -340,6 +449,56 @@ func median(depth int, args ...any) ([]float64, error) {
 	var values []float64
 
 	for _, arg := range args {
+		// Fast paths for common typed slices - avoid reflection and allocations
+		switch arr := arg.(type) {
+		case []int:
+			for _, v := range arr {
+				values = append(values, float64(v))
+			}
+			continue
+		case []float64:
+			values = append(values, arr...)
+			continue
+		case []any:
+			// Fast path for []any - single pass without recursive calls for flat arrays
+			for _, elem := range arr {
+				switch e := elem.(type) {
+				case int:
+					values = append(values, float64(e))
+				case float64:
+					values = append(values, e)
+				case []int, []float64, []any:
+					// Nested array - recurse
+					elems, err := median(depth+1, e)
+					if err != nil {
+						return nil, err
+					}
+					values = append(values, elems...)
+				default:
+					// Other numeric types or slices - use reflection
+					rv := reflect.ValueOf(e)
+					switch rv.Kind() {
+					case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+						values = append(values, float64(rv.Int()))
+					case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+						values = append(values, float64(rv.Uint()))
+					case reflect.Float32, reflect.Float64:
+						values = append(values, rv.Float())
+					case reflect.Slice, reflect.Array:
+						elems, err := median(depth+1, e)
+						if err != nil {
+							return nil, err
+						}
+						values = append(values, elems...)
+					default:
+						return nil, fmt.Errorf("invalid argument for median (type %T)", e)
+					}
+				}
+			}
+			continue
+		}
+
+		// Slow path: use reflection for other types
 		rv := reflect.ValueOf(arg)
 		switch rv.Kind() {
 		case reflect.Array, reflect.Slice:
@@ -385,6 +544,9 @@ func flatten(arg reflect.Value, depth int) ([]any, error) {
 }
 
 func get(params ...any) (out any, err error) {
+	if len(params) < 2 {
+		return nil, fmt.Errorf("invalid number of arguments (expected 2, got %d)", len(params))
+	}
 	from := params[0]
 	i := params[1]
 	v := reflect.ValueOf(from)

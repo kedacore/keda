@@ -21,6 +21,7 @@ import (
 	commonpb "go.temporal.io/api/common/v1"
 	enumspb "go.temporal.io/api/enums/v1"
 	historypb "go.temporal.io/api/history/v1"
+	namespacepb "go.temporal.io/api/namespace/v1"
 	"go.temporal.io/api/operatorservice/v1"
 	querypb "go.temporal.io/api/query/v1"
 	"go.temporal.io/api/sdk/v1"
@@ -59,24 +60,30 @@ const (
 type (
 	// WorkflowClient is the client for starting a workflow execution.
 	WorkflowClient struct {
-		workflowService          workflowservice.WorkflowServiceClient
-		conn                     *grpc.ClientConn
-		namespace                string
-		registry                 *registry
-		logger                   log.Logger
-		metricsHandler           metrics.Handler
-		identity                 string
-		dataConverter            converter.DataConverter
-		failureConverter         converter.FailureConverter
-		contextPropagators       []ContextPropagator
-		workerPlugins            []WorkerPlugin
-		workerInterceptors       []WorkerInterceptor
-		interceptor              ClientOutboundInterceptor
-		excludeInternalFromRetry *atomic.Bool
-		capabilities             *workflowservice.GetSystemInfoResponse_Capabilities
-		capabilitiesLock         sync.RWMutex
-		eagerDispatcher          *eagerWorkflowDispatcher
-		getSystemInfoTimeout     time.Duration
+		workflowService           workflowservice.WorkflowServiceClient
+		conn                      *grpc.ClientConn
+		namespace                 string
+		registry                  *registry
+		logger                    log.Logger
+		metricsHandler            metrics.Handler
+		identity                  string
+		dataConverter             converter.DataConverter
+		failureConverter          converter.FailureConverter
+		contextPropagators        []ContextPropagator
+		workerPlugins             []WorkerPlugin
+		workerInterceptors        []WorkerInterceptor
+		clientPluginNames         []string
+		interceptor               ClientOutboundInterceptor
+		excludeInternalFromRetry  *atomic.Bool
+		capabilities              *workflowservice.GetSystemInfoResponse_Capabilities
+		capabilitiesLock          sync.RWMutex
+		namespaceCapabilities     *namespacepb.NamespaceInfo_Capabilities
+		namespaceCapabilitiesLock sync.RWMutex
+		eagerDispatcher           *eagerWorkflowDispatcher
+		getSystemInfoTimeout      time.Duration
+		workerHeartbeatInterval   time.Duration
+		workerGroupingKey         string
+		heartbeatManager          *heartbeatManager
 
 		// The pointer value is shared across multiple clients. If non-nil, only
 		// access/mutate atomically.
@@ -481,7 +488,7 @@ func (wc *WorkflowClient) CompleteActivity(ctx context.Context, taskToken []byte
 	return reportActivityComplete(ctx, wc.workflowService, request, wc.metricsHandler)
 }
 
-// CompleteActivityByID reports activity completed. Similar to CompleteActivity
+// CompleteActivityByID reports workflow activity completed. Similar to CompleteActivity
 // It takes namespace name, workflowID, runID, activityID as arguments.
 func (wc *WorkflowClient) CompleteActivityByID(ctx context.Context, namespace, workflowID, runID, activityID string,
 	result interface{}, err error,
@@ -503,6 +510,31 @@ func (wc *WorkflowClient) CompleteActivityByID(ctx context.Context, namespace, w
 	// We do allow canceled error to be passed here
 	cancelAllowed := true
 	request := convertActivityResultToRespondRequestByID(wc.identity, namespace, workflowID, runID, activityID,
+		data, err, wc.dataConverter, wc.failureConverter, cancelAllowed)
+	return reportActivityCompleteByID(ctx, wc.workflowService, request, wc.metricsHandler)
+}
+
+// CompleteActivityByActivityID reports standalone activity completed. Similar to CompleteActivity
+func (wc *WorkflowClient) CompleteActivityByActivityID(ctx context.Context, namespace, activityID, activityRunID string,
+	result interface{}, err error,
+) error {
+	if activityID == "" || namespace == "" {
+		return errors.New("empty activity id or namespace")
+	}
+
+	dataConverter := WithContext(ctx, wc.dataConverter)
+	var data *commonpb.Payloads
+	if result != nil {
+		var err0 error
+		data, err0 = encodeArg(dataConverter, result)
+		if err0 != nil {
+			return err0
+		}
+	}
+
+	// We do allow canceled error to be passed here
+	cancelAllowed := true
+	request := convertActivityResultToRespondRequestByID(wc.identity, namespace, "", activityRunID, activityID,
 		data, err, wc.dataConverter, wc.failureConverter, cancelAllowed)
 	return reportActivityCompleteByID(ctx, wc.workflowService, request, wc.metricsHandler)
 }
@@ -1366,6 +1398,36 @@ func (wc *WorkflowClient) loadCapabilities(ctx context.Context) (*workflowservic
 	return capabilities, nil
 }
 
+// Get namespace capabilities, lazily fetching from server if not already obtained.
+func (wc *WorkflowClient) loadNamespaceCapabilities(metricsHandler metrics.Handler) (*namespacepb.NamespaceInfo_Capabilities, error) {
+	ctx := contextWithNewHeader(context.Background())
+	wc.namespaceCapabilitiesLock.RLock()
+	capabilities := wc.namespaceCapabilities
+	wc.namespaceCapabilitiesLock.RUnlock()
+	if capabilities != nil {
+		return capabilities, nil
+	}
+
+	grpcCtx, cancel := newGRPCContext(ctx, grpcMetricsHandler(metricsHandler), defaultGrpcRetryParameters(ctx))
+	defer cancel()
+	resp, err := wc.workflowService.DescribeNamespace(grpcCtx, &workflowservice.DescribeNamespaceRequest{Namespace: wc.namespace})
+	var unimplemented *serviceerror.Unimplemented
+	if err != nil && !errors.As(err, &unimplemented) {
+		return nil, fmt.Errorf("failed reaching server: %w", err)
+	}
+	if resp != nil {
+		capabilities = resp.GetNamespaceInfo().GetCapabilities()
+	}
+	if capabilities == nil {
+		capabilities = &namespacepb.NamespaceInfo_Capabilities{}
+	}
+
+	wc.namespaceCapabilitiesLock.Lock()
+	wc.namespaceCapabilities = capabilities
+	wc.namespaceCapabilitiesLock.Unlock()
+	return capabilities, nil
+}
+
 func (wc *WorkflowClient) ensureInitialized(ctx context.Context) error {
 	// Just loading the capabilities is enough
 	_, err := wc.loadCapabilities(ctx)
@@ -1391,6 +1453,21 @@ func (wc *WorkflowClient) WorkerDeploymentClient() WorkerDeploymentClient {
 	return &workerDeploymentClient{
 		workflowClient: wc,
 	}
+}
+
+func (wc *WorkflowClient) recordWorkerHeartbeat(ctx context.Context, request *workflowservice.RecordWorkerHeartbeatRequest) (*workflowservice.RecordWorkerHeartbeatResponse, error) {
+	if err := wc.ensureInitialized(ctx); err != nil {
+		return nil, err
+	}
+
+	grpcCtx, cancel := newGRPCContext(ctx, defaultGrpcRetryParameters(ctx))
+	defer cancel()
+	resp, err := wc.workflowService.RecordWorkerHeartbeat(grpcCtx, request)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 // Close client and clean up underlying resources.
@@ -1630,15 +1707,46 @@ func (workflowRun *workflowRunImpl) follow(
 	return workflowRun.GetWithOptions(ctx, valuePtr, options)
 }
 
-func getWorkflowMemo(input map[string]interface{}, dc converter.DataConverter) (*commonpb.Memo, error) {
+// encodeMemoValue encodes a single memo value. useUserDC controls whether the user's data converter
+// is attempted first. Client-side callers should pass sdkFlagsAllowed[SDKFlagMemoUserDCEncode];
+// workflow-side callers should pass the result of TryUse(SDKFlagMemoUserDCEncode) for replay safety.
+func encodeMemoValue(value interface{}, dc converter.DataConverter, useUserDC bool) (*commonpb.Payload, error) {
+	if useUserDC {
+		payload, dcErr := dc.ToPayload(value)
+		if dcErr == nil {
+			return payload, nil
+		}
+
+		payload, err := converter.GetDefaultDataConverter().ToPayload(value)
+
+		// If fallback default data converter fails, return original user data converter error
+		if err != nil {
+			return nil, dcErr
+		}
+		return payload, nil
+	}
+	payload, err := converter.GetDefaultDataConverter().ToPayload(value)
+	if err != nil {
+		return nil, err
+	}
+	return payload, nil
+}
+
+// getWorkflowMemo encodes a memo map into a proto Memo. useUserDC controls whether the user's
+// data converter is attempted first. Client-side callers should pass sdkFlagsAllowed[SDKFlagMemoUserDCEncode];
+// workflow-side callers should pass the result of TryUse(SDKFlagMemoUserDCEncode) for replay safety.
+func getWorkflowMemo(input map[string]interface{}, dc converter.DataConverter, useUserDC bool) (*commonpb.Memo, error) {
 	if input == nil {
 		return nil, nil
 	}
 
-	memo := make(map[string]*commonpb.Payload)
+	if dc == nil {
+		dc = converter.GetDefaultDataConverter()
+	}
+
+	memo := make(map[string]*commonpb.Payload, len(input))
 	for k, v := range input {
-		// TODO (shtin): use dc here???
-		memoBytes, err := converter.GetDefaultDataConverter().ToPayload(v)
+		memoBytes, err := encodeMemoValue(v, dc, useUserDC)
 		if err != nil {
 			return nil, fmt.Errorf("encode workflow memo error: %v", err.Error())
 		}
@@ -1700,7 +1808,7 @@ func (w *workflowClientInterceptor) createStartWorkflowRequest(
 		return nil, err
 	}
 
-	memo, err := getWorkflowMemo(in.Options.Memo, dataConverter)
+	memo, err := getWorkflowMemo(in.Options.Memo, dataConverter, sdkFlagsAllowed[SDKFlagMemoUserDCEncode])
 	if err != nil {
 		return nil, err
 	}
@@ -2081,7 +2189,7 @@ func (w *workflowClientInterceptor) SignalWithStartWorkflow(
 		return nil, err
 	}
 
-	memo, err := getWorkflowMemo(in.Options.Memo, dataConverter)
+	memo, err := getWorkflowMemo(in.Options.Memo, dataConverter, sdkFlagsAllowed[SDKFlagMemoUserDCEncode])
 	if err != nil {
 		return nil, err
 	}

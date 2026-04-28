@@ -306,6 +306,24 @@ var testPromQueryResult = []prometheusPromQueryResultTestData{
 		ignoreNullValues: false,
 		unsafeSsl:        true,
 	},
+	{
+		name:             "NaN",
+		bodyStr:          `{"data":{"result":[{"value": ["1", "NaN"]}]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    0,
+		isError:          false,
+		ignoreNullValues: true,
+		unsafeSsl:        true,
+	},
+	{
+		name:             "NaN but shouldn't ignore ",
+		bodyStr:          `{"data":{"result":[{"value": ["1", "NaN"]}]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    -1,
+		isError:          true,
+		ignoreNullValues: false,
+		unsafeSsl:        true,
+	},
 }
 
 func TestPrometheusScalerExecutePromQuery(t *testing.T) {

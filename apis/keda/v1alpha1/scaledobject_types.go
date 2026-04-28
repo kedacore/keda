@@ -300,6 +300,33 @@ func (so *ScaledObject) GetHPAMaxReplicas() int32 {
 	return defaultHPAMaxReplicas
 }
 
+// GetStatusConditions returns a pointer to the status conditions for in-place modification.
+func (so *ScaledObject) GetStatusConditions() *Conditions { return &so.Status.Conditions }
+
+// SetStatusLastActiveTime sets the LastActiveTime in the status.
+func (so *ScaledObject) SetStatusLastActiveTime(t *metav1.Time) { so.Status.LastActiveTime = t }
+
+// SetStatusPausedReplicaCount sets the PausedReplicaCount in the status.
+func (so *ScaledObject) SetStatusPausedReplicaCount(v *int32) { so.Status.PausedReplicaCount = v }
+
+// GetStatusTriggersActivity returns the map of trigger names to their activity status for the ScaledObject status, initializing it if it is nil.
+func (so *ScaledObject) GetStatusTriggersActivity() map[string]TriggerActivityStatus {
+	if so.Status.TriggersActivity == nil {
+		so.Status.TriggersActivity = make(map[string]TriggerActivityStatus)
+	}
+	return so.Status.TriggersActivity
+}
+
+// SetStatusTriggersActivity sets the triggers activity map in the status.
+func (so *ScaledObject) SetStatusTriggersActivity(m map[string]TriggerActivityStatus) {
+	so.Status.TriggersActivity = m
+}
+
+// GetStatusExternalMetricNames returns the list of external metric names defined in the ScaledObject status
+func (so *ScaledObject) GetStatusExternalMetricNames() []string {
+	return so.Status.ExternalMetricNames
+}
+
 // CheckReplicaCountBoundsAreValid checks that Idle/Min/Max ReplicaCount defined in ScaledObject are correctly specified
 // i.e. that Min is not greater than Max or Idle greater or equal to Min
 func CheckReplicaCountBoundsAreValid(scaledObject *ScaledObject) error {

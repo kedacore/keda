@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/nexus-rpc/sdk-go/nexus"
 	commonpb "go.temporal.io/api/common/v1"
 	enumspb "go.temporal.io/api/enums/v1"
 	taskqueuepb "go.temporal.io/api/taskqueue/v1"
@@ -42,6 +43,7 @@ func newNexusTaskPoller(
 			useBuildIDVersioning:    params.UseBuildIDForVersioning,
 			workerDeploymentVersion: params.DeploymentOptions.Version,
 			capabilities:            params.capabilities,
+			pollTimeTracker:         params.pollTimeTracker,
 		},
 		taskHandler:     taskHandler,
 		service:         service,
@@ -90,11 +92,9 @@ func (ntp *nexusTaskPoller) poll(ctx context.Context) (taskForWorker, error) {
 		return nil, nil
 	}
 
-	return &nexusTask{task: response}, nil
-}
+	ntp.pollTimeTracker.recordPollSuccess(metrics.PollerTypeNexusTask)
 
-func (ntp *nexusTaskPoller) Cleanup() error {
-	return nil
+	return &nexusTask{task: response}, nil
 }
 
 // PollTask polls a new task
@@ -128,8 +128,12 @@ func (ntp *nexusTaskPoller) ProcessTask(task interface{}) error {
 	nctx, handlerErr := ntp.taskHandler.newNexusOperationContext(response)
 	if handlerErr != nil {
 		// context wasn't propagated to us, use a background context.
-		_, err := ntp.taskHandler.client.WorkflowService().RespondNexusTaskFailed(
-			context.Background(), ntp.taskHandler.fillInFailure(response.TaskToken, handlerErr))
+		failedRequest, err := ntp.taskHandler.fillInFailure(response.TaskToken, handlerErr, getEffectiveTemporalFailureResponses(response.GetRequest().GetCapabilities().GetTemporalFailureResponses()))
+		if err != nil {
+			return err
+		}
+		_, err = ntp.taskHandler.client.WorkflowService().RespondNexusTaskFailed(
+			context.Background(), failedRequest)
 		return err
 	}
 
@@ -156,15 +160,38 @@ func (ntp *nexusTaskPoller) ProcessTask(task interface{}) error {
 			Counter(metrics.NexusTaskExecutionFailedCounter).
 			Inc(1)
 	} else if failure != nil {
-		nctx.metricsHandler.
-			WithTags(metrics.NexusTaskFailureTags("handler_error_" + failure.GetError().GetErrorType())).
-			Counter(metrics.NexusTaskExecutionFailedCounter).
-			Inc(1)
+		//lint:ignore SA1019 handle legacy operation error format for backward compatibility.
+		taskErr := failure.GetError()
+		if taskErr != nil {
+			nctx.metricsHandler.
+				WithTags(metrics.NexusTaskFailureTags("handler_error_" + taskErr.GetErrorType())).
+				Counter(metrics.NexusTaskExecutionFailedCounter).
+				Inc(1)
+		} else if failure.GetFailure() != nil {
+			// Failure must contain a NexusHandlerFailureInfo
+			nctx.metricsHandler.
+				WithTags(metrics.NexusTaskFailureTags("handler_error_" + failure.GetFailure().GetNexusHandlerFailureInfo().GetType())).
+				Counter(metrics.NexusTaskExecutionFailedCounter).
+				Inc(1)
+		}
+		//lint:ignore SA1019 handle legacy operation error format for backward compatibility.
 	} else if e := res.Response.GetStartOperation().GetOperationError(); e != nil {
 		nctx.metricsHandler.
 			WithTags(metrics.NexusTaskFailureTags("operation_" + e.GetOperationState())).
 			Counter(metrics.NexusTaskExecutionFailedCounter).
 			Inc(1)
+	} else if f := res.Response.GetStartOperation().GetFailure(); f != nil {
+		if sf := f.GetApplicationFailureInfo(); sf != nil {
+			nctx.metricsHandler.
+				WithTags(metrics.NexusTaskFailureTags("operation_" + string(nexus.OperationStateFailed))).
+				Counter(metrics.NexusTaskExecutionFailedCounter).
+				Inc(1)
+		} else if cf := f.GetCanceledFailureInfo(); cf != nil {
+			nctx.metricsHandler.
+				WithTags(metrics.NexusTaskFailureTags("operation_" + string(nexus.OperationStateCanceled))).
+				Counter(metrics.NexusTaskExecutionFailedCounter).
+				Inc(1)
+		}
 	}
 
 	// Let the poller machinery drop the task, nothing to report back.

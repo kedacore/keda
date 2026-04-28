@@ -7365,6 +7365,15 @@ func awsAwsjson11_deserializeDocumentStreamDescriptionSummary(v **types.StreamDe
 				}
 			}
 
+		case "StreamId":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected StreamId to be of type string, got %T instead", value)
+				}
+				sv.StreamId = ptr.String(jtv)
+			}
+
 		case "StreamModeDetails":
 			if err := awsAwsjson11_deserializeDocumentStreamModeDetails(&sv.StreamModeDetails, value); err != nil {
 				return err

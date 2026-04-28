@@ -283,7 +283,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		}
 	}
 
-	if math.IsInf(v, 0) {
+	if math.IsInf(v, 0) || math.IsNaN(v) {
 		if s.metadata.IgnoreNullValues {
 			return 0, nil
 		}

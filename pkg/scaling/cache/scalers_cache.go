@@ -77,14 +77,20 @@ func (c *ScalersCache) getScalerBuilder(index int) (ScalerBuilder, error) {
 	return c.Scalers[index], nil
 }
 
-// GetPushScalers returns array of push scalers stored in the cache
-func (c *ScalersCache) GetPushScalers() []scalers.PushScaler {
+// PushScalerWithTriggerIndex pairs a push scaler with its trigger index.
+type PushScalerWithTriggerIndex struct {
+	Scaler       scalers.PushScaler
+	TriggerIndex int
+}
+
+// GetPushScalers returns push scalers with their trigger indices.
+func (c *ScalersCache) GetPushScalers() []PushScalerWithTriggerIndex {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
-	var result []scalers.PushScaler
+	var result []PushScalerWithTriggerIndex
 	for _, s := range c.Scalers {
 		if ps, ok := s.Scaler.(scalers.PushScaler); ok {
-			result = append(result, ps)
+			result = append(result, PushScalerWithTriggerIndex{Scaler: ps, TriggerIndex: s.ScalerConfig.TriggerIndex})
 		}
 	}
 	return result

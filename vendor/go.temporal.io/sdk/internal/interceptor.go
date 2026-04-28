@@ -418,6 +418,38 @@ type ClientOutboundInterceptor interface {
 	// DescribeWorkflow intercepts client.Client.DescribeWorkflow.
 	DescribeWorkflow(context.Context, *ClientDescribeWorkflowInput) (*ClientDescribeWorkflowOutput, error)
 
+	// ExecuteActivity intercepts client.Client.ExecuteActivity.
+	//
+	// NOTE: Experimental
+	ExecuteActivity(context.Context, *ClientExecuteActivityInput) (ClientActivityHandle, error)
+
+	// GetActivityHandle intercepts client.Client.GetActivityHandle.
+	// While the interceptor is allowed to make network calls here, note that the base implementation does not - it only constructs
+	// the handle which is then used to make network calls. There is no context object provided and errors cannot be returned.
+	//
+	// NOTE: Experimental
+	GetActivityHandle(*ClientGetActivityHandleInput) ClientActivityHandle
+
+	// CancelActivity intercepts client.ActivityHandle.Cancel.
+	//
+	// NOTE: Experimental
+	CancelActivity(context.Context, *ClientCancelActivityInput) error
+
+	// TerminateActivity intercepts client.ActivityHandle.Terminate.
+	//
+	// NOTE: Experimental
+	TerminateActivity(context.Context, *ClientTerminateActivityInput) error
+
+	// DescribeActivity intercepts client.ActivityHandle.Describe.
+	//
+	// NOTE: Experimental
+	DescribeActivity(context.Context, *ClientDescribeActivityInput) (*ClientDescribeActivityOutput, error)
+
+	// PollActivityResult intercepts client.ActivityHandle.Get.
+	//
+	// NOTE: Experimental
+	PollActivityResult(context.Context, *ClientPollActivityResultInput) (*ClientPollActivityResultOutput, error)
+
 	mustEmbedClientOutboundInterceptorBase()
 }
 
@@ -538,12 +570,104 @@ type ClientDescribeWorkflowInput struct {
 	RunID      string
 }
 
-// ClientDescribeWorkflowInput is the output to
+// ClientDescribeWorkflowOutput is the output to
 // ClientOutboundInterceptor.DescribeWorkflow.
 //
 // Exposed as: [go.temporal.io/sdk/interceptor.ClientDescribeWorkflowOutput]
 type ClientDescribeWorkflowOutput struct {
 	Response *WorkflowExecutionDescription
+}
+
+// ClientExecuteActivityInput is the input to
+// ClientOutboundInterceptor.ExecuteActivity.
+//
+// NOTE: Experimental
+//
+// Exposed as: [go.temporal.io/sdk/interceptor.ClientExecuteActivityInput]
+type ClientExecuteActivityInput struct {
+	Options      *ClientStartActivityOptions
+	ActivityType string
+	Args         []interface{}
+}
+
+// ClientGetActivityHandleInput is the input to
+// ClientOutboundInterceptor.GetActivityHandle.
+//
+// NOTE: Experimental
+//
+// Exposed as: [go.temporal.io/sdk/interceptor.ClientGetActivityHandleInput]
+type ClientGetActivityHandleInput struct {
+	ActivityID string
+	RunID      string
+}
+
+// ClientCancelActivityInput is the input to
+// ClientOutboundInterceptor.CancelActivity.
+//
+// NOTE: Experimental
+//
+// Exposed as: [go.temporal.io/sdk/interceptor.ClientCancelActivityInput]
+type ClientCancelActivityInput struct {
+	ActivityID string
+	RunID      string
+	Reason     string
+}
+
+// ClientTerminateActivityInput is the input to
+// ClientOutboundInterceptor.TerminateActivity.
+//
+// NOTE: Experimental
+//
+// Exposed as: [go.temporal.io/sdk/interceptor.ClientTerminateActivityInput]
+type ClientTerminateActivityInput struct {
+	ActivityID string
+	RunID      string
+	Reason     string
+}
+
+// ClientDescribeActivityInput is the input to
+// ClientOutboundInterceptor.DescribeActivity.
+//
+// NOTE: Experimental
+//
+// Exposed as: [go.temporal.io/sdk/interceptor.ClientDescribeActivityInput]
+type ClientDescribeActivityInput struct {
+	ActivityID string
+	RunID      string
+}
+
+// ClientDescribeActivityOutput is the output of
+// ClientOutboundInterceptor.DescribeActivity.
+//
+// NOTE: Experimental
+//
+// Exposed as: [go.temporal.io/sdk/interceptor.ClientDescribeActivityOutput]
+type ClientDescribeActivityOutput struct {
+	Description *ClientActivityExecutionDescription
+}
+
+// ClientPollActivityResultInput is the input to
+// ClientOutboundInterceptor.PollActivityResult.
+//
+// NOTE: Experimental
+//
+// Exposed as: [go.temporal.io/sdk/interceptor.ClientPollActivityResultInput]
+type ClientPollActivityResultInput struct {
+	ActivityID string
+	RunID      string
+}
+
+// ClientPollActivityResultOutput is the output of
+// ClientOutboundInterceptor.PollActivityResult.
+//
+// NOTE: Experimental
+//
+// Exposed as: [go.temporal.io/sdk/interceptor.ClientPollActivityResultOutput]
+type ClientPollActivityResultOutput struct {
+	// Result is the result of the update, if it has completed successfully.
+	Result converter.EncodedValue
+	// Error is the result of a failed update.
+	Error error
 }
 
 // NexusOutboundInterceptor intercepts Nexus operation method invocations. See documentation in the interceptor package

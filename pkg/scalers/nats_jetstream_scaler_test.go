@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"testing"
@@ -162,7 +163,7 @@ var testNATSJetStreamMockResponses = []parseNATSJetStreamMockResponsesTestData{
 		}, true, false,
 	},
 	{
-		"Not Active - Bad consumer name uses stream last sequence",
+		"Fail - stream exists but configured consumer missing",
 		&natsJetStreamMetricIdentifier{
 			&parseNATSJetStreamMetadataTestData{
 				testNATSJetStreamGoodMetadata, map[string]string{}, false,
@@ -173,11 +174,11 @@ var testNATSJetStreamMockResponses = []parseNATSJetStreamMockResponsesTestData{
 			Accounts: []accountDetail{{
 				Name: "$G",
 				Streams: []*streamDetail{{
-					Name: "mystream", State: streamState{LastSequence: 1},
+					Name: "mystream", State: streamState{LastSequence: 1000},
 					Consumers: []consumerDetail{{Name: "pull_consumer_bad", NumPending: 100}},
 				}},
 			}},
-		}, false, false,
+		}, false, true,
 	},
 	{
 		"Fail - Non-matching stream name",
@@ -469,6 +470,52 @@ func TestNATSJetStreamGetNATSJetstreamServerURL(t *testing.T) {
 	}
 }
 
+func TestNATSJetStreamGetMaxMsgLag(t *testing.T) {
+	meta, err := parseNATSJetStreamMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testNATSJetStreamGoodMetadata, TriggerIndex: 0})
+	if err != nil {
+		t.Fatal("Could not parse metadata:", err)
+	}
+
+	t.Run("consumer present returns pending+ackPending", func(t *testing.T) {
+		scaler := natsJetStreamScaler{
+			metadata: meta,
+			stream: &streamDetail{
+				Name:  "mystream",
+				State: streamState{LastSequence: 9999},
+				Consumers: []consumerDetail{{
+					Name:          "pull_consumer",
+					NumPending:    7,
+					NumAckPending: 3,
+				}},
+			},
+		}
+
+		lag, err := scaler.getMaxMsgLag()
+		assert.NoError(t, err)
+		assert.Equal(t, int64(10), lag)
+	})
+
+	t.Run("stream exists but consumer missing returns error and zero lag", func(t *testing.T) {
+		scaler := natsJetStreamScaler{
+			metadata: meta,
+			stream: &streamDetail{
+				Name:  "mystream",
+				State: streamState{LastSequence: 9999},
+				Consumers: []consumerDetail{{
+					Name:       "some_other_consumer",
+					NumPending: 100,
+				}},
+			},
+		}
+
+		lag, err := scaler.getMaxMsgLag()
+		assert.Error(t, err)
+		assert.Equal(t, int64(0), lag, "must not fall back to stream LastSequence")
+		assert.Contains(t, err.Error(), "pull_consumer")
+		assert.Contains(t, err.Error(), "mystream")
+	})
+}
+
 func TestNATSJetStreamClose(t *testing.T) {
 	mockJetStreamScaler, err := NewNATSJetStreamScaler(&scalersconfig.ScalerConfig{TriggerMetadata: testNATSJetStreamGoodMetadata, TriggerIndex: 0})
 	if err != nil {
@@ -481,4 +528,102 @@ func TestNATSJetStreamClose(t *testing.T) {
 	if jsClose != nil {
 		t.Error("Expected success for NATS JetStream Scaler Close but got error", err)
 	}
+}
+
+func TestGetNATSJetStreamMonitoringURL(t *testing.T) {
+	tests := []struct {
+		name               string
+		useHTTPS           bool
+		natsServerEndpoint string
+		accountID          string
+		expectedURL        string
+	}{
+		{
+			name:               "HTTP scheme",
+			useHTTPS:           false,
+			natsServerEndpoint: "nats.nats:8222",
+			accountID:          "$G",
+			expectedURL:        "http://nats.nats:8222/jsz?acc=%24G&config=true&consumers=true",
+		},
+		{
+			name:               "HTTPS scheme",
+			useHTTPS:           true,
+			natsServerEndpoint: "nats.nats:8222",
+			accountID:          "$G",
+			expectedURL:        "https://nats.nats:8222/jsz?acc=%24G&config=true&consumers=true",
+		},
+		{
+			name:               "Account ID with ampersand is URL-encoded and cannot inject parameters",
+			useHTTPS:           false,
+			natsServerEndpoint: "nats.nats:8222",
+			accountID:          "myaccount&consumers=false",
+			expectedURL:        "http://nats.nats:8222/jsz?acc=myaccount%26consumers%3Dfalse&config=true&consumers=true",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			endpoint := getNATSJetStreamMonitoringURL(tt.useHTTPS, tt.natsServerEndpoint, tt.accountID)
+			assert.Equal(t, tt.expectedURL, endpoint)
+
+			parsedURL, err := url.Parse(endpoint)
+			assert.NoError(t, err)
+			q := parsedURL.Query()
+			assert.Equal(t, "true", q.Get("consumers"), "consumers parameter must always be true")
+			assert.Equal(t, "true", q.Get("config"), "config parameter must always be true")
+			assert.Equal(t, tt.accountID, q.Get("acc"), "acc parameter must equal the raw account ID")
+		})
+	}
+}
+
+func TestNATSJetStreamMonitoringNodeURLEncoding(t *testing.T) {
+	meta, err := parseNATSJetStreamMetadata(&scalersconfig.ScalerConfig{
+		TriggerMetadata: testNATSJetStreamGoodMetadata,
+		TriggerIndex:    0,
+	})
+	if err != nil {
+		t.Fatal("Could not parse metadata:", err)
+	}
+
+	scaler := natsJetStreamScaler{
+		metadata: meta,
+		logger:   InitializeLogger(&scalersconfig.ScalerConfig{TriggerMetadata: testNATSJetStreamGoodMetadata}, "nats_jetstream_scaler"),
+	}
+
+	nodeURL, err := scaler.getNATSJetStreamMonitoringNodeURL("leader.nats.svc")
+	assert.NoError(t, err)
+
+	parsedURL, err := url.Parse(nodeURL)
+	assert.NoError(t, err)
+	q := parsedURL.Query()
+	assert.Equal(t, "true", q.Get("consumers"), "consumers parameter must always be true after node URL construction")
+	assert.Equal(t, "true", q.Get("config"), "config parameter must always be true after node URL construction")
+	assert.Equal(t, "$G", q.Get("acc"), "acc parameter must be preserved correctly in node URL")
+	assert.Equal(t, "leader.nats.svc:8222", parsedURL.Host, "node hostname must be set correctly")
+}
+
+func TestNATSJetStreamMonitoringNodeURLByNodeEncoding(t *testing.T) {
+	meta, err := parseNATSJetStreamMetadata(&scalersconfig.ScalerConfig{
+		TriggerMetadata: testNATSJetStreamGoodMetadata,
+		TriggerIndex:    0,
+	})
+	if err != nil {
+		t.Fatal("Could not parse metadata:", err)
+	}
+
+	scaler := natsJetStreamScaler{
+		metadata: meta,
+		logger:   InitializeLogger(&scalersconfig.ScalerConfig{TriggerMetadata: testNATSJetStreamGoodMetadata}, "nats_jetstream_scaler"),
+	}
+
+	nodeURL, err := scaler.getNATSJetStreamMonitoringNodeURLByNode("leader")
+	assert.NoError(t, err)
+
+	parsedURL, err := url.Parse(nodeURL)
+	assert.NoError(t, err)
+	q := parsedURL.Query()
+	assert.Equal(t, "true", q.Get("consumers"), "consumers parameter must always be true after node-by-node URL construction")
+	assert.Equal(t, "true", q.Get("config"), "config parameter must always be true after node-by-node URL construction")
+	assert.Equal(t, "$G", q.Get("acc"), "acc parameter must be preserved correctly in node-by-node URL")
+	assert.True(t, strings.HasPrefix(parsedURL.Host, "leader."), "node-by-node hostname must be prefixed with node name")
 }

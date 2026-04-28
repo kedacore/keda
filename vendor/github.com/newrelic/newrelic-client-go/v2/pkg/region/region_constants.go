@@ -32,6 +32,7 @@ var Regions = map[Name]*Region{
 		restBaseURL:           "https://api.newrelic.com/v2",
 		syntheticsBaseURL:     "https://synthetics.newrelic.com/synthetics/api",
 		metricsBaseURL:        "https://metric-api.newrelic.com/metric/v1",
+		blobServiceBaseURL:    "https://blob-api.service.newrelic.com/v1/e",
 	},
 	EU: {
 		name:                  "EU",
@@ -43,6 +44,7 @@ var Regions = map[Name]*Region{
 		restBaseURL:           "https://api.eu.newrelic.com/v2",
 		syntheticsBaseURL:     "https://synthetics.eu.newrelic.com/synthetics/api",
 		metricsBaseURL:        "https://metric-api.eu.newrelic.com/metric/v1",
+		blobServiceBaseURL:    "https://blob-api.service.eu.newrelic.com/v1/e",
 	},
 	Staging: {
 		name:                  "Staging",
@@ -54,6 +56,7 @@ var Regions = map[Name]*Region{
 		restBaseURL:           "https://staging-api.newrelic.com/v2",
 		syntheticsBaseURL:     "https://staging-synthetics.newrelic.com/synthetics/api",
 		metricsBaseURL:        "https://staging-metric-api.newrelic.com/metric/v1",
+		blobServiceBaseURL:    "https://blob-api.staging-service.newrelic.com/v1/e",
 	},
 	Local: {
 		name:                  "Local",
@@ -65,6 +68,8 @@ var Regions = map[Name]*Region{
 		restBaseURL:           "http://localhost:3000/v2",
 		syntheticsBaseURL:     "http://localhost:3000/synthetics/api",
 		metricsBaseURL:        "http://localhost:3000/metric/v1",
+		// the following is just a placeholder, is not actually intended to work
+		blobServiceBaseURL: "https:/localhost:3000/blob/v1/e",
 	},
 }
 
