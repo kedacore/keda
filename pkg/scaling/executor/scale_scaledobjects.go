@@ -162,8 +162,10 @@ func (e *scaleExecutor) getHPAHealth(ctx context.Context, logger logr.Logger, sc
 	// Check HPA's ScalingActive condition
 	for _, cond := range hpa.Status.Conditions {
 		if cond.Type == autoscalingv2.ScalingActive {
-			hpaHealthy := cond.Status == corev1.ConditionTrue || cond.Reason == "ScalingDisabled"
-			return hpaHealthy, cond.Reason
+			if cond.Status == corev1.ConditionTrue || cond.Reason == "ScalingDisabled" {
+				return true, ""
+			}
+			return false, cond.Reason
 		}
 	}
 

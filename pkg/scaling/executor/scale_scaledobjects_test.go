@@ -857,7 +857,7 @@ func TestGetHPAHealth_ScalingDisabled(t *testing.T) {
 
 	healthy, msg := exec.getHPAHealth(context.TODO(), logger, so)
 	assert.True(t, healthy, "ScalingDisabled should be treated as healthy since KEDA manages scale-to-zero")
-	assert.Equal(t, "ScalingDisabled", msg)
+	assert.Empty(t, msg)
 }
 
 func TestGetHPAHealth_WithinGracePeriod(t *testing.T) {
