@@ -149,6 +149,9 @@ func (a *sharedConfigCache) retrievePodIdentityCredentials(ctx context.Context, 
 	stsSvc := sts.NewFromConfig(cfg)
 
 	if webIdentityTokenFile != "" {
+		// ExternalID is only applied to the AssumeRole fallback below.
+		// AssumeRoleWithWebIdentity does not accept an ExternalId parameter;
+		// the OIDC token itself authenticates the role assumption.
 		webIdentityCredentialProvider := stscreds.NewWebIdentityRoleProvider(stsSvc, roleArn, stscreds.IdentityTokenFile(webIdentityTokenFile), func(options *stscreds.WebIdentityRoleOptions) {
 			options.RoleSessionName = "KEDA"
 		})
