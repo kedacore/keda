@@ -33,7 +33,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+var logger = logf.Log.WithName("aws_authorization")
 
 // ErrAwsNoAccessKey is returned when awsAccessKeyID is missing.
 var ErrAwsNoAccessKey = errors.New("awsAccessKeyID not found")
@@ -89,9 +92,9 @@ func GetAwsAuthorization(uniqueKey, awsRegion string, podIdentity kedav1alpha1.A
 		meta.UsingPodIdentity = true
 		if val, ok := authParams["awsRoleArn"]; ok && val != "" {
 			meta.AwsRoleArn = val
-		}
-		if val, ok := authParams["awsExternalId"]; ok && val != "" {
-			meta.AwsExternalID = val
+			if val, ok := authParams["awsExternalId"]; ok && val != "" {
+				meta.AwsExternalID = val
+			}
 		}
 		return meta, nil
 	}
@@ -104,9 +107,9 @@ func GetAwsAuthorization(uniqueKey, awsRegion string, podIdentity kedav1alpha1.A
 		meta.PodIdentityOwner = false
 		if val, ok := authParams["awsRoleArn"]; ok && val != "" {
 			meta.AwsRoleArn = val
-		}
-		if val, ok := authParams["awsExternalId"]; ok && val != "" {
-			meta.AwsExternalID = val
+			if val, ok := authParams["awsExternalId"]; ok && val != "" {
+				meta.AwsExternalID = val
+			}
 		}
 	case "", "pod":
 		meta.PodIdentityOwner = true
@@ -145,6 +148,10 @@ func GetAwsAuthorization(uniqueKey, awsRegion string, podIdentity kedav1alpha1.A
 				return meta, ErrAwsNoSecretAccessKey
 			}
 		}
+	}
+
+	if authParams["awsExternalId"] != "" && meta.AwsRoleArn == "" {
+		logger.Info("awsExternalId is set but awsRoleArn is not — awsExternalId will be ignored")
 	}
 
 	return meta, nil
