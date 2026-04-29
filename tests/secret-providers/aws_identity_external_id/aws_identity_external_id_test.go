@@ -205,7 +205,7 @@ func cleanupMessages(t *testing.T, sqsClient *sqs.Client, queueURL *string) {
 		response, _ := sqsClient.ReceiveMessage(context.Background(), &sqs.ReceiveMessageInput{
 			QueueUrl:            queueURL,
 			MaxNumberOfMessages: 10,
-			VisibilityTimeout:   1,
+			VisibilityTimeout:   10,
 		})
 		if response == nil || len(response.Messages) == 0 {
 			break
