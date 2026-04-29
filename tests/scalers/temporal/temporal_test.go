@@ -36,6 +36,7 @@ type templateData struct {
 	DeploymentName                  string
 	TemporalWorkerDeploymentName    string
 	TemporalWorkerDeploymentBuildID string
+	DeploymentVersionWorkerReplicas int
 	TestNamespace                   string
 	TemporalDeploymentName          string
 	ScaledObjectName                string
@@ -224,41 +225,7 @@ metadata:
   labels:
     app: {{.DeploymentName}}-deploy-ver
 spec:
-  replicas: 0
-  selector:
-    matchLabels:
-      app: {{.DeploymentName}}-deploy-ver
-  template:
-    metadata:
-      labels:
-        app: {{.DeploymentName}}-deploy-ver
-    spec:
-      containers:
-      - name: worker
-        image: "temporaliotest/omes:go-latest"
-        imagePullPolicy: Always
-        command: ["/app/temporal-omes"]
-        args:
-        - "run-worker"
-        - "--language=go"
-        - "--server-address={{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233"
-        - "--run-id=test"
-        - "--scenario=workflow_with_single_noop_activity"
-        - "--dir-name=prepared"
-        - "--deployment-name={{.TemporalWorkerDeploymentName}}"
-        - "--deployment-build-id={{.TemporalWorkerDeploymentBuildID}}"
-`
-
-	deploymentVersionWorkerScaleUpTemplate = `
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{.DeploymentName}}-deploy-ver
-  namespace: {{.TestNamespace}}
-  labels:
-    app: {{.DeploymentName}}-deploy-ver
-spec:
-  replicas: 1
+  replicas: {{.DeploymentVersionWorkerReplicas}}
   selector:
     matchLabels:
       app: {{.DeploymentName}}-deploy-ver
@@ -462,7 +429,8 @@ func testDeploymentVersion(t *testing.T, kc *kubernetes.Clientset, data template
 	data.TemporalWorkerDeploymentBuildID = "v2.0.0"
 
 	// Step 1: Start worker with 1 replica to register the deployment version
-	KubectlApplyWithTemplate(t, data, "deploymentVersionWorkerScaleUpTemplate", deploymentVersionWorkerScaleUpTemplate)
+	data.DeploymentVersionWorkerReplicas = 1
+	KubectlApplyWithTemplate(t, data, "deploymentVersionWorkerTemplate", deploymentVersionWorkerTemplate)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName+"-deploy-ver", testNamespace, 1, 60, 3),
 		"deployment version worker should start with 1 replica")
 
@@ -473,6 +441,7 @@ func testDeploymentVersion(t *testing.T, kc *kubernetes.Clientset, data template
 	KubectlDeleteWithTemplate(t, data, "jobSetCurrentVersionTemplate", jobSetCurrentVersionTemplate)
 
 	// Step 3: Scale worker back to 0 and apply the ScaledObject
+	data.DeploymentVersionWorkerReplicas = 0
 	KubectlApplyWithTemplate(t, data, "deploymentVersionWorkerTemplate", deploymentVersionWorkerTemplate)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName+"-deploy-ver", testNamespace, 0, 60, 2),
 		"deployment should scale to 0 replicas")
