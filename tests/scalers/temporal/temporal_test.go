@@ -235,8 +235,8 @@ spec:
     spec:
       containers:
       - name: worker
-        image: "docker.io/temporaliotest/omes:go-89ab7fe@sha256:791a2eecd942f78a207ce600a1c1c5d5800eb34167f6ec98c0722e91ea7d6771"
-        imagePullPolicy: IfNotPresent
+        image: "temporaliotest/omes:go-latest"
+        imagePullPolicy: Always
         command: ["/app/temporal-omes"]
         args:
         - "run-worker"
@@ -269,8 +269,8 @@ spec:
     spec:
       containers:
       - name: worker
-        image: "docker.io/temporaliotest/omes:go-89ab7fe@sha256:791a2eecd942f78a207ce600a1c1c5d5800eb34167f6ec98c0722e91ea7d6771"
-        imagePullPolicy: IfNotPresent
+        image: "temporaliotest/omes:go-latest"
+        imagePullPolicy: Always
         command: ["/app/temporal-omes"]
         args:
         - "run-worker"

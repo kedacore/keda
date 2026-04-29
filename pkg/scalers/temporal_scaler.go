@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	temporalDefauleQueueTypes = []sdk.TaskQueueType{
+	temporalDefaultQueueTypes = []sdk.TaskQueueType{
 		sdk.TaskQueueTypeActivity,
 		sdk.TaskQueueTypeWorkflow,
 		sdk.TaskQueueTypeNexus,
@@ -46,11 +46,11 @@ type temporalMetadata struct {
 	TargetQueueSize           int64    `keda:"name=targetQueueSize,           order=triggerMetadata, default=5"`
 	TaskQueue                 string   `keda:"name=taskQueue,                 order=triggerMetadata;resolvedEnv"`
 	QueueTypes                []string `keda:"name=queueTypes,                order=triggerMetadata, optional"`
-	BuildID                   string   `keda:"name=buildId,                   order=triggerMetadata;resolvedEnv, optional, deprecatedAnnounce=The 'buildId' setting is deprecated because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead"`
+	BuildID                   string   `keda:"name=buildId,                   order=triggerMetadata;resolvedEnv, optional, 	=The 'buildId' setting is deprecated and will be removed in 2.21, because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead"`
 	WorkerDeploymentName      string   `keda:"name=workerDeploymentName,      order=triggerMetadata;resolvedEnv, optional"`
 	WorkerDeploymentBuildID   string   `keda:"name=workerDeploymentBuildId,   order=triggerMetadata;resolvedEnv, optional"`
-	AllActive                 bool     `keda:"name=selectAllActive,           order=triggerMetadata, default=false, deprecatedAnnounce=The 'selectAllActive' setting is deprecated because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead"`
-	Unversioned               bool     `keda:"name=selectUnversioned,         order=triggerMetadata, default=false, deprecatedAnnounce=The 'selectUnversioned' setting is deprecated because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs - Remove it if your workers are unversioned. If you're migrating to Worker Deployment Versioning use 'workerDeploymentName' and 'workerDeploymentBuildId' instead"`
+	AllActive                 bool     `keda:"name=selectAllActive,           order=triggerMetadata, default=false, deprecatedAnnounce=The 'selectAllActive' setting is deprecated and will be removed in 2.21, because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead"`
+	Unversioned               bool     `keda:"name=selectUnversioned,         order=triggerMetadata, default=false, deprecatedAnnounce=The 'selectUnversioned' setting is deprecated and will be removed in 2.21, because Temporal Server will soon stop supporting the deprecated Rules-Based Versioning APIs - Remove it if your workers are unversioned. If you're migrating to Worker Deployment Versioning use 'workerDeploymentName' and 'workerDeploymentBuildId' instead"`
 	APIKey                    string   `keda:"name=apiKey,                    order=authParams;resolvedEnv, optional"`
 	MinConnectTimeout         int      `keda:"name=minConnectTimeout,         order=triggerMetadata, default=5"`
 
@@ -265,8 +265,8 @@ func (s *temporalScaler) getDeploymentBacklogCount(ctx context.Context) (int64, 
 		},
 	)
 	if err != nil {
-		return 0, fmt.Errorf("failed to describe worker deployment version (taskQueue=%q, deploymentName=%q, buildId=%q): %w",
-			s.metadata.TaskQueue, s.metadata.WorkerDeploymentName, s.metadata.WorkerDeploymentBuildID, err)
+		return 0, fmt.Errorf("failed to describe worker deployment version (deploymentName=%q, buildId=%q): %w",
+			s.metadata.WorkerDeploymentName, s.metadata.WorkerDeploymentBuildID, err)
 	}
 
 	return sumDeploymentBacklog(resp.GetVersionTaskQueues(), s.metadata.TaskQueue, s.metadata.QueueTypes), nil
@@ -349,7 +349,7 @@ func getQueueTypes(queueTypes []string) []sdk.TaskQueueType {
 	}
 
 	if len(taskQueueTypes) == 0 {
-		return temporalDefauleQueueTypes
+		return temporalDefaultQueueTypes
 	}
 	return taskQueueTypes
 }
