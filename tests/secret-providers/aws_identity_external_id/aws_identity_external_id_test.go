@@ -201,10 +201,11 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.Client, 
 }
 
 func cleanupMessages(t *testing.T, sqsClient *sqs.Client, queueURL *string) {
-	for {
+	for i := 0; i < 30; i++ {
 		response, _ := sqsClient.ReceiveMessage(context.Background(), &sqs.ReceiveMessageInput{
 			QueueUrl:            queueURL,
 			MaxNumberOfMessages: 10,
+			VisibilityTimeout:   1,
 		})
 		if response == nil || len(response.Messages) == 0 {
 			break
@@ -224,9 +225,8 @@ func addMessages(t *testing.T, sqsClient *sqs.Client, queueURL *string, messages
 	for i := 0; i < messages; i++ {
 		msg := fmt.Sprintf("Message - %d", i)
 		_, err := sqsClient.SendMessage(context.Background(), &sqs.SendMessageInput{
-			QueueUrl:     queueURL,
-			MessageBody:  aws.String(msg),
-			DelaySeconds: 10,
+			QueueUrl:    queueURL,
+			MessageBody: aws.String(msg),
 		})
 		assert.NoErrorf(t, err, "cannot send message - %s", err)
 	}
@@ -236,7 +236,7 @@ func createSqsQueue(t *testing.T, queueName string, sqsClient *sqs.Client) *sqs.
 	queue, err := sqsClient.CreateQueue(context.Background(), &sqs.CreateQueueInput{
 		QueueName: &queueName,
 		Attributes: map[string]string{
-			"DelaySeconds":           "60",
+			"DelaySeconds":           "0",
 			"MessageRetentionPeriod": "86400",
 		}})
 	assert.NoErrorf(t, err, "failed to create queue - %s", err)
