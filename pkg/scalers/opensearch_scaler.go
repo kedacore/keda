@@ -13,8 +13,6 @@ import (
 	"github.com/opensearch-project/opensearch-go/v4"
 	"github.com/opensearch-project/opensearch-go/v4/opensearchapi"
 	"github.com/tidwall/gjson"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -46,8 +44,7 @@ type opensearchMetadata struct {
 	TargetValue           float64  `keda:"name=targetValue,           order=authParams;triggerMetadata"`
 	ActivationTargetValue float64  `keda:"name=activationTargetValue, order=triggerMetadata, default=0"`
 	IgnoreNullValues      bool     `keda:"name=ignoreNullValues,      order=triggerMetadata, default=false"`
-
-	metricName string
+	MetricName            string   `keda:"name=metricName,            order=triggerMetadata, optional"`
 
 	TriggerIndex int
 }
@@ -153,10 +150,12 @@ func parseOpensearchMetadata(config *scalersconfig.ScalerConfig) (opensearchMeta
 	}
 
 	if meta.SearchTemplateName != "" {
-		meta.metricName = GenerateMetricNameWithIndex(config.TriggerIndex, util.NormalizeString(fmt.Sprintf("opensearch-%s", meta.SearchTemplateName)))
+		meta.MetricName = GenerateMetricNameWithIndex(config.TriggerIndex, util.NormalizeString(fmt.Sprintf("opensearch-%s", meta.SearchTemplateName)))
 	} else {
-		meta.metricName = GenerateMetricNameWithIndex(config.TriggerIndex, "opensearch-query")
+		meta.MetricName = GenerateMetricNameWithIndex(config.TriggerIndex, "opensearch-query")
 	}
+
+	meta.TriggerIndex = config.TriggerIndex
 
 	return meta, nil
 }
@@ -168,7 +167,7 @@ func (s *opensearchScaler) Close(_ context.Context) error {
 func (s *opensearchScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: s.metadata.metricName,
+			Name: s.metadata.MetricName,
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.TargetValue),
 	}
@@ -194,7 +193,7 @@ func (s *opensearchScaler) getQueryResult(ctx context.Context) (float64, error) 
 	var responseBody []byte
 	var err error
 
-	if strings.TrimSpace(s.metadata.SearchTemplateName) != "" {
+	if s.metadata.SearchTemplateName != "" {
 		responseBody, err = s.searchTemplate(ctx)
 		if err != nil {
 			return 0, err
@@ -240,20 +239,16 @@ func (s *opensearchScaler) getValueFromSearchResultByValueLocation(responseBody 
 }
 
 func (s *opensearchScaler) search(ctx context.Context) ([]byte, error) {
-	query := strings.TrimSpace(s.metadata.Query)
-	if query == "" {
-		return nil, status.Error(codes.InvalidArgument, "query must be provided when searchTemplateName is empty")
-	}
-	if !json.Valid([]byte(query)) {
-		return nil, status.Error(codes.InvalidArgument, "invalid query JSON")
+	if !json.Valid([]byte(s.metadata.Query)) {
+		return nil, fmt.Errorf("invalid query JSON")
 	}
 
 	searchResponse, err := s.osAPIClient.Search(ctx, &opensearchapi.SearchReq{
 		Indices: s.metadata.Index,
-		Body:    bytes.NewReader([]byte(query)),
+		Body:    bytes.NewReader([]byte(s.metadata.Query)),
 	})
 	if err != nil {
-		return nil, err
+		return nil, s.responseError(searchResponse.Inspect().Response, err)
 	}
 
 	responseBody, err := s.readResponseBody(searchResponse.Inspect().Response)
@@ -271,7 +266,7 @@ func (s *opensearchScaler) searchTemplate(ctx context.Context) ([]byte, error) {
 	}
 	body, err := json.Marshal(query)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to encode search template request: %v", err)
+		return nil, fmt.Errorf("failed to encode search template request: %v", err)
 	}
 
 	searchTemplResponse, err := s.osAPIClient.SearchTemplate(ctx, opensearchapi.SearchTemplateReq{
@@ -279,7 +274,7 @@ func (s *opensearchScaler) searchTemplate(ctx context.Context) ([]byte, error) {
 		Body:    bytes.NewReader(body),
 	})
 	if err != nil {
-		return nil, err
+		return nil, s.responseError(searchTemplResponse.Inspect().Response, err)
 	}
 
 	responseBody, err := s.readResponseBody(searchTemplResponse.Inspect().Response)
@@ -317,20 +312,25 @@ func (s *opensearchScaler) buildQueryFromMetadata() (map[string]interface{}, err
 
 func (s *opensearchScaler) readResponseBody(resp *opensearch.Response) ([]byte, error) {
 	if resp == nil || resp.Body == nil {
-		return nil, status.Error(codes.Internal, "empty search response")
+		return nil, fmt.Errorf("empty search response")
 	}
 	defer resp.Body.Close()
 
-	if err := s.checkHTTPStatus(resp.StatusCode); err != nil {
-		return nil, err
-	}
-
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to read search response: %v", err)
+		return nil, fmt.Errorf("failed to read search response: %v", err)
 	}
 
 	return body, nil
+}
+
+func (s *opensearchScaler) responseError(resp *opensearch.Response, fallback error) error {
+	if resp != nil {
+		if err := s.checkHTTPStatus(resp.StatusCode); err != nil {
+			return err
+		}
+	}
+	return fallback
 }
 
 // checkHTTPStatus returns a clear error for authentication and authorization failures

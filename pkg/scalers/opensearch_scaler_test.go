@@ -163,7 +163,7 @@ func TestParseOpensearchMetadata(t *testing.T) {
 			name:     "query in TriggerMetadata: all fields parsed correctly",
 			metadata: baseConfig(nil),
 			check: func(t *testing.T, meta opensearchMetadata) {
-				assert.Equal(t, "s0-opensearch-query", meta.metricName)
+				assert.Equal(t, "s0-opensearch-query", meta.MetricName)
 				assert.Equal(t, `{"query":{"match_all":{}}}`, meta.Query)
 				assert.Equal(t, "admin", meta.Username)
 				assert.Equal(t, "secret", meta.Password)
@@ -177,7 +177,7 @@ func TestParseOpensearchMetadata(t *testing.T) {
 			name:     "searchTemplateName: metric name derived from template name",
 			metadata: baseConfig(map[string]string{"query": "", "searchTemplateName": "my-template"}),
 			check: func(t *testing.T, meta opensearchMetadata) {
-				assert.Equal(t, "s0-opensearch-my-template", meta.metricName)
+				assert.Equal(t, "s0-opensearch-my-template", meta.MetricName)
 				assert.Equal(t, "my-template", meta.SearchTemplateName)
 			},
 		},
