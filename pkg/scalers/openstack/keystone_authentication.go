@@ -290,13 +290,10 @@ func (keystone *KeystoneAuthRequest) getToken(ctx context.Context) (string, erro
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
-		fmt.Println("[DEBUG] Keystone token response headers:", resp.Header)
 		if tokens, ok := resp.Header["X-Subject-Token"]; ok && len(tokens) > 0 {
 			return tokens[0], nil
 		}
-		// Fallback: try to extract token from body for test/mock environments
-		// For our mock, just return "mock-token"
-		return "mock-token", nil
+		return "", fmt.Errorf("missing X-Subject-Token header in Keystone response")
 	}
 
 	errBody, err := io.ReadAll(resp.Body)
@@ -345,7 +342,6 @@ func (keystone *KeystoneAuthRequest) getCatalog(ctx context.Context, token strin
 			return nil, fmt.Errorf("error parsing the catalog request response body: %w", err)
 		}
 
-		fmt.Printf("[DEBUG] Parsed Keystone catalog: %+v\n", keystoneCatalog)
 		return keystoneCatalog.Catalog, nil
 	}
 
