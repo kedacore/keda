@@ -1442,7 +1442,7 @@ github.com/prometheus/prometheus/tsdb/errors
 github.com/prometheus/prometheus/tsdb/fileutil
 github.com/prometheus/prometheus/util/annotations
 github.com/prometheus/prometheus/util/strutil
-# github.com/rabbitmq/amqp091-go v1.10.0
+# github.com/rabbitmq/amqp091-go v1.11.0
 ## explicit; go 1.20
 github.com/rabbitmq/amqp091-go
 # github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9
