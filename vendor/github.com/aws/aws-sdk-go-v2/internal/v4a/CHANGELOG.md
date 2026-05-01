@@ -1,20 +1,24 @@
-# v1.4.23 (2026-04-29)
+# v1.4.24 (2026-04-29)
 
 * **Dependency Update**: Update to smithy-go v1.25.1.
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.4.22 (2026-04-17)
+# v1.4.23 (2026-04-17)
 
 * **Dependency Update**: Bump smithy-go to 1.25.0 to support endpointBdd trait
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.4.21 (2026-03-26)
+# v1.4.22 (2026-03-26)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.4.20 (2026-03-13)
+# v1.4.21 (2026-03-13)
 
 * **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.4.20 (2026-03-05)
+
+* **Bug Fix**: Read the correct auth property for SigV4A signing names.
 
 # v1.4.19 (2026-03-03)
 
@@ -135,6 +139,7 @@
 
 # v1.3.30 (2025-01-30)
 
+* **Bug Fix**: Do not sign Transfer-Encoding header in Sigv4[a]. Fixes a signer mismatch issue with S3 Accelerate.
 * **Dependency Update**: Updated to the latest SDK module versions
 
 # v1.3.29 (2025-01-24)
@@ -246,6 +251,7 @@
 
 # v1.3.3 (2024-03-07)
 
+* **Bug Fix**: Remove dependency on go-cmp.
 * **Dependency Update**: Updated to the latest SDK module versions
 
 # v1.3.2 (2024-02-23)
@@ -306,213 +312,149 @@
 * **Feature**: **BREAKING CHANGE**: Bump minimum go version to 1.19 per the revised [go version support policy](https://aws.amazon.com/blogs/developer/aws-sdk-for-go-aligns-with-go-release-policy-on-supported-runtimes/).
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.43 (2023-10-12)
+# v1.1.6 (2023-10-12)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.42 (2023-10-06)
+# v1.1.5 (2023-10-06)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.41 (2023-08-21)
+# v1.1.4 (2023-08-21)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.40 (2023-08-18)
+# v1.1.3 (2023-08-18)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.39 (2023-08-17)
+# v1.1.2 (2023-08-17)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.38 (2023-08-07)
+# v1.1.1 (2023-08-07)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.37 (2023-07-31)
+# v1.1.0 (2023-07-31)
+
+* **Feature**: Adds support for smithy-modeled endpoint resolution. A new rules-based endpoint resolution will be added to the SDK which will supercede and deprecate existing endpoint resolution. Specifically, EndpointResolver will be deprecated while BaseEndpoint and EndpointResolverV2 will take its place. For more information, please see the Endpoints section in our Developer Guide.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.0.28 (2023-07-28)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.36 (2023-07-28)
+# v1.0.27 (2023-07-13)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.35 (2023-07-13)
+# v1.0.26 (2023-06-13)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.34 (2023-06-13)
+# v1.0.25 (2023-04-24)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.33 (2023-04-24)
+# v1.0.24 (2023-04-07)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.32 (2023-04-07)
+# v1.0.23 (2023-03-21)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.31 (2023-03-21)
+# v1.0.22 (2023-03-10)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.30 (2023-03-10)
+# v1.0.21 (2023-02-20)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.29 (2023-02-20)
+# v1.0.20 (2023-02-14)
+
+* No change notes available for this release.
+
+# v1.0.19 (2023-02-03)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.28 (2023-02-03)
+# v1.0.18 (2022-12-15)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.27 (2022-12-15)
+# v1.0.17 (2022-12-02)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.26 (2022-12-02)
+# v1.0.16 (2022-10-24)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.25 (2022-10-24)
+# v1.0.15 (2022-10-21)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.24 (2022-10-21)
+# v1.0.14 (2022-09-20)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.23 (2022-09-20)
+# v1.0.13 (2022-09-14)
+
+* **Bug Fix**: Fixes an issues where an error from an underlying SigV4 credential provider would not be surfaced from the SigV4a credential provider. Contribution by [sakthipriyan-aqfer](https://github.com/sakthipriyan-aqfer).
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.0.12 (2022-09-02)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.22 (2022-09-14)
+# v1.0.11 (2022-08-31)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.21 (2022-09-02)
+# v1.0.10 (2022-08-29)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.20 (2022-08-31)
+# v1.0.9 (2022-08-11)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.19 (2022-08-29)
+# v1.0.8 (2022-08-09)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.18 (2022-08-11)
+# v1.0.7 (2022-08-08)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.17 (2022-08-09)
+# v1.0.6 (2022-08-01)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.16 (2022-08-08)
+# v1.0.5 (2022-07-05)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.15 (2022-08-01)
+# v1.0.4 (2022-06-29)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.14 (2022-07-05)
+# v1.0.3 (2022-06-07)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.13 (2022-06-29)
+# v1.0.2 (2022-05-17)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.12 (2022-06-07)
+# v1.0.1 (2022-04-25)
 
 * **Dependency Update**: Updated to the latest SDK module versions
 
-# v1.1.11 (2022-05-17)
+# v1.0.0 (2022-04-07)
 
-* **Dependency Update**: Updated to the latest SDK module versions
-
-# v1.1.10 (2022-04-25)
-
-* **Dependency Update**: Updated to the latest SDK module versions
-
-# v1.1.9 (2022-03-30)
-
-* **Dependency Update**: Updated to the latest SDK module versions
-
-# v1.1.8 (2022-03-24)
-
-* **Dependency Update**: Updated to the latest SDK module versions
-
-# v1.1.7 (2022-03-23)
-
-* **Dependency Update**: Updated to the latest SDK module versions
-
-# v1.1.6 (2022-03-08)
-
-* **Dependency Update**: Updated to the latest SDK module versions
-
-# v1.1.5 (2022-02-24)
-
-* **Dependency Update**: Updated to the latest SDK module versions
-
-# v1.1.4 (2022-01-14)
-
-* **Dependency Update**: Updated to the latest SDK module versions
-
-# v1.1.3 (2022-01-07)
-
-* **Dependency Update**: Updated to the latest SDK module versions
-
-# v1.1.2 (2021-12-02)
-
-* **Dependency Update**: Updated to the latest SDK module versions
-
-# v1.1.1 (2021-11-19)
-
-* **Dependency Update**: Updated to the latest SDK module versions
-
-# v1.1.0 (2021-11-06)
-
-* **Feature**: The SDK now supports configuration of FIPS and DualStack endpoints using environment variables, shared configuration, or programmatically.
-* **Dependency Update**: Updated to the latest SDK module versions
-
-# v1.0.7 (2021-10-21)
-
-* **Dependency Update**: Updated to the latest SDK module versions
-
-# v1.0.6 (2021-10-11)
-
-* **Dependency Update**: Updated to the latest SDK module versions
-
-# v1.0.5 (2021-09-17)
-
-* **Dependency Update**: Updated to the latest SDK module versions
-
-# v1.0.4 (2021-08-27)
-
-* **Dependency Update**: Updated to the latest SDK module versions
-
-# v1.0.3 (2021-08-19)
-
-* **Dependency Update**: Updated to the latest SDK module versions
-
-# v1.0.2 (2021-08-04)
-
-* **Dependency Update**: Updated to the latest SDK module versions
-
-# v1.0.1 (2021-07-15)
-
-* **Dependency Update**: Updated to the latest SDK module versions
-
-# v1.0.0 (2021-06-25)
-
-* **Release**: Release new modules
-* **Dependency Update**: Updated to the latest SDK module versions
+* **Release**: New internal v4a signing module location.
 
