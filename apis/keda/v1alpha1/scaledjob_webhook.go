@@ -18,8 +18,8 @@ package v1alpha1
 
 import (
 	"context"
-	"reflect"
 
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -81,8 +81,8 @@ func (s *ScaledJob) ValidateCreate(dryRun *bool) (admission.Warnings, error) {
 func (s *ScaledJob) ValidateUpdate(old runtime.Object, dryRun *bool) (admission.Warnings, error) {
 	scaledjoblog.V(1).Info("validating scaledjob update", "namespace", s.Namespace, "name", s.Name, "scaledjob", s)
 
-	oldTa := old.(*ScaledJob)
-	if isScaledJobRemovingFinalizer(s.ObjectMeta, oldTa.ObjectMeta, s.Spec, oldTa.Spec) {
+	oldSj := old.(*ScaledJob)
+	if isScaledJobRemovingFinalizer(s.ObjectMeta, oldSj.ObjectMeta, s.Spec, oldSj.Spec) {
 		scaledjoblog.V(1).Info("finalizer removal, skipping validation", "namespace", s.Namespace, "name", s.Name)
 		return nil, nil
 	}
@@ -94,5 +94,5 @@ func (s *ScaledJob) ValidateDelete(_ *bool) (admission.Warnings, error) {
 }
 
 func isScaledJobRemovingFinalizer(om metav1.ObjectMeta, oldOm metav1.ObjectMeta, spec ScaledJobSpec, oldSpec ScaledJobSpec) bool {
-	return len(om.Finalizers) == 0 && len(oldOm.Finalizers) == 1 && reflect.DeepEqual(spec, oldSpec)
+	return len(om.Finalizers) == 0 && len(oldOm.Finalizers) == 1 && equality.Semantic.DeepEqual(spec, oldSpec)
 }

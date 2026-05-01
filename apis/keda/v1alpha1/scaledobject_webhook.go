@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -29,6 +28,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -144,7 +144,7 @@ func (so *ScaledObject) ValidateDelete(_ *bool) (admission.Warnings, error) {
 
 func isRemovingFinalizer(so *ScaledObject, old runtime.Object) bool {
 	oldSo := old.(*ScaledObject)
-	return len(so.Finalizers) < len(oldSo.Finalizers) && reflect.DeepEqual(so.Spec, oldSo.Spec)
+	return len(so.Finalizers) < len(oldSo.Finalizers) && equality.Semantic.DeepEqual(so.Spec, oldSo.Spec)
 }
 
 func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.Warnings, error) {

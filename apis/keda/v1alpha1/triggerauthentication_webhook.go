@@ -19,8 +19,8 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
-	"reflect"
 
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -164,7 +164,7 @@ func (cta *ClusterTriggerAuthentication) ValidateDelete(_ *bool) (admission.Warn
 }
 
 func isTriggerAuthenticationRemovingFinalizer(om metav1.ObjectMeta, oldOm metav1.ObjectMeta, spec TriggerAuthenticationSpec, oldSpec TriggerAuthenticationSpec) bool {
-	return len(om.Finalizers) == 0 && len(oldOm.Finalizers) == 1 && reflect.DeepEqual(spec, oldSpec)
+	return len(om.Finalizers) == 0 && len(oldOm.Finalizers) == 1 && equality.Semantic.DeepEqual(spec, oldSpec)
 }
 
 func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
