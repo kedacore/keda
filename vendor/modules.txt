@@ -60,8 +60,8 @@ code.cloudfoundry.org/clock
 # dario.cat/mergo v1.0.2
 ## explicit; go 1.13
 dario.cat/mergo
-# filippo.io/edwards25519 v1.1.1
-## explicit; go 1.20
+# filippo.io/edwards25519 v1.2.0
+## explicit; go 1.24.0
 filippo.io/edwards25519
 filippo.io/edwards25519/field
 # github.com/Azure/azure-amqp-common-go/v4 v4.2.0
@@ -791,8 +791,8 @@ github.com/go-playground/universal-translator
 # github.com/go-playground/validator/v10 v10.30.2
 ## explicit; go 1.25.0
 github.com/go-playground/validator/v10
-# github.com/go-sql-driver/mysql v1.9.3
-## explicit; go 1.21.0
+# github.com/go-sql-driver/mysql v1.10.0
+## explicit; go 1.24.0
 github.com/go-sql-driver/mysql
 # github.com/go-task/slim-sprig/v3 v3.0.0
 ## explicit; go 1.20
