@@ -149,6 +149,10 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	conditions := scaledJob.Status.Conditions.DeepCopy()
 	msg, err := r.reconcileScaledJob(ctx, reqLogger, scaledJob, &conditions)
 	if err != nil {
+		if scaling.IsTransientScalerCacheRebuildError(err) {
+			reqLogger.V(1).Info("Transient scaler cache error during ScaledJob reconcile, requeueing without marking Ready=False", "error", err)
+			return ctrl.Result{RequeueAfter: 100 * time.Millisecond}, nil
+		}
 		reqLogger.Error(err, msg)
 		conditions.SetReadyCondition(metav1.ConditionFalse, "ScaledJobCheckFailed", msg)
 		conditions.SetActiveCondition(metav1.ConditionUnknown, "UnknownState", "ScaledJob check failed")

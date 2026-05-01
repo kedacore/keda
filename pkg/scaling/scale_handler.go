@@ -1008,8 +1008,13 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 	logger := log.WithValues("scaledJob.Namespace", scaledJob.Namespace, "scaledJob.Name", scaledJob.Name)
 
 	cache, err := h.GetScalersCache(ctx, scaledJob)
-	metricscollector.RecordScaledJobError(scaledJob.Namespace, scaledJob.Name, err)
 	if err != nil {
+		if IsTransientScalerCacheRebuildError(err) {
+			log.V(1).Info("Transient error getting scalers cache for ScaledJob metrics",
+				"scaledJob.Namespace", scaledJob.Namespace, "scaledJob.Name", scaledJob.Name, "error", err)
+			return nil, false, []string{}
+		}
+		metricscollector.RecordScaledJobError(scaledJob.Namespace, scaledJob.Name, err)
 		log.Error(err, "error getting scalers cache", "scaledJob.Namespace", scaledJob.Namespace, "scaledJob.Name", scaledJob.Name)
 		return nil, true, []string{}
 	}
@@ -1044,6 +1049,10 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 				metricscollector.RecordScalerLatency(scaledJob.Namespace, scaledJob.Name, scalerName, scalerIndex, metricName, false, latency)
 			}
 			if err != nil {
+				if IsTransientScalerCacheRebuildError(err) {
+					scalerLogger.V(1).Info("Transient scaler metric error during cache rebuild, continuing", "error", err)
+					continue
+				}
 				scalerLogger.Error(err, "Error getting scaler metrics and activity, but continue")
 				cache.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 				isError = true
