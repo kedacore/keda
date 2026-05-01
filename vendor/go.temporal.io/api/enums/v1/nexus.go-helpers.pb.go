@@ -23,3 +23,84 @@ func NexusHandlerErrorRetryBehaviorFromString(s string) (NexusHandlerErrorRetryB
 	}
 	return NexusHandlerErrorRetryBehavior(0), fmt.Errorf("%s is not a valid NexusHandlerErrorRetryBehavior", s)
 }
+
+var (
+	NexusOperationExecutionStatus_shorthandValue = map[string]int32{
+		"Unspecified": 0,
+		"Running":     1,
+		"Completed":   2,
+		"Failed":      3,
+		"Canceled":    4,
+		"Terminated":  5,
+		"TimedOut":    6,
+	}
+)
+
+// NexusOperationExecutionStatusFromString parses a NexusOperationExecutionStatus value from  either the protojson
+// canonical SCREAMING_CASE enum or the traditional temporal PascalCase enum to NexusOperationExecutionStatus
+func NexusOperationExecutionStatusFromString(s string) (NexusOperationExecutionStatus, error) {
+	if v, ok := NexusOperationExecutionStatus_value[s]; ok {
+		return NexusOperationExecutionStatus(v), nil
+	} else if v, ok := NexusOperationExecutionStatus_shorthandValue[s]; ok {
+		return NexusOperationExecutionStatus(v), nil
+	}
+	return NexusOperationExecutionStatus(0), fmt.Errorf("%s is not a valid NexusOperationExecutionStatus", s)
+}
+
+var (
+	NexusOperationWaitStage_shorthandValue = map[string]int32{
+		"Unspecified": 0,
+		"Started":     1,
+		"Closed":      2,
+	}
+)
+
+// NexusOperationWaitStageFromString parses a NexusOperationWaitStage value from  either the protojson
+// canonical SCREAMING_CASE enum or the traditional temporal PascalCase enum to NexusOperationWaitStage
+func NexusOperationWaitStageFromString(s string) (NexusOperationWaitStage, error) {
+	if v, ok := NexusOperationWaitStage_value[s]; ok {
+		return NexusOperationWaitStage(v), nil
+	} else if v, ok := NexusOperationWaitStage_shorthandValue[s]; ok {
+		return NexusOperationWaitStage(v), nil
+	}
+	return NexusOperationWaitStage(0), fmt.Errorf("%s is not a valid NexusOperationWaitStage", s)
+}
+
+var (
+	NexusOperationIdReusePolicy_shorthandValue = map[string]int32{
+		"Unspecified":              0,
+		"AllowDuplicate":           1,
+		"AllowDuplicateFailedOnly": 2,
+		"RejectDuplicate":          3,
+	}
+)
+
+// NexusOperationIdReusePolicyFromString parses a NexusOperationIdReusePolicy value from  either the protojson
+// canonical SCREAMING_CASE enum or the traditional temporal PascalCase enum to NexusOperationIdReusePolicy
+func NexusOperationIdReusePolicyFromString(s string) (NexusOperationIdReusePolicy, error) {
+	if v, ok := NexusOperationIdReusePolicy_value[s]; ok {
+		return NexusOperationIdReusePolicy(v), nil
+	} else if v, ok := NexusOperationIdReusePolicy_shorthandValue[s]; ok {
+		return NexusOperationIdReusePolicy(v), nil
+	}
+	return NexusOperationIdReusePolicy(0), fmt.Errorf("%s is not a valid NexusOperationIdReusePolicy", s)
+}
+
+var (
+	NexusOperationIdConflictPolicy_shorthandValue = map[string]int32{
+		"Unspecified": 0,
+		"Fail":        1,
+		"UseExisting": 2,
+	}
+)
+
+// NexusOperationIdConflictPolicyFromString parses a NexusOperationIdConflictPolicy value from  either the protojson
+// canonical SCREAMING_CASE enum or the traditional temporal PascalCase enum to NexusOperationIdConflictPolicy
+func NexusOperationIdConflictPolicyFromString(s string) (NexusOperationIdConflictPolicy, error) {
+	if v, ok := NexusOperationIdConflictPolicy_value[s]; ok {
+		return NexusOperationIdConflictPolicy(v), nil
+	} else if v, ok := NexusOperationIdConflictPolicy_shorthandValue[s]; ok {
+		return NexusOperationIdConflictPolicy(v), nil
+	}
+	return NexusOperationIdConflictPolicy(0), fmt.Errorf("%s is not a valid NexusOperationIdConflictPolicy", s)
+}

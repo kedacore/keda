@@ -10,7 +10,7 @@ import (
 
 // MemoryLoggerWithoutWith is a Logger implementation that stores logs in memory (useful for testing). Use Lines() to get log lines.
 type MemoryLoggerWithoutWith struct {
-	lock          sync.RWMutex
+	lock          *sync.RWMutex
 	lines         *[]string
 	globalKeyvals string
 }
@@ -19,6 +19,7 @@ type MemoryLoggerWithoutWith struct {
 func NewMemoryLoggerWithoutWith() *MemoryLoggerWithoutWith {
 	var lines []string
 	return &MemoryLoggerWithoutWith{
+		lock:  &sync.RWMutex{},
 		lines: &lines,
 	}
 }
@@ -80,6 +81,7 @@ func (l *MemoryLogger) With(keyvals ...interface{}) log.Logger {
 	defer l.lock.RUnlock()
 
 	logger := &MemoryLoggerWithoutWith{
+		lock:  l.lock,
 		lines: l.lines,
 	}
 
