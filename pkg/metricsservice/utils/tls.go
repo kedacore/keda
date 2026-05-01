@@ -73,6 +73,9 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 	}
 
 	certMutex := sync.RWMutex{}
+	// currentPool holds the live CA pool and is replaced (never appended to)
+	// on every rotation so the pool does not grow unboundedly.
+	currentPool := certPool
 	go func() {
 		log.V(1).Info("starting mTLS certificates monitoring")
 		for {
@@ -97,10 +100,18 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 					log.Error(err, "error reading grpc ca certificate")
 					continue
 				}
-				if !certPool.AppendCertsFromPEM(pemClientCA) {
+				// Rebuild the pool from scratch to prevent monotonic growth.
+				newPool, _ := x509.SystemCertPool()
+				if newPool == nil {
+					newPool = x509.NewCertPool()
+				}
+				if !newPool.AppendCertsFromPEM(pemClientCA) {
 					log.Error(err, "failed to add client CA's certificate")
 					continue
 				}
+				certMutex.Lock()
+				currentPool = newPool
+				certMutex.Unlock()
 				log.V(1).Info("grpc ca certificate has been updated")
 
 				// Load certificate of the CA who signed client's certificate
@@ -144,9 +155,44 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 	}
 	if server {
 		config.ClientAuth = tls.RequireAndVerifyClientCert
-		config.ClientCAs = certPool
+		// GetConfigForClient is called per-connection; injecting currentPool
+		// here ensures every new handshake picks up the latest CA pool.
+		config.GetConfigForClient = func(_ *tls.ClientHelloInfo) (*tls.Config, error) {
+			certMutex.RLock()
+			defer certMutex.RUnlock()
+			clone := config.Clone()
+			clone.ClientCAs = currentPool
+			// GetConfigForClient overrides GetCertificate; restore it.
+			clone.GetCertificate = config.GetCertificate
+			return clone, nil
+		}
 	} else {
 		config.RootCAs = certPool
+		// For the client side, VerifyPeerCertificate is used to check against
+		// the latest pool on every connection.
+		config.InsecureSkipVerify = true //nolint:gosec // verification done in VerifyPeerCertificate
+		config.VerifyPeerCertificate = func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
+			certMutex.RLock()
+			pool := currentPool
+			certMutex.RUnlock()
+			certs := make([]*x509.Certificate, 0, len(rawCerts))
+			for _, rawCert := range rawCerts {
+				c, err := x509.ParseCertificate(rawCert)
+				if err != nil {
+					return err
+				}
+				certs = append(certs, c)
+			}
+			opts := x509.VerifyOptions{
+				Roots:         pool,
+				Intermediates: x509.NewCertPool(),
+			}
+			for _, c := range certs[1:] {
+				opts.Intermediates.AddCert(c)
+			}
+			_, err := certs[0].Verify(opts)
+			return err
+		}
 	}
 
 	return credentials.NewTLS(config), nil
