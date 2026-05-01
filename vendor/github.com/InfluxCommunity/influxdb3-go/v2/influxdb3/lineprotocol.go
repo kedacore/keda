@@ -22,12 +22,17 @@
 
 package influxdb3
 
-import (
-	"runtime"
+import "github.com/influxdata/line-protocol/v2/lineprotocol"
+
+// Precision defines timestamp precision for line protocol writes.
+//
+// It aliases lineprotocol.Precision for backward compatibility.
+// Prefer package-local constants: Nanosecond, Microsecond, Millisecond, Second.
+type Precision = lineprotocol.Precision
+
+const (
+	Nanosecond  Precision = lineprotocol.Nanosecond
+	Microsecond Precision = lineprotocol.Microsecond
+	Millisecond Precision = lineprotocol.Millisecond
+	Second      Precision = lineprotocol.Second
 )
-
-// version defines current version
-const version = "2.14.0"
-
-// userAgent header value
-const userAgent = "influxdb3-go/" + version + " (" + runtime.GOOS + "; " + runtime.GOARCH + ")"

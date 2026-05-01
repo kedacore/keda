@@ -44,7 +44,7 @@ require (
 	github.com/DataDog/datadog-api-client-go v1.16.0
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/IBM/sarama v1.47.0
-	github.com/InfluxCommunity/influxdb3-go/v2 v2.13.0
+	github.com/InfluxCommunity/influxdb3-go/v2 v2.14.0
 	github.com/arangodb/go-driver v1.6.9
 	github.com/aws/aws-msk-iam-sasl-signer-go v1.0.4
 	github.com/aws/aws-sdk-go-v2 v1.41.5
@@ -167,7 +167,7 @@ require (
 	github.com/ProtonMail/go-crypto v1.3.0 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
-	github.com/apache/arrow-go/v18 v18.5.1 // indirect
+	github.com/apache/arrow-go/v18 v18.5.2 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/arangodb/go-velocypack v0.0.0-20200318135517-5af53c29c67e // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.8 // indirect

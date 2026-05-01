@@ -257,10 +257,9 @@ github.com/Huawei/gophercloud/pagination
 # github.com/IBM/sarama v1.47.0
 ## explicit; go 1.25.0
 github.com/IBM/sarama
-# github.com/InfluxCommunity/influxdb3-go/v2 v2.13.0
-## explicit; go 1.24.0
+# github.com/InfluxCommunity/influxdb3-go/v2 v2.14.0
+## explicit; go 1.25.0
 github.com/InfluxCommunity/influxdb3-go/v2/influxdb3
-github.com/InfluxCommunity/influxdb3-go/v2/influxdb3/gzip
 # github.com/Masterminds/semver/v3 v3.4.0
 ## explicit; go 1.21
 github.com/Masterminds/semver/v3
@@ -298,7 +297,7 @@ github.com/andybalholm/brotli/matchfinder
 # github.com/antlr4-go/antlr/v4 v4.13.1
 ## explicit; go 1.22
 github.com/antlr4-go/antlr/v4
-# github.com/apache/arrow-go/v18 v18.5.1
+# github.com/apache/arrow-go/v18 v18.5.2
 ## explicit; go 1.24.0
 github.com/apache/arrow-go/v18/arrow
 github.com/apache/arrow-go/v18/arrow/array

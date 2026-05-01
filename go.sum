@@ -106,8 +106,8 @@ github.com/Huawei/gophercloud v1.0.21 h1:HhtzZzRGZiVmLypqHlXrGAcdC1TJW99FLewfPSV
 github.com/Huawei/gophercloud v1.0.21/go.mod h1:TUtAO2PE+Nj7/QdfUXbhi5Xu0uFKVccyukPA7UCxD9w=
 github.com/IBM/sarama v1.47.0 h1:GcQFEd12+KzfPYeLgN69Fh7vLCtYRhVIx0rO4TZO318=
 github.com/IBM/sarama v1.47.0/go.mod h1:7gLLIU97nznOmA6TX++Qds+DRxH89P2XICY2KAQUzAY=
-github.com/InfluxCommunity/influxdb3-go/v2 v2.13.0 h1:IQVpiJ0t92OsJXf/RJ0+HHoIbK3mgJaMntEfLRgxS9Q=
-github.com/InfluxCommunity/influxdb3-go/v2 v2.13.0/go.mod h1:fXhSEgDgX7iv++4t5cFVKRB6kqqeLjRRf5d2IlUdiWw=
+github.com/InfluxCommunity/influxdb3-go/v2 v2.14.0 h1:Skq01dA9mg8t3hT6aXCOrLT8JXDkBlkKG6QHc00N0A4=
+github.com/InfluxCommunity/influxdb3-go/v2 v2.14.0/go.mod h1:Z/06RuGqfH0pSRPNsKPJ8HwQcKJEtaNynZ4wUG+9OAo=
 github.com/Masterminds/semver/v3 v3.1.1/go.mod h1:VPu/7SZ7ePZ3QOrcuXROw5FAcLl4a0cBrbBpGY/8hQs=
 github.com/Masterminds/semver/v3 v3.4.0 h1:Zog+i5UMtVoCU8oKka5P7i9q9HgrJeGzI9SA1Xbatp0=
 github.com/Masterminds/semver/v3 v3.4.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
@@ -124,8 +124,8 @@ github.com/andybalholm/brotli v1.2.0 h1:ukwgCxwYrmACq68yiUqwIWnGY0cTPox/M94sVwTo
 github.com/andybalholm/brotli v1.2.0/go.mod h1:rzTDkvFWvIrjDXZHkuS16NPggd91W3kUSvPlQ1pLaKY=
 github.com/antlr4-go/antlr/v4 v4.13.1 h1:SqQKkuVZ+zWkMMNkjy5FZe5mr5WURWnlpmOuzYWrPrQ=
 github.com/antlr4-go/antlr/v4 v4.13.1/go.mod h1:GKmUxMtwp6ZgGwZSva4eWPC5mS6vUAmOABFgjdkM7Nw=
-github.com/apache/arrow-go/v18 v18.5.1 h1:yaQ6zxMGgf9YCYw4/oaeOU3AULySDlAYDOcnr4LdHdI=
-github.com/apache/arrow-go/v18 v18.5.1/go.mod h1:OCCJsmdq8AsRm8FkBSSmYTwL/s4zHW9CqxeBxEytkNE=
+github.com/apache/arrow-go/v18 v18.5.2 h1:3uoHjoaEie5eVsxx/Bt64hKwZx4STb+beAkqKOlq/lY=
+github.com/apache/arrow-go/v18 v18.5.2/go.mod h1:yNoizNTT4peTciJ7V01d2EgOkE1d0fQ1vZcFOsVtFsw=
 github.com/apache/thrift v0.22.0 h1:r7mTJdj51TMDe6RtcmNdQxgn9XcyfGDOzegMDRg47uc=
 github.com/apache/thrift v0.22.0/go.mod h1:1e7J/O1Ae6ZQMTYdy9xa3w9k+XHWPfRvdPyJeynQ+/g=
 github.com/apapsch/go-jsonmerge/v2 v2.0.0 h1:axGnT1gRIfimI7gJifB699GoE/oq+F2MU7Dml6nw9rQ=
