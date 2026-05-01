@@ -248,9 +248,12 @@ func (s *opensearchScaler) search(ctx context.Context) ([]byte, error) {
 		Body:    bytes.NewReader([]byte(s.metadata.Query)),
 	})
 	if err != nil {
-		return nil, s.responseError(searchResponse.Inspect().Response, err)
+		var resp *opensearch.Response
+		if searchResponse != nil {
+			resp = searchResponse.Inspect().Response
+		}
+		return nil, s.responseError(resp, err)
 	}
-
 	responseBody, err := s.readResponseBody(searchResponse.Inspect().Response)
 	if err != nil {
 		return nil, err
@@ -274,9 +277,12 @@ func (s *opensearchScaler) searchTemplate(ctx context.Context) ([]byte, error) {
 		Body:    bytes.NewReader(body),
 	})
 	if err != nil {
-		return nil, s.responseError(searchTemplResponse.Inspect().Response, err)
+		var resp *opensearch.Response
+		if searchTemplResponse != nil {
+			resp = searchTemplResponse.Inspect().Response
+		}
+		return nil, s.responseError(resp, err)
 	}
-
 	responseBody, err := s.readResponseBody(searchTemplResponse.Inspect().Response)
 	if err != nil {
 		return nil, err
