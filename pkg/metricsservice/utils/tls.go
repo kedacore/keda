@@ -167,30 +167,23 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 			return clone, nil
 		}
 	} else {
+		// VerifyConnection is called after the TLS handshake with the peer's
+		// verified chain available; we use it to re-check against currentPool so
+		// that a freshly-rotated CA is honoured without setting InsecureSkipVerify.
 		config.RootCAs = certPool
-		// For the client side, VerifyPeerCertificate is used to check against
-		// the latest pool on every connection.
-		config.InsecureSkipVerify = true //nolint:gosec // verification done in VerifyPeerCertificate
-		config.VerifyPeerCertificate = func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
+		config.VerifyConnection = func(cs tls.ConnectionState) error {
 			certMutex.RLock()
 			pool := currentPool
 			certMutex.RUnlock()
-			certs := make([]*x509.Certificate, 0, len(rawCerts))
-			for _, rawCert := range rawCerts {
-				c, err := x509.ParseCertificate(rawCert)
-				if err != nil {
-					return err
-				}
-				certs = append(certs, c)
-			}
 			opts := x509.VerifyOptions{
 				Roots:         pool,
 				Intermediates: x509.NewCertPool(),
+				DNSName:       cs.ServerName,
 			}
-			for _, c := range certs[1:] {
+			for _, c := range cs.PeerCertificates[1:] {
 				opts.Intermediates.AddCert(c)
 			}
-			_, err := certs[0].Verify(opts)
+			_, err := cs.PeerCertificates[0].Verify(opts)
 			return err
 		}
 	}
