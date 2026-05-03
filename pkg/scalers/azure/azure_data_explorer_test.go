@@ -38,7 +38,6 @@ type testGetDataExplorerAuthConfig struct {
 
 var (
 	clientID              = "test_client_id"
-	columns               = query.Columns{query.NewColumn(0, rowName, rowType)}
 	rowName               = "result"
 	rowType  types.Column = "long"
 	rowValue int64        = 3
