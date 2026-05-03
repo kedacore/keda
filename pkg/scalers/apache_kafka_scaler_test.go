@@ -12,6 +12,8 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
+const stringTrue = "true"
+
 type parseApacheKafkaMetadataTestData struct {
 	metadata                           map[string]string
 	isError                            bool

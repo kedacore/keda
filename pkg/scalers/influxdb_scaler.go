@@ -56,10 +56,6 @@ func (i *influxDBMetadata) Validate() error {
 		i.AuthToken = i.AuthTokenOld
 	}
 
-	if i.AuthToken == "" {
-		return fmt.Errorf("authToken is required")
-	}
-
 	if i.InfluxVersion == "3" {
 		if i.Database == "" {
 			return fmt.Errorf("database is required if influxVersion is 3")
