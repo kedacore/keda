@@ -29,10 +29,11 @@ const (
 	ENT                  = "ent"
 	REPO                 = "repo"
 	githubDefaultPerPage = 30
-	// githubScalerMaxCacheEntries caps the etags and previousJobs maps. Without
-	// it the etags map grows once per workflow run for the lifetime of the
-	// operator pod (the URL contains the run ID), and previousJobs grows once
-	// per distinct workflow repository name returned by the API.
+	// githubScalerMaxCacheEntries caps the etags, previousJobs, and
+	// previousWfrs maps. Without it the etags map grows once per workflow run
+	// for the lifetime of the operator pod (the URL contains the run ID), and
+	// previousJobs and previousWfrs grow once per distinct repository name
+	// returned by the API.
 	githubScalerMaxCacheEntries = 5000
 )
 
@@ -635,8 +636,16 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 		if s.previousJobs[repoName] != nil {
 			return s.previousJobs[repoName], nil
 		}
-
-		return nil, fmt.Errorf("request for jobs returned status: %d %s but previous jobs is not set", statusCode, http.StatusText(statusCode))
+		// Stale etag without a paired previousJobs entry, e.g. after pruneCaches
+		// evicted the previous entry. Drop the etag and retry as a cache miss.
+		delete(s.etags, apiURL)
+		body, statusCode, err = s.getGithubRequest(ctx, apiURL, s.metadata, s.httpClient)
+		if err != nil {
+			return nil, err
+		}
+		if statusCode == 304 {
+			return nil, fmt.Errorf("request for jobs returned status: %d %s but previous jobs is not set", statusCode, http.StatusText(statusCode))
+		}
 	}
 
 	var jobs Jobs
@@ -670,8 +679,18 @@ func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName strin
 		if s.previousWfrs[repoName][status] != nil {
 			return s.previousWfrs[repoName][status], nil
 		}
-
-		return nil, fmt.Errorf("request for workflow runs returned status: %d %s but previous workflow runs is not set. Repo: %s, Status: %s", statusCode, http.StatusText(statusCode), repoName, status)
+		// Stale etag without a paired previousWfrs entry, e.g. after pruneCaches
+		// evicted the previous entry. Drop the etag and retry as a cache miss.
+		delete(s.etags, apiURL)
+		body, statusCode, err = s.getGithubRequest(ctx, apiURL, s.metadata, s.httpClient)
+		if err != nil && statusCode == 404 {
+			return nil, nil
+		} else if err != nil {
+			return nil, err
+		}
+		if statusCode == 304 {
+			return nil, fmt.Errorf("request for workflow runs returned status: %d %s but previous workflow runs is not set. Repo: %s, Status: %s", statusCode, http.StatusText(statusCode), repoName, status)
+		}
 	}
 
 	var wfrs WorkflowRuns
