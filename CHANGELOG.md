@@ -82,6 +82,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Make APIService cert injections optional ([#7559](https://github.com/kedacore/keda/pull/7559))
 - **Elasticsearch Scaler**: Add HTTP status check for Elasticsearch errors ([#7480](https://github.com/kedacore/keda/pull/7480))
 - **Kubernetes Workload Scaler**: Add `groupByNode` parameter ([#7628](https://github.com/kedacore/keda/issues/7628))
+- **General**: Add histogram mirrors `keda_scaler_metrics_duration_seconds` and `keda_internal_scale_loop_duration_seconds` for the existing latency gauges, on both Prometheus and OpenTelemetry exporters ([#7675](https://github.com/kedacore/keda/issues/7675))
 
 ### Fixes
 
