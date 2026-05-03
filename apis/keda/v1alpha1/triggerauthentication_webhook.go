@@ -221,14 +221,6 @@ func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 			return nil, fmt.Errorf("oauth2.tokenUrl is required when oauth2 is configured")
 		}
 
-		if oauth2.ClientSecret.ValueFrom.SecretKeyRef.Name == "" {
-			return nil, fmt.Errorf("oauth2.clientSecret.valueFrom.secretKeyRef.name is required")
-		}
-
-		if oauth2.ClientSecret.ValueFrom.SecretKeyRef.Key == "" {
-			return nil, fmt.Errorf("oauth2.clientSecret.valueFrom.secretKeyRef.key is required")
-		}
-
 		parsedURL, err := url.Parse(oauth2.TokenURL)
 		if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
 			return nil, fmt.Errorf("oauth2.tokenUrl must be a valid http or https URL")
