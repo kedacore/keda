@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"net"
 	"os"
 	"path"
 	"strings"
@@ -106,24 +107,23 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 					newPool = x509.NewCertPool()
 				}
 				if !newPool.AppendCertsFromPEM(pemClientCA) {
-					log.Error(err, "failed to add client CA's certificate")
+					log.Error(fmt.Errorf("failed to parse CA PEM from %s", caPath), "failed to add client CA's certificate")
 					continue
 				}
-				certMutex.Lock()
-				currentPool = newPool
-				certMutex.Unlock()
-				log.V(1).Info("grpc ca certificate has been updated")
 
-				// Load certificate of the CA who signed client's certificate
+				// Load the new leaf certificate *before* swapping the pool so
+				// we never end up trusting only the new CA while still presenting
+				// the old cert (inconsistent state during rotation).
 				cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 				if err != nil {
 					log.Error(err, "error reading grpc certificate")
 					continue
 				}
 				certMutex.Lock()
+				currentPool = newPool
 				mTLSCertificate = cert
 				certMutex.Unlock()
-				log.V(1).Info("grpc mTLS certificate has been updated")
+				log.V(1).Info("grpc CA and mTLS certificate have been updated")
 
 			case err, ok := <-watcher.Errors:
 				if !ok { // Channel was closed (i.e. Watcher.Close() was called).
@@ -167,26 +167,59 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 			return clone, nil
 		}
 	} else {
-		// VerifyConnection is called after the TLS handshake with the peer's
-		// verified chain available; we use it to re-check against currentPool so
-		// that a freshly-rotated CA is honoured without setting InsecureSkipVerify.
 		config.RootCAs = certPool
-		config.VerifyConnection = func(cs tls.ConnectionState) error {
-			certMutex.RLock()
-			pool := currentPool
-			certMutex.RUnlock()
-			opts := x509.VerifyOptions{
-				Roots:         pool,
-				Intermediates: x509.NewCertPool(),
-				DNSName:       cs.ServerName,
-			}
-			for _, c := range cs.PeerCertificates[1:] {
-				opts.Intermediates.AddCert(c)
-			}
-			_, err := cs.PeerCertificates[0].Verify(opts)
-			return err
-		}
 	}
 
-	return credentials.NewTLS(config), nil
+	baseCreds := credentials.NewTLS(config)
+	if server {
+		return baseCreds, nil
+	}
+	// Wrap the client credentials so that every new TLS handshake picks up the
+	// latest CA pool.  credentials.NewTLS snapshots the config once; by cloning
+	// it on each ClientHandshake we ensure that a rotated CA is trusted without
+	// any data-race on config.RootCAs.
+	return &dynamicClientCredentials{
+		base:        baseCreds,
+		baseConfig:  config,
+		mu:          &certMutex,
+		currentPool: &currentPool,
+	}, nil
+}
+
+// dynamicClientCredentials wraps a gRPC TransportCredentials and injects the
+// latest CA pool into a fresh tls.Config clone on every client handshake.
+type dynamicClientCredentials struct {
+	base        credentials.TransportCredentials
+	baseConfig  *tls.Config
+	mu          *sync.RWMutex
+	currentPool **x509.CertPool
+}
+
+func (d *dynamicClientCredentials) ClientHandshake(ctx context.Context, authority string, conn net.Conn) (net.Conn, credentials.AuthInfo, error) {
+	d.mu.RLock()
+	cfg := d.baseConfig.Clone()
+	cfg.RootCAs = *d.currentPool
+	d.mu.RUnlock()
+	return credentials.NewTLS(cfg).ClientHandshake(ctx, authority, conn)
+}
+
+func (d *dynamicClientCredentials) ServerHandshake(conn net.Conn) (net.Conn, credentials.AuthInfo, error) {
+	return d.base.ServerHandshake(conn)
+}
+
+func (d *dynamicClientCredentials) Info() credentials.ProtocolInfo {
+	return d.base.Info()
+}
+
+func (d *dynamicClientCredentials) Clone() credentials.TransportCredentials {
+	return &dynamicClientCredentials{
+		base:        d.base.Clone(),
+		baseConfig:  d.baseConfig.Clone(),
+		mu:          d.mu,
+		currentPool: d.currentPool,
+	}
+}
+
+func (d *dynamicClientCredentials) OverrideServerName(name string) error {
+	return d.base.OverrideServerName(name)
 }
