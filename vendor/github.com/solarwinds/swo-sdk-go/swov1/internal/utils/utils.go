@@ -46,6 +46,14 @@ func UnmarshalJsonFromResponseBody(body io.Reader, out interface{}, tag string) 
 	return nil
 }
 
+func UnmarshalJsonFromString(json string, out interface{}, tag string) error {
+	if err := UnmarshalJSON([]byte(json), out, reflect.StructTag(tag), true, nil); err != nil {
+		return fmt.Errorf("error unmarshalling json response body: %w", err)
+	}
+
+	return nil
+}
+
 func ReplaceParameters(stringWithParams string, params map[string]string) string {
 	if len(params) == 0 {
 		return stringWithParams
@@ -358,13 +366,20 @@ func contains(arr []string, str string) bool {
 	return false
 }
 
+func DrainBody(res *http.Response) {
+	io.Copy(io.Discard, res.Body)
+	res.Body.Close()
+	res.Body = io.NopCloser(bytes.NewReader(nil))
+}
+
 func ConsumeRawBody(res *http.Response) ([]byte, error) {
+	defer res.Body.Close()
+
 	rawBody, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
 
-	res.Body.Close()
 	res.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	return rawBody, nil

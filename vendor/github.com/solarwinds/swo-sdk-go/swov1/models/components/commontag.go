@@ -3,7 +3,9 @@
 package components
 
 type CommonTag struct {
-	Key   string `json:"key"`
+	// Tag key.
+	Key string `json:"key"`
+	// Tag value.
 	Value string `json:"value"`
 }
 

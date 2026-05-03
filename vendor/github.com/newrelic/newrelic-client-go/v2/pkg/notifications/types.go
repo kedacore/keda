@@ -203,6 +203,8 @@ var AiNotificationsDestinationFieldsTypes = struct {
 	LAST_SENT AiNotificationsDestinationFields
 	// name field
 	NAME AiNotificationsDestinationFields
+	// Scope field
+	SCOPE AiNotificationsDestinationFields
 	// status field
 	STATUS AiNotificationsDestinationFields
 	// type field
@@ -222,6 +224,8 @@ var AiNotificationsDestinationFieldsTypes = struct {
 	LAST_SENT: "LAST_SENT",
 	// name field
 	NAME: "NAME",
+	// Scope field
+	SCOPE: "SCOPE",
 	// status field
 	STATUS: "STATUS",
 	// type field
@@ -366,6 +370,36 @@ var AiNotificationsDestinationTypeTypes = struct {
 	WORKFLOW_AUTOMATION: "WORKFLOW_AUTOMATION",
 }
 
+// AiNotificationsEntityScopeType - Entity Scope Type
+type AiNotificationsEntityScopeType string
+
+var AiNotificationsEntityScopeTypeTypes = struct {
+	// Account Scope Type
+	ACCOUNT AiNotificationsEntityScopeType
+	// Organization Scope Type
+	ORGANIZATION AiNotificationsEntityScopeType
+}{
+	// Account Scope Type
+	ACCOUNT: "ACCOUNT",
+	// Organization Scope Type
+	ORGANIZATION: "ORGANIZATION",
+}
+
+// AiNotificationsEntityScopeTypeInput - Entity Scope Type
+type AiNotificationsEntityScopeTypeInput string
+
+var AiNotificationsEntityScopeTypeInputTypes = struct {
+	// Account Scope Type
+	ACCOUNT AiNotificationsEntityScopeTypeInput
+	// Organization Scope Type
+	ORGANIZATION AiNotificationsEntityScopeTypeInput
+}{
+	// Account Scope Type
+	ACCOUNT: "ACCOUNT",
+	// Organization Scope Type
+	ORGANIZATION: "ORGANIZATION",
+}
+
 // AiNotificationsErrorType - Error types
 type AiNotificationsErrorType string
 
@@ -453,6 +487,21 @@ var AiNotificationsErrorTypeTypes = struct {
 	UNKNOWN_ERROR: "UNKNOWN_ERROR",
 }
 
+// AiNotificationsExtendedScopeService - Extended scope service types
+type AiNotificationsExtendedScopeService string
+
+var AiNotificationsExtendedScopeServiceTypes = struct {
+	// Incident Management
+	IM AiNotificationsExtendedScopeService
+	// Site Reliability Engineering
+	SRE AiNotificationsExtendedScopeService
+}{
+	// Incident Management
+	IM: "IM",
+	// Site Reliability Engineering
+	SRE: "SRE",
+}
+
 // AiNotificationsProduct - Product types
 type AiNotificationsProduct string
 
@@ -463,6 +512,8 @@ var AiNotificationsProductTypes = struct {
 	APM AiNotificationsProduct
 	// Change tracking product type
 	CHANGE_TRACKING AiNotificationsProduct
+	// Commerce growth product type
+	COMMERCE AiNotificationsProduct
 	// CSSP (EOPs) product type
 	CSSP AiNotificationsProduct
 	// Discussions and comments product type
@@ -471,6 +522,8 @@ var AiNotificationsProductTypes = struct {
 	ERROR_TRACKING AiNotificationsProduct
 	// Incident Intelligence product type
 	IINT AiNotificationsProduct
+	// Logging UI product type
+	LOGGING_UI AiNotificationsProduct
 	// Notifications internal product type
 	NTFC AiNotificationsProduct
 	// Proactive Detection product type
@@ -479,6 +532,8 @@ var AiNotificationsProductTypes = struct {
 	SECURITY AiNotificationsProduct
 	// Sharing product type
 	SHARING AiNotificationsProduct
+	// Workflow Automation product type
+	WORKFLOW_AUTOMATION AiNotificationsProduct
 }{
 	// Alerts product type
 	ALERTS: "ALERTS",
@@ -486,6 +541,8 @@ var AiNotificationsProductTypes = struct {
 	APM: "APM",
 	// Change tracking product type
 	CHANGE_TRACKING: "CHANGE_TRACKING",
+	// Commerce growth product type
+	COMMERCE: "COMMERCE",
 	// CSSP (EOPs) product type
 	CSSP: "CSSP",
 	// Discussions and comments product type
@@ -494,6 +551,8 @@ var AiNotificationsProductTypes = struct {
 	ERROR_TRACKING: "ERROR_TRACKING",
 	// Incident Intelligence product type
 	IINT: "IINT",
+	// Logging UI product type
+	LOGGING_UI: "LOGGING_UI",
 	// Notifications internal product type
 	NTFC: "NTFC",
 	// Proactive Detection product type
@@ -502,6 +561,23 @@ var AiNotificationsProductTypes = struct {
 	SECURITY: "SECURITY",
 	// Sharing product type
 	SHARING: "SHARING",
+	// Workflow Automation product type
+	WORKFLOW_AUTOMATION: "WORKFLOW_AUTOMATION",
+}
+
+// AiNotificationsResult - Result status
+type AiNotificationsResult string
+
+var AiNotificationsResultTypes = struct {
+	// Failure
+	FAIL AiNotificationsResult
+	// Success
+	SUCCESS AiNotificationsResult
+}{
+	// Failure
+	FAIL: "FAIL",
+	// Success
+	SUCCESS: "SUCCESS",
 }
 
 // AiNotificationsSortOrder - Sort order
@@ -517,6 +593,76 @@ var AiNotificationsSortOrderTypes = struct {
 	ASC: "ASC",
 	// Descending sort order
 	DESC: "DESC",
+}
+
+// AiNotificationsUiComponentType - UI component type
+type AiNotificationsUiComponentType string
+
+var AiNotificationsUiComponentTypeTypes = struct {
+	// Button component
+	BUTTON AiNotificationsUiComponentType
+	// Dictionary type component
+	DICTIONARY_WITH_MASK AiNotificationsUiComponentType
+	// Handlebars powered payload editor
+	PAYLOAD AiNotificationsUiComponentType
+	// Select component
+	SELECT AiNotificationsUiComponentType
+	// Multiline text box
+	TEXT_AREA AiNotificationsUiComponentType
+	// Single line text field
+	TEXT_FIELD AiNotificationsUiComponentType
+	// Toggle component
+	TOGGLE AiNotificationsUiComponentType
+}{
+	// Button component
+	BUTTON: "BUTTON",
+	// Dictionary type component
+	DICTIONARY_WITH_MASK: "DICTIONARY_WITH_MASK",
+	// Handlebars powered payload editor
+	PAYLOAD: "PAYLOAD",
+	// Select component
+	SELECT: "SELECT",
+	// Multiline text box
+	TEXT_AREA: "TEXT_AREA",
+	// Single line text field
+	TEXT_FIELD: "TEXT_FIELD",
+	// Toggle component
+	TOGGLE: "TOGGLE",
+}
+
+// AiNotificationsUiComponentValidation - Type of Validation required for this component
+type AiNotificationsUiComponentValidation string
+
+var AiNotificationsUiComponentValidationTypes = struct {
+	// Data should be a valid DATE ISO-8601 format
+	DATE AiNotificationsUiComponentValidation
+	// Data should be a valid DATETIME ISO-8601 format
+	DATETIME AiNotificationsUiComponentValidation
+	// Data should be a valid email
+	EMAIL AiNotificationsUiComponentValidation
+	// Data should be a valid JSON
+	JSON AiNotificationsUiComponentValidation
+	// No validation
+	NONE AiNotificationsUiComponentValidation
+	// Data should be a valid number
+	NUMBER AiNotificationsUiComponentValidation
+	// Data should be a valid URL
+	URL AiNotificationsUiComponentValidation
+}{
+	// Data should be a valid DATE ISO-8601 format
+	DATE: "DATE",
+	// Data should be a valid DATETIME ISO-8601 format
+	DATETIME: "DATETIME",
+	// Data should be a valid email
+	EMAIL: "EMAIL",
+	// Data should be a valid JSON
+	JSON: "JSON",
+	// No validation
+	NONE: "NONE",
+	// Data should be a valid number
+	NUMBER: "NUMBER",
+	// Data should be a valid URL
+	URL: "URL",
 }
 
 // AlertsNotificationChannelType - The type of the notification channel which determines its configuration field.
@@ -616,14 +762,26 @@ type Account struct {
 type Actor struct {
 	// The `account` field is the entry point into data that is scoped to a single account.
 	Account Account `json:"account,omitempty"`
+	// The `organization` field is the entry point into data that is scoped to the user's organization.
+	Organization Organization `json:"organization,omitempty"`
 }
 
 // AiNotificationsAccountStitchedFields -
 type AiNotificationsAccountStitchedFields struct {
+	// Fetch channel creation schema
+	ChannelSchema AiNotificationsChannelSchemaResult `json:"channelSchema,omitempty"`
 	// Fetch a Channel by product
 	Channels AiNotificationsChannelsResponse `json:"channels,omitempty"`
 	// Fetch a Destinations by type
 	Destinations AiNotificationsDestinationsResponse `json:"destinations,omitempty"`
+}
+
+// AiNotificationsBasicAuth - Basic user and password authentication
+type AiNotificationsBasicAuth struct {
+	// Authentication Type - Basic
+	AuthType AiNotificationsAuthType `json:"authType"`
+	// Username
+	User string `json:"user"`
 }
 
 // AiNotificationsBasicAuthInput - Basic auth input object
@@ -708,12 +866,38 @@ type AiNotificationsChannelResponse struct {
 	Errors []ai.AiNotificationsError `json:"errors"`
 }
 
+// AiNotificationsChannelSchemaResult - Channel schema object
+type AiNotificationsChannelSchemaResult struct {
+	// Error while querying channelSchema
+	Error ai.AiNotificationsError `json:"error,omitempty"`
+	// Deprecated list of errors
+	Errors []ai.AiNotificationsError `json:"errors"`
+	// Result of channelSchema query
+	Result AiNotificationsResult `json:"result"`
+	// Possible fields for the channel
+	Schema AiNotificationsSchema `json:"schema,omitempty"`
+}
+
 // AiNotificationsChannelSorter - Sort object
 type AiNotificationsChannelSorter struct {
 	// direction
 	Direction AiNotificationsSortOrder `json:"direction"`
 	// field
 	Field AiNotificationsChannelFields `json:"field"`
+}
+
+// AiNotificationsChannelTestResponse - Result of a notification test
+type AiNotificationsChannelTestResponse struct {
+	// Extra details (if available)
+	Details string `json:"details,omitempty"`
+	// Test response error
+	Error ai.AiNotificationsError `json:"error,omitempty"`
+	// Deprecated list of errors
+	Errors []ai.AiNotificationsError `json:"errors"`
+	// The evidence (url for example) of the channel being created.
+	Evidence string `json:"evidence,omitempty"`
+	// Test result - success or failure
+	Result AiNotificationsResult `json:"result"`
 }
 
 // AiNotificationsChannelUpdate - Channel update object
@@ -731,13 +915,21 @@ type AiNotificationsChannelsResponse struct {
 	// Channel entities
 	Entities []AiNotificationsChannel `json:"entities"`
 	// Error in channel entities fetching
-	Error AiNotificationsResponseError `json:"error,omitempty"`
+	Error ai.AiNotificationsResponseError `json:"error,omitempty"`
 	// Deprecated list of errors
-	Errors []AiNotificationsResponseError `json:"errors"`
+	Errors []ai.AiNotificationsResponseError `json:"errors"`
 	// Cursor to get the next batch of results
 	NextCursor string `json:"nextCursor,omitempty"`
 	// Count of all channel entities
 	TotalCount int `json:"totalCount"`
+}
+
+// AiNotificationsConstraintError - Missing constraint error. Constraints can be retrieved using suggestion api
+type AiNotificationsConstraintError struct {
+	// Names of other constraints this constraint is dependent on
+	Dependencies []string `json:"dependencies"`
+	// Name of the missing constraint
+	Name string `json:"name"`
 }
 
 // AiNotificationsCredentialsInput - Credential input object
@@ -754,6 +946,12 @@ type AiNotificationsCredentialsInput struct {
 	Type AiNotificationsAuthType `json:"type"`
 }
 
+// AiNotificationsCustomHeader - Custom header based authentication
+type AiNotificationsCustomHeader struct {
+	// Authentication Header Key
+	Key string `json:"key"`
+}
+
 // AiNotificationsCustomHeaderInput - Custom header input object
 type AiNotificationsCustomHeaderInput struct {
 	// key
@@ -762,18 +960,34 @@ type AiNotificationsCustomHeaderInput struct {
 	Value SecureValue `json:"value,omitempty"`
 }
 
+// AiNotificationsCustomHeadersAuth - Custom header based authentication
+type AiNotificationsCustomHeadersAuth struct {
+	// Authentication type - Custom headers
+	AuthType AiNotificationsAuthType `json:"authType"`
+	// List of custom headers
+	CustomHeaders []AiNotificationsCustomHeader `json:"customHeaders"`
+}
+
 // AiNotificationsCustomHeadersAuthInput - Custom headers auth input object
 type AiNotificationsCustomHeadersAuthInput struct {
 	// customHeaders
 	CustomHeaders []AiNotificationsCustomHeaderInput `json:"customHeaders,omitempty"`
 }
 
+// AiNotificationsDataValidationError - Object for validation errors
+type AiNotificationsDataValidationError struct {
+	// Top level error details
+	Details string `json:"details"`
+	// List of invalid fields
+	Fields []ai.AiNotificationsFieldError `json:"fields"`
+}
+
 // AiNotificationsDeleteResponse - Delete response object
 type AiNotificationsDeleteResponse struct {
 	// Error in object deletion
-	Error AiNotificationsResponseError `json:"error,omitempty"`
+	Error ai.AiNotificationsResponseError `json:"error,omitempty"`
 	// Deprecated list of errors
-	Errors []AiNotificationsResponseError `json:"errors"`
+	Errors []ai.AiNotificationsResponseError `json:"errors"`
 	// Deleted object ids
 	IDs []string `json:"ids"`
 }
@@ -800,6 +1014,8 @@ type AiNotificationsDestination struct {
 	Name string `json:"name"`
 	// List of destination property types
 	Properties []AiNotificationsProperty `json:"properties"`
+	// Scope of destination
+	Scope AiNotificationsEntityScope `json:"scope"`
 	// URL in secure format
 	SecureURL AiNotificationsSecureURL `json:"secureUrl,omitempty"`
 	// Destination status
@@ -818,16 +1034,18 @@ type AiNotificationsDestinationFilter struct {
 	Active bool `json:"active,omitempty"`
 	// authType
 	AuthType AiNotificationsAuthType `json:"authType,omitempty"`
+	// exactName
+	ExactName string `json:"exactName,omitempty"`
 	// id
 	ID string `json:"id,omitempty"`
 	// ids
 	IDs []string `json:"ids"`
 	// name
 	Name string `json:"name,omitempty"`
-	// exactName - exact match for destination name
-	ExactName string `json:"exactName,omitempty"`
 	// property
 	Property AiNotificationsPropertyFilter `json:"property,omitempty"`
+	// scopeTypes
+	ScopeTypes []AiNotificationsEntityScopeTypeInput `json:"scopeTypes"`
 	// type
 	Type AiNotificationsDestinationType `json:"type,omitempty"`
 	// updatedAt
@@ -841,7 +1059,7 @@ type AiNotificationsDestinationInput struct {
 	// name
 	Name string `json:"name"`
 	// properties
-	Properties []AiNotificationsPropertyInput `json:"properties"`
+	Properties []AiNotificationsPropertyInput `json:"properties,omitempty"`
 	// secureUrl
 	SecureURL *AiNotificationsSecureURLInput `json:"secureUrl,omitempty"`
 	// type
@@ -866,6 +1084,18 @@ type AiNotificationsDestinationSorter struct {
 	Field AiNotificationsDestinationFields `json:"field"`
 }
 
+// AiNotificationsDestinationTestResponse - Result of a connection test
+type AiNotificationsDestinationTestResponse struct {
+	// Extra details (if available)
+	Details string `json:"details,omitempty"`
+	// Test response error
+	Error ai.AiNotificationsError `json:"error,omitempty"`
+	// Deprecated list of errors
+	Errors []ai.AiNotificationsError `json:"errors"`
+	// Test result - success or failure
+	Result AiNotificationsResult `json:"result"`
+}
+
 // AiNotificationsDestinationUpdate - Destination update object
 type AiNotificationsDestinationUpdate struct {
 	// active
@@ -887,13 +1117,57 @@ type AiNotificationsDestinationsResponse struct {
 	// Destination entities
 	Entities []AiNotificationsDestination `json:"entities"`
 	// Error in destinations entities fetching
-	Error AiNotificationsResponseError `json:"error,omitempty"`
+	Error ai.AiNotificationsResponseError `json:"error,omitempty"`
 	// Deprecated list of errors
-	Errors []AiNotificationsResponseError `json:"errors"`
+	Errors []ai.AiNotificationsResponseError `json:"errors"`
 	// Cursor to get the next batch of results
 	NextCursor string `json:"nextCursor,omitempty"`
 	// Count of all destination entities
 	TotalCount int `json:"totalCount"`
+}
+
+// AiNotificationsEntityScope - Entity Scope
+type AiNotificationsEntityScope struct {
+	// Entity scope id
+	ID string `json:"id"`
+	// Entity scope type
+	Type AiNotificationsEntityScopeType `json:"type"`
+}
+
+// AiNotificationsEntityScopeInput - Entity Scope
+type AiNotificationsEntityScopeInput struct {
+	// id
+	ID string `json:"id"`
+	// type
+	Type AiNotificationsEntityScopeTypeInput `json:"type"`
+}
+
+// AiNotificationsFieldError - Invalid field object
+type AiNotificationsFieldError struct {
+	// Field name
+	Field string `json:"field"`
+	// Validation error
+	Message string `json:"message"`
+}
+
+// AiNotificationsOAuth2Auth - OAuth2 based authentication
+type AiNotificationsOAuth2Auth struct {
+	// OAuth2 access token url
+	AccessTokenURL string `json:"accessTokenUrl"`
+	// Authentication Type - Token or Oauth2
+	AuthType AiNotificationsAuthType `json:"authType"`
+	// OAuth2 authorization url
+	AuthorizationURL string `json:"authorizationUrl"`
+	// OAuth2 clientId
+	ClientId string `json:"clientId"`
+	// Token prefix
+	Prefix string `json:"prefix"`
+	// Interval of how often should the access token be refreshed
+	RefreshInterval int `json:"refreshInterval,omitempty"`
+	// Is the OAuth2 access token refreshable
+	Refreshable bool `json:"refreshable"`
+	// OAuth2 token's scope
+	Scope string `json:"scope,omitempty"`
 }
 
 // AiNotificationsOAuth2AuthInput - OAuth2 auth input object
@@ -918,6 +1192,12 @@ type AiNotificationsOAuth2AuthInput struct {
 	Scope string `json:"scope,omitempty"`
 	// token
 	Token SecureValue `json:"token"`
+}
+
+// AiNotificationsOrganizationStitchedFields - Organization level queries
+type AiNotificationsOrganizationStitchedFields struct {
+	// Fetch a Destinations by type
+	Destinations AiNotificationsDestinationsResponse `json:"destinations,omitempty"`
 }
 
 // AiNotificationsProperty - Channel property Object
@@ -962,6 +1242,24 @@ type AiNotificationsResponseError struct {
 	Type AiNotificationsErrorType `json:"type"`
 }
 
+// AiNotificationsSchema - Channel schema object
+type AiNotificationsSchema struct {
+	// Possible fields for the channel
+	Fields []AiNotificationsSchemaField `json:"fields"`
+}
+
+// AiNotificationsSchemaField - Schema field object
+type AiNotificationsSchemaField struct {
+	// UI Component details
+	Component AiNotificationsUiComponent `json:"component"`
+	// Field key
+	Key string `json:"key"`
+	// Field label shown in the UI
+	Label string `json:"label"`
+	// Is the field mandatory
+	Mandatory bool `json:"mandatory"`
+}
+
 // AiNotificationsSecureURL - URL in secure format
 type AiNotificationsSecureURL struct {
 	// URL prefix
@@ -984,12 +1282,74 @@ type AiNotificationsSecureURLUpdate struct {
 	SecureSuffix SecureValue `json:"secureSuffix,omitempty"`
 }
 
+// AiNotificationsSelectComponentOptions - Additional options for SELECT type components
+type AiNotificationsSelectComponentOptions struct {
+	// Is custom value creation allowed
+	Creatable bool `json:"creatable"`
+	// List of field keys their values are required in order to fetch suggestions for this field
+	DependentOn []string `json:"dependentOn"`
+	// List of field keys their values can be used to filter suggestions by
+	FilteredBy []string `json:"filteredBy"`
+	// Do we allow additional values as input other than suggested?
+	Label bool `json:"label"`
+	// Are we expecting a single or multiple values
+	Multiple bool `json:"multiple"`
+	// Is this component searchable
+	Searchable bool `json:"searchable"`
+	// Preloaded suggestions for
+	Suggestions []AiNotificationsSuggestion `json:"suggestions"`
+}
+
+// AiNotificationsSuggestion - Suggestion object
+type AiNotificationsSuggestion struct {
+	// Suggestion label
+	DisplayValue string `json:"displayValue"`
+	// Should suggestion be the default selection
+	Icon string `json:"icon,omitempty"`
+	// Suggestion key
+	Value string `json:"value"`
+}
+
+// AiNotificationsSuggestionError - Object for suggestion errors
+type AiNotificationsSuggestionError struct {
+	// SuggestionError description
+	Description string `json:"description"`
+	// SuggestionError details
+	Details string `json:"details"`
+	// SuggestionError type
+	Type AiNotificationsErrorType `json:"type"`
+}
+
+// AiNotificationsTokenAuth - Token based authentication
+type AiNotificationsTokenAuth struct {
+	// Authentication Type - Token or Oauth2
+	AuthType AiNotificationsAuthType `json:"authType"`
+	// Token Prefix
+	Prefix string `json:"prefix"`
+}
+
 // AiNotificationsTokenAuthInput - Token auth input object
 type AiNotificationsTokenAuthInput struct {
 	// prefix
 	Prefix string `json:"prefix,omitempty"`
 	// token
 	Token SecureValue `json:"token"`
+}
+
+// AiNotificationsUiComponent - UI component object
+type AiNotificationsUiComponent struct {
+	// Should we allow variables rendering in this component
+	AllowTemplateVariables bool `json:"allowTemplateVariables"`
+	// Which data validation is applied to this component
+	DataValidation AiNotificationsUiComponentValidation `json:"dataValidation"`
+	// Default value of this component
+	DefaultValue AiNotificationsSuggestion `json:"defaultValue,omitempty"`
+	// Additional options for SELECT type components
+	SelectOptions AiNotificationsSelectComponentOptions `json:"selectOptions,omitempty"`
+	// Component type
+	Type AiNotificationsUiComponentType `json:"type"`
+	// Is this component a part of the default fields
+	VisibleByDefault bool `json:"visibleByDefault"`
 }
 
 // AlertsCampfireNotificationChannel - Campfire notification channel.
@@ -1286,6 +1646,20 @@ func (x *AlertsXMattersNotificationChannel) ImplementsAlertsNotificationChannel(
 type AlertsXMattersNotificationChannelConfig struct {
 	// Integration URL.
 	IntegrationURL SecureValue `json:"integrationUrl"`
+}
+
+// Organization - The `Organization` object provides basic data about an organization.
+type Organization struct {
+	// This field provides access to AiNotifications data.
+	AiNotifications AiNotificationsOrganizationStitchedFields `json:"aiNotifications,omitempty"`
+	// The customer id for the organization.
+	CustomerId string `json:"customerId,omitempty"`
+	// The name of the organization.
+	Name string `json:"name,omitempty"`
+	// The storage account of the organization
+	StorageAccountId int `json:"storageAccountId,omitempty"`
+	// The telemetry id for the organization
+	TelemetryId string `json:"telemetryId,omitempty"`
 }
 
 type channelsResponse struct {

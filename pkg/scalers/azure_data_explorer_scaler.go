@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/azure-kusto-go/kusto"
+	"github.com/Azure/azure-kusto-go/azkustodata"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -34,7 +34,7 @@ import (
 type azureDataExplorerScaler struct {
 	metricType v2.MetricTargetType
 	metadata   *azure.DataExplorerMetadata
-	client     *kusto.Client
+	client     *azkustodata.Client
 	name       string
 	namespace  string
 	logger     logr.Logger
