@@ -55,7 +55,20 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
 			Name:      "metrics_latency_seconds",
-			Help:      "The latency of retrieving current metric from each scaler, in seconds.",
+			Help:      "The latency of retrieving current metric from each scaler, in seconds. DEPRECATED: prefer the histogram `keda_scaler_metrics_duration_seconds`.",
+		},
+		metricLabels,
+	)
+	// scalerMetricsDuration mirrors scalerMetricsLatency as a histogram. Histograms
+	// preserve distribution information (p50/p95/p99) which gauges cannot. The gauge
+	// is kept in parallel for backwards compatibility — see issue #7675.
+	scalerMetricsDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaler",
+			Name:      "metrics_duration_seconds",
+			Help:      "Distribution of latency, in seconds, for retrieving each scaler's current metric.",
+			Buckets:   []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60},
 		},
 		metricLabels,
 	)
@@ -127,7 +140,18 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "internal_scale_loop",
 			Name:      "latency_seconds",
-			Help:      "Total deviation (in seconds) between the expected execution time and the actual execution time for the scaling loop.",
+			Help:      "Total deviation (in seconds) between the expected execution time and the actual execution time for the scaling loop. DEPRECATED: prefer the histogram `keda_internal_scale_loop_duration_seconds`.",
+		},
+		[]string{"namespace", "type", "resource"},
+	)
+	// internalLoopDuration mirrors internalLoopLatency as a histogram (issue #7675).
+	internalLoopDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "internal_scale_loop",
+			Name:      "duration_seconds",
+			Help:      "Distribution of internal scaling-loop deviation in seconds (expected vs actual execution time).",
+			Buckets:   []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60},
 		},
 		[]string{"namespace", "type", "resource"},
 	)
@@ -160,7 +184,9 @@ type PromMetrics struct {
 func NewPromMetrics() *PromMetrics {
 	metrics.Registry.MustRegister(scalerMetricsValue)
 	metrics.Registry.MustRegister(scalerMetricsLatency)
+	metrics.Registry.MustRegister(scalerMetricsDuration)
 	metrics.Registry.MustRegister(internalLoopLatency)
+	metrics.Registry.MustRegister(internalLoopDuration)
 	metrics.Registry.MustRegister(scalerActive)
 	metrics.Registry.MustRegister(scalerErrors)
 	metrics.Registry.MustRegister(scaledObjectErrors)
@@ -194,16 +220,24 @@ func (p *PromMetrics) DeleteScalerMetrics(namespace string, scaledResource strin
 	scalerActive.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
 	scalerErrors.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
 	scalerMetricsLatency.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
+	scalerMetricsDuration.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
 }
 
-// RecordScalerLatency create a measurement of the latency to external metric
+// RecordScalerLatency create a measurement of the latency to external metric.
+// Writes both the deprecated gauge (`keda_scaler_metrics_latency_seconds`) and
+// the histogram mirror (`keda_scaler_metrics_duration_seconds`) — see #7675.
 func (p *PromMetrics) RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value time.Duration) {
-	scalerMetricsLatency.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Set(value.Seconds())
+	labels := getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)
+	scalerMetricsLatency.With(labels).Set(value.Seconds())
+	scalerMetricsDuration.With(labels).Observe(value.Seconds())
 }
 
-// RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
+// RecordScalableObjectLatency create a measurement of the latency executing
+// scalable object loop. Writes both the deprecated gauge and histogram mirror.
 func (p *PromMetrics) RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value time.Duration) {
-	internalLoopLatency.WithLabelValues(namespace, getResourceType(isScaledObject), name).Set(value.Seconds())
+	resourceType := getResourceType(isScaledObject)
+	internalLoopLatency.WithLabelValues(namespace, resourceType, name).Set(value.Seconds())
+	internalLoopDuration.WithLabelValues(namespace, resourceType, name).Observe(value.Seconds())
 }
 
 // RecordScalerActive create a measurement of the activity of the scaler
