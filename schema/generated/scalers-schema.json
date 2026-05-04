@@ -3784,7 +3784,7 @@
                     "name": "subscriptionSize",
                     "type": "string",
                     "optional": true,
-                    "deprecatedAnnounce": "The 'subscriptionSize' setting is DEPRECATED and will be removed in v2.20 - Use 'mode' and 'value' instead",
+                    "deprecated": "The 'subscriptionSize' setting is DEPRECATED and is removed in v2.20 - Use 'mode' and 'value' instead",
                     "metadataVariableReadable": true
                 },
                 {
