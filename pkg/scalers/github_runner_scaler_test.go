@@ -10,10 +10,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
-
-	"go.uber.org/atomic"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -918,14 +917,18 @@ func TestGithubRunnerPruneCachesBoundsMaps(t *testing.T) {
 }
 
 func TestGetWorkflowRunJobs_StaleEtagWithoutPreviousRetries(t *testing.T) {
-	var sawIfNoneMatch, sawNoIfNoneMatch atomic.Bool
+	var mu sync.Mutex
+	var sawIfNoneMatch, sawNoIfNoneMatch bool
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
 		if r.Header.Get("If-None-Match") != "" {
-			sawIfNoneMatch.Store(true)
+			sawIfNoneMatch = true
+			mu.Unlock()
 			w.WriteHeader(http.StatusNotModified)
 			return
 		}
-		sawNoIfNoneMatch.Store(true)
+		sawNoIfNoneMatch = true
+		mu.Unlock()
 		w.Header().Set("ETag", `"fresh-etag"`)
 		// nosemgrep: no-direct-write-to-responsewriter
 		_, _ = w.Write([]byte(testGhWFJobResponse))
@@ -952,8 +955,11 @@ func TestGetWorkflowRunJobs_StaleEtagWithoutPreviousRetries(t *testing.T) {
 	if len(jobs) == 0 {
 		t.Fatalf("expected jobs from retry, got empty slice")
 	}
-	if !sawIfNoneMatch.Load() || !sawNoIfNoneMatch.Load() {
-		t.Fatalf("expected one request with If-None-Match and one without, got ifNoneMatch=%v noIfNoneMatch=%v", sawIfNoneMatch.Load(), sawNoIfNoneMatch.Load())
+	mu.Lock()
+	gotIfNoneMatch, gotNoIfNoneMatch := sawIfNoneMatch, sawNoIfNoneMatch
+	mu.Unlock()
+	if !gotIfNoneMatch || !gotNoIfNoneMatch {
+		t.Fatalf("expected one request with If-None-Match and one without, got ifNoneMatch=%v noIfNoneMatch=%v", gotIfNoneMatch, gotNoIfNoneMatch)
 	}
 	if got := s.etags[apiURL]; got != `"fresh-etag"` {
 		t.Fatalf("expected etag to be refreshed to %q, got %q", `"fresh-etag"`, got)
@@ -961,14 +967,18 @@ func TestGetWorkflowRunJobs_StaleEtagWithoutPreviousRetries(t *testing.T) {
 }
 
 func TestGetWorkflowRuns_StaleEtagWithoutPreviousRetries(t *testing.T) {
-	var sawIfNoneMatch, sawNoIfNoneMatch atomic.Bool
+	var mu sync.Mutex
+	var sawIfNoneMatch, sawNoIfNoneMatch bool
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
 		if r.Header.Get("If-None-Match") != "" {
-			sawIfNoneMatch.Store(true)
+			sawIfNoneMatch = true
+			mu.Unlock()
 			w.WriteHeader(http.StatusNotModified)
 			return
 		}
-		sawNoIfNoneMatch.Store(true)
+		sawNoIfNoneMatch = true
+		mu.Unlock()
 		w.Header().Set("ETag", `"fresh-etag"`)
 		// nosemgrep: no-direct-write-to-responsewriter
 		_, _ = w.Write([]byte(testGhWorkflowResponse))
@@ -995,8 +1005,11 @@ func TestGetWorkflowRuns_StaleEtagWithoutPreviousRetries(t *testing.T) {
 	if wfrs == nil || len(wfrs.WorkflowRuns) == 0 {
 		t.Fatalf("expected workflow runs from retry, got empty result")
 	}
-	if !sawIfNoneMatch.Load() || !sawNoIfNoneMatch.Load() {
-		t.Fatalf("expected one request with If-None-Match and one without, got ifNoneMatch=%v noIfNoneMatch=%v", sawIfNoneMatch.Load(), sawNoIfNoneMatch.Load())
+	mu.Lock()
+	gotIfNoneMatch, gotNoIfNoneMatch := sawIfNoneMatch, sawNoIfNoneMatch
+	mu.Unlock()
+	if !gotIfNoneMatch || !gotNoIfNoneMatch {
+		t.Fatalf("expected one request with If-None-Match and one without, got ifNoneMatch=%v noIfNoneMatch=%v", gotIfNoneMatch, gotNoIfNoneMatch)
 	}
 	if got := s.etags[apiURL]; got != `"fresh-etag"` {
 		t.Fatalf("expected etag to be refreshed to %q, got %q", `"fresh-etag"`, got)
