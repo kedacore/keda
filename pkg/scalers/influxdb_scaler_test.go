@@ -31,40 +31,42 @@ type influxDBMetricIdentifier struct {
 var testInfluxDBMetadata = []parseInfluxDBMetadataTestData{
 	// 1 nothing passed
 	{map[string]string{}, true, map[string]string{}},
-	// 2 everything is passed in verbatim
-	{map[string]string{"serverURL": "https://influxdata.com", "metricName": "influx_metric", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken", "unsafeSsl": "false"}, false, map[string]string{}},
+	// 2 everything is passed in verbatim (authToken via authParams)
+	{map[string]string{"serverURL": "https://influxdata.com", "metricName": "influx_metric", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "unsafeSsl": "false"}, false, map[string]string{"authToken": "myToken"}},
 	// 3 everything is passed in (environment variables)
 	{map[string]string{"serverURL": "https://influxdata.com", "organizationNameFromEnv": "INFLUX_ORG", "query": "from(bucket: hello)", "thresholdValue": "10", "authTokenFromEnv": "INFLUX_TOKEN", "unsafeSsl": "false"}, false, map[string]string{}},
 	// 4 no serverURL passed
-	{map[string]string{"metricName": "influx_metric", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken", "unsafeSsl": "false"}, true, map[string]string{}},
+	{map[string]string{"metricName": "influx_metric", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "unsafeSsl": "false"}, true, map[string]string{"authToken": "myToken"}},
 	// 5 no organization name passed
-	{map[string]string{"serverURL": "https://influxdata.com", "metricName": "influx_metric", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken", "unsafeSsl": "false"}, true, map[string]string{}},
+	{map[string]string{"serverURL": "https://influxdata.com", "metricName": "influx_metric", "query": "from(bucket: hello)", "thresholdValue": "10", "unsafeSsl": "false"}, true, map[string]string{"authToken": "myToken"}},
 	// 6 no query passed
-	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "thresholdValue": "10", "authToken": "myToken", "unsafeSsl": "false"}, true, map[string]string{}},
+	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "thresholdValue": "10", "unsafeSsl": "false"}, true, map[string]string{"authToken": "myToken"}},
 	// 7 no threshold value passed
-	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "query": "from(bucket: hello)", "authToken": "myToken", "unsafeSsl": "false"}, true, map[string]string{}},
+	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "query": "from(bucket: hello)", "unsafeSsl": "false"}, true, map[string]string{"authToken": "myToken"}},
 	// 8 no auth token passed (optional, for unauthenticated instances)
 	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "unsafeSsl": "false"}, false, map[string]string{}},
 	// 9 authToken, organizationName, and serverURL are defined in authParams
 	{map[string]string{"query": "from(bucket: hello)", "thresholdValue": "10", "unsafeSsl": "false"}, false, map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "authToken": "myToken"}},
 	// 10 no unsafeSsl value passed
-	{map[string]string{"serverURL": "https://influxdata.com", "metricName": "influx_metric", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken"}, false, map[string]string{}},
+	{map[string]string{"serverURL": "https://influxdata.com", "metricName": "influx_metric", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10"}, false, map[string]string{"authToken": "myToken"}},
 	// 11 wrong activationThreshold value
-	{map[string]string{"serverURL": "https://influxdata.com", "metricName": "influx_metric", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "activationThresholdValue": "aa", "authToken": "myToken", "unsafeSsl": "false"}, true, map[string]string{}},
+	{map[string]string{"serverURL": "https://influxdata.com", "metricName": "influx_metric", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "activationThresholdValue": "aa", "unsafeSsl": "false"}, true, map[string]string{"authToken": "myToken"}},
 	// 12 unsupported influxVersion
-	{map[string]string{"serverURL": "https://influxdata.com", "influxVersion": "1", "database": "test", "metricKey": "mymetric", "metricName": "influx_metric", "organizationName": "influx_org", "query": "SELECT \"water_level\" FROM \"h2o_feet\" WHERE \"location\"='coyote_creek' ORDER BY time DESC LIMIT 1;", "thresholdValue": "10", "authToken": "myToken", "unsafeSsl": "false"}, true, map[string]string{}},
+	{map[string]string{"serverURL": "https://influxdata.com", "influxVersion": "1", "database": "test", "metricKey": "mymetric", "metricName": "influx_metric", "organizationName": "influx_org", "query": "SELECT \"water_level\" FROM \"h2o_feet\" WHERE \"location\"='coyote_creek' ORDER BY time DESC LIMIT 1;", "thresholdValue": "10", "unsafeSsl": "false"}, true, map[string]string{"authToken": "myToken"}},
 	// 13 valid influxVersion but no database
-	{map[string]string{"serverURL": "https://influxdata.com", "influxVersion": "3", "metricKey": "mymetric", "metricName": "influx_metric", "organizationName": "influx_org", "query": "SELECT \"water_level\" FROM \"h2o_feet\" WHERE \"location\"='coyote_creek' ORDER BY time DESC LIMIT 1;", "thresholdValue": "10", "authToken": "myToken", "unsafeSsl": "false"}, true, map[string]string{}},
+	{map[string]string{"serverURL": "https://influxdata.com", "influxVersion": "3", "metricKey": "mymetric", "metricName": "influx_metric", "organizationName": "influx_org", "query": "SELECT \"water_level\" FROM \"h2o_feet\" WHERE \"location\"='coyote_creek' ORDER BY time DESC LIMIT 1;", "thresholdValue": "10", "unsafeSsl": "false"}, true, map[string]string{"authToken": "myToken"}},
 	// 14 influxVersion 3 with all required values
-	{map[string]string{"serverURL": "https://influxdata.com", "influxVersion": "3", "database": "test", "metricKey": "mymetric", "metricName": "influx_metric", "organizationName": "influx_org", "query": "SELECT \"water_level\" FROM \"h2o_feet\" WHERE \"location\"='coyote_creek' ORDER BY time DESC LIMIT 1;", "thresholdValue": "10", "authToken": "myToken", "unsafeSsl": "false"}, false, map[string]string{}},
+	{map[string]string{"serverURL": "https://influxdata.com", "influxVersion": "3", "database": "test", "metricKey": "mymetric", "metricName": "influx_metric", "organizationName": "influx_org", "query": "SELECT \"water_level\" FROM \"h2o_feet\" WHERE \"location\"='coyote_creek' ORDER BY time DESC LIMIT 1;", "thresholdValue": "10", "unsafeSsl": "false"}, false, map[string]string{"authToken": "myToken"}},
 	// 15 influxVersion 3 with queryType InfluxQL
-	{map[string]string{"serverURL": "https://influxdata.com", "influxVersion": "3", "database": "test", "metricKey": "mymetric", "queryType": "InfluxQL", "metricName": "influx_metric", "organizationName": "influx_org", "query": "SELECT \"water_level\" FROM \"h2o_feet\" WHERE \"location\"='coyote_creek' ORDER BY time DESC LIMIT 1;", "thresholdValue": "10", "authToken": "myToken", "unsafeSsl": "false"}, false, map[string]string{}},
+	{map[string]string{"serverURL": "https://influxdata.com", "influxVersion": "3", "database": "test", "metricKey": "mymetric", "queryType": "InfluxQL", "metricName": "influx_metric", "organizationName": "influx_org", "query": "SELECT \"water_level\" FROM \"h2o_feet\" WHERE \"location\"='coyote_creek' ORDER BY time DESC LIMIT 1;", "thresholdValue": "10", "unsafeSsl": "false"}, false, map[string]string{"authToken": "myToken"}},
 	// 16 influxVersion 3 with no metricKey
-	{map[string]string{"serverURL": "https://influxdata.com", "influxVersion": "3", "database": "test", "queryType": "InfluxQL", "metricName": "influx_metric", "organizationName": "influx_org", "query": "SELECT \"water_level\" FROM \"h2o_feet\" WHERE \"location\"='coyote_creek' ORDER BY time DESC LIMIT 1;", "thresholdValue": "10", "authToken": "myToken", "unsafeSsl": "false"}, true, map[string]string{}},
+	{map[string]string{"serverURL": "https://influxdata.com", "influxVersion": "3", "database": "test", "queryType": "InfluxQL", "metricName": "influx_metric", "organizationName": "influx_org", "query": "SELECT \"water_level\" FROM \"h2o_feet\" WHERE \"location\"='coyote_creek' ORDER BY time DESC LIMIT 1;", "thresholdValue": "10", "unsafeSsl": "false"}, true, map[string]string{"authToken": "myToken"}},
 	// 17 influxVersion 3 with queryType FlightSQL
-	{map[string]string{"serverURL": "https://influxdata.com", "influxVersion": "3", "database": "test", "metricKey": "mymetric", "queryType": "FlightSQL", "metricName": "influx_metric", "organizationName": "influx_org", "query": "SELECT \"water_level\" FROM \"h2o_feet\" WHERE \"location\"='coyote_creek' ORDER BY time DESC LIMIT 1;", "thresholdValue": "10", "authToken": "myToken", "unsafeSsl": "false"}, false, map[string]string{}},
+	{map[string]string{"serverURL": "https://influxdata.com", "influxVersion": "3", "database": "test", "metricKey": "mymetric", "queryType": "FlightSQL", "metricName": "influx_metric", "organizationName": "influx_org", "query": "SELECT \"water_level\" FROM \"h2o_feet\" WHERE \"location\"='coyote_creek' ORDER BY time DESC LIMIT 1;", "thresholdValue": "10", "unsafeSsl": "false"}, false, map[string]string{"authToken": "myToken"}},
 	// 18 influxVersion 3 with no organization
-	{map[string]string{"serverURL": "https://influxdata.com", "influxVersion": "3", "database": "test", "metricKey": "mymetric", "queryType": "FlightSQL", "metricName": "influx_metric", "query": "SELECT \"water_level\" FROM \"h2o_feet\" WHERE \"location\"='coyote_creek' ORDER BY time DESC LIMIT 1;", "thresholdValue": "10", "authToken": "myToken", "unsafeSsl": "false"}, false, map[string]string{}},
+	{map[string]string{"serverURL": "https://influxdata.com", "influxVersion": "3", "database": "test", "metricKey": "mymetric", "queryType": "FlightSQL", "metricName": "influx_metric", "query": "SELECT \"water_level\" FROM \"h2o_feet\" WHERE \"location\"='coyote_creek' ORDER BY time DESC LIMIT 1;", "thresholdValue": "10", "unsafeSsl": "false"}, false, map[string]string{"authToken": "myToken"}},
+	// 19 deprecated authToken in triggerMetadata errors
+	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken", "unsafeSsl": "false"}, true, map[string]string{}},
 }
 
 func TestInfluxDBParseMetadata(t *testing.T) {

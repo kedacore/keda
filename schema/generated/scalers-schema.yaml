@@ -1626,7 +1626,7 @@ scalers:
         - name: authToken
           type: string
           optional: true
-          deprecatedAnnounce: The 'authToken' setting from triggerMetadata is DEPRECATED and will be removed in v2.20 - Use 'authToken' from resolvedEnv or authParams instead
+          deprecated: The 'authToken' setting from triggerMetadata is DEPRECATED and is removed in v2.20 - Use 'authToken' from resolvedEnv or authParams instead
           metadataVariableReadable: true
         - name: authToken
           type: string
