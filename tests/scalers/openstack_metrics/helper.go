@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"path"
@@ -45,26 +46,45 @@ type metricCreateRequest struct {
 	Name              string `json:"name,omitempty"`
 }
 
+type requestClientFunc func(context.Context, ...string) (openstack.Client, error)
+
 func CreateMetricsClient(t *testing.T, authURL, userID, password, projectID, metricsURLOverride string) openstack.Client {
 	t.Helper()
 
 	keystoneAuth, err := openstack.NewPasswordAuth(authURL, userID, password, projectID, 30)
 	require.NoErrorf(t, err, "cannot create keystone auth - %s", err)
 
-	if metricsURLOverride != "" {
-		client, clientErr := keystoneAuth.RequestClient(context.Background())
-		require.NoErrorf(t, clientErr, "cannot create metrics client token - %s", clientErr)
-		client.URL = metricsURLOverride
-		return client
-	}
-
-	client, err := keystoneAuth.RequestClient(context.Background(), "metric")
+	client, err := resolveMetricsClient(context.Background(), keystoneAuth.RequestClient, metricsURLOverride)
 	if err != nil {
 		t.Skipf("skipping OpenStack metrics test: unable to discover metric service from catalog and OPENSTACK_METRICS_URL is not set: %v", err)
 		return openstack.Client{}
 	}
 
 	return client
+}
+
+func resolveMetricsClient(ctx context.Context, requestClient requestClientFunc, metricsURLOverride string) (openstack.Client, error) {
+	if metricsURLOverride != "" {
+		client, err := requestClient(ctx)
+		if err != nil {
+			return openstack.Client{}, err
+		}
+
+		client.URL = metricsURLOverride
+		return client, nil
+	}
+
+	client, metricErr := requestClient(ctx, "metric")
+	if metricErr == nil {
+		return client, nil
+	}
+
+	client, gnocchiErr := requestClient(ctx, "gnocchi")
+	if gnocchiErr == nil {
+		return client, nil
+	}
+
+	return openstack.Client{}, fmt.Errorf("metric lookup failed: %w; gnocchi lookup failed: %v", metricErr, gnocchiErr)
 }
 
 func CreateClient(t *testing.T, authURL, userID, password, projectID string) openstack.Client {
