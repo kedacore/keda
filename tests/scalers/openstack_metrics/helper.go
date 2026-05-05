@@ -45,14 +45,24 @@ type metricCreateRequest struct {
 	Name              string `json:"name,omitempty"`
 }
 
-func CreateMetricsClient(t *testing.T, authURL, userID, password, projectID string) openstack.Client {
+func CreateMetricsClient(t *testing.T, authURL, userID, password, projectID, metricsURLOverride string) openstack.Client {
 	t.Helper()
 
 	keystoneAuth, err := openstack.NewPasswordAuth(authURL, userID, password, projectID, 30)
 	require.NoErrorf(t, err, "cannot create keystone auth - %s", err)
 
+	if metricsURLOverride != "" {
+		client, clientErr := keystoneAuth.RequestClient(context.Background())
+		require.NoErrorf(t, clientErr, "cannot create metrics client token - %s", clientErr)
+		client.URL = metricsURLOverride
+		return client
+	}
+
 	client, err := keystoneAuth.RequestClient(context.Background(), "metric")
-	require.NoErrorf(t, err, "cannot create metrics client - %s", err)
+	if err != nil {
+		t.Skipf("skipping OpenStack metrics test: unable to discover metric service from catalog and OPENSTACK_METRICS_URL is not set: %v", err)
+		return openstack.Client{}
+	}
 
 	return client
 }

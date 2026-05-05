@@ -35,6 +35,7 @@ var (
 	password                  = os.Getenv("OPENSTACK_PASSWORD")
 	projectID                 = os.Getenv("OPENSTACK_PROJECT_ID")
 	authURL                   = os.Getenv("OPENSTACK_AUTH_URL")
+	metricsURLOverride        = os.Getenv("OPENSTACK_METRICS_URL")
 	minReplicaCount           = 0
 	maxReplicaCount           = 2
 )
@@ -147,7 +148,7 @@ func TestScaler(t *testing.T) {
 	require.NotEmpty(t, authURL, "OPENSTACK_AUTH_URL env variable is required for OpenStack metrics test")
 
 	client := helper.CreateClient(t, authURL, userID, password, projectID)
-	metricsClient := helper.CreateMetricsClient(t, authURL, userID, password, projectID)
+	metricsClient := helper.CreateMetricsClient(t, authURL, userID, password, projectID, metricsURLOverride)
 	metricsURL, metricID := helper.CreateMetric(t, metricsClient, testName)
 
 	kc := GetKubernetesClient(t)
