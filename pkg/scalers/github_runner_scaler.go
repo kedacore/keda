@@ -20,6 +20,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/eventreason"
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -70,6 +71,8 @@ type githubRunnerMetadata struct {
 	ApplicationID                          int64  `keda:"name=applicationID, order=triggerMetadata;resolvedEnv, optional"`
 	InstallationID                         int64  `keda:"name=installationID, order=triggerMetadata;resolvedEnv, optional"`
 	ApplicationKey                         string `keda:"name=appKey, order=authParams, optional"`
+
+	Auth *authentication.Config
 }
 
 type WorkflowRuns struct {
@@ -412,7 +415,12 @@ func (meta *githubRunnerMetadata) Validate() error {
 			return err
 		}
 	}
-	return nil
+	meta.Auth = &authentication.Config{}
+	if meta.ApplicationID == 0 && meta.PersonalAccessToken != "" {
+		meta.Auth.Modes = []authentication.Type{authentication.BearerAuthType}
+		meta.Auth.BearerToken = meta.PersonalAccessToken
+	}
+	return meta.Auth.ValidateAllowed(authentication.BearerAuthType)
 }
 
 func parseGitHubRunnerMetadata(config *scalersconfig.ScalerConfig) (*githubRunnerMetadata, error) {
@@ -550,8 +558,8 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, apiURL string
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
-	if metadata.ApplicationID == 0 && metadata.PersonalAccessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+metadata.PersonalAccessToken)
+	if metadata.Auth.EnabledBearerAuth() {
+		req.Header.Set("Authorization", metadata.Auth.GetBearerToken())
 	}
 
 	if s.metadata.EnableEtags {

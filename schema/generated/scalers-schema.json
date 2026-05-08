@@ -1580,18 +1580,6 @@
                     "triggerAuthenticationVariableReadable": true
                 },
                 {
-                    "name": "authMode",
-                    "type": "string",
-                    "optional": true,
-                    "triggerAuthenticationVariableReadable": true
-                },
-                {
-                    "name": "token",
-                    "type": "string",
-                    "optional": true,
-                    "triggerAuthenticationVariableReadable": true
-                },
-                {
                     "name": "datadogMetricName",
                     "type": "string",
                     "optional": true,
@@ -2304,27 +2292,6 @@
                     "name": "queryTime",
                     "type": "string",
                     "metadataVariableReadable": true
-                },
-                {
-                    "name": "authMode",
-                    "type": "string",
-                    "optional": true,
-                    "allowedValue": [
-                        "basic"
-                    ],
-                    "metadataVariableReadable": true
-                },
-                {
-                    "name": "username",
-                    "type": "string",
-                    "optional": true,
-                    "triggerAuthenticationVariableReadable": true
-                },
-                {
-                    "name": "password",
-                    "type": "string",
-                    "optional": true,
-                    "triggerAuthenticationVariableReadable": true
                 }
             ]
         },
