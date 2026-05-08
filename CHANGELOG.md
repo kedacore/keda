@@ -84,6 +84,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Elasticsearch Scaler**: Add HTTP status check for Elasticsearch errors ([#7480](https://github.com/kedacore/keda/pull/7480))
 - **Github Runner Scaler**: Handle rate limit errors by respecting X-RateLimit-Reset and Retry-After headers and returning cached queue length ([#7683](https://github.com/kedacore/keda/issues/7683))
 - **Kubernetes Workload Scaler**: Add `groupByNode` parameter ([#7628](https://github.com/kedacore/keda/issues/7628))
+- **Metrics API Scaler**: Add custom HTTP client timeout ([#7549](https://github.com/kedacore/keda/issues/7549))
 - **MSSQL Scaler**: Add Azure Workload Identity support for Azure SQL authentication ([#6104](https://github.com/kedacore/keda/issues/6104))
 
 ### Fixes
@@ -91,6 +92,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Check updated status for Fallback condition instead of ScaledObject ([#7488](https://github.com/kedacore/keda/issues/7488))
 - **General**: Fix int64 overflow in milli-quantity conversion for very large metric values ([#7441](https://github.com/kedacore/keda/issues/7441))
 - **General**: Fix ScaledObject admission webhook to return validation error from `verifyReplicaCount`, preventing invalid ScaledObjects from being created ([#5954](https://github.com/kedacore/keda/issues/5954))
+- **General**: Handle paused scaling directly in reconciler ([#7663](https://github.com/kedacore/keda/issues/7663))
 - **Azure Data Explorer Scaler**: Remove clientSecretFromEnv support ([#7554](https://github.com/kedacore/keda/pull/7554))
 - **Cron Scaler**: Fix metric name generation so cron expressions with comma-separated values no longer produce invalid metric names ([#7448](https://github.com/kedacore/keda/issues/7448))
 - **Forgejo Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
@@ -107,6 +109,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **NATS JetStream Scaler**: URL-encode user input in monitoring URL construction ([#7483](https://github.com/kedacore/keda/pull/7483))
 - **Prometheus Scaler**: Handle NaN results in the same manner as Inf ([#7475](https://github.com/kedacore/keda/issues/7475))
 - **Prometheus Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
+- **Pulsar Scaler**: Drop bearer/basic auth headers on redirects to a different host or on https->http downgrades to prevent credential leakage ([#7686](https://github.com/kedacore/keda/issues/7686))
 - **RabbitMQ Scaler**: Fix AMQP connection leak by recovering channels on the existing connection and closing connections properly ([#6266](https://github.com/kedacore/keda/issues/6266))
 - **RabbitMQ Scaler**: Use SASL EXTERNAL for RabbitMQ AMQP TLS without credentials ([#6840](https://github.com/kedacore/keda/issues/6840))
 - **Solace Scaler**: Fix URL escaping for Message VPN and Queue names ([#7481](https://github.com/kedacore/keda/pull/7481))
@@ -122,8 +125,10 @@ New deprecation(s):
 
 ### Breaking Changes
 
+- **GCP PubSub Scaler**: The 'subscriptionSize' setting is DEPRECATED and is removed in v2.20 - Use 'mode' and 'value' instead ([#7720](https://github.com/kedacore/keda/issues/7720))
 - **Huawei Cloudeye Scaler**: The `minMetricValue` setting is DEPRECATED and is removed - Use `activationTargetMetricValue` instead ([#7436](https://github.com/kedacore/keda/issues/7436))
 - **IBM MQ scaler**: The `tls` setting code is removed ([#6094](https://github.com/kedacore/keda/issues/6094))
+- **InfluxDB scaler**: The 'authToken' setting from triggerMetadata is DEPRECATED and is removed in v2.20 - Use 'authToken' from resolvedEnv or authParams instead ([#7722](https://github.com/kedacore/keda/issues/7722))
 
 ### Other
 

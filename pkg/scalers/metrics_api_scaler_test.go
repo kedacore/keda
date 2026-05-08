@@ -38,6 +38,12 @@ var testMetricsAPIMetadata = []metricsAPIMetadataTestData{
 	{metadata: map[string]string{"valueLocation": "metric", "targetValue": "aa"}, raisesError: true},
 	// Missing targetValue
 	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric"}, raisesError: true},
+	// Valid HTTP timeout
+	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "timeout": "1000"}, raisesError: false},
+	// Invalid - negative - HTTP timeout
+	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "timeout": "-1"}, raisesError: true},
+	// Invalid - not a number - HTTP timeout
+	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "timeout": "a"}, raisesError: true},
 }
 
 type metricAPIAuthMetadataTestData struct {
