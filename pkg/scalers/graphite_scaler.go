@@ -12,6 +12,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -30,20 +31,13 @@ type graphiteMetadata struct {
 	ActivationThreshold float64 `keda:"name=activationThreshold, order=triggerMetadata, default=0"`
 	QueryTime           string  `keda:"name=queryTime,           order=triggerMetadata"`
 
-	// basic auth
-	AuthMode string `keda:"name=authMode, order=triggerMetadata, enum=basic, optional"`
-	Username string `keda:"name=username, order=authParams, optional"`
-	Password string `keda:"name=password, order=authParams, optional"`
+	Auth *authentication.Config `keda:"optional"`
 
 	triggerIndex int
 }
 
 func (g *graphiteMetadata) Validate() error {
-	if g.AuthMode == "basic" && g.Username == "" {
-		return fmt.Errorf("username is required when authMode is 'basic'")
-	}
-
-	return nil
+	return g.Auth.ValidateAllowed(authentication.BasicAuthType)
 }
 
 type grapQueryResult []struct {
@@ -110,7 +104,9 @@ func (s *graphiteScaler) executeGrapQuery(ctx context.Context) (float64, error) 
 	if err != nil {
 		return -1, err
 	}
-	req.SetBasicAuth(s.metadata.Username, s.metadata.Password)
+	if s.metadata.Auth.EnabledBasicAuth() {
+		req.SetBasicAuth(s.metadata.Auth.Username, s.metadata.Auth.Password)
+	}
 	r, err := s.httpClient.Do(req)
 	if err != nil {
 		return -1, err

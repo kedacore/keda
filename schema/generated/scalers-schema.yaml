@@ -1257,13 +1257,116 @@ scalers:
           type: string
           default: "false"
           triggerAuthenticationVariableReadable: true
+        - name: authModes
+          type: string
+          optional: true
+          allowedValue:
+            - apiKey
+            - basic
+            - tls
+            - bearer
+            - custom
+            - oauth
+          exclusiveSet:
+            - bearer
+            - basic
+            - oauth
+          metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: authMode
+          type: string
+          optional: true
+          allowedValue:
+            - apiKey
+            - basic
+            - tls
+            - bearer
+            - custom
+            - oauth
+          exclusiveSet:
+            - bearer
+            - basic
+            - oauth
+          metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: bearerToken
           type: string
           optional: true
           triggerAuthenticationVariableReadable: true
         - name: token
           type: string
           optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: username
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: password
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: cert
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: key
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: ca
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: oauthTokenURI
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: scopes
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: scope
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: clientID
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: clientSecret
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: endpointParams
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: customAuthHeader
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: customAuthValue
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: apiKey
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: method
+          type: string
+          optional: true
+          default: header
+          allowedValue:
+            - header
+            - query
+          metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: keyParamName
+          type: string
+          optional: true
+          metadataVariableReadable: true
           triggerAuthenticationVariableReadable: true
         - name: datadogMetricName
           type: string
@@ -1823,12 +1926,46 @@ scalers:
         - name: queryTime
           type: string
           metadataVariableReadable: true
+        - name: authModes
+          type: string
+          optional: true
+          allowedValue:
+            - apiKey
+            - basic
+            - tls
+            - bearer
+            - custom
+            - oauth
+          exclusiveSet:
+            - bearer
+            - basic
+            - oauth
+          metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: authMode
           type: string
           optional: true
           allowedValue:
+            - apiKey
             - basic
+            - tls
+            - bearer
+            - custom
+            - oauth
+          exclusiveSet:
+            - bearer
+            - basic
+            - oauth
           metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: bearerToken
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: token
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
         - name: username
           type: string
           optional: true
@@ -1836,6 +1973,69 @@ scalers:
         - name: password
           type: string
           optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: cert
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: key
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: ca
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: oauthTokenURI
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: scopes
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: scope
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: clientID
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: clientSecret
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: endpointParams
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: customAuthHeader
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: customAuthValue
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: apiKey
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: method
+          type: string
+          optional: true
+          default: header
+          allowedValue:
+            - header
+            - query
+          metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: keyParamName
+          type: string
+          optional: true
+          metadataVariableReadable: true
           triggerAuthenticationVariableReadable: true
     - type: huawei-cloudeye
       parameters:
