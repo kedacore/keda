@@ -4,7 +4,7 @@
 package internal
 
 // Version is the semantic version number
-const Version = "v2.0.1"
+const Version = "v2.0.2"
 
 // CapabilityGeoDRReplication is passed as part of our desired capabilities when creating links.
 const CapabilityGeoDRReplication = "com.microsoft:georeplication"

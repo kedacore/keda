@@ -2540,6 +2540,11 @@ func awsAwsjson11_serializeOpDocumentAddTagsToStreamInput(v *AddTagsToStreamInpu
 		ok.String(*v.StreamARN)
 	}
 
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
+	}
+
 	if v.StreamName != nil {
 		ok := object.Key("StreamName")
 		ok.String(*v.StreamName)
@@ -2610,6 +2615,11 @@ func awsAwsjson11_serializeOpDocumentDecreaseStreamRetentionPeriodInput(v *Decre
 		ok.String(*v.StreamARN)
 	}
 
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
+	}
+
 	if v.StreamName != nil {
 		ok := object.Key("StreamName")
 		ok.String(*v.StreamName)
@@ -2627,6 +2637,11 @@ func awsAwsjson11_serializeOpDocumentDeleteResourcePolicyInput(v *DeleteResource
 		ok.String(*v.ResourceARN)
 	}
 
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
+	}
+
 	return nil
 }
 
@@ -2642,6 +2657,11 @@ func awsAwsjson11_serializeOpDocumentDeleteStreamInput(v *DeleteStreamInput, val
 	if v.StreamARN != nil {
 		ok := object.Key("StreamARN")
 		ok.String(*v.StreamARN)
+	}
+
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
 	}
 
 	if v.StreamName != nil {
@@ -2669,6 +2689,11 @@ func awsAwsjson11_serializeOpDocumentDeregisterStreamConsumerInput(v *Deregister
 	if v.StreamARN != nil {
 		ok := object.Key("StreamARN")
 		ok.String(*v.StreamARN)
+	}
+
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
 	}
 
 	return nil
@@ -2707,6 +2732,11 @@ func awsAwsjson11_serializeOpDocumentDescribeStreamConsumerInput(v *DescribeStre
 		ok.String(*v.StreamARN)
 	}
 
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
+	}
+
 	return nil
 }
 
@@ -2729,6 +2759,11 @@ func awsAwsjson11_serializeOpDocumentDescribeStreamInput(v *DescribeStreamInput,
 		ok.String(*v.StreamARN)
 	}
 
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
+	}
+
 	if v.StreamName != nil {
 		ok := object.Key("StreamName")
 		ok.String(*v.StreamName)
@@ -2744,6 +2779,11 @@ func awsAwsjson11_serializeOpDocumentDescribeStreamSummaryInput(v *DescribeStrea
 	if v.StreamARN != nil {
 		ok := object.Key("StreamARN")
 		ok.String(*v.StreamARN)
+	}
+
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
 	}
 
 	if v.StreamName != nil {
@@ -2770,6 +2810,11 @@ func awsAwsjson11_serializeOpDocumentDisableEnhancedMonitoringInput(v *DisableEn
 		ok.String(*v.StreamARN)
 	}
 
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
+	}
+
 	if v.StreamName != nil {
 		ok := object.Key("StreamName")
 		ok.String(*v.StreamName)
@@ -2792,6 +2837,11 @@ func awsAwsjson11_serializeOpDocumentEnableEnhancedMonitoringInput(v *EnableEnha
 	if v.StreamARN != nil {
 		ok := object.Key("StreamARN")
 		ok.String(*v.StreamARN)
+	}
+
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
 	}
 
 	if v.StreamName != nil {
@@ -2821,6 +2871,11 @@ func awsAwsjson11_serializeOpDocumentGetRecordsInput(v *GetRecordsInput, value s
 		ok.String(*v.StreamARN)
 	}
 
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
+	}
+
 	return nil
 }
 
@@ -2831,6 +2886,11 @@ func awsAwsjson11_serializeOpDocumentGetResourcePolicyInput(v *GetResourcePolicy
 	if v.ResourceARN != nil {
 		ok := object.Key("ResourceARN")
 		ok.String(*v.ResourceARN)
+	}
+
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
 	}
 
 	return nil
@@ -2860,6 +2920,11 @@ func awsAwsjson11_serializeOpDocumentGetShardIteratorInput(v *GetShardIteratorIn
 		ok.String(*v.StreamARN)
 	}
 
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
+	}
+
 	if v.StreamName != nil {
 		ok := object.Key("StreamName")
 		ok.String(*v.StreamName)
@@ -2885,6 +2950,11 @@ func awsAwsjson11_serializeOpDocumentIncreaseStreamRetentionPeriodInput(v *Incre
 	if v.StreamARN != nil {
 		ok := object.Key("StreamARN")
 		ok.String(*v.StreamARN)
+	}
+
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
 	}
 
 	if v.StreamName != nil {
@@ -2931,6 +3001,11 @@ func awsAwsjson11_serializeOpDocumentListShardsInput(v *ListShardsInput, value s
 		ok.Double(smithytime.FormatEpochSeconds(*v.StreamCreationTimestamp))
 	}
 
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
+	}
+
 	if v.StreamName != nil {
 		ok := object.Key("StreamName")
 		ok.String(*v.StreamName)
@@ -2961,6 +3036,11 @@ func awsAwsjson11_serializeOpDocumentListStreamConsumersInput(v *ListStreamConsu
 	if v.StreamCreationTimestamp != nil {
 		ok := object.Key("StreamCreationTimestamp")
 		ok.Double(smithytime.FormatEpochSeconds(*v.StreamCreationTimestamp))
+	}
+
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
 	}
 
 	return nil
@@ -2997,6 +3077,11 @@ func awsAwsjson11_serializeOpDocumentListTagsForResourceInput(v *ListTagsForReso
 		ok.String(*v.ResourceARN)
 	}
 
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
+	}
+
 	return nil
 }
 
@@ -3017,6 +3102,11 @@ func awsAwsjson11_serializeOpDocumentListTagsForStreamInput(v *ListTagsForStream
 	if v.StreamARN != nil {
 		ok := object.Key("StreamARN")
 		ok.String(*v.StreamARN)
+	}
+
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
 	}
 
 	if v.StreamName != nil {
@@ -3044,6 +3134,11 @@ func awsAwsjson11_serializeOpDocumentMergeShardsInput(v *MergeShardsInput, value
 	if v.StreamARN != nil {
 		ok := object.Key("StreamARN")
 		ok.String(*v.StreamARN)
+	}
+
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
 	}
 
 	if v.StreamName != nil {
@@ -3083,6 +3178,11 @@ func awsAwsjson11_serializeOpDocumentPutRecordInput(v *PutRecordInput, value smi
 		ok.String(*v.StreamARN)
 	}
 
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
+	}
+
 	if v.StreamName != nil {
 		ok := object.Key("StreamName")
 		ok.String(*v.StreamName)
@@ -3107,6 +3207,11 @@ func awsAwsjson11_serializeOpDocumentPutRecordsInput(v *PutRecordsInput, value s
 		ok.String(*v.StreamARN)
 	}
 
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
+	}
+
 	if v.StreamName != nil {
 		ok := object.Key("StreamName")
 		ok.String(*v.StreamName)
@@ -3129,6 +3234,11 @@ func awsAwsjson11_serializeOpDocumentPutResourcePolicyInput(v *PutResourcePolicy
 		ok.String(*v.ResourceARN)
 	}
 
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
+	}
+
 	return nil
 }
 
@@ -3144,6 +3254,11 @@ func awsAwsjson11_serializeOpDocumentRegisterStreamConsumerInput(v *RegisterStre
 	if v.StreamARN != nil {
 		ok := object.Key("StreamARN")
 		ok.String(*v.StreamARN)
+	}
+
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
 	}
 
 	if v.Tags != nil {
@@ -3163,6 +3278,11 @@ func awsAwsjson11_serializeOpDocumentRemoveTagsFromStreamInput(v *RemoveTagsFrom
 	if v.StreamARN != nil {
 		ok := object.Key("StreamARN")
 		ok.String(*v.StreamARN)
+	}
+
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
 	}
 
 	if v.StreamName != nil {
@@ -3199,6 +3319,11 @@ func awsAwsjson11_serializeOpDocumentSplitShardInput(v *SplitShardInput, value s
 		ok.String(*v.StreamARN)
 	}
 
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
+	}
+
 	if v.StreamName != nil {
 		ok := object.Key("StreamName")
 		ok.String(*v.StreamName)
@@ -3226,6 +3351,11 @@ func awsAwsjson11_serializeOpDocumentStartStreamEncryptionInput(v *StartStreamEn
 		ok.String(*v.StreamARN)
 	}
 
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
+	}
+
 	if v.StreamName != nil {
 		ok := object.Key("StreamName")
 		ok.String(*v.StreamName)
@@ -3251,6 +3381,11 @@ func awsAwsjson11_serializeOpDocumentStopStreamEncryptionInput(v *StopStreamEncr
 	if v.StreamARN != nil {
 		ok := object.Key("StreamARN")
 		ok.String(*v.StreamARN)
+	}
+
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
 	}
 
 	if v.StreamName != nil {
@@ -3282,6 +3417,11 @@ func awsAwsjson11_serializeOpDocumentSubscribeToShardInput(v *SubscribeToShardIn
 		}
 	}
 
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
+	}
+
 	return nil
 }
 
@@ -3292,6 +3432,11 @@ func awsAwsjson11_serializeOpDocumentTagResourceInput(v *TagResourceInput, value
 	if v.ResourceARN != nil {
 		ok := object.Key("ResourceARN")
 		ok.String(*v.ResourceARN)
+	}
+
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
 	}
 
 	if v.Tags != nil {
@@ -3311,6 +3456,11 @@ func awsAwsjson11_serializeOpDocumentUntagResourceInput(v *UntagResourceInput, v
 	if v.ResourceARN != nil {
 		ok := object.Key("ResourceARN")
 		ok.String(*v.ResourceARN)
+	}
+
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
 	}
 
 	if v.TagKeys != nil {
@@ -3351,6 +3501,11 @@ func awsAwsjson11_serializeOpDocumentUpdateMaxRecordSizeInput(v *UpdateMaxRecord
 		ok.String(*v.StreamARN)
 	}
 
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
+	}
+
 	return nil
 }
 
@@ -3366,6 +3521,11 @@ func awsAwsjson11_serializeOpDocumentUpdateShardCountInput(v *UpdateShardCountIn
 	if v.StreamARN != nil {
 		ok := object.Key("StreamARN")
 		ok.String(*v.StreamARN)
+	}
+
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
 	}
 
 	if v.StreamName != nil {
@@ -3390,6 +3550,11 @@ func awsAwsjson11_serializeOpDocumentUpdateStreamModeInput(v *UpdateStreamModeIn
 		ok.String(*v.StreamARN)
 	}
 
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
+	}
+
 	if v.StreamModeDetails != nil {
 		ok := object.Key("StreamModeDetails")
 		if err := awsAwsjson11_serializeDocumentStreamModeDetails(v.StreamModeDetails, ok); err != nil {
@@ -3412,6 +3577,11 @@ func awsAwsjson11_serializeOpDocumentUpdateStreamWarmThroughputInput(v *UpdateSt
 	if v.StreamARN != nil {
 		ok := object.Key("StreamARN")
 		ok.String(*v.StreamARN)
+	}
+
+	if v.StreamId != nil {
+		ok := object.Key("StreamId")
+		ok.String(*v.StreamId)
 	}
 
 	if v.StreamName != nil {

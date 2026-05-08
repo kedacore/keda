@@ -46,6 +46,12 @@ func (l LinkRetrier[LinkT]) Retry(ctx context.Context,
 		return currentPrefix
 	}
 
+	// Track if we've done the one-time quick retry for async detach handling.
+	// go-amqp handles detaches asynchronously, so errors from Send() etc. can be
+	// from earlier detaches. We do one immediate retry to avoid unnecessary backoff
+	// when the link may already be recovered.
+	didQuickRetry := false
+
 	return utils.Retry(ctx, eventName, prefix, retryOptions, func(ctx context.Context, args *utils.RetryFnArgs) error {
 		linkWithID, err := l.GetLink(ctx, partitionID)
 
@@ -56,6 +62,16 @@ func (l LinkRetrier[LinkT]) Retry(ctx context.Context,
 		currentPrefix = linkWithID.String()
 
 		if err := fn(ctx, linkWithID); err != nil {
+			// Quick retry: on the first attempt, if we get a link error, do one immediate
+			// retry without backoff. This handles the case where go-amqp's async detach
+			// processing means the error is from an earlier detach and the link is already
+			// ready to be recreated.
+			if args.I == 0 && !didQuickRetry && IsQuickRecoveryError(err) {
+				azlog.Writef(exported.EventConn, "(%s) Link was previously detached. Attempting quick reconnect to recover from error: %s", currentPrefix, err.Error())
+				didQuickRetry = true
+				args.ResetAttempts()
+			}
+
 			if recoveryErr := l.RecoverIfNeeded(ctx, err); recoveryErr != nil {
 				// it's okay to return this error, and we're still in an okay state. The next loop through will end
 				// up reopening all the closed links and will either get the same error again (ie, network is _still_

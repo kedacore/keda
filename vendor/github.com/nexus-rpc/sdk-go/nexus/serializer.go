@@ -88,20 +88,6 @@ type Serializer interface {
 	Deserialize(*Content, any) error
 }
 
-// FailureConverter is used by the framework to transform [error] instances to and from [Failure] instances.
-// To customize conversion logic, implement this interface and provide your implementation to framework methods such as
-// [NewClient] and [NewHTTPHandler].
-// By default the SDK translates only error messages, losing type information and struct fields.
-type FailureConverter interface {
-	// ErrorToFailure converts an [error] to a [Failure].
-	// Implementors should take a best-effort approach and never fail this method.
-	// Note that the provided error may be nil.
-	ErrorToFailure(error) Failure
-	// ErrorToFailure converts a [Failure] to an [error].
-	// Implementors should take a best-effort approach and never fail this method.
-	FailureToError(Failure) error
-}
-
 var anyType = reflect.TypeOf((*any)(nil)).Elem()
 
 // ErrSerializerIncompatible is a sentinel error emitted by [Serializer] implementations to signal that a serializer is
@@ -262,34 +248,4 @@ var defaultSerializer Serializer = CompositeSerializer([]Serializer{NilSerialize
 // NOTE: Experimental
 func DefaultSerializer() Serializer {
 	return defaultSerializer
-}
-
-type failureErrorFailureConverter struct{}
-
-// ErrorToFailure implements FailureConverter.
-func (e failureErrorFailureConverter) ErrorToFailure(err error) Failure {
-	if err == nil {
-		return Failure{}
-	}
-	if fe, ok := err.(*FailureError); ok {
-		return fe.Failure
-	}
-	return Failure{
-		Message: err.Error(),
-	}
-}
-
-// FailureToError implements FailureConverter.
-func (e failureErrorFailureConverter) FailureToError(f Failure) error {
-	return &FailureError{f}
-}
-
-var defaultFailureConverter FailureConverter = failureErrorFailureConverter{}
-
-// DefaultFailureConverter returns the SDK's default [FailureConverter] implementation. Arbitrary errors are converted
-// to a simple [Failure] object with just the Message popluated and [FailureError] instances to their underlying
-// [Failure] instance. [Failure] instances are converted to [FailureError] to allow access to the full failure metadata
-// and details if available.
-func DefaultFailureConverter() FailureConverter {
-	return defaultFailureConverter
 }

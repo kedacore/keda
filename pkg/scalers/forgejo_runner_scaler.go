@@ -108,7 +108,7 @@ func (s *forgejoRunnerScaler) GetMetricsAndActivity(ctx context.Context, metricN
 
 	metric := GenerateMetricInMili(metricName, float64(len(jobList)))
 
-	return []external_metrics.ExternalMetricValue{metric}, true, nil
+	return []external_metrics.ExternalMetricValue{metric}, len(jobList) > 0, nil
 }
 
 func (s *forgejoRunnerScaler) getJobsList(ctx context.Context) ([]ForgejoJob, error) {

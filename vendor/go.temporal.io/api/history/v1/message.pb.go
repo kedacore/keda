@@ -953,6 +953,10 @@ type WorkflowTaskStartedEventAttributes struct {
 	// The reason(s) that suggest_continue_as_new is true, if it is.
 	// Unset if suggest_continue_as_new is false.
 	SuggestContinueAsNewReasons []v12.SuggestContinueAsNewReason `protobuf:"varint,8,rep,packed,name=suggest_continue_as_new_reasons,json=suggestContinueAsNewReasons,proto3,enum=temporal.api.enums.v1.SuggestContinueAsNewReason" json:"suggest_continue_as_new_reasons,omitempty"`
+	// True if Workflow's Target Worker Deployment Version is different from its Pinned Version and
+	// the workflow is Pinned.
+	// Experimental.
+	TargetWorkerDeploymentVersionChanged bool `protobuf:"varint,9,opt,name=target_worker_deployment_version_changed,json=targetWorkerDeploymentVersionChanged,proto3" json:"target_worker_deployment_version_changed,omitempty"`
 	// Total history size in bytes, which the workflow might use to decide when to
 	// continue-as-new regardless of the suggestion. Note that history event count is
 	// just the event id of this event, so we don't include it explicitly here.
@@ -1035,6 +1039,13 @@ func (x *WorkflowTaskStartedEventAttributes) GetSuggestContinueAsNewReasons() []
 		return x.SuggestContinueAsNewReasons
 	}
 	return nil
+}
+
+func (x *WorkflowTaskStartedEventAttributes) GetTargetWorkerDeploymentVersionChanged() bool {
+	if x != nil {
+		return x.TargetWorkerDeploymentVersionChanged
+	}
+	return false
 }
 
 func (x *WorkflowTaskStartedEventAttributes) GetHistorySizeBytes() int64 {
@@ -6789,14 +6800,15 @@ const file_temporal_api_history_v1_message_proto_rawDesc = "" +
 	"\n" +
 	"task_queue\x18\x01 \x01(\v2$.temporal.api.taskqueue.v1.TaskQueueR\ttaskQueue\x12N\n" +
 	"\x16start_to_close_timeout\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\x13startToCloseTimeout\x12\x18\n" +
-	"\aattempt\x18\x03 \x01(\x05R\aattempt\"\x81\x04\n" +
+	"\aattempt\x18\x03 \x01(\x05R\aattempt\"\xd9\x04\n" +
 	"\"WorkflowTaskStartedEventAttributes\x12,\n" +
 	"\x12scheduled_event_id\x18\x01 \x01(\x03R\x10scheduledEventId\x12\x1a\n" +
 	"\bidentity\x18\x02 \x01(\tR\bidentity\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x03 \x01(\tR\trequestId\x125\n" +
 	"\x17suggest_continue_as_new\x18\x04 \x01(\bR\x14suggestContinueAsNew\x12w\n" +
-	"\x1fsuggest_continue_as_new_reasons\x18\b \x03(\x0e21.temporal.api.enums.v1.SuggestContinueAsNewReasonR\x1bsuggestContinueAsNewReasons\x12,\n" +
+	"\x1fsuggest_continue_as_new_reasons\x18\b \x03(\x0e21.temporal.api.enums.v1.SuggestContinueAsNewReasonR\x1bsuggestContinueAsNewReasons\x12V\n" +
+	"(target_worker_deployment_version_changed\x18\t \x01(\bR$targetWorkerDeploymentVersionChanged\x12,\n" +
 	"\x12history_size_bytes\x18\x05 \x01(\x03R\x10historySizeBytes\x12U\n" +
 	"\x0eworker_version\x18\x06 \x01(\v2*.temporal.api.common.v1.WorkerVersionStampB\x02\x18\x01R\rworkerVersion\x12=\n" +
 	"\x19build_id_redirect_counter\x18\a \x01(\x03B\x02\x18\x01R\x16buildIdRedirectCounter\"\xce\x06\n" +

@@ -123,12 +123,13 @@ type (
 		attempt                int32 // starts from 1.
 		heartbeatDetails       *commonpb.Payloads
 		workflowType           *WorkflowType
-		workflowNamespace      string
+		namespace              string
 		workerStopChannel      <-chan struct{}
 		contextPropagators     []ContextPropagator
 		client                 *WorkflowClient
 		priority               *commonpb.Priority
 		retryPolicy            *RetryPolicy
+		activityRunID          string
 	}
 
 	// context.WithValue need this type instead of basic type string to avoid lint error
@@ -351,6 +352,11 @@ func (a *activityEnvironmentInterceptor) ExecuteActivity(
 }
 
 func (a *activityEnvironmentInterceptor) GetInfo(ctx context.Context) ActivityInfo {
+	workflowNamespace := ""
+	if a.env.workflowExecution.ID != "" {
+		workflowNamespace = a.env.namespace
+	}
+
 	return ActivityInfo{
 		ActivityID:             a.env.activityID,
 		ActivityType:           a.env.activityType,
@@ -363,12 +369,14 @@ func (a *activityEnvironmentInterceptor) GetInfo(ctx context.Context) ActivityIn
 		ScheduledTime:          a.env.scheduledTime,
 		StartedTime:            a.env.startedTime,
 		TaskQueue:              a.env.taskQueue,
+		Namespace:              a.env.namespace,
 		Attempt:                a.env.attempt,
 		WorkflowType:           a.env.workflowType,
-		WorkflowNamespace:      a.env.workflowNamespace,
+		WorkflowNamespace:      workflowNamespace,
 		IsLocalActivity:        a.env.isLocalActivity,
 		Priority:               convertFromPBPriority(a.env.priority),
 		RetryPolicy:            a.env.retryPolicy,
+		ActivityRunID:          a.env.activityRunID,
 	}
 }
 

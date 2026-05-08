@@ -203,7 +203,7 @@ func (s *awsDynamoDBScaler) GetQueryMetrics(ctx context.Context) (float64, error
 func json2Map(js string) (m map[string]string, err error) {
 	err = bson.UnmarshalExtJSON([]byte(js), true, &m)
 	if err != nil {
-		return nil, fmt.Errorf("%v: %w", ErrAwsDynamoInvalidExpressionAttributeNames, err)
+		return nil, errors.Join(ErrAwsDynamoInvalidExpressionAttributeNames, err)
 	}
 
 	if len(m) == 0 {

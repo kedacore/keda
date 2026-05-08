@@ -18,7 +18,6 @@ package executor
 
 import (
 	"context"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,7 +38,6 @@ func TestScaleToMinReplicasWhenNotActive(t *testing.T) {
 	recorder := record.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
-	statusWriter := mock_client.NewMockStatusWriter(ctrl)
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
@@ -84,13 +82,10 @@ func TestScaleToMinReplicasWhenNotActive(t *testing.T) {
 	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
 	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
 
-	client.EXPECT().Status().Return(statusWriter).Times(2)
-	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
-
-	scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false, &ScaleExecutorOptions{})
+	result := scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false, ScaleExecutorOptions{})
 
 	assert.Equal(t, minReplicas, scale.Spec.Replicas)
-	condition := scaledObject.Status.Conditions.GetActiveCondition()
+	condition := result.Conditions.GetActiveCondition()
 	assert.Equal(t, true, condition.IsFalse())
 }
 
@@ -100,7 +95,6 @@ func TestScaleToMinReplicasFromLowerInitialReplicaCount(t *testing.T) {
 	recorder := record.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
-	statusWriter := mock_client.NewMockStatusWriter(ctrl)
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
@@ -145,13 +139,10 @@ func TestScaleToMinReplicasFromLowerInitialReplicaCount(t *testing.T) {
 	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
 	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
 
-	client.EXPECT().Status().Return(statusWriter).Times(2)
-	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
-
-	scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false, &ScaleExecutorOptions{})
+	result := scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false, ScaleExecutorOptions{})
 
 	assert.Equal(t, minReplicas, scale.Spec.Replicas)
-	condition := scaledObject.Status.Conditions.GetActiveCondition()
+	condition := result.Conditions.GetActiveCondition()
 	assert.Equal(t, true, condition.IsFalse())
 }
 
@@ -161,7 +152,6 @@ func TestScaleFromMinReplicasWhenActive(t *testing.T) {
 	recorder := record.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
-	statusWriter := mock_client.NewMockStatusWriter(ctrl)
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
@@ -204,16 +194,14 @@ func TestScaleFromMinReplicasWhenActive(t *testing.T) {
 	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
 	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
 
-	client.EXPECT().Status().Times(2).Return(statusWriter).Times(3)
-	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(3)
-
-	scaleExecutor.RequestScale(context.TODO(), &scaledObject, true, false, &ScaleExecutorOptions{})
+	result := scaleExecutor.RequestScale(context.TODO(), &scaledObject, true, false, ScaleExecutorOptions{})
 
 	assert.Equal(t, int32(1), scale.Spec.Replicas)
-	condition := scaledObject.Status.Conditions.GetActiveCondition()
+	condition := result.Conditions.GetActiveCondition()
 	assert.Equal(t, true, condition.IsTrue())
 	assert.Equal(t, "ScalerActive", condition.Reason)
 	assert.Equal(t, "Scaling is performed because triggers are active", condition.Message)
+	assert.NotNil(t, result.LastActiveTime)
 }
 
 func TestScaleToIdleReplicasWhenNotActive(t *testing.T) {
@@ -222,7 +210,6 @@ func TestScaleToIdleReplicasWhenNotActive(t *testing.T) {
 	recorder := record.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
-	statusWriter := mock_client.NewMockStatusWriter(ctrl)
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
@@ -269,13 +256,10 @@ func TestScaleToIdleReplicasWhenNotActive(t *testing.T) {
 	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
 	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
 
-	client.EXPECT().Status().Return(statusWriter).Times(2)
-	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
-
-	scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false, &ScaleExecutorOptions{})
+	result := scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false, ScaleExecutorOptions{})
 
 	assert.Equal(t, idleReplicas, scale.Spec.Replicas)
-	condition := scaledObject.Status.Conditions.GetActiveCondition()
+	condition := result.Conditions.GetActiveCondition()
 	assert.Equal(t, true, condition.IsFalse())
 }
 
@@ -285,7 +269,6 @@ func TestScaleFromIdleToMinReplicasWhenActive(t *testing.T) {
 	recorder := record.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
-	statusWriter := mock_client.NewMockStatusWriter(ctrl)
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
@@ -330,16 +313,14 @@ func TestScaleFromIdleToMinReplicasWhenActive(t *testing.T) {
 	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
 	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
 
-	client.EXPECT().Status().Times(2).Return(statusWriter).Times(3)
-	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(3)
-
-	scaleExecutor.RequestScale(context.TODO(), &scaledObject, true, false, &ScaleExecutorOptions{})
+	result := scaleExecutor.RequestScale(context.TODO(), &scaledObject, true, false, ScaleExecutorOptions{})
 
 	assert.Equal(t, minReplicas, scale.Spec.Replicas)
-	condition := scaledObject.Status.Conditions.GetActiveCondition()
+	condition := result.Conditions.GetActiveCondition()
 	assert.Equal(t, true, condition.IsTrue())
 	assert.Equal(t, "ScalerActive", condition.Reason)
 	assert.Equal(t, "Scaling is performed because triggers are active", condition.Message)
+	assert.NotNil(t, result.LastActiveTime)
 }
 
 func TestScaleToPausedReplicasCount(t *testing.T) {
@@ -347,20 +328,15 @@ func TestScaleToPausedReplicasCount(t *testing.T) {
 	client := mock_client.NewMockClient(ctrl)
 	recorder := record.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
-	statusWriter := mock_client.NewMockStatusWriter(ctrl)
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
-
-	pausedReplicaCount := int32(0)
-	replicaCount := int32(2)
 
 	scaledObject := v1alpha1.ScaledObject{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "name",
 			Namespace: "namespace",
 			Annotations: map[string]string{
-				"autoscaling.keda.sh/paused-replicas": strconv.Itoa(int(pausedReplicaCount)),
+				"autoscaling.keda.sh/paused-replicas": "0",
 			},
 		},
 		Spec: v1alpha1.ScaledObjectSpec{
@@ -378,30 +354,24 @@ func TestScaleToPausedReplicasCount(t *testing.T) {
 
 	scaledObject.Status.Conditions = *v1alpha1.GetInitializedConditions()
 
+	// GetCurrentReplicas is called before handlePaused, so we need a mock for it.
+	replicaCount := int32(2)
 	client.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, appsv1.Deployment{
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicaCount,
 		},
 	})
 
-	scale := &autoscalingv1.Scale{
-		Spec: autoscalingv1.ScaleSpec{
-			Replicas: replicaCount,
-		},
-	}
+	result := scaleExecutor.RequestScale(context.TODO(), &scaledObject, true, false, ScaleExecutorOptions{})
 
-	mockScaleClient.EXPECT().Scales(gomock.Any()).Return(mockScaleInterface).Times(2)
-	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
-	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
-
-	client.EXPECT().Status().Return(statusWriter).Times(2)
-	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
-
-	scaleExecutor.RequestScale(context.TODO(), &scaledObject, true, false, &ScaleExecutorOptions{})
-
-	assert.Equal(t, pausedReplicaCount, scale.Spec.Replicas)
-	condition := scaledObject.Status.Conditions.GetActiveCondition()
-	assert.Equal(t, false, condition.IsTrue())
+	// PauseReplicas should not be set
+	assert.Nil(t, result.PauseReplicas)
+	// Executor should set paused condition
+	condition := result.Conditions.GetPausedCondition()
+	assert.Equal(t, true, condition.IsTrue())
+	// Active condition should not be set (we returned early before checking triggers)
+	activeCondition := result.Conditions.GetActiveCondition()
+	assert.Equal(t, false, activeCondition.IsTrue())
 }
 
 func TestEventWitTriggerInfo(t *testing.T) {
@@ -410,7 +380,6 @@ func TestEventWitTriggerInfo(t *testing.T) {
 	recorder := record.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
-	statusWriter := mock_client.NewMockStatusWriter(ctrl)
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
@@ -438,8 +407,6 @@ func TestEventWitTriggerInfo(t *testing.T) {
 		},
 	}
 
-	// scaledObject.Status.Conditions = *v1alpha1.GetInitializedConditions()
-
 	client.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, appsv1.Deployment{
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicaCount,
@@ -456,10 +423,7 @@ func TestEventWitTriggerInfo(t *testing.T) {
 	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
 	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
 
-	client.EXPECT().Status().Return(statusWriter).AnyTimes()
-	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
-
-	scaleExecutor.RequestScale(context.TODO(), &scaledObject, true, false, &ScaleExecutorOptions{ActiveTriggers: []string{"testTrigger"}})
+	scaleExecutor.RequestScale(context.TODO(), &scaledObject, true, false, ScaleExecutorOptions{ActiveTriggers: []string{"testTrigger"}})
 
 	eventstring := <-recorder.Events
 	assert.Equal(t, "Normal KEDAScaleTargetActivated Scaled  namespace/name from 2 to 5, triggered by testTrigger", eventstring)
@@ -471,7 +435,6 @@ func TestNoScaleToMinReplicasWhenNotActiveAndPauseScaleInAnnotationSet(t *testin
 	recorder := record.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
-	statusWriter := mock_client.NewMockStatusWriter(ctrl)
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
@@ -520,13 +483,10 @@ func TestNoScaleToMinReplicasWhenNotActiveAndPauseScaleInAnnotationSet(t *testin
 	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
-	client.EXPECT().Status().Return(statusWriter).Times(2)
-	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
-
-	scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false, &ScaleExecutorOptions{})
+	result := scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false, ScaleExecutorOptions{})
 
 	assert.Equal(t, numberOfReplicas, scale.Spec.Replicas)
-	condition := scaledObject.Status.Conditions.GetActiveCondition()
+	condition := result.Conditions.GetActiveCondition()
 	assert.Equal(t, true, condition.IsFalse())
 }
 
@@ -536,7 +496,6 @@ func TestNoScaleToIdleReplicasWhenNotActiveAndPauseScaleInAnnotationSet(t *testi
 	recorder := record.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
-	statusWriter := mock_client.NewMockStatusWriter(ctrl)
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
@@ -587,13 +546,10 @@ func TestNoScaleToIdleReplicasWhenNotActiveAndPauseScaleInAnnotationSet(t *testi
 	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
-	client.EXPECT().Status().Return(statusWriter).Times(2)
-	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
-
-	scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false, &ScaleExecutorOptions{})
+	result := scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false, ScaleExecutorOptions{})
 
 	assert.Equal(t, numberOfReplicas, scale.Spec.Replicas)
-	condition := scaledObject.Status.Conditions.GetActiveCondition()
+	condition := result.Conditions.GetActiveCondition()
 	assert.Equal(t, true, condition.IsFalse())
 }
 
@@ -603,7 +559,6 @@ func TestScaleFromMinReplicasWhenActivationForced(t *testing.T) {
 	recorder := record.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
-	statusWriter := mock_client.NewMockStatusWriter(ctrl)
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
@@ -649,16 +604,14 @@ func TestScaleFromMinReplicasWhenActivationForced(t *testing.T) {
 	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
 	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
 
-	client.EXPECT().Status().Return(statusWriter).Times(3)
-	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(3)
-
-	scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false, &ScaleExecutorOptions{})
+	result := scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false, ScaleExecutorOptions{})
 
 	assert.Equal(t, int32(1), scale.Spec.Replicas)
-	condition := scaledObject.Status.Conditions.GetActiveCondition()
+	condition := result.Conditions.GetActiveCondition()
 	assert.Equal(t, true, condition.IsTrue())
 	assert.Equal(t, "ScalerActive", condition.Reason)
 	assert.Equal(t, "Scaling is performed because activation is being forced by annotation", condition.Message)
+	assert.NotNil(t, result.LastActiveTime)
 }
 
 func TestNoScaleFromMinReplicasWhenActiveAndPausedScaleOutAnnotationSet(t *testing.T) {
@@ -667,7 +620,6 @@ func TestNoScaleFromMinReplicasWhenActiveAndPausedScaleOutAnnotationSet(t *testi
 	recorder := record.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
-	statusWriter := mock_client.NewMockStatusWriter(ctrl)
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
@@ -714,13 +666,10 @@ func TestNoScaleFromMinReplicasWhenActiveAndPausedScaleOutAnnotationSet(t *testi
 	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
-	client.EXPECT().Status().Times(2).Return(statusWriter)
-	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
-
-	scaleExecutor.RequestScale(context.TODO(), &scaledObject, true, false, &ScaleExecutorOptions{})
+	result := scaleExecutor.RequestScale(context.TODO(), &scaledObject, true, false, ScaleExecutorOptions{})
 
 	assert.Equal(t, int32(0), scale.Spec.Replicas)
-	condition := scaledObject.Status.Conditions.GetActiveCondition()
+	condition := result.Conditions.GetActiveCondition()
 	assert.Equal(t, true, condition.IsTrue())
 }
 
@@ -730,7 +679,6 @@ func TestNoScaleFromIdleReplicasToMinReplicasWhenActiveAndPausedScaleOutAnnotati
 	recorder := record.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
-	statusWriter := mock_client.NewMockStatusWriter(ctrl)
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
@@ -781,12 +729,9 @@ func TestNoScaleFromIdleReplicasToMinReplicasWhenActiveAndPausedScaleOutAnnotati
 	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
-	client.EXPECT().Status().Return(statusWriter).Times(2)
-	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
-
-	scaleExecutor.RequestScale(context.TODO(), &scaledObject, true, false, &ScaleExecutorOptions{})
+	result := scaleExecutor.RequestScale(context.TODO(), &scaledObject, true, false, ScaleExecutorOptions{})
 
 	assert.Equal(t, int32(0), scale.Spec.Replicas)
-	condition := scaledObject.Status.Conditions.GetActiveCondition()
+	condition := result.Conditions.GetActiveCondition()
 	assert.Equal(t, true, condition.IsTrue())
 }

@@ -1000,13 +1000,17 @@ var Builtins = []*Function{
 
 			var desc bool
 			if len(args) == 2 {
-				switch args[1].(string) {
+				order, ok := args[1].(string)
+				if !ok {
+					return nil, 0, fmt.Errorf("sort order argument must be a string (got %T)", args[1])
+				}
+				switch order {
 				case "asc":
 					desc = false
 				case "desc":
 					desc = true
 				default:
-					return nil, 0, fmt.Errorf("invalid order %s, expected asc or desc", args[1])
+					return nil, 0, fmt.Errorf("invalid order %s, expected asc or desc", order)
 				}
 			}
 

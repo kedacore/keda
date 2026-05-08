@@ -357,19 +357,9 @@ func parseRabbitMQMetadata(config *scalersconfig.ScalerConfig) (*rabbitMQMetadat
 // the given ceClient cert, ceClient key,and CA certificate. If clientKeyPassword is not empty the provided password will be used to
 // decrypt the given key. If enableTLS is disabled then amqp connection will be created without tls.
 func getConnectionAndChannel(host string, meta *rabbitMQMetadata) (*amqp.Connection, *amqp.Channel, error) {
-	amqpConfig := amqp.Config{
-		Properties: amqp.Table{
-			"connection_name": meta.connectionName,
-		},
-	}
-
-	if meta.EnableTLS == rmqTLSEnable {
-		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.Ca, meta.UnsafeSsl)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		amqpConfig.TLSClientConfig = tlsConfig
+	amqpConfig, err := buildAMQPConfig(meta)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	conn, err := amqp.DialConfig(host, amqpConfig)
@@ -379,20 +369,56 @@ func getConnectionAndChannel(host string, meta *rabbitMQMetadata) (*amqp.Connect
 
 	channel, err := conn.Channel()
 	if err != nil {
+		conn.Close()
 		return nil, nil, err
 	}
 
 	return conn, channel, nil
 }
 
+func buildAMQPConfig(meta *rabbitMQMetadata) (amqp.Config, error) {
+	config := amqp.Config{
+		Properties: amqp.Table{
+			"connection_name": meta.connectionName,
+		},
+	}
+
+	if meta.EnableTLS == rmqTLSEnable {
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.Ca, meta.UnsafeSsl)
+		if err != nil {
+			return amqp.Config{}, err
+		}
+		config.TLSClientConfig = tlsConfig
+		if meta.Username == "" && meta.Password == "" && meta.Cert != "" && meta.Key != "" {
+			useExternal := true
+			if u, err := url.Parse(meta.Host); err == nil && u.User != nil {
+				if _, hasPassword := u.User.Password(); hasPassword {
+					useExternal = false
+				}
+			}
+			if useExternal {
+				config.SASL = []amqp.Authentication{&amqp.ExternalAuth{}}
+			}
+		}
+	}
+
+	return config, nil
+}
+
 // Close disposes of RabbitMQ connections
 func (s *rabbitMQScaler) Close(context.Context) error {
+	if s.channel != nil {
+		if err := s.channel.Close(); err != nil {
+			s.logger.V(1).Info("Error closing RabbitMQ channel, may already be closed", "error", err)
+		}
+		s.channel = nil
+	}
 	if s.connection != nil {
-		err := s.connection.Close()
-		if err != nil {
+		if err := s.connection.Close(); err != nil {
 			s.logger.Error(err, "Error closing RabbitMQ connection")
 			return err
 		}
+		s.connection = nil
 	}
 	if s.httpClient != nil {
 		s.httpClient.CloseIdleConnections()
@@ -415,12 +441,11 @@ func (s *rabbitMQScaler) getQueueStatus(ctx context.Context) (int64, float64, fl
 		return int64(info.Messages), info.MessageStat.PublishDetail.Rate, info.MessageStat.DeliverGetDetail.Rate, nil
 	}
 
-	// QueueDeclarePassive assumes that the queue exists and fails if it doesn't
+	// QueueDeclarePassive assumes that the queue exists and fails if it doesn't.
 	items, err := s.channel.QueueDeclarePassive(s.metadata.QueueName, false, false, false, false, amqp.Table{})
 	if err != nil {
 		return -1, -1, -1, err
 	}
-
 	return int64(items.Messages), 0, 0, nil
 }
 

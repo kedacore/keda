@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/azure-sdk-for-go/sdk/internal/log"
 	azlog "github.com/Azure/azure-sdk-for-go/sdk/internal/log"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2/internal/eh"
 )
@@ -233,7 +232,7 @@ func (p *Processor) checkState() error {
 		p.state = stateRunning
 		return nil
 	case stateRunning:
-		return errors.New("the Processor is currently running. Concurrent calls to Run() are not allowed.")
+		return errors.New("the Processor is currently running, concurrent calls to Run() are not allowed")
 	case stateStopped:
 		return errors.New("the Processor has been stopped. Create a new instance to start processing again")
 	default:
@@ -431,7 +430,7 @@ func (p *Processor) addPartitionClient(ctx context.Context, ownership Ownership,
 	partClient, err := openPartitionClient(ctx, ownership.PartitionID, preferredStartPosition)
 
 	if eh.IsGeoReplicationOffsetError(err) {
-		log.Writef(EventConsumer, "Event Hub is in geo-replication mode and we only have an integer offset, will fallback to starting at earliest+inclusive: %s", err.Error())
+		azlog.Writef(EventConsumer, "Event Hub is in geo-replication mode and we only have an integer offset, will fallback to starting at earliest+inclusive: %s", err.Error())
 
 		partClient, err = openPartitionClient(ctx, ownership.PartitionID, StartPosition{
 			Earliest:  to.Ptr(true),
@@ -450,7 +449,7 @@ func (p *Processor) addPartitionClient(ctx context.Context, ownership Ownership,
 	case p.nextClients <- processorPartClient:
 		return nil
 	default:
-		processorPartClient.Close(ctx)
+		_ = processorPartClient.Close(ctx)
 		return fmt.Errorf("partitions channel full, consumer for partition %s could not be returned", ownership.PartitionID)
 	}
 }
@@ -517,7 +516,7 @@ func (p *Processor) close(ctx context.Context, consumersMap *sync.Map) {
 		client := value.(*ProcessorPartitionClient)
 
 		if client != nil {
-			client.Close(ctx)
+			_ = client.Close(ctx)
 		}
 
 		return true

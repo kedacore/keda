@@ -445,6 +445,62 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
+    - type: azure-app-insights
+      parameters:
+        - name: targetValue
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: activationTargetValue
+          type: string
+          default: "0"
+          metadataVariableReadable: true
+        - name: metricId
+          type: string
+          metadataVariableReadable: true
+        - name: metricAggregationTimespan
+          type: string
+          metadataVariableReadable: true
+        - name: metricAggregationType
+          type: string
+          metadataVariableReadable: true
+        - name: metricFilter
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: ignoreNullValues
+          type: string
+          default: "false"
+          metadataVariableReadable: true
+        - name: cloud
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: appInsightsResourceURL
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: applicationInsightsId
+          type: string
+          metadataVariableReadable: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: tenantId
+          type: string
+          metadataVariableReadable: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: activeDirectoryClientId
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: activeDirectoryClientPassword
+          type: string
+          optional: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
     - type: azure-blob
       parameters:
         - name: blobContainerName
@@ -494,6 +550,40 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
+    - type: azure-data-explorer
+      parameters:
+        - name: databaseName
+          type: string
+          metadataVariableReadable: true
+        - name: endpoint
+          type: string
+          metadataVariableReadable: true
+        - name: query
+          type: string
+          metadataVariableReadable: true
+        - name: threshold
+          type: string
+          metadataVariableReadable: true
+        - name: activationThreshold
+          type: string
+          default: "0"
+          metadataVariableReadable: true
+        - name: tenantId
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: clientId
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: clientSecret
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
     - type: azure-eventhub
       parameters:
         - name: unprocessedEventThreshold
@@ -1455,7 +1545,7 @@ scalers:
         - name: minMetricValue
           type: string
           optional: true
-          deprecatedAnnounce: The 'minMetricValue' setting is DEPRECATED and will be removed in v2.20 - Use 'activationTargetMetricValue' instead
+          deprecated: The 'minMetricValue' setting is DEPRECATED and is removed in v2.20 - Use 'activationTargetMetricValue' instead
           metadataVariableReadable: true
         - name: metricCollectionTime
           type: string
@@ -1536,7 +1626,7 @@ scalers:
         - name: authToken
           type: string
           optional: true
-          deprecatedAnnounce: The 'authToken' setting from triggerMetadata is DEPRECATED and will be removed in v2.20 - Use 'authToken' from resolvedEnv or authParams instead
+          deprecated: The 'authToken' setting from triggerMetadata is DEPRECATED and is removed in v2.20 - Use 'authToken' from resolvedEnv or authParams instead
           metadataVariableReadable: true
         - name: authToken
           type: string
@@ -1792,6 +1882,10 @@ scalers:
           type: string
           default: "0"
           metadataVariableReadable: true
+        - name: groupByNode
+          type: string
+          default: "false"
+          metadataVariableReadable: true
     - type: liiklus
       parameters:
         - name: lagThreshold
@@ -1929,6 +2023,10 @@ scalers:
             - sum
             - max
             - min
+          metadataVariableReadable: true
+        - name: timeout
+          type: string
+          optional: true
           metadataVariableReadable: true
     - type: mongodb
       parameters:
@@ -2376,7 +2474,7 @@ scalers:
         - name: subscriptionSize
           type: string
           optional: true
-          deprecatedAnnounce: The 'subscriptionSize' setting is DEPRECATED and will be removed in v2.20 - Use 'mode' and 'value' instead
+          deprecated: The 'subscriptionSize' setting is DEPRECATED and is removed in v2.20 - Use 'mode' and 'value' instead
           metadataVariableReadable: true
         - name: mode
           type: string
@@ -2450,26 +2548,6 @@ scalers:
           default: "false"
           metadataVariableReadable: true
         - name: tls
-          type: string
-          optional: true
-          metadataVariableReadable: true
-        - name: authModes
-          type: string
-          optional: true
-          metadataVariableReadable: true
-        - name: oauthTokenURI
-          type: string
-          optional: true
-          metadataVariableReadable: true
-        - name: scope
-          type: string
-          optional: true
-          metadataVariableReadable: true
-        - name: clientID
-          type: string
-          optional: true
-          metadataVariableReadable: true
-        - name: EndpointParams
           type: string
           optional: true
           metadataVariableReadable: true

@@ -267,6 +267,13 @@ func populateFormParams(tag *paramTag, objType reflect.Type, objValue reflect.Va
 			return ""
 		}
 
+		// When inline is true, use the parent's param name instead of the field's own name.
+		// This allows union/oneOf wrapper types to serialize their values directly under
+		// the parent's query parameter name.
+		if qpTag.Inline {
+			return tag.ParamName
+		}
+
 		return qpTag.ParamName
 	})
 }

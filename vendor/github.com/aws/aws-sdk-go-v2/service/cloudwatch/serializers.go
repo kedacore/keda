@@ -16,6 +16,57 @@ import (
 	"time"
 )
 
+type smithyRpcv2cbor_serializeOpDeleteAlarmMuteRule struct {
+}
+
+func (*smithyRpcv2cbor_serializeOpDeleteAlarmMuteRule) ID() string {
+	return "OperationSerializer"
+}
+
+func (m *smithyRpcv2cbor_serializeOpDeleteAlarmMuteRule) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
+) {
+	_, span := tracing.StartSpan(ctx, "OperationSerializer")
+	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
+	defer endTimer()
+	defer span.End()
+	input, ok := in.Parameters.(*DeleteAlarmMuteRuleInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
+	}
+
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/DeleteAlarmMuteRule"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
+
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
+
+	cv, err := serializeCBOR_DeleteAlarmMuteRuleInput(input)
+	if err != nil {
+		return out, metadata, &smithy.SerializationError{Err: err}
+	}
+
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
+		return out, metadata, &smithy.SerializationError{Err: err}
+	}
+
+	in.Request = req
+
+	endTimer()
+	span.End()
+
+	return next.HandleSerialize(ctx, in)
+}
+
 type smithyRpcv2cbor_serializeOpDeleteAlarms struct {
 }
 
@@ -781,6 +832,57 @@ func (m *smithyRpcv2cbor_serializeOpEnableInsightRules) HandleSerialize(ctx cont
 	return next.HandleSerialize(ctx, in)
 }
 
+type smithyRpcv2cbor_serializeOpGetAlarmMuteRule struct {
+}
+
+func (*smithyRpcv2cbor_serializeOpGetAlarmMuteRule) ID() string {
+	return "OperationSerializer"
+}
+
+func (m *smithyRpcv2cbor_serializeOpGetAlarmMuteRule) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
+) {
+	_, span := tracing.StartSpan(ctx, "OperationSerializer")
+	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
+	defer endTimer()
+	defer span.End()
+	input, ok := in.Parameters.(*GetAlarmMuteRuleInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
+	}
+
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/GetAlarmMuteRule"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
+
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
+
+	cv, err := serializeCBOR_GetAlarmMuteRuleInput(input)
+	if err != nil {
+		return out, metadata, &smithy.SerializationError{Err: err}
+	}
+
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
+		return out, metadata, &smithy.SerializationError{Err: err}
+	}
+
+	in.Request = req
+
+	endTimer()
+	span.End()
+
+	return next.HandleSerialize(ctx, in)
+}
+
 type smithyRpcv2cbor_serializeOpGetDashboard struct {
 }
 
@@ -1087,6 +1189,108 @@ func (m *smithyRpcv2cbor_serializeOpGetMetricWidgetImage) HandleSerialize(ctx co
 	return next.HandleSerialize(ctx, in)
 }
 
+type smithyRpcv2cbor_serializeOpGetOTelEnrichment struct {
+}
+
+func (*smithyRpcv2cbor_serializeOpGetOTelEnrichment) ID() string {
+	return "OperationSerializer"
+}
+
+func (m *smithyRpcv2cbor_serializeOpGetOTelEnrichment) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
+) {
+	_, span := tracing.StartSpan(ctx, "OperationSerializer")
+	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
+	defer endTimer()
+	defer span.End()
+	input, ok := in.Parameters.(*GetOTelEnrichmentInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
+	}
+
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/GetOTelEnrichment"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
+
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
+
+	cv, err := serializeCBOR_GetOTelEnrichmentInput(input)
+	if err != nil {
+		return out, metadata, &smithy.SerializationError{Err: err}
+	}
+
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
+		return out, metadata, &smithy.SerializationError{Err: err}
+	}
+
+	in.Request = req
+
+	endTimer()
+	span.End()
+
+	return next.HandleSerialize(ctx, in)
+}
+
+type smithyRpcv2cbor_serializeOpListAlarmMuteRules struct {
+}
+
+func (*smithyRpcv2cbor_serializeOpListAlarmMuteRules) ID() string {
+	return "OperationSerializer"
+}
+
+func (m *smithyRpcv2cbor_serializeOpListAlarmMuteRules) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
+) {
+	_, span := tracing.StartSpan(ctx, "OperationSerializer")
+	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
+	defer endTimer()
+	defer span.End()
+	input, ok := in.Parameters.(*ListAlarmMuteRulesInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
+	}
+
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/ListAlarmMuteRules"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
+
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
+
+	cv, err := serializeCBOR_ListAlarmMuteRulesInput(input)
+	if err != nil {
+		return out, metadata, &smithy.SerializationError{Err: err}
+	}
+
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
+		return out, metadata, &smithy.SerializationError{Err: err}
+	}
+
+	in.Request = req
+
+	endTimer()
+	span.End()
+
+	return next.HandleSerialize(ctx, in)
+}
+
 type smithyRpcv2cbor_serializeOpListDashboards struct {
 }
 
@@ -1325,6 +1529,57 @@ func (m *smithyRpcv2cbor_serializeOpListTagsForResource) HandleSerialize(ctx con
 	req.Header.Set("X-Amzn-Query-Mode", "true")
 
 	cv, err := serializeCBOR_ListTagsForResourceInput(input)
+	if err != nil {
+		return out, metadata, &smithy.SerializationError{Err: err}
+	}
+
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
+		return out, metadata, &smithy.SerializationError{Err: err}
+	}
+
+	in.Request = req
+
+	endTimer()
+	span.End()
+
+	return next.HandleSerialize(ctx, in)
+}
+
+type smithyRpcv2cbor_serializeOpPutAlarmMuteRule struct {
+}
+
+func (*smithyRpcv2cbor_serializeOpPutAlarmMuteRule) ID() string {
+	return "OperationSerializer"
+}
+
+func (m *smithyRpcv2cbor_serializeOpPutAlarmMuteRule) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
+) {
+	_, span := tracing.StartSpan(ctx, "OperationSerializer")
+	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
+	defer endTimer()
+	defer span.End()
+	input, ok := in.Parameters.(*PutAlarmMuteRuleInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
+	}
+
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/PutAlarmMuteRule"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
+
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
+
+	cv, err := serializeCBOR_PutAlarmMuteRuleInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
@@ -1852,6 +2107,57 @@ func (m *smithyRpcv2cbor_serializeOpStartMetricStreams) HandleSerialize(ctx cont
 	return next.HandleSerialize(ctx, in)
 }
 
+type smithyRpcv2cbor_serializeOpStartOTelEnrichment struct {
+}
+
+func (*smithyRpcv2cbor_serializeOpStartOTelEnrichment) ID() string {
+	return "OperationSerializer"
+}
+
+func (m *smithyRpcv2cbor_serializeOpStartOTelEnrichment) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
+) {
+	_, span := tracing.StartSpan(ctx, "OperationSerializer")
+	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
+	defer endTimer()
+	defer span.End()
+	input, ok := in.Parameters.(*StartOTelEnrichmentInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
+	}
+
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/StartOTelEnrichment"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
+
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
+
+	cv, err := serializeCBOR_StartOTelEnrichmentInput(input)
+	if err != nil {
+		return out, metadata, &smithy.SerializationError{Err: err}
+	}
+
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
+		return out, metadata, &smithy.SerializationError{Err: err}
+	}
+
+	in.Request = req
+
+	endTimer()
+	span.End()
+
+	return next.HandleSerialize(ctx, in)
+}
+
 type smithyRpcv2cbor_serializeOpStopMetricStreams struct {
 }
 
@@ -1886,6 +2192,57 @@ func (m *smithyRpcv2cbor_serializeOpStopMetricStreams) HandleSerialize(ctx conte
 	req.Header.Set("X-Amzn-Query-Mode", "true")
 
 	cv, err := serializeCBOR_StopMetricStreamsInput(input)
+	if err != nil {
+		return out, metadata, &smithy.SerializationError{Err: err}
+	}
+
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
+		return out, metadata, &smithy.SerializationError{Err: err}
+	}
+
+	in.Request = req
+
+	endTimer()
+	span.End()
+
+	return next.HandleSerialize(ctx, in)
+}
+
+type smithyRpcv2cbor_serializeOpStopOTelEnrichment struct {
+}
+
+func (*smithyRpcv2cbor_serializeOpStopOTelEnrichment) ID() string {
+	return "OperationSerializer"
+}
+
+func (m *smithyRpcv2cbor_serializeOpStopOTelEnrichment) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
+) {
+	_, span := tracing.StartSpan(ctx, "OperationSerializer")
+	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
+	defer endTimer()
+	defer span.End()
+	input, ok := in.Parameters.(*StopOTelEnrichmentInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
+	}
+
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/StopOTelEnrichment"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
+
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
+
+	cv, err := serializeCBOR_StopOTelEnrichmentInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
@@ -2004,6 +2361,23 @@ func (m *smithyRpcv2cbor_serializeOpUntagResource) HandleSerialize(ctx context.C
 
 	return next.HandleSerialize(ctx, in)
 }
+func serializeCBOR_AlarmMuteRuleStatus(v types.AlarmMuteRuleStatus) (smithycbor.Value, error) {
+	return smithycbor.String(string(v)), nil
+}
+
+func serializeCBOR_AlarmMuteRuleStatuses(v []types.AlarmMuteRuleStatus) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
+	for i := range v {
+
+		ser, err := serializeCBOR_AlarmMuteRuleStatus(v[i])
+		if err != nil {
+			return nil, err
+		}
+		vl = append(vl, ser)
+	}
+	return vl, nil
+}
+
 func serializeCBOR_AlarmNames(v []string) (smithycbor.Value, error) {
 	vl := smithycbor.List{}
 	for i := range v {
@@ -2015,6 +2389,32 @@ func serializeCBOR_AlarmNames(v []string) (smithycbor.Value, error) {
 		vl = append(vl, ser)
 	}
 	return vl, nil
+}
+
+func serializeCBOR_AlarmPromQLCriteria(v *types.AlarmPromQLCriteria) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.Query != nil {
+		ser, err := serializeCBOR_String(*v.Query)
+		if err != nil {
+			return nil, err
+		}
+		vm["Query"] = ser
+	}
+	if v.PendingPeriod != nil {
+		ser, err := serializeCBOR_Int32(*v.PendingPeriod)
+		if err != nil {
+			return nil, err
+		}
+		vm["PendingPeriod"] = ser
+	}
+	if v.RecoveryPeriod != nil {
+		ser, err := serializeCBOR_Int32(*v.RecoveryPeriod)
+		if err != nil {
+			return nil, err
+		}
+		vm["RecoveryPeriod"] = ser
+	}
+	return vm, nil
 }
 
 func serializeCBOR_AlarmType(v types.AlarmType) (smithycbor.Value, error) {
@@ -2252,6 +2652,21 @@ func serializeCBOR_EntityMetricDataList(v []types.EntityMetricData) (smithycbor.
 		vl = append(vl, ser)
 	}
 	return vl, nil
+}
+
+func serializeCBOR_EvaluationCriteria(v types.EvaluationCriteria) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	switch uv := v.(type) {
+	case *types.EvaluationCriteriaMemberPromQLCriteria:
+		ser, err := serializeCBOR_AlarmPromQLCriteria(&uv.Value)
+		if err != nil {
+			return nil, err
+		}
+		vm["PromQLCriteria"] = ser
+	default:
+		return nil, fmt.Errorf("unknown variant type %T", v)
+	}
+	return vm, nil
 }
 
 func serializeCBOR_ExtendedStatistics(v []string) (smithycbor.Value, error) {
@@ -2718,6 +3133,31 @@ func serializeCBOR_MetricStreamStatisticsMetric(v *types.MetricStreamStatisticsM
 	return vm, nil
 }
 
+func serializeCBOR_MuteTargetAlarmNameList(v []string) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
+	for i := range v {
+
+		ser, err := serializeCBOR_String(v[i])
+		if err != nil {
+			return nil, err
+		}
+		vl = append(vl, ser)
+	}
+	return vl, nil
+}
+
+func serializeCBOR_MuteTargets(v *types.MuteTargets) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.AlarmNames != nil {
+		ser, err := serializeCBOR_MuteTargetAlarmNameList(v.AlarmNames)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmNames"] = ser
+	}
+	return vm, nil
+}
+
 func serializeCBOR_Range(v *types.Range) (smithycbor.Value, error) {
 	vm := smithycbor.Map{}
 	if v.StartTime != nil {
@@ -2754,8 +3194,46 @@ func serializeCBOR_ResourceList(v []string) (smithycbor.Value, error) {
 	return vl, nil
 }
 
+func serializeCBOR_Rule(v *types.Rule) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.Schedule != nil {
+		ser, err := serializeCBOR_Schedule(v.Schedule)
+		if err != nil {
+			return nil, err
+		}
+		vm["Schedule"] = ser
+	}
+	return vm, nil
+}
+
 func serializeCBOR_ScanBy(v types.ScanBy) (smithycbor.Value, error) {
 	return smithycbor.String(string(v)), nil
+}
+
+func serializeCBOR_Schedule(v *types.Schedule) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.Expression != nil {
+		ser, err := serializeCBOR_String(*v.Expression)
+		if err != nil {
+			return nil, err
+		}
+		vm["Expression"] = ser
+	}
+	if v.Duration != nil {
+		ser, err := serializeCBOR_String(*v.Duration)
+		if err != nil {
+			return nil, err
+		}
+		vm["Duration"] = ser
+	}
+	if v.Timezone != nil {
+		ser, err := serializeCBOR_String(*v.Timezone)
+		if err != nil {
+			return nil, err
+		}
+		vm["Timezone"] = ser
+	}
+	return vm, nil
 }
 
 func serializeCBOR_SingleMetricAnomalyDetector(v *types.SingleMetricAnomalyDetector) (smithycbor.Value, error) {
@@ -2938,6 +3416,18 @@ func serializeCBOR_Time(v time.Time) (smithycbor.Value, error) {
 		ID:    1,
 		Value: smithycbor.Float64(float64(v.UnixMilli()) / 1000),
 	}, nil
+}
+
+func serializeCBOR_DeleteAlarmMuteRuleInput(v *DeleteAlarmMuteRuleInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.AlarmMuteRuleName != nil {
+		ser, err := serializeCBOR_String(*v.AlarmMuteRuleName)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmMuteRuleName"] = ser
+	}
+	return vm, nil
 }
 
 func serializeCBOR_DeleteAlarmsInput(v *DeleteAlarmsInput) (smithycbor.Value, error) {
@@ -3358,6 +3848,18 @@ func serializeCBOR_EnableInsightRulesInput(v *EnableInsightRulesInput) (smithycb
 	return vm, nil
 }
 
+func serializeCBOR_GetAlarmMuteRuleInput(v *GetAlarmMuteRuleInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.AlarmMuteRuleName != nil {
+		ser, err := serializeCBOR_String(*v.AlarmMuteRuleName)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmMuteRuleName"] = ser
+	}
+	return vm, nil
+}
+
 func serializeCBOR_GetDashboardInput(v *GetDashboardInput) (smithycbor.Value, error) {
 	vm := smithycbor.Map{}
 	if v.DashboardName != nil {
@@ -3577,6 +4079,45 @@ func serializeCBOR_GetMetricWidgetImageInput(v *GetMetricWidgetImageInput) (smit
 	return vm, nil
 }
 
+func serializeCBOR_GetOTelEnrichmentInput(v *GetOTelEnrichmentInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+
+	return vm, nil
+}
+
+func serializeCBOR_ListAlarmMuteRulesInput(v *ListAlarmMuteRulesInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.AlarmName != nil {
+		ser, err := serializeCBOR_String(*v.AlarmName)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmName"] = ser
+	}
+	if v.Statuses != nil {
+		ser, err := serializeCBOR_AlarmMuteRuleStatuses(v.Statuses)
+		if err != nil {
+			return nil, err
+		}
+		vm["Statuses"] = ser
+	}
+	if v.MaxRecords != nil {
+		ser, err := serializeCBOR_Int32(*v.MaxRecords)
+		if err != nil {
+			return nil, err
+		}
+		vm["MaxRecords"] = ser
+	}
+	if v.NextToken != nil {
+		ser, err := serializeCBOR_String(*v.NextToken)
+		if err != nil {
+			return nil, err
+		}
+		vm["NextToken"] = ser
+	}
+	return vm, nil
+}
+
 func serializeCBOR_ListDashboardsInput(v *ListDashboardsInput) (smithycbor.Value, error) {
 	vm := smithycbor.Map{}
 	if v.DashboardNamePrefix != nil {
@@ -3703,6 +4244,60 @@ func serializeCBOR_ListTagsForResourceInput(v *ListTagsForResourceInput) (smithy
 			return nil, err
 		}
 		vm["ResourceARN"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_PutAlarmMuteRuleInput(v *PutAlarmMuteRuleInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.Name != nil {
+		ser, err := serializeCBOR_String(*v.Name)
+		if err != nil {
+			return nil, err
+		}
+		vm["Name"] = ser
+	}
+	if v.Description != nil {
+		ser, err := serializeCBOR_String(*v.Description)
+		if err != nil {
+			return nil, err
+		}
+		vm["Description"] = ser
+	}
+	if v.Rule != nil {
+		ser, err := serializeCBOR_Rule(v.Rule)
+		if err != nil {
+			return nil, err
+		}
+		vm["Rule"] = ser
+	}
+	if v.MuteTargets != nil {
+		ser, err := serializeCBOR_MuteTargets(v.MuteTargets)
+		if err != nil {
+			return nil, err
+		}
+		vm["MuteTargets"] = ser
+	}
+	if v.Tags != nil {
+		ser, err := serializeCBOR_TagList(v.Tags)
+		if err != nil {
+			return nil, err
+		}
+		vm["Tags"] = ser
+	}
+	if v.StartDate != nil {
+		ser, err := serializeCBOR_Time(*v.StartDate)
+		if err != nil {
+			return nil, err
+		}
+		vm["StartDate"] = ser
+	}
+	if v.ExpireDate != nil {
+		ser, err := serializeCBOR_Time(*v.ExpireDate)
+		if err != nil {
+			return nil, err
+		}
+		vm["ExpireDate"] = ser
 	}
 	return vm, nil
 }
@@ -4077,6 +4672,20 @@ func serializeCBOR_PutMetricAlarmInput(v *PutMetricAlarmInput) (smithycbor.Value
 		}
 		vm["ThresholdMetricId"] = ser
 	}
+	if v.EvaluationCriteria != nil {
+		ser, err := serializeCBOR_EvaluationCriteria(v.EvaluationCriteria)
+		if err != nil {
+			return nil, err
+		}
+		vm["EvaluationCriteria"] = ser
+	}
+	if v.EvaluationInterval != nil {
+		ser, err := serializeCBOR_Int32(*v.EvaluationInterval)
+		if err != nil {
+			return nil, err
+		}
+		vm["EvaluationInterval"] = ser
+	}
 	return vm, nil
 }
 
@@ -4226,6 +4835,12 @@ func serializeCBOR_StartMetricStreamsInput(v *StartMetricStreamsInput) (smithycb
 	return vm, nil
 }
 
+func serializeCBOR_StartOTelEnrichmentInput(v *StartOTelEnrichmentInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+
+	return vm, nil
+}
+
 func serializeCBOR_StopMetricStreamsInput(v *StopMetricStreamsInput) (smithycbor.Value, error) {
 	vm := smithycbor.Map{}
 	if v.Names != nil {
@@ -4235,6 +4850,12 @@ func serializeCBOR_StopMetricStreamsInput(v *StopMetricStreamsInput) (smithycbor
 		}
 		vm["Names"] = ser
 	}
+	return vm, nil
+}
+
+func serializeCBOR_StopOTelEnrichmentInput(v *StopOTelEnrichmentInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+
 	return vm, nil
 }
 
