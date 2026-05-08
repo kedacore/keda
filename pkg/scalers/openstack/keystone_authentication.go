@@ -396,6 +396,25 @@ func (keystone *KeystoneAuthRequest) getServiceURL(ctx context.Context, token st
 		}
 	}
 
+	// Some callers already pass a catalog service type such as "metric".
+	// Match it directly so discovery does not depend on the external alias registry.
+	for _, service := range serviceCatalog {
+		if projectName == service.Type {
+			for _, endpoint := range service.Endpoints {
+				if endpoint.Interface == "public" {
+					if region != "" {
+						if endpoint.Region == region {
+							return endpoint.URL, nil
+						}
+						continue
+					}
+					return endpoint.URL, nil
+				}
+			}
+			return "", fmt.Errorf("service '%s' does not have a public URL or the public URL for a specific region is not registered in the catalog", projectName)
+		}
+	}
+
 	// If getServiceTypes() timed-out or failed or if serviceType is not in the catalog, try to find by project name
 	for _, service := range serviceCatalog {
 		if projectName == service.Name {
