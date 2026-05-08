@@ -18,7 +18,7 @@ import (
 )
 
 // Load environment variables from .env file
-var _ = godotenv.Load("../../../../.env")
+var _ = godotenv.Load("../../../.env")
 
 const (
 	testName = "rmq-queue-http-oauth2"
@@ -333,6 +333,15 @@ func TestScaler(t *testing.T) {
 	// Setup Keycloak
 	CreateNamespace(t, kc, keycloakNamespace)
 	kcData := data // reuse templateData for keycloak templates
+
+	t.Cleanup(func() {
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+		RMQUninstall(t, rmqNamespace, user, password, vhost, WithKeycloakOAuth(oauthClientID, keycloakNamespace, realmName))
+		KubectlDeleteWithTemplate(t, kcData, "keycloakDeploymentTemplate", keycloakDeploymentTemplate)
+		KubectlDeleteWithTemplate(t, kcData, "keycloakRealmConfigMapTemplate", keycloakRealmConfigMapTemplate)
+		DeleteNamespace(t, keycloakNamespace)
+	})
+
 	KubectlApplyWithTemplate(t, kcData, "keycloakRealmConfigMapTemplate", keycloakRealmConfigMapTemplate)
 	KubectlApplyWithTemplate(t, kcData, "keycloakDeploymentTemplate", keycloakDeploymentTemplate)
 	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "keycloak", keycloakNamespace, 1, 180, 1),
@@ -349,14 +358,6 @@ func TestScaler(t *testing.T) {
 	KubectlApplyWithTemplate(t, data, "keycloakVerifyTokenJobTemplate", keycloakVerifyTokenJobTemplate)
 	require.True(t, WaitForJobSuccess(t, kc, "keycloak-verify-token", keycloakNamespace, 30, 10),
 		"keycloak client credentials token request should succeed")
-
-	t.Cleanup(func() {
-		DeleteKubernetesResources(t, testNamespace, data, templates)
-		RMQUninstall(t, rmqNamespace, user, password, vhost, WithKeycloakOAuth(oauthClientID, keycloakNamespace, realmName))
-		KubectlDeleteWithTemplate(t, kcData, "keycloakDeploymentTemplate", keycloakDeploymentTemplate)
-		KubectlDeleteWithTemplate(t, kcData, "keycloakRealmConfigMapTemplate", keycloakRealmConfigMapTemplate)
-		DeleteNamespace(t, keycloakNamespace)
-	})
 
 	// Setup RabbitMQ with OAuth2 pointing to Keycloak JWKS
 	RMQInstall(t, kc, rmqNamespace, user, password, vhost, WithKeycloakOAuth(oauthClientID, keycloakNamespace, realmName))

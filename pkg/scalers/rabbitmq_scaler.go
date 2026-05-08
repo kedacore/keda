@@ -21,6 +21,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -121,12 +122,8 @@ type rabbitMQMetadata struct {
 	workloadIdentityTenantID      string
 	workloadIdentityAuthorityHost string
 
-	// OAuth2 authentication fields (parsed from authParams via scale resolver)
-	OAuthTokenURI       string `keda:"name=oauthTokenURI,    order=authParams, optional"`
-	OAuthClientID       string `keda:"name=clientID,         order=authParams, optional"`
-	OAuthClientSecret   string `keda:"name=clientSecret,     order=authParams, optional"`
-	OAuthScopes         string `keda:"name=scopes,           order=authParams, optional"`
-	OAuthEndpointParams string `keda:"name=endpointParams,   order=authParams, optional"`
+	// OAuth2 authentication (field names match authentication.OAuth, parsed from authParams)
+	authentication.OAuth `keda:"optional"`
 
 	// Auth method detection flags (computed, not parsed)
 	hasOAuth2           bool
@@ -199,13 +196,13 @@ func (r *rabbitMQMetadata) Validate() error {
 
 func (r *rabbitMQMetadata) validateOAuth2() error {
 	// OAuth2 validation - check if any OAuth2 parameter is present
-	hasAnyOAuth2Param := r.OAuthTokenURI != "" || r.OAuthClientID != "" || r.OAuthClientSecret != ""
+	hasAnyOAuth2Param := r.OauthTokenURI != "" || r.ClientID != "" || r.ClientSecret != ""
 	if !hasAnyOAuth2Param {
 		return nil
 	}
 
 	// Validate required OAuth2 parameters are present
-	if r.OAuthTokenURI == "" || r.OAuthClientID == "" || r.OAuthClientSecret == "" {
+	if r.OauthTokenURI == "" || r.ClientID == "" || r.ClientSecret == "" {
 		return fmt.Errorf("OAuth2 requires tokenUrl clientId and clientSecret to be configured in TriggerAuthentication")
 	}
 
@@ -340,7 +337,10 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	// Create HTTP client based on auth method
 	if meta.hasOAuth2 {
 		// OAuth2 client with automatic token management
-		s.httpClient = s.createOAuth2HTTPClient(timeout, meta)
+		s.httpClient, err = s.createOAuth2HTTPClient(timeout, meta)
+		if err != nil {
+			return nil, fmt.Errorf("error creating OAuth2 HTTP client: %w", err)
+		}
 	} else {
 		// Standard HTTP client for basic auth or workload identity
 		s.httpClient = kedautil.CreateHTTPClient(timeout, meta.UnsafeSsl)
@@ -408,7 +408,7 @@ func parseRabbitMQMetadata(config *scalersconfig.ScalerConfig) (*rabbitMQMetadat
 
 // determineAuthMethod sets boolean flags for auth method detection
 func (r *rabbitMQMetadata) determineAuthMethod() {
-	r.hasOAuth2 = r.OAuthTokenURI != "" && r.OAuthClientID != "" && r.OAuthClientSecret != ""
+	r.hasOAuth2 = r.OauthTokenURI != "" && r.ClientID != "" && r.ClientSecret != ""
 	r.hasBasicAuth = r.Username != "" && r.Password != ""
 	r.hasWorkloadIdentity = r.WorkloadIdentityResource != ""
 }
@@ -488,26 +488,19 @@ func (s *rabbitMQScaler) Close(context.Context) error {
 
 // createOAuth2HTTPClient creates an HTTP client with OAuth2 client credentials flow
 // The client automatically handles token acquisition, caching, and refresh
-func (s *rabbitMQScaler) createOAuth2HTTPClient(timeout time.Duration, meta *rabbitMQMetadata) *http.Client {
+func (s *rabbitMQScaler) createOAuth2HTTPClient(timeout time.Duration, meta *rabbitMQMetadata) (*http.Client, error) {
 	config := clientcredentials.Config{
-		ClientID:     meta.OAuthClientID,
-		ClientSecret: meta.OAuthClientSecret,
-		TokenURL:     meta.OAuthTokenURI,
+		ClientID:     meta.ClientID,
+		ClientSecret: meta.ClientSecret,
+		TokenURL:     meta.OauthTokenURI,
 	}
 
-	// Parse scopes from comma-separated string
-	if meta.OAuthScopes != "" {
-		config.Scopes = strings.Split(meta.OAuthScopes, ",")
-	}
+	// Set scopes from the OAuth struct (already parsed as []string)
+	config.Scopes = meta.Scopes
 
-	// Parse additional endpoint parameters (URL-encoded string from scale resolver)
-	if meta.OAuthEndpointParams != "" {
-		params, err := url.ParseQuery(meta.OAuthEndpointParams)
-		if err == nil {
-			config.EndpointParams = params
-		} else {
-			s.logger.Error(err, "Failed to parse OAuth2 endpoint parameters, ignoring")
-		}
+	// Set additional endpoint parameters from the OAuth struct (already parsed as url.Values)
+	if len(meta.EndpointParams) > 0 {
+		config.EndpointParams = meta.EndpointParams
 	}
 
 	// Build a base transport using kedautil so that ProxyFromEnvironment and
@@ -516,11 +509,9 @@ func (s *rabbitMQScaler) createOAuth2HTTPClient(timeout time.Duration, meta *rab
 	if meta.EnableTLS == rmqTLSEnable {
 		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.Ca, meta.UnsafeSsl)
 		if err != nil {
-			s.logger.Error(err, "Failed to configure TLS for OAuth2 client, proceeding without TLS")
-			baseTransport = kedautil.CreateHTTPTransportWithTLSConfig(nil)
-		} else {
-			baseTransport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
+			return nil, err
 		}
+		baseTransport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
 	} else {
 		baseTransport = kedautil.CreateHTTPTransportWithTLSConfig(nil)
 	}
@@ -543,7 +534,7 @@ func (s *rabbitMQScaler) createOAuth2HTTPClient(timeout time.Duration, meta *rab
 	}
 
 	oauth2Client.Timeout = timeout
-	return oauth2Client
+	return oauth2Client, nil
 }
 
 func (s *rabbitMQScaler) getQueueStatus(ctx context.Context) (int64, float64, float64, error) {
