@@ -17,6 +17,7 @@ import (
 
 const tokensEndpoint = "/v3/auth/tokens"
 const catalogEndpoint = "/v3/auth/catalog"
+const publicEndpointInterface = "public"
 
 // Client is a struct containing an authentication token and an HTTP client for HTTP requests.
 // It can also have a public URL for an specific OpenStack project or service.
@@ -381,7 +382,7 @@ func (keystone *KeystoneAuthRequest) getServiceURL(ctx context.Context, token st
 		for _, service := range serviceCatalog {
 			if serviceType == service.Type {
 				for _, endpoint := range service.Endpoints {
-					if endpoint.Interface == "public" {
+					if endpoint.Interface == publicEndpointInterface {
 						if region != "" {
 							if endpoint.Region == region {
 								return endpoint.URL, nil
@@ -401,7 +402,7 @@ func (keystone *KeystoneAuthRequest) getServiceURL(ctx context.Context, token st
 	for _, service := range serviceCatalog {
 		if projectName == service.Type {
 			for _, endpoint := range service.Endpoints {
-				if endpoint.Interface == "public" {
+				if endpoint.Interface == publicEndpointInterface {
 					if region != "" {
 						if endpoint.Region == region {
 							return endpoint.URL, nil
@@ -419,7 +420,7 @@ func (keystone *KeystoneAuthRequest) getServiceURL(ctx context.Context, token st
 	for _, service := range serviceCatalog {
 		if projectName == service.Name {
 			for _, endpoint := range service.Endpoints {
-				if endpoint.Interface == "public" {
+				if endpoint.Interface == publicEndpointInterface {
 					if region != "" {
 						if endpoint.Region == region {
 							return endpoint.URL, nil
