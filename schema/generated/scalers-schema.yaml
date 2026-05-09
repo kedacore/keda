@@ -176,10 +176,6 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
-        - name: authModes
-          type: string
-          optional: true
-          metadataVariableReadable: true
     - type: artemis-queue
       parameters:
         - name: managementEndpoint
@@ -1936,10 +1932,6 @@ scalers:
           type: string
           default: "false"
           metadataVariableReadable: true
-        - name: authModes
-          type: string
-          optional: true
-          metadataVariableReadable: true
     - type: mssql
       parameters:
         - name: connectionString
@@ -2413,10 +2405,6 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
-        - name: authModes
-          type: string
-          optional: true
-          metadataVariableReadable: true
     - type: prometheus
       parameters:
         - name: serverAddress
@@ -2462,10 +2450,6 @@ scalers:
           optional: true
           metadataVariableReadable: true
         - name: identityOwner
-          type: string
-          optional: true
-          metadataVariableReadable: true
-        - name: authModes
           type: string
           optional: true
           metadataVariableReadable: true

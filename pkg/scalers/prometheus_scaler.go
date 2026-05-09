@@ -52,7 +52,6 @@ type prometheusMetadata struct {
 	AwsRegion           string                 `keda:"name=awsRegion,           order=triggerMetadata;authParams, optional"`
 	Timeout             time.Duration          `keda:"name=timeout,             order=triggerMetadata,            optional"` // custom HTTP client timeout
 	IdentityOwner       string                 `keda:"name=identityOwner,       order=triggerMetadata,            optional"`
-	AuthModes           string                 `keda:"name=authModes,           order=triggerMetadata,            optional"`
 }
 
 type promQueryResult struct {
@@ -94,7 +93,7 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 			// create http.RoundTripper with auth settings from ScalerConfig
 			transport, err := authentication.CreateHTTPRoundTripper(
 				authentication.NetHTTP,
-				meta.PrometheusAuth.ToAuthMeta(),
+				meta.PrometheusAuth,
 			)
 			if err != nil {
 				logger.V(1).Error(err, "init Prometheus client http transport")
