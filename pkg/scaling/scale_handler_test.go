@@ -1270,6 +1270,113 @@ func TestHandleResult_PushScalerDeltaMerge(t *testing.T) {
 	assert.True(t, patchedObj.Status.TriggersActivity["trigger-c"].IsActive, "trigger-c preserved")
 }
 
+func TestGetScaledJobMetrics_CacheClosedIsBenign(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	recorder := record.NewFakeRecorder(10)
+	metricName := "s0-queueLength"
+	metricsSpecs := []v2.MetricSpec{createMetricSpec(10, metricName)}
+
+	scaledJob := createScaledJob(1, 100, "")
+
+	scaler := mock_scalers.NewMockScaler(ctrl)
+	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
+	scaler.EXPECT().Close(gomock.Any())
+	factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		return scaler, &scalersconfig.ScalerConfig{}, nil
+	}
+
+	scalerCache := &cache.ScalersCache{
+		Scalers:  []cache.ScalerBuilder{{Scaler: scaler, Factory: factory}},
+		Recorder: recorder,
+	}
+
+	// Simulate an in-flight reader holding a reference to a cache that was
+	// closed concurrently: Close() nils Scalers, we restore the slice.
+	scalersSnapshot := scalerCache.Scalers
+	scalerCache.Close(context.Background())
+	scalerCache.Scalers = scalersSnapshot
+
+	caches := map[string]*cache.ScalersCache{
+		scaledJob.GenerateIdentifier(): scalerCache,
+	}
+
+	sh := scaleHandler{
+		scaleLoopContexts:        &sync.Map{},
+		globalHTTPTimeout:        time.Duration(1000),
+		recorder:                 recorder,
+		scalerCaches:             caches,
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
+	}
+
+	_, isError, activeTriggers := sh.getScaledJobMetrics(context.TODO(), scaledJob)
+
+	assert.False(t, isError)
+	assert.Empty(t, activeTriggers)
+	select {
+	case ev := <-recorder.Events:
+		t.Fatalf("unexpected event: %s", ev)
+	default:
+	}
+}
+
+func TestGetScaledObjectState_CacheClosedIsBenign(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
+	recorder := record.NewFakeRecorder(10)
+
+	scaler := mock_scalers.NewMockScaler(ctrl)
+	scaler.EXPECT().Close(gomock.Any())
+	factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		return scaler, &scalersconfig.ScalerConfig{}, nil
+	}
+
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "test"},
+		},
+	}
+
+	scalerCache := &cache.ScalersCache{
+		Scalers:  []cache.ScalerBuilder{{Scaler: scaler, Factory: factory}},
+		Recorder: recorder,
+	}
+	scalersSnapshot := scalerCache.Scalers
+	scalerCache.Close(context.Background())
+	scalerCache.Scalers = scalersSnapshot
+
+	key := scaledObject.GenerateIdentifier()
+	caches := map[string]*cache.ScalersCache{key: scalerCache}
+
+	sh := scaleHandler{
+		client:                   mockClient,
+		scaleLoopContexts:        &sync.Map{},
+		scaleExecutor:            mockExecutor,
+		globalHTTPTimeout:        time.Duration(1000),
+		recorder:                 recorder,
+		scalerCaches:             caches,
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
+	}
+
+	_, isError, _, _, _, err := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	assert.NoError(t, err)
+	assert.False(t, isError)
+
+	sh.scalerCachesLock.RLock()
+	_, stillPresent := sh.scalerCaches[key]
+	sh.scalerCachesLock.RUnlock()
+	assert.True(t, stillPresent, "ClearScalersCache should not have run")
+}
+
 func TestHandleResult_DeltaDoesNotOverwriteConcurrentChanges(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockClient := mock_client.NewMockClient(ctrl)
