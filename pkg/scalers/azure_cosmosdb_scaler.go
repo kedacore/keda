@@ -288,9 +288,10 @@ func (c *cosmosDBClient) queryLeases(ctx context.Context) ([]leaseDocument, erro
 	resourceLink := fmt.Sprintf("dbs/%s/colls/%s", c.leaseDatabaseID, c.leaseContainerID)
 	reqURL := fmt.Sprintf("%s/%s/docs", strings.TrimRight(c.leaseEndpoint, "/"), resourceLink)
 
-	prefixJSON, err := json.Marshal(c.processorName)
+	prefix := c.processorName + "."
+	prefixJSON, err := json.Marshal(prefix)
 	if err != nil {
-		return nil, fmt.Errorf("error marshaling processor name: %w", err)
+		return nil, fmt.Errorf("error marshaling processor name prefix: %w", err)
 	}
 	body := fmt.Sprintf(`{"query":"SELECT * FROM c WHERE STARTSWITH(c.id, @prefix)","parameters":[{"name":"@prefix","value":%s}]}`, string(prefixJSON))
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqURL, strings.NewReader(body))
@@ -434,7 +435,8 @@ func (c *cosmosDBClient) estimateOnce(ctx context.Context) (int64, int64, bool, 
 	for _, lease := range leases {
 		lag, isSplit, err := c.estimatePartitionLag(ctx, lease)
 		if err != nil {
-			return 0, 0, false, fmt.Errorf("error estimating lag for partition %s: %w", lease.LeaseToken, err)
+			c.logger.Error(err, fmt.Sprintf("error estimating lag for partition %s, skipping", lease.LeaseToken))
+			continue
 		}
 		if isSplit {
 			c.logger.Info(fmt.Sprintf("Warning: partition %s returned 410 Gone (split/merge detected)", lease.LeaseToken))
@@ -461,7 +463,7 @@ func (c *cosmosDBClient) estimateOnce(ctx context.Context) (int64, int64, bool, 
 //  2. Extract latest LSN from session token
 //  3. If items present: lag = sessionLSN - firstItem._lsn + 1
 //  4. If no items (304): lag = 0 (caught up)
-//  5. If 410 Gone: report lag = -1 (split/merge)
+//  5. If 410 Gone: report lag = 0 (split/merge)
 func (c *cosmosDBClient) estimatePartitionLag(ctx context.Context, lease leaseDocument) (int64, bool, error) {
 	cfResp, err := c.readChangeFeed(ctx, lease.LeaseToken, lease.ContinuationToken)
 	if err != nil {
