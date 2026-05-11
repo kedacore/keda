@@ -227,35 +227,29 @@ func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger log
 	return "ScaledJob is defined correctly and is ready to scaling", nil
 }
 
-// checkIfPaused checks the presence of "autoscaling.keda.sh/paused" annotation on the scaledJob and stop the scale loop.
+// checkIfPaused checks the presence of "autoscaling.keda.sh/paused" annotation on the scaledJob and stops the scale loop.
 func (r *ScaledJobReconciler) checkIfPaused(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, conditions *kedav1alpha1.Conditions) (bool, error) {
-	pausedAnnotationValue, pausedAnnotation := scaledJob.GetAnnotations()[kedav1alpha1.PausedAnnotation]
-	pausedStatus := conditions.GetPausedCondition().Status == metav1.ConditionTrue
-	shouldPause := false
-	if pausedAnnotation {
-		var err error
-		shouldPause, err = strconv.ParseBool(pausedAnnotationValue)
-		if err != nil {
-			shouldPause = true
-		}
-	}
+	shouldPause := scaledJob.NeedToBePausedByAnnotation()
+	isPausedInStatus := conditions.GetPausedCondition().Status == metav1.ConditionTrue
+
 	if shouldPause {
-		if !pausedStatus {
-			logger.Info("ScaledJob is paused, stopping scaling loop.")
+		// Set Paused condition before stopping scale loop to prevent races with new reconciles
+		if !isPausedInStatus {
 			msg := kedav1alpha1.ScaledJobConditionPausedMessage
-			if err := r.stopScaleLoop(ctx, logger, scaledJob); err != nil {
-				msg = "failed to stop the scale loop for paused ScaledJob"
-				conditions.SetPausedCondition(metav1.ConditionFalse, "ScaledJobStopScaleLoopFailed", msg)
-				r.EventEmitter.Emit(scaledJob, scaledJob.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobPauseFailed, msg)
+			conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledJobConditionPausedReason, msg)
+			if err := kedastatus.SetStatusConditions(ctx, r.Client, logger, scaledJob, conditions); err != nil {
 				return false, err
 			}
-			conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledJobConditionPausedReason, msg)
 			r.EventEmitter.Emit(scaledJob, scaledJob.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledJobPausedType, eventreason.ScaledJobPaused, msg)
+		}
+
+		if err := r.stopScaleLoop(ctx, logger, scaledJob); err != nil {
+			return false, err
 		}
 		return true, nil
 	}
-	if pausedStatus {
-		logger.Info("Unpausing ScaledJob.")
+
+	if isPausedInStatus {
 		msg := kedav1alpha1.ScaledJobConditionUnpausedMessage
 		conditions.SetPausedCondition(metav1.ConditionFalse, kedav1alpha1.ScaledJobConditionUnpausedReason, msg)
 		r.EventEmitter.Emit(scaledJob, scaledJob.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledJobUnpausedType, eventreason.ScaledJobUnpaused, msg)

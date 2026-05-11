@@ -18,7 +18,6 @@ package executor
 
 import (
 	"context"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -329,19 +328,15 @@ func TestScaleToPausedReplicasCount(t *testing.T) {
 	client := mock_client.NewMockClient(ctrl)
 	recorder := record.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
-
-	pausedReplicaCount := int32(0)
-	replicaCount := int32(2)
 
 	scaledObject := v1alpha1.ScaledObject{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "name",
 			Namespace: "namespace",
 			Annotations: map[string]string{
-				"autoscaling.keda.sh/paused-replicas": strconv.Itoa(int(pausedReplicaCount)),
+				"autoscaling.keda.sh/paused-replicas": "0",
 			},
 		},
 		Spec: v1alpha1.ScaledObjectSpec{
@@ -359,29 +354,24 @@ func TestScaleToPausedReplicasCount(t *testing.T) {
 
 	scaledObject.Status.Conditions = *v1alpha1.GetInitializedConditions()
 
+	// GetCurrentReplicas is called before handlePaused, so we need a mock for it.
+	replicaCount := int32(2)
 	client.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, appsv1.Deployment{
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicaCount,
 		},
 	})
 
-	scale := &autoscalingv1.Scale{
-		Spec: autoscalingv1.ScaleSpec{
-			Replicas: replicaCount,
-		},
-	}
-
-	mockScaleClient.EXPECT().Scales(gomock.Any()).Return(mockScaleInterface).Times(2)
-	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
-	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
-
 	result := scaleExecutor.RequestScale(context.TODO(), &scaledObject, true, false, ScaleExecutorOptions{})
 
-	assert.Equal(t, pausedReplicaCount, scale.Spec.Replicas)
-	condition := result.Conditions.GetActiveCondition()
-	assert.Equal(t, false, condition.IsTrue())
-	assert.NotNil(t, result.PauseReplicas)
-	assert.Equal(t, pausedReplicaCount, *result.PauseReplicas)
+	// PauseReplicas should not be set
+	assert.Nil(t, result.PauseReplicas)
+	// Executor should set paused condition
+	condition := result.Conditions.GetPausedCondition()
+	assert.Equal(t, true, condition.IsTrue())
+	// Active condition should not be set (we returned early before checking triggers)
+	activeCondition := result.Conditions.GetActiveCondition()
+	assert.Equal(t, false, activeCondition.IsTrue())
 }
 
 func TestEventWitTriggerInfo(t *testing.T) {

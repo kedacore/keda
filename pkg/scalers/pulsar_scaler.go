@@ -169,11 +169,26 @@ func NewPulsarScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		}
 
 		if pulsarMetadata.PulsarAuth.EnabledBearerAuth() || pulsarMetadata.PulsarAuth.EnabledBasicAuth() {
-			// The pulsar broker redirects HTTP calls to other brokers and expects the Authorization header
+			// The pulsar broker redirects HTTP calls to other brokers and expects the Authorization header.
+			// Re-apply credentials only when the redirect target shares the original host and does not
+			// downgrade the scheme; otherwise let the redirect proceed without auth so that an
+			// attacker-controlled or open-redirect target cannot harvest the bearer/basic credentials.
 			client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-				if len(via) != 0 && via[0] != nil && via[0].Response != nil && via[0].Response.StatusCode == http.StatusTemporaryRedirect {
-					addAuthHeaders(req, pulsarMetadata)
+				if len(via) == 0 || via[0] == nil || via[0].Response == nil ||
+					via[0].Response.StatusCode != http.StatusTemporaryRedirect {
+					return nil
 				}
+				origURL := via[0].URL
+				if origURL == nil || req.URL == nil {
+					return nil
+				}
+				if !strings.EqualFold(origURL.Hostname(), req.URL.Hostname()) {
+					return nil
+				}
+				if strings.EqualFold(origURL.Scheme, "https") && !strings.EqualFold(req.URL.Scheme, "https") {
+					return nil
+				}
+				addAuthHeaders(req, pulsarMetadata)
 				return nil
 			}
 		}

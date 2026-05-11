@@ -470,3 +470,66 @@ func TestPulsarScalerRedirectNilPointerFix(t *testing.T) {
 		t.Error("Expected at least one HTTP call to trigger redirect")
 	}
 }
+
+// TestPulsarRedirectAuthHostScopeGuard exercises the host/scheme guard added
+// for issue #7686: auth headers must follow same-host redirects but must not
+// be forwarded to a different host or to an https->http downgrade.
+func TestPulsarRedirectAuthHostScopeGuard(t *testing.T) {
+	scaler, err := NewPulsarScaler(&scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"adminURL":     "https://pulsar.example.com:8080",
+			"topic":        "persistent://public/default/test-topic",
+			"subscription": "test-subscription",
+			"authModes":    "bearer",
+		},
+		AuthParams: map[string]string{
+			"bearerToken": "test-token",
+		},
+	})
+	if err != nil {
+		t.Fatalf("create scaler: %v", err)
+	}
+	ps, ok := scaler.(*pulsarScaler)
+	if !ok {
+		t.Fatal("expected *pulsarScaler")
+	}
+	if ps.httpClient.CheckRedirect == nil {
+		t.Fatal("CheckRedirect not configured")
+	}
+
+	cases := []struct {
+		name      string
+		origURL   string
+		targetURL string
+		wantAuth  bool
+	}{
+		{"same host different port retains auth", "https://pulsar.example.com:8080/admin", "https://pulsar.example.com:8443/admin", true},
+		{"same host case-insensitive retains auth", "https://Pulsar.Example.com/admin", "https://pulsar.example.COM/admin/redirected", true},
+		{"different host drops auth", "https://pulsar.example.com/admin", "https://attacker.example.org/steal", false},
+		{"https to http downgrade drops auth", "https://pulsar.example.com/admin", "http://pulsar.example.com/admin", false},
+		{"http to http same host retains auth", "http://pulsar.example.com/admin", "http://pulsar.example.com/admin/redirected", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			origReq, err := http.NewRequest(http.MethodGet, tc.origURL, nil)
+			if err != nil {
+				t.Fatalf("orig request: %v", err)
+			}
+			origReq.Response = &http.Response{StatusCode: http.StatusTemporaryRedirect}
+			next, err := http.NewRequest(http.MethodGet, tc.targetURL, nil)
+			if err != nil {
+				t.Fatalf("target request: %v", err)
+			}
+			if err := ps.httpClient.CheckRedirect(next, []*http.Request{origReq}); err != nil {
+				t.Fatalf("CheckRedirect returned error: %v", err)
+			}
+			got := next.Header.Get("Authorization")
+			if tc.wantAuth && got == "" {
+				t.Errorf("expected auth header to be set, got empty")
+			}
+			if !tc.wantAuth && got != "" {
+				t.Errorf("expected no auth header, got %q", got)
+			}
+		})
+	}
+}
