@@ -1312,7 +1312,7 @@ func TestGetScaledJobMetrics_CacheClosedIsBenign(t *testing.T) {
 		subsLock:                 &sync.RWMutex{},
 	}
 
-	_, isError, activeTriggers := sh.getScaledJobMetrics(context.TODO(), scaledJob)
+	_, isError, activeTriggers := sh.getScaledJobMetrics(context.Background(), scaledJob)
 
 	assert.False(t, isError)
 	assert.Empty(t, activeTriggers)
@@ -1367,7 +1367,7 @@ func TestGetScaledObjectState_CacheClosedIsBenign(t *testing.T) {
 		subsLock:                 &sync.RWMutex{},
 	}
 
-	_, isError, _, _, _, err := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	_, isError, _, _, _, err := sh.getScaledObjectState(context.Background(), &scaledObject)
 	assert.NoError(t, err)
 	assert.False(t, isError)
 
