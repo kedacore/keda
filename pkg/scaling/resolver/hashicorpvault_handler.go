@@ -105,10 +105,10 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 		switch {
 		case len(client.Token()) > 0:
 			break
-		case len(vh.vault.Credential.Token) > 0:
+		case vh.vault.Credential != nil && len(vh.vault.Credential.Token) > 0:
 			token = vh.vault.Credential.Token
 		default:
-			return token, errors.New("could not get Vault token")
+			return token, errors.New("could not get Vault token from VAULT_TOKEN env variable, credential.tokenFrom.secretKeyRef, or credential.token")
 		}
 	case kedav1alpha1.VaultAuthenticationKubernetes:
 		if len(vh.vault.Mount) == 0 {
