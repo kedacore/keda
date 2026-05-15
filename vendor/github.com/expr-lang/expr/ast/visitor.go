@@ -17,6 +17,7 @@ func Walk(node *Node, v Visitor) {
 	case *FloatNode:
 	case *BoolNode:
 	case *StringNode:
+	case *BytesNode:
 	case *ConstantNode:
 	case *UnaryNode:
 		Walk(&n.Node, v)

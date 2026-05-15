@@ -39,7 +39,7 @@ func Retry(ctx context.Context, eventName log.Event, prefix func() string, o exp
 		panic("isFatalFn is nil, errors would panic")
 	}
 
-	var ro exported.RetryOptions = o
+	ro := o
 	setDefaults(&ro)
 
 	var err error

@@ -177,19 +177,6 @@ func parseAzureLogAnalyticsMetadata(config *scalersconfig.ScalerConfig) (*azureL
 	return meta, nil
 }
 
-// getParameterFromConfig gets the parameter from the configs, if checkAuthParams is true
-// then AuthParams is also check for the parameter
-func getParameterFromConfig(config *scalersconfig.ScalerConfig, parameter string, checkAuthParams bool) (string, error) {
-	if val, ok := config.AuthParams[parameter]; checkAuthParams && ok && val != "" {
-		return val, nil
-	} else if val, ok := config.TriggerMetadata[parameter]; ok && val != "" {
-		return val, nil
-	} else if val, ok := config.TriggerMetadata[fmt.Sprintf("%sFromEnv", parameter)]; ok && val != "" {
-		return config.ResolvedEnv[config.TriggerMetadata[fmt.Sprintf("%sFromEnv", parameter)]], nil
-	}
-	return "", fmt.Errorf("error parsing metadata. Details: %s was not found in metadata. Check your ScaledObject configuration", parameter)
-}
-
 func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{

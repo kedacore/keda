@@ -33,6 +33,10 @@ func (n *StringNode) String() string {
 	return fmt.Sprintf("%q", n.Value)
 }
 
+func (n *BytesNode) String() string {
+	return fmt.Sprintf("b%q", n.Value)
+}
+
 func (n *ConstantNode) String() string {
 	if n.Value == nil {
 		return "nil"

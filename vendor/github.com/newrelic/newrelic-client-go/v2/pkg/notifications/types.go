@@ -824,6 +824,8 @@ type AiNotificationsDestinationFilter struct {
 	IDs []string `json:"ids"`
 	// name
 	Name string `json:"name,omitempty"`
+	// exactName - exact match for destination name
+	ExactName string `json:"exactName,omitempty"`
 	// property
 	Property AiNotificationsPropertyFilter `json:"property,omitempty"`
 	// type

@@ -8,6 +8,6 @@ This document lists the maintainers of the `kedacore/keda` project.
 | --------------------- | --------------------------------------------- | --------------------------------- |
 | Jan Wozniak           | [wozniakjan](https://github.com/wozniakjan)   | Kedify                            |
 | Jeff Hollan           | [jeffhollan](https://github.com/jeffhollan)   | Snowflake                         |
-| Jorge Turrado Ferrero | [jorturfer](https://github.com/jorturfer)     | SCRM Lidl International Hub       |
+| Jorge Turrado Ferrero | [jorturfer](https://github.com/jorturfer)     | Schwarz Digits                    |
 | Rick Brouwer          | [rickbrouwer](https://github.com/rickbrouwer) | Dienst Uitvoering Onderwijs       |
 | Zbynek Roubalik       | [zroubalik](https://github.com/zroubalik)     | Kedify                            |

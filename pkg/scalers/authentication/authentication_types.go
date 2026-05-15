@@ -1,9 +1,13 @@
 package authentication
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
+
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 // Type describes the authentication type used in a scaler
@@ -81,7 +85,7 @@ type CertAuth struct {
 // OAuth is an oAuth2 authentication type
 type OAuth struct {
 	OauthTokenURI  string     `keda:"name=oauthTokenURI,  order=authParams"`
-	Scopes         []string   `keda:"name=scopes,         order=authParams"`
+	Scopes         []string   `keda:"name=scopes;scope,   order=authParams"`
 	ClientID       string     `keda:"name=clientID,       order=authParams"`
 	ClientSecret   string     `keda:"name=clientSecret,   order=authParams"`
 	EndpointParams url.Values `keda:"name=endpointParams, order=authParams"`
@@ -119,6 +123,9 @@ func (c *Config) Disabled() bool {
 
 // Enabled returns true if given auth mode is enabled
 func (c *Config) Enabled(mode Type) bool {
+	if c == nil {
+		return false
+	}
 	for _, m := range c.Modes {
 		if m == mode {
 			return true
@@ -140,30 +147,56 @@ func (c *Config) GetBearerToken() string {
 	return fmt.Sprintf("Bearer %s", c.BearerToken)
 }
 
-// Validate validates the Config and returns an error if it is invalid
+// Validate validates the Config and returns an error if it is invalid.
+// It also calls Normalize() to clean up parsed values.
 func (c *Config) Validate() error {
 	if c.Disabled() {
 		return nil
 	}
+	c.Normalize()
 	if c.EnabledBearerAuth() && c.BearerToken == "" {
-		return fmt.Errorf("bearer token is required when bearer auth is enabled")
+		return fmt.Errorf("bearer token=%v is required when bearer auth is enabled", empty(c.BearerToken))
 	}
 	if c.EnabledBasicAuth() && c.Username == "" {
-		return fmt.Errorf("username is required when basic auth is enabled")
+		return fmt.Errorf("username=%v is required when basic auth is enabled", empty(c.Username))
 	}
 	if c.EnabledTLS() && (c.Cert == "" || c.Key == "") {
-		return fmt.Errorf("cert and key are required when tls auth is enabled")
+		return fmt.Errorf("cert=%v and key=%v are required when tls auth is enabled", empty(c.Cert), empty(c.Key))
 	}
-	if c.EnabledOAuth() && (c.OauthTokenURI == "" || c.ClientID == "" || c.ClientSecret == "") {
-		return fmt.Errorf("oauthTokenURI, clientID and clientSecret are required when oauth is enabled")
+	if c.EnabledOAuth() && (c.OauthTokenURI == "" || c.ClientID == "") {
+		return fmt.Errorf("oauthTokenURI=%v and clientID=%v are required when oauth is enabled", empty(c.OauthTokenURI), empty(c.ClientID))
 	}
 	if c.EnabledCustomAuth() && (c.CustomAuthHeader == "" || c.CustomAuthValue == "") {
-		return fmt.Errorf("customAuthHeader and customAuthValue are required when custom auth is enabled")
+		return fmt.Errorf("customAuthHeader=%v and customAuthValue=%v are required when custom auth is enabled", empty(c.CustomAuthHeader), empty(c.CustomAuthValue))
 	}
 	if c.EnabledAPIKeyAuth() && c.APIKey == "" {
 		return fmt.Errorf("apiKey is required when apiKey auth is enabled")
 	}
 	return nil
+}
+
+// Normalize removes whitespace-only entries from Scopes.
+func (c *Config) Normalize() {
+	var scopes []string
+	for _, s := range c.Scopes {
+		if t := strings.TrimSpace(s); t != "" {
+			scopes = append(scopes, t)
+		}
+	}
+	c.Scopes = scopes
+}
+
+// NewTLSConfig creates a tls.Config from the Config's cert/key/CA fields.
+func (c *Config) NewTLSConfig(unsafeSsl bool) (*tls.Config, error) {
+	return kedautil.NewTLSConfig(c.Cert, c.Key, c.CA, unsafeSsl)
+}
+
+// empty is a helper function for more readable errors when auth params are misconfigured
+func empty(a string) string {
+	if a == "" {
+		return "<empty>"
+	}
+	return "<present>"
 }
 
 // ToAuthMeta converts the Config to deprecated AuthMeta

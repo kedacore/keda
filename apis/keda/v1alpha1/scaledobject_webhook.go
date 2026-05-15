@@ -199,14 +199,13 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 	return allWarnings, nil
 }
 
-//nolint:unparam
-func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) (admission.Warnings, error) {
+func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) error {
 	err := CheckReplicaCountBoundsAreValid(incomingSo)
 	if err != nil {
 		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
 		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-replicas")
 	}
-	return nil, err
+	return err
 }
 
 //nolint:unparam
