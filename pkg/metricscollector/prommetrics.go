@@ -32,7 +32,13 @@ import (
 var log = logf.Log.WithName("prometheus_server")
 
 var (
+	// metricLabels is the full, high-cardinality label set used when
+	// --metrics-high-cardinality-labels is enabled.
 	metricLabels = []string{"namespace", "metric", "scaledObject", "scaler", "triggerIndex", "type"}
+
+	// metricLabelsLowCard is the reduced label set used by default to keep
+	// histogram cardinality under control.
+	metricLabelsLowCard = []string{"namespace", "type"}
 	buildInfo    = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
@@ -68,6 +74,16 @@ var (
 			Buckets:   prometheus.DefBuckets,
 		},
 		metricLabels,
+	)
+	scalerMetricsDurationLowCard = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaler",
+			Name:      "metrics_duration_seconds",
+			Help:      "Histogram of the latency of retrieving current metric from each scaler, in seconds.",
+			Buckets:   prometheus.DefBuckets,
+		},
+		metricLabelsLowCard,
 	)
 	scalerActive = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -151,6 +167,16 @@ var (
 		},
 		[]string{"namespace", "type", "resource"},
 	)
+	internalLoopDurationLowCard = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "internal_scale_loop",
+			Name:      "duration_seconds",
+			Help:      "Histogram of the deviation (in seconds) between the expected execution time and the actual execution time for the scaling loop.",
+			Buckets:   prometheus.DefBuckets,
+		},
+		[]string{"namespace", "type"},
+	)
 
 	// Total emitted cloudevents.
 	cloudeventEmitted = prometheus.NewCounterVec(
@@ -175,14 +201,23 @@ var (
 )
 
 type PromMetrics struct {
+	highCardinality bool
 }
 
-func NewPromMetrics() *PromMetrics {
+func NewPromMetrics(highCardinality bool) *PromMetrics {
 	metrics.Registry.MustRegister(scalerMetricsValue)
 	metrics.Registry.MustRegister(scalerMetricsLatency)
-	metrics.Registry.MustRegister(scalerMetricsDuration)
+	if highCardinality {
+		metrics.Registry.MustRegister(scalerMetricsDuration)
+	} else {
+		metrics.Registry.MustRegister(scalerMetricsDurationLowCard)
+	}
 	metrics.Registry.MustRegister(internalLoopLatency)
-	metrics.Registry.MustRegister(internalLoopDuration)
+	if highCardinality {
+		metrics.Registry.MustRegister(internalLoopDuration)
+	} else {
+		metrics.Registry.MustRegister(internalLoopDurationLowCard)
+	}
 	metrics.Registry.MustRegister(scalerActive)
 	metrics.Registry.MustRegister(scalerErrors)
 	metrics.Registry.MustRegister(scaledObjectErrors)
@@ -197,7 +232,7 @@ func NewPromMetrics() *PromMetrics {
 	metrics.Registry.MustRegister(cloudeventQueueStatus)
 
 	RecordBuildInfo()
-	return &PromMetrics{}
+	return &PromMetrics{highCardinality: highCardinality}
 }
 
 // RecordBuildInfo publishes information about KEDA version and runtime info through an info metric (gauge).
@@ -217,25 +252,41 @@ func (p *PromMetrics) DeleteScalerMetrics(namespace string, scaledResource strin
 	scalerErrors.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
 	scalerMetricsLatency.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
 	scalerMetricsDuration.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
+	scalerMetricsDurationLowCard.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "type": getResourceType(isScaledObject)})
 }
 
 // RecordScalerLatency create a measurement of the latency to external metric.
 // Emits both the deprecated `keda_scaler_metrics_latency_seconds` gauge and the
 // `keda_scaler_metrics_duration_seconds` histogram so existing dashboards keep
 // working while users migrate to the histogram.
+// When high-cardinality labels are disabled (default), the histogram uses only
+// {namespace, type} labels to limit series count.
 func (p *PromMetrics) RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value time.Duration) {
 	labels := getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)
 	scalerMetricsLatency.With(labels).Set(value.Seconds())
-	scalerMetricsDuration.With(labels).Observe(value.Seconds())
+	if p.highCardinality {
+		scalerMetricsDuration.With(labels).Observe(value.Seconds())
+	} else {
+		scalerMetricsDurationLowCard.With(prometheus.Labels{
+			"namespace": namespace,
+			"type":      getResourceType(isScaledObject),
+		}).Observe(value.Seconds())
+	}
 }
 
 // RecordScalableObjectLatency create a measurement of the latency executing scalable object loop.
 // Emits both the deprecated `keda_internal_scale_loop_latency_seconds` gauge and the
 // `keda_internal_scale_loop_duration_seconds` histogram.
+// When high-cardinality labels are disabled (default), the histogram uses only
+// {namespace, type} labels to limit series count.
 func (p *PromMetrics) RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value time.Duration) {
 	resourceType := getResourceType(isScaledObject)
 	internalLoopLatency.WithLabelValues(namespace, resourceType, name).Set(value.Seconds())
-	internalLoopDuration.WithLabelValues(namespace, resourceType, name).Observe(value.Seconds())
+	if p.highCardinality {
+		internalLoopDuration.WithLabelValues(namespace, resourceType, name).Observe(value.Seconds())
+	} else {
+		internalLoopDurationLowCard.WithLabelValues(namespace, resourceType).Observe(value.Seconds())
+	}
 }
 
 // RecordScalerActive create a measurement of the activity of the scaler

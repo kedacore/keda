@@ -81,9 +81,9 @@ type MetricsCollector interface {
 	RecordCloudEventQueueStatus(namespace string, value int)
 }
 
-func NewMetricsCollectors(enablePrometheusMetrics bool, enableOpenTelemetryMetrics bool) {
+func NewMetricsCollectors(enablePrometheusMetrics bool, enableOpenTelemetryMetrics bool, highCardinalityLabels bool) {
 	if enablePrometheusMetrics {
-		promometrics := NewPromMetrics()
+		promometrics := NewPromMetrics(highCardinalityLabels)
 		collectors = append(collectors, promometrics)
 
 		if promServerMetrics == nil {

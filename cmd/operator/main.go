@@ -68,6 +68,7 @@ func init() {
 func main() {
 	var enablePrometheusMetrics bool
 	var enableOpenTelemetryMetrics bool
+	var enableHighCardinalityLabels bool
 	var metricsAddr string
 	var probeAddr string
 	var metricsServiceAddr string
@@ -92,6 +93,7 @@ func main() {
 	var filePathAuthRootPath string
 	pflag.BoolVar(&enablePrometheusMetrics, "enable-prometheus-metrics", true, "Enable the prometheus metric of keda-operator.")
 	pflag.BoolVar(&enableOpenTelemetryMetrics, "enable-opentelemetry-metrics", false, "Enable the opentelemetry metric of keda-operator.")
+	pflag.BoolVar(&enableHighCardinalityLabels, "metrics-high-cardinality-labels", false, "When enabled, duration histograms include high-cardinality labels (scaler, metric, triggerIndex). Disabled by default to limit metric series count.")
 	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the prometheus metric endpoint binds to.")
 	pflag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	pflag.StringVar(&metricsServiceAddr, "metrics-service-bind-address", ":9666", "The address the gRPRC Metrics Service endpoint binds to.")
@@ -164,7 +166,7 @@ func main() {
 	if !enablePrometheusMetrics {
 		metricsAddr = "0"
 	}
-	metricscollector.NewMetricsCollectors(enablePrometheusMetrics, enableOpenTelemetryMetrics)
+	metricscollector.NewMetricsCollectors(enablePrometheusMetrics, enableOpenTelemetryMetrics, enableHighCardinalityLabels)
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme,
