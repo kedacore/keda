@@ -3,8 +3,11 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -248,6 +251,90 @@ func (m *MockHTTPRoundTripper) RoundTrip(request *http.Request) (*http.Response,
 	resp := args.Get(0).(*http.Response)
 	resp.Request = request
 	return resp, args.Error(1)
+}
+
+func TestAggregateMetricsFromMultipleEndpoints_AverageAllEndpointsFail(t *testing.T) {
+	mockHTTPRoundTripper := MockHTTPRoundTripper{}
+	mockHTTPRoundTripper.On("RoundTrip", mock.Anything).Return(&http.Response{
+		StatusCode: http.StatusTeapot,
+		Body:       http.NoBody,
+	}, nil)
+
+	httpClient := http.Client{Transport: &mockHTTPRoundTripper}
+	s := metricsAPIScaler{
+		metadata: &metricsAPIScalerMetadata{
+			URL:             "http://dummy:1230/api/v1/",
+			Format:          JSONFormat,
+			ValueLocation:   "count",
+			AggregationType: AverageAggregationType,
+		},
+		httpClient: &httpClient,
+		logger:     logr.Discard(),
+	}
+
+	endpoints := []string{
+		"http://dummy:1230/api/v1/a",
+		"http://dummy:1230/api/v1/b",
+	}
+	aggregation, err := s.aggregateMetricsFromMultipleEndpoints(context.Background(), endpoints)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "could not get any metric successfully")
+	assert.Equal(t, 0.0, aggregation)
+	assert.False(t, math.IsInf(aggregation, 0), "average must not divide by zero when all endpoints fail")
+	assert.False(t, math.IsNaN(aggregation))
+}
+
+func TestAggregateMetricsFromMultipleEndpoints_AveragePartialSuccess(t *testing.T) {
+	mockHTTPRoundTripper := MockHTTPRoundTripper{}
+	mockHTTPRoundTripper.On("RoundTrip", mock.MatchedBy(func(r *http.Request) bool {
+		return strings.HasSuffix(r.URL.Path, "/a")
+	})).Return(&http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(strings.NewReader(`{"count": 20}`)),
+	}, nil)
+	mockHTTPRoundTripper.On("RoundTrip", mock.MatchedBy(func(r *http.Request) bool {
+		return strings.HasSuffix(r.URL.Path, "/b")
+	})).Return(&http.Response{
+		StatusCode: http.StatusTeapot,
+		Body:       http.NoBody,
+	}, nil)
+
+	httpClient := http.Client{Transport: &mockHTTPRoundTripper}
+	s := metricsAPIScaler{
+		metadata: &metricsAPIScalerMetadata{
+			URL:             "http://dummy:1230/api/v1/",
+			Format:          JSONFormat,
+			ValueLocation:   "count",
+			AggregationType: AverageAggregationType,
+		},
+		httpClient: &httpClient,
+		logger:     logr.Discard(),
+	}
+
+	endpoints := []string{
+		"http://dummy:1230/api/v1/a",
+		"http://dummy:1230/api/v1/b",
+	}
+	aggregation, err := s.aggregateMetricsFromMultipleEndpoints(context.Background(), endpoints)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 20.0, aggregation)
+}
+
+func TestAggregateMetricsFromMultipleEndpoints_NoEndpoints(t *testing.T) {
+	s := metricsAPIScaler{
+		metadata: &metricsAPIScalerMetadata{
+			AggregationType: AverageAggregationType,
+		},
+		logger: logr.Discard(),
+	}
+
+	aggregation, err := s.aggregateMetricsFromMultipleEndpoints(context.Background(), nil)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no endpoints provided")
+	assert.Equal(t, 0.0, aggregation)
 }
 
 func TestGetMetricValueErrorMessage(t *testing.T) {

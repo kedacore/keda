@@ -398,6 +398,10 @@ func (s *metricsAPIScaler) getMetricValue(ctx context.Context) (float64, error) 
 }
 
 func (s *metricsAPIScaler) aggregateMetricsFromMultipleEndpoints(ctx context.Context, endpointsUrls []string) (float64, error) {
+	if len(endpointsUrls) == 0 {
+		return 0, fmt.Errorf("no endpoints provided")
+	}
+
 	// call s.getMetricValueFromURL() for each endpointsUrls in parallel goroutines (maximum 5 at a time) and sum them up
 	const maxGoroutines = 5
 	var mu sync.Mutex
@@ -455,6 +459,12 @@ func (s *metricsAPIScaler) aggregateMetricsFromMultipleEndpoints(ctx context.Con
 		err = fmt.Errorf("could not get any metric successfully from the %d provided endpoints", len(endpointsUrls))
 	}
 	if s.metadata.AggregationType == AverageAggregationType {
+		if expectedNbMetrics == 0 {
+			if err == nil {
+				err = fmt.Errorf("no metrics were successfully fetched from the endpoints")
+			}
+			return 0, err
+		}
 		aggregation /= float64(expectedNbMetrics)
 	}
 	s.logger.V(1).Info(fmt.Sprintf("fetched %d metrics out of %d endpoints from kubernetes service : %s is %v\n", expectedNbMetrics, len(endpointsUrls), s.metadata.AggregationType, aggregation))
