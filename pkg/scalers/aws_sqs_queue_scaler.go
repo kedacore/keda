@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -23,6 +24,7 @@ type awsSqsQueueScaler struct {
 	metricType       v2.MetricTargetType
 	metadata         *awsSqsQueueMetadata
 	sqsWrapperClient SqsWrapperClient
+	httpClient       *http.Client
 	logger           logr.Logger
 }
 
@@ -55,7 +57,8 @@ func NewAwsSqsQueueScaler(ctx context.Context, config *scalersconfig.ScalerConfi
 	if err != nil {
 		return nil, fmt.Errorf("error parsing SQS queue metadata: %w", err)
 	}
-	awsSqsClient, err := createSqsClient(ctx, meta)
+	httpClient := awsutils.NewHTTPClient()
+	awsSqsClient, err := createSqsClient(ctx, meta, httpClient)
 	if err != nil {
 		return nil, fmt.Errorf("error when creating sqs client: %w", err)
 	}
@@ -65,7 +68,8 @@ func NewAwsSqsQueueScaler(ctx context.Context, config *scalersconfig.ScalerConfi
 		sqsWrapperClient: &sqsWrapperClient{
 			sqsClient: awsSqsClient,
 		},
-		logger: logger,
+		httpClient: httpClient,
+		logger:     logger,
 	}, nil
 }
 
@@ -123,7 +127,7 @@ func parseAwsSqsQueueMetadata(config *scalersconfig.ScalerConfig) (*awsSqsQueueM
 	return meta, nil
 }
 
-func createSqsClient(ctx context.Context, metadata *awsSqsQueueMetadata) (*sqs.Client, error) {
+func createSqsClient(ctx context.Context, metadata *awsSqsQueueMetadata, httpClient *http.Client) (*sqs.Client, error) {
 	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsAuthorization)
 	if err != nil {
 		return nil, err
@@ -132,11 +136,17 @@ func createSqsClient(ctx context.Context, metadata *awsSqsQueueMetadata) (*sqs.C
 		if metadata.AwsEndpoint != "" {
 			options.BaseEndpoint = aws.String(metadata.AwsEndpoint)
 		}
+		if httpClient != nil {
+			options.HTTPClient = httpClient
+		}
 	}), nil
 }
 
 func (s *awsSqsQueueScaler) Close(context.Context) error {
 	awsutils.ClearAwsConfig(s.metadata.awsAuthorization)
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 
