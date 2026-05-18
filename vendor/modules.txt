@@ -578,7 +578,7 @@ github.com/dgryski/go-rendezvous
 # github.com/dnephin/pflag v1.0.7
 ## explicit; go 1.12
 github.com/dnephin/pflag
-# github.com/dysnix/predictkube-libs v0.0.4-0.20250415003622-40081ddd4983
+# github.com/dysnix/predictkube-libs v0.1.0
 ## explicit; go 1.23.8
 github.com/dysnix/predictkube-libs/external/configs
 github.com/dysnix/predictkube-libs/external/enums
@@ -856,7 +856,6 @@ github.com/golang/mock/gomock
 # github.com/golang/protobuf v1.5.4
 ## explicit; go 1.17
 github.com/golang/protobuf/proto
-github.com/golang/protobuf/ptypes/timestamp
 # github.com/golang/snappy v1.0.0
 ## explicit
 github.com/golang/snappy
@@ -981,9 +980,6 @@ github.com/gorilla/websocket
 ## explicit; go 1.21
 github.com/grafana/regexp
 github.com/grafana/regexp/syntax
-# github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
-## explicit; go 1.14
-github.com/grpc-ecosystem/go-grpc-middleware
 # github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0
 ## explicit; go 1.21
 github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus
