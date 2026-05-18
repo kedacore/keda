@@ -86,7 +86,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Kubernetes Workload Scaler**: Add `groupByNode` parameter ([#7628](https://github.com/kedacore/keda/issues/7628))
 - **Metrics API Scaler**: Add custom HTTP client timeout ([#7549](https://github.com/kedacore/keda/issues/7549))
 - **MSSQL Scaler**: Add Azure Workload Identity support for Azure SQL authentication ([#6104](https://github.com/kedacore/keda/issues/6104))
-- **PredictKube Scaler**: Use a portable Prometheus-API instant query for the scaler health check so it works against VictoriaMetrics, Thanos and other Prometheus-API-compatible backends (previously failed because `/api/v1/status/runtimeinfo` is Prometheus-only) ([#7699](https://github.com/kedacore/keda/issues/7699))
 - **Prometheus Scaler**: Emit metric tracking empty responses from Prometheus ([#7062](https://github.com/kedacore/keda/issues/7062))
 
 ### Fixes
@@ -110,6 +109,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Metrics API Scaler**: Fix `aggregateFromKubeServiceEndpoints` using empty label selector that matched all EndpointSlices in the namespace instead of only the target service's ([#7641](https://github.com/kedacore/keda/issues/7641))
 - **NATS JetStream Scaler**: Return an error from `getMaxMsgLag` when the configured consumer is missing instead of falling back to the stream's last sequence, preventing incorrect scale-up to `maxReplicaCount` ([#7657](https://github.com/kedacore/keda/issues/7657))
 - **NATS JetStream Scaler**: URL-encode user input in monitoring URL construction ([#7483](https://github.com/kedacore/keda/pull/7483))
+- **PredictKube Scaler**: Bump `dysnix/predictkube-libs` to `v0.1.0` (drops the predictkube path to the archived/EOL `go-grpc-prometheus` and to the deprecated `golang/protobuf`) and use a portable Prometheus-API instant query for the health check so the scaler works against VictoriaMetrics, Thanos and other Prometheus-API-compatible backends ([#7745](https://github.com/kedacore/keda/pull/7745))
 - **Prometheus Scaler**: Handle NaN results in the same manner as Inf ([#7475](https://github.com/kedacore/keda/issues/7475))
 - **Prometheus Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **Pulsar Scaler**: Drop bearer/basic auth headers on redirects to a different host or on https->http downgrades to prevent credential leakage ([#7686](https://github.com/kedacore/keda/issues/7686))
@@ -139,7 +139,6 @@ New deprecation(s):
 - **External Scaler**: Fix race condition in `TestWaitForState` causing flaky test under `-race` detector ([#7542](https://github.com/kedacore/keda/issues/7542))
 - **GCP scaler**: Replaced credentialsFromJSON to credentialsFromJSONWithType ([#7523](https://github.com/kedacore/keda/pull/7523))
 - **Kafka Scaler**: Refactor Kafka Scaler ([#7528](https://github.com/kedacore/keda/pull/7528))
-- **PredictKube Scaler**: Bump `github.com/dysnix/predictkube-libs` to `v0.1.0`, which drops the archived/EOL `github.com/grpc-ecosystem/go-grpc-prometheus` and the deprecated direct require on `github.com/golang/protobuf` from the predictkube transitive chain ([#7699](https://github.com/kedacore/keda/issues/7699))
 
 ## v2.19.0
 
