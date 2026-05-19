@@ -87,6 +87,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Metrics API Scaler**: Add custom HTTP client timeout ([#7549](https://github.com/kedacore/keda/issues/7549))
 - **MSSQL Scaler**: Add Azure Workload Identity support for Azure SQL authentication ([#6104](https://github.com/kedacore/keda/issues/6104))
 - **Prometheus Scaler**: Emit metric tracking empty responses from Prometheus ([#7062](https://github.com/kedacore/keda/issues/7062))
+- **Temporal Scaler**: Add support for scaling based on Worker Deployment Version backlog via new `workerDeploymentName` and `workerDeploymentBuildId` fields. Deprecate `buildId`, `selectAllActive`, and `selectUnversioned` because those parameters are used for Rules-Based Worker Versioning, which was a short-lived experimental feature that has been deprecated in the Temporal server since December 2024 and will stop being supported soon. Users of Rules-Based Worker Versioning should use Worker Deployments instead. ([#7672](https://github.com/kedacore/keda/pull/7672))
 
 ### Fixes
 
