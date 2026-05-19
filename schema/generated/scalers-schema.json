@@ -2495,7 +2495,7 @@
                     "name": "authToken",
                     "type": "string",
                     "optional": true,
-                    "deprecatedAnnounce": "The 'authToken' setting from triggerMetadata is DEPRECATED and will be removed in v2.20 - Use 'authToken' from resolvedEnv or authParams instead",
+                    "deprecated": "The 'authToken' setting from triggerMetadata is DEPRECATED and is removed in v2.20 - Use 'authToken' from resolvedEnv or authParams instead",
                     "metadataVariableReadable": true
                 },
                 {
@@ -3095,6 +3095,12 @@
                         "max",
                         "min"
                     ],
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "timeout",
+                    "type": "string",
+                    "optional": true,
                     "metadataVariableReadable": true
                 }
             ]
@@ -3784,7 +3790,7 @@
                     "name": "subscriptionSize",
                     "type": "string",
                     "optional": true,
-                    "deprecatedAnnounce": "The 'subscriptionSize' setting is DEPRECATED and will be removed in v2.20 - Use 'mode' and 'value' instead",
+                    "deprecated": "The 'subscriptionSize' setting is DEPRECATED and is removed in v2.20 - Use 'mode' and 'value' instead",
                     "metadataVariableReadable": true
                 },
                 {

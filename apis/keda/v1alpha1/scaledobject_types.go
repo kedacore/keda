@@ -278,6 +278,21 @@ func getBoolAnnotation(so *ScaledObject, annotation string) bool {
 	return boolVal
 }
 
+// GetPausedReplicaCount returns the paused replica count from the annotation, nil if not present.
+func (so *ScaledObject) GetPausedReplicaCount() (*int32, error) {
+	if so.Annotations != nil {
+		if val, ok := so.Annotations[PausedReplicasAnnotation]; ok {
+			conv, err := strconv.ParseInt(val, 10, 32)
+			if err != nil {
+				return nil, err
+			}
+			count := int32(conv)
+			return &count, nil
+		}
+	}
+	return nil, nil
+}
+
 // IsUsingModifiers determines whether scalingModifiers are defined or not
 func (so *ScaledObject) IsUsingModifiers() bool {
 	return so.Spec.Advanced != nil && !reflect.DeepEqual(so.Spec.Advanced.ScalingModifiers, ScalingModifiers{})

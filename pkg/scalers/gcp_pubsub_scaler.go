@@ -37,7 +37,7 @@ type pubsubScaler struct {
 }
 
 type pubsubMetadata struct {
-	SubscriptionSize int           `keda:"name=subscriptionSize, order=triggerMetadata, optional, deprecatedAnnounce=The 'subscriptionSize' setting is DEPRECATED and will be removed in v2.20 - Use 'mode' and 'value' instead"`
+	SubscriptionSize int           `keda:"name=subscriptionSize, order=triggerMetadata, optional, deprecated=The 'subscriptionSize' setting is DEPRECATED and is removed in v2.20 - Use 'mode' and 'value' instead"`
 	Mode             string        `keda:"name=mode, order=triggerMetadata, default=SubscriptionSize"`
 	Value            float64       `keda:"name=value, order=triggerMetadata, default=10, deprecatedAnnounce=This scaler is deprecated. More info -> 'https://keda.sh/blog/2025-09-15-gcp-deprecations'"`
 	ActivationValue  float64       `keda:"name=activationValue, order=triggerMetadata, default=0"`
@@ -82,11 +82,6 @@ func parsePubSubMetadata(config *scalersconfig.ScalerConfig) (*pubsubMetadata, e
 		return nil, fmt.Errorf("error parsing gcp pubsub metadata: %w", err)
 	}
 
-	if meta.SubscriptionSize != 0 {
-		meta.Mode = pubSubDefaultModeSubscriptionSize
-		meta.Value = float64(meta.SubscriptionSize)
-	}
-
 	if meta.SubscriptionName != "" {
 		meta.resourceName = meta.SubscriptionName
 		meta.resourceType = resourceTypePubSubSubscription
@@ -117,12 +112,6 @@ func (s *pubsubScaler) Close(context.Context) error {
 }
 
 func (meta *pubsubMetadata) Validate() error {
-	if meta.SubscriptionSize != 0 {
-		if meta.TopicName != "" {
-			return fmt.Errorf("you cannot use subscriptionSize field together with topicName field. Use subscriptionName field instead")
-		}
-	}
-
 	hasSub := meta.SubscriptionName != ""
 	hasTopic := meta.TopicName != ""
 	if (!hasSub && !hasTopic) || (hasSub && hasTopic) {
