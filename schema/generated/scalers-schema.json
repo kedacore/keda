@@ -262,12 +262,6 @@
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
-                },
-                {
-                    "name": "authModes",
-                    "type": "string",
-                    "optional": true,
-                    "metadataVariableReadable": true
                 }
             ]
         },
@@ -2964,12 +2958,6 @@
                     "type": "string",
                     "default": "false",
                     "metadataVariableReadable": true
-                },
-                {
-                    "name": "authModes",
-                    "type": "string",
-                    "optional": true,
-                    "metadataVariableReadable": true
                 }
             ]
         },
@@ -3693,12 +3681,6 @@
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
-                },
-                {
-                    "name": "authModes",
-                    "type": "string",
-                    "optional": true,
-                    "metadataVariableReadable": true
                 }
             ]
         },
@@ -3771,12 +3753,6 @@
                 },
                 {
                     "name": "identityOwner",
-                    "type": "string",
-                    "optional": true,
-                    "metadataVariableReadable": true
-                },
-                {
-                    "name": "authModes",
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
