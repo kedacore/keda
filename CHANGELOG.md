@@ -111,6 +111,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Metrics API Scaler**: Fix `aggregateFromKubeServiceEndpoints` using empty label selector that matched all EndpointSlices in the namespace instead of only the target service's ([#7641](https://github.com/kedacore/keda/issues/7641))
 - **NATS JetStream Scaler**: Return an error from `getMaxMsgLag` when the configured consumer is missing instead of falling back to the stream's last sequence, preventing incorrect scale-up to `maxReplicaCount` ([#7657](https://github.com/kedacore/keda/issues/7657))
 - **NATS JetStream Scaler**: URL-encode user input in monitoring URL construction ([#7483](https://github.com/kedacore/keda/pull/7483))
+- **PredictKube Scaler**: Bump `dysnix/predictkube-libs` to `v0.1.0` (drops the predictkube path to the archived/EOL `go-grpc-prometheus` and to the deprecated `golang/protobuf`) and use a portable Prometheus-API instant query for the health check so the scaler works against VictoriaMetrics, Thanos and other Prometheus-API-compatible backends ([#7745](https://github.com/kedacore/keda/pull/7745))
 - **Prometheus Scaler**: Handle NaN results in the same manner as Inf ([#7475](https://github.com/kedacore/keda/issues/7475))
 - **Prometheus Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **Pulsar Scaler**: Drop bearer/basic auth headers on redirects to a different host or on https->http downgrades to prevent credential leakage ([#7686](https://github.com/kedacore/keda/issues/7686))
