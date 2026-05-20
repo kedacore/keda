@@ -663,7 +663,7 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 
 func TestGetScaledObjectStateRecordsResourceScalerActiveMetric(t *testing.T) {
 	promMetricsCollectorOnce.Do(func() {
-		metricscollector.NewMetricsCollectors(true, false)
+		metricscollector.NewMetricsCollectors(metricscollector.Options{EnablePrometheusMetrics: true})
 	})
 
 	ctrl := gomock.NewController(t)
@@ -740,7 +740,7 @@ func TestGetScaledObjectStateRecordsResourceScalerActiveMetric(t *testing.T) {
 
 func TestGetScaledObjectStateSkipsResourceScalerActiveMetricWithModifiers(t *testing.T) {
 	promMetricsCollectorOnce.Do(func() {
-		metricscollector.NewMetricsCollectors(true, false)
+		metricscollector.NewMetricsCollectors(metricscollector.Options{EnablePrometheusMetrics: true})
 	})
 
 	ctrl := gomock.NewController(t)

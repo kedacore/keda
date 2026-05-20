@@ -780,6 +780,44 @@ func KubernetesScaleDeployment(t *testing.T, kc *kubernetes.Clientset, name stri
 	}
 }
 
+func SetDeploymentContainerArg(t *testing.T, kc *kubernetes.Clientset, name, namespace, containerName, flagName, flagValue string) {
+	t.Helper()
+
+	deployment, err := kc.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	require.NoErrorf(t, err, "cannot get deployment %s/%s - %s", namespace, name, err)
+
+	newArg := fmt.Sprintf("%s=%s", flagName, flagValue)
+	var updated bool
+	for i, container := range deployment.Spec.Template.Spec.Containers {
+		if container.Name != containerName {
+			continue
+		}
+
+		replaced := false
+		for j, arg := range container.Args {
+			if arg == flagName || strings.HasPrefix(arg, flagName+"=") {
+				container.Args[j] = newArg
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			container.Args = append(container.Args, newArg)
+		}
+
+		deployment.Spec.Template.Spec.Containers[i].Args = container.Args
+		updated = true
+		break
+	}
+
+	require.Truef(t, updated, "container %s not found in deployment %s/%s", containerName, namespace, name)
+
+	_, err = kc.AppsV1().Deployments(namespace).Update(context.TODO(), deployment, metav1.UpdateOptions{})
+	require.NoErrorf(t, err, "cannot update deployment %s/%s - %s", namespace, name, err)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, name, namespace, int(*deployment.Spec.Replicas), 60, 2),
+		"deployment %s/%s should become ready after updating %s", namespace, name, flagName)
+}
+
 type Template struct {
 	Name, Config string
 }

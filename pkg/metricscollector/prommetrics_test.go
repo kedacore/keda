@@ -23,6 +23,7 @@ import (
 	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
 func TestHTTPStatusCodeLabel(t *testing.T) {
@@ -52,7 +53,7 @@ func TestHTTPStatusCodeLabel(t *testing.T) {
 }
 
 func TestPromMetrics_RecordHTTPClientRequest(t *testing.T) {
-	p := &PromMetrics{}
+	p := &PromMetrics{enableHighCardinalityMetrics: true}
 
 	// Verify no panic and label combinations are created without error.
 	p.RecordHTTPClientRequest(0.05, 200, false, "prometheus", "my-trigger", "my-metric", "default", "my-so")
@@ -87,4 +88,29 @@ func TestPromMetrics_RecordHTTPClientRequest(t *testing.T) {
 	require.NoError(t, hist.(prometheus.Metric).Write(m))
 	assert.EqualValues(t, 1, m.Histogram.GetSampleCount())
 	assert.InDelta(t, 0.05, m.Histogram.GetSampleSum(), 0.001)
+}
+
+func TestNewPromMetrics_DisablesHighCardinalityMetrics(t *testing.T) {
+	previousRegistry := ctrlmetrics.Registry
+	ctrlmetrics.Registry = prometheus.NewRegistry()
+	t.Cleanup(func() {
+		ctrlmetrics.Registry = previousRegistry
+	})
+
+	p := NewPromMetrics(false)
+	p.RecordHTTPClientRequest(0.05, 200, false, "prometheus", "my-trigger", "my-metric", "default", "my-so")
+
+	families, err := ctrlmetrics.Registry.Gather()
+	require.NoError(t, err)
+
+	names := map[string]struct{}{}
+	for _, family := range families {
+		names[family.GetName()] = struct{}{}
+	}
+
+	_, ok := names["keda_scaler_http_requests_total"]
+	assert.True(t, ok, "keda_scaler_http_requests_total should be registered when high-cardinality metrics are disabled")
+
+	_, ok = names["keda_scaler_http_request_duration_seconds"]
+	assert.False(t, ok, "keda_scaler_http_request_duration_seconds should not be registered when high-cardinality metrics are disabled")
 }

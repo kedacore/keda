@@ -58,16 +58,17 @@ type Adapter struct {
 var setupLog = ctrl.Log.WithName("keda_metrics_adapter")
 
 var (
-	adapterClientRequestQPS     float32
-	adapterClientRequestBurst   int
-	metricsAPIServerPort        int
-	disableCompression          bool
-	metricsServiceAddr          string
-	profilingAddr               string
-	metricsServiceGRPCAuthority string
-	logToSTDerr                 bool
-	verbosityLevel              int
-	stdErrThreshold             string
+	adapterClientRequestQPS      float32
+	adapterClientRequestBurst    int
+	enableHighCardinalityMetrics bool
+	metricsAPIServerPort         int
+	disableCompression           bool
+	metricsServiceAddr           string
+	profilingAddr                string
+	metricsServiceGRPCAuthority  string
+	logToSTDerr                  bool
+	verbosityLevel               int
+	stdErrThreshold              string
 )
 
 func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsProvider, error) {
@@ -92,7 +93,7 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 	cfg.Burst = adapterClientRequestBurst
 	cfg.DisableCompression = disableCompression
 
-	clientMetrics := getMetricInterceptor()
+	clientMetrics := getMetricInterceptor(enableHighCardinalityMetrics)
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Metrics: server.Options{
@@ -145,7 +146,7 @@ func getMetricHandler() http.HandlerFunc {
 }
 
 // getMetricInterceptor returns a metrics inceptor that records metrics between the adapter and opertaor
-func getMetricInterceptor() *grpcprom.ClientMetrics {
+func getMetricInterceptor(enableHighCardinalityMetrics bool) *grpcprom.ClientMetrics {
 	metricsNamespace := "keda_internal_metricsservice"
 
 	counterNamespace := func(o *prometheus.CounterOpts) {
@@ -156,13 +157,19 @@ func getMetricInterceptor() *grpcprom.ClientMetrics {
 		o.Namespace = metricsNamespace
 	}
 
-	clientMetrics := grpcprom.NewClientMetrics(
-		grpcprom.WithClientHandlingTimeHistogram(
-			grpcprom.WithHistogramBuckets([]float64{0.001, 0.01, 0.1, 0.3, 0.6, 1, 3, 6, 9, 20, 30, 60, 90, 120}),
-			histogramNamespace,
-		),
+	options := []grpcprom.ClientMetricsOption{
 		grpcprom.WithClientCounterOptions(counterNamespace),
-	)
+	}
+	if enableHighCardinalityMetrics {
+		options = append(options,
+			grpcprom.WithClientHandlingTimeHistogram(
+				grpcprom.WithHistogramBuckets([]float64{0.001, 0.01, 0.1, 0.3, 0.6, 1, 3, 6, 9, 20, 30, 60, 90, 120}),
+				histogramNamespace,
+			),
+		)
+	}
+
+	clientMetrics := grpcprom.NewClientMetrics(options...)
 	legacyregistry.Registerer().MustRegister(clientMetrics)
 
 	return clientMetrics
@@ -243,6 +250,7 @@ func main() {
 	cmd.Flags().Float32Var(&adapterClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
 	cmd.Flags().IntVar(&adapterClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
 	cmd.Flags().BoolVar(&disableCompression, "disable-compression", true, "Disable response compression for k8s restAPI in client-go. ")
+	cmd.Flags().BoolVar(&enableHighCardinalityMetrics, "enable-high-cardinality-metrics", true, "Enable high-cardinality metrics of keda-metrics-apiserver, such as gRPC duration histograms.")
 
 	// legacy klogr flags handled for backwards compatibility. Default set to -1 so it doesn't override values set via zap options
 	cmd.Flags().IntVar(&verbosityLevel, "v", -1, "Logging level for Metrics Server. (DEPRECATED)")
