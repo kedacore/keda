@@ -38,6 +38,12 @@ var (
 	promServerMetrics *grpcprom.ServerMetrics
 )
 
+type Options struct {
+	EnablePrometheusMetrics      bool
+	EnableOpenTelemetryMetrics   bool
+	EnableHighCardinalityMetrics bool
+}
+
 type MetricsCollector interface {
 	RecordScalerMetric(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value float64)
 
@@ -91,18 +97,18 @@ type MetricsCollector interface {
 	RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string)
 }
 
-func NewMetricsCollectors(enablePrometheusMetrics bool, enableOpenTelemetryMetrics bool) {
-	if enablePrometheusMetrics {
-		promometrics := NewPromMetrics()
+func NewMetricsCollectors(options Options) {
+	if options.EnablePrometheusMetrics {
+		promometrics := NewPromMetrics(options.EnableHighCardinalityMetrics)
 		collectors = append(collectors, promometrics)
 
 		if promServerMetrics == nil {
-			promServerMetrics = newPromServerMetrics()
+			promServerMetrics = newPromServerMetrics(options.EnableHighCardinalityMetrics)
 		}
 	}
 
-	if enableOpenTelemetryMetrics {
-		otelmetrics := NewOtelMetrics()
+	if options.EnableOpenTelemetryMetrics {
+		otelmetrics := NewOtelMetrics(options.EnableHighCardinalityMetrics)
 		collectors = append(collectors, otelmetrics)
 	}
 }

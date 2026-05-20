@@ -54,6 +54,7 @@ var (
 )
 
 type OtelMetrics struct {
+	enableHighCardinalityMetrics bool
 }
 
 type OtelMetricInt64Val struct {
@@ -66,7 +67,7 @@ type OtelMetricFloat64Val struct {
 	measurementOption api.MeasurementOption
 }
 
-func NewOtelMetrics(options ...metric.Option) *OtelMetrics {
+func NewOtelMetrics(enableHighCardinalityMetrics bool, options ...metric.Option) *OtelMetrics {
 	// create default options with env
 	if options == nil {
 		protocol := os.Getenv("OTEL_EXPORTER_OTLP_PROTOCOL")
@@ -93,14 +94,14 @@ func NewOtelMetrics(options ...metric.Option) *OtelMetrics {
 	otel.SetMeterProvider(meterProvider)
 
 	meter = meterProvider.Meter(meterName)
-	initMeters()
+	initMeters(enableHighCardinalityMetrics)
 
-	otel := &OtelMetrics{}
+	otel := &OtelMetrics{enableHighCardinalityMetrics: enableHighCardinalityMetrics}
 	otel.RecordBuildInfo()
 	return otel
 }
 
-func initMeters() {
+func initMeters(enableHighCardinalityMetrics bool) {
 	var err error
 	msg := "failed to create OpenTelemetry instrument"
 
@@ -238,13 +239,16 @@ func initMeters() {
 		otLog.Error(err, msg)
 	}
 
-	otHTTPClientRequestDuration, err = meter.Float64Histogram(
-		"keda.scaler.http.request.duration.seconds",
-		api.WithDescription("Duration in seconds of outbound HTTP requests issued during scaler metric collection."),
-		api.WithUnit("s"),
-	)
-	if err != nil {
-		otLog.Error(err, msg)
+	otHTTPClientRequestDuration = nil
+	if enableHighCardinalityMetrics {
+		otHTTPClientRequestDuration, err = meter.Float64Histogram(
+			"keda.scaler.http.request.duration.seconds",
+			api.WithDescription("Duration in seconds of outbound HTTP requests issued during scaler metric collection."),
+			api.WithUnit("s"),
+		)
+		if err != nil {
+			otLog.Error(err, msg)
+		}
 	}
 }
 
@@ -532,12 +536,14 @@ func (o *OtelMetrics) RecordHTTPClientRequest(durationSeconds float64, statusCod
 		attribute.Key("metric_name").String(metricName),
 		attribute.Key("status_code").String(code),
 	)
-	histOpt := api.WithAttributes(
-		attribute.Key("scaler").String(scaler),
-		attribute.Key("status_code").String(code),
-	)
 	otHTTPClientRequestsCounter.Add(context.Background(), 1, counterOpt)
-	otHTTPClientRequestDuration.Record(context.Background(), durationSeconds, histOpt)
+	if o.enableHighCardinalityMetrics && otHTTPClientRequestDuration != nil {
+		histOpt := api.WithAttributes(
+			attribute.Key("scaler").String(scaler),
+			attribute.Key("status_code").String(code),
+		)
+		otHTTPClientRequestDuration.Record(context.Background(), durationSeconds, histOpt)
+	}
 }
 
 // RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting

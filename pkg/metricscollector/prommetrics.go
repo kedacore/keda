@@ -185,9 +185,10 @@ var (
 )
 
 type PromMetrics struct {
+	enableHighCardinalityMetrics bool
 }
 
-func NewPromMetrics() *PromMetrics {
+func NewPromMetrics(enableHighCardinalityMetrics bool) *PromMetrics {
 	metrics.Registry.MustRegister(scalerMetricsValue)
 	metrics.Registry.MustRegister(scalerMetricsLatency)
 	metrics.Registry.MustRegister(internalLoopLatency)
@@ -206,10 +207,12 @@ func NewPromMetrics() *PromMetrics {
 	metrics.Registry.MustRegister(cloudeventQueueStatus)
 
 	metrics.Registry.MustRegister(httpClientRequestsTotal)
-	metrics.Registry.MustRegister(httpClientRequestDuration)
+	if enableHighCardinalityMetrics {
+		metrics.Registry.MustRegister(httpClientRequestDuration)
+	}
 
 	RecordBuildInfo()
-	return &PromMetrics{}
+	return &PromMetrics{enableHighCardinalityMetrics: enableHighCardinalityMetrics}
 }
 
 // RecordBuildInfo publishes information about KEDA version and runtime info through an info metric (gauge).
@@ -378,13 +381,15 @@ func (p *PromMetrics) RecordEmptyUpstreamResponse(namespace, scaledResource, tri
 func (p *PromMetrics) RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string) {
 	code := httpStatusCodeLabel(statusCode, isError)
 	httpClientRequestsTotal.WithLabelValues(namespace, scaledResource, scaler, triggerName, metricName, code).Inc()
-	httpClientRequestDuration.WithLabelValues(scaler, code).Observe(durationSeconds)
+	if p.enableHighCardinalityMetrics {
+		httpClientRequestDuration.WithLabelValues(scaler, code).Observe(durationSeconds)
+	}
 }
 
 // Returns a grpcprom server Metrics object and registers the metrics. The object contains
 // interceptors to chain to the server so that all requests served are observed. Intended to be called
 // as part of initialization of metricscollector, hence why this function is not exported
-func newPromServerMetrics() *grpcprom.ServerMetrics {
+func newPromServerMetrics(enableHighCardinalityMetrics bool) *grpcprom.ServerMetrics {
 	metricsNamespace := "keda_internal_metricsservice"
 
 	counterNamespace := func(o *prometheus.CounterOpts) {
@@ -395,13 +400,19 @@ func newPromServerMetrics() *grpcprom.ServerMetrics {
 		o.Namespace = metricsNamespace
 	}
 
-	serverMetrics := grpcprom.NewServerMetrics(
-		grpcprom.WithServerHandlingTimeHistogram(
-			grpcprom.WithHistogramBuckets([]float64{0.001, 0.01, 0.1, 0.3, 0.6, 1, 3, 6, 9, 20, 30, 60, 90, 120}),
-			histogramNamespace,
-		),
+	options := []grpcprom.ServerMetricsOption{
 		grpcprom.WithServerCounterOptions(counterNamespace),
-	)
+	}
+	if enableHighCardinalityMetrics {
+		options = append(options,
+			grpcprom.WithServerHandlingTimeHistogram(
+				grpcprom.WithHistogramBuckets([]float64{0.001, 0.01, 0.1, 0.3, 0.6, 1, 3, 6, 9, 20, 30, 60, 90, 120}),
+				histogramNamespace,
+			),
+		)
+	}
+
+	serverMetrics := grpcprom.NewServerMetrics(options...)
 	metrics.Registry.MustRegister(serverMetrics)
 
 	return serverMetrics

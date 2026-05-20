@@ -53,7 +53,7 @@ func withPromCollector(t *testing.T) {
 	t.Helper()
 
 	previousCollectors := collectors
-	collectors = []MetricsCollector{&PromMetrics{}}
+	collectors = []MetricsCollector{&PromMetrics{enableHighCardinalityMetrics: true}}
 	t.Cleanup(func() {
 		collectors = previousCollectors
 	})
