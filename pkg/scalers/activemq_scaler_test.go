@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -243,6 +244,24 @@ func TestActiveMQCorsHeader(t *testing.T) {
 	}
 	if meta.CorsHeader != "test" {
 		t.Errorf("Expected test but got %s", meta.CorsHeader)
+	}
+}
+
+func TestActiveMQInvalidRestAPITemplateDoesNotPanic(t *testing.T) {
+	metadata := map[string]string{
+		"restAPITemplate": "http://localhost:8161/api/jolokia/read/org.apache.activemq/QueueSize",
+	}
+	authParams := map[string]string{
+		"username": "testUsername",
+		"password": "pass123",
+	}
+
+	_, err := parseActiveMQMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: metadata, AuthParams: authParams})
+	if err == nil {
+		t.Fatal("Expected error but got success")
+	}
+	if strings.Contains(err.Error(), "resulted in panic") {
+		t.Fatalf("Expected validation error but got recovered panic: %v", err)
 	}
 }
 

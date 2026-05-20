@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -115,6 +116,22 @@ func TestArtemisCorsHeader(t *testing.T) {
 	}
 	if meta.CorsHeader != "test" {
 		t.Errorf("Expected test but got %s", meta.CorsHeader)
+	}
+}
+
+func TestArtemisInvalidRestAPITemplateDoesNotPanic(t *testing.T) {
+	metadata := map[string]string{
+		"restApiTemplate": "http://localhost:8161/console/jolokia/read/org.apache.activemq.artemis/MessageCount",
+		"username":        "myUserName",
+		"password":        "myPassword",
+	}
+
+	_, err := parseArtemisMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: metadata, AuthParams: nil})
+	if err == nil {
+		t.Fatal("Expected error but got success")
+	}
+	if strings.Contains(err.Error(), "resulted in panic") {
+		t.Fatalf("Expected validation error but got recovered panic: %v", err)
 	}
 }
 
