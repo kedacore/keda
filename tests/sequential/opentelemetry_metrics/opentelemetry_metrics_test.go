@@ -592,6 +592,9 @@ func TestOpenTelemetryMetrics(t *testing.T) {
 	testScalerMetricValue(t)
 	testScalerMetricLatency(t)
 	testScalerActiveMetric(t, kc)
+	// Run this before any prometheus-based scaler scenarios, otherwise the collector
+	// already contains the HTTP duration histogram family from earlier requests.
+	testHighCardinalityMetricsDisabled(t, kc, data)
 	testScaledObjectErrors(t, data)
 	testScaledJobErrors(t, data)
 	testScalerErrors(t, data)
@@ -602,7 +605,6 @@ func TestOpenTelemetryMetrics(t *testing.T) {
 	testCloudEventEmittedError(t, data)
 	testEmptyUpstreamResponse(t, data)
 	testHTTPClientMetrics(t, data)
-	testHighCardinalityMetricsDisabled(t, kc, data)
 
 	changeOtlpProtocolInOperator(t, kc, "keda-operator", "keda")
 	testScalerGrpcMetricValue(t, kc, data)
@@ -862,8 +864,10 @@ func testScalerErrors(t *testing.T, data templateData) {
 
 	time.Sleep(15 * time.Second)
 
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
-	val, ok := family["keda_scaler_errors_total"]
+	families := waitForCollectorMetric(t, "keda_scaler_errors_total", func(family *prommodel.MetricFamily) bool {
+		return getErrorMetricsValue(family) > 0
+	})
+	val, ok := families["keda_scaler_errors_total"]
 	assert.True(t, ok, "keda_scaler_errors_total not available")
 	if ok {
 		errCounterVal1 := getErrorMetricsValue(val)
@@ -871,8 +875,10 @@ func testScalerErrors(t *testing.T, data templateData) {
 		// wait for 10 seconds to correctly fetch metrics.
 		time.Sleep(5 * time.Second)
 
-		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
-		val, ok := family["keda_scaler_errors_total"]
+		families = waitForCollectorMetric(t, "keda_scaler_errors_total", func(family *prommodel.MetricFamily) bool {
+			return getErrorMetricsValue(family) >= errCounterVal1
+		})
+		val, ok = families["keda_scaler_errors_total"]
 		assert.True(t, ok, "keda_scaler_errors_total not available")
 		if ok {
 			errCounterVal2 := getErrorMetricsValue(val)
