@@ -249,8 +249,10 @@ type MockHTTPRoundTripper struct {
 func (m *MockHTTPRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
 	args := m.Called(request)
 	resp := args.Get(0).(*http.Response)
-	resp.Request = request
-	return resp, args.Error(1)
+	// Clone before mutating: aggregateMetricsFromMultipleEndpoints calls RoundTrip concurrently.
+	cloned := *resp
+	cloned.Request = request
+	return &cloned, args.Error(1)
 }
 
 func TestAggregateMetricsFromMultipleEndpoints_AverageAllEndpointsFail(t *testing.T) {
