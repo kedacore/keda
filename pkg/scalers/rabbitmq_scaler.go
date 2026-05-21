@@ -349,7 +349,7 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 			if tlsErr != nil {
 				return nil, tlsErr
 			}
-			s.httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
+			s.httpClient.Transport = kedautil.CreateRTWithTLSConfig(tlsConfig)
 		}
 	}
 
@@ -505,17 +505,16 @@ func (s *rabbitMQScaler) createOAuth2HTTPClient(timeout time.Duration, meta *rab
 
 	// Build a base transport using kedautil so that ProxyFromEnvironment and
 	// keep-alive behaviour stay consistent with the non-OAuth2 HTTP path.
-	var baseTransport *http.Transport
+	var baseTransport http.RoundTripper
 	if meta.EnableTLS == rmqTLSEnable {
 		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.Ca, meta.UnsafeSsl)
 		if err != nil {
 			return nil, err
 		}
-		baseTransport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
+		baseTransport = kedautil.CreateRTWithTLSConfig(tlsConfig)
 	} else {
-		baseTransport = kedautil.CreateHTTPTransportWithTLSConfig(nil)
+		baseTransport = kedautil.CreateRTWithTLSConfig(nil)
 	}
-	baseTransport.IdleConnTimeout = timeout
 
 	// Pass the base client via context so the oauth2 library uses it for token
 	// endpoint requests too (applying the same timeout and transport settings).
