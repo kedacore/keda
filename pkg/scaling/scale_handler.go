@@ -931,6 +931,12 @@ func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler
 
 	for _, spec := range metricSpecs {
 		if spec.External == nil {
+			if spec.Resource != nil {
+				metricscollector.RecordScalerActive(scaledObject.Namespace, scaledObject.Name, result.TriggerName, triggerIndex, string(spec.Resource.Name), true, true)
+			}
+			if spec.ContainerResource != nil {
+				metricscollector.RecordScalerActive(scaledObject.Namespace, scaledObject.Name, result.TriggerName, triggerIndex, string(spec.ContainerResource.Name), true, true)
+			}
 			continue
 		}
 
