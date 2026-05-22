@@ -10,7 +10,7 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Enables enrichment and PromQL access for CloudWatch vended metrics for [supported AWS resources] in the
+// Enables enrichment and PromQL access for CloudWatch vended metrics for [supported Amazon Web Services resources] in the
 // account. Once enabled, metrics that contain a resource identifier dimension (for
 // example, EC2 CPUUtilization with an InstanceId dimension) are enriched with
 // resource ARN and resource tag labels and become queryable using PromQL.
@@ -18,8 +18,8 @@ import (
 // Before calling this operation, you must enable resource tags on telemetry for
 // your account. For more information, see [Enable resource tags on telemetry].
 //
+// [supported Amazon Web Services resources]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/UsingResourceTagsForTelemetry.html
 // [Enable resource tags on telemetry]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/EnableResourceTagsOnTelemetry.html
-// [supported AWS resources]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/UsingResourceTagsForTelemetry.html
 func (c *Client) StartOTelEnrichment(ctx context.Context, params *StartOTelEnrichmentInput, optFns ...func(*Options)) (*StartOTelEnrichmentOutput, error) {
 	if params == nil {
 		params = &StartOTelEnrichmentInput{}

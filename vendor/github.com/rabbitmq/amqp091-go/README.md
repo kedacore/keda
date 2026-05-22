@@ -90,7 +90,7 @@ please file an issue.
 ## Documentation
 
  * [Godoc API reference](http://godoc.org/github.com/rabbitmq/amqp091-go)
- * [RabbitMQ tutorials in Go](https://github.com/rabbitmq/rabbitmq-tutorials/tree/master/go)
+ * [RabbitMQ tutorials in Go](https://github.com/rabbitmq/rabbitmq-tutorials/tree/main/go)
 
 ## Contributing
 

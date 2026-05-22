@@ -47,8 +47,10 @@ func (l *ListLogArchivesRequest) GetSkipToken() *string {
 
 // ListLogArchivesResponseBody - The request has succeeded.
 type ListLogArchivesResponseBody struct {
-	LogArchives []components.LogsArchive  `json:"logArchives"`
-	PageInfo    components.CommonPageInfo `json:"pageInfo"`
+	// Array of log archives.
+	LogArchives []components.LogsArchive `json:"logArchives"`
+	// Pagination information.
+	PageInfo components.CommonPageInfo `json:"pageInfo"`
 }
 
 func (l *ListLogArchivesResponseBody) GetLogArchives() []components.LogsArchive {

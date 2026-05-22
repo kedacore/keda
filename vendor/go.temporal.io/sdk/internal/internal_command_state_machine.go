@@ -719,7 +719,7 @@ func (d *childWorkflowCommandStateMachine) getCommand() *commandpb.Command {
 	case commandStateCanceledAfterStarted:
 		command := createNewCommand(enumspb.COMMAND_TYPE_REQUEST_CANCEL_EXTERNAL_WORKFLOW_EXECUTION)
 		command.Attributes = &commandpb.Command_RequestCancelExternalWorkflowExecutionCommandAttributes{RequestCancelExternalWorkflowExecutionCommandAttributes: &commandpb.RequestCancelExternalWorkflowExecutionCommandAttributes{
-			Namespace:         d.attributes.Namespace,
+			Namespace:         d.attributes.Namespace, //lint:ignore SA1019 deprecated namespace field
 			WorkflowId:        d.attributes.WorkflowId,
 			ChildWorkflowOnly: true,
 		}}

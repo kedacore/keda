@@ -19,16 +19,15 @@ package azure
 import (
 	"testing"
 
-	"github.com/Azure/azure-kusto-go/kusto/data/errors"
-	"github.com/Azure/azure-kusto-go/kusto/data/table"
-	"github.com/Azure/azure-kusto-go/kusto/data/types"
-	"github.com/Azure/azure-kusto-go/kusto/data/value"
+	"github.com/Azure/azure-kusto-go/azkustodata/query"
+	"github.com/Azure/azure-kusto-go/azkustodata/types"
+	"github.com/Azure/azure-kusto-go/azkustodata/value"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 type testExtractDataExplorerMetricValue struct {
-	testRow *table.Row
+	testRow query.Row
 	isError bool
 }
 
@@ -46,19 +45,29 @@ var (
 	tenantID              = "test_tenant_id"
 )
 
+func newTestRow(columnType types.Column, rowValue value.Kusto) query.Row {
+	rowColumns := query.Columns{query.NewColumn(0, rowName, columnType)}
+	return query.NewRowFromParts(rowColumns, func(name string) query.Column {
+		if name == rowName {
+			return rowColumns[0]
+		}
+		return nil
+	}, 0, value.Values{rowValue})
+}
+
 var testExtractDataExplorerMetricValues = []testExtractDataExplorerMetricValue{
 	// pass
-	{testRow: &table.Row{ColumnTypes: table.Columns{{Name: rowName, Type: rowType}}, Values: value.Values{value.Long{Value: rowValue, Valid: true}}, Op: errors.OpQuery}, isError: false},
+	{testRow: newTestRow(rowType, value.NewLong(rowValue)), isError: false},
 	// nil row - fail
 	{testRow: nil, isError: true},
 	// Empty row - fail
-	{testRow: &table.Row{}, isError: true},
+	{testRow: query.NewRowFromParts(nil, func(string) query.Column { return nil }, 0, nil), isError: true},
 	// Metric value is not bigger than 0 - fail
-	{testRow: &table.Row{ColumnTypes: table.Columns{{Name: rowName, Type: rowType}}, Values: value.Values{value.Long{Value: -1, Valid: true}}, Op: errors.OpQuery}, isError: true},
+	{testRow: newTestRow(rowType, value.NewLong(-1)), isError: true},
 	// Metric result is invalid - fail
-	{testRow: &table.Row{ColumnTypes: table.Columns{{Name: rowName, Type: rowType}}, Values: value.Values{value.String{Value: "invalid", Valid: true}}, Op: errors.OpQuery}, isError: true},
+	{testRow: newTestRow(rowType, value.NewString("invalid")), isError: true},
 	// Metric Type is not valid - fail
-	{testRow: &table.Row{ColumnTypes: table.Columns{{Name: rowName, Type: "String"}}, Values: value.Values{value.Long{Value: rowValue, Valid: true}}, Op: errors.OpQuery}, isError: true},
+	{testRow: newTestRow(types.String, value.NewLong(rowValue)), isError: true},
 }
 
 var testGetDataExplorerAuthConfigs = []testGetDataExplorerAuthConfig{
