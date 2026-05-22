@@ -290,18 +290,22 @@ jobs:
             echo '<details>'
             echo "<summary>passed tests: ${passed_count}</summary>"
             echo ''
+            echo '```'
             if [[ -s "$PASSED" ]]; then
               cat "$PASSED"
             fi
+            echo '```'
             echo ''
             echo '</details>'
             echo ''
             echo '<details>'
             echo "<summary>failed tests: ${failed_count}</summary>"
             echo ''
+            echo '```'
             if [[ -s "$FAILED" ]]; then
               cat "$FAILED"
             fi
+            echo '```'
             echo ''
             echo '</details>'
             echo 'E2E_RESULTS_EOF'
