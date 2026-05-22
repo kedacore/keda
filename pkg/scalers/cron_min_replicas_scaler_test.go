@@ -8,6 +8,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/robfig/cron/v3"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -74,8 +75,7 @@ var cronMinReplicasMetricIdentifiers = []cronMinReplicasMetricIdentifier{
 	{&testCronMinReplicasMetadata[3], 1, "s1-cron-min-replicas-Etc-UTC-06xxx-022xxx"},
 }
 
-var tzMinReplicas, _ = time.LoadLocation("Etc/UTC")
-var currentHourForMinReplicas = time.Now().In(tzMinReplicas).Hour()
+var currentHourForMinReplicas = time.Now().In(time.UTC).Hour()
 
 func TestCronMinReplicasParseMetadata(t *testing.T) {
 	for i, testData := range testCronMinReplicasMetadata {
@@ -90,30 +90,36 @@ func TestCronMinReplicasParseMetadata(t *testing.T) {
 }
 
 func TestCronMinReplicasIsActiveNight(t *testing.T) {
-	scaler, _ := NewCronMinReplicasScaler(nil, &scalersconfig.ScalerConfig{TriggerMetadata: validCronMinReplicasMetadata})
-	_, isActive, _ := scaler.GetMetricsAndActivity(context.TODO(), "ReplicaCount")
+	scaler, err := NewCronMinReplicasScaler(nil, &scalersconfig.ScalerConfig{TriggerMetadata: validCronMinReplicasMetadata})
+	require.NoError(t, err)
+	_, isActive, err := scaler.GetMetricsAndActivity(context.TODO(), "ReplicaCount")
+	require.NoError(t, err)
 	// night window: 22:00-06:00
 	if currentHourForMinReplicas >= 22 || currentHourForMinReplicas < 6 {
-		assert.Equal(t, true, isActive)
+		assert.True(t, isActive)
 	} else {
-		assert.Equal(t, false, isActive)
+		assert.False(t, isActive)
 	}
 }
 
 func TestCronMinReplicasIsActiveDay(t *testing.T) {
-	scaler, _ := NewCronMinReplicasScaler(nil, &scalersconfig.ScalerConfig{TriggerMetadata: validCronMinReplicasMetadataDay})
-	_, isActive, _ := scaler.GetMetricsAndActivity(context.TODO(), "ReplicaCount")
+	scaler, err := NewCronMinReplicasScaler(nil, &scalersconfig.ScalerConfig{TriggerMetadata: validCronMinReplicasMetadataDay})
+	require.NoError(t, err)
+	_, isActive, err := scaler.GetMetricsAndActivity(context.TODO(), "ReplicaCount")
+	require.NoError(t, err)
 	// day window: 06:00-22:00
 	if currentHourForMinReplicas >= 6 && currentHourForMinReplicas < 22 {
-		assert.Equal(t, true, isActive)
+		assert.True(t, isActive)
 	} else {
-		assert.Equal(t, false, isActive)
+		assert.False(t, isActive)
 	}
 }
 
 func TestCronMinReplicasGetMetricsNight(t *testing.T) {
-	scaler, _ := NewCronMinReplicasScaler(nil, &scalersconfig.ScalerConfig{TriggerMetadata: validCronMinReplicasMetadata})
-	metrics, _, _ := scaler.GetMetricsAndActivity(context.TODO(), "ReplicaCount")
+	scaler, err := NewCronMinReplicasScaler(nil, &scalersconfig.ScalerConfig{TriggerMetadata: validCronMinReplicasMetadata})
+	require.NoError(t, err)
+	metrics, _, err := scaler.GetMetricsAndActivity(context.TODO(), "ReplicaCount")
+	require.NoError(t, err)
 	assert.Equal(t, "ReplicaCount", metrics[0].MetricName)
 	if currentHourForMinReplicas >= 22 || currentHourForMinReplicas < 6 {
 		assert.Equal(t, int64(2), metrics[0].Value.Value())
@@ -123,8 +129,10 @@ func TestCronMinReplicasGetMetricsNight(t *testing.T) {
 }
 
 func TestCronMinReplicasGetMetricsDay(t *testing.T) {
-	scaler, _ := NewCronMinReplicasScaler(nil, &scalersconfig.ScalerConfig{TriggerMetadata: validCronMinReplicasMetadataDay})
-	metrics, _, _ := scaler.GetMetricsAndActivity(context.TODO(), "ReplicaCount")
+	scaler, err := NewCronMinReplicasScaler(nil, &scalersconfig.ScalerConfig{TriggerMetadata: validCronMinReplicasMetadataDay})
+	require.NoError(t, err)
+	metrics, _, err := scaler.GetMetricsAndActivity(context.TODO(), "ReplicaCount")
+	require.NoError(t, err)
 	assert.Equal(t, "ReplicaCount", metrics[0].MetricName)
 	if currentHourForMinReplicas >= 6 && currentHourForMinReplicas < 22 {
 		assert.Equal(t, int64(10), metrics[0].Value.Value())
@@ -135,27 +143,27 @@ func TestCronMinReplicasGetMetricsDay(t *testing.T) {
 
 func TestCronMinReplicasMaxReplicasMetadata(t *testing.T) {
 	meta, err := parseCronMinReplicasMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: validCronMinReplicasMetadataWithMax})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, int64(2), meta.MinReplicas)
 	assert.Equal(t, int64(5), meta.MaxReplicas)
 }
 
 func TestCronMinReplicasMaxReplicasAbsent(t *testing.T) {
 	meta, err := parseCronMinReplicasMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: validCronMinReplicasMetadata})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, int64(0), meta.MaxReplicas)
 }
 
 func TestCronMinReplicasGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range cronMinReplicasMetricIdentifiers {
 		meta, err := parseCronMinReplicasMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
-		if err != nil {
-			t.Fatal("Could not parse metadata:", err)
-		}
+		require.NoError(t, err)
 
 		parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
-		startSchedule, _ := parser.Parse(meta.Start)
-		endSchedule, _ := parser.Parse(meta.End)
+		startSchedule, err := parser.Parse(meta.Start)
+		require.NoError(t, err)
+		endSchedule, err := parser.Parse(meta.End)
+		require.NoError(t, err)
 
 		mockScaler := cronMinReplicasScaler{
 			metricType:    "",
@@ -167,8 +175,6 @@ func TestCronMinReplicasGetMetricSpecForScaling(t *testing.T) {
 
 		metricSpec := mockScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
-		if metricName != testData.name {
-			t.Error("Wrong External metric source name:", metricName)
-		}
+		assert.Equal(t, testData.name, metricName)
 	}
 }
