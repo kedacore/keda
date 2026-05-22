@@ -721,7 +721,7 @@ func TestGetScaledObjectStateRecordsResourceScalerActiveMetric(t *testing.T) {
 		subsLock:                 &sync.RWMutex{},
 	}
 
-	isActive, isError, _, activeTriggers, _, err := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	isActive, isError, _, activeTriggers, _, err := sh.getScaledObjectState(context.Background(), &scaledObject)
 	scalerCache.Close(context.Background())
 
 	assert.NoError(t, err)
