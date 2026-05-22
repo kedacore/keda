@@ -97,6 +97,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Fix ScaledObject admission webhook to return validation error from `verifyReplicaCount`, preventing invalid ScaledObjects from being created ([#5954](https://github.com/kedacore/keda/issues/5954))
 - **General**: Fix ScaledObject Ready condition not reflecting HPA status ([#7649](https://github.com/kedacore/keda/issues/7649))
 - **General**: Handle paused scaling directly in reconciler ([#7663](https://github.com/kedacore/keda/issues/7663))
+- **Redis Scaler**: Use literal command names in Lua script to fix compatibility with Alibaba Cloud Redis Cluster ([#7758](https://github.com/kedacore/keda/issues/7758))
 - **Azure Data Explorer Scaler**: Remove clientSecretFromEnv support ([#7554](https://github.com/kedacore/keda/pull/7554))
 - **Azure Event Hub Scaler**: Reject non-positive `unprocessedEventThreshold` to prevent integer division by zero when computing lag ([#7732](https://github.com/kedacore/keda/issues/7732))
 - **Cron Scaler**: Fix metric name generation so cron expressions with comma-separated values no longer produce invalid metric names ([#7448](https://github.com/kedacore/keda/issues/7448))

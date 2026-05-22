@@ -123,15 +123,15 @@ func NewRedisScaler(ctx context.Context, isClustered, isSentinel bool, config *s
 	luaScript := `
 		local listName = KEYS[1]
 		local listType = redis.call('type', listName).ok
-		local cmd = {
-			zset = 'zcard',
-			set = 'scard',
-			list = 'llen',
-			hash = 'hlen',
-			none = 'llen'
-		}
-
-		return redis.call(cmd[listType], listName)
+		if listType == 'zset' then
+			return redis.call('zcard', listName)
+		elseif listType == 'set' then
+			return redis.call('scard', listName)
+		elseif listType == 'hash' then
+			return redis.call('hlen', listName)
+		else
+			return redis.call('llen', listName)
+		end
 	`
 
 	metricType, err := GetMetricTargetType(config)
