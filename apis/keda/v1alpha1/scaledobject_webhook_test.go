@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -729,6 +730,36 @@ var _ = It("should validate the so update if it's removing the finalizer even if
 	so.Finalizers = []string{}
 	Eventually(func() error {
 		return k8sClient.Update(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("shouldn't validate the so creation when the name exceeds 54 characters", func() {
+
+	namespaceName := "so-name-too-long"
+	namespace := createNamespace(namespaceName)
+	longName := strings.Repeat("a", maxScaledObjectNameLength+1)
+	so := createScaledObject(longName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("should validate the so creation when the name is exactly 54 characters", func() {
+
+	namespaceName := "so-name-max-length"
+	namespace := createNamespace(namespaceName)
+	maxName := strings.Repeat("a", maxScaledObjectNameLength)
+	so := createScaledObject(maxName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
 	}).ShouldNot(HaveOccurred())
 })
 

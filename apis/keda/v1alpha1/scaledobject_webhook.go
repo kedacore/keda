@@ -52,6 +52,9 @@ var restMapper meta.RESTMapper
 var memoryString = "memory"
 var cpuString = "cpu"
 
+// maxScaledObjectNameLength is 63 (the Kubernetes label value limit) minus the length of the "keda-hpa-" prefix that KEDA prepends when generating the HPA name from the ScaledObject name.
+const maxScaledObjectNameLength = 54
+
 func (so *ScaledObject) SetupWebhookWithManager(mgr ctrl.Manager, cacheMissFallback bool) error {
 	err := setupKubernetesClients(mgr, cacheMissFallback)
 	if err != nil {
@@ -164,6 +167,7 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 		"verifyHpas":             verifyHpas,
 		"verifyReplicaCount":     verifyReplicaCount,
 		"verifyFallback":         verifyFallback,
+		"verifyName":             verifyName,
 	}
 
 	for functionName, function := range verifyFunctions {
@@ -197,6 +201,19 @@ func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) error {
 		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-replicas")
 	}
 	return err
+}
+
+func verifyName(incomingSo *ScaledObject, action string, _ bool) error {
+	if action != "create" {
+		return nil
+	}
+	if len(incomingSo.Name) > maxScaledObjectNameLength {
+		err := fmt.Errorf("scaledobject name %q is %d characters long; must be no more than %d characters to leave room for the %q HPA name prefix within the Kubernetes 63-character label limit", incomingSo.Name, len(incomingSo.Name), maxScaledObjectNameLength, "keda-hpa-")
+		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
+		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "name-too-long")
+		return err
+	}
+	return nil
 }
 
 func verifyFallback(incomingSo *ScaledObject, action string, _ bool) error {

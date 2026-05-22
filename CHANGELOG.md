@@ -97,6 +97,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Fix ScaledObject admission webhook to return validation error from `verifyReplicaCount`, preventing invalid ScaledObjects from being created ([#5954](https://github.com/kedacore/keda/issues/5954))
 - **General**: Fix ScaledObject Ready condition not reflecting HPA status ([#7649](https://github.com/kedacore/keda/issues/7649))
 - **General**: Handle paused scaling directly in reconciler ([#7663](https://github.com/kedacore/keda/issues/7663))
+- **General**: Reject ScaledObject creation when name exceeds 54 characters to keep the generated `keda-hpa-` HPA name within the 63-character Kubernetes label value limit ([#6998](https://github.com/kedacore/keda/issues/6998))
 - **Azure Data Explorer Scaler**: Remove clientSecretFromEnv support ([#7554](https://github.com/kedacore/keda/pull/7554))
 - **Azure Event Hub Scaler**: Reject non-positive `unprocessedEventThreshold` to prevent integer division by zero when computing lag ([#7732](https://github.com/kedacore/keda/issues/7732))
 - **Cron Scaler**: Fix metric name generation so cron expressions with comma-separated values no longer produce invalid metric names ([#7448](https://github.com/kedacore/keda/issues/7448))
