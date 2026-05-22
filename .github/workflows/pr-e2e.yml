@@ -254,7 +254,9 @@ jobs:
           SUFFIX: "-test"
           TEST_CLUSTER_NAME: keda-e2e-cluster-pr
           COMMENT_BODY: ${{ github.event.comment.body }}
+          E2E_RESULTS_DIR: ${{ github.workspace }}/_e2e_results
         run: |
+          set -euo pipefail
           MESSAGE="$COMMENT_BODY"
           REGEX='/run-e2e (.+)'
           if [[ "$MESSAGE" =~ $REGEX ]]
@@ -263,6 +265,55 @@ jobs:
           fi
           echo "${{ needs.triage.outputs.pr_num }}"
           make e2e-test
+
+      - name: Build test results comment body
+        if: ${{ always() }}
+        id: results
+        env:
+          E2E_RESULTS_DIR: ${{ github.workspace }}/_e2e_results
+        run: |
+          set -euo pipefail
+          PASSED="$E2E_RESULTS_DIR/passed.txt"
+          FAILED="$E2E_RESULTS_DIR/failed.txt"
+          if [[ ! -f "$PASSED" && ! -f "$FAILED" ]]; then
+            echo "no results files produced under $E2E_RESULTS_DIR; skipping comment update" >&2
+            echo "should_post=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          passed_count=0
+          failed_count=0
+          [[ -f "$PASSED" ]] && passed_count=$(cat "$PASSED" | wc -l)
+          [[ -f "$FAILED" ]] && failed_count=$(cat "$FAILED" | wc -l)
+          {
+            echo 'body<<E2E_RESULTS_EOF'
+            echo ''
+            echo '<details>'
+            echo "<summary>passed tests: ${passed_count}</summary>"
+            echo ''
+            if [[ -s "$PASSED" ]]; then
+              cat "$PASSED"
+            fi
+            echo ''
+            echo '</details>'
+            echo ''
+            echo '<details>'
+            echo "<summary>failed tests: ${failed_count}</summary>"
+            echo ''
+            if [[ -s "$FAILED" ]]; then
+              cat "$FAILED"
+            fi
+            echo ''
+            echo '</details>'
+            echo 'E2E_RESULTS_EOF'
+          } >> "$GITHUB_OUTPUT"
+          echo "should_post=true" >> "$GITHUB_OUTPUT"
+
+      - name: Append test results to comment
+        if: ${{ always() && steps.results.outputs.should_post == 'true' }}
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
+        with:
+          comment-id: ${{ github.event.comment.id }}
+          body: ${{ steps.results.outputs.body }}
 
       - name: Delete all e2e related namespaces
         if: ${{ always() }}
