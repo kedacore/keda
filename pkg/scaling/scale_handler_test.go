@@ -38,6 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
@@ -50,7 +51,6 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scaling/cache"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache/metricscache"
 	"github.com/kedacore/keda/v2/pkg/scaling/executor"
-	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
 const testNamespaceGlobal = "testNamespace"
