@@ -53,7 +53,7 @@ type apacheKafkaMetadata struct {
 	Topic                  []string          `keda:"name=topic,                  order=triggerMetadata;resolvedEnv, optional"`
 	PartitionLimitation    []int             `keda:"name=partitionLimitation,    order=triggerMetadata, optional, range"`
 	LagThreshold           int64             `keda:"name=lagThreshold,           order=triggerMetadata, default=10"`
-	ThreadsPerConsumer     int64             `keda:"name=threadsPerConsumer,order=triggerMetadata,default=1"`
+	ThreadsPerConsumer     int64             `keda:"name=threadsPerConsumer,	 order=triggerMetadata,	default=1"`
 	ActivationLagThreshold int64             `keda:"name=activationLagThreshold, order=triggerMetadata, default=0"`
 	OffsetResetPolicy      offsetResetPolicy `keda:"name=offsetResetPolicy,      order=triggerMetadata, enum=earliest;latest, default=latest"`
 	AllowIdleConsumers     bool              `keda:"name=allowIdleConsumers,     order=triggerMetadata, optional"`
