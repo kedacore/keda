@@ -7,8 +7,11 @@ import (
 	"fmt"
 )
 
+// Tags to associate with the token.
 type Tags struct {
-	Server          string `json:"server"`
+	// Server tag value.
+	Server string `json:"server"`
+	// Tag without a value.
 	TagWithoutValue string `json:"tag_without_value"`
 }
 
@@ -26,6 +29,7 @@ func (t *Tags) GetTagWithoutValue() string {
 	return t.TagWithoutValue
 }
 
+// TokensCreateTokenRequestType - Type of token. Currently only 'ingestion' is supported.
 type TokensCreateTokenRequestType string
 
 const (
@@ -50,8 +54,11 @@ func (e *TokensCreateTokenRequestType) UnmarshalJSON(data []byte) error {
 }
 
 type TokensCreateTokenRequest struct {
-	Name string                       `json:"name"`
-	Tags Tags                         `json:"tags"`
+	// Name of the token.
+	Name string `json:"name"`
+	// Tags to associate with the token.
+	Tags Tags `json:"tags"`
+	// Type of token. Currently only 'ingestion' is supported.
 	Type TokensCreateTokenRequestType `json:"type"`
 }
 

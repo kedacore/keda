@@ -6,17 +6,6 @@ import (
 	"github.com/solarwinds/swo-sdk-go/swov1/models/components"
 )
 
-type ValidateMgmtAccountOnboardingRequest struct {
-	Request components.CloudAccountsAwsMgmtAccountOnboardingRequest `queryParam:"style=form,explode=false,name=request"`
-}
-
-func (v *ValidateMgmtAccountOnboardingRequest) GetRequest() components.CloudAccountsAwsMgmtAccountOnboardingRequest {
-	if v == nil {
-		return components.CloudAccountsAwsMgmtAccountOnboardingRequest{}
-	}
-	return v.Request
-}
-
 type ValidateMgmtAccountOnboardingResponse struct {
 	HTTPMeta components.HTTPMetadata `json:"-"`
 	// The request has succeeded.

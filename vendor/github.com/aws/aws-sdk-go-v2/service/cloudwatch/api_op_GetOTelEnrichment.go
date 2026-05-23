@@ -14,9 +14,9 @@ import (
 // Returns the current status of vended metric enrichment for the account,
 // including whether CloudWatch vended metrics are enriched with resource ARN and
 // resource tag labels and queryable using PromQL. For the list of supported
-// resources, see [Supported AWS infrastructure metrics].
+// resources, see [Supported Amazon Web Services infrastructure metrics].
 //
-// [Supported AWS infrastructure metrics]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/UsingResourceTagsForTelemetry.html
+// [Supported Amazon Web Services infrastructure metrics]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/UsingResourceTagsForTelemetry.html
 func (c *Client) GetOTelEnrichment(ctx context.Context, params *GetOTelEnrichmentInput, optFns ...func(*Options)) (*GetOTelEnrichmentOutput, error) {
 	if params == nil {
 		params = &GetOTelEnrichmentInput{}

@@ -600,6 +600,7 @@ const getEntityQuery = `query(
 		createdBy {
 			__typename
 			id
+			type
 			... on EntityManagementSystemActor {
 				__typename
 			}
@@ -611,6 +612,7 @@ const getEntityQuery = `query(
 		updatedBy {
 			__typename
 			id
+			type
 			... on EntityManagementSystemActor {
 				__typename
 			}
@@ -634,11 +636,13 @@ const getEntityQuery = `query(
 		__typename
 		agentType
 		configurationType
+		managedEntityType
 		metadata {
 			createdAt
 			createdBy {
 				__typename
 				id
+				type
 				... on EntityManagementSystemActor {
 					__typename
 				}
@@ -650,6 +654,7 @@ const getEntityQuery = `query(
 			updatedBy {
 				__typename
 				id
+				type
 				... on EntityManagementSystemActor {
 					__typename
 				}
@@ -734,6 +739,7 @@ const getEntityQuery = `query(
 			createdBy {
 				__typename
 				id
+				type
 				... on EntityManagementSystemActor {
 					__typename
 				}
@@ -745,6 +751,7 @@ const getEntityQuery = `query(
 			updatedBy {
 				__typename
 				id
+				type
 				... on EntityManagementSystemActor {
 					__typename
 				}
@@ -777,6 +784,7 @@ const getEntityQuery = `query(
 			createdBy {
 				__typename
 				id
+				type
 				... on EntityManagementSystemActor {
 					__typename
 				}
@@ -788,6 +796,7 @@ const getEntityQuery = `query(
 			updatedBy {
 				__typename
 				id
+				type
 				... on EntityManagementSystemActor {
 					__typename
 				}
@@ -842,6 +851,7 @@ const getEntityQuery = `query(
 				createdBy {
 					__typename
 					id
+					type
 					... on EntityManagementSystemActor {
 						__typename
 					}
@@ -853,6 +863,7 @@ const getEntityQuery = `query(
 				updatedBy {
 					__typename
 					id
+					type
 					... on EntityManagementSystemActor {
 						__typename
 					}
@@ -879,6 +890,7 @@ const getEntityQuery = `query(
 			createdBy {
 				__typename
 				id
+				type
 				... on EntityManagementSystemActor {
 					__typename
 				}
@@ -890,6 +902,7 @@ const getEntityQuery = `query(
 			updatedBy {
 				__typename
 				id
+				type
 				... on EntityManagementSystemActor {
 					__typename
 				}
@@ -958,6 +971,7 @@ const getEntitySearchQuery = `query(
 			createdBy {
 				__typename
 				id
+				type
 				... on EntityManagementSystemActor {
 					__typename
 				}
@@ -969,6 +983,7 @@ const getEntitySearchQuery = `query(
 			updatedBy {
 				__typename
 				id
+				type
 				... on EntityManagementSystemActor {
 					__typename
 				}
@@ -992,11 +1007,13 @@ const getEntitySearchQuery = `query(
 			__typename
 			agentType
 			configurationType
+			managedEntityType
 			metadata {
 				createdAt
 				createdBy {
 					__typename
 					id
+					type
 					... on EntityManagementSystemActor {
 						__typename
 					}
@@ -1008,6 +1025,7 @@ const getEntitySearchQuery = `query(
 				updatedBy {
 					__typename
 					id
+					type
 					... on EntityManagementSystemActor {
 						__typename
 					}
@@ -1056,6 +1074,7 @@ const getEntitySearchQuery = `query(
 				createdBy {
 					__typename
 					id
+					type
 					... on EntityManagementSystemActor {
 						__typename
 					}
@@ -1067,6 +1086,7 @@ const getEntitySearchQuery = `query(
 				updatedBy {
 					__typename
 					id
+					type
 					... on EntityManagementSystemActor {
 						__typename
 					}
@@ -1099,6 +1119,7 @@ const getEntitySearchQuery = `query(
 				createdBy {
 					__typename
 					id
+					type
 					... on EntityManagementSystemActor {
 						__typename
 					}
@@ -1110,6 +1131,7 @@ const getEntitySearchQuery = `query(
 				updatedBy {
 					__typename
 					id
+					type
 					... on EntityManagementSystemActor {
 						__typename
 					}
@@ -1181,6 +1203,7 @@ const getEntitySearchQuery = `query(
 				createdBy {
 					__typename
 					id
+					type
 					... on EntityManagementSystemActor {
 						__typename
 					}
@@ -1192,6 +1215,7 @@ const getEntitySearchQuery = `query(
 				updatedBy {
 					__typename
 					id
+					type
 					... on EntityManagementSystemActor {
 						__typename
 					}
@@ -1218,9 +1242,15 @@ const getEntitySearchQuery = `query(
 	nextCursor
 } } } }`
 
-// List managed entities for a fleet
+// List managed entities for a fleet.
+// NOTE: cursor has been changed from string --> *string to handle the case when there is no
+// next page, and we need to pass null instead of an empty string. Passing an empty string
+// may not work as expected — the API expects null for the cursor when there are no more
+// pages to fetch. Using a pointer lets us pass nil to represent the absence of a cursor,
+// which is more semantically correct in this context.
+// This change is NOT COVERED by Tutone — DO NOT REVERT.
 func (a *Fleetcontrol) GetFleetMembers(
-	cursor string,
+	cursor *string,
 	filter *FleetControlFleetMembersFilterInput,
 ) (*FleetControlFleetMembersItemsResult, error) {
 	return a.GetFleetMembersWithContext(context.Background(),
@@ -1229,10 +1259,16 @@ func (a *Fleetcontrol) GetFleetMembers(
 	)
 }
 
-// List managed entities for a fleet
+// List managed entities for a fleet.
+// NOTE: cursor has been changed from string --> *string to handle the case when there is no
+// next page, and we need to pass null instead of an empty string. Passing an empty string
+// may not work as expected — the API expects null for the cursor when there are no more
+// pages to fetch. Using a pointer lets us pass nil to represent the absence of a cursor,
+// which is more semantically correct in this context.
+// This change is NOT COVERED by Tutone — DO NOT REVERT.
 func (a *Fleetcontrol) GetFleetMembersWithContext(
 	ctx context.Context,
-	cursor string,
+	cursor *string,
 	filter *FleetControlFleetMembersFilterInput,
 ) (*FleetControlFleetMembersItemsResult, error) {
 
@@ -1250,8 +1286,10 @@ func (a *Fleetcontrol) GetFleetMembersWithContext(
 }
 
 const getFleetMembersQuery = `query(
+	$cursor: String,
 	$filter: FleetControlFleetMembersFilterInput!,
 ) { actor { fleetControl { fleetMembers(
+	cursor: $cursor,
 	filter: $filter,
 ) {
 	items {

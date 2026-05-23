@@ -3,6 +3,7 @@
 package components
 
 type CommonEntityID struct {
+	// Entity ID.
 	ID string `json:"id"`
 }
 
