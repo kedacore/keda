@@ -64,6 +64,7 @@ type kafkaMetadata struct {
 	PartitionLimitation    []int32 // computed in Validate
 
 	LagThreshold           int64 `keda:"name=lagThreshold,order=triggerMetadata,default=10"`
+	ThreadsPerConsumer     int64 `keda:"name=threadsPerConsumer,order=triggerMetadata,default=1"`
 	ActivationLagThreshold int64 `keda:"name=activationLagThreshold,order=triggerMetadata,default=0"`
 
 	OffsetResetPolicy                  offsetResetPolicy `keda:"name=offsetResetPolicy,order=triggerMetadata,default=latest,enum=latest;earliest"`
@@ -116,6 +117,11 @@ func (m *kafkaMetadata) Validate() error {
 	if m.LagThreshold <= 0 {
 		return fmt.Errorf("%q must be positive number", lagThresholdMetricName)
 	}
+
+	if m.ThreadsPerConsumer <= 0 {
+		return fmt.Errorf("%q must be positive number", threadsPerConsumerMetricName)
+	}
+
 	if m.ActivationLagThreshold < 0 {
 		return fmt.Errorf("%q must be a non-negative number", activationLagThresholdMetricName)
 	}
@@ -324,10 +330,14 @@ const (
 )
 
 const (
-	lagThresholdMetricName             = "lagThreshold"
-	activationLagThresholdMetricName   = "activationLagThreshold"
-	kafkaMetricType                    = "External"
-	defaultKafkaLagThreshold           = 10
+	lagThresholdMetricName   = "lagThreshold"
+	defaultKafkaLagThreshold = 10
+
+	threadsPerConsumerMetricName = "threadsPerConsumer"
+
+	activationLagThresholdMetricName = "activationLagThreshold"
+	kafkaMetricType                  = "External"
+
 	defaultKafkaActivationLagThreshold = 0
 	defaultOffsetResetPolicy           = latest
 	invalidOffset                      = -1
@@ -729,11 +739,29 @@ func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 		metricName = fmt.Sprintf("kafka-%s-topics", s.metadata.ConsumerGroup)
 	}
 
+	/*
+		Assume:
+			Total Lag Across Partitions = T
+			Desired Lag Per Partition = D
+			Threads Per Consumer = P
+
+		Then:
+			Number of Replicas =~ (T / D) = N
+			But when each replica has multiple consumers running as threads = (N / P)
+
+		Effectively:
+			= T / (D * P)
+
+		targetMetric = (D * P)
+
+	*/
+	targetMetric := s.metadata.LagThreshold * s.metadata.ThreadsPerConsumer
+
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(metricName)),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.LagThreshold),
+		Target: GetMetricTarget(s.metricType, targetMetric),
 	}
 	metricSpec := v2.MetricSpec{External: externalMetric, Type: kafkaMetricType}
 	return []v2.MetricSpec{metricSpec}
@@ -827,25 +855,25 @@ func (s *kafkaScaler) getTotalLag() (int64, int64, error) {
 		upperBound := totalTopicPartitions
 		// Ensure that the number of partitions is evenly distributed across the number of consumers
 		if s.metadata.EnsureEvenDistributionOfPartitions {
-			nextFactor := getNextFactorThatBalancesConsumersToTopicPartitions(totalLag, totalTopicPartitions, s.metadata.LagThreshold)
+			nextFactor := getNextFactorThatBalancesConsumersToTopicPartitions(totalLag, totalTopicPartitions, s.metadata.LagThreshold, s.metadata.ThreadsPerConsumer)
 			s.logger.V(1).Info(fmt.Sprintf("Kafka scaler: Providing metrics to ensure even distribution of partitions on totalLag %v, topicPartitions %v, evenPartitions %v", totalLag, totalTopicPartitions, nextFactor))
-			totalLag = nextFactor * s.metadata.LagThreshold
+			totalLag = nextFactor * (s.metadata.LagThreshold * s.metadata.ThreadsPerConsumer)
 		}
 		if s.metadata.LimitToPartitionsWithLag {
 			upperBound = partitionsWithLag
 		}
 
-		if (totalLag / s.metadata.LagThreshold) > upperBound {
-			totalLag = upperBound * s.metadata.LagThreshold
+		if (totalLag / (s.metadata.LagThreshold * s.metadata.ThreadsPerConsumer)) > upperBound {
+			totalLag = upperBound * (s.metadata.LagThreshold * s.metadata.ThreadsPerConsumer)
 		}
 	}
 	return totalLag, totalLagWithPersistent, nil
 }
 
-func getNextFactorThatBalancesConsumersToTopicPartitions(totalLag int64, totalTopicPartitions int64, lagThreshold int64) int64 {
+func getNextFactorThatBalancesConsumersToTopicPartitions(totalLag int64, totalTopicPartitions int64, lagThreshold int64, threadsPerConsumer int64) int64 {
 	factors := FindFactors(totalTopicPartitions)
 	for _, factor := range factors {
-		if factor*lagThreshold >= totalLag {
+		if factor*lagThreshold*threadsPerConsumer >= totalLag {
 			return factor
 		}
 	}

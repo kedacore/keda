@@ -56,6 +56,7 @@ type kafkaMetricIdentifier struct {
 	metadataTestData *parseKafkaMetadataTestData
 	triggerIndex     int
 	name             string
+	targetMetric     int64
 }
 
 // A complete valid metadata example for reference
@@ -143,6 +144,12 @@ var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "ensureEvenDistributionOfPartitions": "true"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, true},
 	// failure, limitToPartitionsWithLag and ensureEvenDistributionOfPartitions cannot be set to true simultaneously
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "ensureEvenDistributionOfPartitions": "true", "limitToPartitionsWithLag": "true"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, true, true},
+	// success: threadsPerConsumer=1
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "10", "threadsPerConsumer": "1", "activationLagThreshold": "0"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false},
+	// failure: threadsPerConsumer=negative
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "10", "threadsPerConsumer": "-1", "activationLagThreshold": "0"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false},
+	// success: threadsPerConsumer=2
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "10", "threadsPerConsumer": "2", "activationLagThreshold": "0"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false},
 }
 
 var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
@@ -349,9 +356,10 @@ var parseKafkaOAuthbearerAuthParamsTestDataset = []parseKafkaOAuthbearerAuthPara
 }
 
 var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
-	{&parseKafkaMetadataTestDataset[11], 0, "s0-kafka-my-topic"},
-	{&parseKafkaMetadataTestDataset[11], 1, "s1-kafka-my-topic"},
-	{&parseKafkaMetadataTestDataset[2], 1, "s1-kafka-my-group-topics"},
+	{&parseKafkaMetadataTestDataset[33], 0, "s0-kafka-my-topic", 10},
+	{&parseKafkaMetadataTestDataset[33], 1, "s1-kafka-my-topic", 10},
+	{&parseKafkaMetadataTestDataset[2], 1, "s1-kafka-my-group-topics", 10},
+	{&parseKafkaMetadataTestDataset[35], 1, "s1-kafka-my-topic", 20},
 }
 
 func TestGetBrokers(t *testing.T) {
@@ -628,6 +636,17 @@ func TestKafkaGetMetricSpecForScaling(t *testing.T) {
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
 		}
+
+		targetMetric := metricSpec[0].External.Target.Value
+		if targetMetric == nil {
+			t.Fatal("External target metric is nil")
+		}
+
+		targetMetricInt, _ := targetMetric.AsInt64()
+
+		if targetMetricInt != testData.targetMetric {
+			t.Errorf("Wrong External target metric, supposed to be: %v, but was: %v", testData.targetMetric, targetMetricInt)
+		}
 	}
 }
 
@@ -784,39 +803,54 @@ func TestFindFactors(t *testing.T) {
 }
 
 func TestGetNextFactor(t *testing.T) {
-	factor := getNextFactorThatBalancesConsumersToTopicPartitions(10, 100, 10)
+	factor := getNextFactorThatBalancesConsumersToTopicPartitions(10, 100, 10, 1)
 	if factor != 1 {
 		t.Errorf("Expected factor to be %v but got %v", 1, factor)
 	}
 
-	factor = getNextFactorThatBalancesConsumersToTopicPartitions(20, 100, 10)
+	factor = getNextFactorThatBalancesConsumersToTopicPartitions(20, 100, 10, 1)
 	if factor != 2 {
 		t.Errorf("Expected factor to be %v but got %v", 2, factor)
 	}
 
-	factor = getNextFactorThatBalancesConsumersToTopicPartitions(40, 100, 10)
+	factor = getNextFactorThatBalancesConsumersToTopicPartitions(40, 100, 10, 1)
 	if factor != 4 {
 		t.Errorf("Expected factor to be %v but got %v", 4, factor)
 	}
 
-	factor = getNextFactorThatBalancesConsumersToTopicPartitions(50, 100, 10)
+	factor = getNextFactorThatBalancesConsumersToTopicPartitions(50, 100, 10, 1)
 	if factor != 5 {
 		t.Errorf("Expected factor to be %v but got %v", 5, factor)
 	}
 
-	factor = getNextFactorThatBalancesConsumersToTopicPartitions(99, 100, 10)
+	factor = getNextFactorThatBalancesConsumersToTopicPartitions(99, 100, 10, 1)
 	if factor != 10 {
 		t.Errorf("Expected factor to be %v but got %v", 10, factor)
 	}
 
-	factor = getNextFactorThatBalancesConsumersToTopicPartitions(100, 100, 10)
+	factor = getNextFactorThatBalancesConsumersToTopicPartitions(100, 100, 10, 1)
 	if factor != 10 {
 		t.Errorf("Expected factor to be %v but got %v", 10, factor)
 	}
 
-	factor = getNextFactorThatBalancesConsumersToTopicPartitions(101, 100, 10)
+	factor = getNextFactorThatBalancesConsumersToTopicPartitions(101, 100, 10, 1)
 	if factor != 20 {
 		t.Errorf("Expected factor to be %v but got %v", 20, factor)
+	}
+
+	factor = getNextFactorThatBalancesConsumersToTopicPartitions(10, 200, 10, 2)
+	if factor != 1 {
+		t.Errorf("Expected factor to be %v but got %v", 1, factor)
+	}
+
+	factor = getNextFactorThatBalancesConsumersToTopicPartitions(10, 201, 10, 2)
+	if factor != 1 {
+		t.Errorf("Expected factor to be %v but got %v", 1, factor)
+	}
+
+	factor = getNextFactorThatBalancesConsumersToTopicPartitions(40, 100, 10, 2)
+	if factor != 2 {
+		t.Errorf("Expected factor to be %v but got %v", 2, factor)
 	}
 }
 
