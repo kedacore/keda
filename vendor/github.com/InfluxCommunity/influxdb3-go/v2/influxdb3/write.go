@@ -24,6 +24,7 @@ package influxdb3
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
@@ -33,9 +34,6 @@ import (
 	"reflect"
 	"strings"
 	"time"
-
-	"github.com/InfluxCommunity/influxdb3-go/v2/influxdb3/gzip"
-	"github.com/influxdata/line-protocol/v2/lineprotocol"
 )
 
 // timeType is the exact type for the Time
@@ -43,6 +41,13 @@ var timeType = reflect.TypeFor[time.Time]()
 
 // WritePoints writes all the given points to the server into the given database.
 // The data is written synchronously. Empty batch is skipped.
+// Points that serialize to an empty line (for example, all fields are nil/NaN/Inf)
+// are skipped. If all points are skipped, no request is sent and no error is returned.
+//
+// Warning: If the provided slice contains only one Point, and that Point
+// contains fields with nil/NaN/Inf values, those fields are not written to InfluxDB.
+// If such fields are later queried explicitly, for example,
+// "SELECT field_with_value, field_with_null_value FROM my_table" an error will be thrown.
 //
 // Parameters:
 //   - ctx: The context.Context to use for the request.
@@ -77,7 +82,7 @@ func (c *Client) WritePointsWithOptions(ctx context.Context, options *WriteOptio
 
 func (c *Client) writePoints(ctx context.Context, points []*Point, options *WriteOptions) error {
 	var buff []byte
-	var precision lineprotocol.Precision
+	var precision Precision
 	if options != nil {
 		precision = options.Precision
 	} else {
@@ -89,9 +94,15 @@ func (c *Client) writePoints(ctx context.Context, points []*Point, options *Writ
 	} else {
 		defaultTags = c.config.WriteOptions.DefaultTags
 	}
+	var tagOrder []string
+	if options != nil && options.TagOrder != nil {
+		tagOrder = options.TagOrder
+	} else {
+		tagOrder = c.config.WriteOptions.TagOrder
+	}
 
 	for _, p := range points {
-		bts, err := p.MarshalBinaryWithDefaultTags(precision, defaultTags)
+		bts, err := p.marshalBinaryWithOptions(precision, defaultTags, tagOrder)
 		if err != nil {
 			return err
 		}
@@ -138,6 +149,10 @@ func (c *Client) WriteWithOptions(ctx context.Context, options *WriteOptions, bu
 }
 
 func (c *Client) makeHTTPParams(buff []byte, options *WriteOptions) (*httpParams, error) {
+	if err := options.validate(); err != nil {
+		return nil, err
+	}
+
 	var database string
 	if options.Database != "" {
 		database = options.Database
@@ -155,44 +170,39 @@ func (c *Client) makeHTTPParams(buff []byte, options *WriteOptions) (*httpParams
 	var body io.Reader
 	var u *url.URL
 	var params url.Values
-	if options.NoSync {
-		// Setting no_sync=true is supported only in the v3 API.
-		u, _ = c.apiURL.Parse("v3/write_lp")
-		params = u.Query()
-		params.Set("org", c.config.Organization)
-		params.Set("db", database)
-		params.Set("precision", toV3PrecisionString(precision))
-		params.Set("no_sync", "true")
-	} else {
-		// By default, use the v2 API.
+	if options.UseV2Api {
 		u, _ = c.apiURL.Parse("v2/write")
 		params = u.Query()
 		params.Set("org", c.config.Organization)
 		params.Set("bucket", database)
 		params.Set("precision", precision.String())
+	} else {
+		u, _ = c.apiURL.Parse("v3/write_lp")
+		params = u.Query()
+		params.Set("org", c.config.Organization)
+		params.Set("db", database)
+		params.Set("precision", toV3PrecisionString(precision))
+		if options.NoSync {
+			params.Set("no_sync", "true")
+		}
+		if !options.AcceptPartial {
+			params.Set("accept_partial", "false")
+		}
 	}
 	u.RawQuery = params.Encode()
 	body = bytes.NewReader(buff)
-	headers := http.Header{"Content-Type": {"application/json"}}
+	headers := http.Header{"Content-Type": {"text/plain; charset=utf-8"}}
 	if gzipThreshold > 0 && len(buff) >= gzipThreshold {
-		r, err := gzip.CompressWithGzip(body)
+		r, err := compressWithGzip(buff)
 		if err != nil {
 			return nil, fmt.Errorf("unable to compress body: %w", err)
 		}
 
-		// This is necessary for Request.GetBody to be set by NewRequest, ensuring that
-		// the Transport can retry the request when a network error occurs.
-		// See: https://github.com/golang/go/blob/726d898c92ed0159f283f324478d00f15419f476/src/net/http/request.go#L884
-		// See: https://github.com/golang/go/blob/726d898c92ed0159f283f324478d00f15419f476/src/net/http/transport.go#L89-L92
-		//
-		// It is particularly useful for handling transient errors in HTTP/2 and persistent
-		// connections in standard HTTP.
+		// The request body must be replayable so NewRequest can set GetBody.
+		// compressWithGzip returns a replayable reader.
+		// This is particularly useful for transient HTTP/2 errors and persistent connections.
 		// Additionally, it helps manage graceful HTTP/2 shutdowns (e.g. GOAWAY frames).
-		b, err := io.ReadAll(r)
-		if err != nil {
-			return nil, fmt.Errorf("unable to read compressed body: %w", err)
-		}
-		body = bytes.NewReader(b)
+		body = r
 
 		headers["Content-Encoding"] = []string{"gzip"}
 	}
@@ -220,10 +230,14 @@ func (c *Client) write(ctx context.Context, buff []byte, options *WriteOptions) 
 	resp, err := c.makeAPICall(ctx, *params)
 	if err != nil {
 		var svErr *ServerError
-		if options.NoSync && errors.As(err, &svErr) && svErr.StatusCode == http.StatusMethodNotAllowed &&
+		if !options.UseV2Api && errors.As(err, &svErr) && svErr.StatusCode == http.StatusMethodNotAllowed &&
 			strings.HasSuffix(params.endpointURL.Path, "/api/v3/write_lp") {
-			// Server does not support the v3 write API, can't use the NoSync option.
-			return errors.New("server doesn't support write with NoSync=true (supported by InfluxDB 3 Core/Enterprise servers only)")
+			return fmt.Errorf(
+				"server doesn't support v3 write API (set WithUseV2Api(true); write options: {UseV2Api:%t,NoSync:%t,AcceptPartial:%t})",
+				options.UseV2Api,
+				options.NoSync,
+				options.AcceptPartial,
+			)
 		}
 		return err
 	}
@@ -235,6 +249,8 @@ func (c *Client) write(ctx context.Context, buff []byte, options *WriteOptions) 
 // Each custom point must be annotated with 'lp' prefix and Values measurement, tag, field, or timestamp.
 // A valid point must contain a measurement and at least one field.
 // The points are written synchronously. Empty batch is skipped.
+// During Point serialization, nil, NaN, +Inf, and -Inf field values are omitted.
+// If a point has no remaining fields after filtering, it is skipped.
 //
 // A field with a timestamp must be of type time.Time.
 //
@@ -352,7 +368,7 @@ func encode(x any, options *WriteOptions) ([]byte, error) {
 		return nil, errors.New("no struct field with tag 'field'")
 	}
 
-	return point.MarshalBinaryWithDefaultTags(options.Precision, options.DefaultTags)
+	return point.marshalBinaryWithOptions(options.Precision, options.DefaultTags, options.TagOrder)
 }
 
 func fieldValue(name string, f reflect.StructField, v reflect.Value, t reflect.Type) (any, error) {
@@ -378,16 +394,30 @@ func fieldValue(name string, f reflect.StructField, v reflect.Value, t reflect.T
 	return fieldVal, nil
 }
 
-func toV3PrecisionString(precision lineprotocol.Precision) string {
+func toV3PrecisionString(precision Precision) string {
 	switch precision {
-	case lineprotocol.Nanosecond:
+	case Nanosecond:
 		return "nanosecond"
-	case lineprotocol.Microsecond:
+	case Microsecond:
 		return "microsecond"
-	case lineprotocol.Millisecond:
+	case Millisecond:
 		return "millisecond"
-	case lineprotocol.Second:
+	case Second:
 		return "second"
 	}
-	panic(fmt.Errorf("unknown precision: %v", precision))
+	panic(fmt.Errorf("unknown precision value %d", precision))
+}
+
+// compressWithGzip compresses data and returns it as a replayable bytes.Reader.
+func compressWithGzip(data []byte) (*bytes.Reader, error) {
+	var compressed bytes.Buffer
+	gzipWriter := gzip.NewWriter(&compressed)
+	if _, err := gzipWriter.Write(data); err != nil {
+		_ = gzipWriter.Close()
+		return nil, err
+	}
+	if err := gzipWriter.Close(); err != nil {
+		return nil, err
+	}
+	return bytes.NewReader(compressed.Bytes()), nil
 }

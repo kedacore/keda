@@ -4,7 +4,7 @@ package components
 
 type CloudAccountsAwsMgmtAccountOnboardingRequest struct {
 	// AWS Control Tower Management Account ID.
-	ManagementAccountID string `queryParam:"name=managementAccountId"`
+	ManagementAccountID string `json:"managementAccountId"`
 }
 
 func (c *CloudAccountsAwsMgmtAccountOnboardingRequest) GetManagementAccountID() string {

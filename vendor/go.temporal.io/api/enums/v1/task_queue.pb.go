@@ -47,6 +47,11 @@ const (
 	//
 	// Sticky queues are only for workflow tasks. There are no sticky task queues for activities.
 	TASK_QUEUE_KIND_STICKY TaskQueueKind = 2
+	// A worker-commands task queue is used for server-to-worker communication (e.g. activity
+	// cancellations). These queues are ephemeral and per-worker-process — they exist only for
+	// the lifetime of the worker process. Used with TASK_QUEUE_TYPE_NEXUS and polled via
+	// PollNexusTaskQueue.
+	TASK_QUEUE_KIND_WORKER_COMMANDS TaskQueueKind = 3
 )
 
 // Enum value maps for TaskQueueKind.
@@ -55,11 +60,13 @@ var (
 		0: "TASK_QUEUE_KIND_UNSPECIFIED",
 		1: "TASK_QUEUE_KIND_NORMAL",
 		2: "TASK_QUEUE_KIND_STICKY",
+		3: "TASK_QUEUE_KIND_WORKER_COMMANDS",
 	}
 	TaskQueueKind_value = map[string]int32{
-		"TASK_QUEUE_KIND_UNSPECIFIED": 0,
-		"TASK_QUEUE_KIND_NORMAL":      1,
-		"TASK_QUEUE_KIND_STICKY":      2,
+		"TASK_QUEUE_KIND_UNSPECIFIED":     0,
+		"TASK_QUEUE_KIND_NORMAL":          1,
+		"TASK_QUEUE_KIND_STICKY":          2,
+		"TASK_QUEUE_KIND_WORKER_COMMANDS": 3,
 	}
 )
 
@@ -77,6 +84,8 @@ func (x TaskQueueKind) String() string {
 		return "Normal"
 	case TASK_QUEUE_KIND_STICKY:
 		return "Sticky"
+	case TASK_QUEUE_KIND_WORKER_COMMANDS:
+		return "WorkerCommands"
 	default:
 		return strconv.Itoa(int(x))
 	}
@@ -521,11 +530,12 @@ var File_temporal_api_enums_v1_task_queue_proto protoreflect.FileDescriptor
 
 const file_temporal_api_enums_v1_task_queue_proto_rawDesc = "" +
 	"\n" +
-	"&temporal/api/enums/v1/task_queue.proto\x12\x15temporal.api.enums.v1*h\n" +
+	"&temporal/api/enums/v1/task_queue.proto\x12\x15temporal.api.enums.v1*\x8d\x01\n" +
 	"\rTaskQueueKind\x12\x1f\n" +
 	"\x1bTASK_QUEUE_KIND_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16TASK_QUEUE_KIND_NORMAL\x10\x01\x12\x1a\n" +
-	"\x16TASK_QUEUE_KIND_STICKY\x10\x02*\x87\x01\n" +
+	"\x16TASK_QUEUE_KIND_STICKY\x10\x02\x12#\n" +
+	"\x1fTASK_QUEUE_KIND_WORKER_COMMANDS\x10\x03*\x87\x01\n" +
 	"\rTaskQueueType\x12\x1f\n" +
 	"\x1bTASK_QUEUE_TYPE_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18TASK_QUEUE_TYPE_WORKFLOW\x10\x01\x12\x1c\n" +

@@ -237,12 +237,7 @@ func (s *Entities) ListEntities(ctx context.Context, request operations.ListEnti
 
 		return s.ListEntities(
 			ctx,
-			operations.ListEntitiesRequest{
-				Type:      request.Type,
-				Name:      request.Name,
-				PageSize:  request.PageSize,
-				SkipToken: request.SkipToken,
-			},
+			request,
 			opts...,
 		)
 	}
@@ -825,6 +820,7 @@ func (s *Entities) UpdateEntityByID(ctx context.Context, request operations.Upda
 
 	switch {
 	case httpRes.StatusCode == 202:
+		utils.DrainBody(httpRes)
 	case httpRes.StatusCode == 400:
 		switch {
 		case utils.MatchContentType(httpRes.Header.Get("Content-Type"), `application/json`):

@@ -7,9 +7,10 @@ import (
 
 var (
 	TaskQueueKind_shorthandValue = map[string]int32{
-		"Unspecified": 0,
-		"Normal":      1,
-		"Sticky":      2,
+		"Unspecified":    0,
+		"Normal":         1,
+		"Sticky":         2,
+		"WorkerCommands": 3,
 	}
 )
 
