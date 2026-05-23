@@ -138,27 +138,41 @@ func getAPIParameters(meta artemisMetadata) (artemisMetadata, error) {
 		return meta, fmt.Errorf("unable to parse the artemis restAPITemplate: %w", err)
 	}
 	meta.ManagementEndpoint = u.Host
-	splitURL := strings.Split(strings.Split(u.RawPath, ":")[1], "/")[0] // This returns : broker="<<brokerName>>",component=addresses,address="<<brokerAddress>>",subcomponent=queues,routing-type="anycast",queue="<<queueName>>"
+	path := u.RawPath
+	if path == "" {
+		path = u.Path
+	}
+	objectNameParts := strings.SplitN(path, ":", 2)
+	if len(objectNameParts) != 2 {
+		return meta, errors.New("unable to parse the artemis restAPITemplate: missing Jolokia object name")
+	}
+	splitURL := strings.SplitN(objectNameParts[1], "/", 2)[0] // This returns : broker="<<brokerName>>",component=addresses,address="<<brokerAddress>>",subcomponent=queues,routing-type="anycast",queue="<<queueName>>"
+	if splitURL == "" {
+		return meta, errors.New("unable to parse the artemis restAPITemplate: missing Jolokia object name")
+	}
 	replacer := strings.NewReplacer(",", "&", "\"\"", "")
 	v, err := url.ParseQuery(replacer.Replace(splitURL)) // This returns a map with key: string types and element type [] string. : map[address:["<<brokerAddress>>"] broker:["<<brokerName>>"] component:[addresses] queue:["<<queueName>>"] routing-type:["anycast"] subcomponent:[queues]]
 	if err != nil {
 		return meta, fmt.Errorf("unable to parse the artemis restAPITemplate: %w", err)
 	}
 
-	if len(v["address"][0]) == 0 {
+	address := v["address"]
+	if len(address) == 0 || len(address[0]) == 0 {
 		return meta, errors.New("no brokerAddress given")
 	}
-	meta.BrokerAddress = v["address"][0]
+	meta.BrokerAddress = address[0]
 
-	if len(v["queue"][0]) == 0 {
+	queue := v["queue"]
+	if len(queue) == 0 || len(queue[0]) == 0 {
 		return meta, errors.New("no queueName is given")
 	}
-	meta.QueueName = v["queue"][0]
+	meta.QueueName = queue[0]
 
-	if len(v["broker"][0]) == 0 {
+	broker := v["broker"]
+	if len(broker) == 0 || len(broker[0]) == 0 {
 		return meta, fmt.Errorf("no brokerName given: %s", meta.RestAPITemplate)
 	}
-	meta.BrokerName = v["broker"][0]
+	meta.BrokerName = broker[0]
 
 	return meta, nil
 }
