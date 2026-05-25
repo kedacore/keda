@@ -91,7 +91,6 @@ require (
 	github.com/onsi/gomega v1.40.0
 	github.com/open-policy-agent/cert-controller v0.16.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
-	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common v0.67.5
@@ -147,7 +146,10 @@ require (
 	sigs.k8s.io/kustomize/kustomize/v5 v5.8.1
 )
 
-require github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.24 // indirect
+require (
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.24 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+)
 
 require (
 	cel.dev/expr v0.25.1 // indirect
