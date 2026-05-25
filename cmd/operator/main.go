@@ -124,10 +124,6 @@ func main() {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	ctx := ctrl.SetupSignalHandler()
 
-	if err := kedautil.ConfigureMaxProcs(setupLog); err != nil {
-		setupLog.Info("failed to set max procs, using default GOMAXPROCS", "error", err)
-	}
-
 	namespaces, err := kedautil.GetWatchNamespaces()
 	if err != nil {
 		setupLog.Error(err, "failed to get watch namespace")

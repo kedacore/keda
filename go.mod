@@ -118,7 +118,6 @@ require (
 	go.opentelemetry.io/otel/metric v1.43.0
 	go.opentelemetry.io/otel/sdk/metric v1.43.0
 	go.temporal.io/sdk v1.43.0
-	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/mock v0.6.0
 	golang.org/x/crypto v0.50.0
 	golang.org/x/oauth2 v0.36.0
@@ -135,7 +134,6 @@ require (
 	k8s.io/client-go v0.35.3
 	k8s.io/code-generator v0.35.3
 	k8s.io/component-base v0.35.0
-	k8s.io/klog/v2 v2.130.1
 	k8s.io/kube-openapi v0.0.0-20260127142750-a19766b6e2d4
 	k8s.io/metrics v0.35.0
 	k8s.io/utils v0.0.0-20260108192941-914a6e750570
@@ -147,7 +145,10 @@ require (
 	sigs.k8s.io/kustomize/kustomize/v5 v5.8.1
 )
 
-require github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.24 // indirect
+require (
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.24 // indirect
+	k8s.io/klog/v2 v2.130.1 // indirect
+)
 
 require (
 	cel.dev/expr v0.25.1 // indirect
