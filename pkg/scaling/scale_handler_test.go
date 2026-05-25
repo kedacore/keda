@@ -1270,6 +1270,69 @@ func TestHandleResult_PushScalerDeltaMerge(t *testing.T) {
 	assert.True(t, patchedObj.Status.TriggersActivity["trigger-c"].IsActive, "trigger-c preserved")
 }
 
+func startInFlightCloseRace(t *testing.T, scalerCache *cache.ScalersCache, scaler *mock_scalers.MockScaler) (releaseFn func()) {
+	t.Helper()
+
+	release := make(chan struct{})
+	entered := make(chan struct{})
+	var releaseOnce sync.Once
+	releaseFn = func() { releaseOnce.Do(func() { close(release) }) }
+	t.Cleanup(releaseFn)
+
+	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ string) ([]external_metrics.ExternalMetricValue, bool, error) {
+			close(entered)
+			<-release
+			return nil, false, nil
+		},
+	)
+	scaler.EXPECT().Close(gomock.Any())
+
+	readerDone := make(chan struct{})
+	go func() {
+		defer close(readerDone)
+		_, _, _, err := scalerCache.GetMetricsAndActivityForScaler(context.Background(), 0, "blocker")
+		if err != nil {
+			t.Errorf("blocking reader got unexpected error: %v", err)
+		}
+	}()
+	t.Cleanup(func() {
+		releaseFn()
+		<-readerDone
+	})
+
+	select {
+	case <-entered:
+	case <-time.After(2 * time.Second):
+		t.Fatal("blocking reader did not enter the scaler")
+	}
+
+	closeReturned := make(chan struct{})
+	go func() {
+		defer close(closeReturned)
+		scalerCache.Close(context.Background())
+	}()
+	t.Cleanup(func() {
+		releaseFn()
+		<-closeReturned
+	})
+
+	// -1 polls without invoking the scaler.
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		_, _, _, err := scalerCache.GetMetricsAndActivityForScaler(context.Background(), -1, "")
+		if errors.Is(err, cache.ErrCacheClosed) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("cache did not transition to closed state in time")
+		}
+		time.Sleep(time.Millisecond)
+	}
+
+	return releaseFn
+}
+
 func TestGetScaledJobMetrics_CacheClosedIsBenign(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	recorder := record.NewFakeRecorder(10)
@@ -1280,7 +1343,6 @@ func TestGetScaledJobMetrics_CacheClosedIsBenign(t *testing.T) {
 
 	scaler := mock_scalers.NewMockScaler(ctrl)
 	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
-	scaler.EXPECT().Close(gomock.Any())
 	factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 		return scaler, &scalersconfig.ScalerConfig{}, nil
 	}
@@ -1290,11 +1352,7 @@ func TestGetScaledJobMetrics_CacheClosedIsBenign(t *testing.T) {
 		Recorder: recorder,
 	}
 
-	// Simulate an in-flight reader holding a reference to a cache that was
-	// closed concurrently: Close() nils Scalers, we restore the slice.
-	scalersSnapshot := scalerCache.Scalers
-	scalerCache.Close(context.Background())
-	scalerCache.Scalers = scalersSnapshot
+	startInFlightCloseRace(t, scalerCache, scaler)
 
 	caches := map[string]*cache.ScalersCache{
 		scaledJob.GenerateIdentifier(): scalerCache,
@@ -1330,7 +1388,6 @@ func TestGetScaledObjectState_CacheClosedIsBenign(t *testing.T) {
 	recorder := record.NewFakeRecorder(10)
 
 	scaler := mock_scalers.NewMockScaler(ctrl)
-	scaler.EXPECT().Close(gomock.Any())
 	factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 		return scaler, &scalersconfig.ScalerConfig{}, nil
 	}
@@ -1346,9 +1403,8 @@ func TestGetScaledObjectState_CacheClosedIsBenign(t *testing.T) {
 		Scalers:  []cache.ScalerBuilder{{Scaler: scaler, Factory: factory}},
 		Recorder: recorder,
 	}
-	scalersSnapshot := scalerCache.Scalers
-	scalerCache.Close(context.Background())
-	scalerCache.Scalers = scalersSnapshot
+
+	startInFlightCloseRace(t, scalerCache, scaler)
 
 	key := scaledObject.GenerateIdentifier()
 	caches := map[string]*cache.ScalersCache{key: scalerCache}

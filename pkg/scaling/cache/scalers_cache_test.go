@@ -67,6 +67,8 @@ func TestEmptyScalersCache(t *testing.T) {
 
 type fakeScaler struct {
 	release               chan struct{}
+	entered               chan struct{}
+	enterOnce             sync.Once
 	getMetricsCompletedAt *atomic.Int64
 	closeCalledAt         *atomic.Int64
 	closeCount            *atomic.Int32
@@ -75,6 +77,7 @@ type fakeScaler struct {
 func newFakeScaler(release chan struct{}) *fakeScaler {
 	return &fakeScaler{
 		release:               release,
+		entered:               make(chan struct{}),
 		getMetricsCompletedAt: atomic.NewInt64(0),
 		closeCalledAt:         atomic.NewInt64(0),
 		closeCount:            atomic.NewInt32(0),
@@ -85,6 +88,7 @@ var _ scalers.Scaler = (*fakeScaler)(nil)
 
 func (f *fakeScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	if f.release != nil {
+		f.enterOnce.Do(func() { close(f.entered) })
 		<-f.release
 	}
 	f.getMetricsCompletedAt.Store(time.Now().UnixNano())
@@ -182,7 +186,11 @@ func TestScalersCache_CloseWaitsForInFlightReader(t *testing.T) {
 		}
 	}()
 
-	time.Sleep(50 * time.Millisecond)
+	select {
+	case <-scaler.entered:
+	case <-time.After(time.Second):
+		t.Fatal("reader did not enter GetMetricsAndActivity")
+	}
 
 	closeReturned := make(chan struct{})
 	go func() {
@@ -190,7 +198,11 @@ func TestScalersCache_CloseWaitsForInFlightReader(t *testing.T) {
 		cache.Close(context.Background())
 	}()
 
-	time.Sleep(50 * time.Millisecond)
+	select {
+	case <-closeReturned:
+		t.Fatal("Close returned while in-flight reader was still active")
+	case <-time.After(50 * time.Millisecond):
+	}
 	if got := scaler.closeCount.Load(); got != 0 {
 		t.Fatalf("Scaler.Close ran before in-flight reader completed (count=%d)", got)
 	}
