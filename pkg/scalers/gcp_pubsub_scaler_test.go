@@ -37,8 +37,8 @@ type gcpPubSubSubscription struct {
 
 var testPubSubMetadata = []parsePubSubMetadataTestData{
 	{"empty", map[string]string{}, map[string]string{}, true},
-	// all properly formed with deprecated field
-	{"all properly formed with deprecated field", nil, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	// all properly formed with value
+	{"all properly formed with value", nil, map[string]string{"subscriptionName": "mysubscription", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// all properly formed with subscriptionName
 	{"all properly formed with subscriptionName", nil, map[string]string{"subscriptionName": "mysubscription", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS", "activationValue": "5"}, false},
 	// all properly formed with oldest unacked message age mode
@@ -47,8 +47,8 @@ var testPubSubMetadata = []parsePubSubMetadataTestData{
 	{"missing subscriptionName", nil, map[string]string{"subscriptionName": "", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// missing credentials
 	{"missing credentials", nil, map[string]string{"subscriptionName": "mysubscription", "value": "7", "credentialsFromEnv": ""}, true},
-	// malformed subscriptionSize
-	{"malformed subscriptionSize", nil, map[string]string{"subscriptionName": "mysubscription", "value": "AA", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	// malformed value
+	{"malformed value", nil, map[string]string{"subscriptionName": "mysubscription", "value": "AA", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// malformed mode
 	{"malformed mode", nil, map[string]string{"subscriptionName": "", "mode": "AA", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// malformed activationTargetValue
@@ -56,11 +56,11 @@ var testPubSubMetadata = []parsePubSubMetadataTestData{
 	// Credentials from AuthParams
 	{"Credentials from AuthParams", map[string]string{"GoogleApplicationCredentials": "Creds"}, map[string]string{"subscriptionName": "mysubscription", "value": "7"}, false},
 	// Credentials from AuthParams with empty creds
-	{"Credentials from AuthParams with empty creds", map[string]string{"GoogleApplicationCredentials": ""}, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7"}, true},
+	{"Credentials from AuthParams with empty creds", map[string]string{"GoogleApplicationCredentials": ""}, map[string]string{"subscriptionName": "mysubscription", "value": "7"}, true},
 	// with full link to subscription
-	{"with full link to subscription", nil, map[string]string{"subscriptionName": "projects/myproject/subscriptions/mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{"with full link to subscription", nil, map[string]string{"subscriptionName": "projects/myproject/subscriptions/mysubscription", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// with full (bad) link to subscription
-	{"with full (bad) link to subscription", nil, map[string]string{"subscriptionName": "projects/myproject/mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{"with full (bad) link to subscription", nil, map[string]string{"subscriptionName": "projects/myproject/mysubscription", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// properly formed float value and activationTargetValue
 	{"properly formed float value and activationTargetValue", nil, map[string]string{"subscriptionName": "mysubscription", "value": "7.1", "credentialsFromEnv": "SAMPLE_CREDS", "activationValue": "2.1"}, false},
 	// All optional omitted
@@ -77,8 +77,8 @@ var testPubSubMetadata = []parsePubSubMetadataTestData{
 	{"both subscriptionName and topicName present", nil, map[string]string{"subscriptionName": "mysubscription", "topicName": "mytopic", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// both subscriptionName and topicName missing
 	{"both subscriptionName and topicName missing", nil, map[string]string{"value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
-	// both subscriptionSize and topicName present
-	{"both subscriptionSize and topicName present", nil, map[string]string{"subscriptionSize": "7", "topicName": "mytopic", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	// deprecated subscriptionSize errors
+	{"deprecated subscriptionSize errors", nil, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// both subscriptionName and subscriptionNameFromEnv present
 	{"both subscriptionName and subscriptionNameFromEnv present", nil, map[string]string{"subscriptionName": "mysubscription", "subscriptionNameFromEnv": "MY_ENV_SUBSCRIPTION", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// both topicName and topicNameFromEnv present

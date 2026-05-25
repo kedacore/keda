@@ -363,6 +363,7 @@ const (
 						name
 						incidentPreference
 						accountId
+						entityGuid
 	`
 	alertPolicyQueryPolicy = `query($accountID: Int!, $policyID: ID!) {
 		actor {
@@ -387,6 +388,7 @@ const (
 							id
 							incidentPreference
 							name
+							entityGuid
 						}
 					}
 				}

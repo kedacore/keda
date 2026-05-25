@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 )
 
-var consumerSeq uint64
+var consumerSeq atomic.Uint64
 
 const consumerTagLengthMax = 0xFF // see writeShortstr
 
@@ -23,7 +23,7 @@ func uniqueConsumerTag() string {
 func commandNameBasedUniqueConsumerTag(commandName string) string {
 	tagPrefix := "ctag-"
 	tagInfix := commandName
-	tagSuffix := "-" + strconv.FormatUint(atomic.AddUint64(&consumerSeq, 1), 10)
+	tagSuffix := "-" + strconv.FormatUint(consumerSeq.Add(1), 10)
 
 	if len(tagPrefix)+len(tagInfix)+len(tagSuffix) > consumerTagLengthMax {
 		tagInfix = "streadway/amqp"
@@ -55,7 +55,7 @@ func (subs *consumers) buffer(in chan *Delivery, out chan Delivery) {
 	defer close(out)
 	defer subs.Done()
 
-	var inflight = in
+	inflight := in
 	var queue []*Delivery
 
 	for delivery := range in {

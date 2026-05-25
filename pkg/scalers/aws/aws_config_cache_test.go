@@ -79,6 +79,7 @@ func TestRemoveCachedEntryRemovesCachedItemIfNotUsages(t *testing.T) {
 	}
 	cache.RemoveCachedEntry(awsAuthorization)
 	assert.NotContains(t, cache.items, cacheKey)
+	assert.Len(t, cache.items, 0)
 }
 
 func TestRemoveCachedEntryNotRemoveCachedItemIfUsages(t *testing.T) {
@@ -99,7 +100,8 @@ func TestRemoveCachedEntryNotRemoveCachedItemIfUsages(t *testing.T) {
 		},
 	}
 	cache.RemoveCachedEntry(awsAuthorization)
-	assert.Contains(t, cache.items, cacheKey)
+	assert.Len(t, cache.items, 1)
+	assert.Len(t, cache.items[cacheKey].usages, 1)
 }
 
 func TestCredentialsShouldBeCachedPerRegion(t *testing.T) {

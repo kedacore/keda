@@ -69,7 +69,9 @@ func (l *ListMetricAttributesRequest) GetSkipToken() *string {
 
 // ListMetricAttributesResponseBody - The request has succeeded.
 type ListMetricAttributesResponseBody struct {
-	Names    []string                  `json:"names"`
+	// List of attribute names.
+	Names []string `json:"names"`
+	// Pagination information.
 	PageInfo components.CommonPageInfo `json:"pageInfo"`
 }
 

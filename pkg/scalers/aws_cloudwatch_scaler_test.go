@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 	"time"
 
@@ -756,7 +757,7 @@ func TestAWSCloudwatchGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAWSCloudwatchScaler := awsCloudwatchScaler{"", meta, &mockCloudwatch{}, logr.Discard()}
+		mockAWSCloudwatchScaler := awsCloudwatchScaler{"", meta, &mockCloudwatch{}, nil, logr.Discard()}
 
 		metricSpec := mockAWSCloudwatchScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
@@ -768,7 +769,7 @@ func TestAWSCloudwatchGetMetricSpecForScaling(t *testing.T) {
 
 func TestAWSCloudwatchScalerGetMetrics(t *testing.T) {
 	for _, meta := range awsCloudwatchGetMetricTestData {
-		mockAWSCloudwatchScaler := awsCloudwatchScaler{"", &meta, &mockCloudwatch{}, logr.Discard()}
+		mockAWSCloudwatchScaler := awsCloudwatchScaler{"", &meta, &mockCloudwatch{}, nil, logr.Discard()}
 		value, _, err := mockAWSCloudwatchScaler.GetMetricsAndActivity(context.Background(), meta.MetricsName)
 		switch meta.MetricsName {
 		case testAWSCloudwatchErrorMetric:
@@ -855,4 +856,47 @@ func TestCreateCloudwatchMetricDataInput(t *testing.T) {
 	}
 
 	assert.Equal(t, "123456789012", awsMeta.AwsAccountID, "AWSAccountID should equal '123456789012'")
+}
+
+// mockCWTransport is an http.RoundTripper that tracks whether CloseIdleConnections was called.
+type mockCWTransport struct {
+	closeIdleCalled bool
+}
+
+func (m *mockCWTransport) RoundTrip(_ *http.Request) (*http.Response, error) {
+	return &http.Response{StatusCode: 200, Body: http.NoBody}, nil
+}
+
+func (m *mockCWTransport) CloseIdleConnections() {
+	m.closeIdleCalled = true
+}
+
+func TestAWSCloudwatchScalerCloseClosesHTTPConnections(t *testing.T) {
+	transport := &mockCWTransport{}
+	httpClient := &http.Client{Transport: transport}
+
+	meta := &awsCloudwatchMetadata{
+		Namespace:   "AWS/SQS",
+		MetricsName: "ApproximateNumberOfMessagesVisible",
+		AwsRegion:   "eu-west-1",
+		awsAuthorization: awsutils.AuthorizationMetadata{
+			TriggerUniqueKey: "test-cw-close-trigger",
+			AwsRegion:        "eu-west-1",
+		},
+	}
+
+	scaler := &awsCloudwatchScaler{
+		metricType: "",
+		metadata:   meta,
+		cwClient:   &mockCloudwatch{},
+		httpClient: httpClient,
+		logger:     logr.Discard(),
+	}
+
+	assert.False(t, transport.closeIdleCalled, "CloseIdleConnections should not have been called yet")
+
+	err := scaler.Close(context.Background())
+	assert.NoError(t, err)
+
+	assert.True(t, transport.closeIdleCalled, "CloseIdleConnections should have been called after Close()")
 }
