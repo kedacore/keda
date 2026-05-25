@@ -101,6 +101,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **AWS Scalers**: Fix TCP connection leak by closing HTTP idle connections on scaler `Close()` for SQS, Kinesis, DynamoDB, DynamoDB Streams, and CloudWatch scalers ([#7756](https://github.com/kedacore/keda/issues/7756))
 - **Azure Data Explorer Scaler**: Remove clientSecretFromEnv support ([#7554](https://github.com/kedacore/keda/pull/7554))
 - **Azure Event Hub Scaler**: Reject non-positive `unprocessedEventThreshold` to prevent integer division by zero when computing lag ([#7732](https://github.com/kedacore/keda/issues/7732))
+- **Azure Pipelines Scaler**: Exclude already-assigned jobs from queue length ([#7747](https://github.com/kedacore/keda/issues/7747))
 - **Cron Scaler**: Fix metric name generation so cron expressions with comma-separated values no longer produce invalid metric names ([#7448](https://github.com/kedacore/keda/issues/7448))
 - **Forgejo Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **Forgejo Scaler**: Return correct activity to enable scale-to-zero ([#7527](https://github.com/kedacore/keda/issues/7527))
