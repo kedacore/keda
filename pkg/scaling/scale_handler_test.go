@@ -1270,13 +1270,13 @@ func TestHandleResult_PushScalerDeltaMerge(t *testing.T) {
 	assert.True(t, patchedObj.Status.TriggersActivity["trigger-c"].IsActive, "trigger-c preserved")
 }
 
-func startInFlightCloseRace(t *testing.T, scalerCache *cache.ScalersCache, scaler *mock_scalers.MockScaler) (releaseFn func()) {
+func startInFlightCloseRace(t *testing.T, scalerCache *cache.ScalersCache, scaler *mock_scalers.MockScaler) {
 	t.Helper()
 
 	release := make(chan struct{})
 	entered := make(chan struct{})
 	var releaseOnce sync.Once
-	releaseFn = func() { releaseOnce.Do(func() { close(release) }) }
+	releaseFn := func() { releaseOnce.Do(func() { close(release) }) }
 	t.Cleanup(releaseFn)
 
 	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).DoAndReturn(
@@ -1329,8 +1329,6 @@ func startInFlightCloseRace(t *testing.T, scalerCache *cache.ScalersCache, scale
 		}
 		time.Sleep(time.Millisecond)
 	}
-
-	return releaseFn
 }
 
 func TestGetScaledJobMetrics_CacheClosedIsBenign(t *testing.T) {
