@@ -88,6 +88,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Metrics API Scaler**: Add custom HTTP client timeout ([#7549](https://github.com/kedacore/keda/issues/7549))
 - **MSSQL Scaler**: Add Azure Workload Identity support for Azure SQL authentication ([#6104](https://github.com/kedacore/keda/issues/6104))
 - **Prometheus Scaler**: Emit metric tracking empty responses from Prometheus ([#7062](https://github.com/kedacore/keda/issues/7062))
+- **RabbitMQ Scaler**: Add support for OAuth2 authentication for RabbitMQ over HTTP ([#7379](https://github.com/kedacore/keda/issues/7379))
 - **Temporal Scaler**: Add support for scaling based on Worker Deployment Version backlog via new `workerDeploymentName` and `workerDeploymentBuildId` fields. Deprecate `buildId`, `selectAllActive`, and `selectUnversioned` because those parameters are used for Rules-Based Worker Versioning, which was a short-lived experimental feature that has been deprecated in the Temporal server since December 2024 and will stop being supported soon. Users of Rules-Based Worker Versioning should use Worker Deployments instead. ([#7672](https://github.com/kedacore/keda/pull/7672))
 
 ### Fixes
@@ -105,12 +106,14 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Forgejo Scaler**: Return correct activity to enable scale-to-zero ([#7527](https://github.com/kedacore/keda/issues/7527))
 - **GCP Cloud Tasks Scaler**: Implement escapeFilterValue for metric filtering ([#7482](https://github.com/kedacore/keda/pull/7482))
 - **GCP Scaler**: Validate Pub/Sub resource name in BuildMQLQuery ([#7468](https://github.com/kedacore/keda/pull/7468))
+- **Github Runner Scaler**: Bound etag and per-repo caches to prevent unbounded memory growth when `enableEtags` is on ([#7685](https://github.com/kedacore/keda/issues/7685))
 - **Github Runner Scaler**: Improve URL construction and error handling ([#7495](https://github.com/kedacore/keda/pull/7495))
 - **Github Runner Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **InfluxDB Scaler**: Make `authToken` optional to support unauthenticated InfluxDB instances ([#7616](https://github.com/kedacore/keda/issues/7616))
 - **Loki Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **Loki Scaler**: `serverAddress` now appends `/loki/api/v1/query` to the end of existing path instead of overriding ([#7648](https://github.com/kedacore/keda/pull/7648))
 - **Metrics API Scaler**: Fix `aggregateFromKubeServiceEndpoints` using empty label selector that matched all EndpointSlices in the namespace instead of only the target service's ([#7641](https://github.com/kedacore/keda/issues/7641))
+- **Metrics API Scaler**: Prevent response value reflection in scaler errors ([#7693](https://github.com/kedacore/keda/pull/7693))
 - **NATS JetStream Scaler**: Return an error from `getMaxMsgLag` when the configured consumer is missing instead of falling back to the stream's last sequence, preventing incorrect scale-up to `maxReplicaCount` ([#7657](https://github.com/kedacore/keda/issues/7657))
 - **NATS JetStream Scaler**: URL-encode user input in monitoring URL construction ([#7483](https://github.com/kedacore/keda/pull/7483))
 - **PredictKube Scaler**: Bump `dysnix/predictkube-libs` to `v0.1.0` (drops the predictkube path to the archived/EOL `go-grpc-prometheus` and to the deprecated `golang/protobuf`) and use a portable Prometheus-API instant query for the health check so the scaler works against VictoriaMetrics, Thanos and other Prometheus-API-compatible backends ([#7745](https://github.com/kedacore/keda/pull/7745))
