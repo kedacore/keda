@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"reflect"
 	"testing"
 
@@ -402,7 +403,7 @@ func TestAwsDynamoDBStreamsGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not get dynamodb stream arn:", err)
 		}
-		mockAwsDynamoDBStreamsScaler := awsDynamoDBStreamsScaler{"", meta, streamArn, &mockAwsDynamoDBStreams{}, logr.Discard()}
+		mockAwsDynamoDBStreamsScaler := awsDynamoDBStreamsScaler{"", meta, streamArn, &mockAwsDynamoDBStreams{}, nil, logr.Discard()}
 		metricSpec := mockAwsDynamoDBStreamsScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
@@ -419,7 +420,7 @@ func TestAwsDynamoDBStreamsScalerGetMetrics(t *testing.T) {
 		ctx := context.Background()
 		streamArn, err = getDynamoDBStreamsArn(ctx, &mockAwsDynamoDB{}, &meta.TableName)
 		if err == nil {
-			scaler := awsDynamoDBStreamsScaler{"", meta, streamArn, &mockAwsDynamoDBStreams{}, logr.Discard()}
+			scaler := awsDynamoDBStreamsScaler{"", meta, streamArn, &mockAwsDynamoDBStreams{}, nil, logr.Discard()}
 			value, _, err = scaler.GetMetricsAndActivity(context.Background(), "MetricName")
 		}
 		switch meta.TableName {
@@ -443,7 +444,7 @@ func TestAwsDynamoDBStreamsScalerIsActive(t *testing.T) {
 		ctx := context.Background()
 		streamArn, err = getDynamoDBStreamsArn(ctx, &mockAwsDynamoDB{}, &meta.TableName)
 		if err == nil {
-			scaler := awsDynamoDBStreamsScaler{"", meta, streamArn, &mockAwsDynamoDBStreams{}, logr.Discard()}
+			scaler := awsDynamoDBStreamsScaler{"", meta, streamArn, &mockAwsDynamoDBStreams{}, nil, logr.Discard()}
 			_, value, err = scaler.GetMetricsAndActivity(context.Background(), "MetricName")
 		}
 		switch meta.TableName {
@@ -455,4 +456,49 @@ func TestAwsDynamoDBStreamsScalerIsActive(t *testing.T) {
 			assert.EqualValues(t, true, value)
 		}
 	}
+}
+
+// mockDynamoDBStreamsTransport is an http.RoundTripper that tracks whether CloseIdleConnections was called.
+type mockDynamoDBStreamsTransport struct {
+	closeIdleCalled bool
+}
+
+func (m *mockDynamoDBStreamsTransport) RoundTrip(_ *http.Request) (*http.Response, error) {
+	return &http.Response{StatusCode: 200, Body: http.NoBody}, nil
+}
+
+func (m *mockDynamoDBStreamsTransport) CloseIdleConnections() {
+	m.closeIdleCalled = true
+}
+
+func TestAWSDynamoDBStreamsScalerCloseClosesHTTPConnections(t *testing.T) {
+	transport := &mockDynamoDBStreamsTransport{}
+	httpClient := &http.Client{Transport: transport}
+
+	meta := &awsDynamoDBStreamsMetadata{
+		TableName: "test-stream-table",
+		AwsRegion: "eu-west-1",
+		awsAuthorization: awsutils.AuthorizationMetadata{
+			TriggerUniqueKey: "test-dynamodb-streams-close-trigger",
+			AwsRegion:        "eu-west-1",
+		},
+	}
+
+	streamArn := aws.String("arn:aws:dynamodb:eu-west-1:123456789012:table/test-stream-table/stream/2021-01-01T00:00:00.000")
+
+	scaler := &awsDynamoDBStreamsScaler{
+		metricType:            "",
+		metadata:              meta,
+		streamArn:             streamArn,
+		dbStreamWrapperClient: &mockAwsDynamoDBStreams{},
+		httpClient:            httpClient,
+		logger:                logr.Discard(),
+	}
+
+	assert.False(t, transport.closeIdleCalled, "CloseIdleConnections should not have been called yet")
+
+	err := scaler.Close(context.Background())
+	assert.NoError(t, err)
+
+	assert.True(t, transport.closeIdleCalled, "CloseIdleConnections should have been called after Close()")
 }
