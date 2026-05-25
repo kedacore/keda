@@ -210,7 +210,7 @@ func newElasticForecastESClient(meta elasticForecastMetadata, logger logr.Logger
 			Password:  meta.Password,
 		}
 	}
-	cfg.Transport = util.CreateHTTPTransport(meta.UnsafeSsl)
+	cfg.Transport = util.CreateRT(meta.UnsafeSsl)
 
 	client, err := elasticsearch.NewClient(cfg)
 	if err != nil {
