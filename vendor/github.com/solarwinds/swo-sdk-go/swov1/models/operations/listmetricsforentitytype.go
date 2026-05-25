@@ -9,6 +9,7 @@ import (
 )
 
 type ListMetricsForEntityTypeRequest struct {
+	// Entity type to list metrics for.
 	Type string `pathParam:"style=simple,explode=false,name=type"`
 	// Timestamp in ISO 8601 format in UTC timezone: yyyy-MM-ddTHH:mm:ssZ
 	StartTime *time.Time `queryParam:"style=form,explode=false,name=startTime"`
@@ -50,6 +51,7 @@ func (l *ListMetricsForEntityTypeRequest) GetEndTime() *time.Time {
 
 // ListMetricsForEntityTypeResponseBody - The request has succeeded.
 type ListMetricsForEntityTypeResponseBody struct {
+	// Entity type name.
 	Type string `json:"type"`
 	// A list of metrics and their metadata. An empty list indicates no metrics matched the given parameters.
 	Metrics []components.CommonMetricInfo `json:"metrics"`

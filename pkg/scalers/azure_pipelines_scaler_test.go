@@ -57,8 +57,14 @@ var testAzurePipelinesMetadata = []parseAzurePipelinesMetadataTestData{
 	{"parent and fetchUnfinishedJobsOnly given", map[string]string{"organizationURLFromEnv": "AZP_URL", "personalAccessTokenFromEnv": "AZP_TOKEN", "poolID": "1", "targetPipelinesQueueLength": "1", "fetchUnfinishedJobsOnly": "true", "parent": "test-agent"}, false, testAzurePipelinesResolvedEnv, map[string]string{}},
 }
 
-var testJobRequestResponse = `{"count":2,"value":[{"requestId":890659,"queueTime":"2022-09-28T11:19:49.89Z","assignTime":"2022-09-28T11:20:29.5033333Z","receiveTime":"2022-09-28T11:20:32.0530499Z","lockedUntil":"2022-09-28T11:30:32.07Z","serviceOwner":"xxx","hostId":"xxx","scopeId":"xxx","planType":"Build","planId":"xxx","jobId":"xxx","demands":["kubectl","Agent.Version -gtVersion 2.182.1"],"reservedAgent":{"_links":{"self":{"href":"https://dev.azure.com/FOO/_apis/distributedtask/pools/44/agents/11735"},"web":{"href":"https://dev.azure.com/FOO/_settings/agentpools?view=jobs&poolId=44&agentId=11735"}},"id":11735,"name":"kube-scaledjob-5nlph-kzpgf","version":"2.210.1","osDescription":"Linux 5.4.0-1089-azure #94~18.04.1-Ubuntu SMP Fri Aug 5 12:34:50 UTC 2022","enabled":true,"status":"online","provisioningState":"Provisioned","accessPoint":"CodexAccessMapping"},"definition":{"_links":{"web":{"href":"https://dev.azure.com/FOO/1858395a-257e-4efd-bbc5-eb618128452b/_build/definition?definitionId=4869"},"self":{"href":"https://dev.azure.com/FOO/1858395a-257e-4efd-bbc5-eb618128452b/_apis/build/Definitions/4869"}},"id":4869,"name":"base - main"},"owner":{"_links":{"web":{"href":"https://dev.azure.com/FOO/1858395a-257e-4efd-bbc5-eb618128452b/_build/results?buildId=673584"},"self":{"href":"https://dev.azure.com/FOO/1858395a-257e-4efd-bbc5-eb618128452b/_apis/build/Builds/673584"}},"id":673584,"name":"20220928.2"},"data":{"ParallelismTag":"Private","IsScheduledKey":"False"},"poolId":44,"orchestrationId":"5c5c8ec9-786f-4e97-99d4-a29279befba3.build.__default","priority":0},{"requestId":890663,"queueTime":"2022-09-28T11:20:22.4633333Z","serviceOwner":"00025394-6065-48ca-87d9-7f5672854ef7","hostId":"41a18c7d-df5e-4032-a4df-d533b56bd2de","scopeId":"02696e26-a35b-424c-86b8-1f54e1b0b4b7","planType":"Build","planId":"b718cfed-493c-46be-a650-88fe762f75aa","jobId":"15b95994-59ec-5502-695d-0b93722883bd","demands":["dotnet60","java","cmake","Agent.Version -gtVersion 2.182.1"],"matchedAgents":[{"_links":{"self":{"href":"https://dev.azure.com/FOO/_apis/distributedtask/pools/44/agents/1755"},"web":{"href":"https://dev.azure.com/FOO/_settings/agentpools?view=jobs&poolId=44&agentId=1755"}},"id":1755,"name":"dotnet60-keda-template","version":"2.210.1","enabled":true,"status":"offline","provisioningState":"Provisioned"},{"_links":{"self":{"href":"https://dev.azure.com/FOO/_apis/distributedtask/pools/44/agents/11732"},"web":{"href":"https://dev.azure.com/FOO/_settings/agentpools?view=jobs&poolId=44&agentId=11732"}},"id":11732,"name":"dotnet60-scaledjob-5dsgc-pkqvm","version":"2.210.1","enabled":true,"status":"online","provisioningState":"Provisioned"},{"_links":{"self":{"href":"https://dev.azure.com/FOO/_apis/distributedtask/pools/44/agents/11733"},"web":{"href":"https://dev.azure.com/FOO/_settings/agentpools?view=jobs&poolId=44&agentId=11733"}},"id":11733,"name":"dotnet60-scaledjob-zgqnp-8h4z4","version":"2.210.1","enabled":true,"status":"online","provisioningState":"Provisioned"},{"_links":{"self":{"href":"https://dev.azure.com/FOO/_apis/distributedtask/pools/44/agents/11734"},"web":{"href":"https://dev.azure.com/FOO/_settings/agentpools?view=jobs&poolId=44&agentId=11734"}},"id":11734,"name":"dotnet60-scaledjob-wr65c-ff2cv","version":"2.210.1","enabled":true,"status":"online","provisioningState":"Provisioned"}],"definition":{"_links":{"web":{"href":"https://FOO.visualstudio.com/02696e26-a35b-424c-86b8-1f54e1b0b4b7/_build/definition?definitionId=3129"},"self":{"href":"https://FOO.visualstudio.com/02696e26-a35b-424c-86b8-1f54e1b0b4b7/_apis/build/Definitions/3129"}},"id":3129,"name":"Other Build CI"},"owner":{"_links":{"web":{"href":"https://FOO.visualstudio.com/02696e26-a35b-424c-86b8-1f54e1b0b4b7/_build/results?buildId=673585"},"self":{"href":"https://FOO.visualstudio.com/02696e26-a35b-424c-86b8-1f54e1b0b4b7/_apis/build/Builds/673585"}},"id":673585,"name":"20220928.11"},"data":{"ParallelismTag":"Private","IsScheduledKey":"False"},"poolId":44,"orchestrationId":"b718cfed-493c-46be-a650-88fe762f75aa.buildtest.build_and_test.__default","priority":0}]}`
+// testJobRequestResponse contains two queued (not yet assigned) job requests.
+var testJobRequestResponse = `{"count":2,"value":[{"requestId":890659,"queueTime":"2022-09-28T11:19:49.89Z","serviceOwner":"xxx","hostId":"xxx","scopeId":"xxx","planType":"Build","planId":"xxx","jobId":"xxx","demands":["kubectl","Agent.Version -gtVersion 2.182.1"],"definition":{"_links":{"web":{"href":"https://dev.azure.com/FOO/1858395a-257e-4efd-bbc5-eb618128452b/_build/definition?definitionId=4869"},"self":{"href":"https://dev.azure.com/FOO/1858395a-257e-4efd-bbc5-eb618128452b/_apis/build/Definitions/4869"}},"id":4869,"name":"base - main"},"owner":{"_links":{"web":{"href":"https://dev.azure.com/FOO/1858395a-257e-4efd-bbc5-eb618128452b/_build/results?buildId=673584"},"self":{"href":"https://dev.azure.com/FOO/1858395a-257e-4efd-bbc5-eb618128452b/_apis/build/Builds/673584"}},"id":673584,"name":"20220928.2"},"data":{"ParallelismTag":"Private","IsScheduledKey":"False"},"poolId":44,"orchestrationId":"5c5c8ec9-786f-4e97-99d4-a29279befba3.build.__default","priority":0},{"requestId":890663,"queueTime":"2022-09-28T11:20:22.4633333Z","serviceOwner":"00025394-6065-48ca-87d9-7f5672854ef7","hostId":"41a18c7d-df5e-4032-a4df-d533b56bd2de","scopeId":"02696e26-a35b-424c-86b8-1f54e1b0b4b7","planType":"Build","planId":"b718cfed-493c-46be-a650-88fe762f75aa","jobId":"15b95994-59ec-5502-695d-0b93722883bd","demands":["dotnet60","java","cmake","Agent.Version -gtVersion 2.182.1"],"matchedAgents":[{"_links":{"self":{"href":"https://dev.azure.com/FOO/_apis/distributedtask/pools/44/agents/1755"},"web":{"href":"https://dev.azure.com/FOO/_settings/agentpools?view=jobs&poolId=44&agentId=1755"}},"id":1755,"name":"dotnet60-keda-template","version":"2.210.1","enabled":true,"status":"offline","provisioningState":"Provisioned"},{"_links":{"self":{"href":"https://dev.azure.com/FOO/_apis/distributedtask/pools/44/agents/11732"},"web":{"href":"https://dev.azure.com/FOO/_settings/agentpools?view=jobs&poolId=44&agentId=11732"}},"id":11732,"name":"dotnet60-scaledjob-5dsgc-pkqvm","version":"2.210.1","enabled":true,"status":"online","provisioningState":"Provisioned"},{"_links":{"self":{"href":"https://dev.azure.com/FOO/_apis/distributedtask/pools/44/agents/11733"},"web":{"href":"https://dev.azure.com/FOO/_settings/agentpools?view=jobs&poolId=44&agentId=11733"}},"id":11733,"name":"dotnet60-scaledjob-zgqnp-8h4z4","version":"2.210.1","enabled":true,"status":"online","provisioningState":"Provisioned"},{"_links":{"self":{"href":"https://dev.azure.com/FOO/_apis/distributedtask/pools/44/agents/11734"},"web":{"href":"https://dev.azure.com/FOO/_settings/agentpools?view=jobs&poolId=44&agentId=11734"}},"id":11734,"name":"dotnet60-scaledjob-wr65c-ff2cv","version":"2.210.1","enabled":true,"status":"online","provisioningState":"Provisioned"}],"definition":{"_links":{"web":{"href":"https://FOO.visualstudio.com/02696e26-a35b-424c-86b8-1f54e1b0b4b7/_build/definition?definitionId=3129"},"self":{"href":"https://FOO.visualstudio.com/02696e26-a35b-424c-86b8-1f54e1b0b4b7/_apis/build/Definitions/3129"}},"id":3129,"name":"Other Build CI"},"owner":{"_links":{"web":{"href":"https://FOO.visualstudio.com/02696e26-a35b-424c-86b8-1f54e1b0b4b7/_build/results?buildId=673585"},"self":{"href":"https://FOO.visualstudio.com/02696e26-a35b-424c-86b8-1f54e1b0b4b7/_apis/build/Builds/673585"}},"id":673585,"name":"20220928.11"},"data":{"ParallelismTag":"Private","IsScheduledKey":"False"},"poolId":44,"orchestrationId":"b718cfed-493c-46be-a650-88fe762f75aa.buildtest.build_and_test.__default","priority":0}]}`
+
+// deadJob is a job that has already finished (Result is set).
 var deadJob = `{"requestId":890659,"result":"succeeded","queueTime":"2022-09-28T11:19:49.89Z","assignTime":"2022-09-28T11:20:29.5033333Z","receiveTime":"2022-09-28T11:20:32.0530499Z","lockedUntil":"2022-09-28T11:30:32.07Z","serviceOwner":"xxx","hostId":"xxx","scopeId":"xxx","planType":"Build","planId":"xxx","jobId":"xxx","demands":["kubectl","Agent.Version -gtVersion 2.182.1"],"reservedAgent":{"_links":{"self":{"href":"https://dev.azure.com/FOO/_apis/distributedtask/pools/44/agents/11735"},"web":{"href":"https://dev.azure.com/FOO/_settings/agentpools?view=jobs&poolId=44&agentId=11735"}},"id":11735,"name":"kube-scaledjob-5nlph-kzpgf","version":"2.210.1","osDescription":"Linux 5.4.0-1089-azure #94~18.04.1-Ubuntu SMP Fri Aug 5 12:34:50 UTC 2022","enabled":true,"status":"online","provisioningState":"Provisioned","accessPoint":"CodexAccessMapping"},"definition":{"_links":{"web":{"href":"https://dev.azure.com/FOO/1858395a-257e-4efd-bbc5-eb618128452b/_build/definition?definitionId=4869"},"self":{"href":"https://dev.azure.com/FOO/1858395a-257e-4efd-bbc5-eb618128452b/_apis/build/Definitions/4869"}},"id":4869,"name":"base - main"},"owner":{"_links":{"web":{"href":"https://dev.azure.com/FOO/1858395a-257e-4efd-bbc5-eb618128452b/_build/results?buildId=673584"},"self":{"href":"https://dev.azure.com/FOO/1858395a-257e-4efd-bbc5-eb618128452b/_apis/build/Builds/673584"}},"id":673584,"name":"20220928.2"},"data":{"ParallelismTag":"Private","IsScheduledKey":"False"},"poolId":44,"orchestrationId":"5c5c8ec9-786f-4e97-99d4-a29279befba3.build.__default","priority":0}`
+
+// assignedNotFinishedJob represents a job that has been picked up by an agent (receiveTime is set) but has not yet finished (Result is nil).
+var assignedNotFinishedJob = `{"requestId":890664,"queueTime":"2022-09-28T11:19:49.89Z","assignTime":"2022-09-28T11:20:29.5033333Z","receiveTime":"2022-09-28T11:20:32.0530499Z","lockedUntil":"2022-09-28T11:30:32.07Z","serviceOwner":"xxx","hostId":"xxx","scopeId":"xxx","planType":"Build","planId":"xxx","jobId":"xxx","demands":["dotnet60","java","cmake","Agent.Version -gtVersion 2.182.1"],"reservedAgent":{"_links":{"self":{"href":"https://dev.azure.com/FOO/_apis/distributedtask/pools/44/agents/11735"},"web":{"href":"https://dev.azure.com/FOO/_settings/agentpools?view=jobs&poolId=44&agentId=11735"}},"id":11735,"name":"dotnet60-scaledjob-5nlph-kzpgf","version":"2.210.1","osDescription":"Linux 5.4.0-1089-azure #94~18.04.1-Ubuntu SMP Fri Aug 5 12:34:50 UTC 2022","enabled":true,"status":"online","provisioningState":"Provisioned","accessPoint":"CodexAccessMapping"},"matchedAgents":[{"_links":{"self":{"href":"https://dev.azure.com/FOO/_apis/distributedtask/pools/44/agents/1755"},"web":{"href":"https://dev.azure.com/FOO/_settings/agentpools?view=jobs&poolId=44&agentId=1755"}},"id":1755,"name":"dotnet60-keda-template","version":"2.210.1","enabled":true,"status":"offline","provisioningState":"Provisioned"}],"definition":{"_links":{"web":{"href":"https://dev.azure.com/FOO/1858395a-257e-4efd-bbc5-eb618128452b/_build/definition?definitionId=4869"},"self":{"href":"https://dev.azure.com/FOO/1858395a-257e-4efd-bbc5-eb618128452b/_apis/build/Definitions/4869"}},"id":4869,"name":"base - main"},"owner":{"_links":{"web":{"href":"https://dev.azure.com/FOO/1858395a-257e-4efd-bbc5-eb618128452b/_build/results?buildId=673584"},"self":{"href":"https://dev.azure.com/FOO/1858395a-257e-4efd-bbc5-eb618128452b/_apis/build/Builds/673584"}},"id":673584,"name":"20220928.2"},"data":{"ParallelismTag":"Private","IsScheduledKey":"False"},"poolId":44,"orchestrationId":"5c5c8ec9-786f-4e97-99d4-a29279befba3.build.__default","priority":0}`
 
 func TestParseAzurePipelinesMetadata(t *testing.T) {
 	for _, testData := range testAzurePipelinesMetadata {
@@ -462,6 +468,69 @@ func TestAzurePipelinesDemandsComparisonCaseInsensitive(t *testing.T) {
 
 	if queuelen < 1 {
 		t.Fatalf("expected queue length to be >= 1, got %d", queuelen)
+	}
+}
+
+// TestAzurePipelinesAssignedJobNotCounted verifies that a job which has already been picked up by an agent (receiveTime is set, Result is still nil) is not counted towards the queue length.
+func TestAzurePipelinesAssignedJobNotCounted(t *testing.T) {
+	// Response contains only one job: an assigned-but-not-yet-finished job.
+	// The expected queue length is 0 because the job is already being worked on.
+	response := `{"count":1,"value":[` + assignedNotFinishedJob + `]}`
+
+	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		// nosemgrep: no-direct-write-to-responsewriter
+		_, _ = w.Write([]byte(response))
+	}))
+
+	meta := getMatchedAgentMetaData(apiStub.URL)
+	// Clear Parent so the scaler counts every non-dead job (no parent/demands filtering).
+	meta.Parent = ""
+
+	mockAzurePipelinesScaler := azurePipelinesScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if queueLen != 0 {
+		t.Fatalf("expected queue length to be 0 (assigned job should not be counted), got %d", queueLen)
+	}
+}
+
+// TestAzurePipelinesQueuedAndAssignedMixed verifies that when the API returns
+// a mix of queued and already-assigned jobs, only the queued ones are counted.
+func TestAzurePipelinesQueuedAndAssignedMixed(t *testing.T) {
+	// One queued job (from testJobRequestResponse, the second entry) and one
+	// assigned-but-not-finished job. Expected queue length: 1.
+	queuedJob := `{"requestId":890670,"queueTime":"2022-09-28T11:19:49.89Z","demands":["Agent.Version -gtVersion 2.182.1"],"serviceOwner":"xxx","hostId":"xxx","scopeId":"xxx","planType":"Build","planId":"xxx","jobId":"xxx","poolId":44,"orchestrationId":"x","priority":0}`
+	response := `{"count":2,"value":[` + queuedJob + `,` + assignedNotFinishedJob + `]}`
+
+	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		// nosemgrep: no-direct-write-to-responsewriter
+		_, _ = w.Write([]byte(response))
+	}))
+
+	meta := getMatchedAgentMetaData(apiStub.URL)
+	meta.Parent = ""
+
+	mockAzurePipelinesScaler := azurePipelinesScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if queueLen != 1 {
+		t.Fatalf("expected queue length to be 1 (only the queued job counts), got %d", queueLen)
 	}
 }
 

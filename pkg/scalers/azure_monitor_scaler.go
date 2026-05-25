@@ -18,6 +18,7 @@ package scalers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strconv"
@@ -316,7 +317,7 @@ func formatTimeSpan(timeSpan string) (*azquery.TimeInterval, error) {
 		seconds, serr := strconv.Atoi(aggregationInterval[2])
 
 		if herr != nil || merr != nil || serr != nil {
-			return nil, fmt.Errorf("errors parsing metricAggregationInterval: %v, %v, %w", herr, merr, serr)
+			return nil, fmt.Errorf("errors parsing metricAggregationInterval: %w", errors.Join(herr, merr, serr))
 		}
 
 		starttime = time.Now().Add(-(time.Duration(hours)*time.Hour + time.Duration(minutes)*time.Minute + time.Duration(seconds)*time.Second)).UTC()

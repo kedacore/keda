@@ -4,8 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
@@ -14,6 +16,7 @@ type parseMSSQLMetadataTestData struct {
 	metadata                 map[string]string
 	resolvedEnv              map[string]string
 	authParams               map[string]string
+	podIdentity              kedav1alpha1.AuthPodIdentity
 	expectedError            string
 	expectedConnectionString string
 	expectedMetricName       string
@@ -108,6 +111,36 @@ var testMSSQLMetadata = []parseMSSQLMetadataTestData{
 		authParams:    map[string]string{},
 		expectedError: "must provide either connectionstring or host",
 	},
+	{
+		name:        "Workload identity with host and database",
+		metadata:    map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "myserver.database.windows.net", "database": "mydb"},
+		resolvedEnv: map[string]string{},
+		authParams:  map[string]string{},
+		podIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload},
+	},
+	{
+		name:        "Workload identity without username/password",
+		metadata:    map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "myserver.database.windows.net"},
+		resolvedEnv: map[string]string{},
+		authParams:  map[string]string{},
+		podIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload},
+	},
+	{
+		name:          "Workload identity missing host",
+		metadata:      map[string]string{"query": "SELECT 1", "targetValue": "1", "database": "mydb"},
+		resolvedEnv:   map[string]string{},
+		authParams:    map[string]string{},
+		podIdentity:   kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload},
+		expectedError: "must provide either connectionstring or host",
+	},
+	{
+		name:          "Unsupported pod identity provider",
+		metadata:      map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "myserver.database.windows.net"},
+		resolvedEnv:   map[string]string{},
+		authParams:    map[string]string{},
+		podIdentity:   kedav1alpha1.AuthPodIdentity{Provider: "gcp"},
+		expectedError: "pod identity gcp is not supported for mssql scaler",
+	},
 }
 
 func TestParseMSSQLMetadata(t *testing.T) {
@@ -117,9 +150,10 @@ func TestParseMSSQLMetadata(t *testing.T) {
 				TriggerMetadata: testData.metadata,
 				ResolvedEnv:     testData.resolvedEnv,
 				AuthParams:      testData.authParams,
+				PodIdentity:     testData.podIdentity,
 			}
 
-			meta, err := parseMSSQLMetadata(config)
+			meta, _, err := parseMSSQLMetadata(logr.Discard(), config)
 
 			if testData.expectedError != "" {
 				assert.EqualError(t, err, testData.expectedError)
@@ -138,10 +172,11 @@ func TestMSSQLGetMetricSpecForScaling(t *testing.T) {
 				return
 			}
 
-			meta, err := parseMSSQLMetadata(&scalersconfig.ScalerConfig{
+			meta, _, err := parseMSSQLMetadata(logr.Discard(), &scalersconfig.ScalerConfig{
 				TriggerMetadata: testData.metadata,
 				ResolvedEnv:     testData.resolvedEnv,
 				AuthParams:      testData.authParams,
+				PodIdentity:     testData.podIdentity,
 			})
 
 			assert.NoError(t, err)
@@ -157,4 +192,23 @@ func TestMSSQLGetMetricSpecForScaling(t *testing.T) {
 			assert.Contains(t, metricSpec[0].External.Metric.Name, "mssql")
 		})
 	}
+}
+
+func TestMSSQLWorkloadIdentityConnectionString(t *testing.T) {
+	meta := &mssqlMetadata{
+		Host:     "myserver.database.windows.net",
+		Database: "mydb",
+	}
+	scaler := &mssqlScaler{metadata: meta}
+	connStr := getMSSQLConnectionString(scaler)
+	assert.Equal(t, "sqlserver://myserver.database.windows.net?database=mydb", connStr)
+}
+
+func TestMSSQLWorkloadIdentityConnectionStringNoDatabase(t *testing.T) {
+	meta := &mssqlMetadata{
+		Host: "myserver.database.windows.net",
+	}
+	scaler := &mssqlScaler{metadata: meta}
+	connStr := getMSSQLConnectionString(scaler)
+	assert.Equal(t, "sqlserver://myserver.database.windows.net", connStr)
 }

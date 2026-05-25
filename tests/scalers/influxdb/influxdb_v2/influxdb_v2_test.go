@@ -27,6 +27,8 @@ var (
 	testNamespace           = fmt.Sprintf("%s-ns", testName)
 	influxdbStatefulsetName = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName        = fmt.Sprintf("%s-so", testName)
+	secretName              = fmt.Sprintf("%s-secret", testName)
+	triggerAuthName         = fmt.Sprintf("%s-ta", testName)
 	authToken               = ""
 	orgName                 = ""
 )
@@ -37,6 +39,8 @@ type templateData struct {
 	InfluxdbWriteJobName    string
 	ScaledObjectName        string
 	DeploymentName          string
+	SecretName              string
+	TriggerAuthName         string
 	AuthToken               string
 	OrgName                 string
 }
@@ -88,6 +92,30 @@ spec:
     type: ClusterIP
 `
 
+	secretTemplate = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.SecretName}}
+  namespace: {{.TestNamespace}}
+type: Opaque
+stringData:
+  authToken: {{.AuthToken}}
+`
+
+	triggerAuthenticationTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{.TriggerAuthName}}
+  namespace: {{.TestNamespace}}
+spec:
+  secretTargetRef:
+  - parameter: authToken
+    name: {{.SecretName}}
+    key: authToken
+`
+
 	scaledObjectActivationTemplate = `
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -101,7 +129,6 @@ spec:
   triggers:
   - type: influxdb
     metadata:
-      authToken: {{.AuthToken}}
       organizationName: {{.OrgName}}
       serverURL: http://influxdb.{{.TestNamespace}}.svc:8086
       thresholdValue: "80"
@@ -111,6 +138,8 @@ spec:
         |> range(start: -1h)
         |> filter(fn: (r) => r._measurement == "stat")
         |> map(fn: (r) => ({r with _value: float(v: r._value)}))
+    authenticationRef:
+      name: {{.TriggerAuthName}}
 `
 	scaledObjectTemplateFloat = `
 apiVersion: keda.sh/v1alpha1
@@ -125,7 +154,6 @@ spec:
   triggers:
   - type: influxdb
     metadata:
-      authToken: {{.AuthToken}}
       organizationName: {{.OrgName}}
       serverURL: http://influxdb.{{.TestNamespace}}.svc:8086
       thresholdValue: "3"
@@ -134,6 +162,8 @@ spec:
         |> range(start: -1h)
         |> filter(fn: (r) => r._measurement == "stat")
         |> map(fn: (r) => ({r with _value: float(v: r._value)}))
+    authenticationRef:
+      name: {{.TriggerAuthName}}
 `
 
 	influxdbWriteJobTemplate = `
@@ -198,6 +228,10 @@ func TestInfluxScaler(t *testing.T) {
 	// get token
 	updateDataWithInfluxAuth(t, kc, &data)
 
+	// create secret and trigger authentication using the retrieved token
+	KubectlApplyWithTemplate(t, data, "secretTemplate", secretTemplate)
+	KubectlApplyWithTemplate(t, data, "triggerAuthenticationTemplate", triggerAuthenticationTemplate)
+
 	// test activation
 	testActivation(t, kc, data)
 	// test scaling
@@ -231,6 +265,8 @@ func getTemplateData() (templateData, []Template) {
 			InfluxdbWriteJobName:    influxdbJobName,
 			ScaledObjectName:        scaledObjectName,
 			DeploymentName:          deploymentName,
+			SecretName:              secretName,
+			TriggerAuthName:         triggerAuthName,
 			AuthToken:               authToken,
 			OrgName:                 orgName,
 		}, []Template{

@@ -255,6 +255,7 @@ func getArrowValue(arrayNoType arrow.Array, field arrow.Field, i int) (any, resp
 		arrow.LARGE_STRING:            func(arr arrow.Array, i int) any { return arr.(*array.LargeString).Value(i) },
 		arrow.LARGE_BINARY:            func(arr arrow.Array, i int) any { return arr.(*array.LargeBinary).Value(i) },
 		arrow.INTERVAL_MONTH_DAY_NANO: func(arr arrow.Array, i int) any { return arr.(*array.MonthDayNanoInterval).Value(i) },
+		arrow.NULL:                    func(arr arrow.Array, i int) any { return arr.(*array.Null).Value(i) },
 	}
 
 	dataType := arrayNoType.DataType().ID()

@@ -21,6 +21,7 @@ const (
 	DemTransactionCommandNameAssertValue                   DemTransactionCommandName = "ASSERT_VALUE"
 	DemTransactionCommandNameCheck                         DemTransactionCommandName = "CHECK"
 	DemTransactionCommandNameClick                         DemTransactionCommandName = "CLICK"
+	DemTransactionCommandNameClickAt                       DemTransactionCommandName = "CLICK_AT"
 	DemTransactionCommandNameOpen                          DemTransactionCommandName = "OPEN"
 	DemTransactionCommandNamePause                         DemTransactionCommandName = "PAUSE"
 	DemTransactionCommandNameSwoAssertTextContains         DemTransactionCommandName = "SWO_ASSERT_TEXT_CONTAINS"
@@ -67,6 +68,8 @@ func (e *DemTransactionCommandName) UnmarshalJSON(data []byte) error {
 	case "CHECK":
 		fallthrough
 	case "CLICK":
+		fallthrough
+	case "CLICK_AT":
 		fallthrough
 	case "OPEN":
 		fallthrough

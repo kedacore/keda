@@ -34,7 +34,7 @@ CONTAINER_NAME ?= amqp091-go-rabbitmq
 rabbitmq-server: ## Start a RabbitMQ server using Docker. Container name can be customised with CONTAINER_NAME=some-rabbit
 	docker run --detach --rm --name $(CONTAINER_NAME) \
 		--publish 5672:5672 --publish 15672:15672 \
-		--pull always rabbitmq:3-management
+		--pull always rabbitmq:4-management
 
 .PHONY: stop-rabbitmq-server
 stop-rabbitmq-server: ## Stop a RabbitMQ server using Docker. Container name can be customised with CONTAINER_NAME=some-rabbit

@@ -176,10 +176,6 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
-        - name: authModes
-          type: string
-          optional: true
-          metadataVariableReadable: true
     - type: artemis-queue
       parameters:
         - name: managementEndpoint
@@ -1684,7 +1680,7 @@ scalers:
         - name: authToken
           type: string
           optional: true
-          deprecatedAnnounce: The 'authToken' setting from triggerMetadata is DEPRECATED and will be removed in v2.20 - Use 'authToken' from resolvedEnv or authParams instead
+          deprecated: The 'authToken' setting from triggerMetadata is DEPRECATED and is removed in v2.20 - Use 'authToken' from resolvedEnv or authParams instead
           metadataVariableReadable: true
         - name: authToken
           type: string
@@ -1994,10 +1990,6 @@ scalers:
           type: string
           default: "false"
           metadataVariableReadable: true
-        - name: authModes
-          type: string
-          optional: true
-          metadataVariableReadable: true
     - type: mssql
       parameters:
         - name: connectionString
@@ -2081,6 +2073,10 @@ scalers:
             - sum
             - max
             - min
+          metadataVariableReadable: true
+        - name: timeout
+          type: string
+          optional: true
           metadataVariableReadable: true
     - type: mongodb
       parameters:
@@ -2467,10 +2463,6 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
-        - name: authModes
-          type: string
-          optional: true
-          metadataVariableReadable: true
     - type: prometheus
       parameters:
         - name: serverAddress
@@ -2519,16 +2511,12 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
-        - name: authModes
-          type: string
-          optional: true
-          metadataVariableReadable: true
     - type: gcp-pubsub
       parameters:
         - name: subscriptionSize
           type: string
           optional: true
-          deprecatedAnnounce: The 'subscriptionSize' setting is DEPRECATED and will be removed in v2.20 - Use 'mode' and 'value' instead
+          deprecated: The 'subscriptionSize' setting is DEPRECATED and is removed in v2.20 - Use 'mode' and 'value' instead
           metadataVariableReadable: true
         - name: mode
           type: string
@@ -2602,26 +2590,6 @@ scalers:
           default: "false"
           metadataVariableReadable: true
         - name: tls
-          type: string
-          optional: true
-          metadataVariableReadable: true
-        - name: authModes
-          type: string
-          optional: true
-          metadataVariableReadable: true
-        - name: oauthTokenURI
-          type: string
-          optional: true
-          metadataVariableReadable: true
-        - name: scope
-          type: string
-          optional: true
-          metadataVariableReadable: true
-        - name: clientID
-          type: string
-          optional: true
-          metadataVariableReadable: true
-        - name: EndpointParams
           type: string
           optional: true
           metadataVariableReadable: true
@@ -3795,15 +3763,28 @@ scalers:
         - name: buildId
           type: string
           optional: true
+          deprecatedAnnounce: The 'buildId' setting is DEPRECATED and will be removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead
+          metadataVariableReadable: true
+          envVariableReadable: true
+        - name: workerDeploymentName
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
+        - name: workerDeploymentBuildId
+          type: string
+          optional: true
           metadataVariableReadable: true
           envVariableReadable: true
         - name: selectAllActive
           type: string
           default: "false"
+          deprecatedAnnounce: The 'selectAllActive' setting is DEPRECATED and will be removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead
           metadataVariableReadable: true
         - name: selectUnversioned
           type: string
           default: "false"
+          deprecatedAnnounce: The 'selectUnversioned' setting is DEPRECATED and will be removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Remove it if your workers are unversioned. Or use 'workerDeploymentName' and 'workerDeploymentBuildId' if you're migrating to Worker Deployment Versioning
           metadataVariableReadable: true
         - name: apiKey
           type: string

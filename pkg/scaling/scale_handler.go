@@ -326,8 +326,10 @@ func (h *scaleHandler) handleResult(ctx context.Context, obj kedav1alpha1.Scalab
 			current.SetStatusLastActiveTime(result.LastActiveTime)
 		}
 
-		// apply paused replica count (no-op for ScaledJob)
-		current.SetStatusPausedReplicaCount(result.PauseReplicas)
+		// Apply paused replica count only when explicitly set
+		if result.PauseReplicas != nil {
+			current.SetStatusPausedReplicaCount(result.PauseReplicas)
+		}
 
 		// apply triggers activity delta
 		if activityUpdates != nil || activityRemovals != nil {

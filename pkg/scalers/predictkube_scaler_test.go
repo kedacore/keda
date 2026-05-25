@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -16,7 +17,6 @@ import (
 	libsSrv "github.com/dysnix/predictkube-libs/external/grpc/server"
 	pb "github.com/dysnix/predictkube-proto/external/proto/services"
 	"github.com/phayes/freeport"
-	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -26,12 +26,21 @@ import (
 )
 
 var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	if r.RequestURI == "/api/v1/status/runtimeinfo" {
+	// ping() now uses an instant Prometheus query (vector(1)) instead of
+	// /api/v1/status/runtimeinfo, for VictoriaMetrics-style backend compat.
+	if strings.HasPrefix(r.RequestURI, "/api/v1/query?") || r.RequestURI == "/api/v1/query" {
 		w.WriteHeader(http.StatusOK)
-		runtimeInfo := prometheusV1.RuntimeinfoResult{
-			StartTime: time.Now(),
+		result := struct {
+			Type   model.ValueType `json:"resultType"`
+			Result interface{}     `json:"result"`
+		}{
+			Type: model.ValScalar,
+			Result: model.Scalar{
+				Value:     1,
+				Timestamp: model.Now(),
+			},
 		}
-		data, _ := json.Marshal(runtimeInfo)
+		data, _ := json.Marshal(result)
 		response := struct {
 			Data json.RawMessage `json:"data"`
 		}{
@@ -40,7 +49,7 @@ var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r 
 		_ = json.NewEncoder(w).Encode(response)
 		return
 	}
-	if r.RequestURI == "/api/v1/query_range" {
+	if r.RequestURI == "/api/v1/query_range" || strings.HasPrefix(r.RequestURI, "/api/v1/query_range?") {
 		w.WriteHeader(http.StatusOK)
 		result := struct {
 			Type   model.ValueType `json:"resultType"`

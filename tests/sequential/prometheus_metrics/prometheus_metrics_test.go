@@ -40,10 +40,13 @@ var (
 	deploymentName                 = fmt.Sprintf("%s-deployment", testName)
 	monitoredDeploymentName        = fmt.Sprintf("%s-monitored", testName)
 	scaledObjectName               = fmt.Sprintf("%s-so", testName)
+	httpClientScaledObjectName     = fmt.Sprintf("%s-so-http-client", testName)
 	wrongScaledObjectName          = fmt.Sprintf("%s-so-wrong", testName)
 	scaledJobName                  = fmt.Sprintf("%s-sj", testName)
 	wrongScaledJobName             = fmt.Sprintf("%s-sj-wrong", testName)
 	wrongScalerName                = fmt.Sprintf("%s-wrong-scaler", testName)
+	emptyUpstreamScaledObjectName  = fmt.Sprintf("%s-so-empty-upstream", testName)
+	httpClientScalerName           = fmt.Sprintf("%s-http-client-scaler", testName)
 	cronScaledJobName              = fmt.Sprintf("%s-cron-sj", testName)
 	clientName                     = fmt.Sprintf("%s-client", testName)
 	cloudEventSourceName           = fmt.Sprintf("%s-ce", testName)
@@ -58,22 +61,25 @@ var (
 )
 
 type templateData struct {
-	TestName                   string
-	TestNamespace              string
-	DeploymentName             string
-	ScaledObjectName           string
-	ScaledJobName              string
-	WrongScaledObjectName      string
-	WrongScaledJobName         string
-	WrongScalerName            string
-	CronScaledJobName          string
-	MonitoredDeploymentName    string
-	ClientName                 string
-	CloudEventSourceName       string
-	WrongCloudEventSourceName  string
-	CloudEventHTTPReceiverName string
-	CloudEventHTTPServiceName  string
-	CloudEventHTTPServiceURL   string
+	TestName                      string
+	TestNamespace                 string
+	DeploymentName                string
+	ScaledObjectName              string
+	HTTPClientScaledObjectName    string
+	ScaledJobName                 string
+	WrongScaledObjectName         string
+	WrongScaledJobName            string
+	WrongScalerName               string
+	EmptyUpstreamScaledObjectName string
+	HTTPClientScalerName          string
+	CronScaledJobName             string
+	MonitoredDeploymentName       string
+	ClientName                    string
+	CloudEventSourceName          string
+	WrongCloudEventSourceName     string
+	CloudEventHTTPReceiverName    string
+	CloudEventHTTPServiceName     string
+	CloudEventHTTPServiceURL      string
 }
 
 const (
@@ -166,6 +172,30 @@ spec:
         metricName: keda_scaler_errors_total
         threshold: '1'
         query: 'keda_scaler_errors_total{namespace="{{.TestNamespace}}",scaledObject="{{.WrongScaledObjectName}}"}'
+`
+
+	httpClientScaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.HTTPClientScaledObjectName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  pollingInterval: 2
+  idleReplicaCount: 0
+  minReplicaCount: 1
+  maxReplicaCount: 2
+  cooldownPeriod: 10
+  triggers:
+    - type: prometheus
+      name: {{.HTTPClientScalerName}}
+      metadata:
+        serverAddress: http://keda-prometheus.keda.svc.cluster.local:8080
+        metricName: keda_scaler_errors_total
+        threshold: '1'
+        query: 'keda_scaler_errors_total{namespace="{{.TestNamespace}}",scaledObject="{{.HTTPClientScaledObjectName}}"}'
 `
 
 	scaledJobTemplate = `
@@ -421,6 +451,89 @@ spec:
           limits:
             cpu: "500m"
 `
+
+	emptyUpstreamPrometheusConfigMapTemplate = `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-empty-upstream-config
+  namespace: {{.TestNamespace}}
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+`
+
+	emptyUpstreamPrometheusDeploymentTemplate = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-empty-upstream
+  namespace: {{.TestNamespace}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus-empty-upstream
+  template:
+    metadata:
+      labels:
+        app: prometheus-empty-upstream
+    spec:
+      containers:
+        - name: prometheus
+          image: docker.io/prom/prometheus:v2.47.1
+          args:
+            - --config.file=/etc/config/prometheus.yml
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: config
+              mountPath: /etc/config
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-empty-upstream-config
+`
+
+	emptyUpstreamPrometheusServiceTemplate = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-empty-upstream
+  namespace: {{.TestNamespace}}
+spec:
+  selector:
+    app: prometheus-empty-upstream
+  ports:
+    - port: 9090
+      targetPort: 9090
+`
+
+	emptyUpstreamResponseScaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.EmptyUpstreamScaledObjectName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  pollingInterval: 2
+  idleReplicaCount: 0
+  minReplicaCount: 0
+  maxReplicaCount: 2
+  cooldownPeriod: 10
+  triggers:
+    - type: prometheus
+      name: empty-upstream-trigger
+      metadata:
+        serverAddress: http://prometheus-empty-upstream.{{.TestNamespace}}.svc.cluster.local:9090
+        threshold: '1'
+        query: 'nonexistent_metric_empty_upstream_response'
+        ignoreNullValues: 'false'
+`
 )
 
 func TestPrometheusMetrics(t *testing.T) {
@@ -450,28 +563,33 @@ func TestPrometheusMetrics(t *testing.T) {
 	testScaledObjectPausedMetric(t, data)
 	testCloudEventEmitted(t, data)
 	testCloudEventEmittedError(t, data)
+	testEmptyUpstreamResponse(t, data)
+	testHTTPClientMetrics(t, data)
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestName:                   testName,
-			TestNamespace:              testNamespace,
-			DeploymentName:             deploymentName,
-			ScaledObjectName:           scaledObjectName,
-			WrongScaledObjectName:      wrongScaledObjectName,
-			ScaledJobName:              scaledJobName,
-			WrongScaledJobName:         wrongScaledJobName,
-			WrongScalerName:            wrongScalerName,
-			MonitoredDeploymentName:    monitoredDeploymentName,
-			ClientName:                 clientName,
-			CronScaledJobName:          cronScaledJobName,
-			CloudEventSourceName:       cloudEventSourceName,
-			WrongCloudEventSourceName:  wrongCloudEventSourceName,
-			CloudEventHTTPReceiverName: cloudEventHTTPReceiverName,
-			CloudEventHTTPServiceName:  cloudEventHTTPServiceName,
-			CloudEventHTTPServiceURL:   cloudEventHTTPServiceURL,
+			TestName:                      testName,
+			TestNamespace:                 testNamespace,
+			DeploymentName:                deploymentName,
+			ScaledObjectName:              scaledObjectName,
+			HTTPClientScaledObjectName:    httpClientScaledObjectName,
+			WrongScaledObjectName:         wrongScaledObjectName,
+			ScaledJobName:                 scaledJobName,
+			WrongScaledJobName:            wrongScaledJobName,
+			WrongScalerName:               wrongScalerName,
+			EmptyUpstreamScaledObjectName: emptyUpstreamScaledObjectName,
+			HTTPClientScalerName:          httpClientScalerName,
+			MonitoredDeploymentName:       monitoredDeploymentName,
+			ClientName:                    clientName,
+			CronScaledJobName:             cronScaledJobName,
+			CloudEventSourceName:          cloudEventSourceName,
+			WrongCloudEventSourceName:     wrongCloudEventSourceName,
+			CloudEventHTTPReceiverName:    cloudEventHTTPReceiverName,
+			CloudEventHTTPServiceName:     cloudEventHTTPServiceName,
+			CloudEventHTTPServiceURL:      cloudEventHTTPServiceURL,
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
@@ -1429,4 +1547,102 @@ func testCloudEventEmittedError(t *testing.T, data templateData) {
 	metric := families["keda_cloudeventsource_events_emitted_total"]
 
 	assert.True(t, familyValidator(metric))
+}
+
+func testEmptyUpstreamResponse(t *testing.T, data templateData) {
+	t.Log("--- testing empty upstream response metric ---")
+
+	kc := GetKubernetesClient(t)
+
+	KubectlApplyWithTemplate(t, data, "emptyUpstreamPrometheusConfigMapTemplate", emptyUpstreamPrometheusConfigMapTemplate)
+	KubectlApplyWithTemplate(t, data, "emptyUpstreamPrometheusDeploymentTemplate", emptyUpstreamPrometheusDeploymentTemplate)
+	KubectlApplyWithTemplate(t, data, "emptyUpstreamPrometheusServiceTemplate", emptyUpstreamPrometheusServiceTemplate)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "prometheus-empty-upstream", testNamespace, 1, 60, 3),
+		"prometheus-empty-upstream deployment should be ready")
+
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "emptyUpstreamResponseScaledObjectTemplate", emptyUpstreamResponseScaledObjectTemplate)
+	defer func() {
+		KubectlDeleteWithTemplate(t, data, "emptyUpstreamResponseScaledObjectTemplate", emptyUpstreamResponseScaledObjectTemplate)
+		KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+		KubectlDeleteWithTemplate(t, data, "emptyUpstreamPrometheusServiceTemplate", emptyUpstreamPrometheusServiceTemplate)
+		KubectlDeleteWithTemplate(t, data, "emptyUpstreamPrometheusDeploymentTemplate", emptyUpstreamPrometheusDeploymentTemplate)
+		KubectlDeleteWithTemplate(t, data, "emptyUpstreamPrometheusConfigMapTemplate", emptyUpstreamPrometheusConfigMapTemplate)
+	}()
+
+	familyValidator := func(family *prommodel.MetricFamily) bool {
+		for _, metric := range family.GetMetric() {
+			labels := metric.GetLabel()
+			if ExtractPrometheusLabelValue("namespace", labels) == testNamespace &&
+				ExtractPrometheusLabelValue("scaledResource", labels) == emptyUpstreamScaledObjectName &&
+				ExtractPrometheusLabelValue("triggerName", labels) == "empty-upstream-trigger" &&
+				ExtractPrometheusLabelValue("metricName", labels) == "s0-prometheus" &&
+				ExtractPrometheusLabelValue("resourceType", labels) == "ScaledObject" &&
+				ExtractPrometheusLabelValue("ignoreNullValues", labels) == "false" &&
+				metric.GetCounter().GetValue() >= 1 {
+				return true
+			}
+		}
+		return false
+	}
+
+	families := WaitForPrometheusMetric(t, "keda_scaler_empty_upstream_responses_total", familyValidator)
+	metric := families["keda_scaler_empty_upstream_responses_total"]
+
+	assert.True(t, familyValidator(metric))
+}
+
+func testHTTPClientMetrics(t *testing.T, data templateData) {
+	t.Log("--- testing HTTP client metrics ---")
+
+	// The dedicated HTTP client metrics ScaledObject uses a prometheus-type
+	// scaler that makes real HTTP requests on every poll interval, so its
+	// records should be present once at least one poll cycle has completed.
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "httpClientScaledObjectTemplate", httpClientScaledObjectTemplate)
+	defer func() {
+		KubectlDeleteWithTemplate(t, data, "httpClientScaledObjectTemplate", httpClientScaledObjectTemplate)
+		KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	}()
+
+	matchLabels := func(labels []*prommodel.LabelPair) bool {
+		return ExtractPrometheusLabelValue("namespace", labels) == testNamespace &&
+			ExtractPrometheusLabelValue("scaled_resource", labels) == data.HTTPClientScaledObjectName &&
+			ExtractPrometheusLabelValue("scaler", labels) == "prometheus" &&
+			ExtractPrometheusLabelValue("trigger_name", labels) == data.HTTPClientScalerName &&
+			ExtractPrometheusLabelValue("metric_name", labels) == "s0-prometheus"
+	}
+
+	familyValidator := func(family *prommodel.MetricFamily) bool {
+		for _, metric := range family.GetMetric() {
+			if matchLabels(metric.GetLabel()) && metric.GetCounter().GetValue() >= 1 {
+				return true
+			}
+		}
+		return false
+	}
+
+	families := WaitForPrometheusMetric(t, "keda_scaler_http_requests_total", familyValidator)
+	assert.True(t, familyValidator(families["keda_scaler_http_requests_total"]),
+		"expected keda_scaler_http_requests_total with namespace=%s, scaled_resource=%s, scaler=prometheus, trigger_name=%s, metric_name=s0-prometheus",
+		testNamespace, data.HTTPClientScaledObjectName, data.HTTPClientScalerName)
+
+	matchHistogramLabels := func(labels []*prommodel.LabelPair) bool {
+		return ExtractPrometheusLabelValue("scaler", labels) == "prometheus"
+	}
+	family, ok := families["keda_scaler_http_request_duration_seconds"]
+	assert.True(t, ok, "keda_scaler_http_request_duration_seconds not present")
+	if ok {
+		var found bool
+		for _, metric := range family.GetMetric() {
+			if matchHistogramLabels(metric.GetLabel()) {
+				assert.Greater(t, metric.GetHistogram().GetSampleCount(), uint64(0),
+					"keda_scaler_http_request_duration_seconds sample count should be > 0")
+				found = true
+				break
+			}
+		}
+		assert.True(t, found, "expected keda_scaler_http_request_duration_seconds histogram for prometheus scaler")
+	}
 }

@@ -28,7 +28,7 @@ const (
 	defaultHeartbeat         = 10 * time.Second
 	defaultConnectionTimeout = 30 * time.Second
 	defaultProduct           = "AMQP 0.9.1 Client"
-	buildVersion             = "1.10.0"
+	buildVersion             = "1.11.0"
 	platform                 = "golang"
 	// Safer default that makes channel leaks a lot easier to spot
 	// before they create operational headaches. See https://github.com/rabbitmq/rabbitmq-server/issues/1593.
@@ -93,7 +93,8 @@ func NewConnectionProperties() Table {
 // multiplexed on this channel.  There must always be active receivers for
 // every asynchronous message on this connection.
 type Connection struct {
-	destructor sync.Once  // shutdown once
+	destructor sync.Once  // teardown: notify listeners, close channels and the socket
+	closeOnce  sync.Once  // handshake: send one `connection.close` frame
 	sendM      sync.Mutex // conn writer mutex
 	m          sync.Mutex // struct field mutex
 
@@ -122,7 +123,7 @@ type Connection struct {
 	Properties Table    // Server properties
 	Locales    []string // Server locales
 
-	closed int32 // Will be 1 if the connection is closed, 0 otherwise. Should only be accessed as atomic
+	closed atomic.Bool // Will be true if the connection is closed, false otherwise.
 }
 
 type readDeadliner interface {
@@ -423,14 +424,23 @@ func (c *Connection) Close() error {
 		return ErrClosed
 	}
 
-	defer c.shutdown(nil)
-	return c.call(
-		&connectionClose{
-			ReplyCode: replySuccess,
-			ReplyText: "kthxbai",
-		},
-		&connectionCloseOk{},
-	)
+	var handshakeErr error
+	var initiated bool
+	c.closeOnce.Do(func() {
+		initiated = true
+		defer c.shutdown(nil)
+		handshakeErr = c.call(
+			&connectionClose{
+				ReplyCode: replySuccess,
+				ReplyText: "kthxbai",
+			},
+			&connectionCloseOk{},
+		)
+	})
+	if !initiated {
+		return ErrClosed
+	}
+	return handshakeErr
 }
 
 // CloseDeadline requests and waits for the response to close this AMQP connection.
@@ -451,20 +461,27 @@ func (c *Connection) CloseDeadline(deadline time.Time) error {
 		return ErrClosed
 	}
 
-	defer c.shutdown(nil)
-
-	err := c.setDeadline(deadline)
-	if err != nil {
-		return err
+	var handshakeErr error
+	var initiated bool
+	c.closeOnce.Do(func() {
+		initiated = true
+		defer c.shutdown(nil)
+		if err := c.setDeadline(deadline); err != nil {
+			handshakeErr = err
+			return
+		}
+		handshakeErr = c.call(
+			&connectionClose{
+				ReplyCode: replySuccess,
+				ReplyText: "kthxbai",
+			},
+			&connectionCloseOk{},
+		)
+	})
+	if !initiated {
+		return ErrClosed
 	}
-
-	return c.call(
-		&connectionClose{
-			ReplyCode: replySuccess,
-			ReplyText: "kthxbai",
-		},
-		&connectionCloseOk{},
-	)
+	return handshakeErr
 }
 
 func (c *Connection) closeWith(err *Error) error {
@@ -472,21 +489,29 @@ func (c *Connection) closeWith(err *Error) error {
 		return ErrClosed
 	}
 
-	defer c.shutdown(err)
-
-	return c.call(
-		&connectionClose{
-			ReplyCode: uint16(err.Code),
-			ReplyText: err.Reason,
-		},
-		&connectionCloseOk{},
-	)
+	var handshakeErr error
+	var initiated bool
+	c.closeOnce.Do(func() {
+		initiated = true
+		defer c.shutdown(err)
+		handshakeErr = c.call(
+			&connectionClose{
+				ReplyCode: uint16(err.Code),
+				ReplyText: err.Reason,
+			},
+			&connectionCloseOk{},
+		)
+	})
+	if !initiated {
+		return ErrClosed
+	}
+	return handshakeErr
 }
 
 // IsClosed returns true if the connection is marked as closed, otherwise false
 // is returned.
 func (c *Connection) IsClosed() bool {
-	return atomic.LoadInt32(&c.closed) == 1
+	return c.closed.Load()
 }
 
 // setDeadline is a wrapper to type assert Connection.conn and set an I/O
@@ -598,7 +623,7 @@ func (c *Connection) flush() (err error) {
 }
 
 func (c *Connection) shutdown(err *Error) {
-	atomic.StoreInt32(&c.closed, 1)
+	c.closed.Store(true)
 
 	c.destructor.Do(func() {
 		c.m.Lock()
@@ -675,7 +700,6 @@ func (c *Connection) dispatch0(f frame) {
 				return
 			case c.rpc <- m:
 			}
-
 		}
 	case *heartbeatFrame:
 		// kthx - all reads reset our deadline.  so we can drop this
@@ -755,7 +779,6 @@ func (c *Connection) reader(r io.Reader) {
 
 	for {
 		frame, err := frames.ReadFrame()
-
 		if err != nil {
 			c.shutdown(&Error{Code: FrameError, Reason: err.Error()})
 			return
@@ -899,13 +922,17 @@ func (c *Connection) closeChannel(ch *Channel, e *Error) {
 Channel opens a unique, concurrent server channel to process the bulk of AMQP
 messages.  Any error from methods on this receiver will render the receiver
 invalid and a new Channel should be opened.
+
+Channels are not thread-safe. To avoid unexpected behavior, do not share
+a single Channel instance between multiple goroutines. Concurrent calls
+to Channel methods may result in race conditions or unpredictable outcomes.
 */
 func (c *Connection) Channel() (*Channel, error) {
 	return c.openChannel()
 }
 
 func (c *Connection) call(req message, res ...message) error {
-	// Special case for when the protocol header frame is sent insted of a
+	// Special case for when the protocol header frame is sent instead of a
 	// request method
 	if req != nil {
 		if err := c.send(&methodFrame{ChannelId: 0, Method: req}); err != nil {

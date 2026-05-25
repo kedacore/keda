@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// DemGetWebsiteResponseStatus - Current availability status of the website.
 type DemGetWebsiteResponseStatus string
 
 const (
@@ -349,9 +350,12 @@ func (d *DemGetWebsiteResponseAvailabilityCheckSettings) GetPostData() *string {
 // DemGetWebsiteResponseRum - Use this field to configure real user monitoring (RUM) for the website.
 // You are required to configure at least availability monitoring or real user monitoring to be able to create website.
 type DemGetWebsiteResponseRum struct {
-	ApdexTimeInSeconds *int    `json:"apdexTimeInSeconds,omitempty"`
-	Snippet            *string `json:"snippet,omitempty"`
-	Spa                bool    `json:"spa"`
+	// Apdex time threshold in seconds for performance satisfaction scoring.
+	ApdexTimeInSeconds *int `json:"apdexTimeInSeconds,omitempty"`
+	// JavaScript snippet to embed for real user monitoring.
+	Snippet *string `json:"snippet,omitempty"`
+	// Whether the website is a single-page application (SPA).
+	Spa bool `json:"spa"`
 }
 
 func (d *DemGetWebsiteResponseRum) GetApdexTimeInSeconds() *int {
@@ -376,8 +380,11 @@ func (d *DemGetWebsiteResponseRum) GetSpa() bool {
 }
 
 type DemGetWebsiteResponse struct {
-	ID     string                      `json:"id"`
-	Type   string                      `json:"type"`
+	// Unique identifier of the website.
+	ID string `json:"id"`
+	// Entity type, always 'Website'.
+	Type string `json:"type"`
+	// Current availability status of the website.
 	Status DemGetWebsiteResponseStatus `json:"status"`
 	//   Name of the website, which must be unique within the organization.
 	//   The website must also not contain any control characters, any white space other than space (U+0020), or any consecutive, leading or trailing spaces.
