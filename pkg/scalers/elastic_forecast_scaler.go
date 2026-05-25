@@ -169,9 +169,9 @@ func (s *elasticForecastScaler) forecastRenewal(ctx context.Context) {
 			s.mu.Unlock()
 
 			if currentID == "" {
-				s.logger.Info("retrying initial ML forecast", "jobID", s.metadata.JobID)
+				s.logger.V(1).Info("retrying initial ML forecast", "jobID", s.metadata.JobID)
 			} else {
-				s.logger.Info("renewing ML forecast (window near expiry)",
+				s.logger.V(1).Info("renewing ML forecast (window near expiry)",
 					"jobID", s.metadata.JobID,
 					"currentForecastID", currentID,
 					"remainingWindow", remainingWindow,
