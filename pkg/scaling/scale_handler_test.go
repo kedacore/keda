@@ -738,6 +738,90 @@ func TestGetScaledObjectStateRecordsResourceScalerActiveMetric(t *testing.T) {
 	}, 1)
 }
 
+func TestGetScaledObjectStateSkipsResourceScalerActiveMetricWithModifiers(t *testing.T) {
+	promMetricsCollectorOnce.Do(func() {
+		metricscollector.NewMetricsCollectors(true, false)
+	})
+
+	ctrl := gomock.NewController(t)
+	recorder := record.NewFakeRecorder(1)
+	scaler := mock_scalers.NewMockScaler(ctrl)
+
+	metricSpecs := []v2.MetricSpec{{
+		Type: v2.ResourceMetricSourceType,
+		Resource: &v2.ResourceMetricSource{
+			Name: v1.ResourceCPU,
+		},
+	}}
+
+	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricSpecs)
+	scaler.EXPECT().Close(gomock.Any())
+
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "resource-modifier-metric-test",
+			Namespace: "resource-modifier-metric-namespace",
+		},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+				Name: "test",
+			},
+			Advanced: &kedav1alpha1.AdvancedConfig{
+				ScalingModifiers: kedav1alpha1.ScalingModifiers{
+					Formula: "cpu",
+					Target:  "1",
+				},
+			},
+			Triggers: []kedav1alpha1.ScaleTriggers{{
+				Type: "cpu",
+				Name: "cpu",
+			}},
+		},
+	}
+
+	scalerCache := cache.ScalersCache{
+		Scalers: []cache.ScalerBuilder{{
+			Scaler: scaler,
+			ScalerConfig: scalersconfig.ScalerConfig{
+				TriggerName: "cpu",
+			},
+		}},
+		Recorder: recorder,
+	}
+
+	caches := map[string]*cache.ScalersCache{
+		scaledObject.GenerateIdentifier(): &scalerCache,
+	}
+
+	sh := scaleHandler{
+		scaleLoopContexts:        &sync.Map{},
+		globalHTTPTimeout:        time.Duration(1000),
+		recorder:                 recorder,
+		scalerCaches:             caches,
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
+	}
+
+	isActive, isError, _, activeTriggers, _, err := sh.getScaledObjectState(context.Background(), &scaledObject)
+	scalerCache.Close(context.Background())
+
+	assert.NoError(t, err)
+	assert.True(t, isActive)
+	assert.False(t, isError)
+	assert.Empty(t, activeTriggers)
+	assertPromMetricWithLabelsNotFound(t, "keda_scaler_active", map[string]string{
+		"namespace":    "resource-modifier-metric-namespace",
+		"scaledObject": "resource-modifier-metric-test",
+		"scaler":       "cpu",
+		"triggerIndex": "0",
+		"metric":       "cpu",
+		"type":         "scaledobject",
+	})
+}
+
 func assertPromMetricWithLabels(t *testing.T, name string, labels map[string]string, value float64) {
 	t.Helper()
 
@@ -757,6 +841,25 @@ func assertPromMetricWithLabels(t *testing.T, name string, labels map[string]str
 	}
 
 	t.Fatalf("metric %q with labels %#v and value %v not found", name, labels, value)
+}
+
+func assertPromMetricWithLabelsNotFound(t *testing.T, name string, labels map[string]string) {
+	t.Helper()
+
+	metricFamilies, err := metrics.Registry.Gather()
+	assert.NoError(t, err)
+
+	for _, family := range metricFamilies {
+		if family.GetName() != name {
+			continue
+		}
+
+		for _, metric := range family.GetMetric() {
+			if hasLabels(metric.GetLabel(), labels) {
+				t.Fatalf("metric %q with labels %#v found", name, labels)
+			}
+		}
+	}
 }
 
 func hasLabels(pairs []*dto.LabelPair, expected map[string]string) bool {
