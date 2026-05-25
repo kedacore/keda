@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"errors"
+	"net/http"
 	"strconv"
 	"testing"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
@@ -489,7 +491,7 @@ func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAWSSQSScaler := awsSqsQueueScaler{"", meta, &mockSqs{}, logr.Discard()}
+		mockAWSSQSScaler := awsSqsQueueScaler{"", meta, &mockSqs{}, nil, logr.Discard()}
 
 		metricSpec := mockAWSSQSScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
@@ -505,7 +507,7 @@ func TestAWSSQSScalerGetMetrics(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		scaler := awsSqsQueueScaler{"", meta, &mockSqs{}, logr.Discard()}
+		scaler := awsSqsQueueScaler{"", meta, &mockSqs{}, nil, logr.Discard()}
 
 		value, _, err := scaler.GetMetricsAndActivity(context.Background(), "MetricName")
 		switch meta.QueueURL {
@@ -687,4 +689,71 @@ func TestQueueURLFromEnvResolution(t *testing.T) {
 			}
 		})
 	}
+}
+
+// mockTransport is an http.RoundTripper that tracks whether CloseIdleConnections was called.
+type mockTransport struct {
+	closeIdleCalled bool
+}
+
+func (m *mockTransport) RoundTrip(_ *http.Request) (*http.Response, error) {
+	return &http.Response{StatusCode: 200, Body: http.NoBody}, nil
+}
+
+func (m *mockTransport) CloseIdleConnections() {
+	m.closeIdleCalled = true
+}
+
+func TestAWSSQSScalerCloseClosesHTTPConnections(t *testing.T) {
+	transport := &mockTransport{}
+	httpClient := &http.Client{Transport: transport}
+
+	meta := &awsSqsQueueMetadata{
+		QueueURL:  testAWSSQSProperQueueURL,
+		queueName: "DeleteArtifactQ",
+		AwsRegion: "eu-west-1",
+		awsAuthorization: awsutils.AuthorizationMetadata{
+			TriggerUniqueKey: "test-close-trigger",
+			AwsRegion:        "eu-west-1",
+		},
+	}
+
+	scaler := &awsSqsQueueScaler{
+		metricType:       "",
+		metadata:         meta,
+		sqsWrapperClient: &mockSqs{},
+		httpClient:       httpClient,
+		logger:           logr.Discard(),
+	}
+
+	assert.False(t, transport.closeIdleCalled, "CloseIdleConnections should not have been called yet")
+
+	err := scaler.Close(context.Background())
+	assert.NoError(t, err)
+
+	assert.True(t, transport.closeIdleCalled, "CloseIdleConnections should have been called after Close()")
+}
+
+func TestAWSSQSScalerCloseWithNilHTTPClient(t *testing.T) {
+	meta := &awsSqsQueueMetadata{
+		QueueURL:  testAWSSQSProperQueueURL,
+		queueName: "DeleteArtifactQ",
+		AwsRegion: "eu-west-1",
+		awsAuthorization: awsutils.AuthorizationMetadata{
+			TriggerUniqueKey: "test-nil-http-trigger",
+			AwsRegion:        "eu-west-1",
+		},
+	}
+
+	scaler := &awsSqsQueueScaler{
+		metricType:       "",
+		metadata:         meta,
+		sqsWrapperClient: &mockSqs{},
+		httpClient:       nil,
+		logger:           logr.Discard(),
+	}
+
+	// Should not panic when httpClient is nil
+	err := scaler.Close(context.Background())
+	assert.NoError(t, err)
 }
