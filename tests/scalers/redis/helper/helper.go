@@ -14,11 +14,15 @@ import (
 	"github.com/kedacore/keda/v2/tests/helper"
 )
 
+// Temporary workaround: CloudPirates Redis chart v0.29.x is broken; pin to v0.28.0. See https://github.com/CloudPirates-io/helm-charts/issues/1336
+const version = "0.28.0"
+
 func InstallStandalone(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
 	helper.CreateNamespace(t, kc, namespace)
-	_, err := helper.ExecuteCommand(fmt.Sprintf(`helm install --wait --timeout 900s %s --namespace %s --set architecture=standalone --set master.persistence.enabled=false --set auth.password=%s oci://registry-1.docker.io/cloudpirates/redis`,
+	_, err := helper.ExecuteCommand(fmt.Sprintf(`helm install --wait --timeout 900s %s --namespace %s --version %s --set architecture=standalone --set master.persistence.enabled=false --set auth.password=%s oci://registry-1.docker.io/cloudpirates/redis`,
 		name,
 		namespace,
+		version,
 		password))
 	require.NoErrorf(t, err, "cannot execute command - %s", err)
 }
@@ -33,9 +37,10 @@ func RemoveStandalone(t *testing.T, name, namespace string) {
 
 func InstallSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
 	helper.CreateNamespace(t, kc, namespace)
-	_, err := helper.ExecuteCommand(fmt.Sprintf(`helm install --wait --timeout 900s %s --namespace %s --set architecture=replication --set sentinel.enabled=true --set master.persistence.enabled=false --set replica.persistence.enabled=false  --set auth.password=%s oci://registry-1.docker.io/cloudpirates/redis`,
+	_, err := helper.ExecuteCommand(fmt.Sprintf(`helm install --wait --timeout 900s %s --namespace %s --version %s --set architecture=replication --set sentinel.enabled=true --set master.persistence.enabled=false --set replica.persistence.enabled=false  --set auth.password=%s oci://registry-1.docker.io/cloudpirates/redis`,
 		name,
 		namespace,
+		version,
 		password))
 	require.NoErrorf(t, err, "cannot execute command - %s", err)
 }
@@ -50,9 +55,10 @@ func RemoveSentinel(t *testing.T, name, namespace string) {
 
 func InstallCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
 	helper.CreateNamespace(t, kc, namespace)
-	_, err := helper.ExecuteCommand(fmt.Sprintf(`helm install --wait --timeout 900s %s --namespace %s --set architecture=cluster --set master.persistence.enabled=false --set replica.persistence.enabled=false  --set auth.password=%s oci://registry-1.docker.io/cloudpirates/redis`,
+	_, err := helper.ExecuteCommand(fmt.Sprintf(`helm install --wait --timeout 900s %s --namespace %s --version %s --set architecture=cluster --set master.persistence.enabled=false --set replica.persistence.enabled=false  --set auth.password=%s oci://registry-1.docker.io/cloudpirates/redis`,
 		name,
 		namespace,
+		version,
 		password))
 	require.NoErrorf(t, err, "cannot execute command - %s", err)
 }
