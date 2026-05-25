@@ -122,11 +122,10 @@ type rabbitMQMetadata struct {
 	workloadIdentityTenantID      string
 	workloadIdentityAuthorityHost string
 
-	// OAuth2 authentication (field names match authentication.OAuth, parsed from authParams)
-	authentication.OAuth `keda:"optional"`
+	// OAuth2 via central Config; Modes is inferred so legacy manifests without `authModes` keep working.
+	Auth *authentication.Config `keda:"optional"`
 
 	// Auth method detection flags (computed, not parsed)
-	hasOAuth2           bool
 	hasBasicAuth        bool
 	hasWorkloadIdentity bool
 }
@@ -195,14 +194,25 @@ func (r *rabbitMQMetadata) Validate() error {
 }
 
 func (r *rabbitMQMetadata) validateOAuth2() error {
-	// OAuth2 validation - check if any OAuth2 parameter is present
-	hasAnyOAuth2Param := r.OauthTokenURI != "" || r.ClientID != "" || r.ClientSecret != ""
+	if r.Auth == nil {
+		r.Auth = &authentication.Config{}
+	}
+	// Infer OAuth mode so legacy manifests without `authModes` keep working.
+	hasAnyOAuth2Param := r.Auth.OauthTokenURI != "" || r.Auth.ClientID != "" || r.Auth.ClientSecret != ""
+	if hasAnyOAuth2Param && len(r.Auth.Modes) == 0 {
+		r.Auth.Modes = []authentication.Type{authentication.OAuthType}
+	}
+
+	if err := r.Auth.ValidateAllowed(authentication.OAuthType); err != nil {
+		return err
+	}
+
 	if !hasAnyOAuth2Param {
 		return nil
 	}
 
-	// Validate required OAuth2 parameters are present
-	if r.OauthTokenURI == "" || r.ClientID == "" || r.ClientSecret == "" {
+	// rabbitmq's client_credentials flow always needs a ClientSecret; Config treats it as optional.
+	if r.Auth.ClientSecret == "" {
 		return fmt.Errorf("OAuth2 requires tokenUrl clientId and clientSecret to be configured in TriggerAuthentication")
 	}
 
@@ -212,8 +222,6 @@ func (r *rabbitMQMetadata) validateOAuth2() error {
 	}
 
 	// OAuth2 is exclusive - don't mix with other auth methods.
-	// Compute directly here rather than relying on hasBasicAuth/hasWorkloadIdentity
-	// because determineAuthMethod() is called after Validate() in parseRabbitMQMetadata.
 	if (r.Username != "" && r.Password != "") || r.WorkloadIdentityResource != "" {
 		return fmt.Errorf("OAuth2 authentication cannot be combined with username/password authentication or Azure Workload Identity")
 	}
@@ -335,7 +343,7 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 
 	// Create HTTP client based on auth method
-	if meta.hasOAuth2 {
+	if meta.Auth.EnabledOAuth() {
 		// OAuth2 client with automatic token management
 		s.httpClient, err = s.createOAuth2HTTPClient(timeout, meta)
 		if err != nil {
@@ -406,9 +414,8 @@ func parseRabbitMQMetadata(config *scalersconfig.ScalerConfig) (*rabbitMQMetadat
 	return meta, nil
 }
 
-// determineAuthMethod sets boolean flags for auth method detection
+// determineAuthMethod sets flags for basic and workload identity; OAuth2 goes via Auth.EnabledOAuth().
 func (r *rabbitMQMetadata) determineAuthMethod() {
-	r.hasOAuth2 = r.OauthTokenURI != "" && r.ClientID != "" && r.ClientSecret != ""
 	r.hasBasicAuth = r.Username != "" && r.Password != ""
 	r.hasWorkloadIdentity = r.WorkloadIdentityResource != ""
 }
@@ -490,17 +497,17 @@ func (s *rabbitMQScaler) Close(context.Context) error {
 // The client automatically handles token acquisition, caching, and refresh
 func (s *rabbitMQScaler) createOAuth2HTTPClient(timeout time.Duration, meta *rabbitMQMetadata) (*http.Client, error) {
 	config := clientcredentials.Config{
-		ClientID:     meta.ClientID,
-		ClientSecret: meta.ClientSecret,
-		TokenURL:     meta.OauthTokenURI,
+		ClientID:     meta.Auth.ClientID,
+		ClientSecret: meta.Auth.ClientSecret,
+		TokenURL:     meta.Auth.OauthTokenURI,
 	}
 
 	// Set scopes from the OAuth struct (already parsed as []string)
-	config.Scopes = meta.Scopes
+	config.Scopes = meta.Auth.Scopes
 
 	// Set additional endpoint parameters from the OAuth struct (already parsed as url.Values)
-	if len(meta.EndpointParams) > 0 {
-		config.EndpointParams = meta.EndpointParams
+	if len(meta.Auth.EndpointParams) > 0 {
+		config.EndpointParams = meta.Auth.EndpointParams
 	}
 
 	// Build a base transport using kedautil so that ProxyFromEnvironment and
