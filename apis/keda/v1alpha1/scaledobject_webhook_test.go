@@ -733,11 +733,42 @@ var _ = It("should validate the so update if it's removing the finalizer even if
 	}).ShouldNot(HaveOccurred())
 })
 
-var _ = It("shouldn't validate the so creation when the name exceeds 54 characters", func() {
+var _ = It("shouldn't validate the so creation when the name exceeds the label value limit", func() {
 
 	namespaceName := "so-name-too-long"
 	namespace := createNamespace(namespaceName)
-	longName := strings.Repeat("a", maxScaledObjectNameLength+1)
+	longName := strings.Repeat("a", maxK8sLabelValueLength+1)
+	so := createScaledObject(longName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "short-hpa")
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("should validate the so creation when the name is at the label value limit and a custom HPA name is set", func() {
+
+	namespaceName := "so-name-max-with-custom-hpa"
+	namespace := createNamespace(namespaceName)
+	maxName := strings.Repeat("a", maxK8sLabelValueLength)
+	so := createScaledObject(maxName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "short-hpa")
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("shouldn't validate the so creation when no custom HPA name is set and the generated HPA name would exceed the label value limit", func() {
+
+	namespaceName := "so-generated-hpa-too-long"
+	namespace := createNamespace(namespaceName)
+	// 55 chars: keda-hpa- prefix (9) + 55 = 64, overflows
+	longName := strings.Repeat("a", maxK8sLabelValueLength-len("keda-hpa-")+1)
 	so := createScaledObject(longName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
 
 	err := k8sClient.Create(context.Background(), namespace)
@@ -748,11 +779,12 @@ var _ = It("shouldn't validate the so creation when the name exceeds 54 characte
 	}).Should(HaveOccurred())
 })
 
-var _ = It("should validate the so creation when the name is exactly 54 characters", func() {
+var _ = It("should validate the so creation when no custom HPA name is set and the generated HPA name fits within the label value limit", func() {
 
-	namespaceName := "so-name-max-length"
+	namespaceName := "so-generated-hpa-max"
 	namespace := createNamespace(namespaceName)
-	maxName := strings.Repeat("a", maxScaledObjectNameLength)
+	// 54 chars: keda-hpa- prefix (9) + 54 = 63, fits
+	maxName := strings.Repeat("a", maxK8sLabelValueLength-len("keda-hpa-"))
 	so := createScaledObject(maxName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
 
 	err := k8sClient.Create(context.Background(), namespace)
@@ -761,6 +793,26 @@ var _ = It("should validate the so creation when the name is exactly 54 characte
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), so)
 	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("shouldn't validate the so update when removing the custom HPA name would make the generated HPA name exceed the label value limit", func() {
+
+	namespaceName := "so-update-remove-custom-hpa"
+	namespace := createNamespace(namespaceName)
+	// 60 chars: passes create with custom HPA name, but keda-hpa-<60> = 69 would overflow
+	longName := strings.Repeat("a", 60)
+	so := createScaledObject(longName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "short-hpa")
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), so)
+	Expect(err).ToNot(HaveOccurred())
+
+	so.Spec.Advanced.HorizontalPodAutoscalerConfig = nil
+	Eventually(func() error {
+		return k8sClient.Update(context.Background(), so)
+	}).Should(HaveOccurred())
 })
 
 var _ = It("shouldn't create so when stabilizationWindowSeconds exceeds 3600", func() {
