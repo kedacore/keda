@@ -11,7 +11,8 @@ import (
 )
 
 // Deletes all dashboards that you specify. You can specify up to 100 dashboards
-// to delete. If there is an error during this call, no dashboards are deleted.
+// to delete. If there is an error during this call, the operation attempts to
+// delete as many dashboards as possible.
 func (c *Client) DeleteDashboards(ctx context.Context, params *DeleteDashboardsInput, optFns ...func(*Options)) (*DeleteDashboardsOutput, error) {
 	if params == nil {
 		params = &DeleteDashboardsInput{}

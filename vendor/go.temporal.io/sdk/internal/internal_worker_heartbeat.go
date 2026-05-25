@@ -3,10 +3,11 @@ package internal
 import (
 	"context"
 	"fmt"
-	ilog "go.temporal.io/sdk/internal/log"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	ilog "go.temporal.io/sdk/internal/log"
 
 	workerpb "go.temporal.io/api/worker/v1"
 	"go.temporal.io/api/workflowservice/v1"
@@ -42,11 +43,11 @@ func newHeartbeatManager(client *WorkflowClient, interval time.Duration, logger 
 func (m *heartbeatManager) registerWorker(
 	worker *AggregatedWorker,
 ) error {
-	capabilities, err := m.client.loadNamespaceCapabilities(worker.heartbeatMetrics)
+	nsData, err := m.client.loadNamespaceData(worker.heartbeatMetrics)
 	if err != nil {
 		return fmt.Errorf("failed to get namespace capabilities: %w", err)
 	}
-	if !capabilities.GetWorkerHeartbeats() {
+	if !nsData.capabilities.GetWorkerHeartbeats() {
 		if m.logger != nil {
 			m.logger.Debug("Worker heartbeating configured, but server version does not support it.")
 		}

@@ -289,8 +289,10 @@ func (a *AvailabilityCheckSettings) GetPostData() *string {
 //
 //	You are required to configure at least availability monitoring or real user monitoring to be able to create website.
 type Rum struct {
+	// Apdex time threshold in seconds for performance satisfaction scoring.
 	ApdexTimeInSeconds *int `json:"apdexTimeInSeconds,omitempty"`
-	Spa                bool `json:"spa"`
+	// Whether the website is a single-page application (SPA).
+	Spa bool `json:"spa"`
 }
 
 func (r *Rum) GetApdexTimeInSeconds() *int {

@@ -3,8 +3,11 @@
 package components
 
 type CommonLink struct {
-	Rel   string  `json:"rel"`
-	Href  string  `json:"href"`
+	// Relationship of the link to the current resource.
+	Rel string `json:"rel"`
+	// URL of the linked resource.
+	Href string `json:"href"`
+	// Display label for the link.
 	Label *string `json:"label,omitempty"`
 }
 

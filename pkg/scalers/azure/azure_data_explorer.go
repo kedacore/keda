@@ -19,15 +19,15 @@ package azure
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 
-	"github.com/Azure/azure-kusto-go/kusto"
-	"github.com/Azure/azure-kusto-go/kusto/data/table"
-	"github.com/Azure/azure-kusto-go/kusto/kql"
+	"github.com/Azure/azure-kusto-go/azkustodata"
+	"github.com/Azure/azure-kusto-go/azkustodata/kql"
+	"github.com/Azure/azure-kusto-go/azkustodata/query"
+	"github.com/Azure/azure-kusto-go/azkustodata/types"
+	azcore "github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -49,13 +49,13 @@ type DataExplorerMetadata struct {
 
 var azureDataExplorerLogger = logf.Log.WithName("azure_data_explorer_scaler")
 
-func CreateAzureDataExplorerClient(metadata *DataExplorerMetadata, httpClient *http.Client) (*kusto.Client, error) {
+func CreateAzureDataExplorerClient(metadata *DataExplorerMetadata, httpClient *http.Client) (*azkustodata.Client, error) {
 	kcsb, err := getDataExplorerAuthConfig(metadata)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get data explorer auth config: %w", err)
 	}
 
-	client, err := kusto.New(kcsb, kusto.WithHttpClient(httpClient))
+	client, err := azkustodata.New(kcsb, azkustodata.WithHttpClient(httpClient))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kusto client: %w", err)
 	}
@@ -63,8 +63,8 @@ func CreateAzureDataExplorerClient(metadata *DataExplorerMetadata, httpClient *h
 	return client, nil
 }
 
-func getDataExplorerAuthConfig(metadata *DataExplorerMetadata) (*kusto.ConnectionStringBuilder, error) {
-	kcsb := kusto.NewConnectionStringBuilder(metadata.Endpoint)
+func getDataExplorerAuthConfig(metadata *DataExplorerMetadata) (*azkustodata.ConnectionStringBuilder, error) {
+	kcsb := azkustodata.NewConnectionStringBuilder(metadata.Endpoint)
 
 	switch metadata.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
@@ -81,7 +81,7 @@ func getDataExplorerAuthConfig(metadata *DataExplorerMetadata) (*kusto.Connectio
 		kcsb.WithAadAppKey(metadata.ClientID, metadata.ClientSecret, metadata.TenantID)
 		// This should be here because internally the SDK resets the configuration
 		// after calling `WithAadAppKey`
-		clientOptions := &policy.ClientOptions{
+		clientOptions := &azcore.ClientOptions{
 			Cloud: cloud.Configuration{
 				ActiveDirectoryAuthorityHost: metadata.ActiveDirectoryEndpoint,
 				Services:                     map[cloud.ServiceName]cloud.ServiceConfiguration{},
@@ -104,34 +104,25 @@ func getDataExplorerAuthConfig(metadata *DataExplorerMetadata) (*kusto.Connectio
 	return kcsb, nil
 }
 
-func GetAzureDataExplorerMetricValue(ctx context.Context, client *kusto.Client, db string, query string) (float64, error) {
+func GetAzureDataExplorerMetricValue(ctx context.Context, client *azkustodata.Client, db string, query string) (float64, error) {
 	azureDataExplorerLogger.V(1).Info("Querying Azure Data Explorer", "db", db, "query", query)
 
-	iter, err := client.Query(ctx, db, kql.New("").AddUnsafe(query))
+	dataset, err := client.Query(ctx, db, kql.New("").AddUnsafe(query))
 	if err != nil {
 		return -1, fmt.Errorf("failed to get azure data explorer metric result from query %s: %w", query, err)
 	}
-	defer iter.Stop()
 
-	row, inlineError, err := iter.NextRowOrError()
-	if inlineError != nil {
-		return -1, fmt.Errorf("failed to get query %s result: %v", query, inlineError)
-	}
-	if err != nil {
-		return -1, fmt.Errorf("failed to get query %s result: %w", query, err)
+	tables := dataset.Tables()
+	if len(tables) == 0 || len(tables[0].Rows()) == 0 {
+		return -1, fmt.Errorf("query %s has no results", query)
 	}
 
-	if !row.ColumnTypes[0].Type.Valid() {
-		return -1, fmt.Errorf("column type %s is not valid", row.ColumnTypes[0].Type)
-	}
-
-	// Return error if there is more than one row.
-	_, _, err = iter.NextRowOrError()
-	if err != io.EOF {
+	rows := tables[0].Rows()
+	if len(rows) != 1 {
 		return -1, fmt.Errorf("query %s result had more than a single result row", query)
 	}
 
-	metricValue, err := extractDataExplorerMetricValue(row)
+	metricValue, err := extractDataExplorerMetricValue(rows[0])
 	if err != nil {
 		return -1, fmt.Errorf("failed to extract value from query %s: %w", query, err)
 	}
@@ -139,20 +130,20 @@ func GetAzureDataExplorerMetricValue(ctx context.Context, client *kusto.Client, 
 	return metricValue, nil
 }
 
-func extractDataExplorerMetricValue(row *table.Row) (float64, error) {
-	if row == nil || len(row.ColumnTypes) == 0 {
+func extractDataExplorerMetricValue(row query.Row) (float64, error) {
+	if row == nil || len(row.Columns()) == 0 {
 		return -1, fmt.Errorf("query has no results")
 	}
 
 	// Query result validation.
-	dataType := row.ColumnTypes[0].Type
-	if dataType != "real" && dataType != "int" && dataType != "long" {
+	dataType := row.Columns()[0].Type()
+	if dataType != types.Real && dataType != types.Int && dataType != types.Long {
 		return -1, fmt.Errorf("data type %s is not valid", dataType)
 	}
 
-	value, err := strconv.ParseFloat(row.Values[0].String(), 64)
+	value, err := strconv.ParseFloat(row.Values()[0].String(), 64)
 	if err != nil {
-		return -1, fmt.Errorf("failed to convert result %s to int", row.Values[0].String())
+		return -1, fmt.Errorf("failed to convert result %s to int", row.Values()[0].String())
 	}
 	if value < 0 {
 		return -1, fmt.Errorf("query result must be >= 0 but received: %f", value)
