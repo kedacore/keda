@@ -14,7 +14,7 @@ import (
 	"github.com/kedacore/keda/v2/tests/helper"
 )
 
-// temporary fix for helm chart version, newer chart versions are broken - see https://github.com/CloudPirates-io/helm-charts/issues/1336
+// Temporary workaround: CloudPirates Redis chart v0.29.x is broken; pin to v0.28.0. See https://github.com/CloudPirates-io/helm-charts/issues/1336
 const version = "0.28.0"
 
 func InstallStandalone(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
