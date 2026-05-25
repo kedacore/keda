@@ -72,7 +72,7 @@ Rules (from [`CONTRIBUTING.md#Changelog`](CONTRIBUTING.md#changelog)):
 ## Code style
 
 - Follow the existing patterns in the package you are editing. Do not introduce new abstractions, frameworks, or dependencies without justification in the PR description.
-- Scalers in [`pkg/scalers/scalers_builder.go`](pkg/scalers) must remain sorted (enforced by [`tools/sort_scalers.sh`](tools/sort_scalers.sh)).
+- Scalers in [`pkg/scaling/scalers_builder.go`](pkg/scaling/scalers_builder.go) must remain sorted (enforced by [`tools/sort_scalers.sh`](tools/sort_scalers.sh)).
 - Honour the metrics and logging guidelines in [`CONTRIBUTING.md#metrics-and-logging`](CONTRIBUTING.md#metrics-and-logging) when adding telemetry.
 
 ## Scope discipline
