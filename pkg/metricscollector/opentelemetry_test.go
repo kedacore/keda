@@ -103,6 +103,59 @@ func TestLoopLatency(t *testing.T) {
 	assert.Equal(t, data.Value, float64(0.5))
 }
 
+func TestRecordHTTPClientRequest(t *testing.T) {
+	tests := []struct {
+		name           string
+		statusCode     int
+		isError        bool
+		wantStatusCode string
+	}{
+		{"200 success", 200, false, "200"},
+		{"301 redirect", 301, false, "301"},
+		{"404 client error", 404, false, "404"},
+		{"503 server error", 503, false, "503"},
+		{"transport error", 0, true, "error"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testOtel.RecordHTTPClientRequest(0.1, tt.statusCode, tt.isError, "prometheus", "my-trigger", "my-metric", "default", "my-so")
+			got := metricdata.ResourceMetrics{}
+			err := testReader.Collect(context.Background(), &got)
+			assert.Nil(t, err)
+
+			scopeMetrics := got.ScopeMetrics[0]
+			requestCount := retrieveMetric(scopeMetrics.Metrics, "keda.scaler.http.requests.count")
+			assert.NotNil(t, requestCount)
+
+			var found bool
+			for _, dp := range requestCount.Data.(metricdata.Sum[int64]).DataPoints {
+				code, ok := dp.Attributes.Value("status_code")
+				if !ok || code.AsString() != tt.wantStatusCode {
+					continue
+				}
+				scaler, _ := dp.Attributes.Value("scaler")
+				assert.Equal(t, "prometheus", scaler.AsString())
+				triggerName, _ := dp.Attributes.Value("trigger_name")
+				assert.Equal(t, "my-trigger", triggerName.AsString())
+				metricName, _ := dp.Attributes.Value("metric_name")
+				assert.Equal(t, "my-metric", metricName.AsString())
+				ns, _ := dp.Attributes.Value("namespace")
+				assert.Equal(t, "default", ns.AsString())
+				sr, _ := dp.Attributes.Value("scaled_resource")
+				assert.Equal(t, "my-so", sr.AsString())
+				found = true
+				break
+			}
+			assert.True(t, found, "expected data point with status_code=%q", tt.wantStatusCode)
+
+			requestDuration := retrieveMetric(scopeMetrics.Metrics, "keda.scaler.http.request.duration.seconds")
+			assert.NotNil(t, requestDuration)
+			assert.Equal(t, "s", requestDuration.Unit)
+		})
+	}
+}
+
 func TestContinuousMetrics(t *testing.T) {
 	testOtel.RecordScalerActive("testnamespace", "testresource", "testscaler", 0, "testmetric", true, true)
 	testOtel.RecordScalerActive("testnamespace2", "testresource2", "testscaler2", 0, "testmetric", false, false)

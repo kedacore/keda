@@ -176,10 +176,6 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
-        - name: authModes
-          type: string
-          optional: true
-          metadataVariableReadable: true
     - type: artemis-queue
       parameters:
         - name: managementEndpoint
@@ -1936,10 +1932,6 @@ scalers:
           type: string
           default: "false"
           metadataVariableReadable: true
-        - name: authModes
-          type: string
-          optional: true
-          metadataVariableReadable: true
     - type: mssql
       parameters:
         - name: connectionString
@@ -2413,10 +2405,6 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
-        - name: authModes
-          type: string
-          optional: true
-          metadataVariableReadable: true
     - type: prometheus
       parameters:
         - name: serverAddress
@@ -2462,10 +2450,6 @@ scalers:
           optional: true
           metadataVariableReadable: true
         - name: identityOwner
-          type: string
-          optional: true
-          metadataVariableReadable: true
-        - name: authModes
           type: string
           optional: true
           metadataVariableReadable: true
@@ -3721,15 +3705,28 @@ scalers:
         - name: buildId
           type: string
           optional: true
+          deprecatedAnnounce: The 'buildId' setting is DEPRECATED and will be removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead
+          metadataVariableReadable: true
+          envVariableReadable: true
+        - name: workerDeploymentName
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
+        - name: workerDeploymentBuildId
+          type: string
+          optional: true
           metadataVariableReadable: true
           envVariableReadable: true
         - name: selectAllActive
           type: string
           default: "false"
+          deprecatedAnnounce: The 'selectAllActive' setting is DEPRECATED and will be removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead
           metadataVariableReadable: true
         - name: selectUnversioned
           type: string
           default: "false"
+          deprecatedAnnounce: The 'selectUnversioned' setting is DEPRECATED and will be removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Remove it if your workers are unversioned. Or use 'workerDeploymentName' and 'workerDeploymentBuildId' if you're migrating to Worker Deployment Versioning
           metadataVariableReadable: true
         - name: apiKey
           type: string

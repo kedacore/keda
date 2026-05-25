@@ -28,9 +28,31 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+  "github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
+
+func TestBuildScalerRequestCtx(t *testing.T) {
+	RegisterTestingT(t)
+
+	sb := ScalerBuilder{
+		ScalerConfig: scalersconfig.ScalerConfig{
+			TriggerType:             "prometheus",
+			TriggerName:             "my-trigger",
+			ScalableObjectNamespace: "my-namespace",
+			ScalableObjectName:      "my-scaled-object",
+		},
+	}
+
+	ctx := metricscollector.BuildScalerRequestCtx(context.Background(), sb.ScalerConfig, "my-metric")
+
+	Expect(ctx.Value(metricscollector.ScalerContextKey)).To(Equal("prometheus"))
+	Expect(ctx.Value(metricscollector.TriggerNameContextKey)).To(Equal("my-trigger"))
+	Expect(ctx.Value(metricscollector.MetricNameContextKey)).To(Equal("my-metric"))
+	Expect(ctx.Value(metricscollector.NamespaceContextKey)).To(Equal("my-namespace"))
+	Expect(ctx.Value(metricscollector.ScaledResourceContextKey)).To(Equal("my-scaled-object"))
+}
 
 func TestEmptyScalersCache(t *testing.T) {
 	RegisterTestingT(t)

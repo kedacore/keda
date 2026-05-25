@@ -150,6 +150,8 @@ data:
     auth_oauth2.scope_prefix = rabbitmq.
     auth_oauth2.additional_scopes_key = {{.OAuthScopesKey}}
     auth_oauth2.jwks_url = {{.OAuthJwksURI}}
+    auth_oauth2.https.peer_verification = verify_none
+    auth_oauth2.https.hostname_verification = wildcard
     {{end}}
   enabled_plugins: |
     [rabbitmq_management].
@@ -353,6 +355,15 @@ func WithAzureADOAuth(tenantID string, clientID string) RabbitOAuthConfig {
 		ClientID:  clientID,
 		ScopesKey: "roles",
 		JwksURI:   fmt.Sprintf("https://login.microsoftonline.com/%s/discovery/keys", tenantID),
+	}
+}
+
+func WithKeycloakOAuth(clientID, keycloakNamespace, realmName string) RabbitOAuthConfig {
+	return RabbitOAuthConfig{
+		Enable:    true,
+		ClientID:  clientID,
+		ScopesKey: "rabbitmq_permissions",
+		JwksURI:   fmt.Sprintf("https://keycloak.%s.svc.cluster.local:8443/realms/%s/protocol/openid-connect/certs", keycloakNamespace, realmName),
 	}
 }
 

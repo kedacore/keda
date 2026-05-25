@@ -7347,18 +7347,6 @@ func rpc2_deserializeOpErrorDeleteDashboards(resp *smithyhttp.Response) error {
 			verr.ErrorCodeOverride = ptr.String(qtype)
 		}
 		return verr
-	case "DashboardNotFoundError":
-		verr, err := deserializeCBOR_DashboardNotFoundError(v)
-		if err != nil {
-			return &smithy.DeserializationError{
-				Err:      fmt.Errorf("deserialize com.amazonaws.cloudwatch#DashboardNotFoundError: %w", err),
-				Snapshot: payload,
-			}
-		}
-		if qtype := getAwsQueryErrorCode(resp); len(qtype) > 0 {
-			verr.ErrorCodeOverride = ptr.String(qtype)
-		}
-		return verr
 	case "InternalServiceFault":
 		verr, err := deserializeCBOR_InternalServiceFault(v)
 		if err != nil {

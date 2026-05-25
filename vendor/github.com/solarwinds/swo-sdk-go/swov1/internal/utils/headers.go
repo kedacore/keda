@@ -45,6 +45,12 @@ func populateHeaders(headers interface{}, globals interface{}, reqHeaders http.H
 			continue
 		}
 
+		defaultConstValue := handleDefaultConstHeaderValue(valType, fieldType.Tag)
+		if defaultConstValue != "" {
+			reqHeaders.Add(tag.ParamName, defaultConstValue)
+			continue
+		}
+
 		value := serializeHeader(fieldType.Type, valType, tag.Explode)
 		if value != "" {
 			reqHeaders.Add(tag.ParamName, value)
@@ -52,6 +58,22 @@ func populateHeaders(headers interface{}, globals interface{}, reqHeaders http.H
 	}
 
 	return globalsAlreadyPopulated
+}
+
+func handleDefaultConstHeaderValue(v reflect.Value, tag reflect.StructTag) string {
+	constTag := tag.Get("const")
+	if constTag != "" {
+		return constTag
+	}
+
+	if isNil(v.Type(), v) {
+		defaultTag := tag.Get("default")
+		if defaultTag != "" {
+			return defaultTag
+		}
+	}
+
+	return ""
 }
 
 func serializeHeader(objType reflect.Type, objValue reflect.Value, explode bool) string {
@@ -91,10 +113,19 @@ func serializeHeader(objType reflect.Type, objValue reflect.Value, explode bool)
 				continue
 			}
 
-			if explode {
-				items = append(items, fmt.Sprintf("%s=%s", fieldName, valToString(valType.Interface())))
+			var value string
+
+			defaultConstValue := handleDefaultConstHeaderValue(valType, fieldType.Tag)
+			if defaultConstValue != "" {
+				value = defaultConstValue
 			} else {
-				items = append(items, fieldName, valToString(valType.Interface()))
+				value = valToString(valType.Interface())
+			}
+
+			if explode {
+				items = append(items, fmt.Sprintf("%s=%s", fieldName, value))
+			} else {
+				items = append(items, fieldName, value)
 			}
 		}
 

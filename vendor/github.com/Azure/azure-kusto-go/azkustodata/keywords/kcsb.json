@@ -1,0 +1,219 @@
+{
+  "version": "2025-01-15",
+  "keywords": [
+    {
+      "name": "Data Source",
+      "aliases": [
+        "server",
+        "addr",
+        "address",
+        "networkaddress"
+      ],
+      "type": "string",
+      "secret": false
+    },
+    {
+      "name": "dSTS Federated Security",
+      "aliases": [
+        "dstsfed",
+        "dststokentype"
+      ],
+      "type": "bool",
+      "secret": false
+    },
+    {
+      "name": "Streaming",
+      "aliases": [],
+      "type": "bool",
+      "secret": false
+    },
+    {
+      "name": "Uncompressed",
+      "aliases": [],
+      "type": "bool",
+      "secret": false
+    },
+    {
+      "name": "EnforceMfa",
+      "aliases": [],
+      "type": "bool",
+      "secret": false
+    },
+    {
+      "name": "Accept",
+      "aliases": [],
+      "type": "bool",
+      "secret": false
+    },
+    {
+      "name": "Query Consistency",
+      "aliases": [],
+      "type": "bool",
+      "secret": false
+    },
+    {
+      "name": "Password",
+      "aliases": [
+        "pwd"
+      ],
+      "type": "string",
+      "secret": true
+    },
+    {
+      "name": "Data Source Uri",
+      "aliases": [
+        "serveruri",
+        "clusteruri"
+      ],
+      "type": "string",
+      "secret": false
+    },
+    {
+      "name": "Azure Region",
+      "aliases": [
+        "region"
+      ],
+      "type": "string",
+      "secret": false
+    },
+    {
+      "name": "Namespace",
+      "aliases": [
+        "ns"
+      ],
+      "type": "string",
+      "secret": false
+    },
+    {
+      "name": "Application Certificate Thumbprint",
+      "aliases": [
+        "appcert"
+      ],
+      "type": "string",
+      "secret": true
+    },
+    {
+      "name": "Application Certificate Issuer Distinguished Name",
+      "aliases": [
+        "applicationcertificateissuer"
+      ],
+      "type": "string",
+      "secret": true
+    },
+    {
+      "name": "Application Certificate Subject Distinguished Name",
+      "aliases": [
+        "applicationcertificatesubject"
+      ],
+      "type": "string",
+      "secret": true
+    },
+    {
+      "name": "Application Token",
+      "aliases": [
+        "apptoken"
+      ],
+      "type": "string",
+      "secret": true
+    },
+    {
+      "name": "User Token",
+      "aliases": [
+        "usrtoken"
+      ],
+      "type": "string",
+      "secret": true
+    },
+    {
+      "name": "Application Key",
+      "aliases": [
+        "appkey"
+      ],
+      "type": "string",
+      "secret": true
+    },
+    {
+      "name": "Application Certificate Blob",
+      "aliases": [],
+      "type": "string",
+      "secret": true
+    },
+    {
+      "name": "Application Certificate SendX5c",
+      "aliases": [
+        "applicationcertificatex5c",
+        "sendx5c",
+        "applicationcertificatesendpubliccertificate",
+        "sendcertificatechain"
+      ],
+      "type": "bool",
+      "secret": false
+    },
+    {
+      "name": "User ID",
+      "aliases": [
+        "user",
+        "uid",
+        "loginhint",
+        "aaduserid"
+      ],
+      "type": "string",
+      "secret": false
+    },
+    {
+      "name": "Initial Catalog",
+      "aliases": [
+        "database"
+      ],
+      "type": "string",
+      "secret": false
+    },
+    {
+      "name": "AAD Federated Security",
+      "aliases": [
+        "federatedsecurity",
+        "aadfed",
+        "fed",
+        "federated"
+      ],
+      "type": "bool",
+      "secret": false
+    },
+    {
+      "name": "Authority Id",
+      "aliases": [
+        "tenantid",
+        "tid",
+        "tenant",
+        "authority",
+        "domainhint"
+      ],
+      "type": "string",
+      "secret": false
+    },
+    {
+      "name": "Application Name for Tracing",
+      "aliases": [
+        "traceappname"
+      ],
+      "type": "string",
+      "secret": false
+    },
+    {
+      "name": "User Name for Tracing",
+      "aliases": [
+        "traceusername"
+      ],
+      "type": "string",
+      "secret": false
+    },
+    {
+      "name": "Application Client Id",
+      "aliases": [
+        "appclientid"
+      ],
+      "type": "string",
+      "secret": false
+    }
+  ]
+}
