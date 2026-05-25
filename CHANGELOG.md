@@ -123,6 +123,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Pulsar Scaler**: Drop bearer/basic auth headers on redirects to a different host or on https->http downgrades to prevent credential leakage ([#7686](https://github.com/kedacore/keda/issues/7686))
 - **RabbitMQ Scaler**: Fix AMQP connection leak by recovering channels on the existing connection and closing connections properly ([#6266](https://github.com/kedacore/keda/issues/6266))
 - **RabbitMQ Scaler**: Use SASL EXTERNAL for RabbitMQ AMQP TLS without credentials ([#6840](https://github.com/kedacore/keda/issues/6840))
+- **Redis Scaler**: Use literal command names in Lua script to fix compatibility with Alibaba Cloud Redis Cluster ([#7758](https://github.com/kedacore/keda/issues/7758))
 - **Solace Scaler**: Fix URL escaping for Message VPN and Queue names ([#7481](https://github.com/kedacore/keda/pull/7481))
 - **Solr Scaler**: Use net/url to safely encode query parameters ([#7467](https://github.com/kedacore/keda/pull/7467))
 
