@@ -3,7 +3,9 @@
 package components
 
 type CommonPageInfo struct {
+	// Token for the previous page, or empty string if on the first page.
 	PrevPage string `json:"prevPage"`
+	// Token for the next page, or empty string if on the last page.
 	NextPage string `json:"nextPage"`
 }
 

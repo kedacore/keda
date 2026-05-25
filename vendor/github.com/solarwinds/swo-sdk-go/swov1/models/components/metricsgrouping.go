@@ -3,6 +3,7 @@
 package components
 
 type MetricsGrouping struct {
+	// Attribute key-value pairs identifying this grouping.
 	Attributes []CommonKeyValuePair `json:"attributes"`
 	// An empty list indicates no data points are available.
 	Measurements []MetricsMeasurement `json:"measurements"`

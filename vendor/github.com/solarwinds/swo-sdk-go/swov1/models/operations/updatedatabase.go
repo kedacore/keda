@@ -7,7 +7,9 @@ import (
 )
 
 type UpdateDatabaseRequest struct {
-	EntityID                 string                              `pathParam:"style=simple,explode=false,name=entityId"`
+	// Entity ID.
+	EntityID string `pathParam:"style=simple,explode=false,name=entityId"`
+	// Database configuration updates.
 	DboUpdateDatabaseRequest components.DboUpdateDatabaseRequest `request:"mediaType=application/json"`
 }
 

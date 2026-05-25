@@ -313,6 +313,8 @@ type AlertsPoliciesSearchResultSet struct {
 type AlertsPolicy struct {
 	// Account ID of the policy.
 	AccountID int `json:"accountId"`
+	// The entity GUID for the policy.
+	EntityGuid string `json:"entityGuid"`
 	// Primary key for policies.
 	ID string `json:"id"`
 	// Determines how incidents are created for critical violations of the conditions contained in the policy.

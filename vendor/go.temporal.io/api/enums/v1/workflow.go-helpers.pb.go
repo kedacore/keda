@@ -237,8 +237,9 @@ func VersioningBehaviorFromString(s string) (VersioningBehavior, error) {
 
 var (
 	ContinueAsNewVersioningBehavior_shorthandValue = map[string]int32{
-		"Unspecified": 0,
-		"AutoUpgrade": 1,
+		"Unspecified":       0,
+		"AutoUpgrade":       1,
+		"UseRampingVersion": 2,
 	}
 )
 

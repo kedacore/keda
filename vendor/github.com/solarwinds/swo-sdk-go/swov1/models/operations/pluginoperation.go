@@ -7,7 +7,9 @@ import (
 )
 
 type PluginOperationRequest struct {
-	EntityID  string `pathParam:"style=simple,explode=false,name=entityId"`
+	// Entity ID.
+	EntityID string `pathParam:"style=simple,explode=false,name=entityId"`
+	// Name of the operation to apply to the plugin.
 	Operation string `pathParam:"style=simple,explode=false,name=operation"`
 }
 

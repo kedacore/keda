@@ -42,6 +42,43 @@ func (this *WorkflowExecutionStartedEventAttributes) Equal(that interface{}) boo
 	return proto.Equal(this, that1)
 }
 
+// Marshal an object of type DeclinedTargetVersionUpgrade to the protobuf v3 wire format
+func (val *DeclinedTargetVersionUpgrade) Marshal() ([]byte, error) {
+	return proto.Marshal(val)
+}
+
+// Unmarshal an object of type DeclinedTargetVersionUpgrade from the protobuf v3 wire format
+func (val *DeclinedTargetVersionUpgrade) Unmarshal(buf []byte) error {
+	return proto.Unmarshal(buf, val)
+}
+
+// Size returns the size of the object, in bytes, once serialized
+func (val *DeclinedTargetVersionUpgrade) Size() int {
+	return proto.Size(val)
+}
+
+// Equal returns whether two DeclinedTargetVersionUpgrade values are equivalent by recursively
+// comparing the message's fields.
+// For more information see the documentation for
+// https://pkg.go.dev/google.golang.org/protobuf/proto#Equal
+func (this *DeclinedTargetVersionUpgrade) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	var that1 *DeclinedTargetVersionUpgrade
+	switch t := that.(type) {
+	case *DeclinedTargetVersionUpgrade:
+		that1 = t
+	case DeclinedTargetVersionUpgrade:
+		that1 = &t
+	default:
+		return false
+	}
+
+	return proto.Equal(this, that1)
+}
+
 // Marshal an object of type WorkflowExecutionCompletedEventAttributes to the protobuf v3 wire format
 func (val *WorkflowExecutionCompletedEventAttributes) Marshal() ([]byte, error) {
 	return proto.Marshal(val)
@@ -1847,6 +1884,43 @@ func (this *WorkflowExecutionUnpausedEventAttributes) Equal(that interface{}) bo
 	case *WorkflowExecutionUnpausedEventAttributes:
 		that1 = t
 	case WorkflowExecutionUnpausedEventAttributes:
+		that1 = &t
+	default:
+		return false
+	}
+
+	return proto.Equal(this, that1)
+}
+
+// Marshal an object of type WorkflowExecutionTimeSkippingTransitionedEventAttributes to the protobuf v3 wire format
+func (val *WorkflowExecutionTimeSkippingTransitionedEventAttributes) Marshal() ([]byte, error) {
+	return proto.Marshal(val)
+}
+
+// Unmarshal an object of type WorkflowExecutionTimeSkippingTransitionedEventAttributes from the protobuf v3 wire format
+func (val *WorkflowExecutionTimeSkippingTransitionedEventAttributes) Unmarshal(buf []byte) error {
+	return proto.Unmarshal(buf, val)
+}
+
+// Size returns the size of the object, in bytes, once serialized
+func (val *WorkflowExecutionTimeSkippingTransitionedEventAttributes) Size() int {
+	return proto.Size(val)
+}
+
+// Equal returns whether two WorkflowExecutionTimeSkippingTransitionedEventAttributes values are equivalent by recursively
+// comparing the message's fields.
+// For more information see the documentation for
+// https://pkg.go.dev/google.golang.org/protobuf/proto#Equal
+func (this *WorkflowExecutionTimeSkippingTransitionedEventAttributes) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	var that1 *WorkflowExecutionTimeSkippingTransitionedEventAttributes
+	switch t := that.(type) {
+	case *WorkflowExecutionTimeSkippingTransitionedEventAttributes:
+		that1 = t
+	case WorkflowExecutionTimeSkippingTransitionedEventAttributes:
 		that1 = &t
 	default:
 		return false
