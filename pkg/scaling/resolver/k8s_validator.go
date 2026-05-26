@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -10,10 +11,32 @@ import (
 
 var parser = jwt.NewParser()
 
+const maxProjectedServiceAccountTokenSize = 1 << 20
+
 func readKubernetesServiceAccountProjectedToken(path string) ([]byte, error) {
-	jwt, err := os.ReadFile(path)
+	info, err := os.Stat(path)
 	if err != nil {
 		return []byte{}, err
+	}
+	if !info.Mode().IsRegular() {
+		return []byte{}, fmt.Errorf("service account token path %s is not a regular file", path)
+	}
+	if info.Size() > maxProjectedServiceAccountTokenSize {
+		return []byte{}, fmt.Errorf("service account token file %s exceeds maximum size of %d bytes", path, maxProjectedServiceAccountTokenSize)
+	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		return []byte{}, err
+	}
+	defer file.Close()
+
+	jwt, err := io.ReadAll(io.LimitReader(file, maxProjectedServiceAccountTokenSize+1))
+	if err != nil {
+		return []byte{}, err
+	}
+	if len(jwt) > maxProjectedServiceAccountTokenSize {
+		return []byte{}, fmt.Errorf("service account token file %s exceeds maximum size of %d bytes", path, maxProjectedServiceAccountTokenSize)
 	}
 	if err = validateK8sSAToken(jwt); err != nil {
 		return []byte{}, err
