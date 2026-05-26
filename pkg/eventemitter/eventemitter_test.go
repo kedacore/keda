@@ -25,7 +25,7 @@ import (
 
 	"go.uber.org/mock/gomock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -42,7 +42,7 @@ func TestEventHandler_FailedEmitEvent(t *testing.T) {
 	cloudEventSourceNamespace := testNamespaceGlobal
 
 	ctrl := gomock.NewController(t)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	mockClient := mock_client.NewMockClient(ctrl)
 	eventHandler := mock_eventemitter.NewMockEventDataHandler(ctrl)
 	cloudEventSource := eventingv1alpha1.CloudEventSource{
@@ -107,7 +107,7 @@ func TestEventHandler_DirectCall(t *testing.T) {
 	cloudEventSourceNamespace := testNamespaceGlobal
 
 	ctrl := gomock.NewController(t)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	mockClient := mock_client.NewMockClient(ctrl)
 
 	eventHandler := mock_eventemitter.NewMockEventDataHandler(ctrl)

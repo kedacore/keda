@@ -25,7 +25,7 @@ import (
 
 	"github.com/expr-lang/expr/vm"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -44,7 +44,7 @@ type ScalersCache struct {
 	ScaledObject             *kedav1alpha1.ScaledObject
 	Scalers                  []ScalerBuilder
 	ScalableObjectGeneration int64
-	Recorder                 record.EventRecorder
+	Recorder                 events.EventRecorder
 	CompiledFormula          *vm.Program
 	ReaderDrainBudget        time.Duration
 	mutex                    sync.RWMutex

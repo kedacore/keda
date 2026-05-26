@@ -35,7 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -61,7 +61,7 @@ func TestGetScaledObjectMetrics_DirectCall(t *testing.T) {
 	longPollingInterval := int32(300)
 
 	ctrl := gomock.NewController(t)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	mockClient := mock_client.NewMockClient(ctrl)
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
 
@@ -154,7 +154,7 @@ func TestGetScaledObjectMetrics_FromCache(t *testing.T) {
 	longPollingInterval := int32(300)
 
 	ctrl := gomock.NewController(t)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	mockClient := mock_client.NewMockClient(ctrl)
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
 
@@ -262,7 +262,7 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 	longPollingInterval := int32(300)
 
 	ctrl := gomock.NewController(t)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	mockClient := mock_client.NewMockClient(ctrl)
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
 
@@ -385,7 +385,7 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockClient := mock_client.NewMockClient(ctrl)
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 
 	metricsSpecs := []v2.MetricSpec{createMetricSpec(1, "metric-name")}
 
@@ -450,7 +450,7 @@ func TestCheckScaledObjectScalersWithTriggerAuthError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockClient := mock_client.NewMockClient(ctrl)
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 
 	scaler := mock_scalers.NewMockScaler(ctrl)
 	scaler.EXPECT().Close(gomock.Any())
@@ -577,7 +577,7 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockClient := mock_client.NewMockClient(ctrl)
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 
 	metricsSpecs := []v2.MetricSpec{createMetricSpec(1, "metric-name")}
 	metricValue := scalers.GenerateMetricInMili("metric-name", float64(10))
@@ -659,7 +659,7 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 func TestGetScaledJobState(t *testing.T) {
 	metricName := "s0-queueLength"
 	ctrl := gomock.NewController(t)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	// Keep the current behavior
 	// Assme 1 trigger only
 	scaledJobSingle := createScaledJob(1, 100, "") // testing default = max
@@ -762,7 +762,7 @@ func TestGetScaledJobState(t *testing.T) {
 func TestGetScaledJobStateIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T) {
 	metricName := "s0-queueLength"
 	ctrl := gomock.NewController(t)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	// Keep the current behavior
 	// Assme 1 trigger only
 	scaledJobSingle := createScaledJob(1, 100, "") // testing default = max
@@ -945,7 +945,7 @@ func TestScalingModifiersFormula(t *testing.T) {
 	compositeMetricName := compositeMetricNameGlobal
 
 	ctrl := gomock.NewController(t)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	mockClient := mock_client.NewMockClient(ctrl)
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
 
@@ -1333,7 +1333,7 @@ func startInFlightCloseRace(t *testing.T, scalerCache *cache.ScalersCache, scale
 
 func TestGetScaledJobMetrics_CacheClosedIsBenign(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	recorder := record.NewFakeRecorder(10)
+	recorder := events.NewFakeRecorder(10)
 	metricName := "s0-queueLength"
 	metricsSpecs := []v2.MetricSpec{createMetricSpec(10, metricName)}
 
@@ -1383,7 +1383,7 @@ func TestGetScaledObjectState_CacheClosedIsBenign(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockClient := mock_client.NewMockClient(ctrl)
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
-	recorder := record.NewFakeRecorder(10)
+	recorder := events.NewFakeRecorder(10)
 
 	scaler := mock_scalers.NewMockScaler(ctrl)
 	factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
