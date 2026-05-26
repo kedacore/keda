@@ -1889,7 +1889,7 @@ go.temporal.io/api/worker/v1
 go.temporal.io/api/workflow/v1
 go.temporal.io/api/workflowservice/v1
 go.temporal.io/api/workflowservicemock/v1
-# go.temporal.io/sdk v1.43.0
+# go.temporal.io/sdk v1.44.0
 ## explicit; go 1.24.0
 go.temporal.io/sdk/client
 go.temporal.io/sdk/converter
@@ -1903,7 +1903,6 @@ go.temporal.io/sdk/internal/common/util
 go.temporal.io/sdk/internal/extstore
 go.temporal.io/sdk/internal/log
 go.temporal.io/sdk/internal/protocol
-go.temporal.io/sdk/internal/temporalapi/sdk/v1
 go.temporal.io/sdk/log
 # go.uber.org/atomic v1.11.0
 ## explicit; go 1.18

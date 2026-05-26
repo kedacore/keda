@@ -65,13 +65,37 @@ type (
 		Summary string
 	}
 
-	executeNexusOperationParams struct {
+	ExecuteNexusOperationParams struct {
 		client      NexusClient
 		operation   string
 		input       *commonpb.Payload
 		options     NexusOperationOptions
 		nexusHeader map[string]string
 	}
+)
+
+// NewExecuteNexusOperationParams builds a parameters struct for
+// WorkflowEnvironment.ExecuteNexusOperation. Exposed so that non-Go SDKs
+// (e.g. roadrunner-temporal proxying for PHP) can populate the struct from
+// outside the `internal` package — the fields themselves stay unexported to
+// keep the SDK free to evolve them.
+func NewExecuteNexusOperationParams(
+	client NexusClient,
+	operation string,
+	input *commonpb.Payload,
+	options NexusOperationOptions,
+	nexusHeader map[string]string,
+) ExecuteNexusOperationParams {
+	return ExecuteNexusOperationParams{
+		client:      client,
+		operation:   operation,
+		input:       input,
+		options:     options,
+		nexusHeader: nexusHeader,
+	}
+}
+
+type (
 
 	// WorkflowEnvironment Represents the environment for workflow.
 	// Should only be used within the scope of workflow definition.
@@ -88,7 +112,7 @@ type (
 		RequestCancelChildWorkflow(namespace, workflowID string)
 		RequestCancelExternalWorkflow(namespace, workflowID, runID string, callback ResultHandler)
 		ExecuteChildWorkflow(params ExecuteWorkflowParams, callback ResultHandler, startedHandler func(r WorkflowExecution, e error))
-		ExecuteNexusOperation(params executeNexusOperationParams, callback func(*commonpb.Payload, error), startedHandler func(token string, e error)) int64
+		ExecuteNexusOperation(params ExecuteNexusOperationParams, callback func(*commonpb.Payload, error), startedHandler func(token string, e error)) int64
 		RequestCancelNexusOperation(seq int64)
 		GetLogger() log.Logger
 		GetMetricsHandler() metrics.Handler
