@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -23,6 +24,7 @@ type awsDynamoDBScaler struct {
 	metricType v2.MetricTargetType
 	metadata   *awsDynamoDBMetadata
 	dbClient   dynamodb.QueryAPIClient
+	httpClient *http.Client
 	logger     logr.Logger
 }
 
@@ -57,7 +59,8 @@ func NewAwsDynamoDBScaler(ctx context.Context, config *scalersconfig.ScalerConfi
 	if err != nil {
 		return nil, fmt.Errorf("error parsing DynamoDb metadata: %w", err)
 	}
-	dbClient, err := createDynamoDBClient(ctx, meta)
+	httpClient := awsutils.NewHTTPClient()
+	dbClient, err := createDynamoDBClient(ctx, meta, httpClient)
 	if err != nil {
 		return nil, fmt.Errorf("error when creating dynamodb client: %w", err)
 	}
@@ -65,6 +68,7 @@ func NewAwsDynamoDBScaler(ctx context.Context, config *scalersconfig.ScalerConfi
 		metricType: metricType,
 		metadata:   meta,
 		dbClient:   dbClient,
+		httpClient: httpClient,
 		logger:     InitializeLogger(config, "aws_dynamodb_scaler"),
 	}, nil
 }
@@ -129,7 +133,7 @@ func parseAwsDynamoDBMetadata(config *scalersconfig.ScalerConfig) (*awsDynamoDBM
 	return meta, nil
 }
 
-func createDynamoDBClient(ctx context.Context, metadata *awsDynamoDBMetadata) (*dynamodb.Client, error) {
+func createDynamoDBClient(ctx context.Context, metadata *awsDynamoDBMetadata, httpClient *http.Client) (*dynamodb.Client, error) {
 	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsAuthorization)
 	if err != nil {
 		return nil, err
@@ -138,6 +142,9 @@ func createDynamoDBClient(ctx context.Context, metadata *awsDynamoDBMetadata) (*
 	return dynamodb.NewFromConfig(*cfg, func(options *dynamodb.Options) {
 		if metadata.AwsEndpoint != "" {
 			options.BaseEndpoint = aws.String(metadata.AwsEndpoint)
+		}
+		if httpClient != nil {
+			options.HTTPClient = httpClient
 		}
 	}), nil
 }
@@ -170,6 +177,9 @@ func (s *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2.Metric
 
 func (s *awsDynamoDBScaler) Close(context.Context) error {
 	awsutils.ClearAwsConfig(s.metadata.awsAuthorization)
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 
@@ -203,7 +213,7 @@ func (s *awsDynamoDBScaler) GetQueryMetrics(ctx context.Context) (float64, error
 func json2Map(js string) (m map[string]string, err error) {
 	err = bson.UnmarshalExtJSON([]byte(js), true, &m)
 	if err != nil {
-		return nil, fmt.Errorf("%v: %w", ErrAwsDynamoInvalidExpressionAttributeNames, err)
+		return nil, errors.Join(ErrAwsDynamoInvalidExpressionAttributeNames, err)
 	}
 
 	if len(m) == 0 {

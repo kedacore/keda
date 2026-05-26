@@ -34,6 +34,7 @@ var (
 	otCrdTotalsCounterDeprecated     api.Int64UpDownCounter
 	otTriggerRegisteredTotalsCounter api.Int64UpDownCounter
 	otCrdRegisteredTotalsCounter     api.Int64UpDownCounter
+	otEmptyUpstreamResponses         api.Int64Counter
 
 	otelScalerMetricVals                  []OtelMetricFloat64Val
 	otelScalerMetricsLatencyVals          []OtelMetricFloat64Val
@@ -47,6 +48,9 @@ var (
 
 	otelScalerActiveVals []OtelMetricFloat64Val
 	otelScalerPauseVals  []OtelMetricFloat64Val
+
+	otHTTPClientRequestsCounter api.Int64Counter
+	otHTTPClientRequestDuration api.Float64Histogram
 )
 
 type OtelMetrics struct {
@@ -98,7 +102,7 @@ func NewOtelMetrics(options ...metric.Option) *OtelMetrics {
 
 func initMeters() {
 	var err error
-	msg := "create opentelemetry counter failed"
+	msg := "failed to create OpenTelemetry instrument"
 
 	otScalerErrorsCounter, err = meter.Int64Counter("keda.scaler.errors", api.WithDescription("Number of scaler errors"))
 	if err != nil {
@@ -131,6 +135,11 @@ func initMeters() {
 	}
 
 	otCrdRegisteredTotalsCounter, err = meter.Int64UpDownCounter("keda.resource.registered.count", api.WithDescription("Total number of KEDA custom resources per namespace for each custom resource type (CRD) registered"))
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
+	otEmptyUpstreamResponses, err = meter.Int64Counter("keda.scaler.empty.upstream.responses", api.WithDescription("Number of times a query returns an empty result"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
@@ -216,6 +225,23 @@ func initMeters() {
 		"keda.scaled.object.paused",
 		api.WithDescription("Indicates whether a ScaledObject is paused"),
 		api.WithFloat64Callback(PausedStatusCallback),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
+	otHTTPClientRequestsCounter, err = meter.Int64Counter(
+		"keda.scaler.http.requests.count",
+		api.WithDescription("Total number of outbound HTTP requests issued during scaler metric collection, labeled by HTTP status code."),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
+	otHTTPClientRequestDuration, err = meter.Float64Histogram(
+		"keda.scaler.http.request.duration.seconds",
+		api.WithDescription("Duration in seconds of outbound HTTP requests issued during scaler metric collection."),
+		api.WithUnit("s"),
 	)
 	if err != nil {
 		otLog.Error(err, msg)
@@ -495,6 +521,25 @@ func CloudeventQueueStatusCallback(_ context.Context, obsrv api.Float64Observer)
 	return nil
 }
 
+// RecordHTTPClientRequest records the duration and outcome of a single outbound HTTP request.
+func (o *OtelMetrics) RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string) {
+	code := httpStatusCodeLabel(statusCode, isError)
+	counterOpt := api.WithAttributes(
+		attribute.Key("namespace").String(namespace),
+		attribute.Key("scaled_resource").String(scaledResource),
+		attribute.Key("scaler").String(scaler),
+		attribute.Key("trigger_name").String(triggerName),
+		attribute.Key("metric_name").String(metricName),
+		attribute.Key("status_code").String(code),
+	)
+	histOpt := api.WithAttributes(
+		attribute.Key("scaler").String(scaler),
+		attribute.Key("status_code").String(code),
+	)
+	otHTTPClientRequestsCounter.Add(context.Background(), 1, counterOpt)
+	otHTTPClientRequestDuration.Record(context.Background(), durationSeconds, histOpt)
+}
+
 // RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting
 func (o *OtelMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
 	opt := api.WithAttributes(
@@ -505,4 +550,16 @@ func (o *OtelMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
 	otCloudEventQueueStatus.val = float64(value)
 	otCloudEventQueueStatus.measurementOption = opt
 	otCloudEventQueueStatusVals = append(otCloudEventQueueStatusVals, otCloudEventQueueStatus)
+}
+
+// RecordEmptyUpstreamResponse counts the number of times a query returns an empty result
+func (o *OtelMetrics) RecordEmptyUpstreamResponse(namespace, scaledResource, triggerName, metricName, resourceType string, ignoreNullValues bool) {
+	otEmptyUpstreamResponses.Add(context.Background(), 1, api.WithAttributes(
+		attribute.Key("namespace").String(namespace),
+		attribute.Key("scaledResource").String(scaledResource),
+		attribute.Key("triggerName").String(triggerName),
+		attribute.Key("metricName").String(metricName),
+		attribute.Key("isScaledObject").Bool(resourceType == "ScaledObject"),
+		attribute.Key("ignoreNullValues").Bool(ignoreNullValues),
+	))
 }

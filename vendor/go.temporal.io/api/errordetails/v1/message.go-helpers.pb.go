@@ -670,3 +670,40 @@ func (this *ActivityExecutionAlreadyStartedFailure) Equal(that interface{}) bool
 
 	return proto.Equal(this, that1)
 }
+
+// Marshal an object of type NexusOperationExecutionAlreadyStartedFailure to the protobuf v3 wire format
+func (val *NexusOperationExecutionAlreadyStartedFailure) Marshal() ([]byte, error) {
+	return proto.Marshal(val)
+}
+
+// Unmarshal an object of type NexusOperationExecutionAlreadyStartedFailure from the protobuf v3 wire format
+func (val *NexusOperationExecutionAlreadyStartedFailure) Unmarshal(buf []byte) error {
+	return proto.Unmarshal(buf, val)
+}
+
+// Size returns the size of the object, in bytes, once serialized
+func (val *NexusOperationExecutionAlreadyStartedFailure) Size() int {
+	return proto.Size(val)
+}
+
+// Equal returns whether two NexusOperationExecutionAlreadyStartedFailure values are equivalent by recursively
+// comparing the message's fields.
+// For more information see the documentation for
+// https://pkg.go.dev/google.golang.org/protobuf/proto#Equal
+func (this *NexusOperationExecutionAlreadyStartedFailure) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	var that1 *NexusOperationExecutionAlreadyStartedFailure
+	switch t := that.(type) {
+	case *NexusOperationExecutionAlreadyStartedFailure:
+		that1 = t
+	case NexusOperationExecutionAlreadyStartedFailure:
+		that1 = &t
+	default:
+		return false
+	}
+
+	return proto.Equal(this, that1)
+}

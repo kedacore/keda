@@ -158,8 +158,10 @@ func (x *TimeoutFailureInfo) GetLastHeartbeatDetails() *v1.Payloads {
 }
 
 type CanceledFailureInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Details       *v1.Payloads           `protobuf:"bytes,1,opt,name=details,proto3" json:"details,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Details *v1.Payloads           `protobuf:"bytes,1,opt,name=details,proto3" json:"details,omitempty"`
+	// The identity of the worker or client that requested the cancellation.
+	Identity      string `protobuf:"bytes,2,opt,name=identity,proto3" json:"identity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -201,8 +203,17 @@ func (x *CanceledFailureInfo) GetDetails() *v1.Payloads {
 	return nil
 }
 
+func (x *CanceledFailureInfo) GetIdentity() string {
+	if x != nil {
+		return x.Identity
+	}
+	return ""
+}
+
 type TerminatedFailureInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The identity of the worker or client that requested the termination.
+	Identity      string `protobuf:"bytes,1,opt,name=identity,proto3" json:"identity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -235,6 +246,13 @@ func (x *TerminatedFailureInfo) ProtoReflect() protoreflect.Message {
 // Deprecated: Use TerminatedFailureInfo.ProtoReflect.Descriptor instead.
 func (*TerminatedFailureInfo) Descriptor() ([]byte, []int) {
 	return file_temporal_api_failure_v1_message_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *TerminatedFailureInfo) GetIdentity() string {
+	if x != nil {
+		return x.Identity
+	}
+	return ""
 }
 
 type ServerFailureInfo struct {
@@ -960,10 +978,12 @@ const file_temporal_api_failure_v1_message_proto_rawDesc = "" +
 	"\bcategory\x18\x05 \x01(\x0e2/.temporal.api.enums.v1.ApplicationErrorCategoryR\bcategory\"\xb3\x01\n" +
 	"\x12TimeoutFailureInfo\x12E\n" +
 	"\ftimeout_type\x18\x01 \x01(\x0e2\".temporal.api.enums.v1.TimeoutTypeR\vtimeoutType\x12V\n" +
-	"\x16last_heartbeat_details\x18\x02 \x01(\v2 .temporal.api.common.v1.PayloadsR\x14lastHeartbeatDetails\"Q\n" +
+	"\x16last_heartbeat_details\x18\x02 \x01(\v2 .temporal.api.common.v1.PayloadsR\x14lastHeartbeatDetails\"m\n" +
 	"\x13CanceledFailureInfo\x12:\n" +
-	"\adetails\x18\x01 \x01(\v2 .temporal.api.common.v1.PayloadsR\adetails\"\x17\n" +
-	"\x15TerminatedFailureInfo\"8\n" +
+	"\adetails\x18\x01 \x01(\v2 .temporal.api.common.v1.PayloadsR\adetails\x12\x1a\n" +
+	"\bidentity\x18\x02 \x01(\tR\bidentity\"3\n" +
+	"\x15TerminatedFailureInfo\x12\x1a\n" +
+	"\bidentity\x18\x01 \x01(\tR\bidentity\"8\n" +
 	"\x11ServerFailureInfo\x12#\n" +
 	"\rnon_retryable\x18\x01 \x01(\bR\fnonRetryable\"r\n" +
 	"\x18ResetWorkflowFailureInfo\x12V\n" +

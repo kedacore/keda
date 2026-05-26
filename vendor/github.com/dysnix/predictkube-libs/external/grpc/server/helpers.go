@@ -4,9 +4,10 @@ import (
 	"context"
 	"net"
 	"strings"
+	"sync"
 
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	_ "google.golang.org/grpc/encoding/gzip"
@@ -16,6 +17,22 @@ import (
 	"github.com/dysnix/predictkube-libs/external/configs"
 	_ "github.com/dysnix/predictkube-libs/external/grpc/zstd_compressor"
 )
+
+var (
+	serverMetricsOnce sync.Once
+	serverMetrics     *grpcprom.ServerMetrics
+)
+
+// getServerMetrics returns a process-wide *grpcprom.ServerMetrics registered
+// on prometheus.DefaultRegisterer so all gRPC servers in the process share one
+// set of collectors and the existing /metrics endpoint exposes them.
+func getServerMetrics() *grpcprom.ServerMetrics {
+	serverMetricsOnce.Do(func() {
+		serverMetrics = grpcprom.NewServerMetrics(grpcprom.WithServerHandlingTimeHistogram())
+		prometheus.DefaultRegisterer.MustRegister(serverMetrics)
+	})
+	return serverMetrics
+}
 
 const (
 	errClosing = "use of closed network connection"
@@ -88,8 +105,9 @@ func SetGrpcServerOptions(conf *configs.GRPC, baseConf *configs.Base, internalIn
 	// TODO: implement all needed interceptors...
 
 	if baseConf.Monitoring.Enabled {
-		unaryInterceptors = append(unaryInterceptors, grpc_prometheus.UnaryServerInterceptor)
-		streamInterceptors = append(streamInterceptors, grpc_prometheus.StreamServerInterceptor)
+		m := getServerMetrics()
+		unaryInterceptors = append(unaryInterceptors, m.UnaryServerInterceptor())
+		streamInterceptors = append(streamInterceptors, m.StreamServerInterceptor())
 	}
 
 	if len(internalInterceptors) > 0 {
@@ -97,8 +115,8 @@ func SetGrpcServerOptions(conf *configs.GRPC, baseConf *configs.Base, internalIn
 	}
 
 	options = append(options,
-		grpc_middleware.WithUnaryServerChain(unaryInterceptors...),
-		grpc_middleware.WithStreamServerChain(streamInterceptors...),
+		grpc.ChainUnaryInterceptor(unaryInterceptors...),
+		grpc.ChainStreamInterceptor(streamInterceptors...),
 	)
 
 	return options, nil

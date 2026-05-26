@@ -238,16 +238,7 @@ func (s *Logs) SearchLogs(ctx context.Context, request operations.SearchLogsRequ
 
 		return s.SearchLogs(
 			ctx,
-			operations.SearchLogsRequest{
-				Filter:    request.Filter,
-				Group:     request.Group,
-				EntityID:  request.EntityID,
-				StartTime: request.StartTime,
-				EndTime:   request.EndTime,
-				Direction: request.Direction,
-				PageSize:  request.PageSize,
-				SkipToken: request.SkipToken,
-			},
+			request,
 			opts...,
 		)
 	}
@@ -567,12 +558,7 @@ func (s *Logs) ListLogArchives(ctx context.Context, request operations.ListLogAr
 
 		return s.ListLogArchives(
 			ctx,
-			operations.ListLogArchivesRequest{
-				StartTime: request.StartTime,
-				EndTime:   request.EndTime,
-				PageSize:  request.PageSize,
-				SkipToken: request.SkipToken,
-			},
+			request,
 			opts...,
 		)
 	}

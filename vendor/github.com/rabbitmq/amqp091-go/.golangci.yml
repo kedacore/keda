@@ -1,3 +1,42 @@
+version: "2"
 run:
   build-tags:
     - integration
+linters:
+  default: standard
+  enable:
+    - modernize
+  disable:
+    - testpackage
+    - testableexamples
+    - godox
+    - gochecknoinits
+  settings:
+    modernize:
+      disable:
+        # enable when
+        - minmax
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+    rules:
+      - linters:
+          - funlen
+          - gocognit
+          - cyclop
+        source: "integration_test.go"
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

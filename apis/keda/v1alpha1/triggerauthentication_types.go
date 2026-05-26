@@ -104,6 +104,9 @@ type TriggerAuthenticationSpec struct {
 
 	// +optional
 	BoundServiceAccountToken []BoundServiceAccountToken `json:"boundServiceAccountToken,omitempty"`
+
+	// +optional
+	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
 }
 
 // TriggerAuthenticationStatus defines the observed state of TriggerAuthentication
@@ -161,6 +164,10 @@ type AuthPodIdentity struct {
 	// +kubebuilder:validation:Optional
 	// RoleArn sets the AWS RoleArn to be used. Mutually exclusive with IdentityOwner
 	RoleArn *string `json:"roleArn,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// ExternalID sets the External ID to be used when assuming an identity. This is only applicable when using AWS pod identity with a RoleArn.
+	ExternalID *string `json:"externalID,omitempty"`
 
 	// +kubebuilder:validation:Enum=keda;workload
 	// +optional
@@ -401,6 +408,35 @@ type AwsSecretManagerSecret struct {
 type BoundServiceAccountToken struct {
 	Parameter          string `json:"parameter"`
 	ServiceAccountName string `json:"serviceAccountName"`
+}
+
+type OAuth2 struct {
+	// +kubebuilder:validation:Enum=clientCredentials
+	// +kubebuilder:default=clientCredentials
+	Type OAuth2GrantType `json:"type"`
+
+	ClientID string `json:"clientId"`
+
+	// +optional
+	ClientSecret OAuth2ClientSecret `json:"clientSecret,omitempty"`
+
+	TokenURL string `json:"tokenUrl"`
+
+	// +optional
+	Scopes []string `json:"scopes,omitempty"`
+
+	// +optional
+	TokenURLParams map[string]string `json:"tokenUrlParams,omitempty"`
+}
+
+type OAuth2GrantType string
+
+const (
+	OAuth2GrantTypeClientCredentials OAuth2GrantType = "clientCredentials"
+)
+
+type OAuth2ClientSecret struct {
+	ValueFrom ValueFromSecret `json:"valueFrom"`
 }
 
 func init() {

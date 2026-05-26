@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -195,9 +196,36 @@ func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 			if spec.PodIdentity.RoleArn != nil && *spec.PodIdentity.RoleArn != "" && spec.PodIdentity.IsWorkloadIdentityOwner() {
 				return nil, fmt.Errorf("roleArn of PodIdentity can't be set if KEDA isn't identityOwner")
 			}
+			if spec.PodIdentity.ExternalID != nil && *spec.PodIdentity.ExternalID != "" {
+				if spec.PodIdentity.RoleArn == nil || *spec.PodIdentity.RoleArn == "" {
+					return nil, fmt.Errorf("externalID of PodIdentity requires roleArn to be set")
+				}
+			}
 		default:
 			return nil, nil
 		}
 	}
+
+	if spec.OAuth2 != nil {
+		oauth2 := spec.OAuth2
+
+		if oauth2.Type != OAuth2GrantTypeClientCredentials {
+			return nil, fmt.Errorf("oauth2.type must be 'clientCredentials', got '%s'", oauth2.Type)
+		}
+
+		if oauth2.ClientID == "" {
+			return nil, fmt.Errorf("oauth2.clientId is required when oauth2 is configured")
+		}
+
+		if oauth2.TokenURL == "" {
+			return nil, fmt.Errorf("oauth2.tokenUrl is required when oauth2 is configured")
+		}
+
+		parsedURL, err := url.Parse(oauth2.TokenURL)
+		if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
+			return nil, fmt.Errorf("oauth2.tokenUrl must be a valid http or https URL")
+		}
+	}
+
 	return nil, nil
 }

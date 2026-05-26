@@ -173,6 +173,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewDatadogScaler(config)
 	case "dynatrace":
 		return scalers.NewDynatraceScaler(config)
+	case "elastic-forecast":
+		return scalers.NewElasticForecastScaler(config)
 	case "elasticsearch":
 		return scalers.NewElasticsearchScaler(config)
 	case "etcd":
@@ -221,7 +223,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "mongodb":
 		return scalers.NewMongoDBScaler(ctx, config)
 	case "mssql":
-		return scalers.NewMSSQLScaler(config)
+		return scalers.NewMSSQLScaler(ctx, config)
 	case "mysql":
 		return scalers.NewMySQLScaler(config)
 	case "nats-jetstream":
