@@ -113,6 +113,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Forgejo Scaler**: Return correct activity to enable scale-to-zero ([#7527](https://github.com/kedacore/keda/issues/7527))
 - **GCP Cloud Tasks Scaler**: Implement escapeFilterValue for metric filtering ([#7482](https://github.com/kedacore/keda/pull/7482))
 - **GCP Scaler**: Validate Pub/Sub resource name in BuildMQLQuery ([#7468](https://github.com/kedacore/keda/pull/7468))
+- **GCP Storage Scaler**: Metadata is not printed in the log ([#7688](https://github.com/kedacore/keda/issues/7688))
 - **Github Runner Scaler**: Bound etag and per-repo caches to prevent unbounded memory growth when `enableEtags` is on ([#7685](https://github.com/kedacore/keda/issues/7685))
 - **Github Runner Scaler**: Improve URL construction and error handling ([#7495](https://github.com/kedacore/keda/pull/7495))
 - **Github Runner Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
