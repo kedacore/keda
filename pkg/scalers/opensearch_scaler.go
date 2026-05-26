@@ -107,7 +107,7 @@ func newOpensearchAPIClientWithTLS(meta opensearchMetadata, logger logr.Logger) 
 
 	return newOpensearchAPIClientFromConfig(opensearch.Config{
 		Addresses: meta.Addresses,
-		Transport: util.CreateHTTPTransportWithTLSConfig(tlsConfig),
+		Transport: util.CreateRTWithTLSConfig(tlsConfig),
 	}, logger)
 }
 
@@ -121,7 +121,7 @@ func newOpensearchAPIClientWithBasicAuth(meta opensearchMetadata, logger logr.Lo
 		Addresses: meta.Addresses,
 		Username:  meta.Username,
 		Password:  meta.Password,
-		Transport: util.CreateHTTPTransportWithTLSConfig(tlsConfig),
+		Transport: util.CreateRTWithTLSConfig(tlsConfig),
 	}, logger)
 }
 
@@ -269,7 +269,7 @@ func (s *opensearchScaler) searchTemplate(ctx context.Context) ([]byte, error) {
 	}
 	body, err := json.Marshal(query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode search template request: %v", err)
+		return nil, fmt.Errorf("failed to encode search template request: %w", err)
 	}
 
 	searchTemplResponse, err := s.osAPIClient.SearchTemplate(ctx, opensearchapi.SearchTemplateReq{
@@ -324,7 +324,7 @@ func (s *opensearchScaler) readResponseBody(resp *opensearch.Response) ([]byte, 
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read search response: %v", err)
+		return nil, fmt.Errorf("failed to read search response: %w", err)
 	}
 
 	return body, nil
