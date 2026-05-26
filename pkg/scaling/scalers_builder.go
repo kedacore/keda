@@ -73,6 +73,9 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 			}
 			if trigger.AuthenticationRef != nil {
 				config.AuthenticationRefKind = trigger.AuthenticationRef.Kind
+				if config.AuthenticationRefKind == "" {
+					config.AuthenticationRefKind = "TriggerAuthentication"
+				}
 			}
 
 			authParams, podIdentity, err := resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace, h.authClientSet)

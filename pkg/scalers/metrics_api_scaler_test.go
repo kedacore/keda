@@ -235,7 +235,7 @@ func TestMetricAPIScalerClusterTriggerAuthenticationRequiresAuthControlledURL(t 
 			wantURL: "https://global-metrics.keda.svc/metrics",
 		},
 		{
-			name: "cluster auth reference without cluster credentials",
+			name: "cluster auth reference with auth disabled ignores unused credentials",
 			metadata: map[string]string{
 				"url":           "http://tenant.example/metrics",
 				"valueLocation": "count",
@@ -243,6 +243,35 @@ func TestMetricAPIScalerClusterTriggerAuthenticationRequiresAuthControlledURL(t 
 			},
 			authParams: map[string]string{"token": "unused-cluster-secret"},
 			wantURL:    "http://tenant.example/metrics",
+		},
+		{
+			name: "cluster auth custom mode is not applied by metrics-api requests",
+			metadata: map[string]string{
+				"url":           "http://tenant.example/metrics",
+				"valueLocation": "count",
+				"targetValue":   "1",
+				"authMode":      "custom",
+			},
+			authParams: map[string]string{
+				"customAuthHeader": "X-Secret",
+				"customAuthValue":  "cluster-secret",
+			},
+			wantURL: "http://tenant.example/metrics",
+		},
+		{
+			name: "cluster auth oauth mode is not applied by metrics-api requests",
+			metadata: map[string]string{
+				"url":           "http://tenant.example/metrics",
+				"valueLocation": "count",
+				"targetValue":   "1",
+				"authMode":      "oauth",
+			},
+			authParams: map[string]string{
+				"oauthTokenURI": "https://auth.example/token",
+				"clientID":      "cluster-client",
+				"clientSecret":  "cluster-secret",
+			},
+			wantURL: "http://tenant.example/metrics",
 		},
 	}
 

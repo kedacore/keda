@@ -150,9 +150,7 @@ func metricsAPIUsesClusterAuthCredentials(config *scalersconfig.ScalerConfig, me
 	return (meta.MetricsAPIAuth.EnabledAPIKeyAuth() && authParams["apiKey"] != "") ||
 		(meta.MetricsAPIAuth.EnabledBasicAuth() && (authParams["username"] != "" || authParams["password"] != "")) ||
 		(meta.MetricsAPIAuth.EnabledBearerAuth() && (authParams["bearerToken"] != "" || authParams["token"] != "")) ||
-		(meta.MetricsAPIAuth.EnabledTLS() && (authParams["cert"] != "" || authParams["key"] != "" || authParams["ca"] != "")) ||
-		(meta.MetricsAPIAuth.EnabledCustomAuth() && (authParams["customAuthHeader"] != "" || authParams["customAuthValue"] != "")) ||
-		(meta.MetricsAPIAuth.EnabledOAuth() && (authParams["oauthTokenURI"] != "" || authParams["clientID"] != "" || authParams["clientSecret"] != ""))
+		(meta.MetricsAPIAuth.EnabledTLS() && (authParams["cert"] != "" || authParams["key"] != "" || authParams["ca"] != ""))
 }
 
 // GetValueFromResponse uses provided valueLocation to access the numeric value in provided body using the format specified.
