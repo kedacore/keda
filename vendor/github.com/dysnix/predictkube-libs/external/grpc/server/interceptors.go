@@ -42,7 +42,7 @@ func InjectClientMetadataInterceptor() grpc.UnaryServerInterceptor {
 		_, ok := st.MethodByName("GetHeader")
 		if ok {
 
-			header := pb.Header{}
+			header := &pb.Header{}
 
 			md, ok := metadata.FromIncomingContext(ctx)
 			if ok {
@@ -63,10 +63,7 @@ func InjectClientMetadataInterceptor() grpc.UnaryServerInterceptor {
 				}
 			}
 
-			var b interface{} = header
-			field := reflect.New(reflect.TypeOf(b))
-			field.Elem().Set(reflect.ValueOf(b))
-			reflect.ValueOf(req).Elem().FieldByName("Header").Set(field)
+			reflect.ValueOf(req).Elem().FieldByName("Header").Set(reflect.ValueOf(header))
 		}
 
 		resp, err = handler(ctx, req)

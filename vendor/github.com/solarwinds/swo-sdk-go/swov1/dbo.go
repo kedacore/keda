@@ -747,6 +747,7 @@ func (s *Dbo) SetConfig(ctx context.Context, request []components.CommonKeyValue
 
 	switch {
 	case httpRes.StatusCode == 204:
+		utils.DrainBody(httpRes)
 	case httpRes.StatusCode == 400:
 		switch {
 		case utils.MatchContentType(httpRes.Header.Get("Content-Type"), `application/json`):
@@ -1296,6 +1297,7 @@ func (s *Dbo) DeleteDatabase(ctx context.Context, request operations.DeleteDatab
 
 	switch {
 	case httpRes.StatusCode == 204:
+		utils.DrainBody(httpRes)
 	case httpRes.StatusCode == 400:
 		switch {
 		case utils.MatchContentType(httpRes.Header.Get("Content-Type"), `application/json`):
@@ -1578,6 +1580,7 @@ func (s *Dbo) UpdateDatabase(ctx context.Context, request operations.UpdateDatab
 
 	switch {
 	case httpRes.StatusCode == 204:
+		utils.DrainBody(httpRes)
 	case httpRes.StatusCode == 400:
 		switch {
 		case utils.MatchContentType(httpRes.Header.Get("Content-Type"), `application/json`):
@@ -2443,6 +2446,7 @@ func (s *Dbo) PluginOperation(ctx context.Context, request operations.PluginOper
 
 	switch {
 	case httpRes.StatusCode == 204:
+		utils.DrainBody(httpRes)
 	case httpRes.StatusCode == 400:
 		switch {
 		case utils.MatchContentType(httpRes.Header.Get("Content-Type"), `application/json`):
@@ -2718,6 +2722,7 @@ func (s *Dbo) UnobserveDatabase(ctx context.Context, request operations.Unobserv
 
 	switch {
 	case httpRes.StatusCode == 204:
+		utils.DrainBody(httpRes)
 	case httpRes.StatusCode == 400:
 		switch {
 		case utils.MatchContentType(httpRes.Header.Get("Content-Type"), `application/json`):

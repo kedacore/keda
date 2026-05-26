@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2"
@@ -84,6 +85,18 @@ var parseEventHubMetadataDataset = []parseEventHubMetadataTestData{
 		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting},
 		resolvedEnv: sampleEventHubResolvedEnv,
 		isError:     false,
+	},
+	// unprocessed event threshold zero would cause division by zero when computing lag
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "unprocessedEventThreshold": "0"},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     true,
+	},
+	// unprocessed event threshold non-positive
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "unprocessedEventThreshold": "-1"},
+		resolvedEnv: sampleEventHubResolvedEnv,
+		isError:     true,
 	},
 	// invalid activation unprocessed event threshold
 	{
@@ -266,6 +279,26 @@ var testEventHubScaler = azureEventHubScaler{
 			StorageConnection:  "none",
 		},
 	},
+}
+
+func TestParseAzureEventHubMetadataRejectsNonPositiveUnprocessedEventThreshold(t *testing.T) {
+	md := map[string]string{
+		"storageConnectionFromEnv":  storageConnectionSetting,
+		"consumerGroup":             eventHubConsumerGroup,
+		"connectionFromEnv":         eventHubConnectionSetting,
+		"unprocessedEventThreshold": "0",
+	}
+	_, err := parseAzureEventHubMetadata(logr.Discard(), &scalersconfig.ScalerConfig{
+		TriggerMetadata: md,
+		ResolvedEnv:     sampleEventHubResolvedEnv,
+		AuthParams:      map[string]string{},
+	})
+	if err == nil {
+		t.Fatal("expected error for unprocessedEventThreshold=0")
+	}
+	if !strings.Contains(err.Error(), unprocessedEventThresholdParam) {
+		t.Fatalf("expected error to mention %q, got: %v", unprocessedEventThresholdParam, err)
+	}
 }
 
 func TestParseEventHubMetadata(t *testing.T) {

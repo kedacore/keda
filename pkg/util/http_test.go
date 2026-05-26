@@ -38,19 +38,21 @@ func TestCreateHTTPClientWhenValidTimeout(t *testing.T) {
 }
 
 // TestCreateHTTPClient_SharesTransport ensures clients built with the same
-// unsafeSsl value share a single *http.Transport so all scalers reuse one
-// connection pool and DNS cache per TLS mode.
+// unsafeSsl value share a single RoundTripper — and therefore one connection
+// pool and DNS cache — across scalers. The client's Transport is the
+// instrumented wrapper from metricscollector; the underlying *http.Transport
+// is what actually holds the connection pool.
 func TestCreateHTTPClient_SharesTransport(t *testing.T) {
 	c1 := CreateHTTPClient(time.Second, false)
 	c2 := CreateHTTPClient(30*time.Second, false)
 
-	t1, ok := c1.Transport.(*http.Transport)
-	assert.True(t, ok, "expected *http.Transport")
-	t2, ok := c2.Transport.(*http.Transport)
-	assert.True(t, ok, "expected *http.Transport")
+	// Same RoundTripper pointer: the cached instrumented wrapper, which
+	// wraps the shared *http.Transport.
+	assert.Same(t, c1.Transport, c2.Transport, "clients with matching unsafeSsl must share a RoundTripper")
 
-	// Same pointer: shared Transport.
-	assert.Same(t, t1, t2, "clients with matching unsafeSsl must share a Transport")
+	// And the underlying *http.Transport (the actual connection pool) is
+	// shared too.
+	assert.Same(t, sharedHTTPTransport(false), sharedHTTPTransport(false))
 
 	// Timeouts remain independent (per-client).
 	assert.NotEqual(t, c1.Timeout, c2.Timeout)
@@ -62,10 +64,11 @@ func TestCreateHTTPClient_SeparatesByUnsafeSsl(t *testing.T) {
 	cSafe := CreateHTTPClient(time.Second, false)
 	cUnsafe := CreateHTTPClient(time.Second, true)
 
-	tSafe := cSafe.Transport.(*http.Transport)
-	tUnsafe := cUnsafe.Transport.(*http.Transport)
+	assert.NotSame(t, cSafe.Transport, cUnsafe.Transport, "unsafeSsl variants must use distinct RoundTrippers")
 
-	assert.NotSame(t, tSafe, tUnsafe, "unsafeSsl variants must use distinct Transports")
+	tSafe := sharedHTTPTransport(false)
+	tUnsafe := sharedHTTPTransport(true)
+	assert.NotSame(t, tSafe, tUnsafe, "unsafeSsl variants must use distinct underlying Transports")
 	// Sanity: TLS config reflects the mode.
 	assert.False(t, tSafe.TLSClientConfig.InsecureSkipVerify)
 	assert.True(t, tUnsafe.TLSClientConfig.InsecureSkipVerify)

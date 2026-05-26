@@ -357,6 +357,17 @@ type (
 		// NOTE: Experimental
 		Tuner WorkerTuner
 
+		// Optional: If set, provides CPU and memory usage information for worker heartbeats.
+		// Use contrib/sysinfo.SysInfoProvider() for a gopsutil-based implementation, or provide
+		// your own. When unset, the worker will use the Tuner's SysInfoProvider if it exposes one
+		// (e.g. a resource-based tuner); otherwise heartbeats report 0 for CPU/memory usage.
+		//
+		// It is an error to provide a SysInfoProvider here that differs from the one used by the
+		// Tuner.
+		//
+		// NOTE: Experimental
+		SysInfoProvider SysInfoProvider
+
 		// Optional: If set, the worker will use the provided poller behavior when polling for workflow tasks.
 		// This is mutually exclusive with MaxConcurrentWorkflowTaskPollers.
 		//
@@ -392,6 +403,33 @@ type (
 		//
 		// NOTE: Experimental
 		Plugins []WorkerPlugin
+
+		// MaxConcurrentWorkflowTaskExternalStorageVisits sets how many external
+		// storage operations (reads or writes) may run in parallel when the worker
+		// processes a single workflow task. When a workflow task contains many large
+		// payloads that need to be fetched from or uploaded to external storage,
+		// raising this value can reduce latency by overlapping those calls. Lower
+		// values reduce pressure on the storage backend.
+		// A value of 0 uses the default. Set to 1 to disable parallelism.
+		// Please report any issues you encounter with this setting or if you feel the
+		// default should be changed.
+		//
+		// NOTE: Experimental
+		//
+		// default: 3
+		MaxConcurrentWorkflowTaskExternalStorageVisits int
+
+		// Optional: Disable payload size error limit enforcement in the worker.
+		//
+		// When false, the worker will validate the payload size before submitting
+		// to the Temporal server, and cause a task failure if the size limit is
+		// exceeded. When true, the worker will not perform this validation.
+		//
+		// See https://docs.temporal.io/troubleshooting/blob-size-limit-error for more
+		// details.
+		//
+		// NOTE: Experimental
+		DisablePayloadErrorLimit bool
 	}
 )
 

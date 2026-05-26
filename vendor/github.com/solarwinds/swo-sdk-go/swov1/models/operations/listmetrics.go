@@ -69,8 +69,10 @@ func (l *ListMetricsRequest) GetSkipToken() *string {
 
 // ListMetricsResponseBody - The request has succeeded.
 type ListMetricsResponseBody struct {
+	// List of metric metadata.
 	MetricsInfo []components.CommonMetricInfo `json:"metricsInfo"`
-	PageInfo    components.CommonPageInfo     `json:"pageInfo"`
+	// Pagination information.
+	PageInfo components.CommonPageInfo `json:"pageInfo"`
 }
 
 func (l *ListMetricsResponseBody) GetMetricsInfo() []components.CommonMetricInfo {

@@ -19,19 +19,23 @@ package executor
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
 )
+
+// hpaHealthGracePeriod is the amount of time after HPA creation during which we skip health checks to allow the HPA to initialize and report metrics, avoiding condition flapping.
+const hpaHealthGracePeriod = time.Minute
 
 func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool, isError bool, options ScaleExecutorOptions) ScaleResult {
 	logger := e.logger.WithValues("scaledobject.Name", scaledObject.Name, "scaledObject.Namespace", scaledObject.Namespace, "scaleTarget.Name", scaledObject.Spec.ScaleTargetRef.Name)
@@ -49,8 +53,8 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		return result
 	}
 
-	// check if SO is paused, and if it is then update the scale to the desired count and return early without performing any other checks or updates
-	if e.handlePaused(ctx, scaledObject, currentReplicas, &result) {
+	// Return early if paused to skip normal scaling logic
+	if e.handlePaused(scaledObject, &result) {
 		return result
 	}
 	// if scaledObject.Spec.MinReplicaCount is not set, then set the default value (0)
@@ -111,7 +115,61 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			logger.V(1).Info("ScaleTarget no change")
 		}
 	}
+	e.checkHPAHealth(ctx, logger, scaledObject, &result)
+
 	return result
+}
+
+// checkHPAHealth checks HPA health and adjusts the Ready condition. If the HPA is healthy, the existing Ready condition is left as-is.
+// If the HPA is unhealthy, the Ready condition is set to False with an appropriate reason.
+func (e *scaleExecutor) checkHPAHealth(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, result *ScaleResult) {
+	hpaHealthy, hpaMessage := e.getHPAHealth(ctx, logger, scaledObject)
+	if hpaHealthy {
+		return
+	}
+
+	readyCondition := result.Conditions.GetReadyCondition()
+	if readyCondition.IsTrue() {
+		msg := fmt.Sprintf("ScaledObject is configured correctly but HPA is not healthy: %v", hpaMessage)
+		result.Conditions.SetReadyCondition(metav1.ConditionFalse, kedav1alpha1.ScaledObjectConditionHPAMetricsUnavailableReason, msg)
+	} else {
+		msg := fmt.Sprintf("Not ready because HPA is not healthy: %v and SO is not healthy: %v - %v", hpaMessage, readyCondition.Reason, readyCondition.Message)
+		result.Conditions.SetReadyCondition(metav1.ConditionFalse, kedav1alpha1.ScaledObjectConditionScalingDegradedReason, msg)
+	}
+}
+
+// getHPAHealth gets the HPA ScalingActive condition to determine if the HPA is operationally healthy.
+func (e *scaleExecutor) getHPAHealth(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (healthy bool, message string) {
+	hpaName := scaledObject.Status.HpaName
+	if hpaName == "" {
+		logger.V(1).Info("HPA name not found in ScaledObject status, skipping health check")
+		return true, ""
+	}
+
+	hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+	err := e.client.Get(ctx, types.NamespacedName{Name: hpaName, Namespace: scaledObject.Namespace}, hpa)
+	if err != nil {
+		logger.Error(err, "Could not read HPA status, skipping health check")
+		return true, ""
+	}
+
+	// Grace period after HPA creation where we skip health checks to allow HPA to initialize and report metrics and avoid condition flapping.
+	if hpa.CreationTimestamp.Add(hpaHealthGracePeriod).After(time.Now()) {
+		logger.V(1).Info("HPA is still initializing, skipping health check")
+		return true, ""
+	}
+
+	// Check HPA's ScalingActive condition
+	for _, cond := range hpa.Status.Conditions {
+		if cond.Type == autoscalingv2.ScalingActive {
+			if cond.Status == corev1.ConditionTrue || cond.Reason == "ScalingDisabled" {
+				return true, ""
+			}
+			return false, cond.Reason
+		}
+	}
+
+	return true, ""
 }
 
 // An object will be scaled down to 0 only if it's passed its cooldown period
@@ -242,32 +300,13 @@ func (e *scaleExecutor) updateScaleOnScaleTarget(ctx context.Context, scaledObje
 	return currentReplicas, err
 }
 
-// handlePaused checks if the ScaledObject is paused and if it is, it scales the target to the paused replica count and returns true. If the ScaledObject is not paused, it returns false.
-func (e *scaleExecutor) handlePaused(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, currentReplicas int32, scaleResult *ScaleResult) bool {
-	pausedCount, err := GetPausedReplicaCount(scaledObject)
-	if err != nil {
-		scaleResult.Conditions.SetReadyCondition(metav1.ConditionFalse, "ErrorPausing", fmt.Sprintf("Failed to pause: %v", err))
-		scaleResult.Conditions.SetPausedCondition(metav1.ConditionTrue, "ErrorGettingPausedReplicas", fmt.Sprintf("Paused annotation present but failed to determine paused replica count: %v", err))
-		scaleResult.Error = fmt.Errorf("paused annotation present but failed to determine paused replica count: %w", err)
+// handlePaused skips normal scaling logic while the ScaledObject is paused.
+func (e *scaleExecutor) handlePaused(scaledObject *kedav1alpha1.ScaledObject, scaleResult *ScaleResult) bool {
+	if scaledObject.NeedToBePausedByAnnotation() {
+		scaleResult.Conditions.SetPausedCondition(metav1.ConditionTrue, "ScaledObjectPaused", "ScaledObject is paused")
 		return true
 	}
-	if pausedCount == nil {
-		// ScaledObject is not paused by replica annotation; the controller manages the Paused condition lifecycle, so we leave it untouched here.
-		return false
-	}
-
-	// ScaledObject is paused, scale to the paused replica count and set status accordingly
-	scaleResult.PauseReplicas = pausedCount
-	if *pausedCount != currentReplicas {
-		if _, err := e.updateScaleOnScaleTarget(ctx, scaledObject, *pausedCount); err != nil {
-			scaleResult.Conditions.SetReadyCondition(metav1.ConditionFalse, "ErrorScalingToPausedReplicas", fmt.Sprintf("ScaledObject is paused but failed to scale to paused replica count: %v", err))
-			scaleResult.Conditions.SetPausedCondition(metav1.ConditionTrue, "ScaledObjectPaused", "ScaledObject is paused")
-			scaleResult.Error = fmt.Errorf("ScaledObject is paused but failed to scale to paused replica count: %w", err)
-			return true
-		}
-	}
-	scaleResult.Conditions.SetPausedCondition(metav1.ConditionTrue, "ScaledObjectPaused", "ScaledObject is paused")
-	return true
+	return false
 }
 
 // getIdleOrMinimumReplicaCount returns true if the second value returned is from IdleReplicaCount
@@ -282,20 +321,4 @@ func getIdleOrMinimumReplicaCount(scaledObject *kedav1alpha1.ScaledObject) (bool
 	}
 
 	return false, *scaledObject.Spec.MinReplicaCount
-}
-
-// GetPausedReplicaCount returns the paused replica count of the ScaledObject.
-// If not paused, it returns nil.
-func GetPausedReplicaCount(scaledObject *kedav1alpha1.ScaledObject) (*int32, error) {
-	if scaledObject.Annotations != nil {
-		if val, ok := scaledObject.Annotations[kedav1alpha1.PausedReplicasAnnotation]; ok {
-			conv, err := strconv.ParseInt(val, 10, 32)
-			if err != nil {
-				return nil, err
-			}
-			count := int32(conv)
-			return &count, nil
-		}
-	}
-	return nil, nil
 }

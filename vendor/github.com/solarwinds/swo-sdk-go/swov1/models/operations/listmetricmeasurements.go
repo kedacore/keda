@@ -17,10 +17,6 @@ type ListMetricMeasurementsRequest struct {
 	GroupBy *string `queryParam:"style=form,explode=false,name=groupBy"`
 	// Aggregation method used to group measurements. Defaults to AVG.
 	AggregateBy *components.MetricsAggregationMethods `queryParam:"style=form,explode=false,name=aggregateBy"`
-	// This parameter is deprecated. Bucket size is determined by the API layer.
-	//
-	// Deprecated: This will be removed in a future release, please migrate away from it as soon as possible.
-	BucketSizeInSeconds *int `queryParam:"style=form,explode=false,name=bucketSizeInSeconds"`
 	// Secondary grouping to allow aggregating data points inside individual buckets. Has to be set together with `preGroupByMethod`.
 	PreGroupBy *string `queryParam:"style=form,explode=false,name=preGroupBy"`
 	// Secondary aggregation to allow aggregating data points inside individual buckets. Has to be set together with `preGroupBy`.
@@ -76,13 +72,6 @@ func (l *ListMetricMeasurementsRequest) GetAggregateBy() *components.MetricsAggr
 	return l.AggregateBy
 }
 
-func (l *ListMetricMeasurementsRequest) GetBucketSizeInSeconds() *int {
-	if l == nil {
-		return nil
-	}
-	return l.BucketSizeInSeconds
-}
-
 func (l *ListMetricMeasurementsRequest) GetPreGroupBy() *string {
 	if l == nil {
 		return nil
@@ -134,9 +123,12 @@ func (l *ListMetricMeasurementsRequest) GetSkipToken() *string {
 
 // ListMetricMeasurementsResponseBody - The request has succeeded.
 type ListMetricMeasurementsResponseBody struct {
-	Groupings           []components.MetricsGrouping `json:"groupings"`
-	BucketSizeInSeconds int                          `json:"bucketSizeInSeconds"`
-	PageInfo            components.CommonPageInfo    `json:"pageInfo"`
+	// Measurement data grouped by attributes.
+	Groupings []components.MetricsGrouping `json:"groupings"`
+	// Bucket size used for computing time series points, in seconds.
+	BucketSizeInSeconds int `json:"bucketSizeInSeconds"`
+	// Pagination information.
+	PageInfo components.CommonPageInfo `json:"pageInfo"`
 }
 
 func (l *ListMetricMeasurementsResponseBody) GetGroupings() []components.MetricsGrouping {

@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// Status - Current availability status of the transaction.
 type Status string
 
 const (
@@ -45,8 +46,11 @@ func (e *Status) UnmarshalJSON(data []byte) error {
 }
 
 type DemGetTransactionResponse struct {
-	ID     string `json:"id"`
-	Type   string `json:"type"`
+	// Unique identifier of the transaction.
+	ID string `json:"id"`
+	// Entity type, always 'SyntheticTransaction'.
+	Type string `json:"type"`
+	// Current availability status of the transaction.
 	Status Status `json:"status"`
 	// Name of the transaction, which must be unique within the organization. The name must not contain any control characters, any white space other than space (U+0020), or any consecutive, leading or trailing spaces.
 	Name string `json:"name"`

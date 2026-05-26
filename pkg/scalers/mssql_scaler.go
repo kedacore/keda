@@ -6,21 +6,30 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/go-logr/logr"
-	// Import the MS SQL driver so it can register itself with database/sql
-	_ "github.com/microsoft/go-mssqldb"
+	mssql "github.com/microsoft/go-mssqldb"
+	"github.com/microsoft/go-mssqldb/msdsn"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
+const (
+	azureDatabaseMSSQLResource = "https://database.windows.net/.default"
+)
+
 type mssqlScaler struct {
-	metricType v2.MetricTargetType
-	metadata   *mssqlMetadata
-	connection *sql.DB
-	logger     logr.Logger
+	metricType  v2.MetricTargetType
+	metadata    *mssqlMetadata
+	connection  *sql.DB
+	podIdentity kedav1alpha1.AuthPodIdentity
+	logger      logr.Logger
 }
 
 type mssqlMetadata struct {
@@ -34,7 +43,8 @@ type mssqlMetadata struct {
 	TargetValue           float64 `keda:"name=targetValue,           order=triggerMetadata"`
 	ActivationTargetValue float64 `keda:"name=activationTargetValue, order=triggerMetadata, default=0"`
 
-	TriggerIndex int
+	TriggerIndex     int
+	azureAuthContext azureAuthContext
 }
 
 func (m *mssqlMetadata) Validate() error {
@@ -44,7 +54,18 @@ func (m *mssqlMetadata) Validate() error {
 	return nil
 }
 
-func NewMSSQLScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
+func getMSSQLAzureAccessToken(ctx context.Context, metadata *mssqlMetadata, scope string) (string, error) {
+	accessToken, err := metadata.azureAuthContext.cred.GetToken(ctx, policy.TokenRequestOptions{
+		Scopes: []string{scope},
+	})
+	if err != nil {
+		return "", err
+	}
+	metadata.azureAuthContext.token = &accessToken
+	return accessToken.Token, nil
+}
+
+func NewMSSQLScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -52,18 +73,19 @@ func NewMSSQLScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	logger := InitializeLogger(config, "mssql_scaler")
 
-	meta, err := parseMSSQLMetadata(config)
+	meta, podIdentity, err := parseMSSQLMetadata(logger, config)
 	if err != nil {
 		return nil, err
 	}
 
 	scaler := &mssqlScaler{
-		metricType: metricType,
-		metadata:   meta,
-		logger:     logger,
+		metricType:  metricType,
+		metadata:    meta,
+		podIdentity: podIdentity,
+		logger:      logger,
 	}
 
-	conn, err := newMSSQLConnection(scaler)
+	conn, err := newMSSQLConnection(ctx, scaler)
 	if err != nil {
 		return nil, fmt.Errorf("error establishing mssql connection: %w", err)
 	}
@@ -73,21 +95,40 @@ func NewMSSQLScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	return scaler, nil
 }
 
-func parseMSSQLMetadata(config *scalersconfig.ScalerConfig) (*mssqlMetadata, error) {
+func parseMSSQLMetadata(logger logr.Logger, config *scalersconfig.ScalerConfig) (*mssqlMetadata, kedav1alpha1.AuthPodIdentity, error) {
 	meta := &mssqlMetadata{}
+	authPodIdentity := kedav1alpha1.AuthPodIdentity{}
 	meta.TriggerIndex = config.TriggerIndex
 	if err := config.TypedConfig(meta); err != nil {
-		return nil, err
+		return nil, authPodIdentity, err
 	}
 
 	if !config.AsMetricSource && meta.TargetValue == 0 {
-		return nil, fmt.Errorf("no targetValue given")
+		return nil, authPodIdentity, fmt.Errorf("no targetValue given")
 	}
 
-	return meta, nil
+	switch config.PodIdentity.Provider {
+	case "", kedav1alpha1.PodIdentityProviderNone:
+		// existing behavior — no changes needed
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		cred, err := azure.NewChainedCredential(logger, config.PodIdentity)
+		if err != nil {
+			return nil, authPodIdentity, err
+		}
+		meta.azureAuthContext.cred = cred
+		authPodIdentity = kedav1alpha1.AuthPodIdentity{Provider: config.PodIdentity.Provider}
+	default:
+		return nil, authPodIdentity, fmt.Errorf("pod identity %s is not supported for mssql scaler", config.PodIdentity.Provider)
+	}
+
+	return meta, authPodIdentity, nil
 }
 
-func newMSSQLConnection(s *mssqlScaler) (*sql.DB, error) {
+func newMSSQLConnection(ctx context.Context, s *mssqlScaler) (*sql.DB, error) {
+	if s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
+		return newMSSQLWorkloadIdentityConnection(ctx, s)
+	}
+
 	connStr := getMSSQLConnectionString(s)
 
 	db, err := sql.Open("sqlserver", connStr)
@@ -96,9 +137,36 @@ func newMSSQLConnection(s *mssqlScaler) (*sql.DB, error) {
 		return nil, err
 	}
 
-	err = db.Ping()
+	err = db.PingContext(ctx)
 	if err != nil {
 		s.logger.Error(err, "Found error pinging mssql")
+		return nil, err
+	}
+
+	return db, nil
+}
+
+func newMSSQLWorkloadIdentityConnection(ctx context.Context, s *mssqlScaler) (*sql.DB, error) {
+	connStr := getMSSQLConnectionString(s)
+
+	dsnConfig, err := msdsn.Parse(connStr)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing mssql DSN: %w", err)
+	}
+
+	tokenProvider := func(ctx context.Context) (string, error) {
+		return getMSSQLAzureAccessToken(ctx, s.metadata, azureDatabaseMSSQLResource)
+	}
+
+	connector, err := mssql.NewSecurityTokenConnector(dsnConfig, tokenProvider)
+	if err != nil {
+		return nil, fmt.Errorf("error creating mssql security token connector: %w", err)
+	}
+
+	db := sql.OpenDB(connector)
+	err = db.PingContext(ctx)
+	if err != nil {
+		s.logger.Error(err, "Found error pinging mssql with workload identity")
 		return nil, err
 	}
 
@@ -161,6 +229,18 @@ func (s *mssqlScaler) GetMetricsAndActivity(ctx context.Context, metricName stri
 }
 
 func (s *mssqlScaler) getQueryResult(ctx context.Context) (float64, error) {
+	if s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
+		if s.metadata.azureAuthContext.token != nil && s.metadata.azureAuthContext.token.ExpiresOn.Before(time.Now()) {
+			s.logger.Info("Azure access token expired, reconnecting to MSSQL")
+			s.connection.Close()
+			newConnection, err := newMSSQLConnection(ctx, s)
+			if err != nil {
+				return 0, fmt.Errorf("error establishing mssql connection: %w", err)
+			}
+			s.connection = newConnection
+		}
+	}
+
 	var value float64
 
 	err := s.connection.QueryRowContext(ctx, s.metadata.Query).Scan(&value)
