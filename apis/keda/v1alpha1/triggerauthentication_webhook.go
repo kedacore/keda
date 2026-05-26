@@ -18,9 +18,10 @@ package v1alpha1
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"net/url"
 
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -87,18 +88,16 @@ var _ webhook.CustomValidator = &TriggerAuthenticationCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (ta *TriggerAuthentication) ValidateCreate(_ *bool) (admission.Warnings, error) {
-	val, _ := json.MarshalIndent(ta, "", "  ")
-	triggerauthenticationlog.Info(fmt.Sprintf("validating triggerauthentication creation for %s", string(val)))
+	triggerauthenticationlog.Info("validating triggerauthentication creation", "namespace", ta.Namespace, "name", ta.Name, "triggerauthentication", ta)
 	return validateSpec(&ta.Spec)
 }
 
 func (ta *TriggerAuthentication) ValidateUpdate(old runtime.Object, _ *bool) (admission.Warnings, error) {
-	val, _ := json.MarshalIndent(ta, "", "  ")
-	scaledobjectlog.V(1).Info(fmt.Sprintf("validating triggerauthentication update for %s", string(val)))
+	triggerauthenticationlog.V(1).Info("validating triggerauthentication update", "namespace", ta.Namespace, "name", ta.Name, "triggerauthentication", ta)
 
 	oldTa := old.(*TriggerAuthentication)
 	if isTriggerAuthenticationRemovingFinalizer(ta.ObjectMeta, oldTa.ObjectMeta, ta.Spec, oldTa.Spec) {
-		triggerauthenticationlog.V(1).Info("finalizer removal, skipping validation")
+		triggerauthenticationlog.V(1).Info("finalizer removal, skipping validation", "namespace", ta.Namespace, "name", ta.Name)
 		return nil, nil
 	}
 	return validateSpec(&ta.Spec)
@@ -145,18 +144,16 @@ var _ webhook.CustomValidator = &ClusterTriggerAuthenticationCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (cta *ClusterTriggerAuthentication) ValidateCreate(_ *bool) (admission.Warnings, error) {
-	val, _ := json.MarshalIndent(cta, "", "  ")
-	triggerauthenticationlog.Info(fmt.Sprintf("validating clustertriggerauthentication creation for %s", string(val)))
+	triggerauthenticationlog.Info("validating clustertriggerauthentication creation", "name", cta.Name, "clustertriggerauthentication", cta)
 	return validateSpec(&cta.Spec)
 }
 
 func (cta *ClusterTriggerAuthentication) ValidateUpdate(old runtime.Object, _ *bool) (admission.Warnings, error) {
-	val, _ := json.MarshalIndent(cta, "", "  ")
-	scaledobjectlog.V(1).Info(fmt.Sprintf("validating clustertriggerauthentication update for %s", string(val)))
+	triggerauthenticationlog.V(1).Info("validating clustertriggerauthentication update", "name", cta.Name, "clustertriggerauthentication", cta)
 
 	oldCta := old.(*ClusterTriggerAuthentication)
 	if isTriggerAuthenticationRemovingFinalizer(cta.ObjectMeta, oldCta.ObjectMeta, cta.Spec, oldCta.Spec) {
-		triggerauthenticationlog.V(1).Info("finalizer removal, skipping validation")
+		triggerauthenticationlog.V(1).Info("finalizer removal, skipping validation", "name", cta.Name)
 		return nil, nil
 	}
 
@@ -168,12 +165,7 @@ func (cta *ClusterTriggerAuthentication) ValidateDelete(_ *bool) (admission.Warn
 }
 
 func isTriggerAuthenticationRemovingFinalizer(om metav1.ObjectMeta, oldOm metav1.ObjectMeta, spec TriggerAuthenticationSpec, oldSpec TriggerAuthenticationSpec) bool {
-	taSpec, _ := json.MarshalIndent(spec, "", "  ")
-	oldTaSpec, _ := json.MarshalIndent(oldSpec, "", "  ")
-	taSpecString := string(taSpec)
-	oldTaSpecString := string(oldTaSpec)
-
-	return len(om.Finalizers) == 0 && len(oldOm.Finalizers) == 1 && taSpecString == oldTaSpecString
+	return len(om.Finalizers) == 0 && len(oldOm.Finalizers) == 1 && equality.Semantic.DeepEqual(spec, oldSpec)
 }
 
 func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
@@ -204,5 +196,27 @@ func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 			return nil, nil
 		}
 	}
+
+	if spec.OAuth2 != nil {
+		oauth2 := spec.OAuth2
+
+		if oauth2.Type != OAuth2GrantTypeClientCredentials {
+			return nil, fmt.Errorf("oauth2.type must be 'clientCredentials', got '%s'", oauth2.Type)
+		}
+
+		if oauth2.ClientID == "" {
+			return nil, fmt.Errorf("oauth2.clientId is required when oauth2 is configured")
+		}
+
+		if oauth2.TokenURL == "" {
+			return nil, fmt.Errorf("oauth2.tokenUrl is required when oauth2 is configured")
+		}
+
+		parsedURL, err := url.Parse(oauth2.TokenURL)
+		if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
+			return nil, fmt.Errorf("oauth2.tokenUrl must be a valid http or https URL")
+		}
+	}
+
 	return nil, nil
 }
