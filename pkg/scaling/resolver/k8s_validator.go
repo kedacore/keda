@@ -14,7 +14,13 @@ var parser = jwt.NewParser()
 const maxProjectedServiceAccountTokenSize = 1 << 20
 
 func readKubernetesServiceAccountProjectedToken(path string) ([]byte, error) {
-	info, err := os.Stat(path)
+	file, err := os.Open(path)
+	if err != nil {
+		return []byte{}, err
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -24,12 +30,6 @@ func readKubernetesServiceAccountProjectedToken(path string) ([]byte, error) {
 	if info.Size() > maxProjectedServiceAccountTokenSize {
 		return []byte{}, fmt.Errorf("service account token file %s exceeds maximum size of %d bytes", path, maxProjectedServiceAccountTokenSize)
 	}
-
-	file, err := os.Open(path)
-	if err != nil {
-		return []byte{}, err
-	}
-	defer file.Close()
 
 	jwt, err := io.ReadAll(io.LimitReader(file, maxProjectedServiceAccountTokenSize+1))
 	if err != nil {
