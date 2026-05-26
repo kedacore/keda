@@ -320,6 +320,7 @@ type RawConfiguration struct {
 	DataFormat        []*DashboardWidgetDataFormat      `json:"dataFormatters,omitempty"`
 	Tooltip           *DashboardWidgetTooltip           `json:"tooltip,omitempty"`
 	BillboardSettings *DashboardWidgetBillboardSettings `json:"billboardSettings,omitempty"`
+	ChartStyles       *DashboardWidgetChartStyles       `json:"chartStyles,omitempty"`
 }
 
 // RawConfigurationPlatformOptions represents platform widget options
@@ -400,6 +401,30 @@ type DashboardWidgetFacet struct {
 
 type DashboardWidgetTooltip struct {
 	Mode string `json:"mode,omitempty"`
+}
+
+type DashboardWidgetChartStyles struct {
+	LineInterpolation DashboardLineInterpolationType      `json:"lineInterpolation,omitempty"`
+	Gradient          *DashboardWidgetChartStylesGradient `json:"gradient,omitempty"`
+}
+
+type DashboardWidgetChartStylesGradient struct {
+	Enabled bool `json:"enabled,omitempty"`
+}
+
+// DashboardLineInterpolationType represents an option for line chart interpolation.
+type DashboardLineInterpolationType string
+
+var DashboardLineInterpolationTypes = struct {
+	LINEAR     DashboardLineInterpolationType
+	SMOOTH     DashboardLineInterpolationType
+	STEPBEFORE DashboardLineInterpolationType
+	STEPAFTER  DashboardLineInterpolationType
+}{
+	LINEAR:     "linear",
+	SMOOTH:     "smooth",
+	STEPBEFORE: "stepBefore",
+	STEPAFTER:  "stepAfter",
 }
 
 // DashboardWidgetBillboardSettings represents the billboard settings configuration

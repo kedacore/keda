@@ -517,6 +517,8 @@ func (d *commandStateMachineBase) cancel() {
 	switch d.state {
 	case commandStateCompleted, commandStateCompletedAfterCancellationCommandSent:
 		// No op. This is legit. People could cancel context after timer/activity is done.
+	case commandStateCanceledAfterInitiated, commandStateCancellationCommandSent:
+		// No op. Already canceled.
 	case commandStateCreated:
 		d.moveState(commandStateCanceledBeforeSent, eventCancel)
 	case commandStateCommandSent:
@@ -567,7 +569,9 @@ func (d *commandStateMachineBase) handleCancelInitiatedEvent() {
 	d.history = append(d.history, eventCancelInitiated)
 	switch d.state {
 	case commandStateCancellationCommandSent, commandStateCanceledAfterInitiated:
-	// No state change
+		// No state change
+	case commandStateInitiated:
+		d.moveState(commandStateCanceledAfterInitiated, eventCancelInitiated)
 	default:
 		d.failStateTransition(eventCancelInitiated)
 	}
@@ -715,7 +719,7 @@ func (d *childWorkflowCommandStateMachine) getCommand() *commandpb.Command {
 	case commandStateCanceledAfterStarted:
 		command := createNewCommand(enumspb.COMMAND_TYPE_REQUEST_CANCEL_EXTERNAL_WORKFLOW_EXECUTION)
 		command.Attributes = &commandpb.Command_RequestCancelExternalWorkflowExecutionCommandAttributes{RequestCancelExternalWorkflowExecutionCommandAttributes: &commandpb.RequestCancelExternalWorkflowExecutionCommandAttributes{
-			Namespace:         d.attributes.Namespace,
+			Namespace:         d.attributes.Namespace, //lint:ignore SA1019 deprecated namespace field
 			WorkflowId:        d.attributes.WorkflowId,
 			ChildWorkflowOnly: true,
 		}}

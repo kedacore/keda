@@ -12,6 +12,7 @@ const (
 	Identifier Kind = "Identifier"
 	Number     Kind = "Number"
 	String     Kind = "String"
+	Bytes      Kind = "Bytes"
 	Operator   Kind = "Operator"
 	Bracket    Kind = "Bracket"
 	EOF        Kind = "EOF"

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -13,8 +14,12 @@ import (
 	gha "github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -24,19 +29,30 @@ const (
 	ENT                  = "ent"
 	REPO                 = "repo"
 	githubDefaultPerPage = 30
+	// githubScalerMaxCacheEntries caps the etags, previousJobs, and
+	// previousWfrs maps. Without it the etags map grows once per workflow run
+	// for the lifetime of the operator pod (the URL contains the run ID), and
+	// previousJobs and previousWfrs grow once per distinct repository name
+	// returned by the API.
+	githubScalerMaxCacheEntries = 5000
 )
 
 var reservedLabels = []string{"self-hosted", "linux", "x64"}
 
 type githubRunnerScaler struct {
-	metricType    v2.MetricTargetType
-	metadata      *githubRunnerMetadata
-	httpClient    *http.Client
-	logger        logr.Logger
-	etags         map[string]string
-	previousRepos []string
-	previousWfrs  map[string]map[string]*WorkflowRuns
-	previousJobs  map[string][]Job
+	metricType              v2.MetricTargetType
+	metadata                *githubRunnerMetadata
+	httpClient              *http.Client
+	logger                  logr.Logger
+	recorder                record.EventRecorder
+	scaledObject            runtime.Object
+	etags                   map[string]string
+	previousRepos           []string
+	previousWfrs            map[string]map[string]*WorkflowRuns
+	previousJobs            map[string][]Job
+	rateLimit               RateLimit
+	previousQueueLength     int64
+	previousQueueLengthTime time.Time
 }
 
 type githubRunnerMetadata struct {
@@ -331,6 +347,13 @@ type Job struct {
 	HeadBranch      string   `json:"head_branch"`
 }
 
+// RateLimit holds rate limit information from GitHub API response headers
+type RateLimit struct {
+	Remaining      int64     `json:"remaining"`
+	ResetTime      time.Time `json:"resetTime"`
+	RetryAfterTime time.Time `json:"retryAfterTime"`
+}
+
 // NewGitHubRunnerScaler creates a new GitHub Runner Scaler
 func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
@@ -346,8 +369,8 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 
 	if meta.ApplicationID != 0 && meta.InstallationID != 0 && meta.ApplicationKey != "" {
-		httpTrans := kedautil.CreateHTTPTransport(false)
-		hc, err := gha.New(httpTrans, meta.ApplicationID, meta.InstallationID, []byte(meta.ApplicationKey))
+		rt := kedautil.CreateRT(false)
+		hc, err := gha.New(rt, meta.ApplicationID, meta.InstallationID, []byte(meta.ApplicationKey))
 		if err != nil {
 			return nil, fmt.Errorf("error creating GitHub App client: %w, \n appID: %d, instID: %d", err, meta.ApplicationID, meta.InstallationID)
 		}
@@ -359,16 +382,24 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	previousRepos := []string{}
 	previousJobs := make(map[string][]Job)
 	previousWfrs := make(map[string]map[string]*WorkflowRuns)
+	rateLimit := RateLimit{}
+	previousQueueLength := int64(0)
+	previousQueueLengthTime := time.Time{}
 
 	return &githubRunnerScaler{
-		metricType:    metricType,
-		metadata:      meta,
-		httpClient:    httpClient,
-		logger:        InitializeLogger(config, "github_runner_scaler"),
-		etags:         etags,
-		previousRepos: previousRepos,
-		previousJobs:  previousJobs,
-		previousWfrs:  previousWfrs,
+		metricType:              metricType,
+		metadata:                meta,
+		httpClient:              httpClient,
+		logger:                  InitializeLogger(config, "github_runner_scaler"),
+		recorder:                config.Recorder,
+		scaledObject:            config.ScaledObject,
+		etags:                   etags,
+		previousRepos:           previousRepos,
+		previousJobs:            previousJobs,
+		previousWfrs:            previousWfrs,
+		rateLimit:               rateLimit,
+		previousQueueLength:     previousQueueLength,
+		previousQueueLengthTime: previousQueueLengthTime,
 	}, nil
 }
 
@@ -417,18 +448,26 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 	page := 1
 	var repoList []string
 
+	safeOwner := url.PathEscape(s.metadata.Owner)
+
 	for {
-		var url string
+		var apiURL string
 		switch s.metadata.RunnerScope {
 		case ORG, ENT:
-			url = fmt.Sprintf("%s/orgs/%s/repos?page=%s", s.metadata.GithubAPIURL, s.metadata.Owner, strconv.Itoa(page))
+			apiURL = fmt.Sprintf("%s/orgs/%s/repos?page=%s",
+				s.metadata.GithubAPIURL,
+				safeOwner,
+				strconv.Itoa(page))
 		case REPO:
-			url = fmt.Sprintf("%s/users/%s/repos?page=%s", s.metadata.GithubAPIURL, s.metadata.Owner, strconv.Itoa(page))
+			apiURL = fmt.Sprintf("%s/users/%s/repos?page=%s",
+				s.metadata.GithubAPIURL,
+				safeOwner,
+				strconv.Itoa(page))
 		default:
 			return nil, fmt.Errorf("runnerScope %s not supported", s.metadata.RunnerScope)
 		}
 
-		body, statusCode, err := s.getGithubRequest(ctx, url, s.metadata, s.httpClient)
+		body, statusCode, err := s.getGithubRequest(ctx, apiURL, s.metadata, s.httpClient)
 		if err != nil {
 			return nil, err
 		}
@@ -466,8 +505,44 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 	return repoList, nil
 }
 
-func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, metadata *githubRunnerMetadata, httpClient *http.Client) ([]byte, int, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+func (s *githubRunnerScaler) getRateLimit(header http.Header) (RateLimit, error) {
+	var rateLimit RateLimit
+
+	if remainingStr := header.Get("X-RateLimit-Remaining"); remainingStr != "" {
+		remaining, err := strconv.ParseInt(remainingStr, 10, 64)
+		if err != nil {
+			return RateLimit{}, fmt.Errorf("failed to parse X-RateLimit-Remaining header: %w", err)
+		}
+		rateLimit.Remaining = remaining
+	}
+
+	if resetStr := header.Get("X-RateLimit-Reset"); resetStr != "" {
+		reset, err := strconv.ParseInt(resetStr, 10, 64)
+		if err != nil {
+			return RateLimit{}, fmt.Errorf("failed to parse X-RateLimit-Reset header: %w", err)
+		}
+		rateLimit.ResetTime = time.Unix(reset, 0)
+	}
+
+	if retryAfterStr := header.Get("Retry-After"); retryAfterStr != "" {
+		retrySeconds, err := strconv.ParseInt(retryAfterStr, 10, 64)
+		if err != nil {
+			return RateLimit{}, fmt.Errorf("failed to parse Retry-After header: %w", err)
+		}
+		rateLimit.RetryAfterTime = time.Now().Add(time.Duration(retrySeconds) * time.Second)
+	}
+
+	if rateLimit.RetryAfterTime.IsZero() {
+		s.logger.V(1).Info(fmt.Sprintf("Github API rate limit: Remaining: %d, ResetTime: %s", rateLimit.Remaining, rateLimit.ResetTime))
+	} else {
+		s.logger.V(1).Info(fmt.Sprintf("Github API rate limit: Remaining: %d, ResetTime: %s, Retry-After: %s", rateLimit.Remaining, rateLimit.ResetTime, rateLimit.RetryAfterTime))
+	}
+
+	return rateLimit, nil
+}
+
+func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, apiURL string, metadata *githubRunnerMetadata, httpClient *http.Client) ([]byte, int, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
 	if err != nil {
 		return []byte{}, -1, err
 	}
@@ -480,7 +555,7 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, m
 	}
 
 	if s.metadata.EnableEtags {
-		if etag, found := s.etags[url]; found {
+		if etag, found := s.etags[apiURL]; found {
 			req.Header.Set("If-None-Match", etag)
 		}
 	}
@@ -491,24 +566,32 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, m
 	}
 	defer r.Body.Close()
 
+	if r.Header.Get("X-RateLimit-Remaining") != "" {
+		rateLimit, err := s.getRateLimit(r.Header)
+		if err != nil {
+			s.logger.Error(err, "error getting rate limit")
+		} else {
+			s.rateLimit = rateLimit
+		}
+	}
+
 	if r.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, r.Body)
+
 		if r.StatusCode == 304 && s.metadata.EnableEtags {
-			_, _ = io.Copy(io.Discard, r.Body)
-			s.logger.V(1).Info(fmt.Sprintf("The github rest api for the url: %s returned status %d %s", url, r.StatusCode, http.StatusText(r.StatusCode)))
+			s.logger.V(1).Info(fmt.Sprintf("The github rest api for the url: %s returned status %d %s", apiURL, r.StatusCode, http.StatusText(r.StatusCode)))
 			return []byte{}, r.StatusCode, nil
 		}
 
-		if r.Header.Get("X-RateLimit-Remaining") != "" {
-			githubAPIRemaining, _ := strconv.Atoi(r.Header.Get("X-RateLimit-Remaining"))
-
-			if githubAPIRemaining == 0 {
-				resetTime, _ := strconv.ParseInt(r.Header.Get("X-RateLimit-Reset"), 10, 64)
-				_, _ = io.Copy(io.Discard, r.Body)
-				return []byte{}, r.StatusCode, fmt.Errorf("GitHub API rate limit exceeded, resets at %s", time.Unix(resetTime, 0))
-			}
+		if s.rateLimit.Remaining == 0 && !s.rateLimit.ResetTime.IsZero() && time.Now().Before(s.rateLimit.ResetTime) {
+			return []byte{}, r.StatusCode, fmt.Errorf("GitHub API rate limit exceeded, reset time %s", s.rateLimit.ResetTime)
 		}
-		_, _ = io.Copy(io.Discard, r.Body)
-		return []byte{}, r.StatusCode, fmt.Errorf("the GitHub REST API returned error. url: %s status: %d", url, r.StatusCode)
+
+		if !s.rateLimit.RetryAfterTime.IsZero() && time.Now().Before(s.rateLimit.RetryAfterTime) {
+			return []byte{}, r.StatusCode, fmt.Errorf("GitHub API rate limit exceeded, retry after %s", s.rateLimit.RetryAfterTime)
+		}
+
+		return []byte{}, r.StatusCode, fmt.Errorf("the GitHub REST API returned error. url: %s status: %d", apiURL, r.StatusCode)
 	}
 
 	b, err := io.ReadAll(r.Body)
@@ -518,7 +601,7 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, m
 
 	if s.metadata.EnableEtags {
 		if etag := r.Header.Get("ETag"); etag != "" {
-			s.etags[url] = etag
+			s.etags[apiURL] = etag
 		}
 	}
 
@@ -539,8 +622,13 @@ func stripDeadRuns(allWfrs []WorkflowRuns) []WorkflowRun {
 
 // getWorkflowRunJobs returns a list of jobs for a given workflow run
 func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRunID int64, repoName string) ([]Job, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=100", s.metadata.GithubAPIURL, s.metadata.Owner, repoName, workflowRunID)
-	body, statusCode, err := s.getGithubRequest(ctx, url, s.metadata, s.httpClient)
+	apiURL := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=100",
+		s.metadata.GithubAPIURL,
+		url.PathEscape(s.metadata.Owner),
+		url.PathEscape(repoName),
+		workflowRunID)
+
+	body, statusCode, err := s.getGithubRequest(ctx, apiURL, s.metadata, s.httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -548,8 +636,16 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 		if s.previousJobs[repoName] != nil {
 			return s.previousJobs[repoName], nil
 		}
-
-		return nil, fmt.Errorf("request for jobs returned status: %d %s but previous jobs is not set", statusCode, http.StatusText(statusCode))
+		// Stale etag without a paired previousJobs entry, e.g. after pruneCaches
+		// evicted the previous entry. Drop the etag and retry as a cache miss.
+		delete(s.etags, apiURL)
+		body, statusCode, err = s.getGithubRequest(ctx, apiURL, s.metadata, s.httpClient)
+		if err != nil {
+			return nil, err
+		}
+		if statusCode == 304 {
+			return nil, fmt.Errorf("request for jobs returned status: %d %s but previous jobs is not set", statusCode, http.StatusText(statusCode))
+		}
 	}
 
 	var jobs Jobs
@@ -567,8 +663,13 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 
 // getWorkflowRuns returns a list of workflow runs for a given repository
 func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName string, status string) (*WorkflowRuns, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs?status=%s&per_page=100", s.metadata.GithubAPIURL, s.metadata.Owner, repoName, status)
-	body, statusCode, err := s.getGithubRequest(ctx, url, s.metadata, s.httpClient)
+	apiURL := fmt.Sprintf("%s/repos/%s/%s/actions/runs?status=%s&per_page=100",
+		s.metadata.GithubAPIURL,
+		url.PathEscape(s.metadata.Owner),
+		url.PathEscape(repoName),
+		url.QueryEscape(status))
+
+	body, statusCode, err := s.getGithubRequest(ctx, apiURL, s.metadata, s.httpClient)
 	if err != nil && statusCode == 404 {
 		return nil, nil
 	} else if err != nil {
@@ -578,8 +679,18 @@ func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName strin
 		if s.previousWfrs[repoName][status] != nil {
 			return s.previousWfrs[repoName][status], nil
 		}
-
-		return nil, fmt.Errorf("request for workflow runs returned status: %d %s but previous workflow runs is not set. Repo: %s, Status: %s", statusCode, http.StatusText(statusCode), repoName, status)
+		// Stale etag without a paired previousWfrs entry, e.g. after pruneCaches
+		// evicted the previous entry. Drop the etag and retry as a cache miss.
+		delete(s.etags, apiURL)
+		body, statusCode, err = s.getGithubRequest(ctx, apiURL, s.metadata, s.httpClient)
+		if err != nil && statusCode == 404 {
+			return nil, nil
+		} else if err != nil {
+			return nil, err
+		}
+		if statusCode == 304 {
+			return nil, fmt.Errorf("request for workflow runs returned status: %d %s but previous workflow runs is not set. Repo: %s, Status: %s", statusCode, http.StatusText(statusCode), repoName, status)
+		}
 	}
 
 	var wfrs WorkflowRuns
@@ -625,14 +736,86 @@ func (s *githubRunnerScaler) canRunnerMatchLabels(jobLabels []string, runnerLabe
 	return true
 }
 
+// isRateLimited determines whether to use the cached previousQueueLength to avoid further calls to the Github API
+func (s *githubRunnerScaler) isRateLimited() bool {
+	now := time.Now()
+
+	if s.rateLimit.Remaining == 0 && !s.rateLimit.ResetTime.IsZero() && now.Before(s.rateLimit.ResetTime) {
+		s.logger.V(1).Info(fmt.Sprintf("Github API rate limit exceeded. Rate limited until %s", s.rateLimit.ResetTime))
+		return true
+	}
+
+	if !s.rateLimit.RetryAfterTime.IsZero() && now.Before(s.rateLimit.RetryAfterTime) {
+		s.logger.V(1).Info(fmt.Sprintf("Github API rate limit exceeded. Rate limited until %s", s.rateLimit.RetryAfterTime))
+		return true
+	}
+
+	return false
+}
+
+// getCachedQueueLength returns the cached previous queue length
+func (s *githubRunnerScaler) getCachedQueueLength() (int64, error) {
+	if !s.previousQueueLengthTime.IsZero() {
+		if s.recorder != nil {
+			s.recorder.Event(s.scaledObject, corev1.EventTypeNormal, eventreason.KEDAScalersInfo,
+				fmt.Sprintf("Github API rate limit exceeded. Cached queue length: %d, last successful cache at %s",
+					s.previousQueueLength, s.previousQueueLengthTime))
+		}
+		return s.previousQueueLength, nil
+	}
+
+	return -1, fmt.Errorf("GitHub API rate limit exceeded. No cached queue length available")
+}
+
+// pruneCaches removes previousWfrs entries for repos missing from currentRepos
+// and caps all three caches to githubScalerMaxCacheEntries.
+func (s *githubRunnerScaler) pruneCaches(currentRepos []string) {
+	repoSet := make(map[string]struct{}, len(currentRepos))
+	for _, r := range currentRepos {
+		repoSet[r] = struct{}{}
+	}
+	for repo := range s.previousWfrs {
+		if _, ok := repoSet[repo]; !ok {
+			delete(s.previousWfrs, repo)
+		}
+	}
+	evictExcess(s.previousWfrs, githubScalerMaxCacheEntries)
+	evictExcess(s.previousJobs, githubScalerMaxCacheEntries)
+	evictExcess(s.etags, githubScalerMaxCacheEntries)
+}
+
+// evictExcess removes arbitrary entries from m until len(m) <= limit. Map
+// iteration is randomized in Go, so this is a simple bound rather than LRU.
+func evictExcess[K comparable, V any](m map[K]V, limit int) {
+	over := len(m) - limit
+	for k := range m {
+		if over <= 0 {
+			break
+		}
+		delete(m, k)
+		over--
+	}
+}
+
 // GetWorkflowQueueLength returns the number of workflow jobs in the queue
 func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64, error) {
+	if s.isRateLimited() {
+		return s.getCachedQueueLength()
+	}
+
 	var repos []string
 	var err error
 
 	repos, err = s.getRepositories(ctx)
 	if err != nil {
+		if s.isRateLimited() {
+			return s.getCachedQueueLength()
+		}
 		return -1, err
+	}
+
+	if s.metadata.EnableEtags {
+		s.pruneCaches(repos)
 	}
 
 	var allWfrs []WorkflowRuns
@@ -640,6 +823,9 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 	for _, repo := range repos {
 		wfrsQueued, err := s.getWorkflowRuns(ctx, repo, "queued")
 		if err != nil {
+			if s.isRateLimited() {
+				return s.getCachedQueueLength()
+			}
 			return -1, err
 		}
 		if wfrsQueued != nil {
@@ -647,6 +833,9 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 		}
 		wfrsInProgress, err := s.getWorkflowRuns(ctx, repo, "in_progress")
 		if err != nil {
+			if s.isRateLimited() {
+				return s.getCachedQueueLength()
+			}
 			return -1, err
 		}
 		if wfrsInProgress != nil {
@@ -660,6 +849,9 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 	for _, wfr := range wfrs {
 		jobs, err := s.getWorkflowRunJobs(ctx, wfr.ID, wfr.Repository.Name)
 		if err != nil {
+			if s.isRateLimited() {
+				return s.getCachedQueueLength()
+			}
 			return -1, err
 		}
 		for _, job := range jobs {
@@ -668,6 +860,14 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 			}
 		}
 	}
+
+	s.previousQueueLength = queueCount
+	s.previousQueueLengthTime = time.Now()
+	s.logger.V(1).Info(fmt.Sprintf(
+		"Successful workflow queue count. Caching previous queue length %d, previous queue length time %s",
+		s.previousQueueLength,
+		s.previousQueueLengthTime,
+	))
 
 	return queueCount, nil
 }

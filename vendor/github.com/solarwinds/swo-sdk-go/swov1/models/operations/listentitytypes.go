@@ -8,6 +8,7 @@ import (
 
 // ListEntityTypesResponseBody - List of entity types
 type ListEntityTypesResponseBody struct {
+	// List of entity type names.
 	Types []string `json:"types"`
 }
 

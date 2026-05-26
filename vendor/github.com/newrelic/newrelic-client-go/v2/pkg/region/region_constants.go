@@ -12,6 +12,9 @@ const (
 	// EU represents New Relic's EU-based production deployment.
 	EU Name = "EU"
 
+	// JP represents New Relic's Japan-based production deployment.
+	JP Name = "JP"
+
 	// Staging represents New Relic's US-based staging deployment.
 	// This is for internal New Relic use only.
 	Staging Name = "Staging"
@@ -32,6 +35,7 @@ var Regions = map[Name]*Region{
 		restBaseURL:           "https://api.newrelic.com/v2",
 		syntheticsBaseURL:     "https://synthetics.newrelic.com/synthetics/api",
 		metricsBaseURL:        "https://metric-api.newrelic.com/metric/v1",
+		blobServiceBaseURL:    "https://blob-api.service.newrelic.com/v1/e",
 	},
 	EU: {
 		name:                  "EU",
@@ -43,6 +47,19 @@ var Regions = map[Name]*Region{
 		restBaseURL:           "https://api.eu.newrelic.com/v2",
 		syntheticsBaseURL:     "https://synthetics.eu.newrelic.com/synthetics/api",
 		metricsBaseURL:        "https://metric-api.eu.newrelic.com/metric/v1",
+		blobServiceBaseURL:    "https://blob-api.service.eu.newrelic.com/v1/e",
+	},
+	JP: {
+		name:                  "JP",
+		infrastructureBaseURL: "https://infra-api.jp.newrelic.com/v2",
+		insightsBaseURL:       "https://insights-collector.jp01.nr-data.net/v1",
+		insightsKeysBaseURL:   "https://insights.jp.newrelic.com/internal_api/1",
+		logsBaseURL:           "https://log-api.jp.newrelic.com/log/v1",
+		nerdGraphBaseURL:      "https://api.jp.newrelic.com/graphql",
+		restBaseURL:           "https://api.jp.newrelic.com/v2",
+		syntheticsBaseURL:     "https://synthetics.jp.newrelic.com/synthetics/api",
+		metricsBaseURL:        "https://metric-api.jp.newrelic.com/metric/v1",
+		blobServiceBaseURL:    "https://blob-api.service.jp.newrelic.com/v1/e",
 	},
 	Staging: {
 		name:                  "Staging",
@@ -54,6 +71,7 @@ var Regions = map[Name]*Region{
 		restBaseURL:           "https://staging-api.newrelic.com/v2",
 		syntheticsBaseURL:     "https://staging-synthetics.newrelic.com/synthetics/api",
 		metricsBaseURL:        "https://staging-metric-api.newrelic.com/metric/v1",
+		blobServiceBaseURL:    "https://blob-api.staging-service.newrelic.com/v1/e",
 	},
 	Local: {
 		name:                  "Local",
@@ -65,6 +83,8 @@ var Regions = map[Name]*Region{
 		restBaseURL:           "http://localhost:3000/v2",
 		syntheticsBaseURL:     "http://localhost:3000/synthetics/api",
 		metricsBaseURL:        "http://localhost:3000/metric/v1",
+		// the following is just a placeholder, is not actually intended to work
+		blobServiceBaseURL: "https:/localhost:3000/blob/v1/e",
 	},
 }
 
@@ -78,6 +98,8 @@ func Parse(r string) (Name, error) {
 		return US, nil
 	case "eu":
 		return EU, nil
+	case "jp":
+		return JP, nil
 	case "staging":
 		return Staging, nil
 	case "local":

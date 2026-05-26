@@ -202,7 +202,7 @@ type PutRecordsRequestEntry struct {
 	// The data blob to put into the record, which is base64-encoded when the blob is
 	// serialized. When the data blob (the payload before base64-encoding) is added to
 	// the partition key size, the total size must not exceed the maximum record size
-	// (1 MiB).
+	// (10 MiB).
 	//
 	// This member is required.
 	Data []byte
@@ -593,6 +593,9 @@ type StreamDescriptionSummary struct {
 	// The maximum record size of a single record in kibibyte (KiB) that you can write
 	// to, and read from a stream.
 	MaxRecordSizeInKiB *int32
+
+	// Not Implemented. Reserved for future use.
+	StreamId *string
 
 	//  Specifies the capacity mode to which you want to set your data stream.
 	// Currently, in Kinesis Data Streams, you can choose between an on-demand

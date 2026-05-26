@@ -11,7 +11,8 @@ import (
 )
 
 // Deletes all dashboards that you specify. You can specify up to 100 dashboards
-// to delete. If there is an error during this call, no dashboards are deleted.
+// to delete. If there is an error during this call, the operation attempts to
+// delete as many dashboards as possible.
 func (c *Client) DeleteDashboards(ctx context.Context, params *DeleteDashboardsInput, optFns ...func(*Options)) (*DeleteDashboardsOutput, error) {
 	if params == nil {
 		params = &DeleteDashboardsInput{}
@@ -78,7 +79,7 @@ func (c *Client) addOperationDeleteDashboardsMiddlewares(stack *middleware.Stack
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
@@ -100,9 +101,6 @@ func (c *Client) addOperationDeleteDashboardsMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {

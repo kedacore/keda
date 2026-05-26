@@ -6,6 +6,9 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+	enumspb "go.temporal.io/api/enums/v1"
+	taskqueuepb "go.temporal.io/api/taskqueue/v1"
+	"go.temporal.io/api/workflowservice/v1"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -44,11 +47,27 @@ var testTemporalMetadata = []parseTemporalMetadataTestData{
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace}, false},
 	// All good + activationLagThreshold
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "activationTargetQueueSize": "10"}, false},
+	// workerDeploymentName without workerDeploymentBuildId
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerDeploymentName": "my-deploy"}, true},
+	// workerDeploymentBuildId without workerDeploymentName
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerDeploymentBuildId": "v1"}, true},
+	// deployment fields combined with buildId
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerDeploymentName": "my-deploy", "workerDeploymentBuildId": "v1", "buildId": "v1"}, true},
+	// deployment fields combined with selectAllActive
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerDeploymentName": "my-deploy", "workerDeploymentBuildId": "v1", "selectAllActive": "true"}, true},
+	// valid deployment config
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerDeploymentName": "my-deploy", "workerDeploymentBuildId": "v1"}, false},
+	// valid legacy buildId config
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "buildId": "v1"}, false},
 }
 
 var temporalMetricIdentifiers = []temporalMetricIdentifier{
 	{&testTemporalMetadata[5], 0, "s0-temporal-v2-default"},
 	{&testTemporalMetadata[5], 1, "s1-temporal-v2-default"},
+	// deployment version: metric name includes workerDeploymentName + workerDeploymentBuildId
+	{&testTemporalMetadata[11], 0, "s0-temporal-v2-default-my-deploy-v1"},
+	// legacy buildId: metric name is unchanged from unversioned (backward compat)
+	{&testTemporalMetadata[12], 0, "s0-temporal-v2-default"},
 }
 
 func TestTemporalParseMetadata(t *testing.T) {
@@ -360,4 +379,119 @@ func TestTemporalDefaultQueueTypes(t *testing.T) {
 
 	metadata.QueueTypes = []string{"workflow"}
 	assert.Len(t, getQueueTypes(metadata.QueueTypes), 1, "only one type should be there")
+}
+
+func makeVersionTaskQueue(name string, qt enumspb.TaskQueueType, backlog int64) *workflowservice.DescribeWorkerDeploymentVersionResponse_VersionTaskQueue {
+	return &workflowservice.DescribeWorkerDeploymentVersionResponse_VersionTaskQueue{
+		Name:  name,
+		Type:  qt,
+		Stats: &taskqueuepb.TaskQueueStats{ApproximateBacklogCount: backlog},
+	}
+}
+
+func TestSumDeploymentBacklog(t *testing.T) {
+	all := []*workflowservice.DescribeWorkerDeploymentVersionResponse_VersionTaskQueue{
+		makeVersionTaskQueue("queue-a", enumspb.TASK_QUEUE_TYPE_WORKFLOW, 10),
+		makeVersionTaskQueue("queue-a", enumspb.TASK_QUEUE_TYPE_ACTIVITY, 20),
+		makeVersionTaskQueue("queue-a", enumspb.TASK_QUEUE_TYPE_NEXUS, 5),
+		makeVersionTaskQueue("queue-b", enumspb.TASK_QUEUE_TYPE_WORKFLOW, 100),
+		{Name: "queue-a", Type: enumspb.TASK_QUEUE_TYPE_WORKFLOW, Stats: nil},
+	}
+
+	cases := []struct {
+		name          string
+		taskQueues    []*workflowservice.DescribeWorkerDeploymentVersionResponse_VersionTaskQueue
+		taskQueueName string
+		queueTypes    []string
+		want          int64
+	}{
+		{
+			name:       "no filters sums everything",
+			taskQueues: all,
+			want:       135,
+		},
+		{
+			name:          "filter by task queue name",
+			taskQueues:    all,
+			taskQueueName: "queue-a",
+			want:          35,
+		},
+		{
+			name:       "filter by queue type workflow",
+			taskQueues: all,
+			queueTypes: []string{"workflow"},
+			want:       110,
+		},
+		{
+			name:          "filter by name and type",
+			taskQueues:    all,
+			taskQueueName: "queue-a",
+			queueTypes:    []string{"activity"},
+			want:          20,
+		},
+		{
+			name:          "filter matches nothing",
+			taskQueues:    all,
+			taskQueueName: "nonexistent",
+			want:          0,
+		},
+		{
+			name:       "nil stats entry skipped",
+			taskQueues: all,
+			queueTypes: []string{"workflow"},
+			// queue-a workflow=10, queue-a workflow with nil stats=skipped, queue-b workflow=100
+			want: 110,
+		},
+		{
+			name:       "multiple type filter",
+			taskQueues: all,
+			queueTypes: []string{"workflow", "activity"},
+			want:       130,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := sumDeploymentBacklog(tc.taskQueues, tc.taskQueueName, tc.queueTypes)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestScalerMode(t *testing.T) {
+	cases := []struct {
+		name string
+		meta temporalMetadata
+		want string
+	}{
+		{"no versioning fields", temporalMetadata{}, "unversioned"},
+		{"workerDeploymentName set", temporalMetadata{WorkerDeploymentName: "d"}, "deployment-version"},
+		{"deployment takes precedence over buildId", temporalMetadata{WorkerDeploymentName: "d", BuildID: "v1"}, "deployment-version"},
+		{"buildId set", temporalMetadata{BuildID: "v1"}, "build-id"},
+		{"selectAllActive set", temporalMetadata{AllActive: true}, "build-id"},
+		{"selectUnversioned set", temporalMetadata{Unversioned: true}, "build-id"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, scalerMode(&tc.meta))
+		})
+	}
+}
+
+func TestAuthType(t *testing.T) {
+	cases := []struct {
+		name string
+		meta temporalMetadata
+		want string
+	}{
+		{"nothing set", temporalMetadata{}, "none"},
+		{"apiKey set", temporalMetadata{APIKey: "secret"}, "apiKey"},
+		{"cert set", temporalMetadata{Cert: "cert-data"}, "mtls"},
+		{"apiKey takes precedence over cert", temporalMetadata{APIKey: "secret", Cert: "cert-data"}, "apiKey"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, authType(&tc.meta))
+		})
+	}
 }

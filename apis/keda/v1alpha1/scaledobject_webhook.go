@@ -52,6 +52,9 @@ var restMapper meta.RESTMapper
 var memoryString = "memory"
 var cpuString = "cpu"
 
+// maxK8sLabelValueLength is the Kubernetes label value limit. The ScaledObject name is used as a label value (scaledobject.keda.sh/name=<so.Name>) on the SO and HPA, and the generated HPA name (keda-hpa-<so.Name> when no custom name is set) is itself a DNS-1123 label.
+const maxK8sLabelValueLength = 63
+
 func (so *ScaledObject) SetupWebhookWithManager(mgr ctrl.Manager, cacheMissFallback bool) error {
 	err := setupKubernetesClients(mgr, cacheMissFallback)
 	if err != nil {
@@ -164,6 +167,7 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 		"verifyHpas":             verifyHpas,
 		"verifyReplicaCount":     verifyReplicaCount,
 		"verifyFallback":         verifyFallback,
+		"verifyName":             verifyName,
 	}
 
 	for functionName, function := range verifyFunctions {
@@ -190,12 +194,28 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 	return nil, nil
 }
 
-//nolint:unparam
 func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) error {
 	err := CheckReplicaCountBoundsAreValid(incomingSo)
 	if err != nil {
 		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
 		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-replicas")
+	}
+	return err
+}
+
+func verifyName(incomingSo *ScaledObject, action string, _ bool) error {
+	if len(incomingSo.Name) > maxK8sLabelValueLength {
+		err := fmt.Errorf("scaledobject name %q is %d characters long; must be no more than %d characters because it is used as the %q label value", incomingSo.Name, len(incomingSo.Name), maxK8sLabelValueLength, ScaledObjectOwnerAnnotation)
+		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
+		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "name-too-long")
+		return err
+	}
+	hpaName := getHpaName(*incomingSo)
+	if len(hpaName) > maxK8sLabelValueLength {
+		err := fmt.Errorf("HPA name %q derived from scaledobject is %d characters long; must be no more than %d characters; set spec.advanced.horizontalPodAutoscalerConfig.name to a shorter name or shorten the scaledobject name", hpaName, len(hpaName), maxK8sLabelValueLength)
+		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
+		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "hpa-name-too-long")
+		return err
 	}
 	return nil
 }

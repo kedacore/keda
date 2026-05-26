@@ -25,9 +25,9 @@ const (
 )
 
 var (
-	jsonEncodingRegex       = regexp.MustCompile(`(application|text)\/.*?\+*json.*`)
-	multipartEncodingRegex  = regexp.MustCompile(`multipart\/.*`)
-	urlEncodedEncodingRegex = regexp.MustCompile(`application\/x-www-form-urlencoded.*`)
+	jsonEncodingRegex       = regexp.MustCompile(`^(application|text)\/([^+]+\+)*json.*`)
+	multipartEncodingRegex  = regexp.MustCompile(`^multipart\/.*`)
+	urlEncodedEncodingRegex = regexp.MustCompile(`^application\/x-www-form-urlencoded.*`)
 )
 
 func SerializeRequestBody(_ context.Context, request interface{}, nullable, optional bool, requestFieldName, serializationMethod, tag string) (io.Reader, string, error) {
@@ -281,7 +281,9 @@ func encodeMultipartFormDataFile(w *multipart.Writer, fieldName string, fieldTyp
 
 	// Reset seek position to 0 if the reader supports seeking
 	if seeker, ok := reader.(io.Seeker); ok {
-		_, _ = seeker.Seek(0, io.SeekStart)
+		if _, err := seeker.Seek(0, io.SeekStart); err != nil {
+			return err
+		}
 	}
 
 	return nil

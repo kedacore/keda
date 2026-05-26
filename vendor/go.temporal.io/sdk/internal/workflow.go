@@ -44,8 +44,6 @@ const (
 
 // VersioningBehavior specifies when existing workflows could change their Build ID.
 //
-// NOTE: Experimental
-//
 // Exposed as: [go.temporal.io/sdk/workflow.VersioningBehavior]
 type VersioningBehavior int
 
@@ -67,6 +65,81 @@ const (
 	//
 	// Exposed as: [go.temporal.io/sdk/workflow.VersioningBehaviorAutoUpgrade]
 	VersioningBehaviorAutoUpgrade
+)
+
+// ContinueAsNewVersioningBehavior specifies how the new workflow run after ContinueAsNew should change its Build ID.
+//
+// NOTE: Upgrade-on-Continue-as-New is currently experimental.
+//
+// Exposed as: [go.temporal.io/sdk/workflow.ContinueAsNewVersioningBehavior]
+type ContinueAsNewVersioningBehavior int
+
+const (
+	// ContinueAsNewVersioningBehaviorUnspecified - Workflow versioning policy unknown.
+	// If the source workflow was AutoUpgrade, the new workflow will start as AutoUpgrade.
+	// If the source workflow was Pinned, the new workflow will start Pinned to the same Build ID.
+	// If the source workflow had a Pinned Versioning Override, the new workflow will inherit that Versioning Override.
+	//
+	// Exposed as: [go.temporal.io/sdk/workflow.ContinueAsNewVersioningBehaviorUnspecified]
+	ContinueAsNewVersioningBehaviorUnspecified = iota
+
+	// ContinueAsNewVersioningBehaviorAutoUpgrade - Start the new workflow with AutoUpgrade versioning behavior.
+	// Like all AutoUpgrade workflows, use the Target Version of the workflow's task queue at start-time. After the
+	// first workflow task completes, use whatever Versioning Behavior the workflow is annotated with in the workflow
+	// code.
+	//
+	// Note that if the previous workflow had a Pinned override, that override will be inherited by the new workflow
+	// run regardless of the ContinueAsNewVersioningBehavior specified in the continue-as-new command.
+	//
+	// Exposed as: [go.temporal.io/sdk/workflow.ContinueAsNewVersioningBehaviorAutoUpgrade]
+	ContinueAsNewVersioningBehaviorAutoUpgrade = 1
+
+	// ContinueAsNewVersioningBehaviorUseRampingVersion - Use the Ramping Version of the workflow's task queue at start time,
+	// regardless of the workflow's Target Version.
+	//
+	// After the first workflow task completes, the workflow will use whatever Versioning Behavior it is annotated with. If
+	// there is no Ramping Version by the time that the first workflow task is dispatched, it will be sent to the Current Version.
+	//
+	// It is highly discouraged to use this if the workflow is annotated with AutoUpgrade behavior, because
+	// this setting ONLY applies to the first task of the workflow. If, after the first task, the workflow
+	// is AutoUpgrade, it will behave like a normal AutoUpgrade workflow and go to the Target Version, which
+	// may be the Current Version instead of the Ramping Version.
+	//
+	// Note that if the workflow being continued has a Pinned override, that override will be inherited by the
+	// new workflow run regardless of the ContinueAsNewVersioningBehavior specified in the continue-as-new
+	// command. Versioning Override always takes precedence until it's removed manually via UpdateWorkflowExecutionOptions.
+	//
+	// Exposed as: [go.temporal.io/sdk/workflow.ContinueAsNewVersioningBehaviorUseRampingVersion]
+	ContinueAsNewVersioningBehaviorUseRampingVersion = 2
+)
+
+// ContinueAsNewSuggestedReason specifies why ContinueAsNewSuggested is true. Multiple reasons can be true at the same time.
+//
+// NOTE: ContinueAsNewSuggestedReasons are currently experimental.
+//
+// Exposed as: [go.temporal.io/sdk/workflow.ContinueAsNewSuggestedReason]
+type ContinueAsNewSuggestedReason int
+
+const (
+	// ContinueAsNewSuggestedReasonUnspecified - The reason is unknown.
+	//
+	// Exposed as: [go.temporal.io/sdk/workflow.ContinueAsNewSuggestedReasonUnspecified]
+	ContinueAsNewSuggestedReasonUnspecified = iota
+
+	// ContinueAsNewSuggestedReasonHistorySizeTooLarge - Workflow History size is getting too large.
+	//
+	// Exposed as: [go.temporal.io/sdk/workflow.ContinueAsNewSuggestedReasonHistorySizeTooLarge]
+	ContinueAsNewSuggestedReasonHistorySizeTooLarge = 1
+
+	// ContinueAsNewSuggestedReasonTooManyHistoryEvents - Workflow History is getting too long.
+	//
+	// Exposed as: [go.temporal.io/sdk/workflow.ContinueAsNewSuggestedReasonTooManyHistoryEvents]
+	ContinueAsNewSuggestedReasonTooManyHistoryEvents = 2
+
+	// ContinueAsNewSuggestedReasonTooManyUpdates - Workflow's count of completed plus in-flight updates is too large.
+	//
+	// Exposed as: [go.temporal.io/sdk/workflow.ContinueAsNewSuggestedReasonTooManyUpdates]
+	ContinueAsNewSuggestedReasonTooManyUpdates = 3
 )
 
 // NexusOperationCancellationType specifies what action should be taken for a Nexus operation when the
@@ -158,35 +231,34 @@ type (
 		// json.Unmarshal.
 		ReceiveWithTimeout(ctx Context, timeout time.Duration, valuePtr interface{}) (ok, more bool)
 
-		// ReceiveAsync try to receive from Channel without blocking. If there is data available from the Channel, it
-		// assign the data to valuePtr and returns true. Otherwise, it returns false immediately.
+		// ReceiveAsync tries to receive from a Channel without blocking. If there is data available, it
+		// assigns the data to valuePtr and returns true. Otherwise, it returns false immediately.
 		//
 		// Note, values should not be reused for extraction here because merging on
 		// top of existing values may result in unexpected behavior similar to
 		// json.Unmarshal.
 		ReceiveAsync(valuePtr interface{}) (ok bool)
 
-		// ReceiveAsyncWithMoreFlag is same as ReceiveAsync with extra return value more to indicate if there could be
-		// more value from the Channel. The more is false when Channel is closed.
+		// ReceiveAsyncWithMoreFlag is the same as ReceiveAsync but with an extra return value more that indicates
+		// whether the channel contains more data. more is false when the channel is closed.
 		//
-		// Note, values should not be reused for extraction here because merging on
-		// top of existing values may result in unexpected behavior similar to
-		// json.Unmarshal.
+		// Note, values should not be reused for extraction here because merging on top of existing values may result in
+		// unexpected behavior similar to json.Unmarshal.
 		ReceiveAsyncWithMoreFlag(valuePtr interface{}) (ok bool, more bool)
 
 		// Len returns the number of buffered messages plus the number of blocked Send calls.
 		Len() int
 	}
 
-	// Channel must be used instead of native go channel by workflow code.
+	// Channel must be used by workflow code instead of native go channels.
 	// Use workflow.NewChannel(ctx) method to create Channel instance.
 	Channel interface {
 		SendChannel
 		ReceiveChannel
 	}
 
-	// Selector must be used instead of native go select by workflow code.
-	// Create through workflow.NewSelector(ctx).
+	// Selector must be used by workflow code instead of native go select.
+	// Use workflow.NewSelector(ctx) to create a selector.
 	Selector interface {
 		// AddReceive registers a callback function to be called when a channel has a message to receive.
 		// The callback is called when Select(ctx) is called.
@@ -350,6 +422,8 @@ type (
 		// Namespace of the child workflow.
 		//
 		// Optional: the current workflow (parent)'s namespace will be used if this is not provided.
+		//
+		// Deprecated: Cross-namespace operations are disabled by default as of server 1.30.1.
 		Namespace string
 
 		// WorkflowID of the child workflow to be scheduled.
@@ -487,8 +561,6 @@ type (
 		// Optional: Provides a Versioning Behavior to workflows of this type. It is required
 		// when WorkerOptions does not specify [DeploymentOptions.DefaultVersioningBehavior],
 		// [DeploymentOptions.DeploymentSeriesName] is set, and [UseBuildIDForVersioning] is true.
-		//
-		// NOTE: Experimental
 		VersioningBehavior VersioningBehavior
 	}
 
@@ -517,8 +589,6 @@ type (
 		// Optional: Provides a Versioning Behavior to workflows of this type. It is required
 		// when WorkerOptions does not specify [DeploymentOptions.DefaultVersioningBehavior],
 		// [DeploymentOptions.DeploymentSeriesName] is set, and [UseBuildIDForVersioning] is true.
-		//
-		// NOTE: Experimental
 		VersioningBehavior VersioningBehavior
 	}
 
@@ -662,8 +732,20 @@ func (wc *workflowEnvironmentInterceptor) Await(ctx Context, condition func() bo
 func (wc *workflowEnvironmentInterceptor) awaitWithOptions(ctx Context, options AwaitOptions, condition func() bool, functionName string) (ok bool, err error) {
 	state := getState(ctx)
 	defer state.unblocked()
-	timer := NewTimerWithOptions(ctx, options.Timeout, options.TimerOptions)
-	for !condition() {
+
+	cancelTimerOnCondition := wc.env.TryUse(SDKFlagCancelAwaitTimerOnCondition)
+	if cancelTimerOnCondition && condition() {
+		return true, nil
+	}
+
+	timerCtx := ctx
+	var cancelTimer func()
+	if cancelTimerOnCondition {
+		timerCtx, cancelTimer = WithCancel(ctx)
+	}
+	timer := NewTimerWithOptions(timerCtx, options.Timeout, options.TimerOptions)
+
+	for {
 		doneCh := ctx.Done()
 		// TODO: Consider always returning a channel
 		if doneCh != nil {
@@ -675,6 +757,13 @@ func (wc *workflowEnvironmentInterceptor) awaitWithOptions(ctx Context, options 
 			return false, nil
 		}
 		state.yield(functionName)
+		if condition() {
+			break
+		}
+	}
+
+	if cancelTimer != nil {
+		cancelTimer()
 	}
 	return true, nil
 }
@@ -723,7 +812,8 @@ func NewChannel(ctx Context) Channel {
 // Exposed as: [go.temporal.io/sdk/workflow.NewNamedChannel]
 func NewNamedChannel(ctx Context, name string) Channel {
 	env := getWorkflowEnvironment(ctx)
-	return &channelImpl{name: name, dataConverter: getDataConverterFromWorkflowContext(ctx), env: env}
+	dc := getDataConverterFromWorkflowContext(ctx)
+	return &channelImpl{name: name, dataConverter: dc, env: env}
 }
 
 // NewBufferedChannel create new buffered Channel instance
@@ -731,7 +821,8 @@ func NewNamedChannel(ctx Context, name string) Channel {
 // Exposed as: [go.temporal.io/sdk/workflow.NewBufferedChannel]
 func NewBufferedChannel(ctx Context, size int) Channel {
 	env := getWorkflowEnvironment(ctx)
-	return &channelImpl{size: size, dataConverter: getDataConverterFromWorkflowContext(ctx), env: env}
+	dc := getDataConverterFromWorkflowContext(ctx)
+	return &channelImpl{size: size, dataConverter: dc, env: env}
 }
 
 // NewNamedBufferedChannel create new BufferedChannel instance with a given human readable name.
@@ -740,7 +831,8 @@ func NewBufferedChannel(ctx Context, size int) Channel {
 // Exposed as: [go.temporal.io/sdk/workflow.NewNamedBufferedChannel]
 func NewNamedBufferedChannel(ctx Context, name string, size int) Channel {
 	env := getWorkflowEnvironment(ctx)
-	return &channelImpl{name: name, size: size, dataConverter: getDataConverterFromWorkflowContext(ctx), env: env}
+	dc := getDataConverterFromWorkflowContext(ctx)
+	return &channelImpl{name: name, size: size, dataConverter: dc, env: env}
 }
 
 // NewSelector creates a new Selector instance.
@@ -786,7 +878,8 @@ func NewSemaphore(ctx Context, n int64) Semaphore {
 	return &semaphoreImpl{size: n}
 }
 
-// Go creates a new coroutine. It has similar semantic to goroutine in a context of the workflow.
+// Go creates a new coroutine in workflow code. It has similar semantics to native goroutines, which must not be
+// used in workflow code.
 //
 // Exposed as: [go.temporal.io/sdk/workflow.Go]
 func Go(ctx Context, f func(ctx Context)) {
@@ -795,9 +888,9 @@ func Go(ctx Context, f func(ctx Context)) {
 	state.dispatcher.interceptor.Go(ctx, "", f)
 }
 
-// GoNamed creates a new coroutine with a given human readable name.
-// It has similar semantic to goroutine in a context of the workflow.
-// Name appears in stack traces that are blocked on this Channel.
+// GoNamed creates a new coroutine in workflow code, with a given human-readable name. It has similar semantics to
+// native goroutines, which must not be used in workflow code. name appears in stack traces that are blocked on this
+// Channel.
 //
 // Exposed as: [go.temporal.io/sdk/workflow.GoNamed]
 func GoNamed(ctx Context, name string, f func(ctx Context)) {
@@ -928,7 +1021,6 @@ func ExecuteActivity(ctx Context, activity interface{}, args ...interface{}) Fut
 
 func (wc *workflowEnvironmentInterceptor) ExecuteActivity(ctx Context, typeName string, args ...interface{}) Future {
 	// Validate type and its arguments.
-	dataConverter := getDataConverterFromWorkflowContext(ctx)
 	registry := getRegistryFromWorkflowContext(ctx)
 	future, settable := newDecodeFuture(ctx, typeName)
 	activityType, err := getValidatedActivityFunction(typeName, args, registry)
@@ -964,6 +1056,30 @@ func (wc *workflowEnvironmentInterceptor) ExecuteActivity(ctx Context, typeName 
 		return future
 	}
 
+	env := getWorkflowEnvironment(ctx)
+	// Generate activity ID before serialization so it's available to context-aware data converters
+	scheduleID := env.GenerateSequence()
+	var activityID string
+	if options.ActivityID != "" {
+		activityID = options.ActivityID
+	} else {
+		activityID = getStringID(scheduleID)
+	}
+	wfInfo := env.WorkflowInfo()
+	actCtx := converter.ActivitySerializationContext{
+		Namespace:    wfInfo.Namespace,
+		WorkflowID:   wfInfo.WorkflowExecution.ID,
+		WorkflowType: wfInfo.WorkflowType.Name,
+		ActivityType: activityType.Name,
+		TaskQueue:    cmp.Or(options.TaskQueueName, wfInfo.TaskQueueName),
+		IsLocal:      false,
+	}
+	dataConverter := converter.WithDataConverterSerializationContext(
+		getDataConverterFromWorkflowContext(ctx),
+		actCtx,
+	)
+	future.(*decodeFutureImpl).dataConverter = dataConverter
+
 	input, err := encodeArgs(dataConverter, args)
 	if err != nil {
 		panic(err)
@@ -974,8 +1090,11 @@ func (wc *workflowEnvironmentInterceptor) ExecuteActivity(ctx Context, typeName 
 		ActivityType:           *activityType,
 		Input:                  input,
 		DataConverter:          dataConverter,
+		FailureConverter:       converter.WithFailureConverterSerializationContext(wc.env.GetFailureConverter(), actCtx),
 		Header:                 header,
 	}
+	params.ActivityID = activityID
+	params.ScheduleID = scheduleID
 
 	ctxDone, cancellable := ctx.Done().(*channelImpl)
 	cancellationCallback := &receiveCallback{}
@@ -1128,13 +1247,25 @@ func (wc *workflowEnvironmentInterceptor) ExecuteLocalActivity(ctx Context, type
 		return future
 	}
 
+	env := getWorkflowEnvironment(ctx)
+	wfInfo := env.WorkflowInfo()
+	actCtx := converter.ActivitySerializationContext{
+		Namespace:    wfInfo.Namespace,
+		WorkflowID:   wfInfo.WorkflowExecution.ID,
+		WorkflowType: wfInfo.WorkflowType.Name,
+		ActivityType: typeName,
+		TaskQueue:    wfInfo.TaskQueueName,
+		IsLocal:      true,
+	}
+
 	params := &ExecuteLocalActivityParams{
 		ExecuteLocalActivityOptions: *options,
 		ActivityFn:                  activityFn,
 		ActivityType:                typeName,
 		InputArgs:                   args,
-		WorkflowInfo:                GetWorkflowInfo(ctx),
-		DataConverter:               getDataConverterFromWorkflowContext(ctx),
+		WorkflowInfo:                wfInfo,
+		DataConverter:               converter.WithDataConverterSerializationContext(getDataConverterFromWorkflowContext(ctx), actCtx),
+		FailureConverter:            converter.WithFailureConverterSerializationContext(wc.env.GetFailureConverter(), actCtx),
 		ScheduledTime:               Now(ctx), // initial scheduled time
 		Header:                      header,
 		Attempt:                     1, // Attempts always start at one
@@ -1261,8 +1392,24 @@ func (wc *workflowEnvironmentInterceptor) ExecuteChildWorkflow(ctx Context, chil
 	}
 
 	workflowOptionsFromCtx := getWorkflowEnvOptions(ctx)
-	dc := WithWorkflowContext(ctx, workflowOptionsFromCtx.DataConverter)
 	env := getWorkflowEnvironment(ctx)
+
+	// Generate child workflow ID before serialization so it's available to context-aware data converters
+	var childWorkflowID string
+	if workflowOptionsFromCtx.WorkflowID != "" {
+		childWorkflowID = workflowOptionsFromCtx.WorkflowID
+	} else {
+		childWorkflowID = env.WorkflowInfo().currentRunID + "_" + getStringID(env.GenerateSequence())
+	}
+	wfInfo := env.WorkflowInfo()
+	childWfCtx := converter.WorkflowSerializationContext{
+		// Use target namespace for cross-namespace child workflows, otherwise default to parent's.
+		Namespace:  cmp.Or(workflowOptionsFromCtx.Namespace, wfInfo.Namespace),
+		WorkflowID: childWorkflowID,
+	}
+	dc := converter.WithDataConverterSerializationContext(getDataConverterFromWorkflowContext(ctx), childWfCtx)
+	result.decodeFutureImpl.dataConverter = dc
+
 	wfType, input, err := getValidatedWorkflowFunction(childWorkflowType, args, dc, env.GetRegistry())
 	if err != nil {
 		executionSettable.Set(nil, err)
@@ -1270,7 +1417,11 @@ func (wc *workflowEnvironmentInterceptor) ExecuteChildWorkflow(ctx Context, chil
 		return result
 	}
 
-	options := getWorkflowEnvOptions(ctx)
+	// Copy workflow options so we don't mutate the shared pointer on ctx,
+	// which would cause subsequent child workflow launches from the same ctx
+	// to reuse this child's WorkflowID instead of generating a new one.
+	optionsCopy := *getWorkflowEnvOptions(ctx)
+	options := &optionsCopy
 	options.DataConverter = dc
 	options.ContextPropagators = workflowOptionsFromCtx.ContextPropagators
 	options.Memo = workflowOptionsFromCtx.Memo
@@ -1279,6 +1430,7 @@ func (wc *workflowEnvironmentInterceptor) ExecuteChildWorkflow(ctx Context, chil
 	options.VersioningIntent = workflowOptionsFromCtx.VersioningIntent
 	options.StaticDetails = workflowOptionsFromCtx.StaticDetails
 	options.StaticSummary = workflowOptionsFromCtx.StaticSummary
+	options.WorkflowID = childWorkflowID
 	header, err := workflowHeaderPropagated(ctx, options.ContextPropagators)
 	if err != nil {
 		executionSettable.Set(nil, err)
@@ -1286,13 +1438,20 @@ func (wc *workflowEnvironmentInterceptor) ExecuteChildWorkflow(ctx Context, chil
 		return result
 	}
 
+	failureConverter := converter.WithFailureConverterSerializationContext(
+		wc.env.GetFailureConverter(),
+		childWfCtx,
+	)
+
 	params := ExecuteWorkflowParams{
-		WorkflowOptions: *options,
-		Input:           input,
-		WorkflowType:    wfType,
-		Header:          header,
-		scheduledTime:   Now(ctx), /* this is needed for test framework, and is not send to server */
-		attempt:         1,
+		WorkflowOptions:  *options,
+		Input:            input,
+		WorkflowType:     wfType,
+		Header:           header,
+		scheduledTime:    Now(ctx), /* this is needed for test framework, and is not send to server */
+		attempt:          1,
+		dataConverter:    dc,
+		failureConverter: failureConverter,
 	}
 
 	ctxDone, cancellable := ctx.Done().(*channelImpl)
@@ -1376,9 +1535,13 @@ type WorkflowInfo struct {
 	// this worker
 	currentTaskBuildID string
 
-	continueAsNewSuggested bool
-	currentHistorySize     int
-	currentHistoryLength   int
+	continueAsNewSuggested        bool
+	continueAsNewSuggestedReasons []ContinueAsNewSuggestedReason
+
+	targetWorkerDeploymentVersionChanged bool
+
+	currentHistorySize   int
+	currentHistoryLength int
 	// currentRunID is the current run ID of the workflow task, deterministic over reset
 	currentRunID string
 }
@@ -1428,6 +1591,23 @@ func (wInfo *WorkflowInfo) GetCurrentHistorySize() int {
 // This value may change throughout the life of the workflow.
 func (wInfo *WorkflowInfo) GetContinueAsNewSuggested() bool {
 	return wInfo.continueAsNewSuggested
+}
+
+// GetContinueAsNewSuggestedReasons returns a list of reasons why continue as new is suggested,
+// if the server is configured to suggest continue as new and it is suggested.
+// This value may change throughout the life of the workflow.
+//
+// Note: ContinueAsNewSuggestedReasons are currently experimental.
+func (wInfo *WorkflowInfo) GetContinueAsNewSuggestedReasons() []ContinueAsNewSuggestedReason {
+	return wInfo.continueAsNewSuggestedReasons
+}
+
+// GetTargetWorkerDeploymentVersionChanged returns whether the target worker deployment
+// version has changed.
+//
+// Note: Upgrade-on-Continue-as-New is currently experimental.
+func (wInfo *WorkflowInfo) GetTargetWorkerDeploymentVersionChanged() bool {
+	return wInfo.targetWorkerDeploymentVersionChanged
 }
 
 // GetWorkflowInfo extracts info of a current workflow from a context.
@@ -1683,7 +1863,14 @@ func signalExternalWorkflow(ctx Context, workflowID, runID, signalName string, a
 		return future
 	}
 
-	dataConverter := getDataConverterFromWorkflowContext(ctx)
+	wfInfo := env.WorkflowInfo()
+	dataConverter := converter.WithDataConverterSerializationContext(
+		getDataConverterFromWorkflowContext(ctx),
+		converter.WorkflowSerializationContext{
+			// Use target namespace for cross-namespace signals, otherwise default to current workflow's.
+			Namespace:  cmp.Or(options.Namespace, wfInfo.Namespace),
+			WorkflowID: workflowID,
+		})
 	input, err := encodeArg(dataConverter, arg)
 	if err != nil {
 		settable.Set(nil, err)
@@ -1883,6 +2070,8 @@ func GetChildWorkflowOptions(ctx Context) ChildWorkflowOptions {
 }
 
 // WithWorkflowNamespace adds a namespace to the context.
+//
+// Deprecated: Cross-namespace operations are disabled by default as of server 1.30.1.
 //
 // Exposed as: [go.temporal.io/sdk/workflow.WithWorkflowNamespace]
 func WithWorkflowNamespace(ctx Context, name string) Context {
@@ -2753,6 +2942,23 @@ type NexusOperationOptions struct {
 	// Optional: defaults to the maximum allowed by the Temporal server.
 	ScheduleToCloseTimeout time.Duration
 
+	// ScheduleToStartTimeout - Maximum time to wait for an operation to be started (or completed if synchronous) by the handler.
+	//
+	// Optional: If not set or zero, no schedule-to-start timeout is enforced.
+	// Requires Temporal Server 1.31.0 or later.
+	//
+	// NOTE: Experimental
+	ScheduleToStartTimeout time.Duration
+
+	// StartToCloseTimeout - Maximum time to wait for an asynchronous operation to complete after it has been started.
+	// Only applies to asynchronous operations. Ignored for synchronous operations.
+	//
+	// Optional: If not set or zero, no start-to-close timeout is enforced.
+	// Requires Temporal Server 1.31.0 or later.
+	//
+	// NOTE: Experimental
+	StartToCloseTimeout time.Duration
+
 	// CancellationType - Indicates what action should be taken when the caller is cancelled.
 	//
 	// Optional: defaults to NexusOperationCancellationTypeWaitCompleted.
@@ -2908,6 +3114,7 @@ func (wc *workflowEnvironmentInterceptor) ExecuteNexusOperation(ctx Context, inp
 
 	ctxDone, cancellable := ctx.Done().(*channelImpl)
 	cancellationCallback := &receiveCallback{}
+
 	params, err := wc.prepareNexusOperationParams(ctx, input)
 	if err != nil {
 		executionSettable.Set(nil, err)
@@ -2978,5 +3185,18 @@ func versioningBehaviorToProto(t VersioningBehavior) enumspb.VersioningBehavior 
 		return enumspb.VERSIONING_BEHAVIOR_AUTO_UPGRADE
 	default:
 		panic("unknown versioning behavior type")
+	}
+}
+
+func continueAsNewVersioningBehaviorToProto(t ContinueAsNewVersioningBehavior) enumspb.ContinueAsNewVersioningBehavior {
+	switch t {
+	case ContinueAsNewVersioningBehaviorUnspecified:
+		return enumspb.CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_UNSPECIFIED
+	case ContinueAsNewVersioningBehaviorAutoUpgrade:
+		return enumspb.CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_AUTO_UPGRADE
+	case ContinueAsNewVersioningBehaviorUseRampingVersion:
+		return enumspb.CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_USE_RAMPING_VERSION
+	default:
+		panic("unknown continue-as-new versioning behavior type")
 	}
 }

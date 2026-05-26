@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -26,6 +27,7 @@ type awsDynamoDBStreamsScaler struct {
 	metadata              *awsDynamoDBStreamsMetadata
 	streamArn             *string
 	dbStreamWrapperClient DynamodbStreamWrapperClient
+	httpClient            *http.Client
 	logger                logr.Logger
 }
 
@@ -55,7 +57,8 @@ func NewAwsDynamoDBStreamsScaler(ctx context.Context, config *scalersconfig.Scal
 		return nil, fmt.Errorf("error parsing dynamodb stream metadata: %w", err)
 	}
 
-	dbClient, dbStreamClient, err := createClientsForDynamoDBStreamsScaler(ctx, meta)
+	httpClient := awsutils.NewHTTPClient()
+	dbClient, dbStreamClient, err := createClientsForDynamoDBStreamsScaler(ctx, meta, httpClient)
 	if err != nil {
 		return nil, fmt.Errorf("error when creating dynamodbstream client: %w", err)
 	}
@@ -71,7 +74,8 @@ func NewAwsDynamoDBStreamsScaler(ctx context.Context, config *scalersconfig.Scal
 		dbStreamWrapperClient: &dynamodbStreamWrapperClient{
 			dbStreamClient: dbStreamClient,
 		},
-		logger: logger,
+		httpClient: httpClient,
+		logger:     logger,
 	}, nil
 }
 
@@ -93,7 +97,7 @@ func parseAwsDynamoDBStreamsMetadata(config *scalersconfig.ScalerConfig) (*awsDy
 	return &meta, nil
 }
 
-func createClientsForDynamoDBStreamsScaler(ctx context.Context, metadata *awsDynamoDBStreamsMetadata) (*dynamodb.Client, *dynamodbstreams.Client, error) {
+func createClientsForDynamoDBStreamsScaler(ctx context.Context, metadata *awsDynamoDBStreamsMetadata, httpClient *http.Client) (*dynamodb.Client, *dynamodbstreams.Client, error) {
 	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsAuthorization)
 	if err != nil {
 		return nil, nil, err
@@ -102,10 +106,16 @@ func createClientsForDynamoDBStreamsScaler(ctx context.Context, metadata *awsDyn
 		if metadata.AwsEndpoint != "" {
 			options.BaseEndpoint = aws.String(metadata.AwsEndpoint)
 		}
+		if httpClient != nil {
+			options.HTTPClient = httpClient
+		}
 	})
 	dbStreamClient := dynamodbstreams.NewFromConfig(*cfg, func(options *dynamodbstreams.Options) {
 		if metadata.AwsEndpoint != "" {
 			options.BaseEndpoint = aws.String(metadata.AwsEndpoint)
+		}
+		if httpClient != nil {
+			options.HTTPClient = httpClient
 		}
 	})
 
@@ -139,6 +149,9 @@ func getDynamoDBStreamsArn(ctx context.Context, db dynamodb.DescribeTableAPIClie
 
 func (s *awsDynamoDBStreamsScaler) Close(_ context.Context) error {
 	awsutils.ClearAwsConfig(s.metadata.awsAuthorization)
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 

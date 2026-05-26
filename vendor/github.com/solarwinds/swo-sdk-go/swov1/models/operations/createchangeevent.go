@@ -8,6 +8,7 @@ import (
 
 // CreateChangeEventResponseBody - The ID of the created event
 type CreateChangeEventResponseBody struct {
+	// Resource identifier.
 	ID int64 `json:"id"`
 }
 

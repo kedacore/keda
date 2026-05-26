@@ -31,30 +31,34 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/influxdata/line-protocol/v2/lineprotocol"
+	"github.com/apache/arrow-go/v18/arrow/flight"
 )
 
 const (
-	envInfluxHost          = "INFLUX_HOST"
-	envInfluxToken         = "INFLUX_TOKEN"
-	envInfluxAuthScheme    = "INFLUX_AUTH_SCHEME"
-	envInfluxOrg           = "INFLUX_ORG"
-	envInfluxDatabase      = "INFLUX_DATABASE"
-	envInfluxPrecision     = "INFLUX_PRECISION"
-	envInfluxGzipThreshold = "INFLUX_GZIP_THRESHOLD"
-	envInfluxWriteNoSync   = "INFLUX_WRITE_NO_SYNC"
-	envInfluxWriteTimeout  = "INFLUX_WRITE_TIMEOUT"
-	envInfluxQueryTimeout  = "INFLUX_QUERY_TIMEOUT"
+	envInfluxHost               = "INFLUX_HOST"
+	envInfluxToken              = "INFLUX_TOKEN"
+	envInfluxAuthScheme         = "INFLUX_AUTH_SCHEME"
+	envInfluxOrg                = "INFLUX_ORG"
+	envInfluxDatabase           = "INFLUX_DATABASE"
+	envInfluxPrecision          = "INFLUX_PRECISION"
+	envInfluxGzipThreshold      = "INFLUX_GZIP_THRESHOLD"
+	envInfluxWriteNoSync        = "INFLUX_WRITE_NO_SYNC"
+	envInfluxWriteAcceptPartial = "INFLUX_WRITE_ACCEPT_PARTIAL"
+	envInfluxWriteUseV2Api      = "INFLUX_WRITE_USE_V2_API"
+	envInfluxWriteTimeout       = "INFLUX_WRITE_TIMEOUT"
+	envInfluxQueryTimeout       = "INFLUX_QUERY_TIMEOUT"
 )
 
 const (
-	connStrInfluxToken         = "token"
-	connStrInfluxAuthScheme    = "authScheme"
-	connStrInfluxOrg           = "org"
-	connStrInfluxDatabase      = "database"
-	connStrInfluxPrecision     = "precision"
-	connStrInfluxGzipThreshold = "gzipThreshold"
-	connStrInfluxWriteNoSync   = "writeNoSync"
+	connStrInfluxToken              = "token"
+	connStrInfluxAuthScheme         = "authScheme"
+	connStrInfluxOrg                = "org"
+	connStrInfluxDatabase           = "database"
+	connStrInfluxPrecision          = "precision"
+	connStrInfluxGzipThreshold      = "gzipThreshold"
+	connStrInfluxWriteNoSync        = "writeNoSync"
+	connStrInfluxWriteAcceptPartial = "writeAcceptPartial"
+	connStrInfluxWriteUseV2Api      = "writeUseV2Api"
 )
 
 const (
@@ -149,6 +153,9 @@ type ClientConfig struct {
 
 	// Proxy URL
 	Proxy string
+
+	// Flight client middleware
+	Middleware []flight.ClientMiddleware
 }
 
 // validate validates the config.
@@ -206,6 +213,16 @@ func (c *ClientConfig) parse(connectionString string) error {
 			return err
 		}
 	}
+	if writeAcceptPartial, ok := values[connStrInfluxWriteAcceptPartial]; ok {
+		if err := c.parseWriteAcceptPartial(writeAcceptPartial[0]); err != nil {
+			return err
+		}
+	}
+	if writeUseV2Api, ok := values[connStrInfluxWriteUseV2Api]; ok {
+		if err := c.parseWriteUseV2Api(writeUseV2Api[0]); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
@@ -242,6 +259,16 @@ func (c *ClientConfig) env() error {
 			return err
 		}
 	}
+	if writeAcceptPartial, ok := os.LookupEnv(envInfluxWriteAcceptPartial); ok {
+		if err := c.parseWriteAcceptPartial(writeAcceptPartial); err != nil {
+			return err
+		}
+	}
+	if writeUseV2Api, ok := os.LookupEnv(envInfluxWriteUseV2Api); ok {
+		if err := c.parseWriteUseV2Api(writeUseV2Api); err != nil {
+			return err
+		}
+	}
 	if writeTimeout, ok := os.LookupEnv(envInfluxWriteTimeout); ok {
 		to, err := time.ParseDuration(writeTimeout)
 		if err != nil {
@@ -269,13 +296,13 @@ func (c *ClientConfig) parsePrecision(precision string) error {
 
 	switch precision {
 	case "ns", "nanosecond":
-		c.WriteOptions.Precision = lineprotocol.Nanosecond
+		c.WriteOptions.Precision = Nanosecond
 	case "us", "microsecond":
-		c.WriteOptions.Precision = lineprotocol.Microsecond
+		c.WriteOptions.Precision = Microsecond
 	case "ms", "millisecond":
-		c.WriteOptions.Precision = lineprotocol.Millisecond
+		c.WriteOptions.Precision = Millisecond
 	case "s", "second":
-		c.WriteOptions.Precision = lineprotocol.Second
+		c.WriteOptions.Precision = Second
 	default:
 		return fmt.Errorf("unsupported precision '%s'", precision)
 	}
@@ -313,6 +340,40 @@ func (c *ClientConfig) parseWriteNoSync(strVal string) error {
 	}
 
 	c.WriteOptions.NoSync = value
+
+	return nil
+}
+
+// parseWriteAcceptPartial parses and sets write option AcceptPartial.
+func (c *ClientConfig) parseWriteAcceptPartial(strVal string) error {
+	if c.WriteOptions == nil {
+		options := DefaultWriteOptions
+		c.WriteOptions = &options
+	}
+
+	value, err := strconv.ParseBool(strVal)
+	if err != nil {
+		return err
+	}
+
+	c.WriteOptions.AcceptPartial = value
+
+	return nil
+}
+
+// parseWriteUseV2Api parses and sets write option UseV2Api.
+func (c *ClientConfig) parseWriteUseV2Api(strVal string) error {
+	if c.WriteOptions == nil {
+		options := DefaultWriteOptions
+		c.WriteOptions = &options
+	}
+
+	value, err := strconv.ParseBool(strVal)
+	if err != nil {
+		return err
+	}
+
+	c.WriteOptions.UseV2Api = value
 
 	return nil
 }

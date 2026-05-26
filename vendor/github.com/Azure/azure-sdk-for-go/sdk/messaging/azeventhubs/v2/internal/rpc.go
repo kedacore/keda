@@ -24,7 +24,7 @@ const (
 	defaultReceiverCredits = 1000
 )
 
-var RPCLinkClosedErr = errors.New("rpc link closed")
+var ErrRPCLinkClosed = errors.New("rpc link closed")
 
 type (
 	// rpcLink is the bidirectional communication structure used for CBS negotiation
@@ -178,7 +178,7 @@ func (l *rpcLink) responseRouter() {
 			// we need to bail out, broadcasting to all affected callers/consumers.
 			if GetRecoveryKind(err) != RecoveryKindNone {
 				if IsCancelError(err) {
-					err = RPCLinkClosedErr
+					err = ErrRPCLinkClosed
 				} else {
 					azlog.Writef(l.logEvent, "Error in RPCLink, stopping response router: %s", err.Error())
 				}

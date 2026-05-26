@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/rcrowley/go-metrics"
@@ -156,6 +157,30 @@ func NewBroker(addr string) *Broker {
 	return &Broker{id: -1, addr: addr}
 }
 
+func (b *Broker) getSockError() error {
+	// skip socket health checks while another operation owns broker state
+	if !b.lock.TryLock() {
+		return nil
+	}
+	defer b.lock.Unlock()
+
+	if b.conn == nil {
+		return nil
+	}
+
+	conn := b.conn
+	if c, ok := conn.(*bufConn); ok {
+		conn = c.Conn
+	}
+	if c, ok := conn.(*tls.Conn); ok {
+		conn = c.NetConn()
+	}
+	if c, ok := conn.(*net.TCPConn); ok {
+		return getTCPConnSockError(c)
+	}
+	return nil
+}
+
 // Open tries to connect to the Broker if it is not already connected or connecting, but does not block
 // waiting for the connection to complete. This means that any subsequent operations on the broker will
 // block waiting for the connection to succeed or fail. To get the effect of a fully synchronous Open call,
@@ -219,10 +244,15 @@ func (b *Broker) Open(conf *Config) error {
 		// Send an ApiVersionsRequest to identify the client (KIP-511).
 		// Store the response in the brokerAPIVersions map.
 		// It will be used to determine the supported API versions for each request.
-		// This should happen before SASL authentication: https://kafka.apache.org/26/protocol.html#api_versions
+		// This should happen before SASL authentication: https://kafka.apache.org/42/design/protocol/#retrieving-supported-api-versions
 		if conf.ApiVersionsRequest {
 			apiVersionsResponse, err := b.sendAndReceiveApiVersions(3)
 			if err != nil {
+				if b.maybeCloseLocked(err) {
+					// Open is async, so we can't return the error here; surface it via Connected().
+					return
+				}
+
 				Logger.Printf("Error while sending ApiVersionsRequest V3 to broker %s: %s\n", b.addr, err)
 				// send a lower version request in case remote cluster is <= 2.4.0.0
 				maxVersion := int16(0)
@@ -236,6 +266,9 @@ func (b *Broker) Open(conf *Config) error {
 				}
 				apiVersionsResponse, err = b.sendAndReceiveApiVersions(maxVersion)
 				if err != nil {
+					if b.maybeCloseLocked(err) {
+						return
+					}
 					Logger.Printf("Error while sending ApiVersionsRequest V%d to broker %s: %s\n", maxVersion, b.addr, err)
 				}
 			}
@@ -278,16 +311,12 @@ func (b *Broker) Open(conf *Config) error {
 		if conf.Net.SASL.Enable && !useSaslV0 {
 			b.connErr = b.authenticateViaSASLv1()
 			if b.connErr != nil {
-				close(b.responses)
-				<-b.done
-				err = b.conn.Close()
+				err = b.closeLocked()
 				if err == nil {
 					DebugLogger.Printf("Closed connection to broker %s due to SASL v1 auth error: %s\n", b.addr, b.connErr)
 				} else {
 					Logger.Printf("Error while closing connection to broker %s (due to SASL v1 auth error: %s): %s\n", b.addr, b.connErr, err)
 				}
-				b.conn = nil
-				b.opened.Store(false)
 				return
 			}
 		}
@@ -340,19 +369,41 @@ func (b *Broker) Close() error {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
+	b.connErr = nil
+	return b.closeLocked()
+}
+
+// maybeCloseLocked closes on transport errors and reports whether a close was performed.
+// NOTE: caller must hold b.lock.
+func (b *Broker) maybeCloseLocked(err error) bool {
+	if !shouldCloseBrokerConn(err) {
+		return false
+	}
+
+	b.connErr = err
+	_ = b.closeLocked()
+	return true
+}
+
+// closeLocked closes the broker connection and resets state.
+// NOTE: caller must hold b.lock.
+func (b *Broker) closeLocked() error {
 	if b.conn == nil {
 		return ErrNotConnected
 	}
 
-	close(b.responses)
-	<-b.done
-
+	if b.responses != nil {
+		close(b.responses)
+	}
+	// close the socket before waiting so in-flight reads can exit
 	err := b.conn.Close()
+	if b.done != nil {
+		<-b.done
+	}
 
 	b.conn = nil
-	b.connErr = nil
-	b.done = nil
 	b.responses = nil
+	b.done = nil
 
 	b.metricRegistry.UnregisterAll()
 
@@ -394,6 +445,17 @@ func (b *Broker) GetMetadata(request *MetadataRequest) (*MetadataResponse, error
 
 	err := b.sendAndReceive(request, response)
 	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func (b *Broker) DescribeCluster(request *DescribeClusterRequest) (*DescribeClusterResponse, error) {
+	response := new(DescribeClusterResponse)
+	response.Version = request.Version
+
+	if err := b.sendAndReceive(request, response); err != nil {
 		return nil, err
 	}
 
@@ -1091,6 +1153,7 @@ func (b *Broker) sendAndReceive(req protocolBody, res protocolBody) error {
 
 	promise, err := b.send(req, res)
 	if err != nil {
+		b.maybeCloseLocked(err)
 		return err
 	}
 
@@ -1100,6 +1163,7 @@ func (b *Broker) sendAndReceive(req protocolBody, res protocolBody) error {
 
 	err = handleResponsePromise(req, res, promise, b.metricRegistry)
 	if err != nil {
+		b.maybeCloseLocked(err)
 		return err
 	}
 	if res != nil {
@@ -1242,6 +1306,40 @@ func getHeaderLength(headerVersion int16) int8 {
 		// header contains additional tagged field length (0), we don't support actual tags yet.
 		return 9
 	}
+}
+
+// shouldCloseBrokerConn reports whether a transport error should trigger closing.
+func shouldCloseBrokerConn(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if errors.Is(err, io.EOF) {
+		return true
+	}
+
+	if errors.Is(err, io.ErrUnexpectedEOF) {
+		return true
+	}
+
+	if errors.Is(err, io.ErrClosedPipe) {
+		return true
+	}
+
+	if errors.Is(err, net.ErrClosed) {
+		return true
+	}
+
+	if errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.ECONNABORTED) || errors.Is(err, syscall.EPIPE) || errors.Is(err, syscall.ENOTCONN) {
+		return true
+	}
+
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return !netErr.Timeout()
+	}
+
+	return false
 }
 
 func (b *Broker) sendAndReceiveApiVersions(v int16) (*ApiVersionsResponse, error) {

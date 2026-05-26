@@ -345,7 +345,20 @@ func getNATSJetStreamMonitoringURL(useHTTPS bool, natsServerEndpoint string, id 
 	if useHTTPS {
 		scheme = natsHTTPSProtocol
 	}
-	return fmt.Sprintf("%s://%s/jsz?acc=%s&consumers=true&config=true", scheme, natsServerEndpoint, id)
+
+	params := url.Values{}
+	params.Set("acc", id)
+	params.Set("consumers", "true")
+	params.Set("config", "true")
+
+	monitoringURL := url.URL{
+		Scheme:   scheme,
+		Host:     natsServerEndpoint,
+		Path:     "/jsz",
+		RawQuery: params.Encode(),
+	}
+
+	return monitoringURL.String()
 }
 
 func (s *natsJetStreamScaler) getNATSJetStreamMonitoringServerURL(nodeHostname string) (string, error) {
@@ -379,7 +392,14 @@ func (s *natsJetStreamScaler) getNATSJetStreamMonitoringNodeURL(nodeHostname str
 		nodeHostname = net.JoinHostPort(nodeHostname, port)
 	}
 
-	return fmt.Sprintf("%s://%s%s?%s", jsURL.Scheme, nodeHostname, jsURL.Path, jsURL.RawQuery), nil
+	nodeURL := url.URL{
+		Scheme:   jsURL.Scheme,
+		Host:     nodeHostname,
+		Path:     jsURL.Path,
+		RawQuery: jsURL.Query().Encode(),
+	}
+
+	return nodeURL.String(), nil
 }
 
 func (s *natsJetStreamScaler) getNATSJetStreamMonitoringNodeURLByNode(node string) (string, error) {
@@ -388,18 +408,26 @@ func (s *natsJetStreamScaler) getNATSJetStreamMonitoringNodeURLByNode(node strin
 		s.logger.Error(err, "unable to parse monitoring URL to create node URL", "natsServerMonitoringURL", s.metadata.monitoringURL)
 		return "", err
 	}
-	return fmt.Sprintf("%s://%s.%s%s?%s", jsURL.Scheme, node, jsURL.Host, jsURL.Path, jsURL.RawQuery), nil
+
+	nodeURL := url.URL{
+		Scheme:   jsURL.Scheme,
+		Host:     fmt.Sprintf("%s.%s", node, jsURL.Host),
+		Path:     jsURL.Path,
+		RawQuery: jsURL.Query().Encode(),
+	}
+
+	return nodeURL.String(), nil
 }
 
-func (s *natsJetStreamScaler) getMaxMsgLag() int64 {
+func (s *natsJetStreamScaler) getMaxMsgLag() (int64, error) {
 	consumerName := s.metadata.Consumer
 
 	for _, consumer := range s.stream.Consumers {
 		if consumer.Name == consumerName {
-			return int64(consumer.NumPending + consumer.NumAckPending)
+			return int64(consumer.NumPending + consumer.NumAckPending), nil
 		}
 	}
-	return s.stream.State.LastSequence
+	return 0, fmt.Errorf("consumer %q not found in stream %q", consumerName, s.metadata.Stream)
 }
 
 func (s *natsJetStreamScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
@@ -427,7 +455,10 @@ func (s *natsJetStreamScaler) GetMetricsAndActivity(ctx context.Context, metricN
 		return []external_metrics.ExternalMetricValue{}, false, errors.New("stream not found")
 	}
 
-	totalLag := s.getMaxMsgLag()
+	totalLag, err := s.getMaxMsgLag()
+	if err != nil {
+		return []external_metrics.ExternalMetricValue{}, false, err
+	}
 	s.logger.V(1).Info("NATS JetStream Scaler: Providing metrics based on totalLag, threshold", "totalLag", totalLag, "lagThreshold", s.metadata.LagThreshold)
 
 	metric := GenerateMetricInMili(metricName, float64(totalLag))

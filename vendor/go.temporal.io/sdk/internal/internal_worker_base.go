@@ -53,7 +53,7 @@ type (
 	// LocalActivityResultHandler that returns local activity result
 	LocalActivityResultHandler func(lar *LocalActivityResultWrapper)
 
-	// LocalActivityResultWrapper contains result of a local activity
+	// LocalActivityResultWrapper contains the result of a local activity
 	LocalActivityResultWrapper struct {
 		Err     error
 		Result  *commonpb.Payloads
@@ -134,8 +134,7 @@ type (
 		DrainUnhandledUpdates() bool
 		// TryUse returns true if this flag may currently be used.
 		TryUse(flag sdkFlag) bool
-		// GetFlag returns if the flag is currently used.
-		GetFlag(flag sdkFlag) bool
+		GenerateSequence() int64
 	}
 
 	// WorkflowDefinitionFactory factory for creating WorkflowDefinition instances.
@@ -215,6 +214,8 @@ type (
 		lastPollTaskErrMessage string
 		lastPollTaskErrStarted time.Time
 		lastPollTaskErrLock    sync.Mutex
+
+		noRepoll atomic.Bool
 	}
 
 	eagerOrPolledTask interface {
@@ -234,23 +235,25 @@ type (
 	}
 
 	pollScalerReportHandleOptions struct {
-		initialPollerCount int
-		maxPollerCount     int
-		minPollerCount     int
-		logger             log.Logger
-		scaleCallback      func(int)
+		initialPollerCount        int
+		maxPollerCount            int
+		minPollerCount            int
+		logger                    log.Logger
+		scaleCallback             func(int)
+		serverSupportsAutoscaling *atomic.Bool
 	}
 
 	pollScalerReportHandle struct {
-		minPollerCount         int
-		maxPollerCount         int
-		logger                 log.Logger
-		target                 atomic.Int64
-		scaleCallback          func(int)
-		everSawScalingDecision atomic.Bool
-		ingestedThisPeriod     atomic.Int64
-		ingestedLastPeriod     atomic.Int64
-		scaleUpAllowed         atomic.Bool
+		minPollerCount            int
+		maxPollerCount            int
+		logger                    log.Logger
+		target                    atomic.Int64
+		scaleCallback             func(int)
+		everSawScalingDecision    atomic.Bool
+		serverSupportsAutoscaling *atomic.Bool
+		ingestedThisPeriod        atomic.Int64
+		ingestedLastPeriod        atomic.Int64
+		scaleUpAllowed            atomic.Bool
 	}
 
 	barrier chan struct{}
@@ -326,6 +329,9 @@ func newBaseWorker(
 ) *baseWorker {
 	ctx, cancel := context.WithCancel(context.Background())
 	logger := log.With(options.logger, tagWorkerType, options.workerType)
+	if heartbeatHandler, isHeartbeat := options.metricsHandler.(*heartbeatMetricsHandler); isHeartbeat {
+		options.metricsHandler = heartbeatHandler.forWorker(options.workerType)
+	}
 	metricsHandler := options.metricsHandler.WithTags(metrics.WorkerTags(options.workerType))
 	tss := newTrackingSlotSupplier(options.slotSupplier, trackingSlotSupplierOptions{
 		logger:         logger,
@@ -431,6 +437,9 @@ func (bw *baseWorker) runPoller(taskWorker scalableTaskPoller) {
 
 	for {
 		if func() bool {
+			if bw.noRepoll.Load() {
+				return true
+			}
 			if taskWorker.pollerSemaphore != nil {
 				if taskWorker.pollerSemaphore.acquire(bw.limiterContext) != nil {
 					return true
@@ -694,13 +703,6 @@ func (bw *baseWorker) Stop() {
 	close(bw.stopCh)
 	bw.limiterContextCancel()
 
-	for _, taskWorker := range bw.options.taskPollers {
-		err := taskWorker.taskPoller.Cleanup()
-		if err != nil {
-			bw.logger.Error("Couldn't cleanup task worker", tagError, err)
-		}
-	}
-
 	if success := awaitWaitGroup(&bw.stopWG, bw.options.stopTimeout); !success {
 		traceLog(func() {
 			bw.logger.Info("Worker graceful stop timed out.", "Stop timeout", bw.options.stopTimeout)
@@ -720,11 +722,16 @@ func newPollScalerReportHandle(options pollScalerReportHandleOptions) *pollScale
 	if logger == nil {
 		logger = internallog.NewNopLogger()
 	}
+	serverSupportsAutoscaling := options.serverSupportsAutoscaling
+	if serverSupportsAutoscaling == nil {
+		serverSupportsAutoscaling = &atomic.Bool{}
+	}
 	psr := &pollScalerReportHandle{
-		maxPollerCount: options.maxPollerCount,
-		minPollerCount: options.minPollerCount,
-		logger:         logger,
-		scaleCallback:  options.scaleCallback,
+		maxPollerCount:            options.maxPollerCount,
+		minPollerCount:            options.minPollerCount,
+		logger:                    logger,
+		scaleCallback:             options.scaleCallback,
+		serverSupportsAutoscaling: serverSupportsAutoscaling,
 	}
 	psr.target.Store(int64(options.initialPollerCount))
 	return psr
@@ -749,9 +756,11 @@ func (prh *pollScalerReportHandle) handleTask(task taskForWorker) {
 				return target + int64(ds)
 			})
 		}
-	} else if task.isEmpty() && prh.everSawScalingDecision.Load() {
+	} else if task.isEmpty() && (prh.everSawScalingDecision.Load() || prh.serverSupportsAutoscaling.Load()) {
 		// We want to avoid scaling down on empty polls if the server has never made any
-		// scaling decisions - otherwise we might never scale up again.
+		// scaling decisions - otherwise we might never scale up again. If the server
+		// supports poller autoscaling, it's safe to scale down without having seen a
+		// decision.
 		prh.updateTarget(func(target int64) int64 {
 			return target - 1
 		})
@@ -785,9 +794,10 @@ func (prh *pollScalerReportHandle) updateTarget(f func(int64) int64) {
 }
 
 func (prh *pollScalerReportHandle) handleError(err error) {
-	// If we have never seen a scaling decision, we don't want to scale down
-	// on errors, because we might never scale up again.
-	if prh.everSawScalingDecision.Load() {
+	// If we have never seen a scaling decision and the server doesn't support
+	// poller autoscaling, we don't want to scale down on errors, because we
+	// might never scale up again.
+	if prh.everSawScalingDecision.Load() || prh.serverSupportsAutoscaling.Load() {
 		_, resourceExhausted := err.(*serviceerror.ResourceExhausted)
 		if resourceExhausted {
 			prh.updateTarget(func(target int64) int64 {
@@ -879,19 +889,26 @@ func (ps *pollerSemaphore) updatePermits(maxPermits int) {
 }
 
 func newScalableTaskPoller(
-	poller taskPoller, logger log.Logger, pollerBehavior PollerBehavior) scalableTaskPoller {
+	poller taskPoller,
+	logger log.Logger,
+	pollerBehavior PollerBehavior,
+	taskPollerType string,
+	serverSupportsAutoscaling *atomic.Bool,
+) scalableTaskPoller {
 	tw := scalableTaskPoller{
-		taskPoller: poller,
+		taskPoller:     poller,
+		taskPollerType: taskPollerType,
 	}
 	switch p := pollerBehavior.(type) {
 	case *pollerBehaviorAutoscaling:
 		tw.pollerCount = p.maximumNumberOfPollers
 		tw.pollerSemaphore = newPollerSemaphore(p.initialNumberOfPollers)
 		tw.pollerAutoscalerReportHandle = newPollScalerReportHandle(pollScalerReportHandleOptions{
-			initialPollerCount: p.initialNumberOfPollers,
-			maxPollerCount:     p.maximumNumberOfPollers,
-			minPollerCount:     p.minimumNumberOfPollers,
-			logger:             logger,
+			initialPollerCount:        p.initialNumberOfPollers,
+			maxPollerCount:            p.maximumNumberOfPollers,
+			minPollerCount:            p.minimumNumberOfPollers,
+			logger:                    logger,
+			serverSupportsAutoscaling: serverSupportsAutoscaling,
 			scaleCallback: func(newTarget int) {
 				tw.pollerSemaphore.updatePermits(newTarget)
 			},
@@ -906,20 +923,19 @@ func newScalableTaskPoller(
 // at least one poller of each type is running before allowing any poller of the given type to increase.
 func (pb *pollerBalancer) balance(ctx context.Context, pollerType string) error {
 	pb.mu.Lock()
-	// If there are no pollers of this type, we can skip balancing.
-	if pb.pollerCount[pollerType] <= 0 {
-		pb.mu.Unlock()
-		return nil
-	}
 	for {
+		// If there are no pollers of this type, we can skip balancing.
+		// This check must happen before iterating the map to avoid
+		// non-deterministic map iteration visiting another type first
+		// and unnecessarily blocking on its barrier.
+		if pb.pollerCount[pollerType] <= 0 {
+			pb.mu.Unlock()
+			return nil
+		}
 		var b barrier
 		// Check if all other poller types have at least one poller running.
 		for pt, count := range pb.pollerCount {
 			if pt == pollerType {
-				if count <= 0 {
-					pb.mu.Unlock()
-					return nil
-				}
 				continue
 			}
 			if count == 0 {

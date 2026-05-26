@@ -29,6 +29,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -77,14 +78,20 @@ func (c *ScalersCache) getScalerBuilder(index int) (ScalerBuilder, error) {
 	return c.Scalers[index], nil
 }
 
-// GetPushScalers returns array of push scalers stored in the cache
-func (c *ScalersCache) GetPushScalers() []scalers.PushScaler {
+// PushScalerWithTriggerIndex pairs a push scaler with its trigger index.
+type PushScalerWithTriggerIndex struct {
+	Scaler       scalers.PushScaler
+	TriggerIndex int
+}
+
+// GetPushScalers returns push scalers with their trigger indices.
+func (c *ScalersCache) GetPushScalers() []PushScalerWithTriggerIndex {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
-	var result []scalers.PushScaler
+	var result []PushScalerWithTriggerIndex
 	for _, s := range c.Scalers {
 		if ps, ok := s.Scaler.(scalers.PushScaler); ok {
-			result = append(result, ps)
+			result = append(result, PushScalerWithTriggerIndex{Scaler: ps, TriggerIndex: s.ScalerConfig.TriggerIndex})
 		}
 	}
 	return result
@@ -150,8 +157,9 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 	if err != nil {
 		return nil, false, -1, err
 	}
+	requestCtx := metricscollector.BuildScalerRequestCtx(ctx, sb.ScalerConfig, metricName)
 	startTime := time.Now()
-	metric, activity, err := sb.Scaler.GetMetricsAndActivity(ctx, metricName)
+	metric, activity, err := sb.Scaler.GetMetricsAndActivity(requestCtx, metricName)
 	if err == nil {
 		return metric, activity, time.Since(startTime), nil
 	}
@@ -160,8 +168,13 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 	if err != nil {
 		return nil, false, -1, err
 	}
+	newSb, err := c.getScalerBuilder(index)
+	if err != nil {
+		return nil, false, -1, err
+	}
+	requestCtx = metricscollector.BuildScalerRequestCtx(ctx, newSb.ScalerConfig, metricName)
 	startTime = time.Now()
-	metric, activity, err = ns.GetMetricsAndActivity(ctx, metricName)
+	metric, activity, err = ns.GetMetricsAndActivity(requestCtx, metricName)
 	return metric, activity, time.Since(startTime), err
 }
 

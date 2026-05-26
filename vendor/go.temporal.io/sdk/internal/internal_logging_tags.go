@@ -2,6 +2,7 @@ package internal
 
 const (
 	tagActivityID                   = "ActivityID"
+	tagActivityRunID                = "ActivityRunID"
 	tagActivityType                 = "ActivityType"
 	tagNamespace                    = "Namespace"
 	tagEventID                      = "EventID"
@@ -33,4 +34,17 @@ const (
 	tagPanicStack                   = "PanicStack"
 	tagUpdateID                     = "UpdateID"
 	tagUpdateName                   = "UpdateName"
+	tagWorkflowTaskDuration         = "WorkflowTaskDuration"
+	tagPayloadDownloadCount         = "PayloadDownloadCount"
+	tagPayloadDownloadSize          = "PayloadDownloadSize"
+	tagPayloadDownloadDuration      = "PayloadDownloadDuration"
+	tagPayloadDownloadDrivers       = "PayloadDownloadDrivers"
+	tagPayloadUploadCount           = "PayloadUploadCount"
+	tagPayloadUploadSize            = "PayloadUploadSize"
+	tagPayloadUploadDuration        = "PayloadUploadDuration"
+	tagPayloadUploadDrivers         = "PayloadUploadDrivers"
+	tagPayloadSize                  = "PayloadSize"
+	tagPayloadSizeLimit             = "PayloadSizeLimit"
+	tagMemoSize                     = "MemoSize"
+	tagMemoSizeLimit                = "MemoSizeLimit"
 )

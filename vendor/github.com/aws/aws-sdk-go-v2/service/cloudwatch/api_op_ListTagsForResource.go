@@ -11,8 +11,8 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Displays the tags associated with a CloudWatch resource. Currently, alarms and
-// Contributor Insights rules support tagging.
+// Displays the tags associated with a CloudWatch resource. Currently, alarms,
+// dashboards, metric streams and Contributor Insights rules support tagging.
 func (c *Client) ListTagsForResource(ctx context.Context, params *ListTagsForResourceInput, optFns ...func(*Options)) (*ListTagsForResourceOutput, error) {
 	if params == nil {
 		params = &ListTagsForResourceInput{}
@@ -37,6 +37,12 @@ type ListTagsForResourceInput struct {
 	//
 	// The ARN format of a Contributor Insights rule is
 	// arn:aws:cloudwatch:Region:account-id:insight-rule/insight-rule-name
+	//
+	// The ARN format of a dashboard is
+	// arn:aws:cloudwatch::account-id:dashboard/dashboard-name
+	//
+	// The ARN format of a metric stream is
+	// arn:aws:cloudwatch:Region:account-id:metric-stream/metric-stream-name
 	//
 	// For more information about ARN format, see [Resource Types Defined by Amazon CloudWatch] in the Amazon Web Services General
 	// Reference.
@@ -94,7 +100,7 @@ func (c *Client) addOperationListTagsForResourceMiddlewares(stack *middleware.St
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
@@ -116,9 +122,6 @@ func (c *Client) addOperationListTagsForResourceMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {

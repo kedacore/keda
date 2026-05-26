@@ -58,6 +58,11 @@ type (
 		waitForCancelRequest bool
 		handled              bool
 		activityType         ActivityType
+		// Per-activity context-aware converters so that cancellation details and
+		// failures are decoded with the correct ActivitySerializationContext,
+		// matching how they were encoded by the activity worker.
+		dataConverter    converter.DataConverter
+		failureConverter converter.FailureConverter
 	}
 
 	scheduledNexusOperation struct {
@@ -74,6 +79,11 @@ type (
 		startedCallback     func(r WorkflowExecution, e error)
 		waitForCancellation bool
 		handled             bool
+		// Per-child-workflow context-aware converters so that cancellation
+		// details and failures are decoded with the correct
+		// WorkflowSerializationContext, matching how they were encoded.
+		dataConverter    converter.DataConverter
+		failureConverter converter.FailureConverter
 	}
 
 	scheduledCancellation struct {
@@ -214,6 +224,13 @@ func newWorkflowExecutionEventHandler(
 	deadlockDetectionTimeout time.Duration,
 	capabilities *workflowservice.GetSystemInfoResponse_Capabilities,
 ) workflowExecutionEventHandler {
+	wfCtx := converter.WorkflowSerializationContext{
+		Namespace:  workflowInfo.Namespace,
+		WorkflowID: workflowInfo.WorkflowExecution.ID,
+	}
+	dataConverter = converter.WithDataConverterSerializationContext(dataConverter, wfCtx)
+	failureConverter = converter.WithFailureConverterSerializationContext(failureConverter, wfCtx)
+
 	context := &workflowEnvironmentImpl{
 		workflowInfo:                 workflowInfo,
 		commandsHelper:               newCommandsHelper(),
@@ -232,7 +249,7 @@ func newWorkflowExecutionEventHandler(
 		deadlockDetectionTimeout:     deadlockDetectionTimeout,
 		protocols:                    protocol.NewRegistry(),
 		mutableSideEffectCallCounter: make(map[string]int),
-		sdkFlags:                     newSDKFlags(capabilities),
+		sdkFlags:                     newSDKFlagSet(capabilities),
 		bufferedUpdateRequests:       make(map[string][]func()),
 	}
 	// Attempt to skip 1 log level to remove the ReplayLogger from the stack.
@@ -484,7 +501,7 @@ func validateAndSerializeSearchAttributes(attributes map[string]interface{}) (*c
 
 func (wc *workflowEnvironmentImpl) UpsertMemo(memoMap map[string]interface{}) error {
 	// This has to be used in WorkflowEnvironment implementations instead of in Workflow for testsuite mock purpose.
-	memo, err := validateAndSerializeMemo(memoMap, wc.dataConverter)
+	memo, err := validateAndSerializeMemo(memoMap, wc.dataConverter, wc.TryUse(SDKFlagMemoUserDCEncode))
 	if err != nil {
 		return err
 	}
@@ -520,11 +537,11 @@ func mergeMemo(current, upsert *commonpb.Memo) *commonpb.Memo {
 	return current
 }
 
-func validateAndSerializeMemo(memoMap map[string]interface{}, dc converter.DataConverter) (*commonpb.Memo, error) {
+func validateAndSerializeMemo(memoMap map[string]interface{}, dc converter.DataConverter, useUserDC bool) (*commonpb.Memo, error) {
 	if len(memoMap) == 0 {
 		return nil, errMemoNotSet
 	}
-	return getWorkflowMemo(memoMap, dc)
+	return getWorkflowMemo(memoMap, dc, useUserDC)
 }
 
 func (wc *workflowEnvironmentImpl) RegisterCancelHandler(handler func()) {
@@ -537,10 +554,13 @@ func (wc *workflowEnvironmentImpl) RegisterCancelHandler(handler func()) {
 func (wc *workflowEnvironmentImpl) ExecuteChildWorkflow(
 	params ExecuteWorkflowParams, callback ResultHandler, startedHandler func(r WorkflowExecution, e error),
 ) {
+	// Backward compatibility: generate WorkflowID if not set by caller.
+	// The Go SDK interceptor sets this before serialization so it's available
+	// to context-aware codecs, but bindings callers may not set it.
 	if params.WorkflowID == "" {
 		params.WorkflowID = wc.workflowInfo.currentRunID + "_" + wc.GenerateSequenceID()
 	}
-	memo, err := getWorkflowMemo(params.Memo, wc.dataConverter)
+	memo, err := getWorkflowMemo(params.Memo, wc.dataConverter, wc.TryUse(SDKFlagMemoUserDCEncode))
 	if err != nil {
 		if wc.sdkFlags.tryUse(SDKFlagChildWorkflowErrorExecution, !wc.isReplay) {
 			startedHandler(WorkflowExecution{}, &ChildWorkflowExecutionAlreadyStartedError{})
@@ -559,7 +579,7 @@ func (wc *workflowEnvironmentImpl) ExecuteChildWorkflow(
 
 	attributes := &commandpb.StartChildWorkflowExecutionCommandAttributes{}
 
-	attributes.Namespace = params.Namespace
+	attributes.Namespace = params.Namespace //lint:ignore SA1019 deprecated namespace field
 	attributes.TaskQueue = &taskqueuepb.TaskQueue{Name: params.TaskQueueName, Kind: enumspb.TASK_QUEUE_KIND_NORMAL}
 	attributes.WorkflowId = params.WorkflowID
 	attributes.WorkflowExecutionTimeout = durationpb.New(params.WorkflowExecutionTimeout)
@@ -595,10 +615,20 @@ func (wc *workflowEnvironmentImpl) ExecuteChildWorkflow(
 		callback(nil, &ChildWorkflowExecutionAlreadyStartedError{})
 		return
 	}
+	childDC := params.dataConverter
+	if childDC == nil {
+		childDC = wc.dataConverter
+	}
+	childFC := params.failureConverter
+	if childFC == nil {
+		childFC = wc.failureConverter
+	}
 	command.setData(&scheduledChildWorkflow{
 		resultCallback:      callback,
 		startedCallback:     startedHandler,
 		waitForCancellation: params.WaitForCancellation,
+		dataConverter:       childDC,
+		failureConverter:    childFC,
 	})
 
 	wc.logger.Debug("ExecuteChildWorkflow",
@@ -614,6 +644,8 @@ func (wc *workflowEnvironmentImpl) ExecuteNexusOperation(params executeNexusOper
 		Operation:              params.operation,
 		Input:                  params.input,
 		ScheduleToCloseTimeout: durationpb.New(params.options.ScheduleToCloseTimeout),
+		ScheduleToStartTimeout: durationpb.New(params.options.ScheduleToStartTimeout),
+		StartToCloseTimeout:    durationpb.New(params.options.StartToCloseTimeout),
 		NexusHeader:            params.nexusHeader,
 	}
 
@@ -721,14 +753,17 @@ func (wc *workflowEnvironmentImpl) CreateNewCommand(commandType enumspb.CommandT
 }
 
 func (wc *workflowEnvironmentImpl) ExecuteActivity(parameters ExecuteActivityParams, callback ResultHandler) ActivityID {
-	scheduleTaskAttr := &commandpb.ScheduleActivityTaskCommandAttributes{}
-	scheduleID := wc.GenerateSequence()
-	if parameters.ActivityID == "" {
-		scheduleTaskAttr.ActivityId = getStringID(scheduleID)
-	} else {
-		scheduleTaskAttr.ActivityId = parameters.ActivityID
+	// Backward compatibility: generate ScheduleID/ActivityID if not set by caller.
+	// The Go SDK interceptor sets these before serialization so they're available
+	// to context-aware codecs, but bindings callers may not set them.
+	if parameters.ScheduleID == 0 {
+		parameters.ScheduleID = wc.GenerateSequence()
 	}
-	activityID := scheduleTaskAttr.GetActivityId()
+	if parameters.ActivityID == "" {
+		parameters.ActivityID = getStringID(parameters.ScheduleID)
+	}
+	scheduleTaskAttr := &commandpb.ScheduleActivityTaskCommandAttributes{}
+	scheduleTaskAttr.ActivityId = parameters.ActivityID
 	scheduleTaskAttr.ActivityType = &commonpb.ActivityType{Name: parameters.ActivityType.Name}
 	scheduleTaskAttr.TaskQueue = &taskqueuepb.TaskQueue{Name: parameters.TaskQueueName, Kind: enumspb.TASK_QUEUE_KIND_NORMAL}
 	scheduleTaskAttr.Input = parameters.Input
@@ -752,18 +787,28 @@ func (wc *workflowEnvironmentImpl) ExecuteActivity(parameters ExecuteActivityPar
 		return ActivityID{}
 	}
 
-	command := wc.commandsHelper.scheduleActivityTask(scheduleID, scheduleTaskAttr, startMetadata)
+	dc := parameters.DataConverter
+	if dc == nil {
+		dc = wc.dataConverter
+	}
+	fc := parameters.FailureConverter
+	if fc == nil {
+		fc = wc.failureConverter
+	}
+	command := wc.commandsHelper.scheduleActivityTask(parameters.ScheduleID, scheduleTaskAttr, startMetadata)
 	command.setData(&scheduledActivity{
 		callback:             callback,
 		waitForCancelRequest: parameters.WaitForCancellation,
 		activityType:         parameters.ActivityType,
+		dataConverter:        dc,
+		failureConverter:     fc,
 	})
 
 	wc.logger.Debug("ExecuteActivity",
-		tagActivityID, activityID,
+		tagActivityID, parameters.ActivityID,
 		tagActivityType, scheduleTaskAttr.ActivityType.GetName())
 
-	return ActivityID{id: activityID}
+	return ActivityID{id: parameters.ActivityID}
 }
 
 func (wc *workflowEnvironmentImpl) RequestCancelActivity(activityID ActivityID) {
@@ -973,10 +1018,6 @@ func (wc *workflowEnvironmentImpl) SideEffect(f func() (*commonpb.Payloads, erro
 
 func (wc *workflowEnvironmentImpl) TryUse(flag sdkFlag) bool {
 	return wc.sdkFlags.tryUse(flag, !wc.isReplay)
-}
-
-func (wc *workflowEnvironmentImpl) GetFlag(flag sdkFlag) bool {
-	return wc.sdkFlags.getFlag(flag)
 }
 
 func (wc *workflowEnvironmentImpl) QueueUpdate(name string, f func()) {
@@ -1207,6 +1248,10 @@ func (weh *workflowExecutionEventHandlerImpl) ProcessEvent(
 		// Update workflow info fields
 		weh.workflowInfo.currentHistoryLength = int(event.EventId)
 		weh.workflowInfo.continueAsNewSuggested = event.GetWorkflowTaskStartedEventAttributes().GetSuggestContinueAsNew()
+		weh.workflowInfo.continueAsNewSuggestedReasons = convertContinueAsNewSuggestedReasonsFromProto(
+			event.GetWorkflowTaskStartedEventAttributes().GetSuggestContinueAsNewReasons(),
+		)
+		weh.workflowInfo.targetWorkerDeploymentVersionChanged = event.GetWorkflowTaskStartedEventAttributes().GetTargetWorkerDeploymentVersionChanged()
 		weh.workflowInfo.currentHistorySize = int(event.GetWorkflowTaskStartedEventAttributes().GetHistorySizeBytes())
 		// Reset the counter on command helper used for generating ID for commands
 		weh.commandsHelper.setCurrentWorkflowTaskStartedEventID(event.GetEventId())
@@ -1493,7 +1538,7 @@ func (weh *workflowExecutionEventHandlerImpl) handleActivityTaskFailed(event *hi
 		&commonpb.ActivityType{Name: activity.activityType.Name},
 		activityID,
 		attributes.GetRetryState(),
-		weh.GetFailureConverter().FailureToError(attributes.GetFailure()),
+		activity.failureConverter.FailureToError(attributes.GetFailure()),
 	)
 
 	activity.handle(nil, activityTaskErr)
@@ -1509,7 +1554,7 @@ func (weh *workflowExecutionEventHandlerImpl) handleActivityTaskTimedOut(event *
 	}
 
 	attributes := event.GetActivityTaskTimedOutEventAttributes()
-	timeoutError := weh.GetFailureConverter().FailureToError(attributes.GetFailure())
+	timeoutError := activity.failureConverter.FailureToError(attributes.GetFailure())
 
 	activityTaskErr := NewActivityError(
 		attributes.GetScheduledEventId(),
@@ -1537,7 +1582,7 @@ func (weh *workflowExecutionEventHandlerImpl) handleActivityTaskCanceled(event *
 		// Clear this so we don't have a recursive call that while executing might call the cancel one.
 
 		attributes := event.GetActivityTaskCanceledEventAttributes()
-		details := newEncodedValues(attributes.GetDetails(), weh.GetDataConverter())
+		details := newEncodedValues(attributes.GetDetails(), activity.dataConverter)
 
 		activityTaskErr := NewActivityError(
 			attributes.GetScheduledEventId(),
@@ -1702,7 +1747,7 @@ func (weh *workflowExecutionEventHandlerImpl) handleLocalActivityMarker(details 
 		if failure != nil {
 			lar.Attempt = lamd.Attempt
 			lar.Backoff = lamd.Backoff
-			lar.Err = weh.GetFailureConverter().FailureToError(failure)
+			lar.Err = la.params.FailureConverter.FailureToError(failure)
 		} else {
 			// Result might not be there if local activity doesn't have return value.
 			lar.Result = details[localActivityResultName]
@@ -1747,7 +1792,7 @@ func (weh *workflowExecutionEventHandlerImpl) ProcessLocalActivityResult(lar *lo
 		EventType: enumspb.EVENT_TYPE_MARKER_RECORDED,
 		Attributes: &historypb.HistoryEvent_MarkerRecordedEventAttributes{MarkerRecordedEventAttributes: &historypb.MarkerRecordedEventAttributes{
 			MarkerName: localActivityMarkerName,
-			Failure:    weh.GetFailureConverter().ErrorToFailure(lar.err),
+			Failure:    lar.task.params.FailureConverter.ErrorToFailure(lar.err),
 			Details:    details,
 		}},
 	}
@@ -1844,7 +1889,7 @@ func (weh *workflowExecutionEventHandlerImpl) handleChildWorkflowExecutionFailed
 		attributes.GetInitiatedEventId(),
 		attributes.GetStartedEventId(),
 		attributes.GetRetryState(),
-		weh.GetFailureConverter().FailureToError(attributes.GetFailure()),
+		childWorkflow.failureConverter.FailureToError(attributes.GetFailure()),
 	)
 	childWorkflow.handle(nil, childWorkflowExecutionError)
 	return nil
@@ -1858,7 +1903,7 @@ func (weh *workflowExecutionEventHandlerImpl) handleChildWorkflowExecutionCancel
 	if childWorkflow.handled {
 		return nil
 	}
-	details := newEncodedValues(attributes.Details, weh.GetDataConverter())
+	details := newEncodedValues(attributes.Details, childWorkflow.dataConverter)
 
 	childWorkflowExecutionError := NewChildWorkflowExecutionError(
 		attributes.GetNamespace(),
@@ -2161,4 +2206,14 @@ func (weh *workflowExecutionEventHandlerImpl) protocolConstructorForMessage(
 		}, nil
 	}
 	return nil, fmt.Errorf("unsupported protocol: %v", protoName)
+}
+
+func convertContinueAsNewSuggestedReasonsFromProto(
+	reasons []enumspb.SuggestContinueAsNewReason,
+) []ContinueAsNewSuggestedReason {
+	converted := make([]ContinueAsNewSuggestedReason, 0, len(reasons))
+	for _, reason := range reasons {
+		converted = append(converted, ContinueAsNewSuggestedReason(reason))
+	}
+	return converted
 }

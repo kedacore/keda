@@ -13,6 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	api "github.com/kedacore/keda/v2/pkg/metricsservice/api"
 	scaling "github.com/kedacore/keda/v2/pkg/scaling"
 	cache "github.com/kedacore/keda/v2/pkg/scaling/cache"
@@ -45,7 +46,7 @@ func (m *MockScaleHandler) EXPECT() *MockScaleHandlerMockRecorder {
 }
 
 // ClearScalersCache mocks base method.
-func (m *MockScaleHandler) ClearScalersCache(ctx context.Context, scalableObject any) error {
+func (m *MockScaleHandler) ClearScalersCache(ctx context.Context, scalableObject v1alpha1.ScalableObject) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ClearScalersCache", ctx, scalableObject)
 	ret0, _ := ret[0].(error)
@@ -59,7 +60,7 @@ func (mr *MockScaleHandlerMockRecorder) ClearScalersCache(ctx, scalableObject an
 }
 
 // DeleteScalableObject mocks base method.
-func (m *MockScaleHandler) DeleteScalableObject(ctx context.Context, scalableObject any) error {
+func (m *MockScaleHandler) DeleteScalableObject(ctx context.Context, scalableObject v1alpha1.ScalableObject) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteScalableObject", ctx, scalableObject)
 	ret0, _ := ret[0].(error)
@@ -103,7 +104,7 @@ func (mr *MockScaleHandlerMockRecorder) GetScaledObjectMetrics(ctx, scaledObject
 }
 
 // GetScalersCache mocks base method.
-func (m *MockScaleHandler) GetScalersCache(ctx context.Context, scalableObject any) (*cache.ScalersCache, error) {
+func (m *MockScaleHandler) GetScalersCache(ctx context.Context, scalableObject v1alpha1.ScalableObject) (*cache.ScalersCache, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetScalersCache", ctx, scalableObject)
 	ret0, _ := ret[0].(*cache.ScalersCache)
@@ -118,7 +119,7 @@ func (mr *MockScaleHandlerMockRecorder) GetScalersCache(ctx, scalableObject any)
 }
 
 // HandleScalableObject mocks base method.
-func (m *MockScaleHandler) HandleScalableObject(ctx context.Context, scalableObject any) error {
+func (m *MockScaleHandler) HandleScalableObject(ctx context.Context, scalableObject v1alpha1.ScalableObject) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HandleScalableObject", ctx, scalableObject)
 	ret0, _ := ret[0].(error)

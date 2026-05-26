@@ -14,6 +14,7 @@ import (
 	"github.com/redis/go-redis/v9/internal"
 	"github.com/redis/go-redis/v9/internal/maintnotifications/logs"
 	"github.com/redis/go-redis/v9/internal/proto"
+	uberatomic "go.uber.org/atomic"
 )
 
 var noDeadline = time.Time{}
@@ -69,8 +70,9 @@ type Conn struct {
 	// Connection identifier for unique tracking
 	id uint64
 
-	usedAt    atomic.Int64
-	lastPutAt atomic.Int64
+	usedAt      atomic.Int64
+	lastPutAt   atomic.Int64
+	dialStartNs atomic.Int64 // Time when dial started (for connection create time metric)
 
 	// Lock-free netConn access using atomic.Value
 	// Contains *atomicNetConn wrapper, accessed atomically for better performance
@@ -101,9 +103,14 @@ type Conn struct {
 
 	pooled    bool
 	pubsub    bool
-	closed    atomic.Bool
 	createdAt time.Time
 	expiresAt time.Time
+	poolName  string // Name of the pool this connection belongs to (for metrics)
+
+	// When a goroutine closes a connection, it usually knows the reason, so closeReason is not needed.
+	// closeReason is only used when an in-use connection is closed by another goroutine,
+	// to inform the goroutine using the connection why the connection was closed.
+	closeReason uberatomic.String
 
 	// maintenanceNotifications upgrade support: relaxed timeouts during migrations/failovers
 
@@ -182,6 +189,24 @@ func (cn *Conn) LastPutAtNs() int64 {
 }
 func (cn *Conn) SetLastPutAtNs(ns int64) {
 	cn.lastPutAt.Store(ns)
+}
+
+// GetDialStartNs returns the time when the dial started (in nanoseconds since epoch).
+// This is used to calculate the full connection creation time (TCP + handshake).
+func (cn *Conn) GetDialStartNs() int64 {
+	return cn.dialStartNs.Load()
+}
+
+// PoolName returns the name of the pool this connection belongs to.
+// This is used for metrics to identify which pool a connection is from.
+func (cn *Conn) PoolName() string {
+	return cn.poolName
+}
+
+// SetPoolName sets the name of the pool this connection belongs to.
+// This should be called when the connection is added to a pool.
+func (cn *Conn) SetPoolName(name string) {
+	cn.poolName = name
 }
 
 // Backward-compatible wrapper methods for state machine
@@ -418,6 +443,8 @@ func (cn *Conn) IsPubSub() bool {
 // SetRelaxedTimeout sets relaxed timeouts for this connection during maintenanceNotifications upgrades.
 // These timeouts will be used for all subsequent commands until the deadline expires.
 // Uses atomic operations for lock-free access.
+// Note: Metrics should be recorded by the caller (notification handler) which has context about
+// the notification type and pool name.
 func (cn *Conn) SetRelaxedTimeout(readTimeout, writeTimeout time.Duration) {
 	cn.relaxedCounter.Add(1)
 	cn.relaxedReadTimeoutNs.Store(int64(readTimeout))
@@ -452,6 +479,11 @@ func (cn *Conn) clearRelaxedTimeout() {
 	cn.relaxedWriteTimeoutNs.Store(0)
 	cn.relaxedDeadlineNs.Store(0)
 	cn.relaxedCounter.Store(0)
+
+	// Note: Metrics for timeout unrelaxing are not recorded here because we don't have
+	// context about which notification type or pool triggered the relaxation.
+	// In practice, relaxed timeouts expire automatically via deadline, so explicit
+	// unrelaxing metrics are less critical than the initial relaxation metrics.
 }
 
 // HasRelaxedTimeout returns true if relaxed timeouts are currently active on this connection.
@@ -549,6 +581,41 @@ func (cn *Conn) getEffectiveWriteTimeout(normalTimeout time.Duration) time.Durat
 	}
 }
 
+// SetOnClose installs fn as the callback invoked exactly once when this
+// connection is closed (via Conn.Close).
+//
+// IMPORTANT: SetOnClose OVERWRITES any previously installed callback — it
+// does not compose, chain, or deduplicate. A Conn has room for a single
+// onClose hook by design, because its lifecycle is bounded (a Conn is
+// created, optionally re-initialized on its own net.Conn, and then closed
+// once) and the pool's OnRemove hooks handle any registry-level cleanup
+// that must survive the net.Conn being swapped.
+//
+// This has a subtle implication for per-connection subscriptions such as
+// the unsubscribe function returned by StreamingCredentialsProvider
+// (e.g. EntraID token rotation): if SetOnClose is called twice on the
+// same Conn with DIFFERENT unsubscribe closures — for example because
+// initConn ran a second time and obtained a fresh Subscribe() —
+// the previous unsubscribe is dropped and will NEVER run, leaking a
+// subscription on the provider. Callers must therefore ensure either:
+//
+//   - the provider's Subscribe is idempotent for the same listener (the
+//     streaming credentials Manager deduplicates listeners by connection
+//     id, so re-Subscribe returns an equivalent unsubscribe), OR
+//   - the previous callback has already been invoked before SetOnClose is
+//     called again.
+//
+// Design note: unlike the client-level onCloseHooks registry (see
+// redis.baseClient), there is intentionally NO named-hook dedup or
+// multi-callback support on Conn. This is a deliberate trade-off to keep
+// the Conn object slim — a pool can hold thousands of Conn values and
+// each one is a hot allocation, so paying for a sync.Mutex plus a
+// map[string]func() error per connection to support a feature that would
+// only be used by at most one subsystem today (streaming credentials) is
+// not worth the per-connection memory and allocation cost. For a single
+// Conn there is at most one meaningful close callback at any point in
+// time, and a richer registry here would not even solve the "stale
+// closure" hazard described above.
 func (cn *Conn) SetOnClose(fn func() error) {
 	cn.onClose = fn
 }
@@ -855,18 +922,20 @@ func (cn *Conn) WithWriter(
 }
 
 func (cn *Conn) IsClosed() bool {
-	return cn.closed.Load() || cn.stateMachine.GetState() == StateClosed
+	return cn.stateMachine.GetState() == StateClosed
 }
 
 func (cn *Conn) Close() error {
-	cn.closed.Store(true)
-
+	if cn.IsClosed() {
+		return nil
+	}
 	// Transition to CLOSED state
 	cn.stateMachine.Transition(StateClosed)
 
 	if cn.onClose != nil {
 		// ignore error
 		_ = cn.onClose()
+		cn.onClose = nil
 	}
 
 	// Lock-free netConn access for better performance

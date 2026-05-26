@@ -3,6 +3,7 @@ package internal
 import (
 	"github.com/nexus-rpc/sdk-go/nexus"
 	"go.temporal.io/api/workflowservice/v1"
+	"go.temporal.io/sdk/internal/common/metrics"
 )
 
 type nexusWorkerOptions struct {
@@ -50,7 +51,10 @@ func newNexusWorker(opts nexusWorkerOptions) (*nexusWorker, error) {
 			newScalableTaskPoller(
 				poller,
 				opts.executionParameters.Logger,
-				params.NexusTaskPollerBehavior),
+				params.NexusTaskPollerBehavior,
+				metrics.PollerTypeNexusTask,
+				params.serverSupportsAutoscaling,
+			),
 		},
 		taskProcessor:  poller,
 		workerType:     "NexusWorker",
@@ -78,10 +82,6 @@ func newNexusWorker(opts nexusWorkerOptions) (*nexusWorker, error) {
 
 // Start the worker.
 func (w *nexusWorker) Start() error {
-	err := verifyNamespaceExist(w.workflowService, w.executionParameters.MetricsHandler, w.executionParameters.Namespace, w.worker.logger)
-	if err != nil {
-		return err
-	}
 	w.worker.Start()
 	return nil
 }

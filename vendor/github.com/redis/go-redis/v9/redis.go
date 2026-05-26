@@ -13,6 +13,7 @@ import (
 	"github.com/redis/go-redis/v9/internal"
 	"github.com/redis/go-redis/v9/internal/auth/streaming"
 	"github.com/redis/go-redis/v9/internal/hscan"
+	"github.com/redis/go-redis/v9/internal/otel"
 	"github.com/redis/go-redis/v9/internal/pool"
 	"github.com/redis/go-redis/v9/internal/proto"
 	"github.com/redis/go-redis/v9/maintnotifications"
@@ -27,7 +28,11 @@ const Nil = proto.Nil
 
 // SetLogger set custom log
 // Use with VoidLogger to disable logging.
+// If logger is nil, the call is ignored and the existing logger is kept.
 func SetLogger(logger internal.Logging) {
+	if logger == nil {
+		return
+	}
 	internal.Logger = logger
 }
 
@@ -210,6 +215,96 @@ func (hs *hooksMixin) processTxPipelineHook(ctx context.Context, cmds []Cmder) e
 
 //------------------------------------------------------------------------------
 
+// Stable identifiers for baseClient.onClose hooks. Each component that
+// registers a close callback owns a dedicated id here so the set of known
+// hooks is discoverable in one place and id collisions are caught at
+// compile time. New ids should be added as additional constants.
+const (
+	// onCloseHookIDSentinelFailover identifies the close callback installed
+	// by NewFailoverClient to tear down sentinel failover background work.
+	onCloseHookIDSentinelFailover = "sentinel-failover"
+)
+
+// onCloseHooks is a small registry of named close callbacks attached to a
+// baseClient. Each callback is identified by a stable string id; registering
+// the same id twice replaces the previous callback rather than chaining onto
+// it. This guarantees the registry stays bounded regardless of how often a
+// hook is (re)registered and avoids the unbounded closure chain that
+// motivated issue #3772.
+//
+// Hooks are invoked in registration order. All hooks run regardless of
+// individual errors; the first non-nil error is returned.
+//
+// A zero-value onCloseHooks is ready to use. It is safe for concurrent use.
+// Clones of a baseClient share the same *onCloseHooks so registrations and
+// close semantics are preserved across WithTimeout / WithContext / etc.
+type onCloseHooks struct {
+	mu    sync.Mutex
+	order []string
+	hooks map[string]func() error
+}
+
+// register adds or replaces the callback associated with id. Re-registering
+// an existing id overwrites the previous callback in place; new ids are
+// appended to the invocation order.
+func (h *onCloseHooks) register(id string, fn func() error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.hooks == nil {
+		h.hooks = make(map[string]func() error)
+	}
+	if _, exists := h.hooks[id]; !exists {
+		h.order = append(h.order, id)
+	}
+	h.hooks[id] = fn
+}
+
+// unregister removes the callback associated with id, if any. It is kept
+// for API symmetry with register so future callers (e.g. dynamic hook
+// owners that need to detach before client Close) do not have to
+// reinvent it.
+//
+//nolint:unused // kept for API symmetry with register; see comment above.
+func (h *onCloseHooks) unregister(id string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if _, exists := h.hooks[id]; !exists {
+		return
+	}
+	delete(h.hooks, id)
+	for i, x := range h.order {
+		if x == id {
+			h.order = append(h.order[:i], h.order[i+1:]...)
+			break
+		}
+	}
+}
+
+// run invokes all registered callbacks in registration order and returns
+// the first non-nil error encountered. All callbacks are executed even if
+// an earlier one returns an error.
+func (h *onCloseHooks) run() error {
+	if h == nil {
+		return nil
+	}
+	h.mu.Lock()
+	fns := make([]func() error, 0, len(h.order))
+	for _, id := range h.order {
+		if fn := h.hooks[id]; fn != nil {
+			fns = append(fns, fn)
+		}
+	}
+	h.mu.Unlock()
+
+	var firstErr error
+	for _, fn := range fns {
+		if err := fn(); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
+}
+
 type baseClient struct {
 	opt        *Options
 	optLock    sync.RWMutex
@@ -217,7 +312,13 @@ type baseClient struct {
 	pubSubPool *pool.PubSubPool
 	hooksMixin
 
-	onClose func() error // hook called when client is closed
+	// onClose holds named callbacks invoked when the client is closed.
+	// Registering a new callback never removes previously registered ones;
+	// only re-registering the same id replaces the existing callback. This
+	// lets composing components (e.g. sentinel failover) add close logic
+	// safely without fear of overwriting each other and without building
+	// unbounded closure chains on repeated registration.
+	onClose *onCloseHooks
 
 	// Push notification processing
 	pushProcessor push.NotificationProcessor
@@ -238,6 +339,7 @@ func (c *baseClient) clone() *baseClient {
 	clone := &baseClient{
 		opt:                         c.opt,
 		connPool:                    c.connPool,
+		pubSubPool:                  c.pubSubPool,
 		onClose:                     c.onClose,
 		pushProcessor:               c.pushProcessor,
 		maintNotificationsManager:   maintNotificationsManager,
@@ -246,8 +348,17 @@ func (c *baseClient) clone() *baseClient {
 	return clone
 }
 
+// cloneOpt clones c.opt while holding optLock to prevent races with initConn
+// which writes to MaintNotificationsConfig.Mode under the same lock.
+func (c *baseClient) cloneOpt() *Options {
+	c.optLock.RLock()
+	clone := c.opt.clone()
+	c.optLock.RUnlock()
+	return clone
+}
+
 func (c *baseClient) withTimeout(timeout time.Duration) *baseClient {
-	opt := c.opt.clone()
+	opt := c.cloneOpt()
 	opt.ReadTimeout = timeout
 	opt.WriteTimeout = timeout
 
@@ -298,6 +409,13 @@ func (c *baseClient) _getConn(ctx context.Context) (*pool.Conn, error) {
 		return nil, err
 	}
 
+	if dialStartNs := cn.GetDialStartNs(); dialStartNs > 0 {
+		if cb := pool.GetMetricConnectionCreateTimeCallback(); cb != nil {
+			duration := time.Duration(time.Now().UnixNano() - dialStartNs)
+			cb(ctx, duration, cn)
+		}
+	}
+
 	// initConn will transition to IDLE state, so we need to acquire it
 	// before returning it to the user.
 	if !cn.TryAcquire() {
@@ -334,7 +452,11 @@ func (c *baseClient) onAuthenticationErr() func(poolCn *pool.Conn, err error) {
 		if err != nil {
 			if isBadConn(err, false, c.opt.Addr) {
 				// Close the connection to force a reconnection.
-				err := c.connPool.CloseConn(poolCn)
+				// Re-auth happens on connections that were idle in the pool (the pool hook
+				// waits for IDLE state before transitioning to UNUSABLE for re-auth).
+				// From metrics perspective, the connection was never "used" by a client.
+				// Note: Using context.Background() as this callback doesn't have access to caller's context.
+				err := c.connPool.CloseConn(context.Background(), poolCn, pool.CloseReasonAuthError, pool.MetricStateIdle)
 				if err != nil {
 					internal.Logger.Printf(context.Background(), "redis: failed to close connection: %v", err)
 					// try to close the network connection directly
@@ -347,27 +469,6 @@ func (c *baseClient) onAuthenticationErr() func(poolCn *pool.Conn, err error) {
 			}
 			internal.Logger.Printf(context.Background(), "redis: re-authentication failed: %v", err)
 		}
-	}
-}
-
-func (c *baseClient) wrappedOnClose(newOnClose func() error) func() error {
-	onClose := c.onClose
-	return func() error {
-		var firstErr error
-		err := newOnClose()
-		// Even if we have an error we would like to execute the onClose hook
-		// if it exists. We will return the first error that occurred.
-		// This is to keep error handling consistent with the rest of the code.
-		if err != nil {
-			firstErr = err
-		}
-		if onClose != nil {
-			err = onClose()
-			if err != nil && firstErr == nil {
-				firstErr = err
-			}
-		}
-		return firstErr
 	}
 }
 
@@ -470,7 +571,22 @@ func (c *baseClient) initConn(ctx context.Context, cn *pool.Conn) error {
 			return fmt.Errorf("failed to subscribe to streaming credentials: %w", initErr)
 		}
 
-		c.onClose = c.wrappedOnClose(unsubscribeFromCredentialsProvider)
+		// Per-connection unsubscribe is attached to the connection itself so it
+		// runs when this specific connection is closed. Do not register it on
+		// c.onClose: initConn runs for every (re)initialized connection, and
+		// attaching per-connection state to the shared baseClient registry would
+		// either leak entries (one per connection id, never trimmed) or — with
+		// the pre-fix wrappedOnClose approach — build an unbounded closure chain
+		// retaining every prior connection's unsubscribe (see issue #3772).
+		//
+		// Note: pool.Conn.SetOnClose OVERWRITES any prior callback (see the
+		// doc on that method). That is safe here because the streaming
+		// credentials Manager deduplicates listeners by connection id, so a
+		// second initConn on the same cn re-Subscribes the SAME listener and
+		// the returned unsubscribe is equivalent to the one already installed.
+		// Any future code path that could hand out a distinct unsubscribe on
+		// re-initialization must first invoke the existing one to avoid
+		// orphaning the old subscription on the credentials provider.
 		cn.SetOnClose(unsubscribeFromCredentialsProvider)
 
 		username, password = credentials.BasicAuth()
@@ -488,8 +604,13 @@ func (c *baseClient) initConn(ctx context.Context, cn *pool.Conn) error {
 
 	// for redis-server versions that do not support the HELLO command,
 	// RESP2 will continue to be used.
+	// helloOK tracks whether HELLO succeeded. If it did not, the connection
+	// falls back to RESP2 regardless of c.opt.Protocol, and features that
+	// require RESP3 (e.g. maintenance notifications) must be skipped.
+	helloOK := false
 	if initErr = conn.Hello(ctx, c.opt.Protocol, username, password, c.opt.ClientName).Err(); initErr == nil {
 		// Authentication successful with HELLO command
+		helloOK = true
 	} else if !isRedisError(initErr) {
 		// When the server responds with the RESP protocol and the result is not a normal
 		// execution result of the HELLO command, we consider it to be an indication that
@@ -537,8 +658,39 @@ func (c *baseClient) initConn(ctx context.Context, cn *pool.Conn) error {
 	c.optLock.RLock()
 	maintNotifEnabled := c.opt.MaintNotificationsConfig != nil && c.opt.MaintNotificationsConfig.Mode != maintnotifications.ModeDisabled
 	protocol := c.opt.Protocol
-	endpointType := c.opt.MaintNotificationsConfig.EndpointType
+	var endpointType maintnotifications.EndpointType
+	var maintNotifMode maintnotifications.Mode
+	if maintNotifEnabled {
+		endpointType = c.opt.MaintNotificationsConfig.EndpointType
+		maintNotifMode = c.opt.MaintNotificationsConfig.Mode
+	}
 	c.optLock.RUnlock()
+
+	// Maintenance notifications require RESP3 push frames. If HELLO failed
+	// and the connection fell back to RESP2, there is no point in sending
+	// CLIENT MAINT_NOTIFICATIONS: the server either rejects it (making the
+	// error misleading) or accepts it silently, leaving the client unable
+	// to receive any notifications. Decide based on the actual negotiated
+	// protocol rather than the requested one.
+	if maintNotifEnabled && protocol == 3 && !helloOK {
+		if maintNotifMode == maintnotifications.ModeEnabled {
+			// Explicitly requested - fail fast with a clear reason.
+			cn.GetStateMachine().Transition(pool.StateClosed)
+			if errorCallback := pool.GetMetricErrorCallback(); errorCallback != nil {
+				errorCallback(ctx, "HANDSHAKE_FAILED", cn, "HANDSHAKE_FAILED", true, 0)
+			}
+			return fmt.Errorf("failed to enable maintnotifications: server does not support RESP3 (HELLO command failed)")
+		}
+		// auto/other modes: silently disable maintnotifications for this client.
+		c.optLock.Lock()
+		c.opt.MaintNotificationsConfig.Mode = maintnotifications.ModeDisabled
+		c.optLock.Unlock()
+		if err := c.disableMaintNotificationsUpgrades(); err != nil {
+			internal.Logger.Printf(ctx, "failed to disable maintnotifications in auto mode: %v", err)
+		}
+		maintNotifEnabled = false
+	}
+
 	var maintNotifHandshakeErr error
 	if maintNotifEnabled && protocol == 3 {
 		maintNotifHandshakeErr = conn.ClientMaintNotifications(
@@ -559,6 +711,12 @@ func (c *baseClient) initConn(ctx context.Context, cn *pool.Conn) error {
 				// enabled mode, fail the connection
 				c.optLock.Unlock()
 				cn.GetStateMachine().Transition(pool.StateClosed)
+
+				// Record handshake failure metric
+				if errorCallback := pool.GetMetricErrorCallback(); errorCallback != nil {
+					errorCallback(ctx, "HANDSHAKE_FAILED", cn, "HANDSHAKE_FAILED", true, 0)
+				}
+
 				return fmt.Errorf("failed to enable maintnotifications: %w", maintNotifHandshakeErr)
 			default: // will handle auto and any other
 				// Disabling logging here as it's too noisy.
@@ -662,18 +820,119 @@ func (c *baseClient) dial(ctx context.Context, network, addr string) (net.Conn, 
 }
 
 func (c *baseClient) process(ctx context.Context, cmd Cmder) error {
+	// Start measuring total operation duration (includes all retries)
+	// Only call time.Now() if operation duration callback is set to avoid overhead
+	var operationStart time.Time
+	opDurationCallback := otel.GetOperationDurationCallback()
+	if opDurationCallback != nil {
+		operationStart = time.Now()
+	}
+	var lastConn *pool.Conn
+
 	var lastErr error
+	totalAttempts := 0
 	for attempt := 0; attempt <= c.opt.MaxRetries; attempt++ {
+		totalAttempts++
 		attempt := attempt
 
-		retry, err := c._process(ctx, cmd, attempt)
-		if err == nil || !retry {
+		retry, cn, err := c._process(ctx, cmd, attempt)
+		if cn != nil {
+			lastConn = cn
+		}
+		// Don't retry if command explicitly disables retries (e.g., RawWriteToCmd
+		// which writes directly to an io.Writer and cannot undo partial writes)
+		if err == nil || !retry || cmd.NoRetry() {
+			// Record total operation duration
+			if opDurationCallback != nil {
+				operationDuration := time.Since(operationStart)
+				opDurationCallback(ctx, operationDuration, cmd, totalAttempts, err, lastConn, c.opt.DB)
+			}
+
+			if err != nil {
+				if errorCallback := pool.GetMetricErrorCallback(); errorCallback != nil {
+					errorType, statusCode, isInternal := classifyCommandError(err)
+					errorCallback(ctx, errorType, lastConn, statusCode, isInternal, totalAttempts-1)
+				}
+			}
 			return err
 		}
 
 		lastErr = err
 	}
+
+	// Record failed operation after all retries
+	if opDurationCallback != nil {
+		operationDuration := time.Since(operationStart)
+		opDurationCallback(ctx, operationDuration, cmd, totalAttempts, lastErr, lastConn, c.opt.DB)
+	}
+
+	// Record error metric for exhausted retries
+	if errorCallback := pool.GetMetricErrorCallback(); errorCallback != nil {
+		errorType, statusCode, isInternal := classifyCommandError(lastErr)
+		errorCallback(ctx, errorType, lastConn, statusCode, isInternal, totalAttempts-1)
+	}
+
 	return lastErr
+}
+
+// classifyCommandError classifies an error for metrics reporting.
+// Returns: errorType, statusCode, isInternal
+// - errorType: A string describing the error type (e.g., "TIMEOUT", "NETWORK", "ERR")
+// - statusCode: The Redis error prefix or error category
+// - isInternal: true for network/timeout errors, false for Redis server errors
+func classifyCommandError(err error) (errorType, statusCode string, isInternal bool) {
+	if err == nil {
+		return "", "", false
+	}
+
+	errStr := err.Error()
+
+	// Check for timeout errors
+	if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+		return "TIMEOUT", "TIMEOUT", true
+	}
+
+	// Check for network errors
+	if _, ok := err.(net.Error); ok {
+		return "NETWORK", "NETWORK", true
+	}
+
+	// Check for context errors
+	if errors.Is(err, context.Canceled) {
+		return "CONTEXT_CANCELED", "CONTEXT_CANCELED", true
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "CONTEXT_TIMEOUT", "CONTEXT_TIMEOUT", true
+	}
+
+	// Check for Redis errors
+	// Examples: "ERR ...", "WRONGTYPE ...", "CLUSTERDOWN ..."
+	if len(errStr) > 0 {
+		// Find the first space to extract the prefix
+		spaceIdx := 0
+		for i, c := range errStr {
+			if c == ' ' {
+				spaceIdx = i
+				break
+			}
+		}
+		if spaceIdx == 0 {
+			spaceIdx = len(errStr)
+		}
+		prefix := errStr[:spaceIdx]
+		isUppercase := true
+		for _, c := range prefix {
+			if c < 'A' || c > 'Z' {
+				isUppercase = false
+				break
+			}
+		}
+		if isUppercase && len(prefix) > 0 {
+			return prefix, prefix, false
+		}
+	}
+
+	return "UNKNOWN", "UNKNOWN", true
 }
 
 func (c *baseClient) assertUnstableCommand(cmd Cmder) (bool, error) {
@@ -689,15 +948,17 @@ func (c *baseClient) assertUnstableCommand(cmd Cmder) (bool, error) {
 	}
 }
 
-func (c *baseClient) _process(ctx context.Context, cmd Cmder, attempt int) (bool, error) {
+func (c *baseClient) _process(ctx context.Context, cmd Cmder, attempt int) (bool, *pool.Conn, error) {
 	if attempt > 0 {
 		if err := internal.Sleep(ctx, c.retryBackoff(attempt)); err != nil {
-			return false, err
+			return false, nil, err
 		}
 	}
 
+	var usedConn *pool.Conn
 	retryTimeout := uint32(0)
 	if err := c.withConn(ctx, func(ctx context.Context, cn *pool.Conn) error {
+		usedConn = cn
 		// Process any pending push notifications before executing the command
 		if err := c.processPushNotifications(ctx, cn); err != nil {
 			internal.Logger.Printf(ctx, "push: error processing pending notifications before command: %v", err)
@@ -738,10 +999,10 @@ func (c *baseClient) _process(ctx context.Context, cmd Cmder, attempt int) (bool
 		return nil
 	}); err != nil {
 		retry := shouldRetry(err, atomic.LoadUint32(&retryTimeout) == 1)
-		return retry, err
+		return retry, usedConn, err
 	}
 
-	return false, nil
+	return false, usedConn, nil
 }
 
 func (c *baseClient) retryBackoff(attempt int) time.Duration {
@@ -825,11 +1086,13 @@ func (c *baseClient) Close() error {
 		firstErr = err
 	}
 
-	if c.onClose != nil {
-		if err := c.onClose(); err != nil && firstErr == nil {
-			firstErr = err
-		}
+	if err := c.onClose.run(); err != nil && firstErr == nil {
+		firstErr = err
 	}
+
+	// Unregister pools from OTel before closing them
+	otel.UnregisterPools(c.connPool, c.pubSubPool)
+
 	if c.connPool != nil {
 		if err := c.connPool.Close(); err != nil && firstErr == nil {
 			firstErr = err
@@ -848,14 +1111,14 @@ func (c *baseClient) getAddr() string {
 }
 
 func (c *baseClient) processPipeline(ctx context.Context, cmds []Cmder) error {
-	if err := c.generalProcessPipeline(ctx, cmds, c.pipelineProcessCmds); err != nil {
+	if err := c.generalProcessPipeline(ctx, cmds, c.pipelineProcessCmds, "PIPELINE"); err != nil {
 		return err
 	}
 	return cmdsFirstErr(cmds)
 }
 
 func (c *baseClient) processTxPipeline(ctx context.Context, cmds []Cmder) error {
-	if err := c.generalProcessPipeline(ctx, cmds, c.txPipelineProcessCmds); err != nil {
+	if err := c.generalProcessPipeline(ctx, cmds, c.txPipelineProcessCmds, "MULTI"); err != nil {
 		return err
 	}
 	return cmdsFirstErr(cmds)
@@ -864,13 +1127,27 @@ func (c *baseClient) processTxPipeline(ctx context.Context, cmds []Cmder) error 
 type pipelineProcessor func(context.Context, *pool.Conn, []Cmder) (bool, error)
 
 func (c *baseClient) generalProcessPipeline(
-	ctx context.Context, cmds []Cmder, p pipelineProcessor,
+	ctx context.Context, cmds []Cmder, p pipelineProcessor, operationName string,
 ) error {
+	// Only call time.Now() if pipeline operation duration callback is set to avoid overhead
+	var operationStart time.Time
+	pipelineOpDurationCallback := otel.GetPipelineOperationDurationCallback()
+	if pipelineOpDurationCallback != nil {
+		operationStart = time.Now()
+	}
+	var lastConn *pool.Conn
+	totalAttempts := 0
+
 	var lastErr error
 	for attempt := 0; attempt <= c.opt.MaxRetries; attempt++ {
+		totalAttempts++
 		if attempt > 0 {
 			if err := internal.Sleep(ctx, c.retryBackoff(attempt)); err != nil {
 				setCmdsErr(cmds, err)
+				if pipelineOpDurationCallback != nil {
+					operationDuration := time.Since(operationStart)
+					pipelineOpDurationCallback(ctx, operationDuration, operationName, len(cmds), totalAttempts, err, lastConn, c.opt.DB)
+				}
 				return err
 			}
 		}
@@ -878,6 +1155,7 @@ func (c *baseClient) generalProcessPipeline(
 		// Enable retries by default to retry dial errors returned by withConn.
 		canRetry := true
 		lastErr = c.withConn(ctx, func(ctx context.Context, cn *pool.Conn) error {
+			lastConn = cn
 			// Process any pending push notifications before executing the pipeline
 			if err := c.processPushNotifications(ctx, cn); err != nil {
 				internal.Logger.Printf(ctx, "push: error processing pending notifications before processing pipeline: %v", err)
@@ -886,14 +1164,39 @@ func (c *baseClient) generalProcessPipeline(
 			canRetry, err = p(ctx, cn, cmds)
 			return err
 		})
-		if lastErr == nil || !canRetry || !shouldRetry(lastErr, true) {
+		// Don't retry if any command in the pipeline explicitly disables retries
+		// (e.g., RawWriteToCmd which writes directly to an io.Writer and cannot
+		// undo partial writes on retry)
+		if lastErr == nil || !canRetry || !shouldRetry(lastErr, true) || cmdsContainNoRetry(cmds) {
 			// The error should be set here only when failing to obtain the conn.
 			if !isRedisError(lastErr) {
 				setCmdsErr(cmds, lastErr)
 			}
+			if pipelineOpDurationCallback != nil {
+				operationDuration := time.Since(operationStart)
+				pipelineOpDurationCallback(ctx, operationDuration, operationName, len(cmds), totalAttempts, lastErr, lastConn, c.opt.DB)
+			}
+
+			if lastErr != nil {
+				if errorCallback := pool.GetMetricErrorCallback(); errorCallback != nil {
+					errorType, statusCode, isInternal := classifyCommandError(lastErr)
+					errorCallback(ctx, errorType, lastConn, statusCode, isInternal, totalAttempts-1)
+				}
+			}
 			return lastErr
 		}
 	}
+
+	if pipelineOpDurationCallback != nil {
+		operationDuration := time.Since(operationStart)
+		pipelineOpDurationCallback(ctx, operationDuration, operationName, len(cmds), totalAttempts, lastErr, lastConn, c.opt.DB)
+	}
+
+	if errorCallback := pool.GetMetricErrorCallback(); errorCallback != nil {
+		errorType, statusCode, isInternal := classifyCommandError(lastErr)
+		errorCallback(ctx, errorType, lastConn, statusCode, isInternal, totalAttempts-1)
+	}
+
 	return lastErr
 }
 
@@ -1032,6 +1335,7 @@ type Client struct {
 }
 
 // NewClient returns a client to the Redis Server specified by Options.
+// Passing nil Options will cause a panic.
 func NewClient(opt *Options) *Client {
 	if opt == nil {
 		panic("redis: NewClient nil options")
@@ -1044,7 +1348,8 @@ func NewClient(opt *Options) *Client {
 
 	c := Client{
 		baseClient: &baseClient{
-			opt: opt,
+			opt:     opt,
+			onClose: &onCloseHooks{},
 		},
 	}
 	c.init()
@@ -1055,13 +1360,18 @@ func NewClient(opt *Options) *Client {
 	// set opt push processor for child clients
 	c.opt.PushNotificationProcessor = c.pushProcessor
 
+	// Generate unique pool names for metrics
+	uniqueID := generateUniqueID()
+	mainPoolName := opt.Addr + "_" + uniqueID
+	pubsubPoolName := opt.Addr + "_" + uniqueID + "_pubsub"
+
 	// Create connection pools
 	var err error
-	c.connPool, err = newConnPool(opt, c.dialHook)
+	c.connPool, err = newConnPool(opt, c.dialHook, mainPoolName)
 	if err != nil {
 		panic(fmt.Errorf("redis: failed to create connection pool: %w", err))
 	}
-	c.pubSubPool, err = newPubSubPool(opt, c.dialHook)
+	c.pubSubPool, err = newPubSubPool(opt, c.dialHook, pubsubPoolName)
 	if err != nil {
 		panic(fmt.Errorf("redis: failed to create pubsub pool: %w", err))
 	}
@@ -1091,6 +1401,10 @@ func NewClient(opt *Options) *Client {
 			}
 		}
 	}
+
+	// Register pools with OTel recorder if it supports pool registration
+	// This allows async gauge metrics to pull stats from pools periodically
+	otel.RegisterPools(c.connPool, c.pubSubPool, opt.Addr)
 
 	return &c
 }
@@ -1122,9 +1436,20 @@ func (c *Client) Process(ctx context.Context, cmd Cmder) error {
 	return err
 }
 
-// Options returns read-only Options that were used to create the client.
+// Options returns read-only *Options that were used to create the client.
+// Any alteration of the returned *Options may result in undefined behaviour.
 func (c *Client) Options() *Options {
 	return c.opt
+}
+
+// NodeAddress returns the address of the Redis node as reported by the server.
+// For cluster clients, this is the endpoint from CLUSTER SLOTS before any transformation
+// (e.g., loopback replacement). For standalone clients, this defaults to Addr.
+//
+// This is useful for matching the source field in maintenance notifications
+// (e.g. SMIGRATED).
+func (c *Client) NodeAddress() string {
+	return c.opt.NodeAddress
 }
 
 // GetMaintNotificationsManager returns the maintnotifications manager instance for monitoring and control.
@@ -1307,6 +1632,7 @@ func newConn(opt *Options, connPool pool.Pooler, parentHooks *hooksMixin) *Conn 
 		baseClient: baseClient{
 			opt:      opt,
 			connPool: connPool,
+			onClose:  &onCloseHooks{},
 		},
 	}
 

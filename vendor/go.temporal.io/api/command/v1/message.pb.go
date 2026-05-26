@@ -485,10 +485,13 @@ func (x *CancelWorkflowExecutionCommandAttributes) GetDetails() *v1.Payloads {
 }
 
 type RequestCancelExternalWorkflowExecutionCommandAttributes struct {
-	state      protoimpl.MessageState `protogen:"open.v1"`
-	Namespace  string                 `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	WorkflowId string                 `protobuf:"bytes,2,opt,name=workflow_id,json=workflowId,proto3" json:"workflow_id,omitempty"`
-	RunId      string                 `protobuf:"bytes,3,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Deprecated. Cross-namespace operations are disabled by default as of server 1.30.1.
+	//
+	// Deprecated: Marked as deprecated in temporal/api/command/v1/message.proto.
+	Namespace  string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	WorkflowId string `protobuf:"bytes,2,opt,name=workflow_id,json=workflowId,proto3" json:"workflow_id,omitempty"`
+	RunId      string `protobuf:"bytes,3,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
 	// Deprecated.
 	//
 	// Deprecated: Marked as deprecated in temporal/api/command/v1/message.proto.
@@ -533,6 +536,7 @@ func (*RequestCancelExternalWorkflowExecutionCommandAttributes) Descriptor() ([]
 	return file_temporal_api_command_v1_message_proto_rawDescGZIP(), []int{7}
 }
 
+// Deprecated: Marked as deprecated in temporal/api/command/v1/message.proto.
 func (x *RequestCancelExternalWorkflowExecutionCommandAttributes) GetNamespace() string {
 	if x != nil {
 		return x.Namespace
@@ -577,9 +581,12 @@ func (x *RequestCancelExternalWorkflowExecutionCommandAttributes) GetReason() st
 }
 
 type SignalExternalWorkflowExecutionCommandAttributes struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	Namespace string                 `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	Execution *v1.WorkflowExecution  `protobuf:"bytes,2,opt,name=execution,proto3" json:"execution,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Deprecated. Cross-namespace operations are disabled by default as of server 1.30.1.
+	//
+	// Deprecated: Marked as deprecated in temporal/api/command/v1/message.proto.
+	Namespace string                `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Execution *v1.WorkflowExecution `protobuf:"bytes,2,opt,name=execution,proto3" json:"execution,omitempty"`
 	// The workflow author-defined name of the signal to send to the workflow.
 	SignalName string `protobuf:"bytes,3,opt,name=signal_name,json=signalName,proto3" json:"signal_name,omitempty"`
 	// Serialized value(s) to provide with the signal.
@@ -629,6 +636,7 @@ func (*SignalExternalWorkflowExecutionCommandAttributes) Descriptor() ([]byte, [
 	return file_temporal_api_command_v1_message_proto_rawDescGZIP(), []int{8}
 }
 
+// Deprecated: Marked as deprecated in temporal/api/command/v1/message.proto.
 func (x *SignalExternalWorkflowExecutionCommandAttributes) GetNamespace() string {
 	if x != nil {
 		return x.Namespace
@@ -1019,12 +1027,15 @@ func (x *ContinueAsNewWorkflowExecutionCommandAttributes) GetInitialVersioningBe
 }
 
 type StartChildWorkflowExecutionCommandAttributes struct {
-	state        protoimpl.MessageState `protogen:"open.v1"`
-	Namespace    string                 `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	WorkflowId   string                 `protobuf:"bytes,2,opt,name=workflow_id,json=workflowId,proto3" json:"workflow_id,omitempty"`
-	WorkflowType *v1.WorkflowType       `protobuf:"bytes,3,opt,name=workflow_type,json=workflowType,proto3" json:"workflow_type,omitempty"`
-	TaskQueue    *v11.TaskQueue         `protobuf:"bytes,4,opt,name=task_queue,json=taskQueue,proto3" json:"task_queue,omitempty"`
-	Input        *v1.Payloads           `protobuf:"bytes,5,opt,name=input,proto3" json:"input,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Deprecated. Cross-namespace operations are disabled by default as of server 1.30.1.
+	//
+	// Deprecated: Marked as deprecated in temporal/api/command/v1/message.proto.
+	Namespace    string           `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	WorkflowId   string           `protobuf:"bytes,2,opt,name=workflow_id,json=workflowId,proto3" json:"workflow_id,omitempty"`
+	WorkflowType *v1.WorkflowType `protobuf:"bytes,3,opt,name=workflow_type,json=workflowType,proto3" json:"workflow_type,omitempty"`
+	TaskQueue    *v11.TaskQueue   `protobuf:"bytes,4,opt,name=task_queue,json=taskQueue,proto3" json:"task_queue,omitempty"`
+	Input        *v1.Payloads     `protobuf:"bytes,5,opt,name=input,proto3" json:"input,omitempty"`
 	// Total workflow execution timeout including retries and continue as new.
 	WorkflowExecutionTimeout *durationpb.Duration `protobuf:"bytes,6,opt,name=workflow_execution_timeout,json=workflowExecutionTimeout,proto3" json:"workflow_execution_timeout,omitempty"`
 	// Timeout of a single workflow run.
@@ -1085,6 +1096,7 @@ func (*StartChildWorkflowExecutionCommandAttributes) Descriptor() ([]byte, []int
 	return file_temporal_api_command_v1_message_proto_rawDescGZIP(), []int{13}
 }
 
+// Deprecated: Marked as deprecated in temporal/api/command/v1/message.proto.
 func (x *StartChildWorkflowExecutionCommandAttributes) GetNamespace() string {
 	if x != nil {
 		return x.Namespace
@@ -1827,17 +1839,17 @@ const file_temporal_api_command_v1_message_proto_rawDesc = "" +
 	"\x1cCancelTimerCommandAttributes\x12\x19\n" +
 	"\btimer_id\x18\x01 \x01(\tR\atimerId\"f\n" +
 	"(CancelWorkflowExecutionCommandAttributes\x12:\n" +
-	"\adetails\x18\x01 \x01(\v2 .temporal.api.common.v1.PayloadsR\adetails\"\xf5\x01\n" +
-	"7RequestCancelExternalWorkflowExecutionCommandAttributes\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x1f\n" +
+	"\adetails\x18\x01 \x01(\v2 .temporal.api.common.v1.PayloadsR\adetails\"\xf9\x01\n" +
+	"7RequestCancelExternalWorkflowExecutionCommandAttributes\x12 \n" +
+	"\tnamespace\x18\x01 \x01(\tB\x02\x18\x01R\tnamespace\x12\x1f\n" +
 	"\vworkflow_id\x18\x02 \x01(\tR\n" +
 	"workflowId\x12\x15\n" +
 	"\x06run_id\x18\x03 \x01(\tR\x05runId\x12\x1c\n" +
 	"\acontrol\x18\x04 \x01(\tB\x02\x18\x01R\acontrol\x12.\n" +
 	"\x13child_workflow_only\x18\x05 \x01(\bR\x11childWorkflowOnly\x12\x16\n" +
-	"\x06reason\x18\x06 \x01(\tR\x06reason\"\xf8\x02\n" +
-	"0SignalExternalWorkflowExecutionCommandAttributes\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12G\n" +
+	"\x06reason\x18\x06 \x01(\tR\x06reason\"\xfc\x02\n" +
+	"0SignalExternalWorkflowExecutionCommandAttributes\x12 \n" +
+	"\tnamespace\x18\x01 \x01(\tB\x02\x18\x01R\tnamespace\x12G\n" +
 	"\texecution\x18\x02 \x01(\v2).temporal.api.common.v1.WorkflowExecutionR\texecution\x12\x1f\n" +
 	"\vsignal_name\x18\x03 \x01(\tR\n" +
 	"signalName\x126\n" +
@@ -1876,9 +1888,9 @@ const file_temporal_api_command_v1_message_proto_rawDesc = "" +
 	"\x04memo\x18\r \x01(\v2\x1c.temporal.api.common.v1.MemoR\x04memo\x12U\n" +
 	"\x11search_attributes\x18\x0e \x01(\v2(.temporal.api.common.v1.SearchAttributesR\x10searchAttributes\x12,\n" +
 	"\x10inherit_build_id\x18\x0f \x01(\bB\x02\x18\x01R\x0einheritBuildId\x12v\n" +
-	"\x1binitial_versioning_behavior\x18\x10 \x01(\x0e26.temporal.api.enums.v1.ContinueAsNewVersioningBehaviorR\x19initialVersioningBehavior\"\x9f\t\n" +
-	",StartChildWorkflowExecutionCommandAttributes\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x1f\n" +
+	"\x1binitial_versioning_behavior\x18\x10 \x01(\x0e26.temporal.api.enums.v1.ContinueAsNewVersioningBehaviorR\x19initialVersioningBehavior\"\xa3\t\n" +
+	",StartChildWorkflowExecutionCommandAttributes\x12 \n" +
+	"\tnamespace\x18\x01 \x01(\tB\x02\x18\x01R\tnamespace\x12\x1f\n" +
 	"\vworkflow_id\x18\x02 \x01(\tR\n" +
 	"workflowId\x12I\n" +
 	"\rworkflow_type\x18\x03 \x01(\v2$.temporal.api.common.v1.WorkflowTypeR\fworkflowType\x12C\n" +

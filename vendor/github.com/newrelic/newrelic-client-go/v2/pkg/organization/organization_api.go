@@ -258,3 +258,48 @@ const getOrganizationQuery = `query { actor { organization {
 	id
 	name
 } } }`
+
+// Retrieves an existing workflow definition
+func (a *OrganizationManagement) GetWorkflow(
+	name string,
+	version int,
+) (*WorkflowAutomationWorkflowResponse, error) {
+	return a.GetWorkflowWithContext(context.Background(),
+		name,
+		version,
+	)
+}
+
+// Retrieves an existing workflow definition
+func (a *OrganizationManagement) GetWorkflowWithContext(
+	ctx context.Context,
+	name string,
+	version int,
+) (*WorkflowAutomationWorkflowResponse, error) {
+
+	resp := workflowResponse{}
+	vars := map[string]interface{}{
+		"name":    name,
+		"version": version,
+	}
+
+	if err := a.client.NerdGraphQueryWithContext(ctx, getWorkflowQuery, vars, &resp); err != nil {
+		return nil, err
+	}
+
+	return &resp.Actor.Organization.WorkflowAutomation.Workflow, nil
+}
+
+const getWorkflowQuery = `query(
+	$name: String!,
+) { actor { organization { workflowAutomation { workflow(
+	name: $name,
+) {
+	definition {
+		definitionId
+		description
+		name
+		version
+		yaml
+	}
+} } } } }`

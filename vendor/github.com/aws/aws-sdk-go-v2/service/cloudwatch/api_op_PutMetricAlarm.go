@@ -12,14 +12,16 @@ import (
 )
 
 // Creates or updates an alarm and associates it with the specified metric, metric
-// math expression, anomaly detection model, or Metrics Insights query. For more
-// information about using a Metrics Insights query for an alarm, see [Create alarms on Metrics Insights queries].
+// math expression, anomaly detection model, Metrics Insights query, or PromQL
+// query. For more information about using a Metrics Insights query for an alarm,
+// see [Create alarms on Metrics Insights queries].
 //
 // Alarms based on anomaly detection models cannot have Auto Scaling actions.
 //
 // When this operation creates an alarm, the alarm state is immediately set to
-// INSUFFICIENT_DATA . The alarm is then evaluated and its state is set
-// appropriately. Any actions associated with the new state are then executed.
+// INSUFFICIENT_DATA . For PromQL alarms, the alarm state is instead immediately
+// set to OK . The alarm is then evaluated and its state is set appropriately. Any
+// actions associated with the new state are then executed.
 //
 // When you update an existing alarm, its state is left unchanged, but the update
 // completely overwrites the previous configuration of the alarm.
@@ -86,24 +88,6 @@ type PutMetricAlarmInput struct {
 	// This member is required.
 	AlarmName *string
 
-	//  The arithmetic operation to use when comparing the specified statistic and
-	// threshold. The specified statistic value is used as the first operand.
-	//
-	// The values LessThanLowerOrGreaterThanUpperThreshold , LessThanLowerThreshold ,
-	// and GreaterThanUpperThreshold are used only for alarms based on anomaly
-	// detection models.
-	//
-	// This member is required.
-	ComparisonOperator types.ComparisonOperator
-
-	// The number of periods over which data is compared to the specified threshold.
-	// If you are setting an alarm that requires that a number of consecutive data
-	// points be breaching to trigger the alarm, this value specifies that number. If
-	// you are setting an "M out of N" alarm, this value is the N.
-	//
-	// This member is required.
-	EvaluationPeriods *int32
-
 	// Indicates whether actions should be executed during any changes to the alarm
 	// state. The default is TRUE .
 	ActionsEnabled *bool
@@ -165,6 +149,14 @@ type PutMetricAlarmInput struct {
 	// The description for the alarm.
 	AlarmDescription *string
 
+	//  The arithmetic operation to use when comparing the specified statistic and
+	// threshold. The specified statistic value is used as the first operand.
+	//
+	// The values LessThanLowerOrGreaterThanUpperThreshold , LessThanLowerThreshold ,
+	// and GreaterThanUpperThreshold are used only for alarms based on anomaly
+	// detection models.
+	ComparisonOperator types.ComparisonOperator
+
 	// The number of data points that must be breaching to trigger the alarm. This is
 	// used only if you are setting an "M out of N" alarm. In that case, this value is
 	// the M. For more information, see [Evaluating an Alarm]in the Amazon CloudWatch User Guide.
@@ -185,6 +177,32 @@ type PutMetricAlarmInput struct {
 	//
 	// [Percentile-Based CloudWatch Alarms and Low Data Samples]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/AlarmThatSendsEmail.html#percentiles-with-low-samples
 	EvaluateLowSampleCountPercentile *string
+
+	// The evaluation criteria for the alarm. For each PutMetricAlarm operation, you
+	// must specify either MetricName , a Metrics array, or an EvaluationCriteria .
+	//
+	// If you use the EvaluationCriteria parameter, you cannot include the Namespace ,
+	// MetricName , Dimensions , Period , Unit , Statistic , ExtendedStatistic ,
+	// Metrics , Threshold , ComparisonOperator , ThresholdMetricId , EvaluationPeriods
+	// , or DatapointsToAlarm parameters of PutMetricAlarm in the same operation.
+	// Instead, all evaluation parameters are defined within this structure.
+	//
+	// For an example of how to use this parameter, see the PromQL alarm example on
+	// this page.
+	EvaluationCriteria types.EvaluationCriteria
+
+	// The frequency, in seconds, at which the alarm is evaluated. Valid values are
+	// 10, 20, 30, and any multiple of 60.
+	//
+	// This parameter is required for alarms that use EvaluationCriteria , and cannot
+	// be specified for alarms configured with MetricName or Metrics .
+	EvaluationInterval *int32
+
+	// The number of periods over which data is compared to the specified threshold.
+	// If you are setting an alarm that requires that a number of consecutive data
+	// points be breaching to trigger the alarm, this value specifies that number. If
+	// you are setting an "M out of N" alarm, this value is the N.
+	EvaluationPeriods *int32
 
 	// The extended statistic for the metric specified in MetricName . When you call
 	// PutMetricAlarm and specify a MetricName , you must specify either Statistic or
@@ -270,7 +288,8 @@ type PutMetricAlarmInput struct {
 	InsufficientDataActions []string
 
 	// The name for the metric associated with the alarm. For each PutMetricAlarm
-	// operation, you must specify either MetricName or a Metrics array.
+	// operation, you must specify either MetricName , a Metrics array, or an
+	// EvaluationCriteria .
 	//
 	// If you are creating an alarm based on a math expression, you cannot specify
 	// this parameter, or any of the Namespace , Dimensions , Period , Unit , Statistic
@@ -280,7 +299,7 @@ type PutMetricAlarmInput struct {
 
 	// An array of MetricDataQuery structures that enable you to create an alarm based
 	// on the result of a metric math expression. For each PutMetricAlarm operation,
-	// you must specify either MetricName or a Metrics array.
+	// you must specify either MetricName , a Metrics array, or an EvaluationCriteria .
 	//
 	// Each item in the Metrics array either retrieves a metric or performs a math
 	// expression.
@@ -425,6 +444,8 @@ type PutMetricAlarmInput struct {
 	// an AWS/DynamoDB metric has missing data, alarms that evaluate that metric
 	// remain in their current state.
 	//
+	// This parameter is not applicable to PromQL alarms.
+	//
 	// [Configuring How CloudWatch Alarms Treats Missing Data]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/AlarmThatSendsEmail.html#alarms-and-missing-data
 	TreatMissingData *string
 
@@ -494,7 +515,7 @@ func (c *Client) addOperationPutMetricAlarmMiddlewares(stack *middleware.Stack, 
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
@@ -516,9 +537,6 @@ func (c *Client) addOperationPutMetricAlarmMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {

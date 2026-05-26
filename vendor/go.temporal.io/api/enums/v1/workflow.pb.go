@@ -762,7 +762,6 @@ func (TimeoutType) EnumDescriptor() ([]byte, []int) {
 // Versions. The Versioning Behavior of a workflow execution is typically specified by the worker
 // who completes the first task of the execution, but is also overridable manually for new and
 // existing workflows (see VersioningOverride).
-// Experimental. Worker Deployments are experimental and might significantly change in the future.
 type VersioningBehavior int32
 
 const (
@@ -867,16 +866,30 @@ type ContinueAsNewVersioningBehavior int32
 
 const (
 	CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_UNSPECIFIED ContinueAsNewVersioningBehavior = 0
+	// Experimental.
 	// Start the new run with AutoUpgrade behavior. Use the Target Version of the workflow's task queue at
 	// start-time, as AutoUpgrade workflows do. After the first workflow task completes, use whatever
 	// Versioning Behavior the workflow is annotated with in the workflow code.
 	//
-	// Note that if the previous workflow had a Pinned override, that override will be inherited by the
+	// Note that if the workflow being continued has a Pinned override, that override will be inherited by the
 	// new workflow run regardless of the ContinueAsNewVersioningBehavior specified in the continue-as-new
-	// command. If a Pinned override is inherited by the new run, and the new run starts with AutoUpgrade
-	// behavior, the base version of the new run will be the Target Version as described above, but the
-	// effective version will be whatever is specified by the Versioning Override until the override is removed.
+	// command. Versioning Override always takes precedence until it's removed manually via UpdateWorkflowExecutionOptions.
 	CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_AUTO_UPGRADE ContinueAsNewVersioningBehavior = 1
+	// Experimental.
+	// Use the Ramping Version of the workflow's task queue at start time, regardless of the workflow's
+	// Target Version (according to f(workflow_id, ramp_percentage)). After the first workflow task completes,
+	// the workflow will use whatever Versioning Behavior it is annotated with. If there is no Ramping
+	// Version by the time that the first workflow task is dispatched, it will be sent to the Current Version.
+	//
+	// It is highly discouraged to use this if the workflow is annotated with AutoUpgrade behavior, because
+	// this setting ONLY applies to the first task of the workflow. If, after the first task, the workflow
+	// is AutoUpgrade, it will behave like a normal AutoUpgrade workflow and go to the Target Version, which
+	// may be the Current Version instead of the Ramping Version.
+	//
+	// Note that if the workflow being continued has a Pinned override, that override will be inherited by the
+	// new workflow run regardless of the ContinueAsNewVersioningBehavior specified in the continue-as-new
+	// command. Versioning Override always takes precedence until it's removed manually via UpdateWorkflowExecutionOptions.
+	CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_USE_RAMPING_VERSION ContinueAsNewVersioningBehavior = 2
 )
 
 // Enum value maps for ContinueAsNewVersioningBehavior.
@@ -884,10 +897,12 @@ var (
 	ContinueAsNewVersioningBehavior_name = map[int32]string{
 		0: "CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_UNSPECIFIED",
 		1: "CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_AUTO_UPGRADE",
+		2: "CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_USE_RAMPING_VERSION",
 	}
 	ContinueAsNewVersioningBehavior_value = map[string]int32{
-		"CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_UNSPECIFIED":  0,
-		"CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_AUTO_UPGRADE": 1,
+		"CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_UNSPECIFIED":         0,
+		"CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_AUTO_UPGRADE":        1,
+		"CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_USE_RAMPING_VERSION": 2,
 	}
 )
 
@@ -903,6 +918,8 @@ func (x ContinueAsNewVersioningBehavior) String() string {
 		return "Unspecified"
 	case CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_AUTO_UPGRADE:
 		return "AutoUpgrade"
+	case CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_USE_RAMPING_VERSION:
+		return "UseRampingVersion"
 	default:
 		return strconv.Itoa(int(x))
 	}
@@ -937,9 +954,6 @@ const (
 	SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_HISTORY_EVENTS SuggestContinueAsNewReason = 2
 	// Workflow's count of completed plus in-flight updates is too large.
 	SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_UPDATES SuggestContinueAsNewReason = 3
-	// Workflow's Target Worker Deployment Version is different from its
-	// Current Version and the workflow is versioned.
-	SUGGEST_CONTINUE_AS_NEW_REASON_TARGET_WORKER_DEPLOYMENT_VERSION_CHANGED SuggestContinueAsNewReason = 4
 )
 
 // Enum value maps for SuggestContinueAsNewReason.
@@ -949,14 +963,12 @@ var (
 		1: "SUGGEST_CONTINUE_AS_NEW_REASON_HISTORY_SIZE_TOO_LARGE",
 		2: "SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_HISTORY_EVENTS",
 		3: "SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_UPDATES",
-		4: "SUGGEST_CONTINUE_AS_NEW_REASON_TARGET_WORKER_DEPLOYMENT_VERSION_CHANGED",
 	}
 	SuggestContinueAsNewReason_value = map[string]int32{
-		"SUGGEST_CONTINUE_AS_NEW_REASON_UNSPECIFIED":                              0,
-		"SUGGEST_CONTINUE_AS_NEW_REASON_HISTORY_SIZE_TOO_LARGE":                   1,
-		"SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_HISTORY_EVENTS":                  2,
-		"SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_UPDATES":                         3,
-		"SUGGEST_CONTINUE_AS_NEW_REASON_TARGET_WORKER_DEPLOYMENT_VERSION_CHANGED": 4,
+		"SUGGEST_CONTINUE_AS_NEW_REASON_UNSPECIFIED":             0,
+		"SUGGEST_CONTINUE_AS_NEW_REASON_HISTORY_SIZE_TOO_LARGE":  1,
+		"SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_HISTORY_EVENTS": 2,
+		"SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_UPDATES":        3,
 	}
 )
 
@@ -976,8 +988,6 @@ func (x SuggestContinueAsNewReason) String() string {
 		return "TooManyHistoryEvents"
 	case SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_UPDATES:
 		return "TooManyUpdates"
-	case SUGGEST_CONTINUE_AS_NEW_REASON_TARGET_WORKER_DEPLOYMENT_VERSION_CHANGED:
-		return "TargetWorkerDeploymentVersionChanged"
 	default:
 		return strconv.Itoa(int(x))
 	}
@@ -1071,16 +1081,16 @@ const file_temporal_api_enums_v1_workflow_proto_rawDesc = "" +
 	"\x12VersioningBehavior\x12#\n" +
 	"\x1fVERSIONING_BEHAVIOR_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aVERSIONING_BEHAVIOR_PINNED\x10\x01\x12$\n" +
-	" VERSIONING_BEHAVIOR_AUTO_UPGRADE\x10\x02*\x8c\x01\n" +
+	" VERSIONING_BEHAVIOR_AUTO_UPGRADE\x10\x02*\xc9\x01\n" +
 	"\x1fContinueAsNewVersioningBehavior\x123\n" +
 	"/CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_UNSPECIFIED\x10\x00\x124\n" +
-	"0CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_AUTO_UPGRADE\x10\x01*\xc5\x02\n" +
+	"0CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_AUTO_UPGRADE\x10\x01\x12;\n" +
+	"7CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_USE_RAMPING_VERSION\x10\x02*\xc7\x02\n" +
 	"\x1aSuggestContinueAsNewReason\x12.\n" +
 	"*SUGGEST_CONTINUE_AS_NEW_REASON_UNSPECIFIED\x10\x00\x129\n" +
 	"5SUGGEST_CONTINUE_AS_NEW_REASON_HISTORY_SIZE_TOO_LARGE\x10\x01\x12:\n" +
 	"6SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_HISTORY_EVENTS\x10\x02\x123\n" +
-	"/SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_UPDATES\x10\x03\x12K\n" +
-	"GSUGGEST_CONTINUE_AS_NEW_REASON_TARGET_WORKER_DEPLOYMENT_VERSION_CHANGED\x10\x04B\x85\x01\n" +
+	"/SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_UPDATES\x10\x03\"\x04\b\x04\x10\x04*GSUGGEST_CONTINUE_AS_NEW_REASON_TARGET_WORKER_DEPLOYMENT_VERSION_CHANGEDB\x85\x01\n" +
 	"\x18io.temporal.api.enums.v1B\rWorkflowProtoP\x01Z!go.temporal.io/api/enums/v1;enums\xaa\x02\x17Temporalio.Api.Enums.V1\xea\x02\x1aTemporalio::Api::Enums::V1b\x06proto3"
 
 var (

@@ -28,6 +28,11 @@ var ErrPoolTimeout = pool.ErrPoolTimeout
 // is used on a ClusterClient with keys in different slots.
 var ErrCrossSlot = proto.RedisError("CROSSSLOT Keys in request don't hash to the same slot")
 
+// ErrNoScript is returned when EVALSHA is requested for a script digest that
+// is not available in the script cache. Note that this error text is reproduced
+// literally from that used by Redis.
+var ErrNoScript = proto.RedisError("NOSCRIPT No matching script. Please use EVAL.")
+
 // HasErrorPrefix checks if the err is a Redis error and the message contains a prefix.
 func HasErrorPrefix(err error, prefix string) bool {
 	var rErr Error
@@ -100,6 +105,12 @@ func shouldRetry(err error, retryTimeout bool) bool {
 	// Check for timeout errors (works with wrapped errors)
 	if isTimeout, hasTimeoutFlag := isTimeoutError(err); isTimeout {
 		if hasTimeoutFlag {
+			// A dial error means the TCP connection was never established and the
+			// command was never sent to the server, so retry is always safe
+			var opErr *net.OpError
+			if errors.As(err, &opErr) && opErr.Op == "dial" {
+				return true
+			}
 			return retryTimeout
 		}
 		return true
@@ -124,6 +135,9 @@ func shouldRetry(err error, retryTimeout bool) bool {
 	if proto.IsTryAgainError(err) {
 		return true
 	}
+	if proto.IsNoReplicasError(err) {
+		return true
+	}
 
 	// Fallback to string checking for backward compatibility with plain errors
 	s := err.Error()
@@ -136,6 +150,9 @@ func shouldRetry(err error, retryTimeout bool) bool {
 	if strings.HasPrefix(s, "READONLY ") {
 		return true
 	}
+	if strings.Contains(s, "-READONLY You can't write against a read only replica") {
+		return true
+	}
 	if strings.HasPrefix(s, "CLUSTERDOWN ") {
 		return true
 	}
@@ -143,6 +160,9 @@ func shouldRetry(err error, retryTimeout bool) bool {
 		return true
 	}
 	if strings.HasPrefix(s, "MASTERDOWN ") {
+		return true
+	}
+	if strings.HasPrefix(s, "NOREPLICAS ") {
 		return true
 	}
 
@@ -340,6 +360,14 @@ func IsExecAbortError(err error) bool {
 // OOM errors occur when Redis is out of memory.
 func IsOOMError(err error) bool {
 	return proto.IsOOMError(err)
+}
+
+// IsNoReplicasError checks if an error is a Redis NOREPLICAS error, even if wrapped.
+// NOREPLICAS errors occur when not enough replicas acknowledge a write operation.
+// This typically happens with WAIT/WAITAOF commands or CLUSTER SETSLOT with synchronous
+// replication when the required number of replicas cannot confirm the write within the timeout.
+func IsNoReplicasError(err error) bool {
+	return proto.IsNoReplicasError(err)
 }
 
 //------------------------------------------------------------------------------
