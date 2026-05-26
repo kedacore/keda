@@ -22,9 +22,29 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
-	"knative.dev/pkg/apis"
-	"knative.dev/pkg/apis/duck"
 )
+
+// listable is satisfied by duck types that can enumerate their list
+// representation. Previously provided by knative.dev/pkg/apis.Listable.
+type listable interface {
+	runtime.Object
+	GetListType() runtime.Object
+}
+
+// populatable is satisfied by skeleton resources that can fill in all
+// fields for JSON round-trip verification.
+// Previously provided by knative.dev/pkg/apis/duck.Populatable.
+type populatable interface {
+	listable
+	Populate()
+}
+
+// implementable is satisfied by the embeddable duck-type fragment
+// (e.g. ScaleTriggers) that points back to the full wrapper type.
+// Previously provided by knative.dev/pkg/apis/duck.Implementable.
+type implementable interface {
+	GetFullType() populatable
+}
 
 const (
 	// Default polling interval for a ScaledObject triggers if no pollingInterval is defined.
@@ -48,25 +68,23 @@ type WithTriggersSpec struct {
 	Triggers        []ScaleTriggers `json:"triggers"`
 }
 
-// Assert that we implement the interfaces necessary to
-// use duck.VerifyType.
 var (
-	_ duck.Populatable   = (*WithTriggers)(nil)
-	_ duck.Implementable = (*ScaleTriggers)(nil)
-	_ apis.Listable      = (*WithTriggers)(nil)
+	_ populatable   = (*WithTriggers)(nil)
+	_ implementable = (*ScaleTriggers)(nil)
+	_ listable      = (*WithTriggers)(nil)
 )
 
-// GetFullType implements duck.Implementable
-func (*ScaleTriggers) GetFullType() duck.Populatable {
+// GetFullType implements implementable.
+func (*ScaleTriggers) GetFullType() populatable {
 	return &WithTriggers{}
 }
 
-// Populate implements duck.Populatable
+// Populate implements populatable.
 func (t *WithTriggers) Populate() {
 	t.Spec.Triggers = []ScaleTriggers{{}}
 }
 
-// GetListType implements apis.Listable
+// GetListType implements listable.
 func (*WithTriggers) GetListType() runtime.Object {
 	return &WithTriggersList{}
 }
