@@ -712,6 +712,7 @@ func (s *Dem) SetDemSettings(ctx context.Context, request components.DemOrganiza
 
 	switch {
 	case httpRes.StatusCode == 200:
+		utils.DrainBody(httpRes)
 	case httpRes.StatusCode == 400:
 		switch {
 		case utils.MatchContentType(httpRes.Header.Get("Content-Type"), `application/json`):
@@ -1823,6 +1824,7 @@ func (s *Dem) DeleteTransaction(ctx context.Context, request operations.DeleteTr
 
 	switch {
 	case httpRes.StatusCode == 204:
+		utils.DrainBody(httpRes)
 	case httpRes.StatusCode == 401:
 		switch {
 		case utils.MatchContentType(httpRes.Header.Get("Content-Type"), `application/json`):
@@ -3482,6 +3484,7 @@ func (s *Dem) DeleteURI(ctx context.Context, request operations.DeleteURIRequest
 
 	switch {
 	case httpRes.StatusCode == 204:
+		utils.DrainBody(httpRes)
 	case httpRes.StatusCode == 401:
 		switch {
 		case utils.MatchContentType(httpRes.Header.Get("Content-Type"), `application/json`):
@@ -3774,14 +3777,7 @@ func (s *Dem) GetURIOutageStatuses(ctx context.Context, request operations.GetUR
 
 		return s.GetURIOutageStatuses(
 			ctx,
-			operations.GetURIOutageStatusesRequest{
-				EntityID:  request.EntityID,
-				StartTime: request.StartTime,
-				EndTime:   request.EndTime,
-				Direction: request.Direction,
-				PageSize:  request.PageSize,
-				SkipToken: request.SkipToken,
-			},
+			request,
 			opts...,
 		)
 	}
@@ -4374,18 +4370,7 @@ func (s *Dem) GetURITestResults(ctx context.Context, request operations.GetURITe
 
 		return s.GetURITestResults(
 			ctx,
-			operations.GetURITestResultsRequest{
-				EntityID:    request.EntityID,
-				StartTime:   request.StartTime,
-				EndTime:     request.EndTime,
-				Direction:   request.Direction,
-				MinResponse: request.MinResponse,
-				MaxResponse: request.MaxResponse,
-				Probes:      request.Probes,
-				Status:      request.Status,
-				PageSize:    request.PageSize,
-				SkipToken:   request.SkipToken,
-			},
+			request,
 			opts...,
 		)
 	}
@@ -5797,6 +5782,7 @@ func (s *Dem) DeleteWebsite(ctx context.Context, request operations.DeleteWebsit
 
 	switch {
 	case httpRes.StatusCode == 204:
+		utils.DrainBody(httpRes)
 	case httpRes.StatusCode == 401:
 		switch {
 		case utils.MatchContentType(httpRes.Header.Get("Content-Type"), `application/json`):
@@ -6089,14 +6075,7 @@ func (s *Dem) GetWebsiteOutageStatuses(ctx context.Context, request operations.G
 
 		return s.GetWebsiteOutageStatuses(
 			ctx,
-			operations.GetWebsiteOutageStatusesRequest{
-				EntityID:  request.EntityID,
-				StartTime: request.StartTime,
-				EndTime:   request.EndTime,
-				Direction: request.Direction,
-				PageSize:  request.PageSize,
-				SkipToken: request.SkipToken,
-			},
+			request,
 			opts...,
 		)
 	}
@@ -6689,18 +6668,7 @@ func (s *Dem) GetWebsiteTestResults(ctx context.Context, request operations.GetW
 
 		return s.GetWebsiteTestResults(
 			ctx,
-			operations.GetWebsiteTestResultsRequest{
-				EntityID:    request.EntityID,
-				StartTime:   request.StartTime,
-				EndTime:     request.EndTime,
-				Direction:   request.Direction,
-				MinResponse: request.MinResponse,
-				MaxResponse: request.MaxResponse,
-				Probes:      request.Probes,
-				Status:      request.Status,
-				PageSize:    request.PageSize,
-				SkipToken:   request.SkipToken,
-			},
+			request,
 			opts...,
 		)
 	}

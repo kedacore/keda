@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"time"
@@ -90,44 +91,44 @@ func (f *headerFrame) write(w io.Writer) (err error) {
 
 	var mask uint16
 
-	if len(f.Properties.ContentType) > 0 {
-		mask = mask | flagContentType
+	if f.Properties.ContentType != "" {
+		mask |= flagContentType
 	}
-	if len(f.Properties.ContentEncoding) > 0 {
-		mask = mask | flagContentEncoding
+	if f.Properties.ContentEncoding != "" {
+		mask |= flagContentEncoding
 	}
-	if f.Properties.Headers != nil && len(f.Properties.Headers) > 0 {
-		mask = mask | flagHeaders
+	if len(f.Properties.Headers) > 0 {
+		mask |= flagHeaders
 	}
 	if f.Properties.DeliveryMode > 0 {
-		mask = mask | flagDeliveryMode
+		mask |= flagDeliveryMode
 	}
 	if f.Properties.Priority > 0 {
-		mask = mask | flagPriority
+		mask |= flagPriority
 	}
-	if len(f.Properties.CorrelationId) > 0 {
-		mask = mask | flagCorrelationId
+	if f.Properties.CorrelationId != "" {
+		mask |= flagCorrelationId
 	}
-	if len(f.Properties.ReplyTo) > 0 {
-		mask = mask | flagReplyTo
+	if f.Properties.ReplyTo != "" {
+		mask |= flagReplyTo
 	}
-	if len(f.Properties.Expiration) > 0 {
-		mask = mask | flagExpiration
+	if f.Properties.Expiration != "" {
+		mask |= flagExpiration
 	}
-	if len(f.Properties.MessageId) > 0 {
-		mask = mask | flagMessageId
+	if f.Properties.MessageId != "" {
+		mask |= flagMessageId
 	}
 	if !f.Properties.Timestamp.IsZero() {
-		mask = mask | flagTimestamp
+		mask |= flagTimestamp
 	}
-	if len(f.Properties.Type) > 0 {
-		mask = mask | flagType
+	if f.Properties.Type != "" {
+		mask |= flagType
 	}
-	if len(f.Properties.UserId) > 0 {
-		mask = mask | flagUserId
+	if f.Properties.UserId != "" {
+		mask |= flagUserId
 	}
-	if len(f.Properties.AppId) > 0 {
-		mask = mask | flagAppId
+	if f.Properties.AppId != "" {
+		mask |= flagAppId
 	}
 
 	if err = binary.Write(&payload, binary.BigEndian, mask); err != nil {
@@ -224,7 +225,6 @@ func writeFrame(w io.Writer, typ uint8, channel uint16, payload []byte) (err err
 		byte((size & 0x0000ff00) >> 8),
 		byte((size & 0x000000ff) >> 0),
 	})
-
 	if err != nil {
 		return
 	}
@@ -243,7 +243,7 @@ func writeFrame(w io.Writer, typ uint8, channel uint16, payload []byte) (err err
 func writeShortstr(w io.Writer, s string) (err error) {
 	b := []byte(s)
 
-	var length = uint8(len(b))
+	length := uint8(len(b))
 
 	if err = binary.Write(w, binary.BigEndian, length); err != nil {
 		return
@@ -259,7 +259,7 @@ func writeShortstr(w io.Writer, s string) (err error) {
 func writeLongstr(w io.Writer, s string) (err error) {
 	b := []byte(s)
 
-	var length = uint32(len(b))
+	length := uint32(len(b))
 
 	if err = binary.Write(w, binary.BigEndian, length); err != nil {
 		return
@@ -273,7 +273,7 @@ func writeLongstr(w io.Writer, s string) (err error) {
 }
 
 /*
-'A': []interface{}
+'A': []any
 'D': Decimal
 'F': Table
 'I': int32
@@ -285,11 +285,13 @@ func writeLongstr(w io.Writer, s string) (err error) {
 'd': float64
 'f': float32
 'l': int64
+'i': uint32
 's': int16
+'u': uint16
 't': bool
 'x': []byte
 */
-func writeField(w io.Writer, value interface{}) (err error) {
+func writeField(w io.Writer, value any) (err error) {
 	var buf [9]byte
 	var enc []byte
 
@@ -333,6 +335,16 @@ func writeField(w io.Writer, value interface{}) (err error) {
 		binary.BigEndian.PutUint64(buf[1:9], uint64(v))
 		enc = buf[:9]
 
+	case uint16:
+		buf[0] = 'u'
+		binary.BigEndian.PutUint16(buf[1:3], v)
+		enc = buf[:3]
+
+	case uint32:
+		buf[0] = 'i'
+		binary.BigEndian.PutUint32(buf[1:5], v)
+		enc = buf[:5]
+
 	case float32:
 		buf[0] = 'f'
 		binary.BigEndian.PutUint32(buf[1:5], math.Float32bits(v))
@@ -354,7 +366,7 @@ func writeField(w io.Writer, value interface{}) (err error) {
 		binary.BigEndian.PutUint32(buf[1:5], uint32(len(v)))
 		enc = append(buf[:5], []byte(v)...)
 
-	case []interface{}: // field-array
+	case []any: // field-array
 		buf[0] = 'A'
 
 		sec := new(bytes.Buffer)
@@ -410,17 +422,23 @@ func writeField(w io.Writer, value interface{}) (err error) {
 	return
 }
 
+// writeTable serializes a Table to the given writer.
+// It writes each key-value pair and returns the serialized data as a longstr.
 func writeTable(w io.Writer, table Table) (err error) {
 	var buf bytes.Buffer
 
 	for key, val := range table {
 		if err = writeShortstr(&buf, key); err != nil {
-			return
+			return fmt.Errorf("writing key %q: %w", key, err)
 		}
 		if err = writeField(&buf, val); err != nil {
-			return
+			return fmt.Errorf("writing value for key %q: %w", key, err)
 		}
 	}
 
-	return writeLongstr(w, buf.String())
+	if err := writeLongstr(w, buf.String()); err != nil {
+		return fmt.Errorf("writing final long string: %w", err)
+	}
+
+	return nil
 }

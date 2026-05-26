@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -21,6 +22,7 @@ type awsCloudwatchScaler struct {
 	metricType v2.MetricTargetType
 	metadata   *awsCloudwatchMetadata
 	cwClient   cloudwatch.GetMetricDataAPIClient
+	httpClient *http.Client
 	logger     logr.Logger
 }
 
@@ -102,7 +104,8 @@ func NewAwsCloudwatchScaler(ctx context.Context, config *scalersconfig.ScalerCon
 		return nil, fmt.Errorf("error parsing cloudwatch metadata: %w", err)
 	}
 
-	cloudwatchClient, err := createCloudwatchClient(ctx, meta)
+	httpClient := awsutils.NewHTTPClient()
+	cloudwatchClient, err := createCloudwatchClient(ctx, meta, httpClient)
 	if err != nil {
 		return nil, fmt.Errorf("error creating cloudwatch client: %w", err)
 	}
@@ -110,11 +113,12 @@ func NewAwsCloudwatchScaler(ctx context.Context, config *scalersconfig.ScalerCon
 		metricType: metricType,
 		metadata:   meta,
 		cwClient:   cloudwatchClient,
+		httpClient: httpClient,
 		logger:     InitializeLogger(config, "aws_cloudwatch_scaler"),
 	}, nil
 }
 
-func createCloudwatchClient(ctx context.Context, metadata *awsCloudwatchMetadata) (*cloudwatch.Client, error) {
+func createCloudwatchClient(ctx context.Context, metadata *awsCloudwatchMetadata, httpClient *http.Client) (*cloudwatch.Client, error) {
 	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsAuthorization)
 
 	if err != nil {
@@ -123,6 +127,9 @@ func createCloudwatchClient(ctx context.Context, metadata *awsCloudwatchMetadata
 	return cloudwatch.NewFromConfig(*cfg, func(options *cloudwatch.Options) {
 		if metadata.AwsEndpoint != "" {
 			options.BaseEndpoint = aws.String(metadata.AwsEndpoint)
+		}
+		if httpClient != nil {
+			options.HTTPClient = httpClient
 		}
 	}), nil
 }
@@ -268,6 +275,9 @@ func (s *awsCloudwatchScaler) GetMetricSpecForScaling(context.Context) []v2.Metr
 
 func (s *awsCloudwatchScaler) Close(context.Context) error {
 	awsutils.ClearAwsConfig(s.metadata.awsAuthorization)
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 

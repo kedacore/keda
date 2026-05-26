@@ -3,7 +3,9 @@
 package components
 
 type CommonKeyValuePair struct {
-	Key   string `json:"key"`
+	// Key.
+	Key string `json:"key"`
+	// Value.
 	Value string `json:"value"`
 }
 

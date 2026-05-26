@@ -123,15 +123,17 @@ func NewRedisScaler(ctx context.Context, isClustered, isSentinel bool, config *s
 	luaScript := `
 		local listName = KEYS[1]
 		local listType = redis.call('type', listName).ok
-		local cmd = {
-			zset = 'zcard',
-			set = 'scard',
-			list = 'llen',
-			hash = 'hlen',
-			none = 'llen'
-		}
-
-		return redis.call(cmd[listType], listName)
+		if listType == 'zset' then
+			return redis.call('zcard', listName)
+		elseif listType == 'set' then
+			return redis.call('scard', listName)
+		elseif listType == 'hash' then
+			return redis.call('hlen', listName)
+		elseif listType == 'list' or listType == 'none' then
+			return redis.call('llen', listName)
+		else
+			return redis.error_reply('ERR unsupported key type: ' .. listType)
+		end
 	`
 
 	metricType, err := GetMetricTargetType(config)
