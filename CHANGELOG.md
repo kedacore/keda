@@ -68,7 +68,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Introduce Elastic Forecast Scaler ([#7494](https://github.com/kedacore/keda/issues/7494))
 
 #### Experimental
 
@@ -81,6 +81,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Add scaler HTTP request metrics (`keda_scaler_http_requests_total`, `keda_scaler_http_request_duration_seconds`) for outbound HTTP requests made during scaler metric collection ([#6600](https://github.com/kedacore/keda/issues/6600))
 - **General**: Allow more control of TLS versions & ciphers via `KEDA_HTTP_TLS_CIPHER_LIST`, `KEDA_SERVICE_TLS_CIPHER_LIST` and `KEDA_SERVICE_MIN_TLS_VERSION` env vars ([#7617](https://github.com/kedacore/keda/pull/7617))
 - **General**: Make APIService cert injections optional ([#7559](https://github.com/kedacore/keda/pull/7559))
+- **General**: Remove unconditional `json.MarshalIndent` calls from admission webhook validation hot paths; replace spec-comparison `MarshalIndent`-and-string-compare in `isRemovingFinalizer` variants with `reflect.DeepEqual`. Prevents webhook OOM under sustained admission load at large scale (observed at ~60k ScaledObjects) ([#7670](https://github.com/kedacore/keda/pull/7670))
 - **AWS Scalers**: Add support for AWS External ID in TriggerAuthentication podIdentity for all AWS scalers (SQS, Kinesis, DynamoDB, CloudWatch, etc.) to enable cross-account access scenarios ([#6921](https://github.com/kedacore/keda/issues/6921))
 - **Elasticsearch Scaler**: Add HTTP status check for Elasticsearch errors ([#7480](https://github.com/kedacore/keda/pull/7480))
 - **Github Runner Scaler**: Handle rate limit errors by respecting X-RateLimit-Reset and Retry-After headers and returning cached queue length ([#7683](https://github.com/kedacore/keda/issues/7683))
@@ -94,19 +95,25 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Fixes
 
 - **General**: Check updated status for Fallback condition instead of ScaledObject ([#7488](https://github.com/kedacore/keda/issues/7488))
+- **General**: Fail fast in `GetMetrics` when the gRPC connection is in Shutdown state instead of waiting for context timeout ([#7251](https://github.com/kedacore/keda/issues/7251))
 - **General**: Fix int64 overflow in milli-quantity conversion for very large metric values ([#7441](https://github.com/kedacore/keda/issues/7441))
+- **General**: Fix race in scalers cache rebuild that caused transient scaler errors ([#7574](https://github.com/kedacore/keda/issues/7574))
 - **General**: Fix ScaledObject admission webhook to return validation error from `verifyReplicaCount`, preventing invalid ScaledObjects from being created ([#5954](https://github.com/kedacore/keda/issues/5954))
 - **General**: Fix ScaledObject Ready condition not reflecting HPA status ([#7649](https://github.com/kedacore/keda/issues/7649))
 - **General**: Handle paused scaling directly in reconciler ([#7663](https://github.com/kedacore/keda/issues/7663))
+- **General**: Honor `stderrthreshold` when `logtostderr` is enabled by updating klog to v2.140.0 ([#7568](https://github.com/kedacore/keda/pull/7568))
+- **General**: Reject ScaledObject creation and update when the name exceeds 63 characters ([#6998](https://github.com/kedacore/keda/issues/6998))
 - **AWS Scalers**: Fix TCP connection leak by closing HTTP idle connections on scaler `Close()` for SQS, Kinesis, DynamoDB, DynamoDB Streams, and CloudWatch scalers ([#7756](https://github.com/kedacore/keda/issues/7756))
 - **Azure Data Explorer Scaler**: Remove clientSecretFromEnv support ([#7554](https://github.com/kedacore/keda/pull/7554))
 - **Azure Event Hub Scaler**: Reject non-positive `unprocessedEventThreshold` to prevent integer division by zero when computing lag ([#7732](https://github.com/kedacore/keda/issues/7732))
 - **Azure Pipelines Scaler**: Exclude already-assigned jobs from queue length ([#7747](https://github.com/kedacore/keda/issues/7747))
 - **Cron Scaler**: Fix metric name generation so cron expressions with comma-separated values no longer produce invalid metric names ([#7448](https://github.com/kedacore/keda/issues/7448))
+- **External Scaler**: gRPC Pool uses TLS context in the key ([#7687](https://github.com/kedacore/keda/issues/7687))
 - **Forgejo Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **Forgejo Scaler**: Return correct activity to enable scale-to-zero ([#7527](https://github.com/kedacore/keda/issues/7527))
 - **GCP Cloud Tasks Scaler**: Implement escapeFilterValue for metric filtering ([#7482](https://github.com/kedacore/keda/pull/7482))
 - **GCP Scaler**: Validate Pub/Sub resource name in BuildMQLQuery ([#7468](https://github.com/kedacore/keda/pull/7468))
+- **GCP Storage Scaler**: Metadata is not printed in the log ([#7688](https://github.com/kedacore/keda/issues/7688))
 - **Github Runner Scaler**: Bound etag and per-repo caches to prevent unbounded memory growth when `enableEtags` is on ([#7685](https://github.com/kedacore/keda/issues/7685))
 - **Github Runner Scaler**: Improve URL construction and error handling ([#7495](https://github.com/kedacore/keda/pull/7495))
 - **Github Runner Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
