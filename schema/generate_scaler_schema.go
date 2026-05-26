@@ -25,14 +25,14 @@ import (
 	"go/parser"
 	"go/token"
 	"log"
+	"maps"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/spf13/pflag"
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -351,8 +351,7 @@ func retrieveDataFromOrder(orders []string) (bool, bool, bool, error) {
 	for _, po := range orders {
 		poTyped := scalersconfig.ParsingOrder(strings.TrimSpace(po))
 		if !scalersconfig.AllowedParsingOrderMap[poTyped] {
-			apo := maps.Keys(scalersconfig.AllowedParsingOrderMap)
-			slices.Sort(apo)
+			apo := slices.Sorted(maps.Keys(scalersconfig.AllowedParsingOrderMap))
 			return false, false, false, fmt.Errorf("unknown parsing order value %s, has to be one of %s", po, apo)
 		}
 		switch poTyped {
