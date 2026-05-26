@@ -93,8 +93,6 @@ func NewGcsScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("failed to create a handle to bucket %s", meta.BucketName)
 	}
 
-	logger.Info(fmt.Sprintf("Metadata %v", meta))
-
 	return &gcsScaler{
 		client:     client,
 		bucket:     bucket,
