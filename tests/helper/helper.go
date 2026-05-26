@@ -490,6 +490,35 @@ func WaitForAllPodRunningInNamespace(t *testing.T, kc *kubernetes.Clientset, nam
 	return false
 }
 
+func WaitForRunningPodCount(t *testing.T, kc *kubernetes.Clientset, scaledJobName, namespace string, target, iterations, interval int) bool {
+	for i := 0; i < iterations; i++ {
+		pods, err := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("scaledjob.keda.sh/name=%s", scaledJobName),
+		})
+		if err != nil {
+			t.Logf("cannot list pods - %s", err)
+		}
+
+		runningPodCount := 0
+		for _, pod := range pods.Items {
+			if pod.Status.Phase == corev1.PodRunning {
+				runningPodCount++
+			}
+		}
+
+		t.Logf("Waiting for running pods. Namespace - %s, Current - %d, Target - %d",
+			namespace, runningPodCount, target)
+		if runningPodCount == target {
+			return true
+		} else if runningPodCount > target {
+			return false
+		}
+
+		time.Sleep(time.Duration(interval) * time.Second)
+	}
+	return false
+}
+
 // Waits until the Horizontal Pod Autoscaler for the scaledObject reports that it has metrics available
 // to calculate, or until the number of iterations are done, whichever happens first.
 func WaitForHPAMetricsToPopulate(t *testing.T, kc *kubernetes.Clientset, name, namespace string, iterations, intervalSeconds int) bool {
