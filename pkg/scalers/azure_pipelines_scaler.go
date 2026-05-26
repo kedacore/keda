@@ -426,10 +426,14 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 	return count, err
 }
 
+// stripDeadJobs filters out jobs that should no longer count towards the queue length.
+// A job is considered "dead" (i.e. no longer queued) when:
+//   - it has finished (Result is set), or
+//   - it has already been picked up by an agent (ReceiveTime is set).
 func stripDeadJobs(jobs []JobRequest) []JobRequest {
 	var filtered []JobRequest
 	for _, job := range jobs {
-		if job.Result == nil {
+		if job.Result == nil && job.ReceiveTime.IsZero() {
 			filtered = append(filtered, job)
 		}
 	}
