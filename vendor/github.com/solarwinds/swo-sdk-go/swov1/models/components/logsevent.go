@@ -3,12 +3,18 @@
 package components
 
 type LogsEvent struct {
-	ID       string `json:"id"`
-	Time     string `json:"time"`
-	Message  string `json:"message"`
+	// Unique identifier of the log event.
+	ID string `json:"id"`
+	// Timestamp of the log event.
+	Time string `json:"time"`
+	// Log message content.
+	Message string `json:"message"`
+	// Hostname of the server that generated the log event.
 	Hostname string `json:"hostname"`
+	// Severity level of the log event.
 	Severity string `json:"severity"`
-	Program  string `json:"program"`
+	// Name of the program that generated the log event.
+	Program string `json:"program"`
 }
 
 func (l *LogsEvent) GetID() string {

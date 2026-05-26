@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package temporal.api.sdk.v1;
+
+option go_package = "go.temporal.io/sdk/internal/temporalapi/sdk/v1;sdk";
+
+// ExternalStorageReference identifies a payload stored in an external storage system.
+// It is used as a claim-check token, allowing the actual payload data to be retrieved
+// from the named driver using the provided claim data.
+message ExternalStorageReference {
+  // The name of the storage driver responsible for retrieving the payload.
+  string driver_name = 1;
+  // Driver-specific key-value pairs that identify and provide access to the stored payload.
+  map<string, string> claim_data = 2;
+}

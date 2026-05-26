@@ -84,7 +84,6 @@ func (msg *connectionStart) wait() bool {
 }
 
 func (msg *connectionStart) write(w io.Writer) (err error) {
-
 	if err = binary.Write(w, binary.BigEndian, msg.VersionMajor); err != nil {
 		return
 	}
@@ -107,7 +106,6 @@ func (msg *connectionStart) write(w io.Writer) (err error) {
 }
 
 func (msg *connectionStart) read(r io.Reader) (err error) {
-
 	if err = binary.Read(r, binary.BigEndian, &msg.VersionMajor); err != nil {
 		return
 	}
@@ -145,7 +143,6 @@ func (msg *connectionStartOk) wait() bool {
 }
 
 func (msg *connectionStartOk) write(w io.Writer) (err error) {
-
 	if err = writeTable(w, msg.ClientProperties); err != nil {
 		return
 	}
@@ -166,7 +163,6 @@ func (msg *connectionStartOk) write(w io.Writer) (err error) {
 }
 
 func (msg *connectionStartOk) read(r io.Reader) (err error) {
-
 	if msg.ClientProperties, err = readTable(r); err != nil {
 		return
 	}
@@ -199,7 +195,6 @@ func (msg *connectionSecure) wait() bool {
 }
 
 func (msg *connectionSecure) write(w io.Writer) (err error) {
-
 	if err = writeLongstr(w, msg.Challenge); err != nil {
 		return
 	}
@@ -208,7 +203,6 @@ func (msg *connectionSecure) write(w io.Writer) (err error) {
 }
 
 func (msg *connectionSecure) read(r io.Reader) (err error) {
-
 	if msg.Challenge, err = readLongstr(r); err != nil {
 		return
 	}
@@ -229,7 +223,6 @@ func (msg *connectionSecureOk) wait() bool {
 }
 
 func (msg *connectionSecureOk) write(w io.Writer) (err error) {
-
 	if err = writeLongstr(w, msg.Response); err != nil {
 		return
 	}
@@ -238,7 +231,6 @@ func (msg *connectionSecureOk) write(w io.Writer) (err error) {
 }
 
 func (msg *connectionSecureOk) read(r io.Reader) (err error) {
-
 	if msg.Response, err = readLongstr(r); err != nil {
 		return
 	}
@@ -261,7 +253,6 @@ func (msg *connectionTune) wait() bool {
 }
 
 func (msg *connectionTune) write(w io.Writer) (err error) {
-
 	if err = binary.Write(w, binary.BigEndian, msg.ChannelMax); err != nil {
 		return
 	}
@@ -278,7 +269,6 @@ func (msg *connectionTune) write(w io.Writer) (err error) {
 }
 
 func (msg *connectionTune) read(r io.Reader) (err error) {
-
 	if err = binary.Read(r, binary.BigEndian, &msg.ChannelMax); err != nil {
 		return
 	}
@@ -309,7 +299,6 @@ func (msg *connectionTuneOk) wait() bool {
 }
 
 func (msg *connectionTuneOk) write(w io.Writer) (err error) {
-
 	if err = binary.Write(w, binary.BigEndian, msg.ChannelMax); err != nil {
 		return
 	}
@@ -326,7 +315,6 @@ func (msg *connectionTuneOk) write(w io.Writer) (err error) {
 }
 
 func (msg *connectionTuneOk) read(r io.Reader) (err error) {
-
 	if err = binary.Read(r, binary.BigEndian, &msg.ChannelMax); err != nil {
 		return
 	}
@@ -408,7 +396,6 @@ func (msg *connectionOpenOk) wait() bool {
 }
 
 func (msg *connectionOpenOk) write(w io.Writer) (err error) {
-
 	if err = writeShortstr(w, msg.reserved1); err != nil {
 		return
 	}
@@ -417,7 +404,6 @@ func (msg *connectionOpenOk) write(w io.Writer) (err error) {
 }
 
 func (msg *connectionOpenOk) read(r io.Reader) (err error) {
-
 	if msg.reserved1, err = readShortstr(r); err != nil {
 		return
 	}
@@ -441,7 +427,6 @@ func (msg *connectionClose) wait() bool {
 }
 
 func (msg *connectionClose) write(w io.Writer) (err error) {
-
 	if err = binary.Write(w, binary.BigEndian, msg.ReplyCode); err != nil {
 		return
 	}
@@ -461,7 +446,6 @@ func (msg *connectionClose) write(w io.Writer) (err error) {
 }
 
 func (msg *connectionClose) read(r io.Reader) (err error) {
-
 	if err = binary.Read(r, binary.BigEndian, &msg.ReplyCode); err != nil {
 		return
 	}
@@ -480,8 +464,7 @@ func (msg *connectionClose) read(r io.Reader) (err error) {
 	return
 }
 
-type connectionCloseOk struct {
-}
+type connectionCloseOk struct{}
 
 func (msg *connectionCloseOk) id() (uint16, uint16) {
 	return 10, 51
@@ -492,12 +475,10 @@ func (msg *connectionCloseOk) wait() bool {
 }
 
 func (msg *connectionCloseOk) write(w io.Writer) (err error) {
-
 	return
 }
 
 func (msg *connectionCloseOk) read(r io.Reader) (err error) {
-
 	return
 }
 
@@ -514,7 +495,6 @@ func (msg *connectionBlocked) wait() bool {
 }
 
 func (msg *connectionBlocked) write(w io.Writer) (err error) {
-
 	if err = writeShortstr(w, msg.Reason); err != nil {
 		return
 	}
@@ -523,7 +503,6 @@ func (msg *connectionBlocked) write(w io.Writer) (err error) {
 }
 
 func (msg *connectionBlocked) read(r io.Reader) (err error) {
-
 	if msg.Reason, err = readShortstr(r); err != nil {
 		return
 	}
@@ -531,8 +510,7 @@ func (msg *connectionBlocked) read(r io.Reader) (err error) {
 	return
 }
 
-type connectionUnblocked struct {
-}
+type connectionUnblocked struct{}
 
 func (msg *connectionUnblocked) id() (uint16, uint16) {
 	return 10, 61
@@ -543,12 +521,10 @@ func (msg *connectionUnblocked) wait() bool {
 }
 
 func (msg *connectionUnblocked) write(w io.Writer) (err error) {
-
 	return
 }
 
 func (msg *connectionUnblocked) read(r io.Reader) (err error) {
-
 	return
 }
 
@@ -566,7 +542,6 @@ func (msg *connectionUpdateSecret) wait() bool {
 }
 
 func (msg *connectionUpdateSecret) write(w io.Writer) (err error) {
-
 	if err = writeLongstr(w, msg.NewSecret); err != nil {
 		return
 	}
@@ -579,7 +554,6 @@ func (msg *connectionUpdateSecret) write(w io.Writer) (err error) {
 }
 
 func (msg *connectionUpdateSecret) read(r io.Reader) (err error) {
-
 	if msg.NewSecret, err = readLongstr(r); err != nil {
 		return
 	}
@@ -591,8 +565,7 @@ func (msg *connectionUpdateSecret) read(r io.Reader) (err error) {
 	return
 }
 
-type connectionUpdateSecretOk struct {
-}
+type connectionUpdateSecretOk struct{}
 
 func (msg *connectionUpdateSecretOk) id() (uint16, uint16) {
 	return 10, 71
@@ -603,12 +576,10 @@ func (msg *connectionUpdateSecretOk) wait() bool {
 }
 
 func (msg *connectionUpdateSecretOk) write(w io.Writer) (err error) {
-
 	return
 }
 
 func (msg *connectionUpdateSecretOk) read(r io.Reader) (err error) {
-
 	return
 }
 
@@ -625,7 +596,6 @@ func (msg *channelOpen) wait() bool {
 }
 
 func (msg *channelOpen) write(w io.Writer) (err error) {
-
 	if err = writeShortstr(w, msg.reserved1); err != nil {
 		return
 	}
@@ -634,7 +604,6 @@ func (msg *channelOpen) write(w io.Writer) (err error) {
 }
 
 func (msg *channelOpen) read(r io.Reader) (err error) {
-
 	if msg.reserved1, err = readShortstr(r); err != nil {
 		return
 	}
@@ -655,7 +624,6 @@ func (msg *channelOpenOk) wait() bool {
 }
 
 func (msg *channelOpenOk) write(w io.Writer) (err error) {
-
 	if err = writeLongstr(w, msg.reserved1); err != nil {
 		return
 	}
@@ -664,7 +632,6 @@ func (msg *channelOpenOk) write(w io.Writer) (err error) {
 }
 
 func (msg *channelOpenOk) read(r io.Reader) (err error) {
-
 	if msg.reserved1, err = readLongstr(r); err != nil {
 		return
 	}
@@ -762,7 +729,6 @@ func (msg *channelClose) wait() bool {
 }
 
 func (msg *channelClose) write(w io.Writer) (err error) {
-
 	if err = binary.Write(w, binary.BigEndian, msg.ReplyCode); err != nil {
 		return
 	}
@@ -782,7 +748,6 @@ func (msg *channelClose) write(w io.Writer) (err error) {
 }
 
 func (msg *channelClose) read(r io.Reader) (err error) {
-
 	if err = binary.Read(r, binary.BigEndian, &msg.ReplyCode); err != nil {
 		return
 	}
@@ -801,8 +766,7 @@ func (msg *channelClose) read(r io.Reader) (err error) {
 	return
 }
 
-type channelCloseOk struct {
-}
+type channelCloseOk struct{}
 
 func (msg *channelCloseOk) id() (uint16, uint16) {
 	return 20, 41
@@ -813,12 +777,10 @@ func (msg *channelCloseOk) wait() bool {
 }
 
 func (msg *channelCloseOk) write(w io.Writer) (err error) {
-
 	return
 }
 
 func (msg *channelCloseOk) read(r io.Reader) (err error) {
-
 	return
 }
 
@@ -917,8 +879,7 @@ func (msg *exchangeDeclare) read(r io.Reader) (err error) {
 	return
 }
 
-type exchangeDeclareOk struct {
-}
+type exchangeDeclareOk struct{}
 
 func (msg *exchangeDeclareOk) id() (uint16, uint16) {
 	return 40, 11
@@ -929,12 +890,10 @@ func (msg *exchangeDeclareOk) wait() bool {
 }
 
 func (msg *exchangeDeclareOk) write(w io.Writer) (err error) {
-
 	return
 }
 
 func (msg *exchangeDeclareOk) read(r io.Reader) (err error) {
-
 	return
 }
 
@@ -999,8 +958,7 @@ func (msg *exchangeDelete) read(r io.Reader) (err error) {
 	return
 }
 
-type exchangeDeleteOk struct {
-}
+type exchangeDeleteOk struct{}
 
 func (msg *exchangeDeleteOk) id() (uint16, uint16) {
 	return 40, 21
@@ -1011,12 +969,10 @@ func (msg *exchangeDeleteOk) wait() bool {
 }
 
 func (msg *exchangeDeleteOk) write(w io.Writer) (err error) {
-
 	return
 }
 
 func (msg *exchangeDeleteOk) read(r io.Reader) (err error) {
-
 	return
 }
 
@@ -1098,8 +1054,7 @@ func (msg *exchangeBind) read(r io.Reader) (err error) {
 	return
 }
 
-type exchangeBindOk struct {
-}
+type exchangeBindOk struct{}
 
 func (msg *exchangeBindOk) id() (uint16, uint16) {
 	return 40, 31
@@ -1110,12 +1065,10 @@ func (msg *exchangeBindOk) wait() bool {
 }
 
 func (msg *exchangeBindOk) write(w io.Writer) (err error) {
-
 	return
 }
 
 func (msg *exchangeBindOk) read(r io.Reader) (err error) {
-
 	return
 }
 
@@ -1197,8 +1150,7 @@ func (msg *exchangeUnbind) read(r io.Reader) (err error) {
 	return
 }
 
-type exchangeUnbindOk struct {
-}
+type exchangeUnbindOk struct{}
 
 func (msg *exchangeUnbindOk) id() (uint16, uint16) {
 	return 40, 51
@@ -1209,12 +1161,10 @@ func (msg *exchangeUnbindOk) wait() bool {
 }
 
 func (msg *exchangeUnbindOk) write(w io.Writer) (err error) {
-
 	return
 }
 
 func (msg *exchangeUnbindOk) read(r io.Reader) (err error) {
-
 	return
 }
 
@@ -1321,7 +1271,6 @@ func (msg *queueDeclareOk) wait() bool {
 }
 
 func (msg *queueDeclareOk) write(w io.Writer) (err error) {
-
 	if err = writeShortstr(w, msg.Queue); err != nil {
 		return
 	}
@@ -1337,7 +1286,6 @@ func (msg *queueDeclareOk) write(w io.Writer) (err error) {
 }
 
 func (msg *queueDeclareOk) read(r io.Reader) (err error) {
-
 	if msg.Queue, err = readShortstr(r); err != nil {
 		return
 	}
@@ -1430,8 +1378,7 @@ func (msg *queueBind) read(r io.Reader) (err error) {
 	return
 }
 
-type queueBindOk struct {
-}
+type queueBindOk struct{}
 
 func (msg *queueBindOk) id() (uint16, uint16) {
 	return 50, 21
@@ -1442,12 +1389,10 @@ func (msg *queueBindOk) wait() bool {
 }
 
 func (msg *queueBindOk) write(w io.Writer) (err error) {
-
 	return
 }
 
 func (msg *queueBindOk) read(r io.Reader) (err error) {
-
 	return
 }
 
@@ -1468,7 +1413,6 @@ func (msg *queueUnbind) wait() bool {
 }
 
 func (msg *queueUnbind) write(w io.Writer) (err error) {
-
 	if err = binary.Write(w, binary.BigEndian, msg.reserved1); err != nil {
 		return
 	}
@@ -1491,7 +1435,6 @@ func (msg *queueUnbind) write(w io.Writer) (err error) {
 }
 
 func (msg *queueUnbind) read(r io.Reader) (err error) {
-
 	if err = binary.Read(r, binary.BigEndian, &msg.reserved1); err != nil {
 		return
 	}
@@ -1513,8 +1456,7 @@ func (msg *queueUnbind) read(r io.Reader) (err error) {
 	return
 }
 
-type queueUnbindOk struct {
-}
+type queueUnbindOk struct{}
 
 func (msg *queueUnbindOk) id() (uint16, uint16) {
 	return 50, 51
@@ -1525,12 +1467,10 @@ func (msg *queueUnbindOk) wait() bool {
 }
 
 func (msg *queueUnbindOk) write(w io.Writer) (err error) {
-
 	return
 }
 
 func (msg *queueUnbindOk) read(r io.Reader) (err error) {
-
 	return
 }
 
@@ -1602,7 +1542,6 @@ func (msg *queuePurgeOk) wait() bool {
 }
 
 func (msg *queuePurgeOk) write(w io.Writer) (err error) {
-
 	if err = binary.Write(w, binary.BigEndian, msg.MessageCount); err != nil {
 		return
 	}
@@ -1611,7 +1550,6 @@ func (msg *queuePurgeOk) write(w io.Writer) (err error) {
 }
 
 func (msg *queuePurgeOk) read(r io.Reader) (err error) {
-
 	if err = binary.Read(r, binary.BigEndian, &msg.MessageCount); err != nil {
 		return
 	}
@@ -1699,7 +1637,6 @@ func (msg *queueDeleteOk) wait() bool {
 }
 
 func (msg *queueDeleteOk) write(w io.Writer) (err error) {
-
 	if err = binary.Write(w, binary.BigEndian, msg.MessageCount); err != nil {
 		return
 	}
@@ -1708,7 +1645,6 @@ func (msg *queueDeleteOk) write(w io.Writer) (err error) {
 }
 
 func (msg *queueDeleteOk) read(r io.Reader) (err error) {
-
 	if err = binary.Read(r, binary.BigEndian, &msg.MessageCount); err != nil {
 		return
 	}
@@ -1771,8 +1707,7 @@ func (msg *basicQos) read(r io.Reader) (err error) {
 	return
 }
 
-type basicQosOk struct {
-}
+type basicQosOk struct{}
 
 func (msg *basicQosOk) id() (uint16, uint16) {
 	return 60, 11
@@ -1783,12 +1718,10 @@ func (msg *basicQosOk) wait() bool {
 }
 
 func (msg *basicQosOk) write(w io.Writer) (err error) {
-
 	return
 }
 
 func (msg *basicQosOk) read(r io.Reader) (err error) {
-
 	return
 }
 
@@ -1894,7 +1827,6 @@ func (msg *basicConsumeOk) wait() bool {
 }
 
 func (msg *basicConsumeOk) write(w io.Writer) (err error) {
-
 	if err = writeShortstr(w, msg.ConsumerTag); err != nil {
 		return
 	}
@@ -1903,7 +1835,6 @@ func (msg *basicConsumeOk) write(w io.Writer) (err error) {
 }
 
 func (msg *basicConsumeOk) read(r io.Reader) (err error) {
-
 	if msg.ConsumerTag, err = readShortstr(r); err != nil {
 		return
 	}
@@ -1970,7 +1901,6 @@ func (msg *basicCancelOk) wait() bool {
 }
 
 func (msg *basicCancelOk) write(w io.Writer) (err error) {
-
 	if err = writeShortstr(w, msg.ConsumerTag); err != nil {
 		return
 	}
@@ -1979,7 +1909,6 @@ func (msg *basicCancelOk) write(w io.Writer) (err error) {
 }
 
 func (msg *basicCancelOk) read(r io.Reader) (err error) {
-
 	if msg.ConsumerTag, err = readShortstr(r); err != nil {
 		return
 	}
@@ -2091,7 +2020,6 @@ func (msg *basicReturn) setContent(props properties, body []byte) {
 }
 
 func (msg *basicReturn) write(w io.Writer) (err error) {
-
 	if err = binary.Write(w, binary.BigEndian, msg.ReplyCode); err != nil {
 		return
 	}
@@ -2110,7 +2038,6 @@ func (msg *basicReturn) write(w io.Writer) (err error) {
 }
 
 func (msg *basicReturn) read(r io.Reader) (err error) {
-
 	if err = binary.Read(r, binary.BigEndian, &msg.ReplyCode); err != nil {
 		return
 	}
@@ -2358,7 +2285,6 @@ func (msg *basicGetEmpty) wait() bool {
 }
 
 func (msg *basicGetEmpty) write(w io.Writer) (err error) {
-
 	if err = writeShortstr(w, msg.reserved1); err != nil {
 		return
 	}
@@ -2367,7 +2293,6 @@ func (msg *basicGetEmpty) write(w io.Writer) (err error) {
 }
 
 func (msg *basicGetEmpty) read(r io.Reader) (err error) {
-
 	if msg.reserved1, err = readShortstr(r); err != nil {
 		return
 	}
@@ -2541,8 +2466,7 @@ func (msg *basicRecover) read(r io.Reader) (err error) {
 	return
 }
 
-type basicRecoverOk struct {
-}
+type basicRecoverOk struct{}
 
 func (msg *basicRecoverOk) id() (uint16, uint16) {
 	return 60, 111
@@ -2553,12 +2477,10 @@ func (msg *basicRecoverOk) wait() bool {
 }
 
 func (msg *basicRecoverOk) write(w io.Writer) (err error) {
-
 	return
 }
 
 func (msg *basicRecoverOk) read(r io.Reader) (err error) {
-
 	return
 }
 
@@ -2614,8 +2536,7 @@ func (msg *basicNack) read(r io.Reader) (err error) {
 	return
 }
 
-type txSelect struct {
-}
+type txSelect struct{}
 
 func (msg *txSelect) id() (uint16, uint16) {
 	return 90, 10
@@ -2626,17 +2547,14 @@ func (msg *txSelect) wait() bool {
 }
 
 func (msg *txSelect) write(w io.Writer) (err error) {
-
 	return
 }
 
 func (msg *txSelect) read(r io.Reader) (err error) {
-
 	return
 }
 
-type txSelectOk struct {
-}
+type txSelectOk struct{}
 
 func (msg *txSelectOk) id() (uint16, uint16) {
 	return 90, 11
@@ -2647,17 +2565,14 @@ func (msg *txSelectOk) wait() bool {
 }
 
 func (msg *txSelectOk) write(w io.Writer) (err error) {
-
 	return
 }
 
 func (msg *txSelectOk) read(r io.Reader) (err error) {
-
 	return
 }
 
-type txCommit struct {
-}
+type txCommit struct{}
 
 func (msg *txCommit) id() (uint16, uint16) {
 	return 90, 20
@@ -2668,17 +2583,14 @@ func (msg *txCommit) wait() bool {
 }
 
 func (msg *txCommit) write(w io.Writer) (err error) {
-
 	return
 }
 
 func (msg *txCommit) read(r io.Reader) (err error) {
-
 	return
 }
 
-type txCommitOk struct {
-}
+type txCommitOk struct{}
 
 func (msg *txCommitOk) id() (uint16, uint16) {
 	return 90, 21
@@ -2689,17 +2601,14 @@ func (msg *txCommitOk) wait() bool {
 }
 
 func (msg *txCommitOk) write(w io.Writer) (err error) {
-
 	return
 }
 
 func (msg *txCommitOk) read(r io.Reader) (err error) {
-
 	return
 }
 
-type txRollback struct {
-}
+type txRollback struct{}
 
 func (msg *txRollback) id() (uint16, uint16) {
 	return 90, 30
@@ -2710,17 +2619,14 @@ func (msg *txRollback) wait() bool {
 }
 
 func (msg *txRollback) write(w io.Writer) (err error) {
-
 	return
 }
 
 func (msg *txRollback) read(r io.Reader) (err error) {
-
 	return
 }
 
-type txRollbackOk struct {
-}
+type txRollbackOk struct{}
 
 func (msg *txRollbackOk) id() (uint16, uint16) {
 	return 90, 31
@@ -2731,12 +2637,10 @@ func (msg *txRollbackOk) wait() bool {
 }
 
 func (msg *txRollbackOk) write(w io.Writer) (err error) {
-
 	return
 }
 
 func (msg *txRollbackOk) read(r io.Reader) (err error) {
-
 	return
 }
 
@@ -2777,8 +2681,7 @@ func (msg *confirmSelect) read(r io.Reader) (err error) {
 	return
 }
 
-type confirmSelectOk struct {
-}
+type confirmSelectOk struct{}
 
 func (msg *confirmSelectOk) id() (uint16, uint16) {
 	return 85, 11
@@ -2789,12 +2692,10 @@ func (msg *confirmSelectOk) wait() bool {
 }
 
 func (msg *confirmSelectOk) write(w io.Writer) (err error) {
-
 	return
 }
 
 func (msg *confirmSelectOk) read(r io.Reader) (err error) {
-
 	return
 }
 

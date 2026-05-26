@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"errors"
+	"net/http"
 	"reflect"
 	"testing"
 
@@ -340,7 +341,7 @@ func TestAWSKinesisGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockAWSKinesisStreamScaler := awsKinesisStreamScaler{"", meta, &mockKinesis{}, logr.Discard()}
+		mockAWSKinesisStreamScaler := awsKinesisStreamScaler{"", meta, &mockKinesis{}, nil, logr.Discard()}
 
 		metricSpec := mockAWSKinesisStreamScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
@@ -352,7 +353,7 @@ func TestAWSKinesisGetMetricSpecForScaling(t *testing.T) {
 
 func TestAWSKinesisStreamScalerGetMetrics(t *testing.T) {
 	for _, meta := range awsKinesisGetMetricTestData {
-		scaler := awsKinesisStreamScaler{"", meta, &mockKinesis{}, logr.Discard()}
+		scaler := awsKinesisStreamScaler{"", meta, &mockKinesis{}, nil, logr.Discard()}
 		value, _, err := scaler.GetMetricsAndActivity(context.Background(), "MetricName")
 		switch meta.StreamName {
 		case testAWSKinesisErrorStream:
@@ -361,4 +362,48 @@ func TestAWSKinesisStreamScalerGetMetrics(t *testing.T) {
 			assert.EqualValues(t, int64(100.0), value[0].Value.Value())
 		}
 	}
+}
+
+// mockKinesisTransport is an http.RoundTripper that tracks whether CloseIdleConnections was called.
+type mockKinesisTransport struct {
+	closeIdleCalled bool
+}
+
+func (m *mockKinesisTransport) RoundTrip(_ *http.Request) (*http.Response, error) {
+	return &http.Response{StatusCode: 200, Body: http.NoBody}, nil
+}
+
+func (m *mockKinesisTransport) CloseIdleConnections() {
+	m.closeIdleCalled = true
+}
+
+func TestAWSKinesisStreamScalerCloseClosesHTTPConnections(t *testing.T) {
+	transport := &mockKinesisTransport{}
+	httpClient := &http.Client{Transport: transport}
+
+	meta := &awsKinesisStreamMetadata{
+		StreamName: "test-stream",
+		AwsRegion:  "eu-west-1",
+		awsAuthorization: awsutils.AuthorizationMetadata{
+			TriggerUniqueKey: "test-kinesis-close-trigger",
+			AwsRegion:        "eu-west-1",
+		},
+	}
+
+	scaler := &awsKinesisStreamScaler{
+		metricType: "",
+		metadata:   meta,
+		kinesisWrapperClient: &kinesisWrapperClient{
+			kinesisClient: nil,
+		},
+		httpClient: httpClient,
+		logger:     logr.Discard(),
+	}
+
+	assert.False(t, transport.closeIdleCalled, "CloseIdleConnections should not have been called yet")
+
+	err := scaler.Close(context.Background())
+	assert.NoError(t, err)
+
+	assert.True(t, transport.closeIdleCalled, "CloseIdleConnections should have been called after Close()")
 }

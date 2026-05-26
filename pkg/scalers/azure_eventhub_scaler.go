@@ -41,6 +41,7 @@ const (
 	defaultBlobContainer               = ""
 	defaultCheckpointStrategy          = ""
 	defaultStalePartitionInfoThreshold = 10000
+	unprocessedEventThresholdParam     = "unprocessedEventThreshold"
 )
 
 type azureEventHubScaler struct {
@@ -57,6 +58,13 @@ type eventHubMetadata struct {
 	StalePartitionInfoThreshold int64              `keda:"name=stalePartitionInfoThreshold,          order=triggerMetadata, default=10000"`
 	EventHubInfo                azure.EventHubInfo `keda:"optional"`
 	triggerIndex                int
+}
+
+func (m *eventHubMetadata) Validate() error {
+	if m.Threshold <= 0 {
+		return fmt.Errorf("%q must be a positive number", unprocessedEventThresholdParam)
+	}
+	return nil
 }
 
 // NewAzureEventHubScaler creates a new scaler for eventHub
