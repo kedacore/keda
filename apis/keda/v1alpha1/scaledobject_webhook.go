@@ -37,7 +37,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/kedacore/keda/v2/pkg/eventreason"
@@ -67,9 +66,8 @@ func (so *ScaledObject) SetupWebhookWithManager(mgr ctrl.Manager, cacheMissFallb
 	// Setup event recorder
 	eventRecorder = mgr.GetEventRecorderFor("keda-admission")
 
-	return ctrl.NewWebhookManagedBy(mgr).
+	return ctrl.NewWebhookManagedBy(mgr, so).
 		WithValidator(&ScaledObjectCustomValidator{}).
-		For(so).
 		Complete()
 }
 
@@ -100,35 +98,31 @@ func setupKubernetesClients(mgr ctrl.Manager, cacheMissFallback bool) error {
 // ScaledObjectCustomValidator is a custom validator for ScaledObject objects
 type ScaledObjectCustomValidator struct{}
 
-func (socv ScaledObjectCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+func (socv ScaledObjectCustomValidator) ValidateCreate(ctx context.Context, so *ScaledObject) (warnings admission.Warnings, err error) {
 	request, err := admission.RequestFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	so := obj.(*ScaledObject)
 	return so.ValidateCreate(request.DryRun)
 }
 
-func (socv ScaledObjectCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (warnings admission.Warnings, err error) {
+func (socv ScaledObjectCustomValidator) ValidateUpdate(ctx context.Context, old, so *ScaledObject) (warnings admission.Warnings, err error) {
 	request, err := admission.RequestFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	so := newObj.(*ScaledObject)
-	old := oldObj.(*ScaledObject)
 	return so.ValidateUpdate(old, request.DryRun)
 }
 
-func (socv ScaledObjectCustomValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+func (socv ScaledObjectCustomValidator) ValidateDelete(ctx context.Context, so *ScaledObject) (warnings admission.Warnings, err error) {
 	request, err := admission.RequestFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	so := obj.(*ScaledObject)
 	return so.ValidateDelete(request.DryRun)
 }
 
-var _ webhook.CustomValidator = &ScaledObjectCustomValidator{}
+var _ admission.Validator[*ScaledObject] = &ScaledObjectCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (so *ScaledObject) ValidateCreate(dryRun *bool) (admission.Warnings, error) {

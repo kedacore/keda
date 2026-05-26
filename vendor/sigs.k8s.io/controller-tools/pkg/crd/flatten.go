@@ -75,6 +75,15 @@ func flattenAllOfInto(dst *apiextensionsv1.JSONSchemaProps, src apiextensionsv1.
 		case "Title", "Description", "Example", "ExternalDocs":
 			// don't merge because we pre-merge to properly preserve field docs
 			continue
+		case "Enum":
+			// Enum from field markers should be preserved even if the type schema doesn't have it
+			// This is important for types like IntOrString where field-level enum validation
+			// needs to be preserved during flattening
+			if len(src.Enum) > 0 && len(dst.Enum) == 0 {
+				dst.Enum = make([]apiextensionsv1.JSON, len(src.Enum))
+				copy(dst.Enum, src.Enum)
+			}
+			continue
 		}
 		srcField := srcVal.Field(i)
 		fldTyp := srcField.Type()

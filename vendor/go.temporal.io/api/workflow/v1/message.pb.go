@@ -2135,8 +2135,8 @@ type WorkflowExecutionOptions struct {
 	// If set, overrides the workflow's priority sent by the SDK.
 	Priority *v1.Priority `protobuf:"bytes,2,opt,name=priority,proto3" json:"priority,omitempty"`
 	// Time-skipping configuration for this workflow execution.
-	// If not set, the time-skipping conf will not get updated upon request,
-	// i.e. the existing time-skipping conf will be preserved.
+	// If not set, the time-skipping configuration is not updated by this request;
+	// the existing configuration is preserved.
 	TimeSkippingConfig *TimeSkippingConfig `protobuf:"bytes,3,opt,name=time_skipping_config,json=timeSkippingConfig,proto3" json:"time_skipping_config,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
@@ -2199,33 +2199,38 @@ func (x *WorkflowExecutionOptions) GetTimeSkippingConfig() *TimeSkippingConfig {
 // and possibly other features added in the future.
 // User timers are not classified as in-flight work and will be skipped over.
 // When time advances, it skips to the earlier of the next user timer or the configured bound, if either exists.
+//
+// Propagation behavior of time skipping:
+// The enabled flag, bound fields, and accumulated skipped duration are propagated to related executions as follows:
+// (1) Child workflows and continue-as-new: both the configuration and the accumulated skipped duration are
+//
+//	inherited from the current execution. The configured bound is shared between the inherited skipped
+//	duration and any additional duration skipped by the new run.
+//
+// (2) Retry and cron: the configuration and accumulated skipped duration are inherited as recorded when the
+//
+//	current workflow started; the accumulated skipped duration of the current run is not propagated.
+//
+// (3) Reset: the new run retains the time-skipping configuration of the current execution. Because reset replays
+//
+//	all events up to the reset point and re-applies any UpdateWorkflowExecutionOptions changes made after that
+//	point, the resulting run ends up with the same final time-skipping configuration as the previous run.
 type TimeSkippingConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Enables or disables time skipping for this workflow execution.
-	// By default, this field is propagated to transitively related workflows (child workflows/start-as-new/reset)
-	// at the time they are started.
-	// Changes made after a transitively related workflow has started are not propagated.
 	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// If set, the enabled field is not propagated to transitively related workflows.
-	DisablePropagation bool `protobuf:"varint,2,opt,name=disable_propagation,json=disablePropagation,proto3" json:"disable_propagation,omitempty"`
-	// Optional bound that limits how long time skipping remains active.
-	// Once the bound is reached, time skipping is automatically disabled.
-	// It can later be re-enabled via UpdateWorkflowExecutionOptions.
+	// Optional bound that limits the gap between the virtual time of this execution and wall-clock time.
+	// Once the bound is reached, time skipping is automatically disabled,
+	// but can be re-enabled by setting `enabled` to true via UpdateWorkflowExecutionOptions.
+	// This bound cannot be set to a value smaller than the execution's currently skipped duration.
 	//
-	// This is particularly useful in testing scenarios where workflows
-	// are expected to receive signals, updates, or other events while
-	// timers are in progress.
-	//
-	// This bound is not propagated to transitively related workflows.
-	// When bound is also needed for transitively related workflows,
-	// it is recommended to set disable_propagation to true
-	// and configure TimeSkippingConfig explicitly for transitively related workflows.
+	// This is useful in testing scenarios where a workflow is expected to receive
+	// signals, updates, or other external events while timers are in progress.
 	//
 	// Types that are valid to be assigned to Bound:
 	//
 	//	*TimeSkippingConfig_MaxSkippedDuration
 	//	*TimeSkippingConfig_MaxElapsedDuration
-	//	*TimeSkippingConfig_MaxTargetTime
 	Bound         isTimeSkippingConfig_Bound `protobuf_oneof:"bound"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2268,13 +2273,6 @@ func (x *TimeSkippingConfig) GetEnabled() bool {
 	return false
 }
 
-func (x *TimeSkippingConfig) GetDisablePropagation() bool {
-	if x != nil {
-		return x.DisablePropagation
-	}
-	return false
-}
-
 func (x *TimeSkippingConfig) GetBound() isTimeSkippingConfig_Bound {
 	if x != nil {
 		return x.Bound
@@ -2300,15 +2298,6 @@ func (x *TimeSkippingConfig) GetMaxElapsedDuration() *durationpb.Duration {
 	return nil
 }
 
-func (x *TimeSkippingConfig) GetMaxTargetTime() *timestamppb.Timestamp {
-	if x != nil {
-		if x, ok := x.Bound.(*TimeSkippingConfig_MaxTargetTime); ok {
-			return x.MaxTargetTime
-		}
-	}
-	return nil
-}
-
 type isTimeSkippingConfig_Bound interface {
 	isTimeSkippingConfig_Bound()
 }
@@ -2325,17 +2314,9 @@ type TimeSkippingConfig_MaxElapsedDuration struct {
 	MaxElapsedDuration *durationpb.Duration `protobuf:"bytes,5,opt,name=max_elapsed_duration,json=maxElapsedDuration,proto3,oneof"`
 }
 
-type TimeSkippingConfig_MaxTargetTime struct {
-	// Absolute virtual timestamp at which time skipping is disabled.
-	// Time skipping will not advance beyond this point.
-	MaxTargetTime *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=max_target_time,json=maxTargetTime,proto3,oneof"`
-}
-
 func (*TimeSkippingConfig_MaxSkippedDuration) isTimeSkippingConfig_Bound() {}
 
 func (*TimeSkippingConfig_MaxElapsedDuration) isTimeSkippingConfig_Bound() {}
-
-func (*TimeSkippingConfig_MaxTargetTime) isTimeSkippingConfig_Bound() {}
 
 // Used to override the versioning behavior (and pinned deployment version, if applicable) of a
 // specific workflow execution. If set, this override takes precedence over worker-sent values.
@@ -3472,14 +3453,12 @@ const file_temporal_api_workflow_v1_message_proto_rawDesc = "" +
 	"\x18WorkflowExecutionOptions\x12]\n" +
 	"\x13versioning_override\x18\x01 \x01(\v2,.temporal.api.workflow.v1.VersioningOverrideR\x12versioningOverride\x12<\n" +
 	"\bpriority\x18\x02 \x01(\v2 .temporal.api.common.v1.PriorityR\bpriority\x12^\n" +
-	"\x14time_skipping_config\x18\x03 \x01(\v2,.temporal.api.workflow.v1.TimeSkippingConfigR\x12timeSkippingConfig\"\xcc\x02\n" +
+	"\x14time_skipping_config\x18\x03 \x01(\v2,.temporal.api.workflow.v1.TimeSkippingConfigR\x12timeSkippingConfig\"\x87\x02\n" +
 	"\x12TimeSkippingConfig\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12/\n" +
-	"\x13disable_propagation\x18\x02 \x01(\bR\x12disablePropagation\x12M\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12M\n" +
 	"\x14max_skipped_duration\x18\x04 \x01(\v2\x19.google.protobuf.DurationH\x00R\x12maxSkippedDuration\x12M\n" +
-	"\x14max_elapsed_duration\x18\x05 \x01(\v2\x19.google.protobuf.DurationH\x00R\x12maxElapsedDuration\x12D\n" +
-	"\x0fmax_target_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\rmaxTargetTimeB\a\n" +
-	"\x05bound\"\x8a\x05\n" +
+	"\x14max_elapsed_duration\x18\x05 \x01(\v2\x19.google.protobuf.DurationH\x00R\x12maxElapsedDurationB\a\n" +
+	"\x05boundJ\x04\b\x02\x10\x03J\x04\b\x06\x10\aR\x13disable_propagationR\x0fmax_target_time\"\x8a\x05\n" +
 	"\x12VersioningOverride\x12U\n" +
 	"\x06pinned\x18\x03 \x01(\v2;.temporal.api.workflow.v1.VersioningOverride.PinnedOverrideH\x00R\x06pinned\x12#\n" +
 	"\fauto_upgrade\x18\x04 \x01(\bH\x00R\vautoUpgrade\x12I\n" +
@@ -3709,31 +3688,30 @@ var file_temporal_api_workflow_v1_message_proto_depIdxs = []int32{
 	17,  // 98: temporal.api.workflow.v1.WorkflowExecutionOptions.time_skipping_config:type_name -> temporal.api.workflow.v1.TimeSkippingConfig
 	39,  // 99: temporal.api.workflow.v1.TimeSkippingConfig.max_skipped_duration:type_name -> google.protobuf.Duration
 	39,  // 100: temporal.api.workflow.v1.TimeSkippingConfig.max_elapsed_duration:type_name -> google.protobuf.Duration
-	34,  // 101: temporal.api.workflow.v1.TimeSkippingConfig.max_target_time:type_name -> google.protobuf.Timestamp
-	29,  // 102: temporal.api.workflow.v1.VersioningOverride.pinned:type_name -> temporal.api.workflow.v1.VersioningOverride.PinnedOverride
-	41,  // 103: temporal.api.workflow.v1.VersioningOverride.behavior:type_name -> temporal.api.enums.v1.VersioningBehavior
-	42,  // 104: temporal.api.workflow.v1.VersioningOverride.deployment:type_name -> temporal.api.deployment.v1.Deployment
-	62,  // 105: temporal.api.workflow.v1.RequestIdInfo.event_type:type_name -> temporal.api.enums.v1.EventType
-	30,  // 106: temporal.api.workflow.v1.PostResetOperation.signal_workflow:type_name -> temporal.api.workflow.v1.PostResetOperation.SignalWorkflow
-	31,  // 107: temporal.api.workflow.v1.PostResetOperation.update_workflow_options:type_name -> temporal.api.workflow.v1.PostResetOperation.UpdateWorkflowOptions
-	34,  // 108: temporal.api.workflow.v1.WorkflowExecutionPauseInfo.paused_time:type_name -> google.protobuf.Timestamp
-	20,  // 109: temporal.api.workflow.v1.WorkflowExecutionExtendedInfo.RequestIdInfosEntry.value:type_name -> temporal.api.workflow.v1.RequestIdInfo
-	34,  // 110: temporal.api.workflow.v1.PendingActivityInfo.PauseInfo.pause_time:type_name -> google.protobuf.Timestamp
-	25,  // 111: temporal.api.workflow.v1.PendingActivityInfo.PauseInfo.manual:type_name -> temporal.api.workflow.v1.PendingActivityInfo.PauseInfo.Manual
-	26,  // 112: temporal.api.workflow.v1.PendingActivityInfo.PauseInfo.rule:type_name -> temporal.api.workflow.v1.PendingActivityInfo.PauseInfo.Rule
-	27,  // 113: temporal.api.workflow.v1.CallbackInfo.Trigger.workflow_closed:type_name -> temporal.api.workflow.v1.CallbackInfo.WorkflowClosed
-	0,   // 114: temporal.api.workflow.v1.VersioningOverride.PinnedOverride.behavior:type_name -> temporal.api.workflow.v1.VersioningOverride.PinnedOverrideBehavior
-	43,  // 115: temporal.api.workflow.v1.VersioningOverride.PinnedOverride.version:type_name -> temporal.api.deployment.v1.WorkerDeploymentVersion
-	49,  // 116: temporal.api.workflow.v1.PostResetOperation.SignalWorkflow.input:type_name -> temporal.api.common.v1.Payloads
-	57,  // 117: temporal.api.workflow.v1.PostResetOperation.SignalWorkflow.header:type_name -> temporal.api.common.v1.Header
-	63,  // 118: temporal.api.workflow.v1.PostResetOperation.SignalWorkflow.links:type_name -> temporal.api.common.v1.Link
-	16,  // 119: temporal.api.workflow.v1.PostResetOperation.UpdateWorkflowOptions.workflow_execution_options:type_name -> temporal.api.workflow.v1.WorkflowExecutionOptions
-	64,  // 120: temporal.api.workflow.v1.PostResetOperation.UpdateWorkflowOptions.update_mask:type_name -> google.protobuf.FieldMask
-	121, // [121:121] is the sub-list for method output_type
-	121, // [121:121] is the sub-list for method input_type
-	121, // [121:121] is the sub-list for extension type_name
-	121, // [121:121] is the sub-list for extension extendee
-	0,   // [0:121] is the sub-list for field type_name
+	29,  // 101: temporal.api.workflow.v1.VersioningOverride.pinned:type_name -> temporal.api.workflow.v1.VersioningOverride.PinnedOverride
+	41,  // 102: temporal.api.workflow.v1.VersioningOverride.behavior:type_name -> temporal.api.enums.v1.VersioningBehavior
+	42,  // 103: temporal.api.workflow.v1.VersioningOverride.deployment:type_name -> temporal.api.deployment.v1.Deployment
+	62,  // 104: temporal.api.workflow.v1.RequestIdInfo.event_type:type_name -> temporal.api.enums.v1.EventType
+	30,  // 105: temporal.api.workflow.v1.PostResetOperation.signal_workflow:type_name -> temporal.api.workflow.v1.PostResetOperation.SignalWorkflow
+	31,  // 106: temporal.api.workflow.v1.PostResetOperation.update_workflow_options:type_name -> temporal.api.workflow.v1.PostResetOperation.UpdateWorkflowOptions
+	34,  // 107: temporal.api.workflow.v1.WorkflowExecutionPauseInfo.paused_time:type_name -> google.protobuf.Timestamp
+	20,  // 108: temporal.api.workflow.v1.WorkflowExecutionExtendedInfo.RequestIdInfosEntry.value:type_name -> temporal.api.workflow.v1.RequestIdInfo
+	34,  // 109: temporal.api.workflow.v1.PendingActivityInfo.PauseInfo.pause_time:type_name -> google.protobuf.Timestamp
+	25,  // 110: temporal.api.workflow.v1.PendingActivityInfo.PauseInfo.manual:type_name -> temporal.api.workflow.v1.PendingActivityInfo.PauseInfo.Manual
+	26,  // 111: temporal.api.workflow.v1.PendingActivityInfo.PauseInfo.rule:type_name -> temporal.api.workflow.v1.PendingActivityInfo.PauseInfo.Rule
+	27,  // 112: temporal.api.workflow.v1.CallbackInfo.Trigger.workflow_closed:type_name -> temporal.api.workflow.v1.CallbackInfo.WorkflowClosed
+	0,   // 113: temporal.api.workflow.v1.VersioningOverride.PinnedOverride.behavior:type_name -> temporal.api.workflow.v1.VersioningOverride.PinnedOverrideBehavior
+	43,  // 114: temporal.api.workflow.v1.VersioningOverride.PinnedOverride.version:type_name -> temporal.api.deployment.v1.WorkerDeploymentVersion
+	49,  // 115: temporal.api.workflow.v1.PostResetOperation.SignalWorkflow.input:type_name -> temporal.api.common.v1.Payloads
+	57,  // 116: temporal.api.workflow.v1.PostResetOperation.SignalWorkflow.header:type_name -> temporal.api.common.v1.Header
+	63,  // 117: temporal.api.workflow.v1.PostResetOperation.SignalWorkflow.links:type_name -> temporal.api.common.v1.Link
+	16,  // 118: temporal.api.workflow.v1.PostResetOperation.UpdateWorkflowOptions.workflow_execution_options:type_name -> temporal.api.workflow.v1.WorkflowExecutionOptions
+	64,  // 119: temporal.api.workflow.v1.PostResetOperation.UpdateWorkflowOptions.update_mask:type_name -> google.protobuf.FieldMask
+	120, // [120:120] is the sub-list for method output_type
+	120, // [120:120] is the sub-list for method input_type
+	120, // [120:120] is the sub-list for extension type_name
+	120, // [120:120] is the sub-list for extension extendee
+	0,   // [0:120] is the sub-list for field type_name
 }
 
 func init() { file_temporal_api_workflow_v1_message_proto_init() }
@@ -3748,7 +3726,6 @@ func file_temporal_api_workflow_v1_message_proto_init() {
 	file_temporal_api_workflow_v1_message_proto_msgTypes[16].OneofWrappers = []any{
 		(*TimeSkippingConfig_MaxSkippedDuration)(nil),
 		(*TimeSkippingConfig_MaxElapsedDuration)(nil),
-		(*TimeSkippingConfig_MaxTargetTime)(nil),
 	}
 	file_temporal_api_workflow_v1_message_proto_msgTypes[17].OneofWrappers = []any{
 		(*VersioningOverride_Pinned)(nil),

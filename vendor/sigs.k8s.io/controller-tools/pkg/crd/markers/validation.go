@@ -19,7 +19,12 @@ package markers
 import (
 	"encoding/json"
 	"fmt"
+	"go/ast"
+	"go/token"
+	"go/types"
 	"math"
+	"slices"
+	"strconv"
 	"strings"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -35,6 +40,9 @@ const (
 	ValidationExactlyOneOfPrefix = validationPrefix + "ExactlyOneOf"
 	ValidationAtMostOneOfPrefix  = validationPrefix + "AtMostOneOf"
 	ValidationAtLeastOneOfPrefix = validationPrefix + "AtLeastOneOf"
+
+	// K8sEnumTag indicates that the given type is an enum; all const values of this type are considered values in the enum
+	K8sEnumTag = "k8s:enum"
 )
 
 // ValidationMarkers lists all available markers that affect CRD schema generation,
@@ -90,6 +98,9 @@ var TypeOnlyMarkers = []*definitionWithHelp{
 		WithHelp(markers.SimpleHelp("CRD validation", "specifies a list of field names that must conform to the ExactlyOneOf constraint.")),
 	must(markers.MakeDefinition(ValidationAtLeastOneOfPrefix, markers.DescribesType, AtLeastOneOf(nil))).
 		WithHelp(markers.SimpleHelp("CRD validation", "specifies a list of field names that must conform to the AtLeastOneOf constraint.")),
+	must(markers.MakeDefinition(K8sEnumTag, markers.DescribesType, K8sEnum{})).
+		WithHelp(markers.SimpleHelp("CRD", "indicates that the given type is an enum; all const values of this type are considered values in the enum")),
+	must(markers.MakeDefinition(K8sEnumTag, markers.DescribesField, K8sEnumField{})),
 }
 
 // FieldOnlyMarkers list field-specific validation markers (i.e. those markers that don't make
@@ -123,6 +134,9 @@ var FieldOnlyMarkers = []*definitionWithHelp{
 
 	must(markers.MakeDefinition(SchemalessName, markers.DescribesField, Schemaless{})).
 		WithHelp(Schemaless{}.Help()),
+
+	must(markers.MakeDefinition("k8s:immutable", markers.DescribesField, Immutable{})).
+		WithHelp(Immutable{}.Help()),
 }
 
 // ValidationIshMarkers are field-and-type markers that don't fall under the
@@ -168,6 +182,12 @@ func init() {
 }
 
 // Maximum specifies the maximum numeric value that this field can have.
+//
+// Example:
+//
+//	// +kubebuilder:validation:Maximum=100
+//	Percentage int32
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type Maximum float64
 
@@ -176,6 +196,12 @@ func (m Maximum) Value() float64 {
 }
 
 // Minimum specifies the minimum numeric value that this field can have. Negative numbers are supported.
+//
+// Example:
+//
+//	// +kubebuilder:validation:Minimum=0
+//	Replicas int32
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type Minimum float64
 
@@ -184,14 +210,34 @@ func (m Minimum) Value() float64 {
 }
 
 // ExclusiveMinimum indicates that the minimum is "up to" but not including that value.
+//
+// Example (value must be greater than 0, not greater than or equal to 0):
+//
+//	// +kubebuilder:validation:Minimum=0
+//	// +kubebuilder:validation:ExclusiveMinimum=true
+//	PositiveNumber float64
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type ExclusiveMinimum bool
 
 // ExclusiveMaximum indicates that the maximum is "up to" but not including that value.
+//
+// Example (value must be less than 100, not less than or equal to 100):
+//
+//	// +kubebuilder:validation:Maximum=100
+//	// +kubebuilder:validation:ExclusiveMaximum=true
+//	Percentage float64
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type ExclusiveMaximum bool
 
 // MultipleOf specifies that this field must have a numeric value that's a multiple of this one.
+//
+// Example (value must be a multiple of 5):
+//
+//	// +kubebuilder:validation:MultipleOf=5
+//	Count int32
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type MultipleOf float64
 
@@ -200,38 +246,92 @@ func (m MultipleOf) Value() float64 {
 }
 
 // MaxLength specifies the maximum length for this string.
+//
+// Example:
+//
+//	// +kubebuilder:validation:MaxLength=64
+//	Name string
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type MaxLength int
 
 // MinLength specifies the minimum length for this string.
+//
+// Example:
+//
+//	// +kubebuilder:validation:MinLength=1
+//	Name string
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type MinLength int
 
 // Pattern specifies that this string must match the given regular expression.
+//
+// Example (DNS subdomain):
+//
+//	// +kubebuilder:validation:Pattern=`^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`
+//	DNSName string
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type Pattern string
 
 // MaxItems specifies the maximum length for this list.
+//
+// Example:
+//
+//	// +kubebuilder:validation:MaxItems=10
+//	Items []string
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type MaxItems int
 
 // MinItems specifies the minimum length for this list.
+//
+// Example:
+//
+//	// +kubebuilder:validation:MinItems=1
+//	Endpoints []string
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type MinItems int
 
 // UniqueItems specifies that all items in this list must be unique.
+//
+// Example:
+//
+//	// +kubebuilder:validation:UniqueItems=true
+//	Tags []string
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type UniqueItems bool
 
 // MaxProperties restricts the number of keys in an object
+//
+// Example:
+//
+//	// +kubebuilder:validation:MaxProperties=10
+//	Labels map[string]string
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type MaxProperties int
 
 // MinProperties restricts the number of keys in an object
+//
+// Example:
+//
+//	// +kubebuilder:validation:MinProperties=1
+//	Metadata map[string]string
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type MinProperties int
 
 // Enum specifies that this (scalar) field is restricted to the *exact* values specified here.
+//
+// Example:
+//
+//	// +kubebuilder:validation:Enum=ClusterIP;NodePort;LoadBalancer
+//	ServiceType string
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type Enum []any
 
@@ -239,6 +339,14 @@ type Enum []any
 //
 // For example, a date-time field would be marked as "type: string" and
 // "format: date-time".
+//
+// Common formats include: "int32", "int64", "float", "double", "byte", "date", "date-time", "password".
+//
+// Example:
+//
+//	// +kubebuilder:validation:Format=date-time
+//	CreatedAt string
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type Format string
 
@@ -246,12 +354,27 @@ type Format string
 //
 // This generally must be paired with custom serialization.  For example, the
 // metav1.Time field would be marked as "type: string" and "format: date-time".
+//
+// Common types include: "string", "number", "integer", "boolean", "array", "object".
+//
+// Example:
+//
+//	// +kubebuilder:validation:Type=string
+//	// +kubebuilder:validation:Format=date-time
+//	Time metav1.Time
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type Type string
 
 // Nullable marks this field as allowing the "null" value.
 //
 // This is often not necessary, but may be helpful with custom serialization.
+//
+// Example:
+//
+//	// +nullable
+//	Description *string
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type Nullable struct{}
 
@@ -263,8 +386,32 @@ type Nullable struct{}
 // "delete"}`). Defaults should be defined in pruned form, and only best-effort
 // validation will be performed. Full validation of a default requires
 // submission of the containing CRD to an apiserver.
+//
+// Examples:
+//
+//	// String default
+//	// +kubebuilder:default="ClusterIP"
+//	ServiceType string
+//
+//	// Integer default
+//	// +kubebuilder:default=3
+//	Replicas int32
+//
+//	// Boolean default
+//	// +kubebuilder:default=true
+//	Enabled bool
+//
+//	// Array default
+//	// +kubebuilder:default={80,443}
+//	Ports []int
+//
+//	// Object default
+//	// +kubebuilder:default={replicas: 1}
+//	Config map[string]interface{}
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type Default struct {
+	// Value is the default value. It can be any value valid for the field type.
 	Value any
 }
 
@@ -274,8 +421,20 @@ type Default struct {
 // making the schema more understandable when viewed in documentation tools.
 // It's a metadata field that doesn't affect validation but provides
 // important context about what the schema represents.
+//
+// Examples:
+//
+//	// Simple title
+//	// +kubebuilder:title="Replica Count"
+//	Replicas int32
+//
+//	// Descriptive title
+//	// +kubebuilder:title="Database Connection Configuration"
+//	DatabaseConfig DatabaseConfig
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type Title struct {
+	// Value is the title text to be shown in OpenAPI documentation.
 	Value any
 }
 
@@ -288,8 +447,32 @@ type Title struct {
 // "delete"}`). Defaults should be defined in pruned form, and only best-effort
 // validation will be performed. Full validation of a default requires
 // submission of the containing CRD to an apiserver.
+//
+// Examples:
+//
+//	// String default (note the JSON quotes)
+//	// +default="ClusterIP"
+//	ServiceType string
+//
+//	// Integer default
+//	// +default=3
+//	Replicas int32
+//
+//	// Boolean default
+//	// +default=true
+//	Enabled bool
+//
+//	// Array default (JSON format)
+//	// +default=[80,443]
+//	Ports []int
+//
+//	// Object default (JSON format)
+//	// +default={"policy": "delete"}
+//	Config map[string]interface{}
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type KubernetesDefault struct {
+	// Value is the default value in JSON format. It can be any value valid for the field type.
 	Value any
 }
 
@@ -301,8 +484,34 @@ type KubernetesDefault struct {
 // "delete"}`). Examples should be defined in pruned form, and only best-effort
 // validation will be performed. Full validation of an example requires
 // submission of the containing CRD to an apiserver.
+//
+// Examples are shown in API documentation to help users understand the expected format.
+//
+// Usage Examples:
+//
+//	// String example
+//	// +kubebuilder:example="my-service"
+//	ServiceName string
+//
+//	// Integer example
+//	// +kubebuilder:example=5
+//	Replicas int32
+//
+//	// Boolean example
+//	// +kubebuilder:example=false
+//	Debug bool
+//
+//	// Array example
+//	// +kubebuilder:example={8080,8443}
+//	Ports []int
+//
+//	// Object example
+//	// +kubebuilder:example={cpu: "100m", memory: "128Mi"}
+//	Resources map[string]string
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type Example struct {
+	// Value is the example value to be shown in API documentation.
 	Value any
 }
 
@@ -318,6 +527,12 @@ type Example struct {
 // NB: The kubebuilder:validation:XPreserveUnknownFields variant is deprecated
 // in favor of the kubebuilder:pruning:PreserveUnknownFields variant.  They function
 // identically.
+//
+// Example:
+//
+//	// +kubebuilder:pruning:PreserveUnknownFields
+//	RawConfig map[string]interface{}
+//
 // +controllertools:marker:generateHelp:category="CRD processing"
 type XPreserveUnknownFields struct{}
 
@@ -327,6 +542,12 @@ type XPreserveUnknownFields struct{}
 // They are validated implicitly according to the semantics of the currently
 // running apiserver. It is not necessary to add any additional schema for these
 // field, yet it is possible. This can be combined with PreserveUnknownFields.
+//
+// Example:
+//
+//	// +kubebuilder:validation:EmbeddedResource
+//	Template runtime.RawExtension
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type XEmbeddedResource struct{}
 
@@ -335,6 +556,13 @@ type XEmbeddedResource struct{}
 // This is required when applying patterns or other validations to an IntOrString
 // field. Known information about the type is applied during the collapse phase
 // and as such is not normally available during marker application.
+//
+// Example:
+//
+//	// +kubebuilder:validation:XIntOrString
+//	// +kubebuilder:validation:Pattern="^(\\d+|\\d+%|)$"
+//	Port intstr.IntOrString
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type XIntOrString struct{}
 
@@ -345,8 +573,41 @@ type XIntOrString struct{}
 // tag is for embedding fields that hold JSONSchema typed objects.
 // Because this field disables all type checking, it is recommended
 // to be used only as a last resort.
+//
+// Example:
+//
+//	// +kubebuilder:validation:Schemaless
+//	JSONSchema apiextensionsv1.JSONSchemaProps
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type Schemaless struct{}
+
+// Immutable marks a field as immutable. Once set, the value cannot be changed.
+// For optional fields, a single transition from unset to set is allowed.
+//
+// Note that immutable fields that are nested below optional fields can still be
+// updated by unsetting the optional parent field and re-setting it again.
+//
+// Examples:
+//
+//	// +k8s:immutable
+//	// +required
+//	Port intstr.IntOrString
+//
+//	// +k8s:immutable
+//	// +optional
+//	TargetPort intstr.IntOrString
+//
+// +controllertools:marker:generateHelp:category="CRD validation"
+type Immutable struct{}
+
+func (m Immutable) ApplyToSchema(_ *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
+	schema.XValidations = append(schema.XValidations, apiextensionsv1.ValidationRule{
+		Rule:    "self == oldSelf",
+		Message: "field is immutable",
+	})
+	return nil
+}
 
 func hasNumericType(schema *apiextensionsv1.JSONSchemaProps) bool {
 	return schema.Type == string(Integer) || schema.Type == string(Number)
@@ -365,6 +626,18 @@ func isIntegral(value float64) bool {
 //
 // This marker may be repeated to specify multiple expressions, all of
 // which must evaluate to true.
+//
+// Examples:
+//
+//	// Basic field validation
+//	// +kubebuilder:validation:XValidation:rule="self.minReplicas <= self.replicas && self.replicas <= self.maxReplicas",message="replicas must be between minReplicas and maxReplicas"
+//
+//	// Validation with custom reason
+//	// +kubebuilder:validation:XValidation:rule="self.x <= self.maxX",message="x cannot be greater than maxX",reason="FieldValueInvalid"
+//
+//	// Immutability check
+//	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="field is immutable"
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type XValidation struct {
 	Rule              string
@@ -378,22 +651,51 @@ type XValidation struct {
 // AtMostOneOf adds a validation constraint that allows at most one of the specified fields.
 //
 // This marker may be repeated to specify multiple AtMostOneOf constraints that are mutually exclusive.
+//
+// Example:
+//
+//	// +kubebuilder:validation:AtMostOneOf=configMapRef;secretRef
+//	type MyType struct {
+//	    ConfigMapRef *ConfigMapRef
+//	    SecretRef *SecretRef
+//	}
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type AtMostOneOf []string
 
 // ExactlyOneOf adds a validation constraint that allows at exactly one of the specified fields.
 //
 // This marker may be repeated to specify multiple ExactlyOneOf constraints that are mutually exclusive.
+//
+// Example:
+//
+//	// +kubebuilder:validation:ExactlyOneOf=http;https;grpc
+//	type Protocol struct {
+//	    HTTP *HTTPConfig
+//	    HTTPS *HTTPSConfig
+//	    GRPC *GRPCConfig
+//	}
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type ExactlyOneOf []string
 
 // AtLeastOneOf adds a validation constraint that allows at least one of the specified fields.
 //
 // This marker may be repeated to specify multiple AtLeastOneOf constraints that are mutually exclusive.
+//
+// Example:
+//
+//	// +kubebuilder:validation:AtLeastOneOf=email;phone;address
+//	type Contact struct {
+//	    Email *string
+//	    Phone *string
+//	    Address *string
+//	}
+//
 // +controllertools:marker:generateHelp:category="CRD validation"
 type AtLeastOneOf []string
 
-func (m Maximum) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m Maximum) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	if !hasNumericType(schema) {
 		return fmt.Errorf("must apply maximum to a numeric value, found %s", schema.Type)
 	}
@@ -407,7 +709,7 @@ func (m Maximum) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
 	return nil
 }
 
-func (m Minimum) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m Minimum) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	if !hasNumericType(schema) {
 		return fmt.Errorf("must apply minimum to a numeric value, found %s", schema.Type)
 	}
@@ -421,7 +723,7 @@ func (m Minimum) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
 	return nil
 }
 
-func (m ExclusiveMaximum) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m ExclusiveMaximum) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	if !hasNumericType(schema) {
 		return fmt.Errorf("must apply exclusivemaximum to a numeric value, found %s", schema.Type)
 	}
@@ -429,7 +731,7 @@ func (m ExclusiveMaximum) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps)
 	return nil
 }
 
-func (m ExclusiveMinimum) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m ExclusiveMinimum) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	if !hasNumericType(schema) {
 		return fmt.Errorf("must apply exclusiveminimum to a numeric value, found %s", schema.Type)
 	}
@@ -438,7 +740,7 @@ func (m ExclusiveMinimum) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps)
 	return nil
 }
 
-func (m MultipleOf) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m MultipleOf) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	if !hasNumericType(schema) {
 		return fmt.Errorf("must apply multipleof to a numeric value, found %s", schema.Type)
 	}
@@ -452,7 +754,7 @@ func (m MultipleOf) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error
 	return nil
 }
 
-func (m MaxLength) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m MaxLength) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	if !hasTextualType(schema) {
 		return fmt.Errorf("must apply maxlength to a textual value, found type %q", schema.Type)
 	}
@@ -461,7 +763,7 @@ func (m MaxLength) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error 
 	return nil
 }
 
-func (m MinLength) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m MinLength) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	if !hasTextualType(schema) {
 		return fmt.Errorf("must apply minlength to a textual value, found type %q", schema.Type)
 	}
@@ -470,7 +772,7 @@ func (m MinLength) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error 
 	return nil
 }
 
-func (m Pattern) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m Pattern) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	if !hasTextualType(schema) {
 		return fmt.Errorf("must apply pattern to a textual value, found type %q", schema.Type)
 	}
@@ -478,7 +780,7 @@ func (m Pattern) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
 	return nil
 }
 
-func (m MaxItems) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m MaxItems) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	if schema.Type != string(Array) {
 		return fmt.Errorf("must apply maxitem to an array")
 	}
@@ -487,7 +789,7 @@ func (m MaxItems) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
 	return nil
 }
 
-func (m MinItems) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m MinItems) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	if schema.Type != string(Array) {
 		return fmt.Errorf("must apply minitems to an array")
 	}
@@ -496,7 +798,7 @@ func (m MinItems) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
 	return nil
 }
 
-func (m UniqueItems) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m UniqueItems) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	if schema.Type != "array" {
 		return fmt.Errorf("must apply uniqueitems to an array")
 	}
@@ -504,7 +806,7 @@ func (m UniqueItems) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) erro
 	return nil
 }
 
-func (m MinProperties) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m MinProperties) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	if schema.Type != "object" {
 		return fmt.Errorf("must apply minproperties to an object")
 	}
@@ -513,7 +815,7 @@ func (m MinProperties) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) er
 	return nil
 }
 
-func (m MaxProperties) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m MaxProperties) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	if schema.Type != "object" {
 		return fmt.Errorf("must apply maxproperties to an object")
 	}
@@ -522,7 +824,7 @@ func (m MaxProperties) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) er
 	return nil
 }
 
-func (m Enum) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m Enum) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	// TODO(directxman12): this is a bit hacky -- we should
 	// probably support AnyType better + using the schema structure
 	vals := make([]apiextensionsv1.JSON, len(m))
@@ -540,7 +842,7 @@ func (m Enum) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
 	return nil
 }
 
-func (m Format) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m Format) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	schema.Format = string(m)
 	return nil
 }
@@ -550,7 +852,7 @@ func (m Format) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
 // TODO(directxman12): find a less hacky way to do this
 // (we could preserve ordering of markers, but that feels bad in its own right).
 
-func (m Type) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m Type) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	schema.Type = string(m)
 	return nil
 }
@@ -559,13 +861,13 @@ func (m Type) ApplyPriority() ApplyPriority {
 	return ApplyPriorityDefault - 1
 }
 
-func (m Nullable) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m Nullable) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	schema.Nullable = true
 	return nil
 }
 
 // ApplyToSchema defaults are only valid CRDs created with the v1 API
-func (m Default) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m Default) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	marshalledDefault, err := json.Marshal(m.Value)
 	if err != nil {
 		return err
@@ -582,7 +884,7 @@ func (m Default) ApplyPriority() ApplyPriority {
 	return 10
 }
 
-func (m Title) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m Title) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	if m.Value == nil {
 		// only apply to the schema if we have a non-nil title
 		return nil
@@ -605,7 +907,7 @@ func (m *KubernetesDefault) ParseMarker(_ string, _ string, restFields string) e
 }
 
 // ApplyToSchema defaults are only valid CRDs created with the v1 API
-func (m KubernetesDefault) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m KubernetesDefault) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	if m.Value == nil {
 		// only apply to the schema if we have a non-nil default value
 		return nil
@@ -623,7 +925,7 @@ func (m KubernetesDefault) ApplyPriority() ApplyPriority {
 	return 9
 }
 
-func (m Example) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m Example) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	marshalledExample, err := json.Marshal(m.Value)
 	if err != nil {
 		return err
@@ -632,13 +934,13 @@ func (m Example) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
 	return nil
 }
 
-func (m XPreserveUnknownFields) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m XPreserveUnknownFields) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	defTrue := true
 	schema.XPreserveUnknownFields = &defTrue
 	return nil
 }
 
-func (m XEmbeddedResource) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m XEmbeddedResource) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	schema.XEmbeddedResource = true
 	return nil
 }
@@ -646,7 +948,7 @@ func (m XEmbeddedResource) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps
 // NB(JoelSpeed): we use this property in other markers here,
 // which means the "XIntOrString" marker *must* be applied first.
 
-func (m XIntOrString) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m XIntOrString) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	schema.XIntOrString = true
 	return nil
 }
@@ -655,7 +957,7 @@ func (m XIntOrString) ApplyPriority() ApplyPriority {
 	return ApplyPriorityDefault - 1
 }
 
-func (m XValidation) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (m XValidation) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	var reason *apiextensionsv1.FieldValueErrorReason
 	if m.Reason != "" {
 		switch m.Reason {
@@ -681,7 +983,7 @@ func (XValidation) ApplyPriority() ApplyPriority {
 	return ApplyPriorityDefault
 }
 
-func (fields AtMostOneOf) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (fields AtMostOneOf) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	if len(fields) == 0 {
 		return nil
 	}
@@ -690,7 +992,7 @@ func (fields AtMostOneOf) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps)
 		Rule:    fmt.Sprintf("%s <= 1", rule),
 		Message: fmt.Sprintf("at most one of the fields in %v may be set", fields),
 	}
-	return xvalidation.ApplyToSchema(schema)
+	return xvalidation.ApplyToSchema(ctx, schema)
 }
 
 func (AtMostOneOf) ApplyPriority() ApplyPriority {
@@ -698,7 +1000,7 @@ func (AtMostOneOf) ApplyPriority() ApplyPriority {
 	return XValidation{}.ApplyPriority() + 1
 }
 
-func (fields ExactlyOneOf) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (fields ExactlyOneOf) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	if len(fields) == 0 {
 		return nil
 	}
@@ -707,7 +1009,7 @@ func (fields ExactlyOneOf) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps
 		Rule:    fmt.Sprintf("%s == 1", rule),
 		Message: fmt.Sprintf("exactly one of the fields in %v must be set", fields),
 	}
-	return xvalidation.ApplyToSchema(schema)
+	return xvalidation.ApplyToSchema(ctx, schema)
 }
 
 func (ExactlyOneOf) ApplyPriority() ApplyPriority {
@@ -715,7 +1017,7 @@ func (ExactlyOneOf) ApplyPriority() ApplyPriority {
 	return AtMostOneOf{}.ApplyPriority() + 1
 }
 
-func (fields AtLeastOneOf) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
+func (fields AtLeastOneOf) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
 	if len(fields) == 0 {
 		return nil
 	}
@@ -724,7 +1026,7 @@ func (fields AtLeastOneOf) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps
 		Rule:    fmt.Sprintf("%s >= 1", rule),
 		Message: fmt.Sprintf("at least one of the fields in %v must be set", fields),
 	}
-	return xvalidation.ApplyToSchema(schema)
+	return xvalidation.ApplyToSchema(ctx, schema)
 }
 
 func (AtLeastOneOf) ApplyPriority() ApplyPriority {
@@ -747,4 +1049,82 @@ func fieldsToOneOfCelRuleStr(fields []string) string {
 	}
 	list.WriteString("].filter(x,x==true).size()")
 	return list.String()
+}
+
+// K8sEnumField exists solely to reject the k8s:enum marker when placed on a
+// field. The marker is only meaningful on a type declaration; without this
+// registration a field-level use would be silently ignored.
+type K8sEnumField struct{}
+
+func (K8sEnumField) ApplyToSchema(*SchemaContext, *apiextensionsv1.JSONSchemaProps) error {
+	return fmt.Errorf("k8s:enum must be set on a type, not a field")
+}
+
+// K8sEnum marks a type as an enum; the schema's Enum values are populated
+// from the string const declarations of this type in the same package.
+type K8sEnum struct{}
+
+func (K8sEnum) ApplyToSchema(ctx *SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error {
+	if ctx == nil || ctx.Package == nil || ctx.TypeInfo == nil {
+		return fmt.Errorf("k8s:enum requires type context")
+	}
+	pkg := ctx.Package
+	info := ctx.TypeInfo
+	typeDef := pkg.TypesInfo.Defs[info.RawSpec.Name]
+	if typeDef == nil {
+		return fmt.Errorf("unknown enum type %s", info.Name)
+	}
+	typeInfo := typeDef.Type()
+	basicInfo, isBasic := typeInfo.Underlying().(*types.Basic)
+	if !isBasic || basicInfo.Info()&types.IsString == 0 {
+		return fmt.Errorf("enum type must be a string, not %s", typeInfo.String())
+	}
+
+	var enumValues []apiextensionsv1.JSON
+	for _, file := range pkg.Syntax {
+		for _, decl := range file.Decls {
+			genDecl, ok := decl.(*ast.GenDecl)
+			if !ok || genDecl.Tok != token.CONST {
+				continue
+			}
+			for _, spec := range genDecl.Specs {
+				valueSpec, ok := spec.(*ast.ValueSpec)
+				if !ok {
+					continue
+				}
+				for i, name := range valueSpec.Names {
+					obj := pkg.TypesInfo.Defs[name]
+					if obj == nil || obj.Type() != typeInfo {
+						continue
+					}
+					val := valueSpec.Values[i]
+					basicLit, ok := val.(*ast.BasicLit)
+					if !ok || basicLit.Kind != token.STRING {
+						continue
+					}
+					unquoted, err := strconv.Unquote(basicLit.Value)
+					if err != nil {
+						return fmt.Errorf("failed to unquote enum value %q: %w", basicLit.Value, err)
+					}
+					raw, err := json.Marshal(unquoted)
+					if err != nil {
+						return fmt.Errorf("failed to json marshal enum value %q: %w", unquoted, err)
+					}
+					enumValues = append(enumValues, apiextensionsv1.JSON{Raw: raw})
+				}
+			}
+		}
+	}
+
+	slices.SortFunc(enumValues, func(a, b apiextensionsv1.JSON) int {
+		return strings.Compare(string(a.Raw), string(b.Raw))
+	})
+
+	if len(enumValues) == 0 {
+		return fmt.Errorf("no enum values found for type %s", info.Name)
+	}
+
+	schema.Type = "string"
+	schema.Enum = enumValues
+	return nil
 }

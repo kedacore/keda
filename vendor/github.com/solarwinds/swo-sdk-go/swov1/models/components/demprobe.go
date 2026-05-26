@@ -61,6 +61,8 @@ func (c *Coordinates) GetLongitude() float32 {
 
 type DemProbe struct {
 	// Unique identifier of the probe.
+	//
+	// Deprecated: This will be removed in a future release, please migrate away from it as soon as possible.
 	ID string `json:"id"`
 	// Name of the probe.
 	Name string `json:"name"`
