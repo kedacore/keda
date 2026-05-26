@@ -192,6 +192,7 @@ func main() {
 		}),
 		Cache: ctrlcache.Options{
 			DefaultNamespaces: namespaces,
+			DefaultTransform:  kedautil.CacheObjectTransform,
 		},
 		HealthProbeBindAddress:  probeAddr,
 		PprofBindAddress:        profilingAddr,

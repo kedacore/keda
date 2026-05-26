@@ -1,5 +1,57 @@
 # Changelog
 
+## [v1.11.0](https://github.com/rabbitmq/amqp091-go/tree/v1.11.0) (2026-04-21)
+
+[Full Changelog](https://github.com/rabbitmq/amqp091-go/compare/v1.10.0...v1.11.0)
+
+**Implemented enhancements:**
+
+- add better debug information on DialConfig [\#245](https://github.com/rabbitmq/amqp091-go/issues/245)
+
+**Fixed bugs:**
+
+- Channel error when acking via go-routines [\#296](https://github.com/rabbitmq/amqp091-go/issues/296)
+
+**Closed issues:**
+
+- PR \#318 exposes a pre-existing race in `Connection.Close()`. [\#327](https://github.com/rabbitmq/amqp091-go/issues/327)
+- Entire header frame isn't always read [\#309](https://github.com/rabbitmq/amqp091-go/issues/309)
+- Incomplete support of 0-9-1 field type values [\#302](https://github.com/rabbitmq/amqp091-go/issues/302)
+- Redelivered Flag Not Exposed [\#301](https://github.com/rabbitmq/amqp091-go/issues/301)
+- consume input basicConsumeOk but response queueBindOk [\#291](https://github.com/rabbitmq/amqp091-go/issues/291)
+- Channel is closed after Channel.ExchangeDeclarePassive fails [\#290](https://github.com/rabbitmq/amqp091-go/issues/290)
+- Incomplete example in \(\*Channel\).QueueBind documentation [\#279](https://github.com/rabbitmq/amqp091-go/issues/279)
+- QueueDeclarePassive does not report queue type mismatch [\#273](https://github.com/rabbitmq/amqp091-go/issues/273)
+- Release 1.10.0 [\#261](https://github.com/rabbitmq/amqp091-go/issues/261)
+- Update minimum Go version to 1.18 [\#146](https://github.com/rabbitmq/amqp091-go/issues/146)
+
+**Merged pull requests:**
+
+-  fix: respect context cancellation on publishing with context operations [\#330](https://github.com/rabbitmq/amqp091-go/pull/330) ([NawafSwe](https://github.com/NawafSwe))
+- Eliminate race condition in Connection.Close\(\) and related methods [\#328](https://github.com/rabbitmq/amqp091-go/pull/328) ([Zerpet](https://github.com/Zerpet))
+- Bump the github-actions group with 4 updates [\#326](https://github.com/rabbitmq/amqp091-go/pull/326) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump github/codeql-action from 3 to 4 [\#321](https://github.com/rabbitmq/amqp091-go/pull/321) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Fix incomplete routing diagram in QueueBind doc comment [\#320](https://github.com/rabbitmq/amqp091-go/pull/320) ([Copilot](https://github.com/apps/copilot-swe-agent))
+- Use RabbitMQ 4 in Makefile [\#319](https://github.com/rabbitmq/amqp091-go/pull/319) ([Zerpet](https://github.com/Zerpet))
+- refactor: simplify with atomic types [\#318](https://github.com/rabbitmq/amqp091-go/pull/318) ([alexandear](https://github.com/alexandear))
+- Add support for unsigned type values [\#317](https://github.com/rabbitmq/amqp091-go/pull/317) ([Zerpet](https://github.com/Zerpet))
+- fix: modernize lint issues [\#315](https://github.com/rabbitmq/amqp091-go/pull/315) ([alexandear](https://github.com/alexandear))
+- Fix `parseHeaderFrame` to consume entire frame payload [\#314](https://github.com/rabbitmq/amqp091-go/pull/314) ([lukebakken](https://github.com/lukebakken))
+- docs: update link to RabbitMQ tutorials [\#313](https://github.com/rabbitmq/amqp091-go/pull/313) ([alexandear](https://github.com/alexandear))
+- fix: typos in comments and tests [\#312](https://github.com/rabbitmq/amqp091-go/pull/312) ([alexandear](https://github.com/alexandear))
+- feat: add MIME types constants for  content types [\#308](https://github.com/rabbitmq/amqp091-go/pull/308) ([YlanzinhoY](https://github.com/YlanzinhoY))
+- Fix linter error after migrating config to v2 [\#306](https://github.com/rabbitmq/amqp091-go/pull/306) ([Zerpet](https://github.com/Zerpet))
+- Investigate GH-296 [\#297](https://github.com/rabbitmq/amqp091-go/pull/297) ([lukebakken](https://github.com/lukebakken))
+- Return existing error instead of creating new for the same purpose [\#295](https://github.com/rabbitmq/amqp091-go/pull/295) ([pingvincible](https://github.com/pingvincible))
+- Add warning about concurrency with Channels [\#294](https://github.com/rabbitmq/amqp091-go/pull/294) ([Zerpet](https://github.com/Zerpet))
+- Expose delivery not initialised error [\#293](https://github.com/rabbitmq/amqp091-go/pull/293) ([Zerpet](https://github.com/Zerpet))
+- fix: unify receiver methods to avoid conflicts between value and pointer types [\#292](https://github.com/rabbitmq/amqp091-go/pull/292) ([Raisul191491](https://github.com/Raisul191491))
+- Fixing simple errors [\#280](https://github.com/rabbitmq/amqp091-go/pull/280) ([korolev-d-l](https://github.com/korolev-d-l))
+- Add test that demonstrates the issue [\#274](https://github.com/rabbitmq/amqp091-go/pull/274) ([lukebakken](https://github.com/lukebakken))
+- chore: doc typo [\#269](https://github.com/rabbitmq/amqp091-go/pull/269) ([AndrewWinterman](https://github.com/AndrewWinterman))
+- Small fixes and refactors [\#266](https://github.com/rabbitmq/amqp091-go/pull/266) ([peczenyj](https://github.com/peczenyj))
+- add methods Temporary and Recoverable to amqp.Error [\#265](https://github.com/rabbitmq/amqp091-go/pull/265) ([peczenyj](https://github.com/peczenyj))
+
 ## [v1.10.0](https://github.com/rabbitmq/amqp091-go/tree/v1.10.0) (2024-05-08)
 
 [Full Changelog](https://github.com/rabbitmq/amqp091-go/compare/v1.9.0...v1.10.0)

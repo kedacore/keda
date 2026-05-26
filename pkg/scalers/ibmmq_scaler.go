@@ -98,7 +98,7 @@ func NewIBMMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		if err != nil {
 			return nil, err
 		}
-		httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
+		httpClient.Transport = kedautil.CreateRTWithTLSConfig(tlsConfig)
 	}
 
 	scaler := &ibmmqScaler{

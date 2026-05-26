@@ -52,5 +52,11 @@ report.xml
 # KEDA Certs
 certs/*
 
-# Claude config
+# AI agent configs
 .claude
+.codex
+.cursor
+.copilot
+.aider*
+.continue
+.windsurf

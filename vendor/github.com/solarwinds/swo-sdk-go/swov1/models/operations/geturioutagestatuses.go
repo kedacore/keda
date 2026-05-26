@@ -9,6 +9,7 @@ import (
 )
 
 type GetURIOutageStatusesRequest struct {
+	// Entity ID.
 	EntityID string `pathParam:"style=simple,explode=false,name=entityId"`
 	// Start of timespan to get results for, inclusive
 	StartTime time.Time `queryParam:"style=form,explode=false,name=startTime"`

@@ -101,6 +101,7 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 		Scheme: scheme,
 		Cache: ctrlcache.Options{
 			DefaultNamespaces: namespaces,
+			DefaultTransform:  kedautil.CacheObjectTransform,
 		},
 		PprofBindAddress: profilingAddr,
 	})

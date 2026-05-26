@@ -57,6 +57,15 @@ var connectionPool sync.Map
 
 const grpcConfig = `{"loadBalancingConfig": [{"round_robin":{}}]}`
 
+type externalScalerConnectionPoolKey struct {
+	ScalerAddress string
+	EnableTLS     bool
+	UnsafeSsl     bool
+	CaCert        string
+	TLSClientCert string
+	TLSClientKey  string
+}
+
 // NewExternalScaler creates a new external scaler - calls the GRPC interface
 // to create a new scaler
 func NewExternalScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
@@ -289,6 +298,19 @@ func handleIsActiveStream(ctx context.Context, scaledObjectRef *pb.ScaledObjectR
 
 var connectionPoolMutex sync.Mutex
 
+func getConnectionPoolKey(metadata externalScalerMetadata) (uint64, error) {
+	key := externalScalerConnectionPoolKey{
+		ScalerAddress: metadata.ScalerAddress,
+		EnableTLS:     metadata.EnableTLS,
+		UnsafeSsl:     metadata.UnsafeSsl,
+		CaCert:        metadata.CaCert,
+		TLSClientCert: metadata.TLSClientCert,
+		TLSClientKey:  metadata.TLSClientKey,
+	}
+
+	return hashstructure.Hash(key, nil)
+}
+
 // getClientForConnectionPool returns a grpcClient and a done() Func. The done() function must be called once the client is no longer
 // in use to clean up the shared grpc.ClientConn
 func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalScalerClient, error) {
@@ -315,7 +337,7 @@ func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalSca
 
 	// create a unique key per-metadata. If scaledObjects share the same connection properties
 	// in the metadata, they will share the same grpc.ClientConn
-	key, err := hashstructure.Hash(metadata.ScalerAddress, nil)
+	key, err := getConnectionPoolKey(metadata)
 	if err != nil {
 		return nil, err
 	}

@@ -8,6 +8,7 @@ import (
 
 // ObserveDatabaseResponseBody - The request has succeeded and a new resource has been created as a result.
 type ObserveDatabaseResponseBody struct {
+	// Resource identifier.
 	ID string `json:"id"`
 }
 

@@ -7,6 +7,7 @@ import (
 )
 
 type PauseTransactionMonitoringRequest struct {
+	// Entity ID.
 	EntityID string `pathParam:"style=simple,explode=false,name=entityId"`
 }
 

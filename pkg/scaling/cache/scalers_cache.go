@@ -29,6 +29,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -156,8 +157,9 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 	if err != nil {
 		return nil, false, -1, err
 	}
+	requestCtx := metricscollector.BuildScalerRequestCtx(ctx, sb.ScalerConfig, metricName)
 	startTime := time.Now()
-	metric, activity, err := sb.Scaler.GetMetricsAndActivity(ctx, metricName)
+	metric, activity, err := sb.Scaler.GetMetricsAndActivity(requestCtx, metricName)
 	if err == nil {
 		return metric, activity, time.Since(startTime), nil
 	}
@@ -166,8 +168,13 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 	if err != nil {
 		return nil, false, -1, err
 	}
+	newSb, err := c.getScalerBuilder(index)
+	if err != nil {
+		return nil, false, -1, err
+	}
+	requestCtx = metricscollector.BuildScalerRequestCtx(ctx, newSb.ScalerConfig, metricName)
 	startTime = time.Now()
-	metric, activity, err = ns.GetMetricsAndActivity(ctx, metricName)
+	metric, activity, err = ns.GetMetricsAndActivity(requestCtx, metricName)
 	return metric, activity, time.Since(startTime), err
 }
 

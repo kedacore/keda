@@ -109,7 +109,7 @@ func NewArtemisQueueScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error creating TLS config: %w", err)
 		}
-		httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
+		httpClient.Transport = kedautil.CreateRTWithTLSConfig(tlsConfig)
 	}
 
 	return &artemisScaler{

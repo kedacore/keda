@@ -36,39 +36,6 @@ const (
 	FastHTTP                      // FastHTTP Fast http client.
 )
 
-// AuthMeta is the metadata for the authentication types
-//
-// Deprecated: use Config instead
-type AuthMeta struct {
-	// bearer auth
-	EnableBearerAuth bool
-	BearerToken      string
-
-	// basic auth
-	EnableBasicAuth bool
-	Username        string
-	Password        string // +optional
-
-	// client certification
-	EnableTLS bool
-	Cert      string
-	Key       string
-	CA        string
-
-	// oAuth2
-	EnableOAuth    bool
-	OauthTokenURI  string
-	Scopes         []string
-	ClientID       string
-	ClientSecret   string
-	EndpointParams url.Values
-
-	// custom auth header
-	EnableCustomAuth bool
-	CustomAuthHeader string
-	CustomAuthValue  string
-}
-
 // BasicAuth is a basic authentication type
 type BasicAuth struct {
 	Username string `keda:"name=username, order=authParams"`
@@ -197,42 +164,6 @@ func empty(a string) string {
 		return "<empty>"
 	}
 	return "<present>"
-}
-
-// ToAuthMeta converts the Config to deprecated AuthMeta
-func (c *Config) ToAuthMeta() *AuthMeta {
-	if c.Disabled() {
-		return nil
-	}
-	return &AuthMeta{
-		// bearer auth
-		EnableBearerAuth: c.EnabledBearerAuth(),
-		BearerToken:      c.BearerToken,
-
-		// basic auth
-		EnableBasicAuth: c.EnabledBasicAuth(),
-		Username:        c.Username,
-		Password:        c.Password,
-
-		// client certification
-		EnableTLS: c.EnabledTLS(),
-		Cert:      c.Cert,
-		Key:       c.Key,
-		CA:        c.CA,
-
-		// oAuth2
-		EnableOAuth:    c.EnabledOAuth(),
-		OauthTokenURI:  c.OauthTokenURI,
-		Scopes:         c.Scopes,
-		ClientID:       c.ClientID,
-		ClientSecret:   c.ClientSecret,
-		EndpointParams: c.EndpointParams,
-
-		// custom auth header
-		EnableCustomAuth: c.EnabledCustomAuth(),
-		CustomAuthHeader: c.CustomAuthHeader,
-		CustomAuthValue:  c.CustomAuthValue,
-	}
 }
 
 type HTTPTransport struct {
