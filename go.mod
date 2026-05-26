@@ -135,11 +135,10 @@ require (
 	k8s.io/client-go v0.35.3
 	k8s.io/code-generator v0.35.3
 	k8s.io/component-base v0.35.0
-	k8s.io/klog/v2 v2.130.1
+	k8s.io/klog/v2 v2.140.0
 	k8s.io/kube-openapi v0.0.0-20260127142750-a19766b6e2d4
 	k8s.io/metrics v0.35.0
 	k8s.io/utils v0.0.0-20260108192941-914a6e750570
-	knative.dev/pkg v0.0.0-20260120122510-4a022ed9999a
 	sigs.k8s.io/controller-runtime v0.23.3
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20260405152528-6210f847b2c1
 	sigs.k8s.io/controller-tools v0.20.1
@@ -147,7 +146,10 @@ require (
 	sigs.k8s.io/kustomize/kustomize/v5 v5.8.1
 )
 
-require github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.24 // indirect
+require (
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.24 // indirect
+	github.com/evanphx/json-patch v5.9.0+incompatible // indirect
+)
 
 require (
 	cel.dev/expr v0.25.1 // indirect

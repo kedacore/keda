@@ -37,8 +37,6 @@ import (
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/scale"
 	"k8s.io/utils/ptr"
-	"knative.dev/pkg/apis/duck"
-	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -59,6 +57,29 @@ const (
 	statefulSetKind       = "StatefulSet"
 	replicaSetKind        = "ReplicaSet"
 )
+
+// podSpecable is a local duck type matching the PodSpecable shape used by
+// Knative and most Kubernetes workload resources. It allows extracting a
+// PodTemplateSpec from arbitrary custom resources via JSON round-tripping.
+type podSpecable struct {
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec podSpecableSpec `json:"spec,omitempty"`
+}
+
+type podSpecableSpec struct {
+	Template corev1.PodTemplateSpec `json:"template,omitempty"`
+}
+
+// fromUnstructured converts an unstructured Kubernetes object into a typed
+// struct by JSON round-tripping.
+func fromUnstructured(obj *unstructured.Unstructured, target interface{}) error {
+	raw, err := obj.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(raw, target)
+}
 
 var (
 	globalConfig                      = Config{}
@@ -152,8 +173,8 @@ func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, sc
 				logger.Error(err, "target resource doesn't exist")
 				return nil, "", err
 			}
-			withPods := &duckv1.WithPod{}
-			if err := duck.FromUnstructured(unstruct, withPods); err != nil {
+			withPods := &podSpecable{}
+			if err := fromUnstructured(unstruct, withPods); err != nil {
 				logger.Error(err, "cannot convert Unstructured into PodSpecable Duck-type", "object", unstruct)
 			}
 			podTemplateSpec.ObjectMeta = withPods.ObjectMeta
