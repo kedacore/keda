@@ -207,6 +207,8 @@ jobs:
     name: Execute e2e tests
     container: ghcr.io/kedacore/keda-tools:1.26.2
     if: needs.triage.outputs.run-e2e == 'true'
+    outputs:
+      test-outcome: ${{ steps.test.outcome }}
     steps:
       - name: Set status in-progress
         uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
@@ -332,14 +334,6 @@ jobs:
           NODE_POOL_SIZE: 1
           TEST_CLUSTER_NAME: keda-e2e-cluster-pr
 
-      - name: React to comment with success
-        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
-        if: steps.test.outcome == 'success'
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commentId: ${{ github.event.comment.id }}
-          reaction: "+1"
-
       - name: Set status success
         uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         if: steps.test.outcome == 'success'
@@ -351,14 +345,6 @@ jobs:
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
           output: |
             {"summary": "🟢 Tests Passed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
-
-      - name: React to comment with failure
-        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
-        if: steps.test.outcome != 'success'
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commentId: ${{ github.event.comment.id }}
-          reaction: "-1"
 
       - name: Set status failure
         uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
@@ -384,6 +370,8 @@ jobs:
     runs-on: ubuntu-24.04-arm
     name: Execute ARM smoke tests
     if: needs.triage.outputs.run-e2e == 'true'
+    outputs:
+      test-outcome: ${{ steps.test.outcome }}
     steps:
       - name: Set status in-progress
         uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
@@ -427,14 +415,6 @@ jobs:
           VERSION: ${{ needs.triage.outputs.image_tag }}
           SUFFIX: "-test"
 
-      - name: React to comment with success
-        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
-        if: steps.test.outcome == 'success'
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commentId: ${{ github.event.comment.id }}
-          reaction: "+1"
-
       - name: Set status success
         uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         if: steps.test.outcome == 'success'
@@ -446,14 +426,6 @@ jobs:
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
           output: |
             {"summary": "🟢 Tests Passed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
-
-      - name: React to comment with failure
-        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
-        if: steps.test.outcome != 'success'
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commentId: ${{ github.event.comment.id }}
-          reaction: "-1"
 
       - name: Set status failure
         uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
@@ -479,6 +451,8 @@ jobs:
     runs-on: s390x
     name: Execute s390x smoke tests
     if: needs.triage.outputs.run-e2e == 'true'
+    outputs:
+      test-outcome: ${{ steps.test.outcome }}
     steps:
       - name: Set status in-progress
         uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
@@ -529,14 +503,6 @@ jobs:
           VERSION: ${{ needs.triage.outputs.image_tag }}
           SUFFIX: "-test"
 
-      - name: React to comment with success
-        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
-        if: steps.test.outcome == 'success'
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commentId: ${{ github.event.comment.id }}
-          reaction: "+1"
-
       - name: Set status success
         uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         if: steps.test.outcome == 'success'
@@ -548,14 +514,6 @@ jobs:
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
           output: |
             {"summary": "🟢 Tests Passed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
-
-      - name: React to comment with failure
-        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
-        if: steps.test.outcome != 'success'
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commentId: ${{ github.event.comment.id }}
-          reaction: "-1"
 
       - name: Set status failure
         uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
@@ -582,3 +540,31 @@ jobs:
           name: s390x-smoke-test-logs
           path: "${{ github.workspace }}/**/*.log"
           if-no-files-found: ignore
+
+  report-reaction:
+    needs: [triage, run-e2e-test, run-arm-smoke-test, run-s390x-smoke-test]
+    runs-on: ubuntu-latest
+    name: Report combined reaction
+    if: ${{ always() && needs.triage.outputs.run-e2e == 'true' }}
+    steps:
+      - name: React to comment with success
+        if: >-
+          needs.run-e2e-test.outputs.test-outcome == 'success' &&
+          needs.run-arm-smoke-test.outputs.test-outcome == 'success' &&
+          needs.run-s390x-smoke-test.outputs.test-outcome == 'success'
+        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commentId: ${{ github.event.comment.id }}
+          reaction: "+1"
+
+      - name: React to comment with failure
+        if: >-
+          needs.run-e2e-test.outputs.test-outcome != 'success' ||
+          needs.run-arm-smoke-test.outputs.test-outcome != 'success' ||
+          needs.run-s390x-smoke-test.outputs.test-outcome != 'success'
+        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commentId: ${{ github.event.comment.id }}
+          reaction: "-1"
