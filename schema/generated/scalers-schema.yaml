@@ -2045,6 +2045,7 @@ scalers:
         - name: url
           type: string
           metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: format
           type: string
           default: json
