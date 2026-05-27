@@ -347,7 +347,43 @@ func evaluateExecution(testResults []TestResult) int {
 		}
 	}
 
+	dumpResults(passSummary, failSummary)
 	return exitCode
+}
+
+// dumpResults writes the summary of passed and failed tests to files in a directory specified by E2E_RESULTS_DIR environment variable if specified.
+func dumpResults(passSummary []string, failSummary []string) {
+	e2eDir := os.Getenv("E2E_RESULTS_DIR")
+	if e2eDir == "" {
+		return
+	}
+	if err := os.MkdirAll(e2eDir, 0o755); err != nil {
+		fmt.Printf("WARN: cannot create results dir %s: %v\n", e2eDir, err)
+		return
+	}
+
+	passFile := "passed.txt"
+	failFile := "failed.txt"
+	dumpLogsToFile(failSummary, failFile, e2eDir)
+	dumpLogsToFile(passSummary, passFile, e2eDir)
+}
+
+// dumpLogsToFile writes the summary to a file in the specified directory. If the file already exists, it will be overwritten.
+// Leading tabs from the summary lines are stripped so the file embeds cleanly into Markdown
+// (a line beginning with a tab would otherwise render as a code block inside the PR comment).
+func dumpLogsToFile(summary []string, fileName string, e2eDir string) {
+	stripped := make([]string, len(summary))
+	for i, s := range summary {
+		stripped[i] = strings.TrimLeft(s, "\t")
+	}
+	tests := strings.Join(stripped, "\n")
+	if len(stripped) > 0 {
+		tests += "\n"
+	}
+	filePath := filepath.Join(e2eDir, fileName)
+	if err := os.WriteFile(filePath, []byte(tests), 0o644); err != nil {
+		fmt.Printf("WARN: cannot write %s: %v\n", filePath, err)
+	}
 }
 
 // numberToWord converts input integer (0-20) to corresponding word (zero-twenty)

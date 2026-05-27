@@ -262,12 +262,6 @@
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
-                },
-                {
-                    "name": "authModes",
-                    "type": "string",
-                    "optional": true,
-                    "metadataVariableReadable": true
                 }
             ]
         },
@@ -1775,6 +1769,93 @@
             ]
         },
         {
+            "type": "elastic-forecast",
+            "parameters": [
+                {
+                    "name": "addresses",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "cloudID",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "apiKey",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "jobID",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "lookAhead",
+                    "type": "string",
+                    "default": "10m",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "targetValue",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "activationTargetValue",
+                    "type": "string",
+                    "default": "0",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "index",
+                    "type": "string",
+                    "default": "*",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "partitionFieldValue",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "byFieldValue",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                }
+            ]
+        },
+        {
             "type": "elasticsearch",
             "parameters": [
                 {
@@ -2964,12 +3045,6 @@
                     "type": "string",
                     "default": "false",
                     "metadataVariableReadable": true
-                },
-                {
-                    "name": "authModes",
-                    "type": "string",
-                    "optional": true,
-                    "metadataVariableReadable": true
                 }
             ]
         },
@@ -3437,6 +3512,124 @@
             ]
         },
         {
+            "type": "opensearch",
+            "parameters": [
+                {
+                    "name": "addresses",
+                    "type": "string",
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "enableTLS",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "caCert",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "clientCert",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "clientKey",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "index",
+                    "type": "string",
+                    "separator": ";",
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "searchTemplateName",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "query",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "parameters",
+                    "type": "string",
+                    "optional": true,
+                    "separator": ";",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "valueLocation",
+                    "type": "string",
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "targetValue",
+                    "type": "string",
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "activationTargetValue",
+                    "type": "string",
+                    "default": "0",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "ignoreNullValues",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "metricName",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                }
+            ]
+        },
+        {
             "type": "openstack-metric",
             "parameters": [
                 {
@@ -3693,12 +3886,6 @@
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
-                },
-                {
-                    "name": "authModes",
-                    "type": "string",
-                    "optional": true,
-                    "metadataVariableReadable": true
                 }
             ]
         },
@@ -3771,12 +3958,6 @@
                 },
                 {
                     "name": "identityOwner",
-                    "type": "string",
-                    "optional": true,
-                    "metadataVariableReadable": true
-                },
-                {
-                    "name": "authModes",
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
@@ -5681,6 +5862,21 @@
                     "name": "buildId",
                     "type": "string",
                     "optional": true,
+                    "deprecatedAnnounce": "The 'buildId' setting is DEPRECATED and will be removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead",
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "workerDeploymentName",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "workerDeploymentBuildId",
+                    "type": "string",
+                    "optional": true,
                     "metadataVariableReadable": true,
                     "envVariableReadable": true
                 },
@@ -5688,12 +5884,14 @@
                     "name": "selectAllActive",
                     "type": "string",
                     "default": "false",
+                    "deprecatedAnnounce": "The 'selectAllActive' setting is DEPRECATED and will be removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead",
                     "metadataVariableReadable": true
                 },
                 {
                     "name": "selectUnversioned",
                     "type": "string",
                     "default": "false",
+                    "deprecatedAnnounce": "The 'selectUnversioned' setting is DEPRECATED and will be removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Remove it if your workers are unversioned. Or use 'workerDeploymentName' and 'workerDeploymentBuildId' if you're migrating to Worker Deployment Versioning",
                     "metadataVariableReadable": true
                 },
                 {

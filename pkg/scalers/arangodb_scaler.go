@@ -61,8 +61,6 @@ type arangoDBMetadata struct {
 	// Specify the max size of the active connection pool.
 	// +optional
 	ConnectionLimit int64 `keda:"name=connectionLimit, order=triggerMetadata, optional"`
-	// +optional
-	AuthModes string `keda:"name=authModes, order=triggerMetadata, optional"`
 
 	// The index of the scaler inside the ScaledObject
 	// +internal

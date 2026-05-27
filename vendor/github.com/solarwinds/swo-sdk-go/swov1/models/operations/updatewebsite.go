@@ -7,6 +7,7 @@ import (
 )
 
 type UpdateWebsiteRequest struct {
+	// Entity ID.
 	EntityID string `pathParam:"style=simple,explode=false,name=entityId"`
 	// The updated website monitoring configuration
 	DemWebsite components.DemWebsite `request:"mediaType=application/json"`

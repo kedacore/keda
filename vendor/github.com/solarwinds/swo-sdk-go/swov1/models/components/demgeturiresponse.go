@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// DemGetURIResponseStatus - Current availability status of the URI.
 type DemGetURIResponseStatus string
 
 const (
@@ -45,8 +46,11 @@ func (e *DemGetURIResponseStatus) UnmarshalJSON(data []byte) error {
 }
 
 type DemGetURIResponse struct {
-	ID     string                  `json:"id"`
-	Type   string                  `json:"type"`
+	// Unique identifier of the URI.
+	ID string `json:"id"`
+	// Entity type, always 'Uri'.
+	Type string `json:"type"`
+	// Current availability status of the URI.
 	Status DemGetURIResponseStatus `json:"status"`
 	//   Name of the URI, which must be unique within the organization.
 	//   The name must also not contain any control characters, any white space other than space (U+0020), or any consecutive, leading or trailing spaces.

@@ -96,7 +96,9 @@ func (s *SearchLogsRequest) GetSkipToken() *string {
 
 // SearchLogsResponseBody - The request has succeeded.
 type SearchLogsResponseBody struct {
-	Logs     []components.LogsEvent    `json:"logs"`
+	// Array of log events.
+	Logs []components.LogsEvent `json:"logs"`
+	// Pagination information.
 	PageInfo components.CommonPageInfo `json:"pageInfo"`
 }
 

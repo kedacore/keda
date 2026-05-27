@@ -108,6 +108,28 @@ func (*zlibCodec) Decode(payloads []*commonpb.Payload) ([]*commonpb.Payload, err
 	return result, nil
 }
 
+func decodePayloads(payloads []*commonpb.Payload, codecs []PayloadCodec) ([]*commonpb.Payload, error) {
+	var err error
+	// Iterate forwards decoding
+	for _, codec := range codecs {
+		if payloads, err = codec.Decode(payloads); err != nil {
+			return payloads, err
+		}
+	}
+	return payloads, nil
+}
+
+func encodePayloads(payloads []*commonpb.Payload, codecs []PayloadCodec) ([]*commonpb.Payload, error) {
+	var err error
+	// Iterate backwards encoding
+	for i := len(codecs) - 1; i >= 0; i-- {
+		if payloads, err = codecs[i].Encode(payloads); err != nil {
+			return payloads, err
+		}
+	}
+	return payloads, nil
+}
+
 // CodecDataConverter is a DataConverter that wraps an underlying data
 // converter and supports chained encoding of just the payload without regard
 // for serialization to/from actual types.
@@ -126,25 +148,11 @@ func NewCodecDataConverter(parent DataConverter, codecs ...PayloadCodec) DataCon
 }
 
 func (e *CodecDataConverter) encode(payloads []*commonpb.Payload) ([]*commonpb.Payload, error) {
-	var err error
-	// Iterate backwards encoding
-	for i := len(e.codecs) - 1; i >= 0; i-- {
-		if payloads, err = e.codecs[i].Encode(payloads); err != nil {
-			return payloads, err
-		}
-	}
-	return payloads, nil
+	return encodePayloads(payloads, e.codecs)
 }
 
 func (e *CodecDataConverter) decode(payloads []*commonpb.Payload) ([]*commonpb.Payload, error) {
-	var err error
-	// Iterate forwards decoding
-	for _, codec := range e.codecs {
-		if payloads, err = codec.Decode(payloads); err != nil {
-			return payloads, err
-		}
-	}
-	return payloads, nil
+	return decodePayloads(payloads, e.codecs)
 }
 
 // ToPayload implements DataConverter.ToPayload performing encoding on the
@@ -231,6 +239,27 @@ func (e *CodecDataConverter) ToStrings(payloads *commonpb.Payloads) []string {
 	return strs
 }
 
+func (e *CodecDataConverter) WithSerializationContext(ctx SerializationContext) DataConverter {
+	parent := e.parent
+	if p, ok := parent.(DataConverterWithSerializationContext); ok {
+		parent = p.WithSerializationContext(ctx)
+	}
+	codecs := make([]PayloadCodec, len(e.codecs))
+	changed := parent != e.parent
+	for i, c := range e.codecs {
+		if cc, ok := c.(PayloadCodecWithSerializationContext); ok {
+			codecs[i] = cc.WithSerializationContext(ctx)
+			changed = changed || codecs[i] != c
+		} else {
+			codecs[i] = c
+		}
+	}
+	if !changed {
+		return e
+	}
+	return &CodecDataConverter{parent, codecs}
+}
+
 const remotePayloadCodecEncodePath = "/encode"
 const remotePayloadCodecDecodePath = "/decode"
 
@@ -239,23 +268,11 @@ type codecHTTPHandler struct {
 }
 
 func (e *codecHTTPHandler) encode(payloads []*commonpb.Payload) ([]*commonpb.Payload, error) {
-	var err error
-	for i := len(e.codecs) - 1; i >= 0; i-- {
-		if payloads, err = e.codecs[i].Encode(payloads); err != nil {
-			return payloads, err
-		}
-	}
-	return payloads, nil
+	return encodePayloads(payloads, e.codecs)
 }
 
 func (e *codecHTTPHandler) decode(payloads []*commonpb.Payload) ([]*commonpb.Payload, error) {
-	var err error
-	for _, codec := range e.codecs {
-		if payloads, err = codec.Decode(payloads); err != nil {
-			return payloads, err
-		}
-	}
-	return payloads, nil
+	return decodePayloads(payloads, e.codecs)
 }
 
 // ServeHTTP implements the http.Handler interface.
