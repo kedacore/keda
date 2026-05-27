@@ -565,8 +565,8 @@ func TestPrometheusMetrics(t *testing.T) {
 	testCloudEventEmitted(t, data)
 	testCloudEventEmittedError(t, data)
 	testEmptyUpstreamResponse(t, data)
-	testHTTPClientMetrics(t, data)
-	testHighCardinalityMetricsDisabled(t, kc, data)
+	testHTTPClientMetrics(t, kc, data)
+	testHighCardinalityLabelsDisabled(t, kc, data)
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
@@ -1610,8 +1610,10 @@ func testEmptyUpstreamResponse(t *testing.T, data templateData) {
 	assert.True(t, familyValidator(metric))
 }
 
-func testHTTPClientMetrics(t *testing.T, data templateData) {
+func testHTTPClientMetrics(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing HTTP client metrics ---")
+	SetDeploymentContainerArg(t, kc, KEDAOperator, KEDANamespace, KEDAOperator, "--enable-high-cardinality-metrics-labels", "true")
+	defer SetDeploymentContainerArg(t, kc, KEDAOperator, KEDANamespace, KEDAOperator, "--enable-high-cardinality-metrics-labels", "false")
 
 	// The dedicated HTTP client metrics ScaledObject uses a prometheus-type
 	// scaler that makes real HTTP requests on every poll interval, so its
@@ -1646,7 +1648,7 @@ func testHTTPClientMetrics(t *testing.T, data templateData) {
 		testNamespace, data.HTTPClientScaledObjectName, data.HTTPClientScalerName)
 
 	matchHistogramLabels := func(labels []*prommodel.LabelPair) bool {
-		return ExtractPrometheusLabelValue("scaler", labels) == "prometheus"
+		return matchLabels(labels)
 	}
 	family, ok := families["keda_scaler_http_request_duration_seconds"]
 	assert.True(t, ok, "keda_scaler_http_request_duration_seconds not present")
@@ -1664,14 +1666,10 @@ func testHTTPClientMetrics(t *testing.T, data templateData) {
 	}
 }
 
-func testHighCardinalityMetricsDisabled(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing high-cardinality metrics disabled ---")
+func testHighCardinalityLabelsDisabled(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing high-cardinality labels disabled ---")
 
-	SetDeploymentContainerArg(t, kc, KEDAOperator, KEDANamespace, KEDAOperator, "--enable-high-cardinality-metrics", "false")
-	defer SetDeploymentContainerArg(t, kc, KEDAOperator, KEDANamespace, KEDAOperator, "--enable-high-cardinality-metrics", "true")
-
-	SetDeploymentContainerArg(t, kc, KEDAMetricsAPIServer, KEDANamespace, KEDAMetricsAPIServer, "--enable-high-cardinality-metrics", "false")
-	defer SetDeploymentContainerArg(t, kc, KEDAMetricsAPIServer, KEDANamespace, KEDAMetricsAPIServer, "--enable-high-cardinality-metrics", "true")
+	SetDeploymentContainerArg(t, kc, KEDAOperator, KEDANamespace, KEDAOperator, "--enable-high-cardinality-metrics-labels", "false")
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	KubectlApplyWithTemplate(t, data, "httpClientScaledObjectTemplate", httpClientScaledObjectTemplate)
@@ -1698,14 +1696,31 @@ func testHighCardinalityMetricsDisabled(t *testing.T, kc *kubernetes.Clientset, 
 		}
 		return false
 	})
-	_, ok := families["keda_scaler_http_request_duration_seconds"]
-	assert.False(t, ok, "keda_scaler_http_request_duration_seconds should not be emitted when high-cardinality metrics are disabled")
+	family, ok := families["keda_scaler_http_request_duration_seconds"]
+	assert.True(t, ok, "keda_scaler_http_request_duration_seconds should be emitted when high-cardinality labels are disabled")
+	if ok {
+		var found bool
+		for _, metric := range family.GetMetric() {
+			labels := metric.GetLabel()
+			if ExtractPrometheusLabelValue("scaler", labels) == "prometheus" &&
+				ExtractPrometheusLabelValue("namespace", labels) == "" &&
+				ExtractPrometheusLabelValue("scaled_resource", labels) == "" &&
+				ExtractPrometheusLabelValue("trigger_name", labels) == "" &&
+				ExtractPrometheusLabelValue("metric_name", labels) == "" {
+				assert.Greater(t, metric.GetHistogram().GetSampleCount(), uint64(0),
+					"keda_scaler_http_request_duration_seconds sample count should be > 0")
+				found = true
+				break
+			}
+		}
+		assert.True(t, found, "expected keda_scaler_http_request_duration_seconds histogram without high-cardinality labels")
+	}
 
 	families = WaitForPrometheusMetricAtURL(t, kedaOperatorPrometheusURL, "keda_internal_metricsservice_grpc_server_handled_total", metricFamilyCounterSumGreaterThanZero)
 	_, ok = families["keda_internal_metricsservice_grpc_server_handling_seconds"]
-	assert.False(t, ok, "keda_internal_metricsservice_grpc_server_handling_seconds should not be emitted when high-cardinality metrics are disabled")
+	assert.True(t, ok, "keda_internal_metricsservice_grpc_server_handling_seconds should still be emitted when high-cardinality labels are disabled")
 
 	families = WaitForPrometheusMetricAtURL(t, kedaMetricsServerPrometheusURL, "keda_internal_metricsservice_grpc_client_handled_total", metricFamilyCounterSumGreaterThanZero)
 	_, ok = families["keda_internal_metricsservice_grpc_client_handling_seconds"]
-	assert.False(t, ok, "keda_internal_metricsservice_grpc_client_handling_seconds should not be emitted when high-cardinality metrics are disabled")
+	assert.True(t, ok, "keda_internal_metricsservice_grpc_client_handling_seconds should still be emitted when high-cardinality labels are disabled")
 }

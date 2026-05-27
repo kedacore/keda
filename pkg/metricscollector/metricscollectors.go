@@ -39,9 +39,9 @@ var (
 )
 
 type Options struct {
-	EnablePrometheusMetrics      bool
-	EnableOpenTelemetryMetrics   bool
-	EnableHighCardinalityMetrics bool
+	EnablePrometheusMetrics     bool
+	EnableOpenTelemetryMetrics  bool
+	EnableHighCardinalityLabels bool
 }
 
 type MetricsCollector interface {
@@ -99,16 +99,16 @@ type MetricsCollector interface {
 
 func NewMetricsCollectors(options Options) {
 	if options.EnablePrometheusMetrics {
-		promometrics := NewPromMetrics(options.EnableHighCardinalityMetrics)
+		promometrics := NewPromMetrics(options.EnableHighCardinalityLabels)
 		collectors = append(collectors, promometrics)
 
 		if promServerMetrics == nil {
-			promServerMetrics = newPromServerMetrics(options.EnableHighCardinalityMetrics)
+			promServerMetrics = newPromServerMetrics()
 		}
 	}
 
 	if options.EnableOpenTelemetryMetrics {
-		otelmetrics := NewOtelMetrics(options.EnableHighCardinalityMetrics)
+		otelmetrics := NewOtelMetrics(options.EnableHighCardinalityLabels)
 		collectors = append(collectors, otelmetrics)
 	}
 }
