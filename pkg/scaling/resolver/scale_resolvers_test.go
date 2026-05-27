@@ -19,6 +19,7 @@ package resolver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -1123,4 +1124,114 @@ func TestReadAuthParamsFromFile_Errors(t *testing.T) {
 	_, err = readAuthParamsFromFile("../test.json")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "filePath must be relative")
+}
+
+func TestResolveAuthSecret_RestrictedAccess_UsesKedaNamespace(t *testing.T) {
+	origRestrictSecretAccess := restrictSecretAccess
+	origKedaNamespace := kedaNamespace
+	defer func() {
+		restrictSecretAccess = origRestrictSecretAccess
+		kedaNamespace = origKedaNamespace
+	}()
+
+	tests := []struct {
+		name           string
+		secretExists   bool
+		secretName     string
+		secretKey      string
+		secretValue    string
+		inputNamespace string
+		expectedResult string
+	}{
+		{
+			name:           "restricted access, secret found in keda namespace",
+			secretExists:   true,
+			secretName:     secretName,
+			secretKey:      secretKey,
+			secretValue:    secretData,
+			inputNamespace: "my-app",
+			expectedResult: secretData,
+		},
+		{
+			name:           "restricted access, secret not found in keda namespace",
+			secretExists:   false,
+			secretName:     secretName,
+			secretKey:      secretKey,
+			inputNamespace: "my-app",
+			expectedResult: "",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			restrictSecretAccess = "true"
+			kedaNamespace = "keda"
+
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockSecretNamespaceLister := mock_v1.NewMockSecretNamespaceLister(ctrl)
+			mockSecretLister := mock_v1.NewMockSecretLister(ctrl)
+
+			mockSecretLister.EXPECT().Secrets(kedaNamespace).Return(mockSecretNamespaceLister).Times(1)
+
+			if test.secretExists {
+				secret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: kedaNamespace,
+						Name:      test.secretName,
+					},
+					Data: map[string][]byte{test.secretKey: []byte(test.secretValue)},
+				}
+				mockSecretNamespaceLister.EXPECT().Get(test.secretName).Return(secret, nil).Times(1)
+			} else {
+				mockSecretNamespaceLister.EXPECT().Get(test.secretName).Return(nil, fmt.Errorf("secret %q not found", test.secretName)).Times(1)
+			}
+
+			ctx := context.Background()
+			result := resolveAuthSecret(
+				ctx,
+				fake.NewClientBuilder().Build(),
+				logf.Log.WithName("test"),
+				test.secretName,
+				test.inputNamespace,
+				test.secretKey,
+				mockSecretLister,
+			)
+
+			assert.Equal(t, test.expectedResult, result)
+		})
+	}
+}
+
+func TestResolveAuthSecret_UnrestrictedAccess_UsesOriginalNamespace(t *testing.T) {
+	origRestrictSecretAccess := restrictSecretAccess
+	defer func() {
+		restrictSecretAccess = origRestrictSecretAccess
+	}()
+
+	restrictSecretAccess = ""
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      secretName,
+		},
+		Data: map[string][]byte{secretKey: []byte(secretData)},
+	}
+
+	fakeClient := fake.NewClientBuilder().WithObjects(secret).Build()
+
+	ctx := context.Background()
+	result := resolveAuthSecret(
+		ctx,
+		fakeClient,
+		logf.Log.WithName("test"),
+		secretName,
+		namespace,
+		secretKey,
+		nil,
+	)
+
+	assert.Equal(t, secretData, result)
 }
