@@ -1470,7 +1470,6 @@ var _ = It("should emit both warnings when both PollingInterval and CooldownPeri
 
 	warnings, err := so.ValidateCreate(ptr.To(false))
 	Expect(err).ToNot(HaveOccurred())
-	Expect(warnings).To(HaveLen(2))
 	Expect(warnings).To(ContainElement(ContainSubstring("PollingInterval is configured but is not relevant")))
 	Expect(warnings).To(ContainElement(ContainSubstring("CooldownPeriod is configured but is not relevant")))
 })

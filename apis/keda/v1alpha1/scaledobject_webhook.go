@@ -172,7 +172,7 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 
 	for functionName, function := range verifyFunctions {
 		scaledobjectlog.V(1).Info("validating scaledobject", "function", functionName, "name", so.Name)
-		err := function(so, action, dryRun)
+		warnings, err := function(so, action, dryRun)
 		if err != nil {
 			return nil, err
 		}
@@ -192,36 +192,39 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 	}
 
 	scaledobjectlog.V(1).Info("scaledobject is valid", "namespace", so.Namespace, "name", so.Name)
-	return nil, nil
+	return allWarnings, nil
 }
 
-func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) error {
+//nolint:unparam
+func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) (admission.Warnings, error) {
 	err := CheckReplicaCountBoundsAreValid(incomingSo)
 	if err != nil {
 		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
 		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-replicas")
 	}
-	return err
+	return nil, err
 }
 
-func verifyName(incomingSo *ScaledObject, action string, _ bool) error {
+//nolint:unparam
+func verifyName(incomingSo *ScaledObject, action string, _ bool) (admission.Warnings, error) {
 	if len(incomingSo.Name) > maxK8sLabelValueLength {
 		err := fmt.Errorf("scaledobject name %q is %d characters long; must be no more than %d characters because it is used as the %q label value", incomingSo.Name, len(incomingSo.Name), maxK8sLabelValueLength, ScaledObjectOwnerAnnotation)
 		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
 		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "name-too-long")
-		return err
+		return nil, err
 	}
 	hpaName := getHpaName(*incomingSo)
 	if len(hpaName) > maxK8sLabelValueLength {
 		err := fmt.Errorf("HPA name %q derived from scaledobject is %d characters long; must be no more than %d characters; set spec.advanced.horizontalPodAutoscalerConfig.name to a shorter name or shorten the scaledobject name", hpaName, len(hpaName), maxK8sLabelValueLength)
 		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
 		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "hpa-name-too-long")
-		return err
+		return nil, err
 	}
-	return nil
+	return nil, nil
 }
 
-func verifyFallback(incomingSo *ScaledObject, action string, _ bool) error {
+//nolint:unparam
+func verifyFallback(incomingSo *ScaledObject, action string, _ bool) (admission.Warnings, error) {
 	err := CheckFallbackValid(incomingSo)
 	if err != nil {
 		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
@@ -343,7 +346,7 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 			msg := "PollingInterval is configured but is not relevant. PollingInterval is only relevant when minReplicaCount = 0 or idleReplicaCount = 0 or useCachedMetrics is enabled"
 			warnings = append(warnings, msg)
 			if eventRecorder != nil {
-				eventRecorder.Event(incomingSo, corev1.EventTypeWarning, eventreason.KEDAScalersInfo, msg)
+				eventRecorder.Event(incomingSo, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, msg)
 			}
 		}
 	}
@@ -355,7 +358,7 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 			msg := "CooldownPeriod is configured but is not relevant. CooldownPeriod is only relevant when minReplicaCount = 0 or idleReplicaCount = 0"
 			warnings = append(warnings, msg)
 			if eventRecorder != nil {
-				eventRecorder.Event(incomingSo, corev1.EventTypeWarning, eventreason.KEDAScalersInfo, msg)
+				eventRecorder.Event(incomingSo, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, msg)
 			}
 		}
 	}
