@@ -7,27 +7,31 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
 
 	helper "github.com/kedacore/keda/v2/tests/helper"
 )
 
+// Load environment variables from .env file
+var _ = godotenv.Load("../../.env")
+
 const (
-	triggerScopedTestName = "fallback-trigger-scoped-test"
+	scalingModifiersTestName = "fallback-scaling-modifiers-test"
 )
 
 var (
-	triggerScopedNamespace        = fmt.Sprintf("%s-ns", triggerScopedTestName)
-	triggerScopedDeploymentName   = fmt.Sprintf("%s-deployment", triggerScopedTestName)
-	triggerScopedScaledObjectName = fmt.Sprintf("%s-so", triggerScopedTestName)
-	primaryConfigMapName          = fmt.Sprintf("%s-primary-cm", triggerScopedTestName)
-	secondaryConfigMapName        = fmt.Sprintf("%s-secondary-cm", triggerScopedTestName)
-	triggerScopedMinReplicas      = 1
-	triggerScopedMaxReplicas      = 20
+	scalingModifiersNamespace        = fmt.Sprintf("%s-ns", scalingModifiersTestName)
+	scalingModifiersDeploymentName   = fmt.Sprintf("%s-deployment", scalingModifiersTestName)
+	scalingModifiersScaledObjectName = fmt.Sprintf("%s-so", scalingModifiersTestName)
+	primaryConfigMapName             = fmt.Sprintf("%s-primary-cm", scalingModifiersTestName)
+	secondaryConfigMapName           = fmt.Sprintf("%s-secondary-cm", scalingModifiersTestName)
+	scalingModifiersMinReplicas      = 1
+	scalingModifiersMaxReplicas      = 20
 )
 
-type triggerScopedTemplateData struct {
+type scalingModifiersTemplateData struct {
 	Namespace              string
 	DeploymentName         string
 	ScaledObjectName       string
@@ -40,7 +44,7 @@ type triggerScopedTemplateData struct {
 }
 
 const (
-	triggerScopedDeploymentTemplate = `apiVersion: apps/v1
+	scalingModifiersDeploymentTemplate = `apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{.DeploymentName}}
@@ -75,7 +79,7 @@ metadata:
 data:
   value: "{{.SecondaryValue}}"`
 
-	triggerScopedScaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
+	scalingModifiersScaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: {{.ScaledObjectName}}
@@ -88,7 +92,7 @@ spec:
   minReplicaCount: {{.MinReplicaCount}}
   maxReplicaCount: {{.MaxReplicaCount}}
   fallback:
-    behavior: triggerScoped
+    behavior: scalingModifiers
     failureThreshold: 3
     replicas: 4
   advanced:
@@ -116,37 +120,37 @@ spec:
       targetValue: "2"`
 )
 
-func TestTriggerScopedFallback(t *testing.T) {
+func TestScalingModifiersFallback(t *testing.T) {
 	kc := helper.GetKubernetesClient(t)
-	data := triggerScopedTemplateData{
-		Namespace:              triggerScopedNamespace,
-		DeploymentName:         triggerScopedDeploymentName,
-		ScaledObjectName:       triggerScopedScaledObjectName,
+	data := scalingModifiersTemplateData{
+		Namespace:              scalingModifiersNamespace,
+		DeploymentName:         scalingModifiersDeploymentName,
+		ScaledObjectName:       scalingModifiersScaledObjectName,
 		PrimaryConfigMapName:   primaryConfigMapName,
 		SecondaryConfigMapName: secondaryConfigMapName,
-		MinReplicaCount:        triggerScopedMinReplicas,
-		MaxReplicaCount:        triggerScopedMaxReplicas,
+		MinReplicaCount:        scalingModifiersMinReplicas,
+		MaxReplicaCount:        scalingModifiersMaxReplicas,
 		PrimaryValue:           "16",
 		SecondaryValue:         "12",
 	}
 
 	templates := []helper.Template{
-		{Name: "triggerScopedDeploymentTemplate", Config: triggerScopedDeploymentTemplate},
+		{Name: "scalingModifiersDeploymentTemplate", Config: scalingModifiersDeploymentTemplate},
 		{Name: "primaryConfigMapTemplate", Config: primaryConfigMapTemplate},
 		{Name: "secondaryConfigMapTemplate", Config: secondaryConfigMapTemplate},
-		{Name: "triggerScopedScaledObjectTemplate", Config: triggerScopedScaledObjectTemplate},
+		{Name: "scalingModifiersScaledObjectTemplate", Config: scalingModifiersScaledObjectTemplate},
 	}
 
 	// Create resources
 	helper.CreateKubernetesResources(t, kc, data.Namespace, data, templates)
 
-	// Test 1: Both triggers healthy - should use primary
+	// Test 1: Both triggers healthy - formula picks the first non-nil (primary)
 	testBothTriggersHealthy(t, kc, data)
 
-	// Test 2: Primary fails - should failover to secondary
+	// Test 2: Primary fails - formula's ?? chain falls through to secondary
 	testPrimaryTriggerFails(t, kc, data)
 
-	// Test 3: Both triggers fail - should use static fallback (5 replicas)
+	// Test 3: Both triggers fail - formula's trailing constant "?? 8" is used
 	testBothTriggersFail(t, kc, data)
 
 	// Test 4: Recovery - primary comes back
@@ -156,18 +160,18 @@ func TestTriggerScopedFallback(t *testing.T) {
 	helper.DeleteKubernetesResources(t, data.Namespace, data, templates)
 }
 
-func testBothTriggersHealthy(t *testing.T, kc *kubernetes.Clientset, data triggerScopedTemplateData) {
+func testBothTriggersHealthy(t *testing.T, kc *kubernetes.Clientset, data scalingModifiersTemplateData) {
 	t.Log("--- testing both triggers healthy (should use primary) ---")
 
 	// Primary value is 16, target is 2, so: 16/2 = 8 replicas
-	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, triggerScopedDeploymentName, data.Namespace, 8, 60, 3),
+	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, scalingModifiersDeploymentName, data.Namespace, 8, 60, 3),
 		"replica count should be 8 (from primary trigger) after 3 minutes")
 
 	// Ensure it stays stable
-	helper.AssertReplicaCountNotChangeDuringTimePeriod(t, kc, triggerScopedDeploymentName, data.Namespace, 8, 30)
+	helper.AssertReplicaCountNotChangeDuringTimePeriod(t, kc, scalingModifiersDeploymentName, data.Namespace, 8, 30)
 }
 
-func testPrimaryTriggerFails(t *testing.T, kc *kubernetes.Clientset, data triggerScopedTemplateData) {
+func testPrimaryTriggerFails(t *testing.T, kc *kubernetes.Clientset, data scalingModifiersTemplateData) {
 	t.Log("--- testing primary trigger failure (should failover to secondary) ---")
 
 	// Delete primary ConfigMap to simulate trigger failure
@@ -175,29 +179,29 @@ func testPrimaryTriggerFails(t *testing.T, kc *kubernetes.Clientset, data trigge
 
 	// After primary fails 3 times (failureThreshold), should use secondary
 	// Secondary value is 12, target is 2, so: 12/2 = 6 replicas
-	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, triggerScopedDeploymentName, data.Namespace, 6, 90, 3),
+	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, scalingModifiersDeploymentName, data.Namespace, 6, 90, 3),
 		"replica count should be 6 (from secondary trigger) after failover")
 
 	// Ensure it stays stable
-	helper.AssertReplicaCountNotChangeDuringTimePeriod(t, kc, triggerScopedDeploymentName, data.Namespace, 6, 30)
+	helper.AssertReplicaCountNotChangeDuringTimePeriod(t, kc, scalingModifiersDeploymentName, data.Namespace, 6, 30)
 }
 
-func testBothTriggersFail(t *testing.T, kc *kubernetes.Clientset, data triggerScopedTemplateData) {
-	t.Log("--- testing both triggers fail (should use static fallback) ---")
+func testBothTriggersFail(t *testing.T, kc *kubernetes.Clientset, data scalingModifiersTemplateData) {
+	t.Log("--- testing both triggers fail (formula evaluates to trailing constant 8) ---")
 
-	// Delete secondary ConfigMap to simulate both triggers failing
+	// Delete secondary ConfigMap so both triggers fail. fallback.replicas (4)
+	// is NOT consulted here - the formula's trailing "?? 8" still produces a
+	// real value, so HPA gets 8/target(2) = 4 desired replicas.
 	helper.KubectlDeleteWithTemplate(t, data, "secondaryConfigMapTemplate", secondaryConfigMapTemplate)
 
-	// After both triggers fail, should use static fallback: 8 replicas
-	// (formula returns 8, target is 2, so: 8/2 = 4 replicas)
-	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, triggerScopedDeploymentName, data.Namespace, 4, 90, 3),
-		"replica count should be 4 (static fallback 8/target 2) when both triggers fail")
+	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, scalingModifiersDeploymentName, data.Namespace, 4, 90, 3),
+		"replica count should be 4 (formula constant 8 / target 2) when both triggers fail")
 
 	// Ensure it stays stable
-	helper.AssertReplicaCountNotChangeDuringTimePeriod(t, kc, triggerScopedDeploymentName, data.Namespace, 4, 30)
+	helper.AssertReplicaCountNotChangeDuringTimePeriod(t, kc, scalingModifiersDeploymentName, data.Namespace, 4, 30)
 }
 
-func testTriggerRecovery(t *testing.T, kc *kubernetes.Clientset, data triggerScopedTemplateData) {
+func testTriggerRecovery(t *testing.T, kc *kubernetes.Clientset, data scalingModifiersTemplateData) {
 	t.Log("--- testing trigger recovery (should switch back to primary) ---")
 
 	// Recreate both ConfigMaps
@@ -205,9 +209,9 @@ func testTriggerRecovery(t *testing.T, kc *kubernetes.Clientset, data triggerSco
 	helper.KubectlApplyWithTemplate(t, data, "secondaryConfigMapTemplate", secondaryConfigMapTemplate)
 
 	// After recovery, should use primary again: 16/2 = 8 replicas
-	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, triggerScopedDeploymentName, data.Namespace, 8, 90, 3),
+	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, scalingModifiersDeploymentName, data.Namespace, 8, 90, 3),
 		"replica count should be 8 (from primary trigger) after recovery")
 
 	// Ensure it stays stable
-	helper.AssertReplicaCountNotChangeDuringTimePeriod(t, kc, triggerScopedDeploymentName, data.Namespace, 8, 30)
+	helper.AssertReplicaCountNotChangeDuringTimePeriod(t, kc, scalingModifiersDeploymentName, data.Namespace, 8, 30)
 }

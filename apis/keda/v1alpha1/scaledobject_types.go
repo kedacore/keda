@@ -63,7 +63,7 @@ const FallbackBehaviorStatic = "static"
 const FallbackBehaviorCurrentReplicas = "currentReplicas"
 const FallbackBehaviorCurrentReplicasIfHigher = "currentReplicasIfHigher"
 const FallbackBehaviorCurrentReplicasIfLower = "currentReplicasIfLower"
-const FallbackBehaviorTriggerScoped = "triggerScoped"
+const FallbackBehaviorScalingModifiers = "scalingModifiers"
 const ForceActivationAnnotation = "autoscaling.keda.sh/force-activation"
 
 // HealthStatus is the status for a ScaledObject's health
@@ -136,7 +136,7 @@ type Fallback struct {
 	Replicas int32 `json:"replicas"`
 	// +optional
 	// +kubebuilder:default=static
-	// +kubebuilder:validation:Enum=static;currentReplicas;currentReplicasIfHigher;currentReplicasIfLower;triggerScoped
+	// +kubebuilder:validation:Enum=static;currentReplicas;currentReplicasIfHigher;currentReplicasIfLower;scalingModifiers
 	Behavior string `json:"behavior,omitempty"`
 }
 
@@ -341,6 +341,11 @@ func (so *ScaledObject) SetStatusTriggersActivity(m map[string]TriggerActivitySt
 // GetStatusExternalMetricNames returns the list of external metric names defined in the ScaledObject status
 func (so *ScaledObject) GetStatusExternalMetricNames() []string {
 	return so.Status.ExternalMetricNames
+}
+
+// FallbackScalingModifiers returns whether the fallback behavior is set to use scaling modifiers
+func (so *ScaledObject) FallbackScalingModifiers() bool {
+	return so.Spec.Fallback != nil && so.Spec.Fallback.Behavior == FallbackBehaviorScalingModifiers
 }
 
 // CheckReplicaCountBoundsAreValid checks that Idle/Min/Max ReplicaCount defined in ScaledObject are correctly specified

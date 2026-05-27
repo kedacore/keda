@@ -182,18 +182,12 @@ var _ = It("shouldn't validate the so creation when the fallback is configured a
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, true, true)
 	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
-	// Remove non-cpu/memory triggers to test the scenario with ONLY cpu and memory
-	cpuMemoryTriggers := []ScaleTriggers{}
-	for _, trigger := range so.Spec.Triggers {
-		if trigger.Type == "cpu" || trigger.Type == "memory" {
-			trigger.MetricType = "AverageValue"
-			cpuMemoryTriggers = append(cpuMemoryTriggers, trigger)
-		}
-	}
-	so.Spec.Triggers = cpuMemoryTriggers
 	so.Spec.Fallback = &Fallback{
 		FailureThreshold: 3,
 		Replicas:         6,
+	}
+	for index := range so.Spec.Triggers {
+		so.Spec.Triggers[index].MetricType = "AverageValue"
 	}
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
@@ -1250,8 +1244,8 @@ var _ = It("should validate the so creation with ScalingModifiers.Formula - doub
 	}).ShouldNot(HaveOccurred())
 })
 
-var _ = It("should validate the so creation with triggerScoped fallback behavior", func() {
-	namespaceName := "trigger-scoped-fallback-valid"
+var _ = It("should validate the so creation with scalingModifiers fallback behavior", func() {
+	namespaceName := "scaling-modifiers-fallback-valid"
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, false, false)
 
@@ -1281,7 +1275,7 @@ var _ = It("should validate the so creation with triggerScoped fallback behavior
 	so.Spec.Fallback = &Fallback{
 		FailureThreshold: 3,
 		Replicas:         5,
-		Behavior:         FallbackBehaviorTriggerScoped,
+		Behavior:         FallbackBehaviorScalingModifiers,
 	}
 
 	err := k8sClient.Create(context.Background(), namespace)
@@ -1293,8 +1287,8 @@ var _ = It("should validate the so creation with triggerScoped fallback behavior
 	}).ShouldNot(HaveOccurred())
 })
 
-var _ = It("shouldn't validate the so creation with triggerScoped fallback without formula", func() {
-	namespaceName := "trigger-scoped-fallback-no-formula"
+var _ = It("shouldn't validate the so creation with scalingModifiers fallback without formula", func() {
+	namespaceName := "scaling-modifiers-fallback-no-formula"
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, false, false)
 
@@ -1315,7 +1309,7 @@ var _ = It("shouldn't validate the so creation with triggerScoped fallback witho
 	so.Spec.Fallback = &Fallback{
 		FailureThreshold: 3,
 		Replicas:         5,
-		Behavior:         FallbackBehaviorTriggerScoped,
+		Behavior:         FallbackBehaviorScalingModifiers,
 	}
 
 	err := k8sClient.Create(context.Background(), namespace)

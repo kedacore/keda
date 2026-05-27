@@ -365,12 +365,12 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) error 
 		}
 	}
 
-	// verify triggerScoped fallback behavior requirements
-	if incomingSo.Spec.Fallback != nil && incomingSo.Spec.Fallback.Behavior == FallbackBehaviorTriggerScoped {
-		err = validateTriggerScopedBehavior(incomingSo)
-		if err != nil {
-			scaledobjectlog.Error(err, "error validating triggerScoped fallback behavior")
-			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "trigger-scoped-fallback")
+	// verify scalingModifiers fallback behavior requirements
+	if incomingSo.FallbackScalingModifiers() {
+		if !incomingSo.IsUsingModifiers() || incomingSo.Spec.Advanced.ScalingModifiers.Formula == "" {
+			err := fmt.Errorf("scalingModifiers fallback behavior requires scalingModifiers.formula to be defined")
+			scaledobjectlog.Error(err, "error validating 'scalingModifiers' so.spec.fallback behavior")
+			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scaling-modifiers-fallback")
 			return err
 		}
 	}
@@ -518,8 +518,7 @@ func validateScalingModifiersFormula(so *ScaledObject) (*vm.Program, error) {
 
 	// Compile & Run with dummy values to determine if all triggers in formula are
 	// defined (have names)
-	// Use interface{} to support both float64 and nil values for triggerScoped behavior
-	triggersMap := make(map[string]interface{})
+	triggersMap := make(map[string]float64)
 	for _, trig := range so.Spec.Triggers {
 		// if resource metrics are given, skip
 		if trig.Type == cpuString || trig.Type == memoryString {
@@ -529,7 +528,7 @@ func validateScalingModifiersFormula(so *ScaledObject) (*vm.Program, error) {
 			triggersMap[trig.Name] = dummyValue
 		}
 	}
-	compiled, err := expr.Compile(sm.Formula, expr.Env(triggersMap), expr.AsFloat64())
+	compiled, err := expr.Compile(sm.Formula, expr.Env(triggersMap))
 	if err != nil {
 		return nil, err
 	}
@@ -537,20 +536,6 @@ func validateScalingModifiersFormula(so *ScaledObject) (*vm.Program, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// If triggerScoped behavior is enabled, test that nil values work with the formula
-	if so.Spec.Fallback != nil && so.Spec.Fallback.Behavior == FallbackBehaviorTriggerScoped {
-		// Test formula with nil values to ensure nil-coalescing operator works
-		testMap := make(map[string]interface{})
-		for key := range triggersMap {
-			testMap[key] = nil
-		}
-		_, err = expr.Run(compiled, testMap)
-		if err != nil {
-			return nil, fmt.Errorf("formula with triggerScoped behavior must support nil values (use ?? operator): %w", err)
-		}
-	}
-
 	return compiled, nil
 }
 
@@ -575,30 +560,18 @@ func validateScalingModifiersTarget(so *ScaledObject) error {
 	return nil
 }
 
-// validateTriggerScopedBehavior validates that triggerScoped behavior has required configuration
-func validateTriggerScopedBehavior(so *ScaledObject) error {
-	// triggerScoped requires formula to be defined
-	if !so.IsUsingModifiers() || so.Spec.Advanced.ScalingModifiers.Formula == "" {
-		return fmt.Errorf("triggerScoped fallback behavior requires scalingModifiers.formula to be defined")
-	}
-
-	// validate failureThreshold is non-negative
-	if so.Spec.Fallback.FailureThreshold < 0 {
-		return fmt.Errorf("fallback.failureThreshold must be non-negative, got %d", so.Spec.Fallback.FailureThreshold)
-	}
-
-	// validate replicas is non-negative
-	if so.Spec.Fallback.Replicas < 0 {
-		return fmt.Errorf("fallback.replicas must be non-negative, got %d", so.Spec.Fallback.Replicas)
-	}
-
-	return nil
-}
-
 // castToFloatIfNecessary takes input formula and casts its return value to float
 // if necessary to avoid wrong return value type like ternary operator has and/or
 // to relief user of having to add it to the formula themselves.
+// Formulas that contain ?? for fallback behavior that would evaluate to nil are
+// kept as nil so the default fallback can trigger
 func castToFloatIfNecessary(formula string) string {
+	if strings.Contains(formula, "??") {
+		if strings.HasPrefix(formula, "let _kedaCompositeResult = ") {
+			return formula
+		}
+		return fmt.Sprintf("let _kedaCompositeResult = (%s); _kedaCompositeResult == nil ? nil : float(_kedaCompositeResult)", formula)
+	}
 	if strings.HasPrefix(formula, "float(") {
 		return formula
 	}

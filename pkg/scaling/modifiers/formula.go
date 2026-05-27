@@ -27,6 +27,7 @@ package modifiers
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/expr-lang/expr"
@@ -95,23 +96,10 @@ func calculateScalingModifiersFormula(so *kedav1alpha1.ScaledObject, list []exte
 	ret.MetricName = kedav1alpha1.CompositeMetricName
 	ret.Timestamp = v1.Now()
 
-	// Check if triggerScoped behavior is enabled
-	isFallbackTriggerScoped := so.Spec.Fallback != nil &&
-		so.Spec.Fallback.Behavior == kedav1alpha1.FallbackBehaviorTriggerScoped
-
-	// using https://github.com/antonmedv/expr to evaluate formula expression
-	// Use interface{} to support both float64 and nil values
-	data := make(map[string]interface{})
-
+	// using https://github.com/expr-lang/expr to evaluate formula expression
+	data := make(map[string]any)
 	for _, v := range list {
-		triggerName := pairList[v.MetricName]
-
-		// Check if this trigger should be nil due to failure threshold
-		if isFallbackTriggerScoped && shouldTriggerBeNil(so, v.MetricName) {
-			data[triggerName] = nil
-		} else {
-			data[triggerName] = v.Value.AsApproximateFloat64()
-		}
+		data[pairList[v.MetricName]] = scalingModifierTriggerValue(so, v)
 	}
 
 	if cacheObj.CompiledFormula == nil {
@@ -124,32 +112,57 @@ func calculateScalingModifiersFormula(so *kedav1alpha1.ScaledObject, list []exte
 		return nil, fmt.Errorf("error trying to run custom formula: %w", err)
 	}
 
-	// return values to known format for externalMetricValue struct
-	out = tmp.(float64)
+	// with fallback strategies using "??" the expression can evaluate to nil, so we check for that and use the fallback if so.
+	if tmp == nil {
+		fallbackMetricValue, ferr := scalingModifiersFallbackTarget(so)
+		if ferr != nil {
+			return nil, ferr
+		}
+		out = fallbackMetricValue
+	} else {
+		floatVal, ok := tmp.(float64)
+		if !ok {
+			return nil, fmt.Errorf("formula returned non-float result %T (%v)", tmp, tmp)
+		}
+		out = floatVal
+	}
 	ret.Value.SetMilli(int64(out * 1000))
 	return []external_metrics.ExternalMetricValue{ret}, nil
 }
 
-// shouldTriggerBeNil determines if a trigger should return nil in the formula
-// based on its health status and failure threshold
-func shouldTriggerBeNil(so *kedav1alpha1.ScaledObject, metricName string) bool {
+// scalingModifiersFallbackTarget returns val for the Fallback.Replicas when the formula evaluates to nil.
+func scalingModifiersFallbackTarget(so *kedav1alpha1.ScaledObject) (float64, error) {
 	if so.Spec.Fallback == nil {
-		return false
+		return 0, fmt.Errorf("scalingModifiers formula evaluated to nil but no fallback is configured")
+	}
+	target, err := strconv.ParseFloat(so.Spec.Advanced.ScalingModifiers.Target, 64)
+	if err != nil {
+		return 0, fmt.Errorf("scalingModifiers formula evaluated to nil and target %q is not a valid float: %w", so.Spec.Advanced.ScalingModifiers.Target, err)
+	}
+	return float64(so.Spec.Fallback.Replicas) * target, nil
+}
+
+// scalingModifierTriggerValue returns the value or nil if failure threshold is exceeded
+func scalingModifierTriggerValue(so *kedav1alpha1.ScaledObject, v external_metrics.ExternalMetricValue) any {
+	val := v.Value.AsApproximateFloat64()
+	if !so.FallbackScalingModifiers() {
+		return val
 	}
 
-	// Check if the trigger has health status
-	healthStatus, exists := so.Status.Health[metricName]
-	if !exists {
-		return false
+	hs, ok := so.Status.Health[v.MetricName]
+	if !ok {
+		return val
 	}
 
-	// Check if the trigger has exceeded the failure threshold
-	if healthStatus.NumberOfFailures != nil &&
-		*healthStatus.NumberOfFailures >= so.Spec.Fallback.FailureThreshold {
-		return true
+	if hs.NumberOfFailures == nil {
+		return val
 	}
 
-	return false
+	if *hs.NumberOfFailures <= so.Spec.Fallback.FailureThreshold {
+		return val
+	}
+
+	return nil
 }
 
 // GetPairTriggerAndMetric adds new pair of trigger-metric to the list for
