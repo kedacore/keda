@@ -87,6 +87,301 @@ func (NexusHandlerErrorRetryBehavior) EnumDescriptor() ([]byte, []int) {
 	return file_temporal_api_enums_v1_nexus_proto_rawDescGZIP(), []int{0}
 }
 
+// Status of a standalone Nexus operation execution.
+// The status is updated once, when the operation is originally scheduled, and again when the
+// operation reaches a terminal status.
+// (-- api-linter: core::0216::synonyms=disabled
+//
+//	aip.dev/not-precedent: Named consistently with WorkflowExecutionStatus. --)
+type NexusOperationExecutionStatus int32
+
+const (
+	NEXUS_OPERATION_EXECUTION_STATUS_UNSPECIFIED NexusOperationExecutionStatus = 0
+	// The operation is not in a terminal status. The operation may be attempting to start,
+	// backing off between attempts, or already started.
+	NEXUS_OPERATION_EXECUTION_STATUS_RUNNING NexusOperationExecutionStatus = 1
+	// The operation completed successfully.
+	NEXUS_OPERATION_EXECUTION_STATUS_COMPLETED NexusOperationExecutionStatus = 2
+	// The operation completed with failure.
+	NEXUS_OPERATION_EXECUTION_STATUS_FAILED NexusOperationExecutionStatus = 3
+	// The operation completed as canceled.
+	// Requesting to cancel an operation does not automatically transition the operation to canceled status, depending
+	// on the current operation status and the cancelation type used.
+	NEXUS_OPERATION_EXECUTION_STATUS_CANCELED NexusOperationExecutionStatus = 4
+	// The operation was terminated. Termination happens immediately without notifying the handler.
+	NEXUS_OPERATION_EXECUTION_STATUS_TERMINATED NexusOperationExecutionStatus = 5
+	// The operation has timed out by reaching one of the specified timeouts.
+	NEXUS_OPERATION_EXECUTION_STATUS_TIMED_OUT NexusOperationExecutionStatus = 6
+)
+
+// Enum value maps for NexusOperationExecutionStatus.
+var (
+	NexusOperationExecutionStatus_name = map[int32]string{
+		0: "NEXUS_OPERATION_EXECUTION_STATUS_UNSPECIFIED",
+		1: "NEXUS_OPERATION_EXECUTION_STATUS_RUNNING",
+		2: "NEXUS_OPERATION_EXECUTION_STATUS_COMPLETED",
+		3: "NEXUS_OPERATION_EXECUTION_STATUS_FAILED",
+		4: "NEXUS_OPERATION_EXECUTION_STATUS_CANCELED",
+		5: "NEXUS_OPERATION_EXECUTION_STATUS_TERMINATED",
+		6: "NEXUS_OPERATION_EXECUTION_STATUS_TIMED_OUT",
+	}
+	NexusOperationExecutionStatus_value = map[string]int32{
+		"NEXUS_OPERATION_EXECUTION_STATUS_UNSPECIFIED": 0,
+		"NEXUS_OPERATION_EXECUTION_STATUS_RUNNING":     1,
+		"NEXUS_OPERATION_EXECUTION_STATUS_COMPLETED":   2,
+		"NEXUS_OPERATION_EXECUTION_STATUS_FAILED":      3,
+		"NEXUS_OPERATION_EXECUTION_STATUS_CANCELED":    4,
+		"NEXUS_OPERATION_EXECUTION_STATUS_TERMINATED":  5,
+		"NEXUS_OPERATION_EXECUTION_STATUS_TIMED_OUT":   6,
+	}
+)
+
+func (x NexusOperationExecutionStatus) Enum() *NexusOperationExecutionStatus {
+	p := new(NexusOperationExecutionStatus)
+	*p = x
+	return p
+}
+
+func (x NexusOperationExecutionStatus) String() string {
+	switch x {
+	case NEXUS_OPERATION_EXECUTION_STATUS_UNSPECIFIED:
+		return "Unspecified"
+	case NEXUS_OPERATION_EXECUTION_STATUS_RUNNING:
+		return "Running"
+	case NEXUS_OPERATION_EXECUTION_STATUS_COMPLETED:
+		return "Completed"
+	case NEXUS_OPERATION_EXECUTION_STATUS_FAILED:
+		return "Failed"
+	case NEXUS_OPERATION_EXECUTION_STATUS_CANCELED:
+		return "Canceled"
+	case NEXUS_OPERATION_EXECUTION_STATUS_TERMINATED:
+		return "Terminated"
+	case NEXUS_OPERATION_EXECUTION_STATUS_TIMED_OUT:
+		return "TimedOut"
+	default:
+		return strconv.Itoa(int(x))
+
+		// Deprecated: Use NexusOperationExecutionStatus.Descriptor instead.
+	}
+
+}
+
+func (NexusOperationExecutionStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_temporal_api_enums_v1_nexus_proto_enumTypes[1].Descriptor()
+}
+
+func (NexusOperationExecutionStatus) Type() protoreflect.EnumType {
+	return &file_temporal_api_enums_v1_nexus_proto_enumTypes[1]
+}
+
+func (x NexusOperationExecutionStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+func (NexusOperationExecutionStatus) EnumDescriptor() ([]byte, []int) {
+	return file_temporal_api_enums_v1_nexus_proto_rawDescGZIP(), []int{1}
+}
+
+// Stage that can be specified when waiting on a nexus operation.
+type NexusOperationWaitStage int32
+
+const (
+	NEXUS_OPERATION_WAIT_STAGE_UNSPECIFIED NexusOperationWaitStage = 0
+	// Wait for the operation to be started.
+	NEXUS_OPERATION_WAIT_STAGE_STARTED NexusOperationWaitStage = 1
+	// Wait for the operation to be in a terminal state, either successful or unsuccessful.
+	NEXUS_OPERATION_WAIT_STAGE_CLOSED NexusOperationWaitStage = 2
+)
+
+// Enum value maps for NexusOperationWaitStage.
+var (
+	NexusOperationWaitStage_name = map[int32]string{
+		0: "NEXUS_OPERATION_WAIT_STAGE_UNSPECIFIED",
+		1: "NEXUS_OPERATION_WAIT_STAGE_STARTED",
+		2: "NEXUS_OPERATION_WAIT_STAGE_CLOSED",
+	}
+	NexusOperationWaitStage_value = map[string]int32{
+		"NEXUS_OPERATION_WAIT_STAGE_UNSPECIFIED": 0,
+		"NEXUS_OPERATION_WAIT_STAGE_STARTED":     1,
+		"NEXUS_OPERATION_WAIT_STAGE_CLOSED":      2,
+	}
+)
+
+func (x NexusOperationWaitStage) Enum() *NexusOperationWaitStage {
+	p := new(NexusOperationWaitStage)
+	*p = x
+	return p
+}
+
+func (x NexusOperationWaitStage) String() string {
+	switch x {
+	case NEXUS_OPERATION_WAIT_STAGE_UNSPECIFIED:
+		return "Unspecified"
+	case NEXUS_OPERATION_WAIT_STAGE_STARTED:
+		return "Started"
+	case NEXUS_OPERATION_WAIT_STAGE_CLOSED:
+		return "Closed"
+	default:
+		return strconv.Itoa(int(x))
+	}
+
+}
+
+func (NexusOperationWaitStage) Descriptor() protoreflect.EnumDescriptor {
+	return file_temporal_api_enums_v1_nexus_proto_enumTypes[2].Descriptor()
+}
+
+func (NexusOperationWaitStage) Type() protoreflect.EnumType {
+	return &file_temporal_api_enums_v1_nexus_proto_enumTypes[2]
+}
+
+func (x NexusOperationWaitStage) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use NexusOperationWaitStage.Descriptor instead.
+func (NexusOperationWaitStage) EnumDescriptor() ([]byte, []int) {
+	return file_temporal_api_enums_v1_nexus_proto_rawDescGZIP(), []int{2}
+}
+
+// Defines whether to allow re-using an operation ID from a previously *closed* Nexus operation.
+// If the request is denied, the server returns a `NexusOperationAlreadyStarted` error.
+//
+// See `NexusOperationIdConflictPolicy` for handling ID duplication with a *running* operation.
+type NexusOperationIdReusePolicy int32
+
+const (
+	NEXUS_OPERATION_ID_REUSE_POLICY_UNSPECIFIED NexusOperationIdReusePolicy = 0
+	// Always allow starting an operation using the same operation ID.
+	NEXUS_OPERATION_ID_REUSE_POLICY_ALLOW_DUPLICATE NexusOperationIdReusePolicy = 1
+	// Allow starting an operation using the same ID only when the last operation's final state is one
+	// of {failed, canceled, terminated, timed out}.
+	NEXUS_OPERATION_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY NexusOperationIdReusePolicy = 2
+	// Do not permit re-use of the ID for this operation. Future start requests could potentially change the policy,
+	// allowing re-use of the ID.
+	NEXUS_OPERATION_ID_REUSE_POLICY_REJECT_DUPLICATE NexusOperationIdReusePolicy = 3
+)
+
+// Enum value maps for NexusOperationIdReusePolicy.
+var (
+	NexusOperationIdReusePolicy_name = map[int32]string{
+		0: "NEXUS_OPERATION_ID_REUSE_POLICY_UNSPECIFIED",
+		1: "NEXUS_OPERATION_ID_REUSE_POLICY_ALLOW_DUPLICATE",
+		2: "NEXUS_OPERATION_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY",
+		3: "NEXUS_OPERATION_ID_REUSE_POLICY_REJECT_DUPLICATE",
+	}
+	NexusOperationIdReusePolicy_value = map[string]int32{
+		"NEXUS_OPERATION_ID_REUSE_POLICY_UNSPECIFIED":                 0,
+		"NEXUS_OPERATION_ID_REUSE_POLICY_ALLOW_DUPLICATE":             1,
+		"NEXUS_OPERATION_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY": 2,
+		"NEXUS_OPERATION_ID_REUSE_POLICY_REJECT_DUPLICATE":            3,
+	}
+)
+
+func (x NexusOperationIdReusePolicy) Enum() *NexusOperationIdReusePolicy {
+	p := new(NexusOperationIdReusePolicy)
+	*p = x
+	return p
+}
+
+func (x NexusOperationIdReusePolicy) String() string {
+	switch x {
+	case NEXUS_OPERATION_ID_REUSE_POLICY_UNSPECIFIED:
+		return "Unspecified"
+	case NEXUS_OPERATION_ID_REUSE_POLICY_ALLOW_DUPLICATE:
+		return "AllowDuplicate"
+	case NEXUS_OPERATION_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY:
+		return "AllowDuplicateFailedOnly"
+	case NEXUS_OPERATION_ID_REUSE_POLICY_REJECT_DUPLICATE:
+		return "RejectDuplicate"
+	default:
+		return strconv.Itoa(int(x))
+	}
+
+}
+
+func (NexusOperationIdReusePolicy) Descriptor() protoreflect.EnumDescriptor {
+	return file_temporal_api_enums_v1_nexus_proto_enumTypes[3].Descriptor()
+}
+
+func (NexusOperationIdReusePolicy) Type() protoreflect.EnumType {
+	return &file_temporal_api_enums_v1_nexus_proto_enumTypes[3]
+}
+
+func (x NexusOperationIdReusePolicy) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use NexusOperationIdReusePolicy.Descriptor instead.
+func (NexusOperationIdReusePolicy) EnumDescriptor() ([]byte, []int) {
+	return file_temporal_api_enums_v1_nexus_proto_rawDescGZIP(), []int{3}
+}
+
+// Defines what to do when trying to start a Nexus operation with the same ID as a *running* operation.
+// Note that it is *never* valid to have two running instances of the same operation ID.
+//
+// See `NexusOperationIdReusePolicy` for handling operation ID duplication with a *closed* operation.
+type NexusOperationIdConflictPolicy int32
+
+const (
+	NEXUS_OPERATION_ID_CONFLICT_POLICY_UNSPECIFIED NexusOperationIdConflictPolicy = 0
+	// Don't start a new operation; instead return `NexusOperationAlreadyStarted` error.
+	NEXUS_OPERATION_ID_CONFLICT_POLICY_FAIL NexusOperationIdConflictPolicy = 1
+	// Don't start a new operation; instead return a handle for the running operation.
+	NEXUS_OPERATION_ID_CONFLICT_POLICY_USE_EXISTING NexusOperationIdConflictPolicy = 2
+)
+
+// Enum value maps for NexusOperationIdConflictPolicy.
+var (
+	NexusOperationIdConflictPolicy_name = map[int32]string{
+		0: "NEXUS_OPERATION_ID_CONFLICT_POLICY_UNSPECIFIED",
+		1: "NEXUS_OPERATION_ID_CONFLICT_POLICY_FAIL",
+		2: "NEXUS_OPERATION_ID_CONFLICT_POLICY_USE_EXISTING",
+	}
+	NexusOperationIdConflictPolicy_value = map[string]int32{
+		"NEXUS_OPERATION_ID_CONFLICT_POLICY_UNSPECIFIED":  0,
+		"NEXUS_OPERATION_ID_CONFLICT_POLICY_FAIL":         1,
+		"NEXUS_OPERATION_ID_CONFLICT_POLICY_USE_EXISTING": 2,
+	}
+)
+
+func (x NexusOperationIdConflictPolicy) Enum() *NexusOperationIdConflictPolicy {
+	p := new(NexusOperationIdConflictPolicy)
+	*p = x
+	return p
+}
+
+func (x NexusOperationIdConflictPolicy) String() string {
+	switch x {
+	case NEXUS_OPERATION_ID_CONFLICT_POLICY_UNSPECIFIED:
+		return "Unspecified"
+	case NEXUS_OPERATION_ID_CONFLICT_POLICY_FAIL:
+		return "Fail"
+	case NEXUS_OPERATION_ID_CONFLICT_POLICY_USE_EXISTING:
+		return "UseExisting"
+	default:
+		return strconv.Itoa(int(x))
+	}
+
+}
+
+func (NexusOperationIdConflictPolicy) Descriptor() protoreflect.EnumDescriptor {
+	return file_temporal_api_enums_v1_nexus_proto_enumTypes[4].Descriptor()
+}
+
+func (NexusOperationIdConflictPolicy) Type() protoreflect.EnumType {
+	return &file_temporal_api_enums_v1_nexus_proto_enumTypes[4]
+}
+
+func (x NexusOperationIdConflictPolicy) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use NexusOperationIdConflictPolicy.Descriptor instead.
+func (NexusOperationIdConflictPolicy) EnumDescriptor() ([]byte, []int) {
+	return file_temporal_api_enums_v1_nexus_proto_rawDescGZIP(), []int{4}
+}
+
 var File_temporal_api_enums_v1_nexus_proto protoreflect.FileDescriptor
 
 const file_temporal_api_enums_v1_nexus_proto_rawDesc = "" +
@@ -95,7 +390,28 @@ const file_temporal_api_enums_v1_nexus_proto_rawDesc = "" +
 	"\x1eNexusHandlerErrorRetryBehavior\x122\n" +
 	".NEXUS_HANDLER_ERROR_RETRY_BEHAVIOR_UNSPECIFIED\x10\x00\x120\n" +
 	",NEXUS_HANDLER_ERROR_RETRY_BEHAVIOR_RETRYABLE\x10\x01\x124\n" +
-	"0NEXUS_HANDLER_ERROR_RETRY_BEHAVIOR_NON_RETRYABLE\x10\x02B\x82\x01\n" +
+	"0NEXUS_HANDLER_ERROR_RETRY_BEHAVIOR_NON_RETRYABLE\x10\x02*\xec\x02\n" +
+	"\x1dNexusOperationExecutionStatus\x120\n" +
+	",NEXUS_OPERATION_EXECUTION_STATUS_UNSPECIFIED\x10\x00\x12,\n" +
+	"(NEXUS_OPERATION_EXECUTION_STATUS_RUNNING\x10\x01\x12.\n" +
+	"*NEXUS_OPERATION_EXECUTION_STATUS_COMPLETED\x10\x02\x12+\n" +
+	"'NEXUS_OPERATION_EXECUTION_STATUS_FAILED\x10\x03\x12-\n" +
+	")NEXUS_OPERATION_EXECUTION_STATUS_CANCELED\x10\x04\x12/\n" +
+	"+NEXUS_OPERATION_EXECUTION_STATUS_TERMINATED\x10\x05\x12.\n" +
+	"*NEXUS_OPERATION_EXECUTION_STATUS_TIMED_OUT\x10\x06*\x94\x01\n" +
+	"\x17NexusOperationWaitStage\x12*\n" +
+	"&NEXUS_OPERATION_WAIT_STAGE_UNSPECIFIED\x10\x00\x12&\n" +
+	"\"NEXUS_OPERATION_WAIT_STAGE_STARTED\x10\x01\x12%\n" +
+	"!NEXUS_OPERATION_WAIT_STAGE_CLOSED\x10\x02*\xfa\x01\n" +
+	"\x1bNexusOperationIdReusePolicy\x12/\n" +
+	"+NEXUS_OPERATION_ID_REUSE_POLICY_UNSPECIFIED\x10\x00\x123\n" +
+	"/NEXUS_OPERATION_ID_REUSE_POLICY_ALLOW_DUPLICATE\x10\x01\x12?\n" +
+	";NEXUS_OPERATION_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY\x10\x02\x124\n" +
+	"0NEXUS_OPERATION_ID_REUSE_POLICY_REJECT_DUPLICATE\x10\x03*\xb6\x01\n" +
+	"\x1eNexusOperationIdConflictPolicy\x122\n" +
+	".NEXUS_OPERATION_ID_CONFLICT_POLICY_UNSPECIFIED\x10\x00\x12+\n" +
+	"'NEXUS_OPERATION_ID_CONFLICT_POLICY_FAIL\x10\x01\x123\n" +
+	"/NEXUS_OPERATION_ID_CONFLICT_POLICY_USE_EXISTING\x10\x02B\x82\x01\n" +
 	"\x18io.temporal.api.enums.v1B\n" +
 	"NexusProtoP\x01Z!go.temporal.io/api/enums/v1;enums\xaa\x02\x17Temporalio.Api.Enums.V1\xea\x02\x1aTemporalio::Api::Enums::V1b\x06proto3"
 
@@ -111,9 +427,13 @@ func file_temporal_api_enums_v1_nexus_proto_rawDescGZIP() []byte {
 	return file_temporal_api_enums_v1_nexus_proto_rawDescData
 }
 
-var file_temporal_api_enums_v1_nexus_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_temporal_api_enums_v1_nexus_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
 var file_temporal_api_enums_v1_nexus_proto_goTypes = []any{
 	(NexusHandlerErrorRetryBehavior)(0), // 0: temporal.api.enums.v1.NexusHandlerErrorRetryBehavior
+	(NexusOperationExecutionStatus)(0),  // 1: temporal.api.enums.v1.NexusOperationExecutionStatus
+	(NexusOperationWaitStage)(0),        // 2: temporal.api.enums.v1.NexusOperationWaitStage
+	(NexusOperationIdReusePolicy)(0),    // 3: temporal.api.enums.v1.NexusOperationIdReusePolicy
+	(NexusOperationIdConflictPolicy)(0), // 4: temporal.api.enums.v1.NexusOperationIdConflictPolicy
 }
 var file_temporal_api_enums_v1_nexus_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -133,7 +453,7 @@ func file_temporal_api_enums_v1_nexus_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_temporal_api_enums_v1_nexus_proto_rawDesc), len(file_temporal_api_enums_v1_nexus_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      5,
 			NumMessages:   0,
 			NumExtensions: 0,
 			NumServices:   0,

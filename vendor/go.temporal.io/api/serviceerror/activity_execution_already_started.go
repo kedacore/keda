@@ -10,7 +10,7 @@ import (
 )
 
 type (
-	// ActivityExecutionAlreadyStarted represents workflow execution already started error.
+	// ActivityExecutionAlreadyStarted represents activity execution already started error.
 	ActivityExecutionAlreadyStarted struct {
 		Message        string
 		StartRequestId string

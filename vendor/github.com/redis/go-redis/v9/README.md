@@ -21,9 +21,8 @@ In `go-redis` we are aiming to support the last three releases of Redis. Current
 - [Redis 8.2](https://raw.githubusercontent.com/redis/redis/8.2/00-RELEASENOTES) - using Redis CE 8.2 
 - [Redis 8.4](https://raw.githubusercontent.com/redis/redis/8.4/00-RELEASENOTES) - using Redis CE 8.4
 
-Although the `go.mod` states it requires at minimum `go 1.21`, our CI is configured to run the tests against all three
-versions of Redis and multiple versions of Go ([1.21](https://go.dev/doc/devel/release#go1.21.0),
-[1.23](https://go.dev/doc/devel/release#go1.23.0), oldstable, and stable). We observe that some modules related test may not pass with
+Although the `go.mod` states it requires at minimum `go 1.24`, our CI is configured to run the tests against all three
+versions of Redis and multiple versions of Go ([1.24](https://go.dev/doc/devel/release#go1.24.0), oldstable, and stable). We observe that some modules related test may not pass with
 Redis Stack 7.2 and some commands are changed with Redis CE 8.0.
 Although it is not officially supported, `go-redis/v9`  should be able to work with any Redis 7.0+.
 Please do refer to the documentation and the tests if you experience any issues.
@@ -134,6 +133,29 @@ func ExampleClient() {
     // Output: key value
     // key2 does not exist
 }
+```
+
+### Dial retries and backoff
+
+Connection establishment can be retried by the connection pool when dialing fails.
+
+- **`DialerRetries`**: maximum number of dial attempts (default: 5).
+- **`DialerRetryTimeout`**: default delay between attempts when no custom backoff is provided (default: 100ms).
+- **`DialerRetryBackoff`**: optional function hook to control the delay between attempts.
+
+Example:
+
+```go
+rdb := redis.NewClient(&redis.Options{
+	Addr: "localhost:6379",
+
+	DialerRetries:      5,
+	DialerRetryTimeout: 100 * time.Millisecond, // used when DialerRetryBackoff is nil
+
+	// Optional: exponential backoff with jitter and a cap.
+	DialerRetryBackoff: redis.DialRetryBackoffExponential(100*time.Millisecond, 2*time.Second),
+})
+defer rdb.Close()
 ```
 
 ### Authentication

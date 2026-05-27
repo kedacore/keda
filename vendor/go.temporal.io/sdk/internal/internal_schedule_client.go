@@ -18,6 +18,7 @@ import (
 	workflowpb "go.temporal.io/api/workflow/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/converter"
+	"go.temporal.io/sdk/internal/extstore"
 	"go.temporal.io/sdk/log"
 )
 
@@ -25,13 +26,15 @@ type (
 
 	// ScheduleClient is the client for starting a workflow execution.
 	scheduleClient struct {
-		workflowClient *WorkflowClient
+		workflowClient         *WorkflowClient
+		outboundPayloadVisitor PayloadVisitor
 	}
 
 	// scheduleHandleImpl is the implementation of ScheduleHandle.
 	scheduleHandleImpl struct {
-		ID     string
-		client *WorkflowClient
+		ID                     string
+		client                 *WorkflowClient
+		outboundPayloadVisitor PayloadVisitor
 	}
 
 	// scheduleListIteratorImpl is the implementation of ScheduleListIterator
@@ -131,6 +134,15 @@ func (w *workflowClientInterceptor) CreateSchedule(ctx context.Context, in *Sche
 		SearchAttributes: searchAttr,
 	}
 
+	storeCtx := extstore.WithStorageTarget(ctx, extstore.StorageDriverWorkflowInfo{
+		Namespace:    w.client.namespace,
+		WorkflowID:   action.GetStartWorkflow().GetWorkflowId(),
+		WorkflowType: action.GetStartWorkflow().GetWorkflowType().GetName(),
+	})
+	if err := visitProtoPayloads(storeCtx, w.outboundPayloadVisitor, startRequest, 0); err != nil {
+		return nil, err
+	}
+
 	grpcCtx, cancel := newGRPCContext(ctx, defaultGrpcRetryParameters(ctx))
 	defer cancel()
 
@@ -143,8 +155,9 @@ func (w *workflowClientInterceptor) CreateSchedule(ctx context.Context, in *Sche
 	}
 
 	return &scheduleHandleImpl{
-		ID:     ID,
-		client: w.client,
+		ID:                     ID,
+		client:                 w.client,
+		outboundPayloadVisitor: w.outboundPayloadVisitor,
 	}, nil
 }
 
@@ -164,8 +177,9 @@ func (sc *scheduleClient) Create(ctx context.Context, options ScheduleOptions) (
 
 func (sc *scheduleClient) GetHandle(ctx context.Context, scheduleID string) ScheduleHandle {
 	return &scheduleHandleImpl{
-		ID:     scheduleID,
-		client: sc.workflowClient,
+		ID:                     scheduleID,
+		client:                 sc.workflowClient,
+		outboundPayloadVisitor: sc.outboundPayloadVisitor,
 	}
 }
 
@@ -256,7 +270,7 @@ func (scheduleHandle *scheduleHandleImpl) Update(ctx context.Context, options Sc
 		return err
 	}
 	scheduleDescription, err := scheduleDescriptionFromPB(
-		scheduleHandle.client.logger, scheduleHandle.client.dataConverter, describeResponse)
+		scheduleHandle.client.logger, scheduleHandle.client.namespace, scheduleHandle.client.dataConverter, describeResponse)
 	if err != nil {
 		return err
 	}
@@ -283,7 +297,7 @@ func (scheduleHandle *scheduleHandleImpl) Update(ctx context.Context, options Sc
 		}
 	}
 
-	_, err = scheduleHandle.client.workflowService.UpdateSchedule(grpcCtx, &workflowservice.UpdateScheduleRequest{
+	updateRequest := &workflowservice.UpdateScheduleRequest{
 		Namespace:        scheduleHandle.client.namespace,
 		ScheduleId:       scheduleHandle.ID,
 		Schedule:         newSchedulePB,
@@ -291,7 +305,19 @@ func (scheduleHandle *scheduleHandleImpl) Update(ctx context.Context, options Sc
 		Identity:         scheduleHandle.client.identity,
 		RequestId:        uuid.NewString(),
 		SearchAttributes: newSA,
+	}
+
+	storeCtx := extstore.WithStorageTarget(ctx, extstore.StorageDriverWorkflowInfo{
+		Namespace:    scheduleHandle.client.namespace,
+		WorkflowID:   newSchedulePB.GetAction().GetStartWorkflow().GetWorkflowId(),
+		WorkflowType: newSchedulePB.GetAction().GetStartWorkflow().GetWorkflowType().GetName(),
 	})
+
+	if err := visitProtoPayloads(storeCtx, scheduleHandle.outboundPayloadVisitor, updateRequest, 0); err != nil {
+		return err
+	}
+
+	_, err = scheduleHandle.client.workflowService.UpdateSchedule(grpcCtx, updateRequest)
 	return err
 }
 
@@ -307,7 +333,7 @@ func (scheduleHandle *scheduleHandleImpl) Describe(ctx context.Context) (*Schedu
 		return nil, err
 	}
 	return scheduleDescriptionFromPB(
-		scheduleHandle.client.logger, scheduleHandle.client.dataConverter, describeResponse)
+		scheduleHandle.client.logger, scheduleHandle.client.namespace, scheduleHandle.client.dataConverter, describeResponse)
 }
 
 func (scheduleHandle *scheduleHandleImpl) Trigger(ctx context.Context, options ScheduleTriggerOptions) error {
@@ -449,6 +475,7 @@ func convertFromPBScheduleSpec(scheduleSpec *schedulepb.ScheduleSpec) *ScheduleS
 
 func scheduleDescriptionFromPB(
 	logger log.Logger,
+	namespace string,
 	dc converter.DataConverter,
 	describeResponse *workflowservice.DescribeScheduleResponse,
 ) (*ScheduleDescription, error) {
@@ -471,7 +498,7 @@ func scheduleDescriptionFromPB(
 		nextActionTimes[i] = t.AsTime()
 	}
 
-	actionDescription, err := convertFromPBScheduleAction(logger, dc, describeResponse.Schedule.Action)
+	actionDescription, err := convertFromPBScheduleAction(logger, namespace, dc, describeResponse.Schedule.Action)
 	if err != nil {
 		return nil, err
 	}
@@ -586,6 +613,11 @@ func convertToPBScheduleAction(
 			action.ID = uuid.NewString()
 		}
 
+		dataConverter = converter.WithDataConverterSerializationContext(dataConverter, converter.WorkflowSerializationContext{
+			Namespace:  client.namespace,
+			WorkflowID: action.ID,
+		})
+
 		// Validate function and get name
 		if err := validateFunctionArgs(action.Workflow, action.Args, true); err != nil {
 			return nil, err
@@ -658,12 +690,19 @@ func convertToPBScheduleAction(
 
 func convertFromPBScheduleAction(
 	logger log.Logger,
+	namespace string,
 	dc converter.DataConverter,
 	action *schedulepb.ScheduleAction,
 ) (ScheduleAction, error) {
 	switch action := action.Action.(type) {
 	case *schedulepb.ScheduleAction_StartWorkflow:
 		workflow := action.StartWorkflow
+		if workflow.GetWorkflowId() != "" {
+			dc = converter.WithDataConverterSerializationContext(dc, converter.WorkflowSerializationContext{
+				Namespace:  namespace,
+				WorkflowID: workflow.GetWorkflowId(),
+			})
+		}
 
 		args := make([]interface{}, len(workflow.GetInput().GetPayloads()))
 		for i, p := range workflow.GetInput().GetPayloads() {

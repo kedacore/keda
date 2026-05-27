@@ -450,6 +450,7 @@ func (h *nexusTaskHandler) newNexusOperationContext(response *workflowservice.Po
 
 	return &NexusOperationContext{
 		client:         h.client,
+		Endpoint:       response.GetRequest().GetEndpoint(),
 		Namespace:      h.namespace,
 		TaskQueue:      h.taskQueueName,
 		metricsHandler: metricsHandler,

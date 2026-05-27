@@ -12,8 +12,8 @@ import (
 )
 
 // Assigns one or more tags (key-value pairs) to the specified CloudWatch
-// resource. Currently, the only CloudWatch resources that can be tagged are alarms
-// and Contributor Insights rules.
+// resource. Currently, the only CloudWatch resources that can be tagged are
+// alarms, dashboards, metric streams and Contributor Insights rules.
 //
 // Tags can help you organize and categorize your resources. You can also use them
 // to scope user permissions by granting a user permission to access or change only
@@ -53,6 +53,12 @@ type TagResourceInput struct {
 	//
 	// The ARN format of a Contributor Insights rule is
 	// arn:aws:cloudwatch:Region:account-id:insight-rule/insight-rule-name
+	//
+	// The ARN format of a dashboard is
+	// arn:aws:cloudwatch::account-id:dashboard/dashboard-name
+	//
+	// The ARN format of a metric stream is
+	// arn:aws:cloudwatch:Region:account-id:metric-stream/metric-stream-name
 	//
 	// For more information about ARN format, see [Resource Types Defined by Amazon CloudWatch] in the Amazon Web Services General
 	// Reference.

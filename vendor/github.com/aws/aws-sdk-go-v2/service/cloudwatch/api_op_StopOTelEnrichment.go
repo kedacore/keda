@@ -10,11 +10,11 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Disables enrichment and PromQL access for CloudWatch vended metrics for [supported AWS resources] in the
+// Disables enrichment and PromQL access for CloudWatch vended metrics for [supported Amazon Web Services resources] in the
 // account. After disabling, these metrics are no longer enriched with resource ARN
 // and resource tag labels, and cannot be queried using PromQL.
 //
-// [supported AWS resources]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/UsingResourceTagsForTelemetry.html
+// [supported Amazon Web Services resources]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/UsingResourceTagsForTelemetry.html
 func (c *Client) StopOTelEnrichment(ctx context.Context, params *StopOTelEnrichmentInput, optFns ...func(*Options)) (*StopOTelEnrichmentOutput, error) {
 	if params == nil {
 		params = &StopOTelEnrichmentInput{}

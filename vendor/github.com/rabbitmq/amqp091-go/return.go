@@ -25,7 +25,7 @@ type Return struct {
 	DeliveryMode    uint8     // queue implementation use - non-persistent (1) or persistent (2)
 	Priority        uint8     // queue implementation use - 0 to 9
 	CorrelationId   string    // application use - correlation identifier
-	ReplyTo         string    // application use - address to to reply to (ex: RPC)
+	ReplyTo         string    // application use - address to reply to (ex: RPC)
 	Expiration      string    // implementation use - message expiration spec
 	MessageId       string    // application use - message identifier
 	Timestamp       time.Time // application use - message timestamp

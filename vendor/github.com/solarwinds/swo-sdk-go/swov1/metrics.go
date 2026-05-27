@@ -238,13 +238,7 @@ func (s *Metrics) ListMetrics(ctx context.Context, request operations.ListMetric
 
 		return s.ListMetrics(
 			ctx,
-			operations.ListMetricsRequest{
-				Name:      request.Name,
-				StartTime: request.StartTime,
-				EndTime:   request.EndTime,
-				PageSize:  request.PageSize,
-				SkipToken: request.SkipToken,
-			},
+			request,
 			opts...,
 		)
 	}
@@ -875,12 +869,7 @@ func (s *Metrics) ListMultiMetricMeasurements(ctx context.Context, request opera
 
 		return s.ListMultiMetricMeasurements(
 			ctx,
-			operations.ListMultiMetricMeasurementsRequest{
-				RequestBody:     request.RequestBody,
-				ForcePositional: request.ForcePositional,
-				PageSize:        request.PageSize,
-				SkipToken:       request.SkipToken,
-			},
+			request,
 			opts...,
 		)
 	}
@@ -1196,9 +1185,7 @@ func (s *Metrics) GetMetricByName(ctx context.Context, request operations.GetMet
 
 		return s.GetMetricByName(
 			ctx,
-			operations.GetMetricByNameRequest{
-				Name: request.Name,
-			},
+			request,
 			opts...,
 		)
 	}
@@ -1804,6 +1791,7 @@ func (s *Metrics) DeleteCompositeMetric(ctx context.Context, request operations.
 
 	switch {
 	case httpRes.StatusCode == 204:
+		utils.DrainBody(httpRes)
 	case httpRes.StatusCode == 401:
 		switch {
 		case utils.MatchContentType(httpRes.Header.Get("Content-Type"), `application/json`):
@@ -2118,13 +2106,7 @@ func (s *Metrics) ListMetricAttributes(ctx context.Context, request operations.L
 
 		return s.ListMetricAttributes(
 			ctx,
-			operations.ListMetricAttributesRequest{
-				Name:      request.Name,
-				StartTime: request.StartTime,
-				EndTime:   request.EndTime,
-				PageSize:  request.PageSize,
-				SkipToken: request.SkipToken,
-			},
+			request,
 			opts...,
 		)
 	}
@@ -2444,14 +2426,7 @@ func (s *Metrics) ListMetricAttributeValues(ctx context.Context, request operati
 
 		return s.ListMetricAttributeValues(
 			ctx,
-			operations.ListMetricAttributeValuesRequest{
-				Name:          request.Name,
-				AttributeName: request.AttributeName,
-				StartTime:     request.StartTime,
-				EndTime:       request.EndTime,
-				PageSize:      request.PageSize,
-				SkipToken:     request.SkipToken,
-			},
+			request,
 			opts...,
 		)
 	}
@@ -2770,20 +2745,7 @@ func (s *Metrics) ListMetricMeasurements(ctx context.Context, request operations
 
 		return s.ListMetricMeasurements(
 			ctx,
-			operations.ListMetricMeasurementsRequest{
-				Name:                request.Name,
-				SeriesType:          request.SeriesType,
-				Filter:              request.Filter,
-				GroupBy:             request.GroupBy,
-				AggregateBy:         request.AggregateBy,
-				BucketSizeInSeconds: request.BucketSizeInSeconds,
-				PreGroupBy:          request.PreGroupBy,
-				PreGroupByMethod:    request.PreGroupByMethod,
-				StartTime:           request.StartTime,
-				EndTime:             request.EndTime,
-				PageSize:            request.PageSize,
-				SkipToken:           request.SkipToken,
-			},
+			request,
 			opts...,
 		)
 	}

@@ -71,6 +71,7 @@ var (
 		"Ramping":     3,
 		"Draining":    4,
 		"Drained":     5,
+		"Created":     6,
 	}
 )
 

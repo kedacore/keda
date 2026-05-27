@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -466,7 +467,7 @@ var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 func TestDynamoGetMetrics(t *testing.T) {
 	for _, meta := range awsDynamoDBGetMetricTestData {
 		t.Run(meta.TableName, func(t *testing.T) {
-			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, logr.Discard()}
+			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, nil, logr.Discard()}
 
 			value, _, err := scaler.GetMetricsAndActivity(context.Background(), "aws-dynamodb")
 			switch meta.TableName {
@@ -486,7 +487,7 @@ func TestDynamoGetMetrics(t *testing.T) {
 func TestDynamoGetQueryMetrics(t *testing.T) {
 	for _, meta := range awsDynamoDBGetMetricTestData {
 		t.Run(meta.TableName, func(t *testing.T) {
-			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, logr.Discard()}
+			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, nil, logr.Discard()}
 
 			value, err := scaler.GetQueryMetrics(context.Background())
 			switch meta.TableName {
@@ -506,7 +507,7 @@ func TestDynamoGetQueryMetrics(t *testing.T) {
 func TestDynamoIsActive(t *testing.T) {
 	for _, meta := range awsDynamoDBGetMetricTestData {
 		t.Run(meta.TableName, func(t *testing.T) {
-			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, logr.Discard()}
+			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, nil, logr.Discard()}
 
 			_, value, err := scaler.GetMetricsAndActivity(context.Background(), "aws-dynamodb")
 			switch meta.TableName {
@@ -521,4 +522,46 @@ func TestDynamoIsActive(t *testing.T) {
 			}
 		})
 	}
+}
+
+// mockDynamoDBTransport is an http.RoundTripper that tracks whether CloseIdleConnections was called.
+type mockDynamoDBTransport struct {
+	closeIdleCalled bool
+}
+
+func (m *mockDynamoDBTransport) RoundTrip(_ *http.Request) (*http.Response, error) {
+	return &http.Response{StatusCode: 200, Body: http.NoBody}, nil
+}
+
+func (m *mockDynamoDBTransport) CloseIdleConnections() {
+	m.closeIdleCalled = true
+}
+
+func TestAWSDynamoDBScalerCloseClosesHTTPConnections(t *testing.T) {
+	transport := &mockDynamoDBTransport{}
+	httpClient := &http.Client{Transport: transport}
+
+	meta := &awsDynamoDBMetadata{
+		TableName: "test-table",
+		AwsRegion: "eu-west-1",
+		awsAuthorization: awsutils.AuthorizationMetadata{
+			TriggerUniqueKey: "test-dynamodb-close-trigger",
+			AwsRegion:        "eu-west-1",
+		},
+	}
+
+	scaler := &awsDynamoDBScaler{
+		metricType: "",
+		metadata:   meta,
+		dbClient:   &mockDynamoDB{},
+		httpClient: httpClient,
+		logger:     logr.Discard(),
+	}
+
+	assert.False(t, transport.closeIdleCalled, "CloseIdleConnections should not have been called yet")
+
+	err := scaler.Close(context.Background())
+	assert.NoError(t, err)
+
+	assert.True(t, transport.closeIdleCalled, "CloseIdleConnections should have been called after Close()")
 }
