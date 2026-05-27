@@ -54,7 +54,7 @@ var (
 )
 
 type OtelMetrics struct {
-	enableHighCardinalityMetrics bool
+	enableHighCardinalityLabels bool
 }
 
 type OtelMetricInt64Val struct {
@@ -67,7 +67,7 @@ type OtelMetricFloat64Val struct {
 	measurementOption api.MeasurementOption
 }
 
-func NewOtelMetrics(enableHighCardinalityMetrics bool, options ...metric.Option) *OtelMetrics {
+func NewOtelMetrics(enableHighCardinalityLabels bool, options ...metric.Option) *OtelMetrics {
 	// create default options with env
 	if options == nil {
 		protocol := os.Getenv("OTEL_EXPORTER_OTLP_PROTOCOL")
@@ -94,14 +94,14 @@ func NewOtelMetrics(enableHighCardinalityMetrics bool, options ...metric.Option)
 	otel.SetMeterProvider(meterProvider)
 
 	meter = meterProvider.Meter(meterName)
-	initMeters(enableHighCardinalityMetrics)
+	initMeters()
 
-	otel := &OtelMetrics{enableHighCardinalityMetrics: enableHighCardinalityMetrics}
+	otel := &OtelMetrics{enableHighCardinalityLabels: enableHighCardinalityLabels}
 	otel.RecordBuildInfo()
 	return otel
 }
 
-func initMeters(enableHighCardinalityMetrics bool) {
+func initMeters() {
 	var err error
 	msg := "failed to create OpenTelemetry instrument"
 
@@ -239,16 +239,13 @@ func initMeters(enableHighCardinalityMetrics bool) {
 		otLog.Error(err, msg)
 	}
 
-	otHTTPClientRequestDuration = nil
-	if enableHighCardinalityMetrics {
-		otHTTPClientRequestDuration, err = meter.Float64Histogram(
-			"keda.scaler.http.request.duration.seconds",
-			api.WithDescription("Duration in seconds of outbound HTTP requests issued during scaler metric collection."),
-			api.WithUnit("s"),
-		)
-		if err != nil {
-			otLog.Error(err, msg)
-		}
+	otHTTPClientRequestDuration, err = meter.Float64Histogram(
+		"keda.scaler.http.request.duration.seconds",
+		api.WithDescription("Duration in seconds of outbound HTTP requests issued during scaler metric collection."),
+		api.WithUnit("s"),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
 	}
 }
 
@@ -537,11 +534,22 @@ func (o *OtelMetrics) RecordHTTPClientRequest(durationSeconds float64, statusCod
 		attribute.Key("status_code").String(code),
 	)
 	otHTTPClientRequestsCounter.Add(context.Background(), 1, counterOpt)
-	if o.enableHighCardinalityMetrics && otHTTPClientRequestDuration != nil {
-		histOpt := api.WithAttributes(
+	if otHTTPClientRequestDuration != nil {
+		attrs := []attribute.KeyValue{
 			attribute.Key("scaler").String(scaler),
 			attribute.Key("status_code").String(code),
-		)
+		}
+		if o.enableHighCardinalityLabels {
+			attrs = append([]attribute.KeyValue{
+				attribute.Key("namespace").String(namespace),
+				attribute.Key("scaled_resource").String(scaledResource),
+			}, attrs...)
+			attrs = append(attrs,
+				attribute.Key("trigger_name").String(triggerName),
+				attribute.Key("metric_name").String(metricName),
+			)
+		}
+		histOpt := api.WithAttributes(attrs...)
 		otHTTPClientRequestDuration.Record(context.Background(), durationSeconds, histOpt)
 	}
 }
