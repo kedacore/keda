@@ -92,7 +92,6 @@ require (
 	github.com/open-policy-agent/cert-controller v0.16.0
 	github.com/opensearch-project/opensearch-go/v4 v4.6.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
-	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common v0.67.5
@@ -149,6 +148,7 @@ require (
 require (
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.24 // indirect
 	github.com/evanphx/json-patch v5.9.0+incompatible // indirect
+  github.com/pkg/errors v0.9.1 // indirect
 )
 
 require (
