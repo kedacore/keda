@@ -173,6 +173,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewDatadogScaler(config)
 	case "dynatrace":
 		return scalers.NewDynatraceScaler(config)
+	case "elastic-forecast":
+		return scalers.NewElasticForecastScaler(config)
 	case "elasticsearch":
 		return scalers.NewElasticsearchScaler(config)
 	case "etcd":
@@ -230,6 +232,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewNewRelicScaler(config)
 	case "nsq":
 		return scalers.NewNSQScaler(config)
+	case "opensearch":
+		return scalers.NewOpensearchScaler(config)
 	case "openstack-metric":
 		return scalers.NewOpenstackMetricScaler(ctx, config)
 	case "openstack-swift":

@@ -1292,6 +1292,21 @@ var EntityInfrastructureIntegrationTypeTypes = struct {
 	VARNISH_INSTANCE: "VARNISH_INSTANCE",
 }
 
+// EntityManagementActorType - The available actor types.
+type EntityManagementActorType string
+
+var EntityManagementActorTypeTypes = struct {
+	// System actor type.
+	SYSTEM EntityManagementActorType
+	// User actor type.
+	USER EntityManagementActorType
+}{
+	// System actor type.
+	SYSTEM: "SYSTEM",
+	// User actor type.
+	USER: "USER",
+}
+
 // EntityManagementAiToolParameterType - Enum for AiToolParameter
 type EntityManagementAiToolParameterType string
 
@@ -1645,6 +1660,8 @@ type EntityManagementMcpAuthType string
 var EntityManagementMcpAuthTypeTypes = struct {
 	// Bearer token authentication using Authorization header
 	BEARER_TOKEN EntityManagementMcpAuthType
+	// Authentication delegated to a Connections Manager entity (e.g., GithubConnection)
+	CONNECTION_REFERENCE EntityManagementMcpAuthType
 	// Custom header-based authentication with arbitrary key-value pair
 	GENERIC_HEADER EntityManagementMcpAuthType
 	// No authentication required
@@ -1654,6 +1671,8 @@ var EntityManagementMcpAuthTypeTypes = struct {
 }{
 	// Bearer token authentication using Authorization header
 	BEARER_TOKEN: "BEARER_TOKEN",
+	// Authentication delegated to a Connections Manager entity (e.g., GithubConnection)
+	CONNECTION_REFERENCE: "CONNECTION_REFERENCE",
 	// Custom header-based authentication with arbitrary key-value pair
 	GENERIC_HEADER: "GENERIC_HEADER",
 	// No authentication required
@@ -3803,6 +3822,8 @@ type DashboardVariableNRQLQuery struct {
 type DashboardVariableOptions struct {
 	// With this turned on, query condition defined with the variable will not be included in the query.
 	Excluded bool `json:"excluded,omitempty"`
+	// Controls whether this variable is visible in the UI when not in edit mode.
+	HiddenOnVariablesBar bool `json:"hiddenOnVariablesBar,omitempty"`
 	// Only applies to variables of type NRQL. With this turned on, the time range for the NRQL query will override the time picker on dashboards and other pages. Turn this off to use the time picker as normal.
 	IgnoreTimeRange bool `json:"ignoreTimeRange,omitempty"`
 	// Determines whether or not an Apply action will be shown when selecting multiple values in ENUM and NRQL variables.
@@ -3813,10 +3834,14 @@ type DashboardVariableOptions struct {
 type DashboardWidget struct {
 	// Typed widgets are area, bar, billboard, line, markdown, pie, and table.
 	Configuration DashboardWidgetConfiguration `json:"configuration,omitempty"`
+	// A description of the widget, will be displayed in a tooltip.
+	Description string `json:"description,omitempty"`
 	// ID of the widget.
 	ID string `json:"id"`
 	// The widget's position and size in the dashboard.
 	Layout DashboardWidgetLayout `json:"layout,omitempty"`
+	// Link configuration for the widget. The URL will be rendered as a clickable link.
+	Link DashboardWidgetLink `json:"link,omitempty"`
 	// Entities related to the widget. Currently only supports one Dashboard entity guid, but may allow other cases in the future.
 	LinkedEntities []EntityOutlineInterface `json:"linkedEntities,omitempty"`
 	// Untyped widgets are all other widgets, such as bullet, histogram, inventory, etc.
@@ -3846,6 +3871,11 @@ func (x *DashboardWidget) UnmarshalJSON(b []byte) error {
 			if err != nil {
 				return err
 			}
+		case "description":
+			err = json.Unmarshal(*v, &x.Description)
+			if err != nil {
+				return err
+			}
 		case "id":
 			err = json.Unmarshal(*v, &x.ID)
 			if err != nil {
@@ -3853,6 +3883,11 @@ func (x *DashboardWidget) UnmarshalJSON(b []byte) error {
 			}
 		case "layout":
 			err = json.Unmarshal(*v, &x.Layout)
+			if err != nil {
+				return err
+			}
+		case "link":
+			err = json.Unmarshal(*v, &x.Link)
 			if err != nil {
 				return err
 			}
@@ -3925,6 +3960,12 @@ type DashboardWidgetLayout struct {
 	Row int `json:"row,omitempty"`
 	// Width of the widget. Valid values are 1 to 12 inclusive. Defaults to 4.
 	Width int `json:"width,omitempty"`
+}
+
+// DashboardWidgetLink - Configuration for a link displayed in the widget. The URL is rendered as a clickable link in the widget, allowing users to navigate to related resources or documentation.
+type DashboardWidgetLink struct {
+	// The target URL for the link.
+	URL string `json:"url"`
 }
 
 // DashboardWidgetNRQLQuery - Single NRQL query for a widget.
@@ -4195,6 +4236,8 @@ type EntityGoldenTag struct {
 type EntityManagementActor struct {
 	// Id of the actor.
 	ID string `json:"id"`
+	// Type of the actor.
+	Type EntityManagementActorType `json:"type"`
 }
 
 func (x *EntityManagementActor) ImplementsEntityManagementActor() {}
@@ -4205,43 +4248,6 @@ type EntityManagementActorStitchedFields struct {
 	Entity EntityManagementEntityInterface `json:"entity,omitempty"`
 	// Retrieves a set of entities that match the given query predicate.
 	EntitySearch EntityManagementEntitySearchResult `json:"entitySearch,omitempty"`
-}
-
-// special
-func (x *EntityManagementActorStitchedFields) UnmarshalJSON(b []byte) error {
-	var objMap map[string]*json.RawMessage
-	err := json.Unmarshal(b, &objMap)
-	if err != nil {
-		return err
-	}
-
-	for k, v := range objMap {
-		if v == nil {
-			continue
-		}
-
-		switch k {
-		case "entity":
-			if v == nil {
-				continue
-			}
-			xxx, err := UnmarshalEntityManagementEntityInterface(*v)
-			if err != nil {
-				return err
-			}
-
-			if xxx != nil {
-				x.Entity = *xxx
-			}
-		case "entitySearch":
-			err = json.Unmarshal(*v, &x.EntitySearch)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
 }
 
 // EntityManagementAgentConfigurationEntity - A configuration that can contain multiple immutable versions and can be deployed to a fleet
@@ -5180,6 +5186,18 @@ type EntityManagementPipelineCloudRuleEntity struct {
 
 func (x *EntityManagementPipelineCloudRuleEntity) ImplementsEntityManagementEntity() {}
 
+// EntityManagementProgressLevelDefinition - Defines a progress level within a scorecard.
+type EntityManagementProgressLevelDefinition struct {
+	// The level description.
+	Description string `json:"description,omitempty"`
+	// The hex code value for the color representing this level.
+	HexColorCode string `json:"hexColorCode,omitempty"`
+	// The id of the progress level this entity refers to.
+	ID string `json:"id"`
+	// The name of this level.
+	Name string `json:"name"`
+}
+
 // EntityManagementRagToolEntity - A tool for use with NRAI
 type EntityManagementRagToolEntity struct {
 	// The description of the tool.
@@ -5234,14 +5252,18 @@ type EntityManagementRuleExecutionStatus struct {
 
 // EntityManagementSchedule - An attribute, that contains information about scheduler configuration
 type EntityManagementSchedule struct {
-	// An optional attribute is limited to a cron expression, which should be convertible to a minute period
-	CronExpression string `json:"cronExpression,omitempty"`
 	// An optional field stating the status of the schedule
 	Enabled bool `json:"enabled,omitempty"`
+	// An optional ISO 8601 timestamp serving as the anchor for RRULE recurrence calculation. Defaults to current time if not provided
+	FirstRunAt nrtime.DateTime `json:"firstRunAt,omitempty"`
 	// An optional attribute unit is in minutes, with a minimum of 1 minute and a maximum of 1 year expressed in minutes
 	Period int `json:"period,omitempty"`
+	// An optional RFC 5545 RRULE string for complex, timezone-aware schedules (e.g., FREQ=MONTHLY;BYDAY=FR;BYSETPOS=-1). Mutually exclusive with period
+	Rrule string `json:"rrule,omitempty"`
 	// An optional attribute executes at once, with the date-time value in ISO 8601 format
 	ScheduleAt nrtime.DateTime `json:"scheduleAt,omitempty"`
+	// An optional IANA timezone identifier (e.g., America/New_York) for DST-aware schedule calculations. Defaults to Etc/UTC
+	Timezone string `json:"timezone,omitempty"`
 }
 
 // EntityManagementScopedReference - An entity with scope.
@@ -5262,6 +5284,8 @@ type EntityManagementScorecardEntity struct {
 	Metadata EntityManagementMetadata `json:"metadata"`
 	// A unique user provided name for the scorecard.
 	Name string `json:"name"`
+	// Represents the different progress levels within a scorecard. A maximum of 5 progress levels are allowed.
+	ProgressLevels []EntityManagementProgressLevelDefinition `json:"progressLevels"`
 	// List of rules in the scorecard.
 	Rules EntityManagementCollectionEntity `json:"rules,omitempty"`
 	// The entity's scope.
@@ -5282,6 +5306,8 @@ type EntityManagementScorecardRuleEntity struct {
 	Enabled bool `json:"enabled"`
 	// The entity's global unique identifier.
 	ID string `json:"id"`
+	// The weight this rule has on the overall Scorecard Score. This number is a whole integer with valid values from 1 to 100.
+	ImpactWeight int `json:"impactWeight,omitempty"`
 	// Last execution status of the rule
 	LastExecutionStatus EntityManagementRuleExecutionStatus `json:"lastExecutionStatus,omitempty"`
 	// Metadata about the entity.
@@ -5290,6 +5316,10 @@ type EntityManagementScorecardRuleEntity struct {
 	NRQLEngine EntityManagementNRQLRuleEngine `json:"nrqlEngine"`
 	// A unique user provided name for the rule
 	Name string `json:"name"`
+	// The id of the progress level this rule falls in. This id must match one of the existing ids in the parent Scorecard levels field.
+	ProgressLevel string `json:"progressLevel,omitempty"`
+	// The run interval in minutes. This defines how often the rule will be executed.
+	RunInterval int `json:"runInterval,omitempty"`
 	// Schedule configuration of the rule: only period configuration is currently supported.
 	Schedule EntityManagementSchedule `json:"schedule,omitempty"`
 	// The entity's scope.
@@ -5354,6 +5384,8 @@ type EntityManagementSyncGroupsSettings struct {
 type EntityManagementSystemActor struct {
 	// Id of the actor.
 	ID string `json:"id"`
+	// Type of the actor.
+	Type EntityManagementActorType `json:"type"`
 }
 
 func (x *EntityManagementSystemActor) ImplementsEntityManagementActor() {}
@@ -5374,8 +5406,12 @@ type EntityManagementTeamEntity struct {
 	Description string `json:"description,omitempty"`
 	// External Integration with another system.
 	ExternalIntegration EntityManagementTeamExternalIntegration `json:"externalIntegration,omitempty"`
+	// The hierarchy level the team belongs to.
+	HierarchyLevelId string `json:"hierarchyLevelId,omitempty"`
 	// The entity's global unique identifier.
 	ID string `json:"id"`
+	// The managers or contact persons for the team.
+	Managers []string `json:"managers"`
 	// Collection that contains the list of members belonging to the team.
 	Membership EntityManagementCollectionEntity `json:"membership,omitempty"`
 	// Metadata about the entity.
@@ -5384,6 +5420,8 @@ type EntityManagementTeamEntity struct {
 	Name string `json:"name"`
 	// Collection that contains the list of entities owned by the team.
 	Ownership EntityManagementCollectionEntity `json:"ownership,omitempty"`
+	// The parent team in the hierarchy.
+	ParentId string `json:"parentId,omitempty"`
 	// List of resources attached to the team.
 	Resources []EntityManagementTeamResource `json:"resources"`
 	// The entity's scope.
@@ -5414,10 +5452,30 @@ type EntityManagementTeamResource struct {
 	Type string `json:"type"`
 }
 
+// EntityManagementTeamsHierarchyLevelEntity - A teams hierarchy level for the organization.
+type EntityManagementTeamsHierarchyLevelEntity struct {
+	// The entity's global unique identifier.
+	ID string `json:"id"`
+	// Metadata about the entity.
+	Metadata EntityManagementMetadata `json:"metadata"`
+	// The name of this entity.
+	Name string `json:"name"`
+	// The entity's scope.
+	Scope EntityManagementScopedReference `json:"scope"`
+	// List of tags.
+	Tags []EntityManagementTag `json:"tags"`
+	// The entity type.
+	Type string `json:"type"`
+}
+
+func (x *EntityManagementTeamsHierarchyLevelEntity) ImplementsEntityManagementEntity() {}
+
 // EntityManagementTeamsOrganizationSettingsEntity - Teams global settings per organization.
 type EntityManagementTeamsOrganizationSettingsEntity struct {
 	// Discovery settings.
 	Discovery EntityManagementDiscoverySettings `json:"discovery,omitempty"`
+	// The order of the teams hierarchy levels for the organization.
+	HierarchyLevelOrder []string `json:"hierarchyLevelOrder"`
 	// The entity's global unique identifier.
 	ID string `json:"id"`
 	// Metadata about the entity.
@@ -5446,6 +5504,8 @@ type EntityManagementTokenTextSplitterOptions struct {
 type EntityManagementUserActor struct {
 	// Id of the actor.
 	ID string `json:"id"`
+	// Type of the actor.
+	Type EntityManagementActorType `json:"type"`
 }
 
 func (x *EntityManagementUserActor) ImplementsEntityManagementActor() {}
@@ -6211,7 +6271,7 @@ type FleetControlFleetEntityResult struct {
 	Name string `json:"name"`
 	// Operating system information for HOST fleets
 	OperatingSystem FleetControlOperatingSystem `json:"operatingSystem,omitempty"`
-	// Fleet specific product type
+	// Fleet specific product type. The only supported value is 'PCG' for PipelineControlGateway fleets.
 	Product []string `json:"product"`
 	// Fleet entity scope
 	Scope FleetControlScopedReference `json:"scope"`

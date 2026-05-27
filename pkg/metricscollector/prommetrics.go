@@ -104,6 +104,15 @@ var (
 		},
 		[]string{"namespace", "scaledJob"},
 	)
+	emptyUpstreamResponse = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaler",
+			Name:      "empty_upstream_responses_total",
+			Help:      "Number of times a query returns an empty result",
+		},
+		[]string{"namespace", "scaledResource", "triggerName", "metricName", "resourceType", "ignoreNullValues"},
+	)
 	triggerRegistered = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
@@ -152,6 +161,27 @@ var (
 		},
 		[]string{"namespace"},
 	)
+
+	httpClientRequestsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaler_http",
+			Name:      "requests_total",
+			Help:      "Total number of outbound HTTP requests issued during scaler metric collection.",
+		},
+		[]string{"namespace", "scaled_resource", "scaler", "trigger_name", "metric_name", "status_code"},
+	)
+
+	httpClientRequestDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaler_http",
+			Name:      "request_duration_seconds",
+			Help:      "Duration in seconds of outbound HTTP requests issued during scaler metric collection.",
+			Buckets:   []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
+		},
+		[]string{"scaler", "status_code"},
+	)
 )
 
 type PromMetrics struct {
@@ -168,11 +198,15 @@ func NewPromMetrics() *PromMetrics {
 	metrics.Registry.MustRegister(triggerRegistered)
 	metrics.Registry.MustRegister(crdRegistered)
 	metrics.Registry.MustRegister(scaledJobErrors)
+	metrics.Registry.MustRegister(emptyUpstreamResponse)
 
 	metrics.Registry.MustRegister(buildInfo)
 
 	metrics.Registry.MustRegister(cloudeventEmitted)
 	metrics.Registry.MustRegister(cloudeventQueueStatus)
+
+	metrics.Registry.MustRegister(httpClientRequestsTotal)
+	metrics.Registry.MustRegister(httpClientRequestDuration)
 
 	RecordBuildInfo()
 	return &PromMetrics{}
@@ -326,6 +360,25 @@ func (p *PromMetrics) RecordCloudEventEmittedError(namespace string, cloudevents
 // RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting
 func (p *PromMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
 	cloudeventQueueStatus.With(prometheus.Labels{"namespace": namespace}).Set(float64(value))
+}
+
+// RecordEmptyUpstreamResponse counts the number of times a query returns an empty result
+func (p *PromMetrics) RecordEmptyUpstreamResponse(namespace, scaledResource, triggerName, metricName, resourceType string, ignoreNullValues bool) {
+	emptyUpstreamResponse.With(prometheus.Labels{
+		"namespace":        namespace,
+		"scaledResource":   scaledResource,
+		"triggerName":      triggerName,
+		"metricName":       metricName,
+		"resourceType":     resourceType,
+		"ignoreNullValues": strconv.FormatBool(ignoreNullValues),
+	}).Inc()
+}
+
+// RecordHTTPClientRequest records the duration and outcome of a single outbound HTTP request.
+func (p *PromMetrics) RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string) {
+	code := httpStatusCodeLabel(statusCode, isError)
+	httpClientRequestsTotal.WithLabelValues(namespace, scaledResource, scaler, triggerName, metricName, code).Inc()
+	httpClientRequestDuration.WithLabelValues(scaler, code).Observe(durationSeconds)
 }
 
 // Returns a grpcprom server Metrics object and registers the metrics. The object contains

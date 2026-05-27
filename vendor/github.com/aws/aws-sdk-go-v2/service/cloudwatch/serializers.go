@@ -4461,6 +4461,13 @@ func serializeCBOR_PutDashboardInput(v *PutDashboardInput) (smithycbor.Value, er
 		}
 		vm["DashboardBody"] = ser
 	}
+	if v.Tags != nil {
+		ser, err := serializeCBOR_TagList(v.Tags)
+		if err != nil {
+			return nil, err
+		}
+		vm["Tags"] = ser
+	}
 	return vm, nil
 }
 

@@ -40,6 +40,7 @@ import (
 // roundTripper adds custom round tripper to sign requests
 type roundTripper struct {
 	client *amp.Client
+	next   http.RoundTripper
 }
 
 var (
@@ -63,11 +64,7 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Create default transport
-	transport := httputils.CreateHTTPTransport(false)
-
-	// Send signed request
-	return transport.RoundTrip(req)
+	return rt.next.RoundTrip(req)
 }
 
 // parseAwsAMPMetadata parses the data to get the AWS specific auth info and metadata
@@ -104,6 +101,7 @@ func NewSigV4RoundTripper(config *scalersconfig.ScalerConfig, awsRegion string) 
 	client := amp.NewFromConfig(*awsCfg, func(_ *amp.Options) {})
 	rt := &roundTripper{
 		client: client,
+		next:   httputils.CreateRT(false),
 	}
 
 	return rt, nil

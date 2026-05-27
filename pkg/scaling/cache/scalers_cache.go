@@ -18,6 +18,7 @@ package cache
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -29,11 +30,15 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 var log = logf.Log.WithName("scalers_cache")
+
+// ErrCacheClosed is returned by reader methods when the cache has been closed.
+var ErrCacheClosed = errors.New("scalers cache is closed")
 
 type ScalersCache struct {
 	ScaledObject             *kedav1alpha1.ScaledObject
@@ -42,6 +47,19 @@ type ScalersCache struct {
 	Recorder                 record.EventRecorder
 	CompiledFormula          *vm.Program
 	mutex                    sync.RWMutex
+	closed                   bool
+	activeReaders            sync.WaitGroup
+}
+
+// acquireReader returns ErrCacheClosed if the cache is closed, otherwise it increments activeReaders. The closed check and the Add must happen under the same RLock so Close()'s write Lock serializes against both. Caller must Done().
+func (c *ScalersCache) acquireReader() error {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+	if c.closed {
+		return ErrCacheClosed
+	}
+	c.activeReaders.Add(1)
+	return nil
 }
 
 type ScalerBuilder struct {
@@ -70,6 +88,10 @@ func (c *ScalersCache) getScalerBuilder(index int) (ScalerBuilder, error) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
+	if c.closed {
+		return ScalerBuilder{}, ErrCacheClosed
+	}
+
 	if index < 0 || index >= len(c.Scalers) {
 		return ScalerBuilder{}, fmt.Errorf("scaler with id %d not found. Len = %d", index, len(c.Scalers))
 	}
@@ -96,12 +118,23 @@ func (c *ScalersCache) GetPushScalers() []PushScalerWithTriggerIndex {
 	return result
 }
 
-// Close closes all scalers in the cache
+// Close closes all scalers in the cache. It is idempotent and waits for active readers to finish before tearing down the underlying scalers.
 func (c *ScalersCache) Close(ctx context.Context) {
+	c.mutex.Lock()
+	if c.closed {
+		c.mutex.Unlock()
+		return
+	}
+	c.closed = true
+	c.mutex.Unlock()
+
+	c.activeReaders.Wait()
+
 	c.mutex.Lock()
 	scalers := c.Scalers
 	c.Scalers = nil
 	c.mutex.Unlock()
+
 	for _, s := range scalers {
 		err := s.Scaler.Close(ctx)
 		if err != nil {
@@ -123,6 +156,11 @@ func (c *ScalersCache) GetMetricSpecForScaling(ctx context.Context) []v2.MetricS
 
 // GetMetricSpecForScalingForScaler returns metrics spec for a scaler identified by the metric name
 func (c *ScalersCache) GetMetricSpecForScalingForScaler(ctx context.Context, index int) ([]v2.MetricSpec, error) {
+	if err := c.acquireReader(); err != nil {
+		return nil, err
+	}
+	defer c.activeReaders.Done()
+
 	var err error
 
 	sb, err := c.getScalerBuilder(index)
@@ -152,12 +190,18 @@ func (c *ScalersCache) GetMetricSpecForScalingForScaler(ctx context.Context, ind
 // GetMetricsAndActivityForScaler returns metric value, activity and latency for a scaler identified by the metric name
 // and by the input index (from the list of scalers in this ScaledObject)
 func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index int, metricName string) ([]external_metrics.ExternalMetricValue, bool, time.Duration, error) {
+	if err := c.acquireReader(); err != nil {
+		return nil, false, -1, err
+	}
+	defer c.activeReaders.Done()
+
 	sb, err := c.getScalerBuilder(index)
 	if err != nil {
 		return nil, false, -1, err
 	}
+	requestCtx := metricscollector.BuildScalerRequestCtx(ctx, sb.ScalerConfig, metricName)
 	startTime := time.Now()
-	metric, activity, err := sb.Scaler.GetMetricsAndActivity(ctx, metricName)
+	metric, activity, err := sb.Scaler.GetMetricsAndActivity(requestCtx, metricName)
 	if err == nil {
 		return metric, activity, time.Since(startTime), nil
 	}
@@ -166,14 +210,23 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 	if err != nil {
 		return nil, false, -1, err
 	}
+	newSb, err := c.getScalerBuilder(index)
+	if err != nil {
+		return nil, false, -1, err
+	}
+	requestCtx = metricscollector.BuildScalerRequestCtx(ctx, newSb.ScalerConfig, metricName)
 	startTime = time.Now()
-	metric, activity, err = ns.GetMetricsAndActivity(ctx, metricName)
+	metric, activity, err = ns.GetMetricsAndActivity(requestCtx, metricName)
 	return metric, activity, time.Since(startTime), err
 }
 
 func (c *ScalersCache) refreshScaler(ctx context.Context, index int) (scalers.Scaler, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+
+	if c.closed {
+		return nil, ErrCacheClosed
+	}
 
 	if index < 0 || index >= len(c.Scalers) {
 		return nil, fmt.Errorf("scaler with id %d not found. Len = %d", index, len(c.Scalers))

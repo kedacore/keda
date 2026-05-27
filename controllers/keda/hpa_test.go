@@ -85,6 +85,66 @@ var _ = Describe("hpa", func() {
 		Expect(capturedScaledObject.Status.Health).To(BeEmpty())
 	})
 
+	It("should return error when scalers return empty metric specs", func() {
+		scaledObject := &v1alpha1.ScaledObject{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "test-scaled-object",
+				Namespace: "test-namespace",
+			},
+		}
+
+		emptyScaler := mock_scalers.NewMockScaler(ctrl)
+		scalersCache := cache.ScalersCache{
+			Scalers: []cache.ScalerBuilder{{
+				Scaler: emptyScaler,
+				Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+					return emptyScaler, &scalersconfig.ScalerConfig{}, nil
+				},
+			}},
+			Recorder: nil,
+		}
+
+		ctx := context.Background()
+		emptyScaler.EXPECT().GetMetricSpecForScaling(ctx).Return([]v2.MetricSpec{})
+		scaleHandler.EXPECT().GetScalersCache(ctx, gomock.Eq(scaledObject)).Return(&scalersCache, nil)
+
+		specs, err := reconciler.getScaledObjectMetricSpecs(ctx, logger, scaledObject)
+
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("no metric specs returned from scalers"))
+		Expect(specs).To(BeNil())
+	})
+
+	It("should return error when scalers return nil metric specs", func() {
+		scaledObject := &v1alpha1.ScaledObject{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "test-scaled-object",
+				Namespace: "test-namespace",
+			},
+		}
+
+		emptyScaler := mock_scalers.NewMockScaler(ctrl)
+		scalersCache := cache.ScalersCache{
+			Scalers: []cache.ScalerBuilder{{
+				Scaler: emptyScaler,
+				Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+					return emptyScaler, &scalersconfig.ScalerConfig{}, nil
+				},
+			}},
+			Recorder: nil,
+		}
+
+		ctx := context.Background()
+		emptyScaler.EXPECT().GetMetricSpecForScaling(ctx).Return(nil)
+		scaleHandler.EXPECT().GetScalersCache(ctx, gomock.Eq(scaledObject)).Return(&scalersCache, nil)
+
+		specs, err := reconciler.getScaledObjectMetricSpecs(ctx, logger, scaledObject)
+
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("no metric specs returned from scalers"))
+		Expect(specs).To(BeNil())
+	})
+
 	It("should not remove existing metric from health status", func() {
 		numberOfFailures := int32(87)
 		health := make(map[string]v1alpha1.HealthStatus)
