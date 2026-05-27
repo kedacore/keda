@@ -17,6 +17,7 @@ limitations under the License.
 package resolver
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
 	"os"
@@ -100,6 +101,20 @@ func TestReadKubernetesServiceAccountProjectedToken(t *testing.T) {
 				tokenPath := createTempFile(t, tokenBytes)
 
 				return tokenPath
+			},
+			expectError: true,
+		},
+		{
+			name: "token file exceeds maximum size",
+			setupToken: func() string {
+				return createTempFile(t, bytes.Repeat([]byte("x"), maxProjectedServiceAccountTokenSize+1))
+			},
+			expectError: true,
+		},
+		{
+			name: "token path is not a regular file",
+			setupToken: func() string {
+				return t.TempDir()
 			},
 			expectError: true,
 		},
