@@ -649,6 +649,8 @@ github.com/envoyproxy/go-control-plane/envoy/type/v3
 # github.com/envoyproxy/protoc-gen-validate v1.3.0
 ## explicit; go 1.21.1
 github.com/envoyproxy/protoc-gen-validate/validate
+# github.com/evanphx/json-patch v5.9.0+incompatible
+## explicit
 # github.com/evanphx/json-patch/v5 v5.9.11
 ## explicit; go 1.18
 github.com/evanphx/json-patch/v5
@@ -1361,6 +1363,13 @@ github.com/onsi/gomega/types
 # github.com/open-policy-agent/cert-controller v0.16.0
 ## explicit; go 1.25.0
 github.com/open-policy-agent/cert-controller/pkg/rotator
+# github.com/opensearch-project/opensearch-go/v4 v4.6.0
+## explicit; go 1.24
+github.com/opensearch-project/opensearch-go/v4
+github.com/opensearch-project/opensearch-go/v4/internal/version
+github.com/opensearch-project/opensearch-go/v4/opensearchapi
+github.com/opensearch-project/opensearch-go/v4/opensearchtransport
+github.com/opensearch-project/opensearch-go/v4/signer
 # github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 ## explicit
 github.com/phayes/freeport
@@ -1896,11 +1905,6 @@ go.temporal.io/sdk/log
 # go.uber.org/atomic v1.11.0
 ## explicit; go 1.18
 go.uber.org/atomic
-# go.uber.org/automaxprocs v1.6.0
-## explicit; go 1.20
-go.uber.org/automaxprocs/internal/cgroups
-go.uber.org/automaxprocs/internal/runtime
-go.uber.org/automaxprocs/maxprocs
 # go.uber.org/mock v0.6.0
 ## explicit; go 1.23.0
 go.uber.org/mock/gomock
@@ -1951,7 +1955,6 @@ golang.org/x/crypto/sha3
 # golang.org/x/exp v0.0.0-20260112195511-716be5621a96
 ## explicit; go 1.24.0
 golang.org/x/exp/constraints
-golang.org/x/exp/maps
 golang.org/x/exp/slices
 # golang.org/x/mod v0.35.0
 ## explicit; go 1.25.0
@@ -3173,17 +3176,6 @@ k8s.io/utils/net
 k8s.io/utils/path
 k8s.io/utils/ptr
 k8s.io/utils/trace
-# knative.dev/pkg v0.0.0-20260120122510-4a022ed9999a
-## explicit; go 1.24.0
-knative.dev/pkg/apis
-knative.dev/pkg/apis/duck
-knative.dev/pkg/apis/duck/ducktypes
-knative.dev/pkg/apis/duck/v1
-knative.dev/pkg/kmap
-knative.dev/pkg/kmeta
-knative.dev/pkg/kmp
-knative.dev/pkg/ptr
-knative.dev/pkg/tracker
 # sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.34.0
 ## explicit; go 1.21
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client/pkg/client
