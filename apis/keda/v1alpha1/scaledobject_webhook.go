@@ -33,7 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -49,7 +49,7 @@ var kc client.Client
 var cacheMissToDirectClient bool
 var directClient client.Client
 var restMapper meta.RESTMapper
-var eventRecorder record.EventRecorder
+var eventRecorder events.EventRecorder
 
 var memoryString = "memory"
 var cpuString = "cpu"
@@ -64,7 +64,7 @@ func (so *ScaledObject) SetupWebhookWithManager(mgr ctrl.Manager, cacheMissFallb
 	}
 
 	// Setup event recorder
-	eventRecorder = mgr.GetEventRecorderFor("keda-admission")
+	eventRecorder = mgr.GetEventRecorder("keda-admission")
 
 	return ctrl.NewWebhookManagedBy(mgr, so).
 		WithValidator(&ScaledObjectCustomValidator{}).
@@ -340,7 +340,7 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 			msg := "PollingInterval is configured but is not relevant. PollingInterval is only relevant when minReplicaCount = 0 or idleReplicaCount = 0 or useCachedMetrics is enabled"
 			warnings = append(warnings, msg)
 			if eventRecorder != nil {
-				eventRecorder.Event(incomingSo, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, msg)
+				eventRecorder.Eventf(incomingSo, nil, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", msg)
 			}
 		}
 	}
@@ -352,7 +352,7 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 			msg := "CooldownPeriod is configured but is not relevant. CooldownPeriod is only relevant when minReplicaCount = 0 or idleReplicaCount = 0"
 			warnings = append(warnings, msg)
 			if eventRecorder != nil {
-				eventRecorder.Event(incomingSo, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, msg)
+				eventRecorder.Eventf(incomingSo, nil, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", msg)
 			}
 		}
 	}

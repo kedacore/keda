@@ -160,6 +160,8 @@ New deprecation(s):
 
 ### Other
 
+- **General**: Migrate event recording RBAC from core `events` to `events.k8s.io` ([#7781](https://github.com/kedacore/keda/pull/7781))
+- **General**: Migrate metrics service gRPC response away from Kubernetes API protobuf types for Kubernetes 0.35 ([#7781](https://github.com/kedacore/keda/pull/7781))
 - **General**: Remove dead code from authentication package and drop unused `authModes` field from ArangoDB, Loki, Prometheus and PredictKube scalers ([#7726](https://github.com/kedacore/keda/pull/7726))
 - **General**: Use informer cache for ReplicaSet lookups in GetCurrentReplicas to reduce API server load ([#7466](https://github.com/kedacore/keda/pull/7466))
 - **External Scaler**: Fix race condition in `TestWaitForState` causing flaky test under `-race` detector ([#7542](https://github.com/kedacore/keda/issues/7542))
