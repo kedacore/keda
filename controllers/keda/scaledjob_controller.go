@@ -156,7 +156,7 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	} else {
 		wasReady := conditions.GetReadyCondition()
 		if wasReady.IsFalse() || wasReady.IsUnknown() {
-			r.EventEmitter.Emit(scaledJob, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectReadyType, eventreason.ScaledJobReady, message.ScaledJobReadyMsg)
+			r.EventEmitter.Emit(scaledJob, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledJobReadyType, eventreason.ScaledJobReady, message.ScaledJobReadyMsg)
 		}
 		reqLogger.V(1).Info(msg)
 		conditions.SetReadyCondition(metav1.ConditionTrue, "ScaledJobReady", msg)
