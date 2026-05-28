@@ -25,7 +25,6 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
-	v1beta1 "k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -358,11 +357,308 @@ func (x *RawMetric) GetIsActive() bool {
 	return false
 }
 
+// These messages mirror the wire shape of
+// k8s.io.metrics.pkg.apis.external_metrics.v1beta1.ExternalMetricValueList
+// without importing Kubernetes API structs as gRPC response types.
+type ExternalMetricValueList struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Metadata      *ListMeta              `protobuf:"bytes,1,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	Items         []*ExternalMetricValue `protobuf:"bytes,2,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExternalMetricValueList) Reset() {
+	*x = ExternalMetricValueList{}
+	mi := &file_metrics_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExternalMetricValueList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExternalMetricValueList) ProtoMessage() {}
+
+func (x *ExternalMetricValueList) ProtoReflect() protoreflect.Message {
+	mi := &file_metrics_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExternalMetricValueList.ProtoReflect.Descriptor instead.
+func (*ExternalMetricValueList) Descriptor() ([]byte, []int) {
+	return file_metrics_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ExternalMetricValueList) GetMetadata() *ListMeta {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
+}
+
+func (x *ExternalMetricValueList) GetItems() []*ExternalMetricValue {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+type ExternalMetricValue struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MetricName    string                 `protobuf:"bytes,1,opt,name=metricName,proto3" json:"metricName,omitempty"`
+	MetricLabels  map[string]string      `protobuf:"bytes,2,rep,name=metricLabels,proto3" json:"metricLabels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Timestamp     *Time                  `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Window        *int64                 `protobuf:"varint,4,opt,name=window,proto3,oneof" json:"window,omitempty"`
+	Value         *Quantity              `protobuf:"bytes,5,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExternalMetricValue) Reset() {
+	*x = ExternalMetricValue{}
+	mi := &file_metrics_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExternalMetricValue) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExternalMetricValue) ProtoMessage() {}
+
+func (x *ExternalMetricValue) ProtoReflect() protoreflect.Message {
+	mi := &file_metrics_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExternalMetricValue.ProtoReflect.Descriptor instead.
+func (*ExternalMetricValue) Descriptor() ([]byte, []int) {
+	return file_metrics_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ExternalMetricValue) GetMetricName() string {
+	if x != nil {
+		return x.MetricName
+	}
+	return ""
+}
+
+func (x *ExternalMetricValue) GetMetricLabels() map[string]string {
+	if x != nil {
+		return x.MetricLabels
+	}
+	return nil
+}
+
+func (x *ExternalMetricValue) GetTimestamp() *Time {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
+func (x *ExternalMetricValue) GetWindow() int64 {
+	if x != nil && x.Window != nil {
+		return *x.Window
+	}
+	return 0
+}
+
+func (x *ExternalMetricValue) GetValue() *Quantity {
+	if x != nil {
+		return x.Value
+	}
+	return nil
+}
+
+type ListMeta struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	SelfLink           string                 `protobuf:"bytes,1,opt,name=selfLink,proto3" json:"selfLink,omitempty"`
+	ResourceVersion    string                 `protobuf:"bytes,2,opt,name=resourceVersion,proto3" json:"resourceVersion,omitempty"`
+	Continue           string                 `protobuf:"bytes,3,opt,name=continue,proto3" json:"continue,omitempty"`
+	RemainingItemCount *int64                 `protobuf:"varint,4,opt,name=remainingItemCount,proto3,oneof" json:"remainingItemCount,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *ListMeta) Reset() {
+	*x = ListMeta{}
+	mi := &file_metrics_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMeta) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMeta) ProtoMessage() {}
+
+func (x *ListMeta) ProtoReflect() protoreflect.Message {
+	mi := &file_metrics_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMeta.ProtoReflect.Descriptor instead.
+func (*ListMeta) Descriptor() ([]byte, []int) {
+	return file_metrics_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ListMeta) GetSelfLink() string {
+	if x != nil {
+		return x.SelfLink
+	}
+	return ""
+}
+
+func (x *ListMeta) GetResourceVersion() string {
+	if x != nil {
+		return x.ResourceVersion
+	}
+	return ""
+}
+
+func (x *ListMeta) GetContinue() string {
+	if x != nil {
+		return x.Continue
+	}
+	return ""
+}
+
+func (x *ListMeta) GetRemainingItemCount() int64 {
+	if x != nil && x.RemainingItemCount != nil {
+		return *x.RemainingItemCount
+	}
+	return 0
+}
+
+// Time mirrors k8s.io/apimachinery/pkg/apis/meta/v1.Time on the wire.
+type Time struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Seconds       int64                  `protobuf:"varint,1,opt,name=seconds,proto3" json:"seconds,omitempty"`
+	Nanos         int32                  `protobuf:"varint,2,opt,name=nanos,proto3" json:"nanos,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Time) Reset() {
+	*x = Time{}
+	mi := &file_metrics_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Time) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Time) ProtoMessage() {}
+
+func (x *Time) ProtoReflect() protoreflect.Message {
+	mi := &file_metrics_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Time.ProtoReflect.Descriptor instead.
+func (*Time) Descriptor() ([]byte, []int) {
+	return file_metrics_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *Time) GetSeconds() int64 {
+	if x != nil {
+		return x.Seconds
+	}
+	return 0
+}
+
+func (x *Time) GetNanos() int32 {
+	if x != nil {
+		return x.Nanos
+	}
+	return 0
+}
+
+// Quantity mirrors k8s.io/apimachinery/pkg/api/resource.Quantity on the wire.
+type Quantity struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	String_       string                 `protobuf:"bytes,1,opt,name=string,proto3" json:"string,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Quantity) Reset() {
+	*x = Quantity{}
+	mi := &file_metrics_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Quantity) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Quantity) ProtoMessage() {}
+
+func (x *Quantity) ProtoReflect() protoreflect.Message {
+	mi := &file_metrics_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Quantity.ProtoReflect.Descriptor instead.
+func (*Quantity) Descriptor() ([]byte, []int) {
+	return file_metrics_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *Quantity) GetString_() string {
+	if x != nil {
+		return x.String_
+	}
+	return ""
+}
+
 var File_metrics_proto protoreflect.FileDescriptor
 
 const file_metrics_proto_rawDesc = "" +
 	"\n" +
-	"\rmetrics.proto\x12\x03api\x1a\x1fgoogle/protobuf/timestamp.proto\x1a@k8s.io/metrics/pkg/apis/external_metrics/v1beta1/generated.proto\"c\n" +
+	"\rmetrics.proto\x12\x03api\x1a\x1fgoogle/protobuf/timestamp.proto\"c\n" +
 	"\x0fScaledObjectRef\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1c\n" +
 	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x1e\n" +
@@ -389,10 +685,36 @@ const file_metrics_proto_rawDesc = "" +
 	"\x05value\x18\x01 \x01(\x01R\x05value\x128\n" +
 	"\ttimestamp\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x120\n" +
 	"\bmetadata\x18\x03 \x01(\v2\x14.api.ScaledObjectRefR\bmetadata\x12\x1a\n" +
-	"\bisActive\x18\x04 \x01(\bR\bisActive2\x81\x01\n" +
-	"\x0eMetricsService\x12o\n" +
+	"\bisActive\x18\x04 \x01(\bR\bisActive\"t\n" +
+	"\x17ExternalMetricValueList\x12)\n" +
+	"\bmetadata\x18\x01 \x01(\v2\r.api.ListMetaR\bmetadata\x12.\n" +
+	"\x05items\x18\x02 \x03(\v2\x18.api.ExternalMetricValueR\x05items\"\xbc\x02\n" +
+	"\x13ExternalMetricValue\x12\x1e\n" +
 	"\n" +
-	"GetMetrics\x12\x14.api.ScaledObjectRef\x1aI.k8s.io.metrics.pkg.apis.external_metrics.v1beta1.ExternalMetricValueList\"\x002\xeb\x01\n" +
+	"metricName\x18\x01 \x01(\tR\n" +
+	"metricName\x12N\n" +
+	"\fmetricLabels\x18\x02 \x03(\v2*.api.ExternalMetricValue.MetricLabelsEntryR\fmetricLabels\x12'\n" +
+	"\ttimestamp\x18\x03 \x01(\v2\t.api.TimeR\ttimestamp\x12\x1b\n" +
+	"\x06window\x18\x04 \x01(\x03H\x00R\x06window\x88\x01\x01\x12#\n" +
+	"\x05value\x18\x05 \x01(\v2\r.api.QuantityR\x05value\x1a?\n" +
+	"\x11MetricLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\t\n" +
+	"\a_window\"\xb8\x01\n" +
+	"\bListMeta\x12\x1a\n" +
+	"\bselfLink\x18\x01 \x01(\tR\bselfLink\x12(\n" +
+	"\x0fresourceVersion\x18\x02 \x01(\tR\x0fresourceVersion\x12\x1a\n" +
+	"\bcontinue\x18\x03 \x01(\tR\bcontinue\x123\n" +
+	"\x12remainingItemCount\x18\x04 \x01(\x03H\x00R\x12remainingItemCount\x88\x01\x01B\x15\n" +
+	"\x13_remainingItemCount\"6\n" +
+	"\x04Time\x12\x18\n" +
+	"\aseconds\x18\x01 \x01(\x03R\aseconds\x12\x14\n" +
+	"\x05nanos\x18\x02 \x01(\x05R\x05nanos\"\"\n" +
+	"\bQuantity\x12\x16\n" +
+	"\x06string\x18\x01 \x01(\tR\x06string2T\n" +
+	"\x0eMetricsService\x12B\n" +
+	"\n" +
+	"GetMetrics\x12\x14.api.ScaledObjectRef\x1a\x1c.api.ExternalMetricValueList\"\x002\xeb\x01\n" +
 	"\x11RawMetricsService\x12J\n" +
 	"\x13GetRawMetricsStream\x12\x16.api.RawMetricsRequest\x1a\x17.api.RawMetricsResponse\"\x000\x01\x12C\n" +
 	"\x0fSubscribeMetric\x12\x18.api.SubscriptionRequest\x1a\x14.api.SubscriptionAck\"\x00\x12E\n" +
@@ -410,35 +732,45 @@ func file_metrics_proto_rawDescGZIP() []byte {
 	return file_metrics_proto_rawDescData
 }
 
-var file_metrics_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_metrics_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_metrics_proto_goTypes = []any{
-	(*ScaledObjectRef)(nil),                 // 0: api.ScaledObjectRef
-	(*RawMetricsRequest)(nil),               // 1: api.RawMetricsRequest
-	(*SubscriptionRequest)(nil),             // 2: api.SubscriptionRequest
-	(*SubscriptionAck)(nil),                 // 3: api.SubscriptionAck
-	(*RawMetricsResponse)(nil),              // 4: api.RawMetricsResponse
-	(*RawMetric)(nil),                       // 5: api.RawMetric
-	(*timestamppb.Timestamp)(nil),           // 6: google.protobuf.Timestamp
-	(*v1beta1.ExternalMetricValueList)(nil), // 7: k8s.io.metrics.pkg.apis.external_metrics.v1beta1.ExternalMetricValueList
+	(*ScaledObjectRef)(nil),         // 0: api.ScaledObjectRef
+	(*RawMetricsRequest)(nil),       // 1: api.RawMetricsRequest
+	(*SubscriptionRequest)(nil),     // 2: api.SubscriptionRequest
+	(*SubscriptionAck)(nil),         // 3: api.SubscriptionAck
+	(*RawMetricsResponse)(nil),      // 4: api.RawMetricsResponse
+	(*RawMetric)(nil),               // 5: api.RawMetric
+	(*ExternalMetricValueList)(nil), // 6: api.ExternalMetricValueList
+	(*ExternalMetricValue)(nil),     // 7: api.ExternalMetricValue
+	(*ListMeta)(nil),                // 8: api.ListMeta
+	(*Time)(nil),                    // 9: api.Time
+	(*Quantity)(nil),                // 10: api.Quantity
+	nil,                             // 11: api.ExternalMetricValue.MetricLabelsEntry
+	(*timestamppb.Timestamp)(nil),   // 12: google.protobuf.Timestamp
 }
 var file_metrics_proto_depIdxs = []int32{
-	0, // 0: api.SubscriptionRequest.metricMetadata:type_name -> api.ScaledObjectRef
-	5, // 1: api.RawMetricsResponse.metrics:type_name -> api.RawMetric
-	6, // 2: api.RawMetric.timestamp:type_name -> google.protobuf.Timestamp
-	0, // 3: api.RawMetric.metadata:type_name -> api.ScaledObjectRef
-	0, // 4: api.MetricsService.GetMetrics:input_type -> api.ScaledObjectRef
-	1, // 5: api.RawMetricsService.GetRawMetricsStream:input_type -> api.RawMetricsRequest
-	2, // 6: api.RawMetricsService.SubscribeMetric:input_type -> api.SubscriptionRequest
-	2, // 7: api.RawMetricsService.UnsubscribeMetric:input_type -> api.SubscriptionRequest
-	7, // 8: api.MetricsService.GetMetrics:output_type -> k8s.io.metrics.pkg.apis.external_metrics.v1beta1.ExternalMetricValueList
-	4, // 9: api.RawMetricsService.GetRawMetricsStream:output_type -> api.RawMetricsResponse
-	3, // 10: api.RawMetricsService.SubscribeMetric:output_type -> api.SubscriptionAck
-	3, // 11: api.RawMetricsService.UnsubscribeMetric:output_type -> api.SubscriptionAck
-	8, // [8:12] is the sub-list for method output_type
-	4, // [4:8] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	0,  // 0: api.SubscriptionRequest.metricMetadata:type_name -> api.ScaledObjectRef
+	5,  // 1: api.RawMetricsResponse.metrics:type_name -> api.RawMetric
+	12, // 2: api.RawMetric.timestamp:type_name -> google.protobuf.Timestamp
+	0,  // 3: api.RawMetric.metadata:type_name -> api.ScaledObjectRef
+	8,  // 4: api.ExternalMetricValueList.metadata:type_name -> api.ListMeta
+	7,  // 5: api.ExternalMetricValueList.items:type_name -> api.ExternalMetricValue
+	11, // 6: api.ExternalMetricValue.metricLabels:type_name -> api.ExternalMetricValue.MetricLabelsEntry
+	9,  // 7: api.ExternalMetricValue.timestamp:type_name -> api.Time
+	10, // 8: api.ExternalMetricValue.value:type_name -> api.Quantity
+	0,  // 9: api.MetricsService.GetMetrics:input_type -> api.ScaledObjectRef
+	1,  // 10: api.RawMetricsService.GetRawMetricsStream:input_type -> api.RawMetricsRequest
+	2,  // 11: api.RawMetricsService.SubscribeMetric:input_type -> api.SubscriptionRequest
+	2,  // 12: api.RawMetricsService.UnsubscribeMetric:input_type -> api.SubscriptionRequest
+	6,  // 13: api.MetricsService.GetMetrics:output_type -> api.ExternalMetricValueList
+	4,  // 14: api.RawMetricsService.GetRawMetricsStream:output_type -> api.RawMetricsResponse
+	3,  // 15: api.RawMetricsService.SubscribeMetric:output_type -> api.SubscriptionAck
+	3,  // 16: api.RawMetricsService.UnsubscribeMetric:output_type -> api.SubscriptionAck
+	13, // [13:17] is the sub-list for method output_type
+	9,  // [9:13] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_metrics_proto_init() }
@@ -447,13 +779,15 @@ func file_metrics_proto_init() {
 		return
 	}
 	file_metrics_proto_msgTypes[3].OneofWrappers = []any{}
+	file_metrics_proto_msgTypes[7].OneofWrappers = []any{}
+	file_metrics_proto_msgTypes[8].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_metrics_proto_rawDesc), len(file_metrics_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

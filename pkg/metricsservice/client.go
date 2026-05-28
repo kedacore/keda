@@ -29,7 +29,6 @@ import (
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/keepalive"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	"k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
 
 	"github.com/kedacore/keda/v2/pkg/metricsservice/api"
 	"github.com/kedacore/keda/v2/pkg/metricsservice/utils"
@@ -112,13 +111,12 @@ func (c *GrpcClient) GetMetrics(ctx context.Context, scaledObjectName, scaledObj
 		return nil, fmt.Errorf("gRPC connection is shut down")
 	}
 
-	v1beta1ExtMetrics, err := c.client.GetMetrics(ctx, &api.ScaledObjectRef{Name: scaledObjectName, Namespace: scaledObjectNamespace, MetricName: metricName})
+	metrics, err := c.client.GetMetrics(ctx, &api.ScaledObjectRef{Name: scaledObjectName, Namespace: scaledObjectNamespace, MetricName: metricName})
 	if err != nil {
 		return nil, err
 	}
 
-	extMetrics := &external_metrics.ExternalMetricValueList{}
-	err = v1beta1.Convert_v1beta1_ExternalMetricValueList_To_external_metrics_ExternalMetricValueList(v1beta1ExtMetrics, extMetrics, nil)
+	extMetrics, err := protoToExternalMetrics(metrics)
 	if err != nil {
 		return nil, fmt.Errorf("error when converting metric values %w", err)
 	}
