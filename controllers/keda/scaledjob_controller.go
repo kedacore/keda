@@ -29,7 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/cache"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -61,8 +60,7 @@ type ScaledJobReconciler struct {
 	EventEmitter      eventemitter.EventHandler
 	AuthClientSet     *authentication.AuthClientSet
 
-	scaledJobGenerations *sync.Map
-	scaleHandler         scaling.ScaleHandler
+	scaleHandler scaling.ScaleHandler
 }
 
 type scaledJobMetricsData struct {
@@ -83,7 +81,6 @@ func init() {
 // SetupWithManager initializes the ScaledJobReconciler instance and starts a new controller managed by the passed Manager instance.
 func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
 	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), nil, mgr.GetScheme(), r.GlobalHTTPTimeout, mgr.GetEventRecorderFor("scale-handler"), r.AuthClientSet)
-	r.scaledJobGenerations = &sync.Map{}
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
 		// Ignore updates to ScaledJob Status (in this case metadata.Generation does not change)
@@ -321,37 +318,13 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context
 // requestScaleLoop request ScaleLoop handler for the respective ScaledJob
 func (r *ScaledJobReconciler) requestScaleLoop(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
 	logger.V(1).Info("Starting a new ScaleLoop")
-	key, err := cache.MetaNamespaceKeyFunc(scaledJob)
-	if err != nil {
-		logger.Error(err, "Error getting key for scaledJob")
-		return err
-	}
-
-	if err = r.scaleHandler.HandleScalableObject(ctx, scaledJob); err != nil {
-		return err
-	}
-
-	r.scaledJobGenerations.Store(key, scaledJob.Generation)
-
-	return nil
+	return r.scaleHandler.HandleScalableObject(ctx, scaledJob)
 }
 
 // stopScaleLoop stops ScaleLoop handler for the respective ScaledJob
 func (r *ScaledJobReconciler) stopScaleLoop(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
 	logger.V(1).Info("Stopping a ScaleLoop")
-
-	key, err := cache.MetaNamespaceKeyFunc(scaledJob)
-	if err != nil {
-		logger.Error(err, "Error getting key for scaledJob")
-		return err
-	}
-
-	if err = r.scaleHandler.DeleteScalableObject(ctx, scaledJob); err != nil {
-		return err
-	}
-
-	r.scaledJobGenerations.Delete(key)
-	return nil
+	return r.scaleHandler.DeleteScalableObject(ctx, scaledJob)
 }
 
 func (r *ScaledJobReconciler) updatePromMetrics(scaledJob *kedav1alpha1.ScaledJob, namespacedName string) {
