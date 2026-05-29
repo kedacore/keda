@@ -15,6 +15,12 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
+// splunkO11yStreamMargin bounds the stream read beyond the configured Duration.
+const splunkO11yStreamMargin = 10 * time.Second
+
+// splunkO11yDrainTimeout is a short best-effort budget for draining after Stop.
+const splunkO11yDrainTimeout = 2 * time.Second
+
 type splunkObservabilityMetadata struct {
 	TriggerIndex int
 
@@ -78,6 +84,30 @@ func NewSplunkObservabilityScaler(config *scalersconfig.ScalerConfig) (Scaler, e
 	}, nil
 }
 
+// stopAndDrain stops the computation and drains the data channel so the client's goroutines can exit.
+func (s *splunkObservabilityScaler) stopAndDrain(comp *signalflow.Computation) {
+	// Fresh, short context: the caller's may be done and some backends never close on Stop.
+	stopCtx, cancel := context.WithTimeout(context.Background(), splunkO11yDrainTimeout)
+	defer cancel()
+
+	if err := comp.Stop(stopCtx); err != nil {
+		s.logger.V(1).Info("Failed to stop SignalFlow computation", "error", err)
+	}
+
+	dataCh := comp.Data()
+	for {
+		select {
+		case _, ok := <-dataCh:
+			if !ok {
+				return
+			}
+		case <-stopCtx.Done():
+			s.logger.V(1).Info("Gave up draining SignalFlow data channel after stop")
+			return
+		}
+	}
+}
+
 func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64, error) {
 	comp, err := s.apiClient.Execute(ctx, &signalflow.ExecuteRequest{
 		Program: s.metadata.Query,
@@ -88,35 +118,50 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 
 	s.logger.V(1).Info("Started MTS stream.")
 
-	stopTimer := time.After(time.Duration(s.metadata.Duration) * time.Second)
-	go func() {
-		<-stopTimer
-		s.logger.V(1).Info("Stopping MTS stream after duration.")
-		if err := comp.Stop(ctx); err != nil {
-			s.logger.Error(err, "Failed to stop SignalFlow computation")
-		}
-	}()
+	// Hard deadline beyond the Duration window so a non-responsive backend cannot block forever.
+	streamDuration := time.Duration(s.metadata.Duration) * time.Second
+	streamCtx, cancel := context.WithTimeout(ctx, streamDuration+splunkO11yStreamMargin)
+	defer cancel()
+
+	stopTimer := time.After(streamDuration)
 
 	maxValue := math.Inf(-1)
 	minValue := math.Inf(1)
 	valueSum := 0.0
 	valueCount := 0
 	s.logger.V(1).Info("Now iterating over results.")
-	for msg := range comp.Data() {
-		if len(msg.Payloads) == 0 {
-			s.logger.V(1).Info("No data retrieved.")
-			continue
-		}
-		for _, pl := range msg.Payloads {
-			value, ok := pl.Value().(float64)
+
+	dataCh := comp.Data()
+loop:
+	for {
+		select {
+		case <-streamCtx.Done():
+			s.logger.V(1).Info("Context done before stream completed; stopping computation.")
+			s.stopAndDrain(comp)
+			return -1, fmt.Errorf("splunk observability query did not complete in time: %w", streamCtx.Err())
+		case <-stopTimer:
+			s.logger.V(1).Info("Stopping MTS stream after duration.")
+			s.stopAndDrain(comp)
+			break loop
+		case msg, ok := <-dataCh:
 			if !ok {
-				return -1, fmt.Errorf("could not convert Splunk Observability metric value to float64")
+				break loop
 			}
-			s.logger.V(1).Info(fmt.Sprintf("Encountering value %.4f\n", value))
-			maxValue = math.Max(maxValue, value)
-			minValue = math.Min(minValue, value)
-			valueSum += value
-			valueCount++
+			if len(msg.Payloads) == 0 {
+				s.logger.V(1).Info("No data retrieved.")
+				continue
+			}
+			for _, pl := range msg.Payloads {
+				value, ok := pl.Value().(float64)
+				if !ok {
+					return -1, fmt.Errorf("could not convert Splunk Observability metric value to float64")
+				}
+				s.logger.V(1).Info(fmt.Sprintf("Encountering value %.4f\n", value))
+				maxValue = math.Max(maxValue, value)
+				minValue = math.Min(minValue, value)
+				valueSum += value
+				valueCount++
+			}
 		}
 	}
 
