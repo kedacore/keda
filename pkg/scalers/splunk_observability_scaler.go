@@ -169,14 +169,27 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 	s.logger.V(1).Info("Now iterating over results.")
 
 	dataCh := comp.Data()
+
+	// timedOut handles the hard-deadline path: stop, drain, and return the timeout error.
+	timedOut := func() (float64, error) {
+		s.logger.V(1).Info("Context done before stream completed; stopping computation.")
+		_ = s.stopAndDrain(comp, nil)
+		return -1, fmt.Errorf("splunk observability query did not complete in time: %w", streamCtx.Err())
+	}
+
 loop:
 	for {
+		// Give the hard deadline priority: select has no fairness, so a continuously
+		// ready dataCh could otherwise starve the streamCtx.Done() case.
 		select {
 		case <-streamCtx.Done():
-			s.logger.V(1).Info("Context done before stream completed; stopping computation.")
-			// Drain without processing: the result is discarded on this error path.
-			_ = s.stopAndDrain(comp, nil)
-			return -1, fmt.Errorf("splunk observability query did not complete in time: %w", streamCtx.Err())
+			return timedOut()
+		default:
+		}
+
+		select {
+		case <-streamCtx.Done():
+			return timedOut()
 		case <-stopTimer.C:
 			s.logger.V(1).Info("Stopping MTS stream after duration.")
 			// Stop, but keep processing any remaining buffered messages for this window.
