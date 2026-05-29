@@ -85,13 +85,42 @@ func NewSplunkObservabilityScaler(config *scalersconfig.ScalerConfig) (Scaler, e
 	}, nil
 }
 
-// stopComputation stops the computation, ignoring errors beyond debug logging.
-func (s *splunkObservabilityScaler) stopComputation(comp *signalflow.Computation) {
+// stopAndDrain stops the computation and keeps reading Data() until it closes or a
+// short grace period elapses, so the SignalFlow client's goroutines are not left
+// blocked on sends to an unconsumed channel. If process is non-nil, drained messages
+// are passed to it; a process error ends the drain and is returned.
+func (s *splunkObservabilityScaler) stopAndDrain(comp *signalflow.Computation, process func(*messages.DataMessage) error) error {
 	stopCtx, cancel := context.WithTimeout(context.Background(), splunkO11yDrainTimeout)
 	defer cancel()
 
 	if err := comp.Stop(stopCtx); err != nil {
 		s.logger.V(1).Info("Failed to stop SignalFlow computation", "error", err)
+	}
+
+	dataCh := comp.Data()
+	for {
+		// Give the deadline priority so a backend that keeps sending cannot extend the grace budget.
+		select {
+		case <-stopCtx.Done():
+			s.logger.V(1).Info("Gave up draining SignalFlow data channel after stop")
+			return nil
+		default:
+		}
+
+		select {
+		case msg, ok := <-dataCh:
+			if !ok {
+				return nil
+			}
+			if process != nil {
+				if err := process(msg); err != nil {
+					return err
+				}
+			}
+		case <-stopCtx.Done():
+			s.logger.V(1).Info("Gave up draining SignalFlow data channel after stop")
+			return nil
+		}
 	}
 }
 
@@ -145,36 +174,22 @@ loop:
 		select {
 		case <-streamCtx.Done():
 			s.logger.V(1).Info("Context done before stream completed; stopping computation.")
-			s.stopComputation(comp)
+			// Drain without processing: the result is discarded on this error path.
+			_ = s.stopAndDrain(comp, nil)
 			return -1, fmt.Errorf("splunk observability query did not complete in time: %w", streamCtx.Err())
 		case <-stopTimer.C:
 			s.logger.V(1).Info("Stopping MTS stream after duration.")
-			s.stopComputation(comp)
-			// Process any remaining buffered messages until the channel closes or a grace period elapses.
-			grace := time.NewTimer(splunkO11yDrainTimeout)
-			for {
-				select {
-				case msg, ok := <-dataCh:
-					if !ok {
-						grace.Stop()
-						break loop
-					}
-					if err := process(msg); err != nil {
-						grace.Stop()
-						return -1, err
-					}
-					continue
-				case <-grace.C:
-				case <-streamCtx.Done():
-					grace.Stop()
-				}
-				break loop
+			// Stop, but keep processing any remaining buffered messages for this window.
+			if err := s.stopAndDrain(comp, process); err != nil {
+				return -1, err
 			}
+			break loop
 		case msg, ok := <-dataCh:
 			if !ok {
 				break loop
 			}
 			if err := process(msg); err != nil {
+				_ = s.stopAndDrain(comp, nil)
 				return -1, err
 			}
 		}
