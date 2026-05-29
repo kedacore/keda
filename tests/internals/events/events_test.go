@@ -327,7 +327,7 @@ func getTemplateData() (templateData, []Template) {
 
 func checkingEvent(t *testing.T, namespace string, scaledObject string, index int, eventReason string, msg string) {
 	assert.Eventually(t, func() bool {
-		result, err := ExecuteCommand(fmt.Sprintf("kubectl get events -n %s --field-selector involvedObject.name=%s --sort-by=.metadata.creationTimestamp -o jsonpath=\"{.items[%d].reason}:{.items[%d].message}\"", namespace, scaledObject, index, index))
+		result, err := ExecuteCommand(fmt.Sprintf("kubectl get events.events.k8s.io -n %s --field-selector regarding.name=%s --sort-by=.metadata.creationTimestamp -o jsonpath=\"{.items[%d].reason}:{.items[%d].note}\"", namespace, scaledObject, index, index))
 		if err != nil {
 			return false
 		}
