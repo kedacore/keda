@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/signalfx/signalflow-client-go/v2/signalflow"
+	"github.com/signalfx/signalflow-client-go/v2/signalflow/messages"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -84,27 +85,13 @@ func NewSplunkObservabilityScaler(config *scalersconfig.ScalerConfig) (Scaler, e
 	}, nil
 }
 
-// stopAndDrain stops the computation and drains the data channel so the client's goroutines can exit.
-func (s *splunkObservabilityScaler) stopAndDrain(comp *signalflow.Computation) {
-	// Fresh, short context: the caller's may be done and some backends never close on Stop.
+// stopComputation stops the computation, ignoring errors beyond debug logging.
+func (s *splunkObservabilityScaler) stopComputation(comp *signalflow.Computation) {
 	stopCtx, cancel := context.WithTimeout(context.Background(), splunkO11yDrainTimeout)
 	defer cancel()
 
 	if err := comp.Stop(stopCtx); err != nil {
 		s.logger.V(1).Info("Failed to stop SignalFlow computation", "error", err)
-	}
-
-	dataCh := comp.Data()
-	for {
-		select {
-		case _, ok := <-dataCh:
-			if !ok {
-				return
-			}
-		case <-stopCtx.Done():
-			s.logger.V(1).Info("Gave up draining SignalFlow data channel after stop")
-			return
-		}
 	}
 }
 
@@ -118,17 +105,38 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 
 	s.logger.V(1).Info("Started MTS stream.")
 
-	// Hard deadline beyond the Duration window so a non-responsive backend cannot block forever.
 	streamDuration := time.Duration(s.metadata.Duration) * time.Second
+	// Hard deadline beyond the Duration window so a non-responsive backend cannot block forever.
 	streamCtx, cancel := context.WithTimeout(ctx, streamDuration+splunkO11yStreamMargin)
 	defer cancel()
 
-	stopTimer := time.After(streamDuration)
+	stopTimer := time.NewTimer(streamDuration)
+	defer stopTimer.Stop()
 
 	maxValue := math.Inf(-1)
 	minValue := math.Inf(1)
 	valueSum := 0.0
 	valueCount := 0
+
+	process := func(msg *messages.DataMessage) error {
+		if len(msg.Payloads) == 0 {
+			s.logger.V(1).Info("No data retrieved.")
+			return nil
+		}
+		for _, pl := range msg.Payloads {
+			value, ok := pl.Value().(float64)
+			if !ok {
+				return fmt.Errorf("could not convert Splunk Observability metric value to float64")
+			}
+			s.logger.V(1).Info(fmt.Sprintf("Encountering value %.4f\n", value))
+			maxValue = math.Max(maxValue, value)
+			minValue = math.Min(minValue, value)
+			valueSum += value
+			valueCount++
+		}
+		return nil
+	}
+
 	s.logger.V(1).Info("Now iterating over results.")
 
 	dataCh := comp.Data()
@@ -137,30 +145,37 @@ loop:
 		select {
 		case <-streamCtx.Done():
 			s.logger.V(1).Info("Context done before stream completed; stopping computation.")
-			s.stopAndDrain(comp)
+			s.stopComputation(comp)
 			return -1, fmt.Errorf("splunk observability query did not complete in time: %w", streamCtx.Err())
-		case <-stopTimer:
+		case <-stopTimer.C:
 			s.logger.V(1).Info("Stopping MTS stream after duration.")
-			s.stopAndDrain(comp)
-			break loop
+			s.stopComputation(comp)
+			// Process any remaining buffered messages until the channel closes or a grace period elapses.
+			grace := time.NewTimer(splunkO11yDrainTimeout)
+			for {
+				select {
+				case msg, ok := <-dataCh:
+					if !ok {
+						grace.Stop()
+						break loop
+					}
+					if err := process(msg); err != nil {
+						grace.Stop()
+						return -1, err
+					}
+					continue
+				case <-grace.C:
+				case <-streamCtx.Done():
+					grace.Stop()
+				}
+				break loop
+			}
 		case msg, ok := <-dataCh:
 			if !ok {
 				break loop
 			}
-			if len(msg.Payloads) == 0 {
-				s.logger.V(1).Info("No data retrieved.")
-				continue
-			}
-			for _, pl := range msg.Payloads {
-				value, ok := pl.Value().(float64)
-				if !ok {
-					return -1, fmt.Errorf("could not convert Splunk Observability metric value to float64")
-				}
-				s.logger.V(1).Info(fmt.Sprintf("Encountering value %.4f\n", value))
-				maxValue = math.Max(maxValue, value)
-				minValue = math.Min(minValue, value)
-				valueSum += value
-				valueCount++
+			if err := process(msg); err != nil {
+				return -1, err
 			}
 		}
 	}
