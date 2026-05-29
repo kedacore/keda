@@ -329,7 +329,7 @@ func (e *EventEmitter) checkEventHandlers(ctx context.Context, cloudEventSourceI
 
 // Emit is emitting event to both local kubernetes and custom CloudEventSource handler. After emit event to local kubernetes, event will inqueue and waitng for handler's consuming.
 func (e *EventEmitter) Emit(object runtime.Object, namespace string, eventType string, cloudeventType eventingv1alpha1.CloudEventType, reason, message string) {
-	e.recorder.Eventf(object, nil, eventType, reason, reason, "%s", message)
+	e.recorder.Eventf(object, nil, eventType, reason, message, "%s", message)
 
 	e.eventHandlersCacheLock.RLock()
 	defer e.eventHandlersCacheLock.RUnlock()
