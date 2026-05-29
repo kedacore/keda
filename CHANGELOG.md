@@ -142,6 +142,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Redis Scaler**: Use literal command names in Lua script to fix compatibility with Alibaba Cloud Redis Cluster ([#7758](https://github.com/kedacore/keda/issues/7758))
 - **Solace Scaler**: Fix URL escaping for Message VPN and Queue names ([#7481](https://github.com/kedacore/keda/pull/7481))
 - **Solr Scaler**: Use net/url to safely encode query parameters ([#7467](https://github.com/kedacore/keda/pull/7467))
+- **Splunk Observability Scaler**: Add MTS stream handling with context timeout ([#7799](https://github.com/kedacore/keda/pull/7799))
 
 ### Deprecations
 
