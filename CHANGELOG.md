@@ -68,6 +68,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+- **General**: Add `scalingModifiers` fallback behavior ([#7366](https://github.com/kedacore/keda/discussions/7366))
 - **General**: Introduce Elastic Forecast Scaler ([#7494](https://github.com/kedacore/keda/issues/7494))
 - **General**: Introduce new OpenSearch Scaler ([#7456](https://github.com/kedacore/keda/issues/7456))
 
