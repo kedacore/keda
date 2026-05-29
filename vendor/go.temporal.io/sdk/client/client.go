@@ -231,18 +231,39 @@ type (
 	StartWorkflowOptions = internal.StartWorkflowOptions
 
 	// CompleteActivityByIDOptions provides options for CompleteActivityByIDWithOptions.
+	//
+	// ActivityType, WorkflowType, and TaskQueue values are not validated by the SDK.
+	// Providing incorrect values may cause serialization/deserialization mismatches
+	// if your codec uses them, for example, as encryption keys or signature input.
 	CompleteActivityByIDOptions = internal.CompleteActivityByIDOptions
 
 	// RecordActivityHeartbeatByIDOptions provides options for RecordActivityHeartbeatByIDWithOptions.
+	//
+	// ActivityType, WorkflowType, and TaskQueue values are not validated by the SDK.
+	// Providing incorrect values may cause serialization/deserialization mismatches
+	// if your codec uses them, for example, as encryption keys or signature input.
 	RecordActivityHeartbeatByIDOptions = internal.RecordActivityHeartbeatByIDOptions
 
 	// CompleteActivityOptions provides options for CompleteActivityWithOptions.
+	//
+	// Serialization context values are not validated by the SDK. Providing
+	// incorrect values may cause serialization/deserialization mismatches if your
+	// codec uses them, for example, as encryption keys or signature input.
 	CompleteActivityOptions = internal.CompleteActivityOptions
 
 	// CompleteActivityByActivityIDOptions provides options for CompleteActivityByActivityIDWithOptions.
+	//
+	// WorkflowID, ActivityType, WorkflowType, and TaskQueue values are not validated
+	// by the SDK. Providing incorrect values may cause serialization/deserialization
+	// mismatches if your codec uses them, for example, as encryption keys or
+	// signature input.
 	CompleteActivityByActivityIDOptions = internal.CompleteActivityByActivityIDOptions
 
 	// RecordActivityHeartbeatOptions provides options for RecordActivityHeartbeatWithOptions.
+	//
+	// Serialization context values are not validated by the SDK. Providing
+	// incorrect values may cause serialization/deserialization mismatches if your
+	// codec uses them, for example, as encryption keys or signature input.
 	RecordActivityHeartbeatOptions = internal.RecordActivityHeartbeatOptions
 
 	// WithStartWorkflowOperation defines how to start a workflow when using UpdateWithStartWorkflow.
@@ -990,6 +1011,92 @@ type (
 	// NOTE: Experimental
 	TerminateActivityOptions = internal.ClientTerminateActivityOptions
 
+	// StartNexusOperationOptions contains configuration parameters for starting a Nexus operation execution.
+	//
+	// NOTE: Experimental
+	StartNexusOperationOptions = internal.ClientStartNexusOperationOptions
+
+	// NexusClientOptions contains options for creating a NexusClient.
+	//
+	// NOTE: Experimental
+	NexusClientOptions = internal.ClientNexusClientOptions
+
+	// NexusClient is the client for starting Nexus operations bound to a specific endpoint and service.
+	// This is for standalone Nexus operations outside of workflow context.
+	// For Nexus operations within workflows, use workflow.NexusClient.
+	//
+	// NOTE: Experimental
+	NexusClient = internal.ClientNexusClient
+
+	// NexusOperationHandle represents a running or completed standalone Nexus operation execution.
+	// It can be used to get the result, describe, cancel, or terminate the operation.
+	//
+	// NOTE: Experimental
+	NexusOperationHandle = internal.ClientNexusOperationHandle
+
+	// NexusOperationMetadata contains information about a Nexus operation execution.
+	// This is returned by ListNexusOperations and embedded in NexusOperationExecutionDescription.
+	//
+	// NOTE: Experimental
+	NexusOperationMetadata = internal.ClientNexusOperationMetadata
+
+	// NexusOperationExecutionDescription contains detailed information about a Nexus operation execution.
+	// This is returned by NexusOperationHandle.Describe.
+	//
+	// NOTE: Experimental
+	NexusOperationExecutionDescription = internal.ClientNexusOperationExecutionDescription
+
+	// NexusOperationCancellationInfo contains cancellation information for a Nexus operation.
+	//
+	// NOTE: Experimental
+	NexusOperationCancellationInfo = internal.ClientNexusOperationCancellationInfo
+
+	// DescribeNexusOperationOptions contains options for NexusOperationHandle.Describe call.
+	//
+	// NOTE: Experimental
+	DescribeNexusOperationOptions = internal.ClientDescribeNexusOperationOptions
+
+	// CancelNexusOperationOptions contains options for NexusOperationHandle.Cancel call.
+	//
+	// NOTE: Experimental
+	CancelNexusOperationOptions = internal.ClientCancelNexusOperationOptions
+
+	// TerminateNexusOperationOptions contains options for NexusOperationHandle.Terminate call.
+	//
+	// NOTE: Experimental
+	TerminateNexusOperationOptions = internal.ClientTerminateNexusOperationOptions
+
+	// ListNexusOperationsOptions contains input for ListNexusOperations call.
+	//
+	// NOTE: Experimental
+	ListNexusOperationsOptions = internal.ClientListNexusOperationsOptions
+
+	// CountNexusOperationsOptions contains input for CountNexusOperations call.
+	//
+	// NOTE: Experimental
+	CountNexusOperationsOptions = internal.ClientCountNexusOperationsOptions
+
+	// CountNexusOperationsResult contains the result of the CountNexusOperations call.
+	//
+	// NOTE: Experimental
+	CountNexusOperationsResult = internal.ClientCountNexusOperationsResult
+
+	// CountNexusOperationsAggregationGroup contains groups of Nexus operations if
+	// CountNexusOperationExecutions is grouped by a field.
+	//
+	// NOTE: Experimental
+	CountNexusOperationsAggregationGroup = internal.ClientCountNexusOperationsAggregationGroup
+
+	// ListNexusOperationsResult contains the result of the ListNexusOperations call.
+	//
+	// NOTE: Experimental
+	ListNexusOperationsResult = internal.ClientListNexusOperationsResult
+
+	// GetNexusOperationHandleOptions contains input for GetNexusOperationHandle call.
+	//
+	// NOTE: Experimental
+	GetNexusOperationHandleOptions = internal.ClientGetNexusOperationHandleOptions
+
 	// Client is the client for starting and getting information about a workflow executions as well as
 	// completing activities asynchronously.
 	Client interface {
@@ -1503,6 +1610,30 @@ type (
 		//
 		// NOTE: Experimental
 		CountActivities(ctx context.Context, options CountActivitiesOptions) (*CountActivitiesResult, error)
+
+		// NewNexusClient creates a new Nexus client bound to the given endpoint and service.
+		// This is for standalone Nexus operations outside of workflow context.
+		// For Nexus operations within workflows, use workflow.NexusClient instead.
+		//
+		// NOTE: Experimental
+		NewNexusClient(options NexusClientOptions) (NexusClient, error)
+
+		// GetNexusOperationHandle creates a handle to the referenced Nexus operation.
+		// No network call is made. The handle can be used to poll, describe, cancel, or terminate.
+		//
+		// NOTE: Experimental
+		GetNexusOperationHandle(options GetNexusOperationHandleOptions) NexusOperationHandle
+
+		// ListNexusOperations lists Nexus operation executions based on query.
+		// Currently, all errors are returned in the iterator and not the base level error.
+		//
+		// NOTE: Experimental
+		ListNexusOperations(ctx context.Context, options ListNexusOperationsOptions) (ListNexusOperationsResult, error)
+
+		// CountNexusOperations counts Nexus operation executions based on query.
+		//
+		// NOTE: Experimental
+		CountNexusOperations(ctx context.Context, options CountNexusOperationsOptions) (*CountNexusOperationsResult, error)
 
 		// WorkflowService provides access to the underlying gRPC service. This should only be used for advanced use cases
 		// that cannot be accomplished via other Client methods. Unlike calls to other Client methods, calls directly to the

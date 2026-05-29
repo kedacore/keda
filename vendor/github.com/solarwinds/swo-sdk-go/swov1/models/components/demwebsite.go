@@ -180,13 +180,39 @@ func (s *Ssl) GetIgnoreIntermediateCertificates() *bool {
 	return s.IgnoreIntermediateCertificates
 }
 
+// Authentication -   Configure HTTP basic authentication for the availability probe requests.
+//
+//	The credentialId field accepts a DEM credential ID, not a plaintext password.
+//	If omitted or set to null, no authentication is applied.
+type Authentication struct {
+	// Username for HTTP basic authentication.
+	Username string `json:"username"`
+	//   The ID of a DEM synthetic credential. The credential's value is used as the password.
+	//   If omitted or set to null, authentication proceeds with the username only.
+	CredentialID *string `json:"credentialId,omitempty"`
+}
+
+func (a *Authentication) GetUsername() string {
+	if a == nil {
+		return ""
+	}
+	return a.Username
+}
+
+func (a *Authentication) GetCredentialID() *string {
+	if a == nil {
+		return nil
+	}
+	return a.CredentialID
+}
+
 // AvailabilityCheckSettings - Use this field to configure availability tests for the website.
 type AvailabilityCheckSettings struct {
 	// Configure cloud platforms of the synthetic availability test probes. If omitted or set to null, any available cloud platform may be chosen.
 	PlatformOptions *DemWebsitePlatformOptions `json:"platformOptions,omitempty"`
 	//   Configure locations of the synthetic availability test probes.
 	//   Acceptable values depend on the selected type and actual values of existing probes.
-	TestFrom DemTestFrom `json:"testFrom"`
+	TestFrom *DemTestFrom `json:"testFrom,omitempty"`
 	// Configure how often availability tests should be performed. Provide a number of seconds that is one of 60, 300, 600, 900, 1800, 3600, 7200, 14400.
 	TestIntervalInSeconds float64 `json:"testIntervalInSeconds"`
 	//   Default conditions when the entity is considered down.
@@ -213,6 +239,10 @@ type AvailabilityCheckSettings struct {
 	//   Configure data that will be sent as POST request body by the synthetic probe.
 	//   If omitted or set to null/empty string, the probe will send the usual GET requests.
 	PostData *string `json:"postData,omitempty"`
+	//   Configure HTTP basic authentication for the availability probe requests.
+	//   The credentialId field accepts a DEM credential ID, not a plaintext password.
+	//   If omitted or set to null, no authentication is applied.
+	Authentication *Authentication `json:"authentication,omitempty"`
 }
 
 func (a *AvailabilityCheckSettings) GetPlatformOptions() *DemWebsitePlatformOptions {
@@ -222,9 +252,9 @@ func (a *AvailabilityCheckSettings) GetPlatformOptions() *DemWebsitePlatformOpti
 	return a.PlatformOptions
 }
 
-func (a *AvailabilityCheckSettings) GetTestFrom() DemTestFrom {
+func (a *AvailabilityCheckSettings) GetTestFrom() *DemTestFrom {
 	if a == nil {
-		return DemTestFrom{}
+		return nil
 	}
 	return a.TestFrom
 }
@@ -283,6 +313,13 @@ func (a *AvailabilityCheckSettings) GetPostData() *string {
 		return nil
 	}
 	return a.PostData
+}
+
+func (a *AvailabilityCheckSettings) GetAuthentication() *Authentication {
+	if a == nil {
+		return nil
+	}
+	return a.Authentication
 }
 
 // Rum -     Use this field to configure real user monitoring (RUM) for the website.

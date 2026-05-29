@@ -7,9 +7,9 @@ import (
 )
 
 type ListEntitiesRequest struct {
-	// The entity type to search for
-	Type string `queryParam:"style=form,explode=false,name=type"`
-	// The entity name to search for
+	// The entity type to search. If omitted or empty, the search includes all entity types.
+	Type *string `queryParam:"style=form,explode=false,name=type"`
+	// The entity name to search for. Searches are case-insensitive and match any value containing the provided string.
 	Name *string `queryParam:"style=form,explode=false,name=name"`
 	// Number of items in a response page. Default varies by API.
 	PageSize *int `queryParam:"style=form,explode=false,name=pageSize"`
@@ -17,9 +17,9 @@ type ListEntitiesRequest struct {
 	SkipToken *string `queryParam:"style=form,explode=false,name=skipToken"`
 }
 
-func (l *ListEntitiesRequest) GetType() string {
+func (l *ListEntitiesRequest) GetType() *string {
 	if l == nil {
-		return ""
+		return nil
 	}
 	return l.Type
 }

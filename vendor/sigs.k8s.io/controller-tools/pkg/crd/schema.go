@@ -49,7 +49,7 @@ var byteType = types.Universe.Lookup("byte").Type()
 type SchemaMarker interface {
 	// ApplyToSchema is called after the rest of the schema for a given type
 	// or field is generated, to modify the schema appropriately.
-	ApplyToSchema(*apiextensionsv1.JSONSchemaProps) error
+	ApplyToSchema(ctx *crdmarkers.SchemaContext, schema *apiextensionsv1.JSONSchemaProps) error
 }
 
 // applyFirstMarker is applied before any other markers.  It's a bit of a hack.
@@ -194,8 +194,9 @@ func applyMarkers(ctx *schemaContext, markerSet markers.MarkerValues, props *api
 	slices.SortStableFunc(markers, func(i, j schemaMarkerWithName) int { return cmpPriority(i, j) })
 	slices.SortStableFunc(itemsMarkers, func(i, j schemaMarkerWithName) int { return cmpPriority(i, j) })
 
+	schemaCtx := &crdmarkers.SchemaContext{Package: ctx.pkg, TypeInfo: ctx.info}
 	for _, schemaMarker := range markers {
-		if err := schemaMarker.SchemaMarker.ApplyToSchema(props); err != nil {
+		if err := schemaMarker.SchemaMarker.ApplyToSchema(schemaCtx, props); err != nil {
 			ctx.pkg.AddError(loader.ErrFromNode(err /* an okay guess */, node))
 		}
 	}
@@ -206,7 +207,7 @@ func applyMarkers(ctx *schemaContext, markerSet markers.MarkerValues, props *api
 			ctx.pkg.AddError(loader.ErrFromNode(err, node))
 		} else {
 			itemsSchema := props.Items.Schema
-			if err := schemaMarker.SchemaMarker.ApplyToSchema(itemsSchema); err != nil {
+			if err := schemaMarker.SchemaMarker.ApplyToSchema(schemaCtx, itemsSchema); err != nil {
 				ctx.pkg.AddError(loader.ErrFromNode(err /* an okay guess */, node))
 			}
 		}
@@ -229,9 +230,11 @@ func typeToSchema(ctx *schemaContext, rawType ast.Expr) *apiextensionsv1.JSONSch
 		props = typeToSchema(ctx.ForInfo(&markers.TypeInfo{}), expr.X)
 	case *ast.StructType:
 		props = structToSchema(ctx, expr)
+	case *ast.InterfaceType:
+		ctx.pkg.AddError(loader.ErrFromNode(fmt.Errorf("interface type is not supported in CRD schemas; consider using an explicit type or apiextensionsv1.JSON instead"), rawType))
+		return &apiextensionsv1.JSONSchemaProps{}
 	default:
 		ctx.pkg.AddError(loader.ErrFromNode(fmt.Errorf("unsupported AST kind %T", expr), rawType))
-		// NB(directxman12): we explicitly don't handle interfaces
 		return &apiextensionsv1.JSONSchemaProps{}
 	}
 
@@ -271,8 +274,9 @@ func localNamedToSchema(ctx *schemaContext, ident *ast.Ident) *apiextensionsv1.J
 	if aliasInfo, isAlias := typeInfo.(*types.Alias); isAlias {
 		typeInfo = aliasInfo.Rhs()
 	}
-	if basicInfo, isBasic := typeInfo.(*types.Basic); isBasic {
-		typ, fmt, err := builtinToType(basicInfo, ctx.allowDangerousTypes)
+	switch typeInfo := typeInfo.(type) {
+	case *types.Basic:
+		typ, fmt, err := builtinToType(typeInfo, ctx.allowDangerousTypes)
 		if err != nil {
 			ctx.pkg.AddError(loader.ErrFromNode(err, ident))
 		}
@@ -281,7 +285,7 @@ func localNamedToSchema(ctx *schemaContext, ident *ast.Ident) *apiextensionsv1.J
 		// > For gotypesalias=1, alias declarations produce an Alias type.
 		// > Otherwise, the alias information is only in the type name, which
 		// > points directly to the actual (aliased) type.
-		if basicInfo.Name() != ident.Name {
+		if typeInfo.Name() != ident.Name {
 			ctx.requestSchema("", ident.Name)
 			link := TypeRefLink("", ident.Name)
 			return &apiextensionsv1.JSONSchemaProps{
@@ -294,37 +298,44 @@ func localNamedToSchema(ctx *schemaContext, ident *ast.Ident) *apiextensionsv1.J
 			Type:   typ,
 			Format: fmt,
 		}
-	}
-	// NB(directxman12): if there are dot imports, this might be an external reference,
-	// so use typechecking info to get the actual object
-	typeNameInfo := typeInfo.(interface{ Obj() *types.TypeName }).Obj()
-	pkg := typeNameInfo.Pkg()
-	pkgPath := loader.NonVendorPath(pkg.Path())
-	if pkg == ctx.pkg.Types {
-		pkgPath = ""
-	}
-	ctx.requestSchema(pkgPath, typeNameInfo.Name())
-	link := TypeRefLink(pkgPath, typeNameInfo.Name())
-
-	// In cases where we have a named type, apply the type and format from the named schema
-	// to allow markers that need this information to apply correctly.
-	var typ, fmt string
-	if namedInfo, isNamed := typeInfo.(*types.Named); isNamed {
-		// We don't want/need to do this for structs, maps, or arrays.
-		// These are already handled in infoToSchema if they have custom marshalling.
-		if _, isBasic := namedInfo.Underlying().(*types.Basic); isBasic {
-			namedTypeInfo := ctx.schemaRequester.LookupType(ctx.pkg, namedInfo.Obj().Name())
-
-			namedSchema := infoToSchema(ctx.ForInfo(namedTypeInfo))
-			typ = namedSchema.Type
-			fmt = namedSchema.Format
+	case *types.Interface:
+		ctx.pkg.AddError(loader.ErrFromNode(fmt.Errorf("cannot generate schema for %s; interface type is not supported in CRD schemas, consider using an explicit type or apiextensionsv1.JSON instead", ident.Name), ident))
+		return &apiextensionsv1.JSONSchemaProps{}
+	case interface{ Obj() *types.TypeName }:
+		// NB(directxman12): if there are dot imports, this might be an external reference,
+		// so use typechecking info to get the actual object
+		typeNameInfo := typeInfo.Obj()
+		pkg := typeNameInfo.Pkg()
+		pkgPath := loader.NonVendorPath(pkg.Path())
+		if pkg == ctx.pkg.Types {
+			pkgPath = ""
 		}
-	}
+		ctx.requestSchema(pkgPath, typeNameInfo.Name())
+		link := TypeRefLink(pkgPath, typeNameInfo.Name())
 
-	return &apiextensionsv1.JSONSchemaProps{
-		Type:   typ,
-		Format: fmt,
-		Ref:    &link,
+		// In cases where we have a named type, apply the type and format from the named schema
+		// to allow markers that need this information to apply correctly.
+		var typ, fmt string
+		if namedInfo, isNamed := typeInfo.(*types.Named); isNamed {
+			// We don't want/need to do this for structs, maps, or arrays.
+			// These are already handled in infoToSchema if they have custom marshalling.
+			if _, isBasic := namedInfo.Underlying().(*types.Basic); isBasic {
+				namedTypeInfo := ctx.schemaRequester.LookupType(ctx.pkg, namedInfo.Obj().Name())
+
+				namedSchema := infoToSchema(ctx.ForInfo(namedTypeInfo))
+				typ = namedSchema.Type
+				fmt = namedSchema.Format
+			}
+		}
+
+		return &apiextensionsv1.JSONSchemaProps{
+			Type:   typ,
+			Format: fmt,
+			Ref:    &link,
+		}
+	default:
+		ctx.pkg.AddError(loader.ErrFromNode(fmt.Errorf("unsupported type %T for identifier %s", typeInfo, ident.Name), ident))
+		return &apiextensionsv1.JSONSchemaProps{}
 	}
 }
 
@@ -333,6 +344,10 @@ func namedToSchema(ctx *schemaContext, named *ast.SelectorExpr) *apiextensionsv1
 	typeInfoRaw := ctx.pkg.TypesInfo.TypeOf(named)
 	if typeInfoRaw == types.Typ[types.Invalid] {
 		ctx.pkg.AddError(loader.ErrFromNode(fmt.Errorf("unknown type %v.%s", named.X, named.Sel.Name), named))
+		return &apiextensionsv1.JSONSchemaProps{}
+	}
+	if _, isInterface := typeInfoRaw.(*types.Interface); isInterface {
+		ctx.pkg.AddError(loader.ErrFromNode(fmt.Errorf("cannot generate schema for %v.%s; interface type is not supported in CRD schemas, consider using an explicit type or apiextensionsv1.JSON instead", named.X, named.Sel.Name), named))
 		return &apiextensionsv1.JSONSchemaProps{}
 	}
 	typeInfo := typeInfoRaw.(interface{ Obj() *types.TypeName })
@@ -401,6 +416,9 @@ func mapToSchema(ctx *schemaContext, mapType *ast.MapType) *apiextensionsv1.JSON
 		valSchema = typeToSchema(ctx.ForInfo(&markers.TypeInfo{}), val)
 	case *ast.MapType:
 		valSchema = typeToSchema(ctx.ForInfo(&markers.TypeInfo{}), val)
+	case *ast.InterfaceType:
+		ctx.pkg.AddError(loader.ErrFromNode(fmt.Errorf("interface type is not supported as map value in CRD schemas; consider using an explicit type or apiextensionsv1.JSON instead"), mapType.Value))
+		return &apiextensionsv1.JSONSchemaProps{}
 	default:
 		ctx.pkg.AddError(loader.ErrFromNode(fmt.Errorf("not a supported map value type: %T", mapType.Value), mapType.Value))
 		return &apiextensionsv1.JSONSchemaProps{}
@@ -445,6 +463,8 @@ func structToSchema(ctx *schemaContext, structType *ast.StructType) *apiextensio
 		ctx.pkg.AddError(loader.ErrFromNode(err, structType))
 		return props
 	}
+
+	var immutableFields []string
 
 	for _, field := range ctx.info.Fields {
 		// Skip if the field is not an inline field, ignoreUnexportedFields is true, and the field is not exported
@@ -534,11 +554,28 @@ func structToSchema(ctx *schemaContext, structType *ast.StructType) *apiextensio
 			continue
 		}
 
+		if field.Markers.Get("k8s:immutable") != nil {
+			immutableFields = append(immutableFields, fieldName)
+		}
+
 		props.Properties[fieldName] = *propSchema
 	}
 
 	// Ensure the required fields are always listed alphabetically.
 	slices.Sort(props.Required)
+
+	// For optional immutable fields, add a parent-level validation rule to prevent
+	// clearing the field once set. The field-level rule prevents value changes, but
+	// when an optional field is removed, the field-level rule doesn't execute.
+	for _, fieldName := range immutableFields {
+		if slices.Contains(props.Required, fieldName) {
+			continue
+		}
+		props.XValidations = append(props.XValidations, apiextensionsv1.ValidationRule{
+			Rule:    fmt.Sprintf("!has(oldSelf.%s) || has(self.%s)", fieldName, fieldName),
+			Message: fmt.Sprintf("field %s is immutable once set", fieldName),
+		})
+	}
 
 	return props
 }

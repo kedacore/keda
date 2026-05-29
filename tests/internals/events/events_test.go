@@ -325,15 +325,29 @@ func getTemplateData() (templateData, []Template) {
 	}, []Template{}
 }
 
-func checkingEvent(t *testing.T, namespace string, scaledObject string, index int, eventReason string, msg string) {
+func checkingEvent(t *testing.T, namespace, kind, name string, index int, eventReason, msg string) {
+	// Scope the query to the current resource's UID so that orphaned events from
+	// a previous attempt (run-all.go retries failed tests) don't pollute the
+	// regarding.name-only selector.
+	var uid string
 	assert.Eventually(t, func() bool {
-		result, err := ExecuteCommand(fmt.Sprintf("kubectl get events -n %s --field-selector involvedObject.name=%s --sort-by=.metadata.creationTimestamp -o jsonpath=\"{.items[%d].reason}:{.items[%d].message}\"", namespace, scaledObject, index, index))
+		if uid == "" {
+			out, err := ExecuteCommand(fmt.Sprintf("kubectl get %s %s -n %s --ignore-not-found -o jsonpath={.metadata.uid}", kind, name, namespace))
+			if err == nil {
+				uid = strings.TrimSpace(string(out))
+			}
+		}
+		selector := fmt.Sprintf("regarding.name=%s", name)
+		if uid != "" {
+			selector = fmt.Sprintf("regarding.name=%s,regarding.uid=%s", name, uid)
+		}
+		result, err := ExecuteCommand(fmt.Sprintf("kubectl get events.events.k8s.io -n %s --field-selector %s --sort-by=.metadata.creationTimestamp -o jsonpath=\"{.items[%d].reason}:{.items[%d].note}\"", namespace, selector, index, index))
 		if err != nil {
 			return false
 		}
 		lastEventMessage := strings.Trim(string(result), "\"")
 		return strings.Contains(lastEventMessage, eventReason+":"+msg)
-	}, 60*time.Second, 2*time.Second, "expected event %s:%s for %s/%s[%d]", eventReason, msg, namespace, scaledObject, index)
+	}, 60*time.Second, 2*time.Second, "expected event %s:%s for %s/%s[%d]", eventReason, msg, namespace, name, index)
 }
 
 func testNormalEvent(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -347,9 +361,9 @@ func testNormalEvent(t *testing.T, kc *kubernetes.Clientset, data templateData) 
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 2, testNamespace)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
 		"replica count should be 2 after 1 minute")
-	checkingEvent(t, testNamespace, scaledObjectName, 0, eventreason.KEDAScalersStarted, fmt.Sprintf(message.ScalerIsBuiltMsg, "kubernetes-workload"))
-	checkingEvent(t, testNamespace, scaledObjectName, 1, eventreason.KEDAScalersStarted, message.ScalerStartMsg)
-	checkingEvent(t, testNamespace, scaledObjectName, 2, eventreason.ScaledObjectReady, message.ScalerReadyMsg)
+	checkingEvent(t, testNamespace, "scaledobject", scaledObjectName, 0, eventreason.KEDAScalersStarted, fmt.Sprintf(message.ScalerIsBuiltMsg, "kubernetes-workload"))
+	checkingEvent(t, testNamespace, "scaledobject", scaledObjectName, 1, eventreason.KEDAScalersStarted, message.ScalerStartMsg)
+	checkingEvent(t, testNamespace, "scaledobject", scaledObjectName, 2, eventreason.ScaledObjectReady, message.ScalerReadyMsg)
 
 	KubectlDeleteWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 	KubectlDeleteWithTemplate(t, data, "monitoredDeploymentName", monitoredDeploymentTemplate)
@@ -360,8 +374,8 @@ func testTargetNotFoundErr(t *testing.T, _ *kubernetes.Clientset, data templateD
 	t.Log("--- testing target not found error event ---")
 
 	KubectlApplyWithTemplate(t, data, "scaledObjectTargetErrTemplate", scaledObjectTargetErrTemplate)
-	checkingEvent(t, testNamespace, scaledObjectTargetNotFoundName, -2, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNotFoundMsg)
-	checkingEvent(t, testNamespace, scaledObjectTargetNotFoundName, -1, eventreason.ScaledObjectCheckFailed, message.ScaleTargetErrMsg)
+	checkingEvent(t, testNamespace, "scaledobject", scaledObjectTargetNotFoundName, -2, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNotFoundMsg)
+	checkingEvent(t, testNamespace, "scaledobject", scaledObjectTargetNotFoundName, -1, eventreason.ScaledObjectCheckFailed, message.ScaleTargetErrMsg)
 }
 
 func testTargetNotSupportEventErr(t *testing.T, _ *kubernetes.Clientset, data templateData) {
@@ -369,8 +383,8 @@ func testTargetNotSupportEventErr(t *testing.T, _ *kubernetes.Clientset, data te
 
 	KubectlApplyWithTemplate(t, data, "daemonSetTemplate", daemonSetTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTargetNotSupportTemplate", scaledObjectTargetNotSupportTemplate)
-	checkingEvent(t, testNamespace, scaledObjectTargetNoSubresourceName, -2, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNoSubresourceMsg)
-	checkingEvent(t, testNamespace, scaledObjectTargetNoSubresourceName, -1, eventreason.ScaledObjectCheckFailed, message.ScaleTargetErrMsg)
+	checkingEvent(t, testNamespace, "scaledobject", scaledObjectTargetNoSubresourceName, -2, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNoSubresourceMsg)
+	checkingEvent(t, testNamespace, "scaledobject", scaledObjectTargetNoSubresourceName, -1, eventreason.ScaledObjectCheckFailed, message.ScaleTargetErrMsg)
 }
 
 func testScaledJobNormalEvent(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -383,9 +397,9 @@ func testScaledJobNormalEvent(t *testing.T, kc *kubernetes.Clientset, data templ
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 2, testNamespace)
 	assert.True(t, WaitForJobCount(t, kc, testNamespace, 2, 60, 1),
 		"replica count should be 2 after 1 minute")
-	checkingEvent(t, testNamespace, scaledJobName, 0, eventreason.KEDAScalersStarted, fmt.Sprintf(message.ScalerIsBuiltMsg, "kubernetes-workload"))
-	checkingEvent(t, testNamespace, scaledJobName, 1, eventreason.KEDAScalersStarted, message.ScalerStartMsg)
-	checkingEvent(t, testNamespace, scaledJobName, 2, eventreason.ScaledJobReady, message.ScaledJobReadyMsg)
+	checkingEvent(t, testNamespace, "scaledjob", scaledJobName, 0, eventreason.KEDAScalersStarted, fmt.Sprintf(message.ScalerIsBuiltMsg, "kubernetes-workload"))
+	checkingEvent(t, testNamespace, "scaledjob", scaledJobName, 1, eventreason.KEDAScalersStarted, message.ScalerStartMsg)
+	checkingEvent(t, testNamespace, "scaledjob", scaledJobName, 2, eventreason.ScaledJobReady, message.ScaledJobReadyMsg)
 
 	KubectlDeleteWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 	KubectlDeleteWithTemplate(t, data, "monitoredDeploymentName", monitoredDeploymentTemplate)
@@ -396,7 +410,7 @@ func testScaledJobTargetNotSupportEventErr(t *testing.T, _ *kubernetes.Clientset
 	t.Log("--- testing target not support error event ---")
 
 	KubectlApplyWithTemplate(t, data, "scaledJobErrTemplate", scaledJobErrTemplate)
-	checkingEvent(t, testNamespace, scaledJobErrName, -1, eventreason.ScaledJobCheckFailed, "Failed to ensure ScaledJob is correctly created")
+	checkingEvent(t, testNamespace, "scaledjob", scaledJobErrName, -1, eventreason.ScaledJobCheckFailed, "Failed to ensure ScaledJob is correctly created")
 }
 
 func testTriggerAuthenticationEvent(t *testing.T, _ *kubernetes.Clientset, data templateData) {
@@ -408,19 +422,19 @@ func testTriggerAuthenticationEvent(t *testing.T, _ *kubernetes.Clientset, data 
 	data.SecretTargetName = secretName
 	KubectlApplyWithTemplate(t, data, "triggerAuthenticationTemplate", triggerAuthenticationTemplate)
 
-	checkingEvent(t, testNamespace, triggerAuthName, 0, eventreason.TriggerAuthenticationAdded, message.TriggerAuthenticationCreatedMsg)
+	checkingEvent(t, testNamespace, "triggerauthentication", triggerAuthName, 0, eventreason.TriggerAuthenticationAdded, message.TriggerAuthenticationCreatedMsg)
 
 	KubectlApplyWithTemplate(t, data, "clusterTriggerAuthenticationTemplate", clusterTriggerAuthenticationTemplate)
 
-	checkingEvent(t, "default", clusterTriggerAuthName, 0, eventreason.ClusterTriggerAuthenticationAdded, message.ClusterTriggerAuthenticationCreatedMsg)
+	checkingEvent(t, "default", "clustertriggerauthentication", clusterTriggerAuthName, 0, eventreason.ClusterTriggerAuthenticationAdded, message.ClusterTriggerAuthenticationCreatedMsg)
 
 	data.SecretTargetName = secretName2
 	KubectlApplyWithTemplate(t, data, "triggerAuthenticationTemplate", triggerAuthenticationTemplate)
 
-	checkingEvent(t, testNamespace, triggerAuthName, -1, eventreason.TriggerAuthenticationUpdated, fmt.Sprintf(message.TriggerAuthenticationUpdatedMsg, triggerAuthName))
+	checkingEvent(t, testNamespace, "triggerauthentication", triggerAuthName, -1, eventreason.TriggerAuthenticationUpdated, fmt.Sprintf(message.TriggerAuthenticationUpdatedMsg, triggerAuthName))
 	KubectlApplyWithTemplate(t, data, "clusterTriggerAuthenticationTemplate", clusterTriggerAuthenticationTemplate)
 
-	checkingEvent(t, "default", clusterTriggerAuthName, -1, eventreason.ClusterTriggerAuthenticationUpdated, fmt.Sprintf(message.ClusterTriggerAuthenticationUpdatedMsg, clusterTriggerAuthName))
+	checkingEvent(t, "default", "clustertriggerauthentication", clusterTriggerAuthName, -1, eventreason.ClusterTriggerAuthenticationUpdated, fmt.Sprintf(message.ClusterTriggerAuthenticationUpdatedMsg, clusterTriggerAuthName))
 	KubectlDeleteWithTemplate(t, data, "secretTemplate", secretTemplate)
 	KubectlDeleteWithTemplate(t, data, "secret2Template", secret2Template)
 	KubectlDeleteWithTemplate(t, data, "triggerAuthenticationTemplate", triggerAuthenticationTemplate)

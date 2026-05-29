@@ -16,7 +16,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/eventreason"
@@ -44,7 +44,7 @@ type githubRunnerScaler struct {
 	metadata                *githubRunnerMetadata
 	httpClient              *http.Client
 	logger                  logr.Logger
-	recorder                record.EventRecorder
+	recorder                events.EventRecorder
 	scaledObject            runtime.Object
 	etags                   map[string]string
 	previousRepos           []string
@@ -757,7 +757,7 @@ func (s *githubRunnerScaler) isRateLimited() bool {
 func (s *githubRunnerScaler) getCachedQueueLength() (int64, error) {
 	if !s.previousQueueLengthTime.IsZero() {
 		if s.recorder != nil {
-			s.recorder.Event(s.scaledObject, corev1.EventTypeNormal, eventreason.KEDAScalersInfo,
+			s.recorder.Eventf(s.scaledObject, nil, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo,
 				fmt.Sprintf("Github API rate limit exceeded. Cached queue length: %d, last successful cache at %s",
 					s.previousQueueLength, s.previousQueueLengthTime))
 		}

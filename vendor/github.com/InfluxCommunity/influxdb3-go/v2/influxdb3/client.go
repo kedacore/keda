@@ -247,7 +247,7 @@ func setHTTPClientCertPool(httpClient *http.Client, certPool *x509.CertPool, con
 //     (See WriteOptions.NoSync for more details)
 //   - writeAcceptPartial - bool value whether to accept partial writes.
 //     (See WriteOptions.AcceptPartial for more details)
-//   - writeUseV2Api - bool value whether to use V2 compatibility write API.
+//   - writeUseV2Api - bool value whether to use V2 write API.
 //     (See WriteOptions.UseV2Api for more details)
 func NewFromConnectionString(connectionString string) (*Client, error) {
 	cfg := ClientConfig{}
@@ -271,7 +271,7 @@ func NewFromConnectionString(connectionString string) (*Client, error) {
 //     (See WriteOptions.NoSync for more details)
 //   - INFLUX_WRITE_ACCEPT_PARTIAL - bool value whether to accept partial writes
 //     (See WriteOptions.AcceptPartial for more details)
-//   - INFLUX_WRITE_USE_V2_API - bool value whether to use V2 compatibility write API
+//   - INFLUX_WRITE_USE_V2_API - bool value whether to use V2 write API
 //     (See WriteOptions.UseV2Api for more details)
 //   - INFLUX_WRITE_TIMEOUT - duration value (e.g. 10s) to determine how long to wait for a write response
 //   - INFLUX_QUERY_TIMEOUT - duration value (e.g. 10s) applied to queries for calculating a context response Deadline

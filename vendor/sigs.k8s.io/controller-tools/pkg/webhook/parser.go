@@ -58,6 +58,14 @@ func supportedWebhookVersions() []string {
 
 // +controllertools:marker:generateHelp
 
+// WebhookConfig specifies the configuration for a MutatingWebhookConfiguration or ValidatingWebhookConfiguration.
+//
+// This marker configures the webhook configuration object itself, not the individual webhooks.
+//
+// Example:
+//
+//	// +kubebuilder:webhookconfiguration:mutating=true,name=my-mutating-webhook-configuration
+//	package v1
 type WebhookConfig struct {
 	// Mutating marks this as a mutating webhook (it's validating only if false)
 	//
@@ -65,7 +73,9 @@ type WebhookConfig struct {
 	// and are called *before* all validating webhooks.  Mutating webhooks may
 	// choose to reject an object, similarly to a validating webhook.
 	Mutating bool
+
 	// Name indicates the name of the K8s MutatingWebhookConfiguration or ValidatingWebhookConfiguration object.
+	// If not specified, the name will be auto-generated based on the webhook names.
 	Name string `marker:"name,optional"`
 }
 
@@ -75,6 +85,14 @@ type WebhookConfig struct {
 //
 // It specifies only the details that are intrinsic to the application serving
 // it (e.g. the resources it can handle, or the path it serves on).
+//
+// Example (Validating Webhook):
+//
+//	// +kubebuilder:webhook:path=/validate-mygroup-v1-myresource,mutating=false,failurePolicy=fail,sideEffects=None,groups=mygroup.example.com,resources=myresources,verbs=create;update,versions=v1,name=myresource.kb.io,admissionReviewVersions=v1
+//
+// Example (Mutating Webhook):
+//
+//	// +kubebuilder:webhook:path=/mutate-mygroup-v1-myresource,mutating=true,failurePolicy=fail,sideEffects=None,groups=mygroup.example.com,resources=myresources,verbs=create;update,versions=v1,name=myresource.kb.io,admissionReviewVersions=v1
 type Config struct {
 	// Mutating marks this as a mutating webhook (it's validating only if false)
 	//
@@ -82,22 +100,29 @@ type Config struct {
 	// and are called *before* all validating webhooks.  Mutating webhooks may
 	// choose to reject an object, similarly to a validating webhook.
 	Mutating bool
+
 	// FailurePolicy specifies what should happen if the API server cannot reach the webhook.
 	//
 	// It may be either "ignore" (to skip the webhook and continue on) or "fail" (to reject
-	// the object in question).
+	// the object in question). Most webhooks should use "fail" to ensure the webhook logic
+	// is always executed.
 	FailurePolicy string
+
 	// MatchPolicy defines how the "rules" list is used to match incoming requests.
 	// Allowed values are "Exact" (match only if it exactly matches the specified rule)
 	// or "Equivalent" (match a request if it modifies a resource listed in rules, even via another API group or version).
+	// Defaults to "Equivalent" if not specified.
 	MatchPolicy string `marker:",optional"`
+
 	// SideEffects specify whether calling the webhook will have side effects.
 	// This has an impact on dry runs and `kubectl diff`: if the sideEffect is "Unknown" (the default) or "Some", then
 	// the API server will not call the webhook on a dry-run request and fails instead.
 	// If the value is "None", then the webhook has no side effects and the API server will call it on dry-run.
 	// If the value is "NoneOnDryRun", then the webhook is responsible for inspecting the "dryRun" property of the
 	// AdmissionReview sent in the request, and avoiding side effects if that value is "true."
+	// Most webhooks should use "None".
 	SideEffects string `marker:",optional"`
+
 	// TimeoutSeconds allows configuring how long the API server should wait for a webhook to respond before treating the call as a failure.
 	// If the timeout expires before the webhook responds, the webhook call will be ignored or the API call will be rejected based on the failure policy.
 	// The timeout value must be between 1 and 30 seconds.
@@ -105,24 +130,37 @@ type Config struct {
 	TimeoutSeconds int `marker:",optional"`
 
 	// Groups specifies the API groups that this webhook receives requests for.
+	// Use "*" to match all groups. Multiple groups are separated by semicolons.
+	// Example: "apps;batch" or "*".
 	Groups []string
+
 	// Resources specifies the API resources that this webhook receives requests for.
+	// Use "*" to match all resources. Multiple resources are separated by semicolons.
+	// Example: "deployments;pods" or "*".
 	Resources []string
+
 	// Verbs specifies the Kubernetes API verbs that this webhook receives requests for.
 	//
 	// Only modification-like verbs may be specified.
 	// May be "create", "update", "delete", "connect", or "*" (for all).
+	// Multiple verbs are separated by semicolons. Example: "create;update".
 	Verbs []string
+
 	// Versions specifies the API versions that this webhook receives requests for.
+	// Use "*" to match all versions. Multiple versions are separated by semicolons.
+	// Example: "v1;v1beta1" or "*".
 	Versions []string
 
 	// Name indicates the name of this webhook configuration. Should be a domain with at least three segments separated by dots
+	// Example: "myresource.mygroup.example.com".
 	Name string
 
 	// ServiceName indicates the name of the K8s Service the webhook uses.
+	// Defaults to "webhook-service" if not specified.
 	ServiceName string `marker:"serviceName,optional"`
 
 	// ServiceNamespace indicates the namespace of the K8s Service the webhook uses.
+	// Defaults to "system" if not specified.
 	ServiceNamespace string `marker:"serviceNamespace,optional"`
 
 	// Path specifies that path that the API server should connect to this webhook on. Must be
@@ -133,7 +171,8 @@ type Config struct {
 	// /validate-batch-tutorial-kubebuilder-io-v1-cronjob
 	Path string `marker:"path,optional"`
 
-	// ServicePort indicates the port of the K8s Service the webhook uses
+	// ServicePort indicates the port of the K8s Service the webhook uses.
+	// Defaults to 443 if not specified.
 	ServicePort *int32 `marker:"servicePort,optional"`
 
 	// WebhookVersions specifies the target API versions of the {Mutating,Validating}WebhookConfiguration objects
@@ -141,15 +180,17 @@ type Config struct {
 	WebhookVersions []string `marker:"webhookVersions,optional"`
 
 	// AdmissionReviewVersions is an ordered list of preferred `AdmissionReview`
-	// versions the Webhook expects.
+	// versions the Webhook expects. The API server will try to use the first version
+	// in the list which it supports. If none of the versions specified are supported,
+	// the API call will fail. Common values: "v1" or "v1;v1beta1".
 	AdmissionReviewVersions []string `marker:"admissionReviewVersions"`
 
-	// ReinvocationPolicy allows mutating webhooks to request reinvocation after other mutations
+	// ReinvocationPolicy allows mutating webhooks to request reinvocation after other mutations.
 	//
 	// To allow mutating admission plugins to observe changes made by other plugins,
 	// built-in mutating admission plugins are re-run if a mutating webhook modifies
 	// an object, and mutating webhooks can specify a reinvocationPolicy to control
-	// whether they are reinvoked as well.
+	// whether they are reinvoked as well. May be "Never" or "IfNeeded". Defaults to "Never".
 	ReinvocationPolicy string `marker:"reinvocationPolicy,optional"`
 
 	// URL allows mutating webhooks configuration to specify an external URL when generating

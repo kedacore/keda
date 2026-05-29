@@ -945,6 +945,14 @@ func (m *MockClusterAdmin) ListConsumerGroupOffsets(_ string, _ map[string][]int
 	return nil, nil
 }
 
+func (m *MockClusterAdmin) ListOffsets(_ map[string]map[int32]int64, _ *sarama.ListOffsetsOptions) (map[string]map[int32]*sarama.OffsetResult, error) {
+	return nil, nil
+}
+
+func (m *MockClusterAdmin) AlterConsumerGroupOffsets(_ string, _ map[string]map[int32]sarama.OffsetAndMetadata, _ *sarama.AlterConsumerGroupOffsetsOptions) (*sarama.OffsetCommitResponse, error) {
+	return nil, nil
+}
+
 func (m *MockClusterAdmin) DeleteConsumerGroupOffset(_ string, _ string, _ int32) error {
 	return nil
 }

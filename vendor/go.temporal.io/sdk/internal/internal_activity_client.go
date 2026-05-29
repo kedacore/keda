@@ -31,11 +31,11 @@ type (
 	ClientStartActivityOptions struct {
 		// ID - The business identifier of the activity.
 		//
-		// Mandatory: No default.
+		// Required
 		ID string
 		// TaskQueue - The task queue to schedule the activity on.
 		//
-		// Mandatory: No default.
+		// Required
 		TaskQueue string
 		// ScheduleToCloseTimeout - Total time that a workflow is willing to wait for an Activity to complete.
 		// ScheduleToCloseTimeout limits the total time of an Activity's execution including retries
