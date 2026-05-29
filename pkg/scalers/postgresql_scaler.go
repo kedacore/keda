@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
@@ -248,10 +249,11 @@ func (s *postgreSQLScaler) GetMetricsAndActivity(ctx context.Context, metricName
 }
 
 func escapePostgreConnectionParameter(str string) string {
-	if !strings.Contains(str, " ") {
+	if strings.IndexFunc(str, unicode.IsSpace) == -1 && !strings.ContainsAny(str, `'\`) {
 		return str
 	}
 
+	str = strings.ReplaceAll(str, `\`, `\\`)
 	str = strings.ReplaceAll(str, "'", "\\'")
 	return fmt.Sprintf("'%s'", str)
 }

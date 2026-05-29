@@ -18,10 +18,10 @@ package status
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/go-logr/logr"
-	"github.com/pkg/errors"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -158,7 +158,7 @@ func UpdateTriggerAuthenticationStatusFromTriggers(ctx context.Context, logger l
 
 		err := updateTriggerAuthenticationStatus(ctx, logger, client, namespace, trigger.AuthenticationRef, statusHandler)
 		if err != nil {
-			errs = errors.Wrap(errs, err.Error())
+			errs = errors.Join(errs, err)
 		}
 	}
 
