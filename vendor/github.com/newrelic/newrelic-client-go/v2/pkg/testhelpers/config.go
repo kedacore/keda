@@ -44,6 +44,19 @@ func NewTestConfig(t *testing.T, testServer *httptest.Server) config.Config {
 	return cfg
 }
 
+// NewFleetIntegrationTestConfig is like NewIntegrationTestConfig but uses the fleet-specific
+// credentials (NEW_RELIC_FLEET_TEST_API_KEY) required for Fleet Control integration tests.
+func NewFleetIntegrationTestConfig(t *testing.T) config.Config {
+	apiKey := os.Getenv("NEW_RELIC_FLEET_TEST_API_KEY")
+	if apiKey == "" {
+		t.Skip("fleet control integration tests require NEW_RELIC_FLEET_TEST_API_KEY")
+	}
+
+	cfg := NewIntegrationTestConfig(t)
+	cfg.PersonalAPIKey = apiKey
+	return cfg
+}
+
 // NewIntegrationTestConfig grabs environment vars for required fields or skips the test.
 // returns a fully saturated configuration
 func NewIntegrationTestConfig(t *testing.T) config.Config {

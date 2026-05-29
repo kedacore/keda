@@ -36,6 +36,10 @@ func (Generator) Help() *markers.DefinitionHelp {
 				Summary: "specifies the header text (e.g. license) to prepend to generated files.",
 				Details: "",
 			},
+			"ExternalApplyConfigurations": {
+				Summary: "provides mappings between external types and their applyconfiguration packages.",
+				Details: "Use this to reference apply configuration types for external types referenced\nby the Go structs provided as input. Each entry should be in the format:\n  <package>.<TypeName>@<applyconfiguration-package>\n\nFor example, to reference the apply configuration for corev1.LocalObjectReference:\n  k8s.io/api/core/v1.LocalObjectReference@k8s.io/client-go/applyconfigurations/core/v1",
+			},
 		},
 	}
 }

@@ -20,7 +20,6 @@ import (
 	"maps"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-tools/pkg/loader"
 )
 
@@ -69,7 +68,7 @@ var KnownPackages = map[string]PackageOverride{
 		p.Schemata[TypeIdent{Name: "RawExtension", Package: pkg}] = apiextensionsv1.JSONSchemaProps{
 			// TODO(directxman12): regexp validation for this (or get kube to support it as a format value)
 			Type:                   "object",
-			XPreserveUnknownFields: ptr.To(true),
+			XPreserveUnknownFields: new(true),
 		}
 		p.AddPackage(pkg) // get the rest of the types
 	},
@@ -94,13 +93,13 @@ var KnownPackages = map[string]PackageOverride{
 
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1": func(p *Parser, pkg *loader.Package) {
 		p.Schemata[TypeIdent{Name: "JSON", Package: pkg}] = apiextensionsv1.JSONSchemaProps{
-			XPreserveUnknownFields: ptr.To(true),
+			XPreserveUnknownFields: new(true),
 		}
 		p.AddPackage(pkg) // get the rest of the types
 	},
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1": func(p *Parser, pkg *loader.Package) {
 		p.Schemata[TypeIdent{Name: "JSON", Package: pkg}] = apiextensionsv1.JSONSchemaProps{
-			XPreserveUnknownFields: ptr.To(true),
+			XPreserveUnknownFields: new(true),
 		}
 		p.AddPackage(pkg) // get the rest of the types
 	},

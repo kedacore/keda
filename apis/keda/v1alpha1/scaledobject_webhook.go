@@ -33,11 +33,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/kedacore/keda/v2/pkg/eventreason"
@@ -50,7 +49,7 @@ var kc client.Client
 var cacheMissToDirectClient bool
 var directClient client.Client
 var restMapper meta.RESTMapper
-var eventRecorder record.EventRecorder
+var eventRecorder events.EventRecorder
 
 var memoryString = "memory"
 var cpuString = "cpu"
@@ -65,11 +64,10 @@ func (so *ScaledObject) SetupWebhookWithManager(mgr ctrl.Manager, cacheMissFallb
 	}
 
 	// Setup event recorder
-	eventRecorder = mgr.GetEventRecorderFor("keda-admission")
+	eventRecorder = mgr.GetEventRecorder("keda-admission")
 
-	return ctrl.NewWebhookManagedBy(mgr).
+	return ctrl.NewWebhookManagedBy(mgr, so).
 		WithValidator(&ScaledObjectCustomValidator{}).
-		For(so).
 		Complete()
 }
 
@@ -100,35 +98,31 @@ func setupKubernetesClients(mgr ctrl.Manager, cacheMissFallback bool) error {
 // ScaledObjectCustomValidator is a custom validator for ScaledObject objects
 type ScaledObjectCustomValidator struct{}
 
-func (socv ScaledObjectCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+func (socv ScaledObjectCustomValidator) ValidateCreate(ctx context.Context, so *ScaledObject) (warnings admission.Warnings, err error) {
 	request, err := admission.RequestFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	so := obj.(*ScaledObject)
 	return so.ValidateCreate(request.DryRun)
 }
 
-func (socv ScaledObjectCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (warnings admission.Warnings, err error) {
+func (socv ScaledObjectCustomValidator) ValidateUpdate(ctx context.Context, old, so *ScaledObject) (warnings admission.Warnings, err error) {
 	request, err := admission.RequestFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	so := newObj.(*ScaledObject)
-	old := oldObj.(*ScaledObject)
 	return so.ValidateUpdate(old, request.DryRun)
 }
 
-func (socv ScaledObjectCustomValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+func (socv ScaledObjectCustomValidator) ValidateDelete(ctx context.Context, so *ScaledObject) (warnings admission.Warnings, err error) {
 	request, err := admission.RequestFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	so := obj.(*ScaledObject)
 	return so.ValidateDelete(request.DryRun)
 }
 
-var _ webhook.CustomValidator = &ScaledObjectCustomValidator{}
+var _ admission.Validator[*ScaledObject] = &ScaledObjectCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (so *ScaledObject) ValidateCreate(dryRun *bool) (admission.Warnings, error) {
@@ -346,7 +340,7 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 			msg := "PollingInterval is configured but is not relevant. PollingInterval is only relevant when minReplicaCount = 0 or idleReplicaCount = 0 or useCachedMetrics is enabled"
 			warnings = append(warnings, msg)
 			if eventRecorder != nil {
-				eventRecorder.Event(incomingSo, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, msg)
+				eventRecorder.Eventf(incomingSo, nil, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", msg)
 			}
 		}
 	}
@@ -358,7 +352,7 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 			msg := "CooldownPeriod is configured but is not relevant. CooldownPeriod is only relevant when minReplicaCount = 0 or idleReplicaCount = 0"
 			warnings = append(warnings, msg)
 			if eventRecorder != nil {
-				eventRecorder.Event(incomingSo, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, msg)
+				eventRecorder.Eventf(incomingSo, nil, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", msg)
 			}
 		}
 	}

@@ -450,6 +450,36 @@ type ClientOutboundInterceptor interface {
 	// NOTE: Experimental
 	PollActivityResult(context.Context, *ClientPollActivityResultInput) (*ClientPollActivityResultOutput, error)
 
+	// ExecuteNexusOperation intercepts NexusClient.ExecuteOperation.
+	//
+	// NOTE: Experimental
+	ExecuteNexusOperation(context.Context, *ClientExecuteNexusOperationInput) (ClientNexusOperationHandle, error)
+
+	// GetNexusOperationHandle intercepts client.Client.GetNexusOperationHandle.
+	//
+	// NOTE: Experimental
+	GetNexusOperationHandle(*ClientGetNexusOperationHandleInput) ClientNexusOperationHandle
+
+	// CancelNexusOperation intercepts NexusOperationHandle.Cancel.
+	//
+	// NOTE: Experimental
+	CancelNexusOperation(context.Context, *ClientCancelNexusOperationInput) error
+
+	// TerminateNexusOperation intercepts NexusOperationHandle.Terminate.
+	//
+	// NOTE: Experimental
+	TerminateNexusOperation(context.Context, *ClientTerminateNexusOperationInput) error
+
+	// DescribeNexusOperation intercepts NexusOperationHandle.Describe.
+	//
+	// NOTE: Experimental
+	DescribeNexusOperation(context.Context, *ClientDescribeNexusOperationInput) (*ClientDescribeNexusOperationOutput, error)
+
+	// PollNexusOperationResult intercepts NexusOperationHandle.Get.
+	//
+	// NOTE: Experimental
+	PollNexusOperationResult(context.Context, *ClientPollNexusOperationResultInput) (*ClientPollNexusOperationResultOutput, error)
+
 	mustEmbedClientOutboundInterceptorBase()
 }
 
@@ -667,6 +697,100 @@ type ClientPollActivityResultOutput struct {
 	// Result is the result of the update, if it has completed successfully.
 	Result converter.EncodedValue
 	// Error is the result of a failed update.
+	Error error
+}
+
+// ClientExecuteNexusOperationInput is the input to
+// ClientOutboundInterceptor.ExecuteNexusOperation.
+//
+// NOTE: Experimental
+//
+// Exposed as: [go.temporal.io/sdk/interceptor.ClientExecuteNexusOperationInput]
+type ClientExecuteNexusOperationInput struct {
+	Options       *ClientStartNexusOperationOptions
+	Endpoint      string
+	Service       string
+	OperationType string
+	Input         interface{}
+}
+
+// ClientGetNexusOperationHandleInput is the input to
+// ClientOutboundInterceptor.GetNexusOperationHandle.
+//
+// NOTE: Experimental
+//
+// Exposed as: [go.temporal.io/sdk/interceptor.ClientGetNexusOperationHandleInput]
+type ClientGetNexusOperationHandleInput struct {
+	OperationID string
+	RunID       string
+}
+
+// ClientCancelNexusOperationInput is the input to
+// ClientOutboundInterceptor.CancelNexusOperation.
+//
+// NOTE: Experimental
+//
+// Exposed as: [go.temporal.io/sdk/interceptor.ClientCancelNexusOperationInput]
+type ClientCancelNexusOperationInput struct {
+	OperationID string
+	RunID       string
+	Reason      string
+}
+
+// ClientTerminateNexusOperationInput is the input to
+// ClientOutboundInterceptor.TerminateNexusOperation.
+//
+// NOTE: Experimental
+//
+// Exposed as: [go.temporal.io/sdk/interceptor.ClientTerminateNexusOperationInput]
+type ClientTerminateNexusOperationInput struct {
+	OperationID string
+	RunID       string
+	Reason      string
+}
+
+// ClientDescribeNexusOperationInput is the input to
+// ClientOutboundInterceptor.DescribeNexusOperation.
+//
+// NOTE: Experimental
+//
+// Exposed as: [go.temporal.io/sdk/interceptor.ClientDescribeNexusOperationInput]
+type ClientDescribeNexusOperationInput struct {
+	OperationID string
+	RunID       string
+}
+
+// ClientDescribeNexusOperationOutput is the output of
+// ClientOutboundInterceptor.DescribeNexusOperation.
+//
+// NOTE: Experimental
+//
+// Exposed as: [go.temporal.io/sdk/interceptor.ClientDescribeNexusOperationOutput]
+type ClientDescribeNexusOperationOutput struct {
+	Description *ClientNexusOperationExecutionDescription
+}
+
+// ClientPollNexusOperationResultInput is the input to
+// ClientOutboundInterceptor.PollNexusOperationResult.
+//
+// NOTE: Experimental
+//
+// Exposed as: [go.temporal.io/sdk/interceptor.ClientPollNexusOperationResultInput]
+type ClientPollNexusOperationResultInput struct {
+	OperationID string
+	RunID       string
+}
+
+// ClientPollNexusOperationResultOutput is the output of
+// ClientOutboundInterceptor.PollNexusOperationResult.
+//
+// NOTE: Experimental
+//
+// Exposed as: [go.temporal.io/sdk/interceptor.ClientPollNexusOperationResultOutput]
+type ClientPollNexusOperationResultOutput struct {
+	// Result is the result of the operation, if it has completed successfully.
+	Result converter.EncodedValue
+	// Error is the result of a failed operation.
 	Error error
 }
 

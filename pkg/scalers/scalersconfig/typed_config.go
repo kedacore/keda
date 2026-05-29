@@ -253,7 +253,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) ([]string, 
 		if sc.Recorder != nil {
 			message := fmt.Sprintf("scaler %s info: %s", sc.TriggerType, params.DeprecatedAnnounce)
 			fmt.Print(message)
-			sc.Recorder.Event(sc.ScaledObject, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, message)
+			sc.Recorder.Eventf(sc.ScaledObject, nil, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", message)
 		}
 	}
 	if !exists && params.Default != "" {
@@ -544,7 +544,7 @@ func (sc *ScalerConfig) checkUnexpectedParameterExist(parsedParamNames []string,
 				message := fmt.Sprintf("Unmatched input property %s in scaler %s", key+suffix, scalerIdentifier)
 				// Just logging as it's optional property checking and should not block the scaling
 				logger.Error(nil, message)
-				sc.Recorder.Event(sc.ScaledObject, corev1.EventTypeWarning, eventreason.KEDAScalersInfo, message)
+				sc.Recorder.Eventf(sc.ScaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", message)
 			}
 		}
 	}

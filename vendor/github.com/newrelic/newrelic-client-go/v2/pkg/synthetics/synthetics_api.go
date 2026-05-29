@@ -403,12 +403,14 @@ func (a *Synthetics) SyntheticsCreatePrivateLocation(
 	accountID int,
 	description string,
 	name string,
+	shared bool,
 	verifiedScriptExecution bool,
 ) (*SyntheticsPrivateLocationMutationResult, error) {
 	return a.SyntheticsCreatePrivateLocationWithContext(context.Background(),
 		accountID,
 		description,
 		name,
+		shared,
 		verifiedScriptExecution,
 	)
 }
@@ -419,6 +421,7 @@ func (a *Synthetics) SyntheticsCreatePrivateLocationWithContext(
 	accountID int,
 	description string,
 	name string,
+	shared bool,
 	verifiedScriptExecution bool,
 ) (*SyntheticsPrivateLocationMutationResult, error) {
 
@@ -427,6 +430,7 @@ func (a *Synthetics) SyntheticsCreatePrivateLocationWithContext(
 		"accountId":               accountID,
 		"description":             description,
 		"name":                    name,
+		"shared":                  shared,
 		"verifiedScriptExecution": verifiedScriptExecution,
 	}
 
@@ -445,11 +449,13 @@ const SyntheticsCreatePrivateLocationMutation = `mutation(
 	$accountId: Int!,
 	$description: String,
 	$name: String!,
+	$shared: Boolean,
 	$verifiedScriptExecution: Boolean!,
 ) { syntheticsCreatePrivateLocation(
 	accountId: $accountId,
 	description: $description,
 	name: $name,
+	shared: $shared,
 	verifiedScriptExecution: $verifiedScriptExecution,
 ) {
 	accountId
@@ -463,6 +469,7 @@ const SyntheticsCreatePrivateLocationMutation = `mutation(
 	key
 	locationId
 	name
+	shared
 	verifiedScriptExecution
 } }`
 
@@ -1481,11 +1488,13 @@ const SyntheticsUpdateCertCheckMonitorMutation = `mutation(
 func (a *Synthetics) SyntheticsUpdatePrivateLocation(
 	description string,
 	gUID EntityGUID,
+	shared bool,
 	verifiedScriptExecution bool,
 ) (*SyntheticsPrivateLocationMutationResult, error) {
 	return a.SyntheticsUpdatePrivateLocationWithContext(context.Background(),
 		description,
 		gUID,
+		shared,
 		verifiedScriptExecution,
 	)
 }
@@ -1495,6 +1504,7 @@ func (a *Synthetics) SyntheticsUpdatePrivateLocationWithContext(
 	ctx context.Context,
 	description string,
 	gUID EntityGUID,
+	shared bool,
 	verifiedScriptExecution bool,
 ) (*SyntheticsPrivateLocationMutationResult, error) {
 
@@ -1502,6 +1512,7 @@ func (a *Synthetics) SyntheticsUpdatePrivateLocationWithContext(
 	vars := map[string]interface{}{
 		"description":             description,
 		"guid":                    gUID,
+		"shared":                  shared,
 		"verifiedScriptExecution": verifiedScriptExecution,
 	}
 
@@ -1519,10 +1530,12 @@ type SyntheticsUpdatePrivateLocationQueryResponse struct {
 const SyntheticsUpdatePrivateLocationMutation = `mutation(
 	$description: String,
 	$guid: EntityGuid!,
+	$shared: Boolean,
 	$verifiedScriptExecution: Boolean,
 ) { syntheticsUpdatePrivateLocation(
 	description: $description,
 	guid: $guid,
+	shared: $shared,
 	verifiedScriptExecution: $verifiedScriptExecution,
 ) {
 	accountId
@@ -1536,6 +1549,7 @@ const SyntheticsUpdatePrivateLocationMutation = `mutation(
 	key
 	locationId
 	name
+	shared
 	verifiedScriptExecution
 } }`
 

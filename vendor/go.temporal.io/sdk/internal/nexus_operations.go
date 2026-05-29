@@ -263,7 +263,7 @@ func protoFailureToNexusFailure(failure *nexuspb.Failure) nexus.Failure {
 }
 
 // nexusOperationFailure is a utility in use by the test environment.
-func nexusOperationFailure(params executeNexusOperationParams, token string, cause *failurepb.Failure) *failurepb.Failure {
+func nexusOperationFailure(params ExecuteNexusOperationParams, token string, cause *failurepb.Failure) *failurepb.Failure {
 	return &failurepb.Failure{
 		Message: "nexus operation completed unsuccessfully",
 		FailureInfo: &failurepb.Failure_NexusOperationExecutionFailureInfo{
@@ -794,6 +794,22 @@ func (t *testSuiteClientForNexusOperations) WorkerDeploymentClient() WorkerDeplo
 
 // UpdateWorkflowExecutionOptions implements Client.
 func (t *testSuiteClientForNexusOperations) UpdateWorkflowExecutionOptions(ctx context.Context, options UpdateWorkflowExecutionOptionsRequest) (WorkflowExecutionOptions, error) {
+	panic("not implemented in the test environment")
+}
+
+func (t *testSuiteClientForNexusOperations) NewNexusClient(options ClientNexusClientOptions) (ClientNexusClient, error) {
+	panic("not implemented in the test environment")
+}
+
+func (t *testSuiteClientForNexusOperations) GetNexusOperationHandle(options ClientGetNexusOperationHandleOptions) ClientNexusOperationHandle {
+	panic("not implemented in the test environment")
+}
+
+func (t *testSuiteClientForNexusOperations) ListNexusOperations(ctx context.Context, options ClientListNexusOperationsOptions) (ClientListNexusOperationsResult, error) {
+	panic("not implemented in the test environment")
+}
+
+func (t *testSuiteClientForNexusOperations) CountNexusOperations(ctx context.Context, options ClientCountNexusOperationsOptions) (*ClientCountNexusOperationsResult, error) {
 	panic("not implemented in the test environment")
 }
 

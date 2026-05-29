@@ -16,6 +16,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/tidwall/gjson"
 	"golang.org/x/sync/semaphore"
@@ -175,7 +176,7 @@ func getValueFromPrometheusResponse(body []byte, valueLocation string) (float64,
 	}
 
 	reader := strings.NewReader(bodyStr)
-	familiesParser := expfmt.TextParser{}
+	familiesParser := expfmt.NewTextParser(model.UTF8Validation)
 	families, err := familiesParser.TextToMetricFamilies(reader)
 	if err != nil {
 		return 0, fmt.Errorf("prometheus format parsing error: %w", err)

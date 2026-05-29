@@ -230,7 +230,7 @@ func main() {
 	}
 
 	globalHTTPTimeout := time.Duration(globalHTTPTimeoutMS) * time.Millisecond
-	eventRecorder := mgr.GetEventRecorderFor("keda-operator")
+	eventRecorder := mgr.GetEventRecorder("keda-operator")
 
 	kubeClientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {

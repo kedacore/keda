@@ -16,8 +16,9 @@ const IntegrationTestApplicationEntityGUID = "MzgwNjUyNnxBUE18QVBQTElDQVRJT058NT
 const IntegrationTestApplicationEntityGUIDNew = "MzgwNjUyNnxBUE18QVBQTElDQVRJT058NTUzNDQ4MjAy"
 
 // GUIDs for the entity relationship
-const EntityRelationshipTestSourceEntityGUID = "MzgwNjUyNnxFWFR8U0VSVklDRV9MRVZFTHw1ODA4MDM"
-const EntityRelationshipTestTargetEntityGUID = "MzgwNjUyNnxFWFR8U0VSVklDRV9MRVZFTHw1NzE0Nzk"
+// Upon expiration of these GUIDs, please replace them with GUIDs of Mobile Applications
+const EntityRelationshipTestSourceEntityGUID = "MzgwNjUyNnxNT0JJTEV8QVBQTElDQVRJT058NjAxNjQ2NTM1"
+const EntityRelationshipTestTargetEntityGUID = "MzgwNjUyNnxNT0JJTEV8QVBQTElDQVRJT058NjAxNjQ2NTM2"
 
 // name of the APM Application with the GUID IntegrationTestApplicationEntityGUIDNew
 const IntegrationTestApplicationEntityNameNew = "Dummy App Pro Max"
@@ -44,6 +45,11 @@ func GetTestUserID() (int, error) {
 // GetTestAccountID returns the integer value for a New Relic Account ID from the environment
 func GetTestAccountID() (int, error) {
 	return getEnvInt("NEW_RELIC_ACCOUNT_ID")
+}
+
+// GetFleetTestAccountID returns the account ID for Fleet Control integration tests from the environment
+func GetFleetTestAccountID() (int, error) {
+	return getEnvInt("NEW_RELIC_FLEET_TEST_ACCOUNT_ID")
 }
 
 // GetNonExistentIDs returns two non-existent IDs that can be used to test errors raised
