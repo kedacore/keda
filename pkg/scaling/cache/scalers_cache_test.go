@@ -297,8 +297,8 @@ func TestScalersCache_ReaderDrainBudgetUnblocksCloseOnStuckReader(t *testing.T) 
 }
 
 // With ReaderDrainBudget at its zero value (no budget), a stuck reader keeps
-// Close blocked indefinitely — equivalent to the post-#7737 behavior before
-// any timeboxing. This is the documented "opt-in" semantics for callers that
+// Close blocked indefinitely - equivalent to the post-#7737 behavior before
+// any timeboxing. This is the documented opt-in semantics for callers that
 // don't set the budget.
 func TestScalersCache_NoBudgetLeavesReaderUnbounded(t *testing.T) {
 	release := make(chan struct{})

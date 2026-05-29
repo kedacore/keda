@@ -498,12 +498,7 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 		Scalers:                  scalers,
 		ScalableObjectGeneration: withTriggers.Generation,
 		Recorder:                 h.recorder,
-		// Derived from globalHTTPTimeout so users who legitimately raise the
-		// HTTP timeout get a proportionally larger budget without a separate
-		// tunable. Buffers ~2 sequential scaler-side HTTP calls + overhead;
-		// chosen so the default of 3s globalHTTPTimeout produces a 6s budget,
-		// close to PR #7780's earlier 5s default.
-		ReaderDrainBudget: 2 * h.globalHTTPTimeout,
+		ReaderDrainBudget:        max(5*time.Second, 2*h.globalHTTPTimeout),
 	}
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
@@ -551,12 +546,6 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject ked
 	if cache, ok := h.scalerCaches[key]; ok {
 		log.V(1).WithValues("key", key).Info("Removing entry from ScalersCache; scaler close runs asynchronously")
 		delete(h.scalerCaches, key)
-		// Close in a goroutine. Even though ReaderDrainBudget keeps
-		// activeReaders.Wait() bounded inside Close, scaler.Close itself can
-		// still take several seconds per scaler. Holding the global
-		// scalerCachesLock across that work would serialize every other
-		// ScaledObject finalize and every metrics gRPC RLock acquire.
-		// Mirrors the pattern already used in performGetScalersCache for #5083.
 		go cache.Close(ctx)
 	}
 

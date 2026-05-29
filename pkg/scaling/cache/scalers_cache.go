@@ -46,28 +46,15 @@ type ScalersCache struct {
 	ScalableObjectGeneration int64
 	Recorder                 record.EventRecorder
 	CompiledFormula          *vm.Program
-	// ReaderDrainBudget caps how long any single reader can hold an
-	// activeReaders slot. If the reader's scaler call doesn't return within
-	// the budget, a timer releases the slot so Close()'s activeReaders.Wait()
-	// stays bounded even when a scaler's reader is wedged in a third-party
-	// SDK that ignores ctx (observed in the wild with the Splunk Observability
-	// scaler's signalflow client). Zero means "no budget" — readers can hold
-	// the slot indefinitely.
-	ReaderDrainBudget time.Duration
-	mutex             sync.RWMutex
-	closed            bool
-	activeReaders     sync.WaitGroup
+	ReaderDrainBudget        time.Duration
+	mutex                    sync.RWMutex
+	closed                   bool
+	activeReaders            sync.WaitGroup
 }
 
-// acquireReader either reserves an activeReaders slot or returns ErrCacheClosed
-// if the cache has been closed. The returned release function must be called
-// exactly once (deferred). If ReaderDrainBudget > 0, the slot is auto-released
-// by a timer if release is not called within the budget — this keeps
-// activeReaders.Wait() bounded even if a reader is stuck in a third-party SDK
-// that ignores ctx.
-//
-// The closed check and the Add must happen under the same RLock so Close()'s
-// write Lock serializes against both.
+// acquireReader either reserves an activeReaders slot or returns ErrCacheClosed if the cache has been closed. The returned release function should be called by defer statement.
+// If ReaderDrainBudget > 0, the slot is auto-released by a timer if release is not called within the budget - this keeps activeReaders.Wait() bounded even if a reader is stuck in a third-party SDK that ignores ctx.
+// If ReaderDrainBudget <= 0 means "no budget"; the slot is held until release is called.
 func (c *ScalersCache) acquireReader() (release func(), err error) {
 	c.mutex.RLock()
 	if c.closed {
@@ -85,16 +72,13 @@ func (c *ScalersCache) acquireReader() (release func(), err error) {
 	}
 
 	timer := time.AfterFunc(c.ReaderDrainBudget, func() {
-		// sync.Once gates this so we only log when the timer genuinely beat
-		// the reader; if the reader already released, this is a cheap no-op.
 		fired := false
 		once.Do(func() {
 			c.activeReaders.Done()
 			fired = true
 		})
 		if fired {
-			log.Info("scaler reader exceeded ReaderDrainBudget; releasing activeReaders slot to avoid blocking cache.Close",
-				"budget", c.ReaderDrainBudget)
+			log.Info("scaler reader exceeded ReaderDrainBudget; releasing activeReaders slot to avoid blocking cache.Close", "budget", c.ReaderDrainBudget)
 		}
 	})
 
