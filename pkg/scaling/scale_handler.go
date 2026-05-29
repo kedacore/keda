@@ -498,6 +498,7 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 		Scalers:                  scalers,
 		ScalableObjectGeneration: withTriggers.Generation,
 		Recorder:                 h.recorder,
+		ReaderDrainBudget:        max(5*time.Second, 2*h.globalHTTPTimeout),
 	}
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
@@ -543,9 +544,9 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject ked
 	h.scalerCachesLock.Lock()
 	defer h.scalerCachesLock.Unlock()
 	if cache, ok := h.scalerCaches[key]; ok {
-		log.V(1).WithValues("key", key).Info("Removing entry from ScalersCache")
-		cache.Close(ctx)
+		log.V(1).WithValues("key", key).Info("Removing entry from ScalersCache; scaler close runs asynchronously")
 		delete(h.scalerCaches, key)
+		go cache.Close(ctx)
 	}
 
 	return nil

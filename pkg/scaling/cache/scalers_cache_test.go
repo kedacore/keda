@@ -250,6 +250,119 @@ func TestScalersCache_CloseWaitsForInFlightReader(t *testing.T) {
 	}
 }
 
+// A reader stuck in a scaler that ignores ctx (modeled here as a fakeScaler
+// whose release channel is never closed) must not be allowed to block Close
+// past ReaderDrainBudget. The timer attached at acquireReader fires, releases
+// the activeReaders slot, and Close proceeds.
+func TestScalersCache_ReaderDrainBudgetUnblocksCloseOnStuckReader(t *testing.T) {
+	release := make(chan struct{})
+	defer close(release)
+
+	scaler := newFakeScaler(release)
+	cache := newCacheWithScaler(scaler)
+	cache.ReaderDrainBudget = 50 * time.Millisecond
+
+	go func() {
+		_, _, _, _ = cache.GetMetricsAndActivityForScaler(context.Background(), 0, "fake")
+	}()
+	select {
+	case <-scaler.entered:
+	case <-time.After(time.Second):
+		t.Fatal("reader did not enter GetMetricsAndActivity")
+	}
+
+	start := time.Now()
+	closeReturned := make(chan struct{})
+	go func() {
+		defer close(closeReturned)
+		cache.Close(context.Background())
+	}()
+
+	select {
+	case <-closeReturned:
+	case <-time.After(time.Second):
+		t.Fatal("Close did not return within 1s; ReaderDrainBudget was not honored")
+	}
+
+	elapsed := time.Since(start)
+	if elapsed < 50*time.Millisecond {
+		t.Fatalf("Close returned in %v, before the configured budget", elapsed)
+	}
+	if elapsed > 500*time.Millisecond {
+		t.Fatalf("Close returned in %v, far longer than the configured 50ms budget", elapsed)
+	}
+	if got := scaler.closeCount.Load(); got != 1 {
+		t.Fatalf("Scaler.Close called %d times, want 1 (Close must proceed after budget)", got)
+	}
+}
+
+// With ReaderDrainBudget at its zero value (no budget), a stuck reader keeps
+// Close blocked indefinitely - equivalent to the post-#7737 behavior before
+// any timeboxing. This is the documented opt-in semantics for callers that
+// don't set the budget.
+func TestScalersCache_NoBudgetLeavesReaderUnbounded(t *testing.T) {
+	release := make(chan struct{})
+	scaler := newFakeScaler(release)
+	cache := newCacheWithScaler(scaler)
+	// cache.ReaderDrainBudget left at the zero value.
+
+	go func() {
+		_, _, _, _ = cache.GetMetricsAndActivityForScaler(context.Background(), 0, "fake")
+	}()
+	select {
+	case <-scaler.entered:
+	case <-time.After(time.Second):
+		t.Fatal("reader did not enter GetMetricsAndActivity")
+	}
+
+	closeReturned := make(chan struct{})
+	go func() {
+		defer close(closeReturned)
+		cache.Close(context.Background())
+	}()
+
+	select {
+	case <-closeReturned:
+		t.Fatal("Close returned while reader was stuck and ReaderDrainBudget=0")
+	case <-time.After(150 * time.Millisecond):
+	}
+
+	close(release)
+	select {
+	case <-closeReturned:
+	case <-time.After(time.Second):
+		t.Fatal("Close did not return after reader released")
+	}
+}
+
+// A reader that returns before the budget elapses must release the slot via
+// the natural defer path (timer is stopped), not via the timer goroutine. The
+// activeReaders counter is decremented exactly once regardless.
+func TestScalersCache_FastReaderDoesNotTripBudgetTimer(t *testing.T) {
+	scaler := newFakeScaler(nil) // never blocks
+	cache := newCacheWithScaler(scaler)
+	cache.ReaderDrainBudget = time.Second
+
+	for i := 0; i < 10; i++ {
+		if _, _, _, err := cache.GetMetricsAndActivityForScaler(context.Background(), 0, "fake"); err != nil {
+			t.Fatalf("reader %d got unexpected error: %v", i, err)
+		}
+	}
+
+	// If sync.Once weren't gating Done(), Close() would either panic on a
+	// negative WaitGroup counter or block forever. Either way it'd fail here.
+	closeReturned := make(chan struct{})
+	go func() {
+		defer close(closeReturned)
+		cache.Close(context.Background())
+	}()
+	select {
+	case <-closeReturned:
+	case <-time.After(time.Second):
+		t.Fatal("Close did not return after fast readers completed")
+	}
+}
+
 func TestScalersCache_ConcurrentCloseAndRead(t *testing.T) {
 	const iterations = 200
 	for i := 0; i < iterations; i++ {
