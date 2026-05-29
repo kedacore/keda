@@ -271,6 +271,12 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 
 	metricSpecs := cache.GetMetricSpecForScaling(ctx)
 
+	if len(metricSpecs) == 0 {
+		err := fmt.Errorf("no metric specs returned from scalers for ScaledObject %s/%s", scaledObject.Namespace, scaledObject.Name)
+		logger.Error(err, "Scalers may be unreachable, will retry")
+		return nil, err
+	}
+
 	for _, metricSpec := range metricSpecs {
 		if metricSpec.Resource != nil {
 			resourceMetricNames = append(resourceMetricNames, string(metricSpec.Resource.Name))

@@ -677,13 +677,15 @@ func resolveAuthSecret(ctx context.Context, client client.Client, logger logr.Lo
 
 	secret := &corev1.Secret{}
 	var err error
+	resolvedNamespace := namespace
 	if isSecretAccessRestricted(logger) {
 		secret, err = secretsLister.Secrets(kedaNamespace).Get(name)
+		resolvedNamespace = kedaNamespace
 	} else {
 		err = client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, secret)
 	}
 	if err != nil {
-		logger.Error(err, "error trying to get secret from namespace", "Secret.Namespace", namespace, "Secret.Name", name)
+		logger.Error(err, "error trying to get secret from namespace", "Secret.Namespace", resolvedNamespace, "Secret.Name", name)
 		return ""
 	}
 	result := secret.Data[key]

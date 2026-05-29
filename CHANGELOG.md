@@ -68,7 +68,9 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+- **General**: Add `scalingModifiers` fallback behavior ([#7366](https://github.com/kedacore/keda/discussions/7366))
 - **General**: Introduce Elastic Forecast Scaler ([#7494](https://github.com/kedacore/keda/issues/7494))
+- **General**: Introduce new OpenSearch Scaler ([#7456](https://github.com/kedacore/keda/issues/7456))
 
 #### Experimental
 
@@ -76,10 +78,12 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
+- **General**: Add cooldownPeriod and pollingInterval checks for ScaledObject ([#7271](https://github.com/kedacore/keda/pull/7271))
 - **General**: Add CRD-level validation markers (Minimum, MinLength, MinItems, Enum) for ScaledObject, ScaledJob, ScaleTriggers, and TriggerAuthentication API types ([#7533](https://github.com/kedacore/keda/pull/7533))
 - **General**: Add `--leader-election-id` flag to allow configuring the leader election Lease name ([#7564](https://github.com/kedacore/keda/issues/7564))
 - **General**: Add scaler HTTP request metrics (`keda_scaler_http_requests_total`, `keda_scaler_http_request_duration_seconds`) for outbound HTTP requests made during scaler metric collection ([#6600](https://github.com/kedacore/keda/issues/6600))
 - **General**: Allow more control of TLS versions & ciphers via `KEDA_HTTP_TLS_CIPHER_LIST`, `KEDA_SERVICE_TLS_CIPHER_LIST` and `KEDA_SERVICE_MIN_TLS_VERSION` env vars ([#7617](https://github.com/kedacore/keda/pull/7617))
+- **General**: Cap each scalers-cache reader at a per-reader budget derived from `globalHTTPTimeout` so `ScalersCache.Close` cannot block indefinitely ([#7574](https://github.com/kedacore/keda/issues/7574))
 - **General**: Make APIService cert injections optional ([#7559](https://github.com/kedacore/keda/pull/7559))
 - **General**: Remove unconditional `json.MarshalIndent` calls from admission webhook validation hot paths; replace spec-comparison `MarshalIndent`-and-string-compare in `isRemovingFinalizer` variants with `reflect.DeepEqual`. Prevents webhook OOM under sustained admission load at large scale (observed at ~60k ScaledObjects) ([#7670](https://github.com/kedacore/keda/pull/7670))
 - **AWS Scalers**: Add support for AWS External ID in TriggerAuthentication podIdentity for all AWS scalers (SQS, Kinesis, DynamoDB, CloudWatch, etc.) to enable cross-account access scenarios ([#6921](https://github.com/kedacore/keda/issues/6921))
@@ -97,12 +101,15 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Check updated status for Fallback condition instead of ScaledObject ([#7488](https://github.com/kedacore/keda/issues/7488))
 - **General**: Fail fast in `GetMetrics` when the gRPC connection is in Shutdown state instead of waiting for context timeout ([#7251](https://github.com/kedacore/keda/issues/7251))
 - **General**: Fix int64 overflow in milli-quantity conversion for very large metric values ([#7441](https://github.com/kedacore/keda/issues/7441))
+- **General**: Fix misleading namespace in error log when secret access is restricted ([#7739](https://github.com/kedacore/keda/issues/7739))
 - **General**: Fix race in scalers cache rebuild that caused transient scaler errors ([#7574](https://github.com/kedacore/keda/issues/7574))
+- **General**: Fix ScaledJob emitting wrong CloudEvent type (`ScaledObjectReadyType` instead of `ScaledJobReadyType`) when transitioning to ready state ([#7792](https://github.com/kedacore/keda/issues/7792))
 - **General**: Fix ScaledObject admission webhook to return validation error from `verifyReplicaCount`, preventing invalid ScaledObjects from being created ([#5954](https://github.com/kedacore/keda/issues/5954))
 - **General**: Fix ScaledObject Ready condition not reflecting HPA status ([#7649](https://github.com/kedacore/keda/issues/7649))
 - **General**: Handle paused scaling directly in reconciler ([#7663](https://github.com/kedacore/keda/issues/7663))
 - **General**: Honor `stderrthreshold` when `logtostderr` is enabled by updating klog to v2.140.0 ([#7568](https://github.com/kedacore/keda/pull/7568))
 - **General**: Jitter the first tick of each scale loop by `hash(UID) % pollingInterval` to prevent thundering-herd polling against external metric sources when many ScaledObjects are created in a short window or re-spawned after an operator restart ([#7676](https://github.com/kedacore/keda/pull/7676))
+- **General**: Limit projected service account token reads during Vault authentication ([#7783](https://github.com/kedacore/keda/issues/7783))
 - **General**: Reject ScaledObject creation and update when the name exceeds 63 characters ([#6998](https://github.com/kedacore/keda/issues/6998))
 - **AWS Scalers**: Fix TCP connection leak by closing HTTP idle connections on scaler `Close()` for SQS, Kinesis, DynamoDB, DynamoDB Streams, and CloudWatch scalers ([#7756](https://github.com/kedacore/keda/issues/7756))
 - **Azure Data Explorer Scaler**: Remove clientSecretFromEnv support ([#7554](https://github.com/kedacore/keda/pull/7554))
@@ -126,6 +133,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Metrics API Scaler**: Prevent response value reflection in scaler errors ([#7693](https://github.com/kedacore/keda/pull/7693))
 - **NATS JetStream Scaler**: Return an error from `getMaxMsgLag` when the configured consumer is missing instead of falling back to the stream's last sequence, preventing incorrect scale-up to `maxReplicaCount` ([#7657](https://github.com/kedacore/keda/issues/7657))
 - **NATS JetStream Scaler**: URL-encode user input in monitoring URL construction ([#7483](https://github.com/kedacore/keda/pull/7483))
+- **PostgreSQL Scaler**: Quote whitespace-containing connection parameters in generated connection strings ([#7784](https://github.com/kedacore/keda/issues/7784))
 - **PredictKube Scaler**: Bump `dysnix/predictkube-libs` to `v0.1.0` (drops the predictkube path to the archived/EOL `go-grpc-prometheus` and to the deprecated `golang/protobuf`) and use a portable Prometheus-API instant query for the health check so the scaler works against VictoriaMetrics, Thanos and other Prometheus-API-compatible backends ([#7745](https://github.com/kedacore/keda/pull/7745))
 - **Prometheus Scaler**: Handle NaN results in the same manner as Inf ([#7475](https://github.com/kedacore/keda/issues/7475))
 - **Prometheus Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
@@ -135,6 +143,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Redis Scaler**: Use literal command names in Lua script to fix compatibility with Alibaba Cloud Redis Cluster ([#7758](https://github.com/kedacore/keda/issues/7758))
 - **Solace Scaler**: Fix URL escaping for Message VPN and Queue names ([#7481](https://github.com/kedacore/keda/pull/7481))
 - **Solr Scaler**: Use net/url to safely encode query parameters ([#7467](https://github.com/kedacore/keda/pull/7467))
+- **Splunk Observability Scaler**: Add MTS stream handling with context timeout ([#7799](https://github.com/kedacore/keda/pull/7799))
 
 ### Deprecations
 
