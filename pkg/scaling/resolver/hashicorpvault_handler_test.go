@@ -669,7 +669,7 @@ var tokenTestDataSet = []tokenTestData{
 		},
 		role:         "my-role",
 		mount:        "my-mount",
-		errorMessage: "open random/path: no such file or directory",
+		errorMessage: "random/path: no such file or directory",
 	},
 	{
 		name:           "Wrong Authentication Method",

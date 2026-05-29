@@ -276,6 +276,7 @@ spec:
                     - currentReplicas
                     - currentReplicasIfHigher
                     - currentReplicasIfLower
+                    - scalingModifiers
                     type: string
                   failureThreshold:
                     format: int32

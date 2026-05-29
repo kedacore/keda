@@ -418,6 +418,16 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 		}
 	}
 
+	// verify scalingModifiers fallback behavior requirements
+	if incomingSo.FallbackScalingModifiers() {
+		if !incomingSo.IsUsingModifiers() || incomingSo.Spec.Advanced.ScalingModifiers.Formula == "" {
+			err := fmt.Errorf("scalingModifiers fallback behavior requires scalingModifiers.formula to be defined")
+			scaledobjectlog.Error(err, "error validating 'scalingModifiers' so.spec.fallback behavior")
+			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scaling-modifiers-fallback")
+			return nil, err
+		}
+	}
+
 	return warnings, nil
 }
 
@@ -572,7 +582,7 @@ func validateScalingModifiersFormula(so *ScaledObject) (*vm.Program, error) {
 			triggersMap[trig.Name] = dummyValue
 		}
 	}
-	compiled, err := expr.Compile(sm.Formula, expr.Env(triggersMap), expr.AsFloat64())
+	compiled, err := expr.Compile(sm.Formula, expr.Env(triggersMap))
 	if err != nil {
 		return nil, err
 	}
@@ -607,7 +617,15 @@ func validateScalingModifiersTarget(so *ScaledObject) error {
 // castToFloatIfNecessary takes input formula and casts its return value to float
 // if necessary to avoid wrong return value type like ternary operator has and/or
 // to relief user of having to add it to the formula themselves.
+// Formulas that contain ?? for fallback behavior that would evaluate to nil are
+// kept as nil so the default fallback can trigger
 func castToFloatIfNecessary(formula string) string {
+	if strings.Contains(formula, "??") {
+		if strings.HasPrefix(formula, "let _kedaCompositeResult = ") {
+			return formula
+		}
+		return fmt.Sprintf("let _kedaCompositeResult = (%s); _kedaCompositeResult == nil ? nil : float(_kedaCompositeResult)", formula)
+	}
 	if strings.HasPrefix(formula, "float(") {
 		return formula
 	}
