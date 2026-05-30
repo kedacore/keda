@@ -18,12 +18,13 @@ package scalers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
-	iggcli "github.com/apache/iggy/foreign/go/client"
 	"github.com/apache/iggy/foreign/go/client/tcp"
 	iggcon "github.com/apache/iggy/foreign/go/contracts"
+	ierror "github.com/apache/iggy/foreign/go/errors"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -43,6 +44,9 @@ type apacheIggyScaler struct {
 	streamID        iggcon.Identifier
 	topicID         iggcon.Identifier
 	consumer        iggcon.Consumer
+	// newClient builds (and authenticates) a fresh client. It is a field so the
+	// scaler can rebuild the connection on failure and so tests can inject a mock.
+	newClient func() (iggcon.Client, error)
 }
 
 type apacheIggyMetadata struct {
@@ -147,26 +151,33 @@ func NewApacheIggyScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 	s.consumer = iggcon.NewGroupConsumer(groupID)
 
-	client, err := iggcli.NewIggyClient(
-		iggcli.WithTcp(
+	// Build directly on the raw TCP client rather than iggycli.NewIggyClient: the
+	// latter spawns a per-client heartbeat goroutine that logs via the stdlib log
+	// package, which KEDA cannot route through its own logger. The scaler manages
+	// reconnection itself instead (see getTopic).
+	s.newClient = func() (iggcon.Client, error) {
+		client, err := tcp.NewIggyTcpClient(
 			tcp.WithServerAddress(meta.ServerAddress),
-		),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("error creating iggy client: %w", err)
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error creating iggy client: %w", err)
+		}
+
+		if meta.AccessToken != "" {
+			_, err = client.LoginWithPersonalAccessToken(meta.AccessToken)
+		} else {
+			_, err = client.LoginUser(meta.Username, meta.Password)
+		}
+		if err != nil {
+			_ = client.Close()
+			return nil, fmt.Errorf("error authenticating with iggy: %w", err)
+		}
+		return client, nil
 	}
 
-	if meta.AccessToken != "" {
-		_, err = client.LoginWithPersonalAccessToken(meta.AccessToken)
-	} else {
-		_, err = client.LoginUser(meta.Username, meta.Password)
+	if err := s.connect(); err != nil {
+		return nil, err
 	}
-	if err != nil {
-		_ = client.Close()
-		return nil, fmt.Errorf("error authenticating with iggy: %w", err)
-	}
-
-	s.client = client
 	s.previousOffsets = make(map[uint32]int64)
 	return s, nil
 }
@@ -182,6 +193,35 @@ func newIggyIdentifier(value string) (iggcon.Identifier, error) {
 	return iggcon.NewIdentifier(value)
 }
 
+// connect builds and stores a fresh, authenticated client.
+func (s *apacheIggyScaler) connect() error {
+	client, err := s.newClient()
+	if err != nil {
+		return err
+	}
+	s.client = client
+	return nil
+}
+
+// reconnect tears down the current client and establishes a new one. The Iggy
+// SDK's TCP client does not reconnect on its own once a connection drops, so the
+// scaler rebuilds it explicitly.
+func (s *apacheIggyScaler) reconnect() error {
+	if s.client != nil {
+		_ = s.client.Close()
+		s.client = nil
+	}
+	return s.connect()
+}
+
+// isIggyServerError reports whether err is a typed Iggy server response. If it
+// is, the server replied (the connection is healthy); if not, err indicates a
+// transport/connection problem worth reconnecting for.
+func isIggyServerError(err error) bool {
+	var ie ierror.IggyError
+	return errors.As(err, &ie)
+}
+
 func (s *apacheIggyScaler) GetMetricSpecForScaling(_ context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
@@ -194,9 +234,9 @@ func (s *apacheIggyScaler) GetMetricSpecForScaling(_ context.Context) []v2.Metri
 }
 
 func (s *apacheIggyScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	topic, err := s.client.GetTopic(s.streamID, s.topicID)
+	topic, err := s.getTopic()
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting topic: %w", err)
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	partitionCount := topic.PartitionsCount
@@ -280,12 +320,37 @@ func (s *apacheIggyScaler) Close(_ context.Context) error {
 		if err := s.client.LogoutUser(); err != nil {
 			s.logger.V(1).Info("Error logging out from iggy", "error", err)
 		}
-		// Close stops the SDK's heartbeat goroutine and releases the TCP connection
+		// Close releases the TCP connection.
 		if err := s.client.Close(); err != nil {
 			s.logger.V(1).Info("Error closing iggy client", "error", err)
 		}
 	}
 	return nil
+}
+
+// getTopic fetches the topic, transparently rebuilding the client once if the
+// failure looks like a dropped connection. The Iggy SDK's TCP client does not
+// reconnect on its own, so the scaler owns reconnection; typed server errors
+// (e.g. topic not found) are returned as-is without a reconnect attempt.
+func (s *apacheIggyScaler) getTopic() (*iggcon.TopicDetails, error) {
+	if s.client == nil {
+		if err := s.connect(); err != nil {
+			return nil, err
+		}
+	}
+
+	topic, err := s.client.GetTopic(s.streamID, s.topicID)
+	if err != nil && !isIggyServerError(err) {
+		s.logger.V(1).Info("iggy request failed, reconnecting", "error", err)
+		if rcErr := s.reconnect(); rcErr != nil {
+			return nil, fmt.Errorf("error reconnecting to iggy: %w", rcErr)
+		}
+		topic, err = s.client.GetTopic(s.streamID, s.topicID)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error getting topic: %w", err)
+	}
+	return topic, nil
 }
 
 // iggyPartitionHighWatermark returns the high watermark (latest offset) for a

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	iggcon "github.com/apache/iggy/foreign/go/contracts"
+	ierror "github.com/apache/iggy/foreign/go/errors"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 
@@ -13,13 +14,14 @@ import (
 
 // mockIggyClient implements iggcon.Client for testing apacheIggyScaler.
 type mockIggyClient struct {
-	topic   *iggcon.TopicDetails
-	offsets map[uint32]*iggcon.ConsumerOffsetInfo
-	errors  map[uint32]error
+	topic    *iggcon.TopicDetails
+	topicErr error
+	offsets  map[uint32]*iggcon.ConsumerOffsetInfo
+	errors   map[uint32]error
 }
 
 func (m *mockIggyClient) GetTopic(_, _ iggcon.Identifier) (*iggcon.TopicDetails, error) {
-	return m.topic, nil
+	return m.topic, m.topicErr
 }
 
 func (m *mockIggyClient) GetConsumerOffset(_ iggcon.Consumer, _, _ iggcon.Identifier, partitionID *uint32) (*iggcon.ConsumerOffsetInfo, error) {
@@ -515,6 +517,10 @@ func newTestIggyScaler(client *mockIggyClient, meta *apacheIggyMetadata) *apache
 		streamID:        streamID,
 		topicID:         topicID,
 		consumer:        iggcon.NewGroupConsumer(groupID),
+		// By default reconnection is not expected; tests that exercise it override this.
+		newClient: func() (iggcon.Client, error) {
+			return nil, errors.New("reconnect not configured in test")
+		},
 	}
 }
 
@@ -733,6 +739,73 @@ func TestApacheIggyGetMetricsAndActivity_ErrorOffset(t *testing.T) {
 	gotLag := metrics[0].Value.MilliValue() / 1000
 	if gotLag != 11 {
 		t.Errorf("expected lag 11, got %d", gotLag)
+	}
+}
+
+// A connection-level failure on GetTopic should trigger a single rebuild of the
+// client and a retry against the fresh connection.
+func TestApacheIggyGetMetricsAndActivity_Reconnect(t *testing.T) {
+	failing := &mockIggyClient{
+		topicErr: errors.New("broken pipe"),
+	}
+	healthy := &mockIggyClient{
+		topic: &iggcon.TopicDetails{
+			Topic: iggcon.Topic{PartitionsCount: 1},
+		},
+		offsets: map[uint32]*iggcon.ConsumerOffsetInfo{
+			1: {PartitionId: 1, CurrentOffset: 100, StoredOffset: 95},
+		},
+	}
+	meta := &apacheIggyMetadata{
+		StreamID:        "test-stream",
+		TopicID:         "test-topic",
+		ConsumerGroupID: "test-group",
+		LagThreshold:    10,
+	}
+	scaler := newTestIggyScaler(failing, meta)
+	reconnects := 0
+	scaler.newClient = func() (iggcon.Client, error) {
+		reconnects++
+		return healthy, nil
+	}
+
+	metrics, isActive, err := scaler.GetMetricsAndActivity(t.Context(), "s0-iggy-test-stream-test-topic-test-group")
+	if err != nil {
+		t.Fatalf("expected no error after reconnect, got: %v", err)
+	}
+	if reconnects != 1 {
+		t.Errorf("expected exactly 1 reconnect, got %d", reconnects)
+	}
+	if !isActive {
+		t.Error("expected active, got inactive")
+	}
+	// partition 1: lag=max(100-95,0)=5
+	gotLag := metrics[0].Value.MilliValue() / 1000
+	if gotLag != 5 {
+		t.Errorf("expected lag 5, got %d", gotLag)
+	}
+}
+
+// A typed Iggy server error on GetTopic (e.g. topic not found) must NOT trigger a
+// reconnect — the connection is healthy, the request is simply invalid.
+func TestApacheIggyGetMetricsAndActivity_ServerErrorNoReconnect(t *testing.T) {
+	client := &mockIggyClient{
+		topicErr: ierror.TopicIdNotFound{},
+	}
+	meta := &apacheIggyMetadata{
+		StreamID:        "test-stream",
+		TopicID:         "test-topic",
+		ConsumerGroupID: "test-group",
+		LagThreshold:    10,
+	}
+	scaler := newTestIggyScaler(client, meta)
+	scaler.newClient = func() (iggcon.Client, error) {
+		t.Fatal("reconnect should not be attempted for a typed server error")
+		return nil, nil
+	}
+
+	if _, _, err := scaler.GetMetricsAndActivity(t.Context(), "s0-iggy-test-stream-test-topic-test-group"); err == nil {
+		t.Fatal("expected an error for topic-not-found, got nil")
 	}
 }
 
