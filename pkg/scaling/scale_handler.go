@@ -668,9 +668,10 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 
 					// Pair metric values with their trigger names. This is applied only when
 					// ScalingModifiers.Formula is defined in SO.
-					result.metricTriggerPair, err = modifiers.GetPairTriggerAndMetric(scaledObject, metricName, scalerConfig.TriggerName)
-					if err != nil {
-						logger.Error(err, "error pairing triggers & metrics for compositeScaler")
+					pair, pairErr := modifiers.GetPairTriggerAndMetric(scaledObject, metricName, scalerConfig.TriggerName)
+					result.metricTriggerPair = pair
+					if pairErr != nil {
+						logger.Error(pairErr, "error pairing triggers & metrics for compositeScaler")
 					}
 					var rawMetrics []external_metrics.ExternalMetricValue
 					var isMetricActive bool
@@ -997,6 +998,7 @@ func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler
 				scalersCache.Recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, eventreason.KEDAScalerFailed, "%s", err.Error())
 			}
 		} else {
+			result.Err = nil
 			result.IsActive = isActiveOrFallback
 			if !scaledObject.IsUsingModifiers() {
 				if result.IsActive {
