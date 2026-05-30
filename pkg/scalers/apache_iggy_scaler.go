@@ -252,11 +252,15 @@ func (s *apacheIggyScaler) GetMetricsAndActivity(_ context.Context, metricName s
 		partitionID := i
 		offset, err := s.client.GetConsumerOffset(s.consumer, s.streamID, s.topicID, &partitionID)
 		if err != nil {
-			// All GetConsumerOffset errors are treated as "no committed offset" because
-			// the Iggy SDK does not expose typed errors to distinguish missing offsets
-			// from transient failures (network, auth, etc.) in this path.
-			s.logger.V(1).Info("Error fetching consumer offset, treating as no committed offset",
-				"partition", i, "error", err)
+			// A typed ConsumerOffsetNotFound means the consumer group simply has no
+			// committed offset for this partition yet (expected for fresh consumers).
+			// Any other error (network, auth, server) is a genuine failure and must
+			// not be silently converted into a lag metric, so surface it instead.
+			if !errors.Is(err, ierror.ConsumerOffsetNotFound{}) {
+				return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error fetching consumer offset for partition %d: %w", partitionID, err)
+			}
+			s.logger.V(1).Info("No committed offset for partition, treating as no committed offset",
+				"partition", i)
 			retVal := int64(1)
 			if s.metadata.ScaleToZeroOnInvalidOffset {
 				retVal = iggyPartitionHighWatermark(topic, partitionID)

@@ -637,7 +637,7 @@ func TestApacheIggyGetMetricsAndActivity_NilOffsetScaleToZeroWithMessages(t *tes
 }
 
 func TestApacheIggyGetMetricsAndActivity_ErrorOffsetScaleToZeroWithMessages(t *testing.T) {
-	// Error fetching offset with scaleToZeroOnInvalidOffset=true but partition has messages:
+	// No committed offset with scaleToZeroOnInvalidOffset=true but partition has messages:
 	// should use high watermark as lag, not 0.
 	client := &mockIggyClient{
 		topic: &iggcon.TopicDetails{
@@ -648,7 +648,7 @@ func TestApacheIggyGetMetricsAndActivity_ErrorOffsetScaleToZeroWithMessages(t *t
 		},
 		offsets: map[uint32]*iggcon.ConsumerOffsetInfo{},
 		errors: map[uint32]error{
-			1: errors.New("connection refused"),
+			1: ierror.ConsumerOffsetNotFound{},
 		},
 	}
 	meta := &apacheIggyMetadata{
@@ -708,7 +708,7 @@ func TestApacheIggyGetMetricsAndActivity_AllNilOffsets(t *testing.T) {
 	}
 }
 
-func TestApacheIggyGetMetricsAndActivity_ErrorOffset(t *testing.T) {
+func TestApacheIggyGetMetricsAndActivity_OffsetNotFound(t *testing.T) {
 	client := &mockIggyClient{
 		topic: &iggcon.TopicDetails{
 			Topic: iggcon.Topic{PartitionsCount: 2},
@@ -717,7 +717,7 @@ func TestApacheIggyGetMetricsAndActivity_ErrorOffset(t *testing.T) {
 			2: {PartitionId: 2, CurrentOffset: 20, StoredOffset: 10},
 		},
 		errors: map[uint32]error{
-			1: errors.New("connection refused"),
+			1: ierror.ConsumerOffsetNotFound{},
 		},
 	}
 	meta := &apacheIggyMetadata{
@@ -735,10 +735,36 @@ func TestApacheIggyGetMetricsAndActivity_ErrorOffset(t *testing.T) {
 	if !isActive {
 		t.Error("expected active, got inactive")
 	}
-	// partition 1: error → lag=1, partition 2: lag=max(20-10,0)=10, total=11
+	// partition 1: no committed offset → lag=1, partition 2: lag=max(20-10,0)=10, total=11
 	gotLag := metrics[0].Value.MilliValue() / 1000
 	if gotLag != 11 {
 		t.Errorf("expected lag 11, got %d", gotLag)
+	}
+}
+
+// A transient (non-ConsumerOffsetNotFound) offset error must surface as a scaler
+// error rather than being silently turned into a lag metric.
+func TestApacheIggyGetMetricsAndActivity_TransientOffsetError(t *testing.T) {
+	client := &mockIggyClient{
+		topic: &iggcon.TopicDetails{
+			Topic: iggcon.Topic{PartitionsCount: 1},
+		},
+		offsets: map[uint32]*iggcon.ConsumerOffsetInfo{},
+		errors: map[uint32]error{
+			1: errors.New("connection reset by peer"),
+		},
+	}
+	meta := &apacheIggyMetadata{
+		StreamID:        "test-stream",
+		TopicID:         "test-topic",
+		ConsumerGroupID: "test-group",
+		LagThreshold:    10,
+	}
+	scaler := newTestIggyScaler(client, meta)
+
+	_, _, err := scaler.GetMetricsAndActivity(t.Context(), "s0-iggy-test-stream-test-topic-test-group")
+	if err == nil {
+		t.Fatal("expected an error for a transient offset failure, got nil")
 	}
 }
 
