@@ -193,6 +193,11 @@ var parseApacheIggyMetadataTestDataset = []parseApacheIggyMetadataTestData{
 		"serverAddress": "localhost:8090", "streamId": "s", "topicId": "t",
 		"consumerGroupId": "g", "partitionLimitation": "1-4,8,10-12",
 	}, map[string]string{"accessToken": "tok"}, false},
+	// failure - partitionLimitation contains 0 (partitions are 1-indexed)
+	{map[string]string{
+		"serverAddress": "localhost:8090", "streamId": "s", "topicId": "t",
+		"consumerGroupId": "g", "partitionLimitation": "0,1,2",
+	}, map[string]string{"accessToken": "tok"}, true},
 	// success - scaleToZeroOnInvalidOffset
 	{map[string]string{
 		"serverAddress": "localhost:8090", "streamId": "s", "topicId": "t",

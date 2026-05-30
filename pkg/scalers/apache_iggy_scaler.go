@@ -80,6 +80,13 @@ func (m *apacheIggyMetadata) Validate() error {
 		return fmt.Errorf("allowIdleConsumers and limitToPartitionsWithLag cannot be set simultaneously")
 	}
 
+	// Partition IDs are 1-indexed in Iggy; reject values that can never match a partition.
+	for _, p := range m.PartitionLimitation {
+		if p < 1 {
+			return fmt.Errorf("partitionLimitation values must be >= 1, got %d", p)
+		}
+	}
+
 	hasUserPass := m.Username != "" || m.Password != ""
 	hasPAT := m.AccessToken != ""
 
