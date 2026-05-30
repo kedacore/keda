@@ -15,28 +15,15 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package iggcon
+package command
 
-type ConsumerGroup struct {
-	Id              uint32 `json:"id"`
-	Name            string `json:"name"`
-	PartitionsCount uint32 `json:"partitionsCount"`
-	MembersCount    uint32 `json:"membersCount"`
-}
+import (
+	"encoding"
+)
 
-type ConsumerGroupDetails struct {
-	ConsumerGroup
-	Members []ConsumerGroupMember
-}
+type Command interface {
+	// Code returns the command code associated with this command.
+	Code() Code
 
-type ConsumerGroupMember struct {
-	ID              uint32
-	PartitionsCount uint32
-	Partitions      []uint32
-}
-
-type ConsumerGroupInfo struct {
-	StreamId uint32 `json:"streamId"`
-	TopicId  uint32 `json:"topicId"`
-	GroupId  uint32 `json:"groupId"`
+	encoding.BinaryMarshaler
 }

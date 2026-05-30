@@ -15,28 +15,28 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package iggcon
+package tcp
 
-type ConsumerGroup struct {
-	Id              uint32 `json:"id"`
-	Name            string `json:"name"`
-	PartitionsCount uint32 `json:"partitionsCount"`
-	MembersCount    uint32 `json:"membersCount"`
+import (
+	binaryserialization "github.com/apache/iggy/foreign/go/binary_serialization"
+	iggcon "github.com/apache/iggy/foreign/go/contracts"
+	"github.com/apache/iggy/foreign/go/internal/command"
+)
+
+func (c *IggyTcpClient) GetClients() ([]iggcon.ClientInfo, error) {
+	buffer, err := c.do(&command.GetClients{})
+	if err != nil {
+		return nil, err
+	}
+
+	return binaryserialization.DeserializeClients(buffer)
 }
 
-type ConsumerGroupDetails struct {
-	ConsumerGroup
-	Members []ConsumerGroupMember
-}
+func (c *IggyTcpClient) GetClient(clientId uint32) (*iggcon.ClientInfoDetails, error) {
+	buffer, err := c.do(&command.GetClient{ClientID: clientId})
+	if err != nil {
+		return nil, err
+	}
 
-type ConsumerGroupMember struct {
-	ID              uint32
-	PartitionsCount uint32
-	Partitions      []uint32
-}
-
-type ConsumerGroupInfo struct {
-	StreamId uint32 `json:"streamId"`
-	TopicId  uint32 `json:"topicId"`
-	GroupId  uint32 `json:"groupId"`
+	return binaryserialization.DeserializeClient(buffer), nil
 }

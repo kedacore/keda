@@ -88,3 +88,35 @@ func (id Identifier) String() (string, error) {
 
 	return string(id.Value), nil
 }
+
+func (id Identifier) MarshalBinary() ([]byte, error) {
+	bytes := make([]byte, id.Length+2)
+	bytes[0] = byte(id.Kind)
+	bytes[1] = byte(id.Length)
+	copy(bytes[2:], id.Value)
+	return bytes, nil
+}
+
+func (id Identifier) AppendBinary(b []byte) ([]byte, error) {
+	b = append(b, byte(id.Kind), byte(id.Length))
+	b = append(b, id.Value...)
+	return b, nil
+}
+
+func MarshalIdentifiers(identifiers ...Identifier) ([]byte, error) {
+	size := 0
+	for i := 0; i < len(identifiers); i++ {
+		size += 2 + identifiers[i].Length
+	}
+	bytes := make([]byte, 0, size)
+
+	for i := 0; i < len(identifiers); i++ {
+		var err error
+		bytes, err = identifiers[i].AppendBinary(bytes)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return bytes, nil
+}

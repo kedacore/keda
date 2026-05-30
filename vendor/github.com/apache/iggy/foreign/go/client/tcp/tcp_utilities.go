@@ -18,23 +18,23 @@
 package tcp
 
 import (
-	binaryserialization "github.com/apache/iggy/foreign/go/binary_serialization"
 	iggcon "github.com/apache/iggy/foreign/go/contracts"
+	"github.com/apache/iggy/foreign/go/internal/command"
 )
 
 func (c *IggyTcpClient) GetStats() (*iggcon.Stats, error) {
-	buffer, err := c.sendAndFetchResponse([]byte{}, iggcon.GetStatsCode)
+	buffer, err := c.do(&command.GetStats{})
 	if err != nil {
 		return nil, err
 	}
 
-	stats := &binaryserialization.TcpStats{}
-	err = stats.Deserialize(buffer)
+	s := &iggcon.Stats{}
+	err = s.UnmarshalBinary(buffer)
 
-	return &stats.Stats, err
+	return s, err
 }
 
 func (c *IggyTcpClient) Ping() error {
-	_, err := c.sendAndFetchResponse([]byte{}, iggcon.PingCode)
+	_, err := c.do(&command.Ping{})
 	return err
 }

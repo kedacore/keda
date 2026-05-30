@@ -17,26 +17,8 @@
 
 package iggcon
 
-type ConsumerGroup struct {
-	Id              uint32 `json:"id"`
-	Name            string `json:"name"`
-	PartitionsCount uint32 `json:"partitionsCount"`
-	MembersCount    uint32 `json:"membersCount"`
-}
-
-type ConsumerGroupDetails struct {
-	ConsumerGroup
-	Members []ConsumerGroupMember
-}
-
-type ConsumerGroupMember struct {
-	ID              uint32
-	PartitionsCount uint32
-	Partitions      []uint32
-}
-
-type ConsumerGroupInfo struct {
-	StreamId uint32 `json:"streamId"`
-	TopicId  uint32 `json:"topicId"`
-	GroupId  uint32 `json:"groupId"`
+type ConsumerOffsetInfo struct {
+	PartitionId   uint32 `json:"partitionId"`
+	CurrentOffset uint64 `json:"currentOffset"`
+	StoredOffset  uint64 `json:"storedOffset"`
 }

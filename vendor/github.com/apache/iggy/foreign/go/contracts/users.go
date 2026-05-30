@@ -17,29 +17,7 @@
 
 package iggcon
 
-type ChangePasswordRequest struct {
-	UserID          Identifier `json:"-"`
-	CurrentPassword string     `json:"CurrentPassword"`
-	NewPassword     string     `json:"NewPassword"`
-}
-
-type UpdatePermissionsRequest struct {
-	UserID      Identifier   `json:"-"`
-	Permissions *Permissions `json:"Permissions,omitempty"`
-}
-
-type UpdateUserRequest struct {
-	UserID   Identifier  `json:"-"`
-	Username *string     `json:"username"`
-	Status   *UserStatus `json:"userStatus"`
-}
-
-type CreateUserRequest struct {
-	Username    string       `json:"username"`
-	Password    string       `json:"Password"`
-	Status      UserStatus   `json:"Status"`
-	Permissions *Permissions `json:"Permissions,omitempty"`
-}
+import "encoding/binary"
 
 type UserInfo struct {
 	Id        uint32     `json:"Id"`
@@ -63,6 +41,117 @@ const (
 type Permissions struct {
 	Global  GlobalPermissions          `json:"Global"`
 	Streams map[int]*StreamPermissions `json:"Streams,omitempty"`
+}
+
+func (p *Permissions) MarshalBinary() ([]byte, error) {
+	size := p.Size()
+	bytes := make([]byte, size)
+
+	bytes[0] = boolToByte(p.Global.ManageServers)
+	bytes[1] = boolToByte(p.Global.ReadServers)
+	bytes[2] = boolToByte(p.Global.ManageUsers)
+	bytes[3] = boolToByte(p.Global.ReadUsers)
+	bytes[4] = boolToByte(p.Global.ManageStreams)
+	bytes[5] = boolToByte(p.Global.ReadStreams)
+	bytes[6] = boolToByte(p.Global.ManageTopics)
+	bytes[7] = boolToByte(p.Global.ReadTopics)
+	bytes[8] = boolToByte(p.Global.PollMessages)
+	bytes[9] = boolToByte(p.Global.SendMessages)
+
+	position := 10
+
+	if len(p.Streams) > 0 {
+		bytes[position] = byte(1)
+		position += 1
+
+		streamsCount := len(p.Streams)
+		currentStream := 1
+		for streamID, stream := range p.Streams {
+			binary.LittleEndian.PutUint32(bytes[position:position+4], uint32(streamID))
+			position += 4
+
+			bytes[position] = boolToByte(stream.ManageStream)
+			bytes[position+1] = boolToByte(stream.ReadStream)
+			bytes[position+2] = boolToByte(stream.ManageTopics)
+			bytes[position+3] = boolToByte(stream.ReadTopics)
+			bytes[position+4] = boolToByte(stream.PollMessages)
+			bytes[position+5] = boolToByte(stream.SendMessages)
+			position += 6
+
+			if len(stream.Topics) > 0 {
+				bytes[position] = byte(1)
+				position += 1
+
+				topicsCount := len(stream.Topics)
+				currentTopic := 1
+				for topicID, topic := range stream.Topics {
+					binary.LittleEndian.PutUint32(bytes[position:position+4], uint32(topicID))
+					position += 4
+
+					bytes[position] = boolToByte(topic.ManageTopic)
+					bytes[position+1] = boolToByte(topic.ReadTopic)
+					bytes[position+2] = boolToByte(topic.PollMessages)
+					bytes[position+3] = boolToByte(topic.SendMessages)
+					position += 4
+
+					if currentTopic < topicsCount {
+						currentTopic++
+						bytes[position] = byte(1)
+					} else {
+						bytes[position] = byte(0)
+					}
+					position += 1
+				}
+			} else {
+				bytes[position] = byte(0)
+				position += 1
+			}
+
+			if currentStream < streamsCount {
+				currentStream++
+				bytes[position] = byte(1)
+			} else {
+				bytes[position] = byte(0)
+			}
+			position += 1
+		}
+	} else {
+		bytes[position] = byte(0)
+	}
+
+	return bytes, nil
+}
+
+func (p *Permissions) Size() int {
+	size := 10
+
+	if p.Streams != nil {
+		size += 1
+
+		for _, stream := range p.Streams {
+			size += 4
+			size += 6
+			size += 1
+
+			if stream.Topics != nil {
+				size += 1
+				size += len(stream.Topics) * 9
+			} else {
+				size += 1
+			}
+		}
+	} else {
+		size += 1
+	}
+
+	return size
+}
+
+func boolToByte(b bool) byte {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 type GlobalPermissions struct {

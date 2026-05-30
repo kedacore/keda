@@ -18,19 +18,35 @@
 package tcp
 
 import (
+	binaryserialization "github.com/apache/iggy/foreign/go/binary_serialization"
 	iggcon "github.com/apache/iggy/foreign/go/contracts"
 	"github.com/apache/iggy/foreign/go/internal/command"
 )
 
-func (c *IggyTcpClient) GetClusterMetadata() (*iggcon.ClusterMetadata, error) {
-	response, err := c.do(&command.GetClusterMetadata{})
+func (c *IggyTcpClient) CreatePersonalAccessToken(name string, expiry uint32) (*iggcon.RawPersonalAccessToken, error) {
+	buffer, err := c.do(&command.CreatePersonalAccessToken{
+		Name:   name,
+		Expiry: expiry,
+	})
 	if err != nil {
 		return nil, err
 	}
-	var metadata iggcon.ClusterMetadata
-	err = metadata.UnmarshalBinary(response)
+
+	return binaryserialization.DeserializeAccessToken(buffer)
+}
+
+func (c *IggyTcpClient) DeletePersonalAccessToken(name string) error {
+	_, err := c.do(&command.DeletePersonalAccessToken{
+		Name: name,
+	})
+	return err
+}
+
+func (c *IggyTcpClient) GetPersonalAccessTokens() ([]iggcon.PersonalAccessTokenInfo, error) {
+	buffer, err := c.do(&command.GetPersonalAccessTokens{})
 	if err != nil {
 		return nil, err
 	}
-	return &metadata, nil
+
+	return binaryserialization.DeserializeAccessTokens(buffer)
 }

@@ -17,16 +17,9 @@
 
 package iggcon
 
-import "time"
-
-type CreatePersonalAccessTokenRequest struct {
-	Name   string `json:"Name"`
-	Expiry uint32 `json:"Expiry"`
-}
-
-type DeletePersonalAccessTokenRequest struct {
-	Name string `json:"Name"`
-}
+import (
+	"time"
+)
 
 type PersonalAccessTokenInfo struct {
 	Name   string     `json:"Name"`

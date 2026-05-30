@@ -17,6 +17,4 @@
 
 package iggcon
 
-// TODO: Wire Version into binary_serialization/log_in_request_serializer.go
-// to send the actual SDK version during login instead of an empty string.
-const Version = "0.7.0"
+const Version = "0.8.0"

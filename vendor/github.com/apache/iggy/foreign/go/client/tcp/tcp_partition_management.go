@@ -15,28 +15,27 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package iggcon
+package tcp
 
-type ConsumerGroup struct {
-	Id              uint32 `json:"id"`
-	Name            string `json:"name"`
-	PartitionsCount uint32 `json:"partitionsCount"`
-	MembersCount    uint32 `json:"membersCount"`
+import (
+	iggcon "github.com/apache/iggy/foreign/go/contracts"
+	"github.com/apache/iggy/foreign/go/internal/command"
+)
+
+func (c *IggyTcpClient) CreatePartitions(streamId iggcon.Identifier, topicId iggcon.Identifier, partitionsCount uint32) error {
+	_, err := c.do(&command.CreatePartitions{
+		StreamId:        streamId,
+		TopicId:         topicId,
+		PartitionsCount: partitionsCount,
+	})
+	return err
 }
 
-type ConsumerGroupDetails struct {
-	ConsumerGroup
-	Members []ConsumerGroupMember
-}
-
-type ConsumerGroupMember struct {
-	ID              uint32
-	PartitionsCount uint32
-	Partitions      []uint32
-}
-
-type ConsumerGroupInfo struct {
-	StreamId uint32 `json:"streamId"`
-	TopicId  uint32 `json:"topicId"`
-	GroupId  uint32 `json:"groupId"`
+func (c *IggyTcpClient) DeletePartitions(streamId iggcon.Identifier, topicId iggcon.Identifier, partitionsCount uint32) error {
+	_, err := c.do(&command.DeletePartitions{
+		StreamId:        streamId,
+		TopicId:         topicId,
+		PartitionsCount: partitionsCount,
+	})
+	return err
 }

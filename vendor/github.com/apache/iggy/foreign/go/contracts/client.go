@@ -44,8 +44,8 @@ type Client interface {
 	// Authentication is required, and the permission to manage the streams.
 	UpdateStream(streamId Identifier, name string) error
 
-	// DeleteStream delete a topic by unique ID or name.
-	// Authentication is required, and the permission to manage the topics.
+	// DeleteStream delete a stream by unique ID or name.
+	// Authentication is required, and the permission to manage the streams.
 	DeleteStream(id Identifier) error
 
 	// GetTopic Get the info about a specific topic by unique ID or name.

@@ -20,54 +20,40 @@ package tcp
 import (
 	binaryserialization "github.com/apache/iggy/foreign/go/binary_serialization"
 	iggcon "github.com/apache/iggy/foreign/go/contracts"
-	ierror "github.com/apache/iggy/foreign/go/errors"
 	"github.com/apache/iggy/foreign/go/internal/command"
 )
 
-func (c *IggyTcpClient) SendMessages(
-	streamId iggcon.Identifier,
-	topicId iggcon.Identifier,
-	partitioning iggcon.Partitioning,
-	messages []iggcon.IggyMessage,
-) error {
-	if len(partitioning.Value) > 255 ||
-		(partitioning.Kind != iggcon.Balanced && len(partitioning.Value) == 0) {
-		return ierror.ErrInvalidKeyValueLength
-	}
-	if len(messages) == 0 {
-		return ierror.ErrInvalidMessagesCount
-	}
-	_, err := c.do(&command.SendMessages{
-		Compression:  c.MessageCompression,
-		StreamId:     streamId,
-		TopicId:      topicId,
-		Partitioning: partitioning,
-		Messages:     messages,
-	})
-	return err
-}
-
-func (c *IggyTcpClient) PollMessages(
-	streamId iggcon.Identifier,
-	topicId iggcon.Identifier,
-	consumer iggcon.Consumer,
-	strategy iggcon.PollingStrategy,
-	count uint32,
-	autoCommit bool,
-	partitionId *uint32,
-) (*iggcon.PolledMessage, error) {
-	buffer, err := c.do(&command.PollMessages{
+func (c *IggyTcpClient) GetConsumerOffset(consumer iggcon.Consumer, streamId iggcon.Identifier, topicId iggcon.Identifier, partitionId *uint32) (*iggcon.ConsumerOffsetInfo, error) {
+	buffer, err := c.do(&command.GetConsumerOffset{
 		StreamId:    streamId,
 		TopicId:     topicId,
 		Consumer:    consumer,
-		AutoCommit:  autoCommit,
-		Strategy:    strategy,
-		Count:       count,
 		PartitionId: partitionId,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return binaryserialization.DeserializeFetchMessagesResponse(buffer, c.MessageCompression)
+	return binaryserialization.DeserializeOffset(buffer), nil
+}
+
+func (c *IggyTcpClient) StoreConsumerOffset(consumer iggcon.Consumer, streamId iggcon.Identifier, topicId iggcon.Identifier, offset uint64, partitionId *uint32) error {
+	_, err := c.do(&command.StoreConsumerOffsetRequest{
+		StreamId:    streamId,
+		TopicId:     topicId,
+		Offset:      offset,
+		Consumer:    consumer,
+		PartitionId: partitionId,
+	})
+	return err
+}
+
+func (c *IggyTcpClient) DeleteConsumerOffset(consumer iggcon.Consumer, streamId iggcon.Identifier, topicId iggcon.Identifier, partitionId *uint32) error {
+	_, err := c.do(&command.DeleteConsumerOffset{
+		Consumer:    consumer,
+		StreamId:    streamId,
+		TopicId:     topicId,
+		PartitionId: partitionId,
+	})
+	return err
 }

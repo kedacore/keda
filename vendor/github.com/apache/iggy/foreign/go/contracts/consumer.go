@@ -52,3 +52,14 @@ func NewGroupConsumer(id Identifier) Consumer {
 		Id:   id,
 	}
 }
+
+func (c Consumer) MarshalBinary() ([]byte, error) {
+	idBytes, err := c.Id.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	bytes := make([]byte, 0, 1+len(idBytes))
+	bytes = append(bytes, uint8(c.Kind))
+	bytes = append(bytes, idBytes...)
+	return bytes, nil
+}

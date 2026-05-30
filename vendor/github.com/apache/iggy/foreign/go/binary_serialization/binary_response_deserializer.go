@@ -545,12 +545,12 @@ func DeserializeClient(payload []byte) *iggcon.ClientInfoDetails {
 		for i := uint32(0); i < clientInfo.ConsumerGroupsCount; i++ {
 			streamId := binary.LittleEndian.Uint32(payload[position : position+4])
 			topicId := binary.LittleEndian.Uint32(payload[position+4 : position+8])
-			consumerGroupId := binary.LittleEndian.Uint32(payload[position+8 : position+12])
+			groupId := binary.LittleEndian.Uint32(payload[position+8 : position+12])
 
 			consumerGroup := iggcon.ConsumerGroupInfo{
-				StreamId:        streamId,
-				TopicId:         topicId,
-				ConsumerGroupId: consumerGroupId,
+				StreamId: streamId,
+				TopicId:  topicId,
+				GroupId:  groupId,
 			}
 			consumerGroups = append(consumerGroups, consumerGroup)
 			position += 12

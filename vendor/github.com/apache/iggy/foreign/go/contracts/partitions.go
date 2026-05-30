@@ -33,18 +33,6 @@ type PartitionContract struct {
 	SizeBytes     uint64 `json:"sizeBytes"`
 }
 
-type CreatePartitionsRequest struct {
-	StreamId        Identifier `json:"streamId"`
-	TopicId         Identifier `json:"topicId"`
-	PartitionsCount uint32     `json:"partitionsCount"`
-}
-
-type DeletePartitionsRequest struct {
-	StreamId        Identifier `json:"streamId"`
-	TopicId         Identifier `json:"topicId"`
-	PartitionsCount uint32     `json:"partitionsCount"`
-}
-
 type PartitioningKind int
 
 const (
@@ -129,4 +117,12 @@ func EntityIdGuid(value uuid.UUID) Partitioning {
 		Length: len(bytes),
 		Value:  bytes,
 	}
+}
+
+func (p Partitioning) MarshalBinary() ([]byte, error) {
+	bytes := make([]byte, 2+p.Length)
+	bytes[0] = byte(p.Kind)
+	bytes[1] = byte(p.Length)
+	copy(bytes[2:], p.Value)
+	return bytes, nil
 }
