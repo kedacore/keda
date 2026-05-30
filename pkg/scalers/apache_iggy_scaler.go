@@ -19,6 +19,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	iggcli "github.com/apache/iggy/foreign/go/client"
 	"github.com/apache/iggy/foreign/go/client/tcp"
@@ -121,19 +122,19 @@ func NewApacheIggyScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	s.metadata = meta
 
 	// Cache identifiers — these are immutable value types derived from constant metadata
-	streamID, err := iggcon.NewIdentifier(meta.StreamID)
+	streamID, err := newIggyIdentifier(meta.StreamID)
 	if err != nil {
 		return nil, fmt.Errorf("error creating stream identifier: %w", err)
 	}
 	s.streamID = streamID
 
-	topicID, err := iggcon.NewIdentifier(meta.TopicID)
+	topicID, err := newIggyIdentifier(meta.TopicID)
 	if err != nil {
 		return nil, fmt.Errorf("error creating topic identifier: %w", err)
 	}
 	s.topicID = topicID
 
-	groupID, err := iggcon.NewIdentifier(meta.ConsumerGroupID)
+	groupID, err := newIggyIdentifier(meta.ConsumerGroupID)
 	if err != nil {
 		return nil, fmt.Errorf("error creating consumer group identifier: %w", err)
 	}
@@ -161,6 +162,17 @@ func NewApacheIggyScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	s.client = client
 	s.previousOffsets = make(map[uint32]int64)
 	return s, nil
+}
+
+// newIggyIdentifier builds an Iggy identifier from a metadata value, treating a
+// fully-numeric value as a numeric resource ID and anything else as a resource
+// name, matching the SDK's "unique ID or name" contract. A resource literally
+// named with a pure-number string can therefore only be addressed by its ID.
+func newIggyIdentifier(value string) (iggcon.Identifier, error) {
+	if n, err := strconv.ParseUint(value, 10, 32); err == nil {
+		return iggcon.NewIdentifier(uint32(n))
+	}
+	return iggcon.NewIdentifier(value)
 }
 
 func (s *apacheIggyScaler) GetMetricSpecForScaling(_ context.Context) []v2.MetricSpec {

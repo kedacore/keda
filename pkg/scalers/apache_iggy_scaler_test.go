@@ -474,10 +474,33 @@ func TestApacheIggyCalculateLag(t *testing.T) {
 	}
 }
 
+func TestNewIggyIdentifier(t *testing.T) {
+	tests := []struct {
+		value    string
+		wantKind iggcon.IdKind
+	}{
+		{"1", iggcon.NumericId},
+		{"42", iggcon.NumericId},
+		{"test-stream", iggcon.StringId},
+		{"12abc", iggcon.StringId},
+		{"stream-1", iggcon.StringId},
+	}
+	for _, tc := range tests {
+		id, err := newIggyIdentifier(tc.value)
+		if err != nil {
+			t.Errorf("value %q: unexpected error: %v", tc.value, err)
+			continue
+		}
+		if id.Kind != tc.wantKind {
+			t.Errorf("value %q: expected kind %d, got %d", tc.value, tc.wantKind, id.Kind)
+		}
+	}
+}
+
 func newTestIggyScaler(client *mockIggyClient, meta *apacheIggyMetadata) *apacheIggyScaler {
-	streamID, _ := iggcon.NewIdentifier(meta.StreamID)
-	topicID, _ := iggcon.NewIdentifier(meta.TopicID)
-	groupID, _ := iggcon.NewIdentifier(meta.ConsumerGroupID)
+	streamID, _ := newIggyIdentifier(meta.StreamID)
+	topicID, _ := newIggyIdentifier(meta.TopicID)
+	groupID, _ := newIggyIdentifier(meta.ConsumerGroupID)
 	return &apacheIggyScaler{
 		metricType:      v2.AverageValueMetricType,
 		metadata:        meta,
