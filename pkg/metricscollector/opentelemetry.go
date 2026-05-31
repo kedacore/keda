@@ -54,6 +54,7 @@ var (
 )
 
 type OtelMetrics struct {
+	enableHighCardinalityLabels bool
 }
 
 type OtelMetricInt64Val struct {
@@ -66,7 +67,7 @@ type OtelMetricFloat64Val struct {
 	measurementOption api.MeasurementOption
 }
 
-func NewOtelMetrics(options ...metric.Option) *OtelMetrics {
+func NewOtelMetrics(enableHighCardinalityLabels bool, options ...metric.Option) *OtelMetrics {
 	// create default options with env
 	if options == nil {
 		protocol := os.Getenv("OTEL_EXPORTER_OTLP_PROTOCOL")
@@ -95,7 +96,7 @@ func NewOtelMetrics(options ...metric.Option) *OtelMetrics {
 	meter = meterProvider.Meter(meterName)
 	initMeters()
 
-	otel := &OtelMetrics{}
+	otel := &OtelMetrics{enableHighCardinalityLabels: enableHighCardinalityLabels}
 	otel.RecordBuildInfo()
 	return otel
 }
@@ -532,12 +533,25 @@ func (o *OtelMetrics) RecordHTTPClientRequest(durationSeconds float64, statusCod
 		attribute.Key("metric_name").String(metricName),
 		attribute.Key("status_code").String(code),
 	)
-	histOpt := api.WithAttributes(
-		attribute.Key("scaler").String(scaler),
-		attribute.Key("status_code").String(code),
-	)
 	otHTTPClientRequestsCounter.Add(context.Background(), 1, counterOpt)
-	otHTTPClientRequestDuration.Record(context.Background(), durationSeconds, histOpt)
+	if otHTTPClientRequestDuration != nil {
+		attrs := []attribute.KeyValue{
+			attribute.Key("scaler").String(scaler),
+			attribute.Key("status_code").String(code),
+		}
+		if o.enableHighCardinalityLabels {
+			attrs = append([]attribute.KeyValue{
+				attribute.Key("namespace").String(namespace),
+				attribute.Key("scaled_resource").String(scaledResource),
+			}, attrs...)
+			attrs = append(attrs,
+				attribute.Key("trigger_name").String(triggerName),
+				attribute.Key("metric_name").String(metricName),
+			)
+		}
+		histOpt := api.WithAttributes(attrs...)
+		otHTTPClientRequestDuration.Record(context.Background(), durationSeconds, histOpt)
+	}
 }
 
 // RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting

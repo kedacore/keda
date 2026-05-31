@@ -769,6 +769,87 @@ func KubernetesScaleDeployment(t *testing.T, kc *kubernetes.Clientset, name stri
 	}
 }
 
+func SetDeploymentContainerArg(t *testing.T, kc *kubernetes.Clientset, name, namespace, containerName, flagName, flagValue string) {
+	t.Helper()
+
+	deployment, err := kc.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	require.NoErrorf(t, err, "cannot get deployment %s/%s - %s", namespace, name, err)
+
+	newArg := fmt.Sprintf("%s=%s", flagName, flagValue)
+	var updated bool
+	for i, container := range deployment.Spec.Template.Spec.Containers {
+		if container.Name != containerName {
+			continue
+		}
+
+		replaced := false
+		for j, arg := range container.Args {
+			if arg == flagName || strings.HasPrefix(arg, flagName+"=") {
+				container.Args[j] = newArg
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			container.Args = append(container.Args, newArg)
+		}
+
+		deployment.Spec.Template.Spec.Containers[i].Args = container.Args
+		updated = true
+		break
+	}
+
+	require.Truef(t, updated, "container %s not found in deployment %s/%s", containerName, namespace, name)
+
+	updatedDeployment, err := kc.AppsV1().Deployments(namespace).Update(context.TODO(), deployment, metav1.UpdateOptions{})
+	require.NoErrorf(t, err, "cannot update deployment %s/%s - %s", namespace, name, err)
+
+	targetReplicas := int32(1)
+	if updatedDeployment.Spec.Replicas != nil {
+		targetReplicas = *updatedDeployment.Spec.Replicas
+	}
+
+	assert.True(t, WaitForDeploymentRollout(t, kc, name, namespace, updatedDeployment.Generation, targetReplicas, 60, 2),
+		"deployment %s/%s should finish rollout after updating %s", namespace, name, flagName)
+}
+
+func WaitForDeploymentRollout(t *testing.T, kc *kubernetes.Clientset, name, namespace string, generation int64, targetReplicas int32, iterations, intervalSeconds int) bool {
+	t.Helper()
+
+	for i := 0; i < iterations; i++ {
+		deployment, err := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		if err != nil {
+			t.Logf("Waiting for deployment rollout. Deployment - %s, error - %v", name, err)
+			time.Sleep(time.Duration(intervalSeconds) * time.Second)
+			continue
+		}
+
+		t.Logf(
+			"Waiting for deployment rollout. Deployment - %s, ObservedGeneration - %d/%d, Replicas - %d, UpdatedReplicas - %d, ReadyReplicas - %d, AvailableReplicas - %d, Target - %d",
+			name,
+			deployment.Status.ObservedGeneration,
+			generation,
+			deployment.Status.Replicas,
+			deployment.Status.UpdatedReplicas,
+			deployment.Status.ReadyReplicas,
+			deployment.Status.AvailableReplicas,
+			targetReplicas,
+		)
+
+		if deployment.Status.ObservedGeneration >= generation &&
+			deployment.Status.Replicas == targetReplicas &&
+			deployment.Status.UpdatedReplicas == targetReplicas &&
+			deployment.Status.ReadyReplicas == targetReplicas &&
+			deployment.Status.AvailableReplicas == targetReplicas {
+			return true
+		}
+
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+
+	return false
+}
+
 type Template struct {
 	Name, Config string
 }
