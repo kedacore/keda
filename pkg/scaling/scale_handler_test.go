@@ -667,7 +667,7 @@ func TestGetScaledObjectStateRecordsResourceScalerActiveMetric(t *testing.T) {
 	})
 
 	ctrl := gomock.NewController(t)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	scaler := mock_scalers.NewMockScaler(ctrl)
 
 	metricSpecs := []v2.MetricSpec{{
@@ -744,7 +744,7 @@ func TestGetScaledObjectStateSkipsResourceScalerActiveMetricWithModifiers(t *tes
 	})
 
 	ctrl := gomock.NewController(t)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	scaler := mock_scalers.NewMockScaler(ctrl)
 
 	metricSpecs := []v2.MetricSpec{{
