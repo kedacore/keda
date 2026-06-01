@@ -424,13 +424,14 @@ const file_externalscaler_proto_rawDesc = "" +
 	"metricName\x18\x01 \x01(\tR\n" +
 	"metricName\x12 \n" +
 	"\vmetricValue\x18\x02 \x01(\x03R\vmetricValue\x12*\n" +
-	"\x10metricValueFloat\x18\x03 \x01(\x01R\x10metricValueFloat2\xec\x02\n" +
+	"\x10metricValueFloat\x18\x03 \x01(\x01R\x10metricValueFloat2\xcc\x03\n" +
 	"\x0eExternalScaler\x12O\n" +
 	"\bIsActive\x12\x1f.externalscaler.ScaledObjectRef\x1a .externalscaler.IsActiveResponse\"\x00\x12W\n" +
 	"\x0eStreamIsActive\x12\x1f.externalscaler.ScaledObjectRef\x1a .externalscaler.IsActiveResponse\"\x000\x01\x12Y\n" +
 	"\rGetMetricSpec\x12\x1f.externalscaler.ScaledObjectRef\x1a%.externalscaler.GetMetricSpecResponse\"\x00\x12U\n" +
 	"\n" +
-	"GetMetrics\x12!.externalscaler.GetMetricsRequest\x1a\".externalscaler.GetMetricsResponse\"\x00B\x12Z\x10.;externalscalerb\x06proto3"
+	"GetMetrics\x12!.externalscaler.GetMetricsRequest\x1a\".externalscaler.GetMetricsResponse\"\x00\x12^\n" +
+	"\x10StreamMetricSpec\x12\x1f.externalscaler.ScaledObjectRef\x1a%.externalscaler.GetMetricSpecResponse\"\x000\x01B\x12Z\x10.;externalscalerb\x06proto3"
 
 var (
 	file_externalscaler_proto_rawDescOnce sync.Once
@@ -464,12 +465,14 @@ var file_externalscaler_proto_depIdxs = []int32{
 	0, // 5: externalscaler.ExternalScaler.StreamIsActive:input_type -> externalscaler.ScaledObjectRef
 	0, // 6: externalscaler.ExternalScaler.GetMetricSpec:input_type -> externalscaler.ScaledObjectRef
 	4, // 7: externalscaler.ExternalScaler.GetMetrics:input_type -> externalscaler.GetMetricsRequest
-	1, // 8: externalscaler.ExternalScaler.IsActive:output_type -> externalscaler.IsActiveResponse
-	1, // 9: externalscaler.ExternalScaler.StreamIsActive:output_type -> externalscaler.IsActiveResponse
-	2, // 10: externalscaler.ExternalScaler.GetMetricSpec:output_type -> externalscaler.GetMetricSpecResponse
-	5, // 11: externalscaler.ExternalScaler.GetMetrics:output_type -> externalscaler.GetMetricsResponse
-	8, // [8:12] is the sub-list for method output_type
-	4, // [4:8] is the sub-list for method input_type
+	0, // 8: externalscaler.ExternalScaler.StreamMetricSpec:input_type -> externalscaler.ScaledObjectRef
+	1, // 9: externalscaler.ExternalScaler.IsActive:output_type -> externalscaler.IsActiveResponse
+	1, // 10: externalscaler.ExternalScaler.StreamIsActive:output_type -> externalscaler.IsActiveResponse
+	2, // 11: externalscaler.ExternalScaler.GetMetricSpec:output_type -> externalscaler.GetMetricSpecResponse
+	5, // 12: externalscaler.ExternalScaler.GetMetrics:output_type -> externalscaler.GetMetricsResponse
+	2, // 13: externalscaler.ExternalScaler.StreamMetricSpec:output_type -> externalscaler.GetMetricSpecResponse
+	9, // [9:14] is the sub-list for method output_type
+	4, // [4:9] is the sub-list for method input_type
 	4, // [4:4] is the sub-list for extension type_name
 	4, // [4:4] is the sub-list for extension extendee
 	0, // [0:4] is the sub-list for field type_name
