@@ -92,6 +92,9 @@ type templateData struct {
 
 func TestScalingStrategy(t *testing.T) {
 	// Setup
+
+	// FIXME: the busybox jobs never consume the queue, so the 'accurate' strategy scales to maxReplicaCount instead of the expected per-message counts; needs a redesign where jobs drain the queue.
+	t.Skip("flaky/broken since #7607: see also https://github.com/kedacore/keda/issues/7806")
 	ctx := context.Background()
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, connectionString, "TF_AZURE_STORAGE_CONNECTION_STRING env variable is required for azure queue test")
