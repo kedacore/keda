@@ -47,7 +47,8 @@ COSIGN_FLAGS ?= -y -a GIT_HASH=${GIT_COMMIT} -a GIT_VERSION=${VERSION} -a BUILD_
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.35
 
-GOLANGCI_VERSION:=2.11.4
+GOLANGCI_VERSION:=2.12.2
+GOLANGCI_CONFIG ?=
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
@@ -161,9 +162,9 @@ vet: ## Run go vet against code.
 golangci: ## Run golangci against code.
 	@HAS_GOLANGCI_VERSION=$$($(GOPATH)/bin/golangci-lint version --short 2>/dev/null || echo ""); \
 	if [ "$$HAS_GOLANGCI_VERSION" != "$(GOLANGCI_VERSION)" ]; then \
-		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin v$(GOLANGCI_VERSION); \
+		go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v$(GOLANGCI_VERSION); \
 	fi
-	golangci-lint run
+	golangci-lint run $(if $(GOLANGCI_CONFIG),--config $(GOLANGCI_CONFIG))
 
 verify-manifests: ## Verify manifests are up to date.
 	./hack/verify-manifests.sh
