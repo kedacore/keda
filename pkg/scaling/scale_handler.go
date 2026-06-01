@@ -39,6 +39,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -74,6 +75,12 @@ type ScaleHandler interface {
 	SubscribeMetric(ctx context.Context, subscriber string, metricMetadata *api.ScaledObjectRef) bool
 	UnsubscribeMetric(ctx context.Context, subscriber string, metadata *api.ScaledObjectRef) bool
 	GetRawMetricsChan(subscriber string) (rawMetrics chan RawMetrics, done chan bool)
+
+	// MetricSpecReconcileChan returns a channel of events that request a
+	// ScaledObject reconcile. It is fed when an external-push scaler streams
+	// updated metric specs (StreamMetricSpec) so the ScaledObject reconciler
+	// can rebuild the HPA from the freshly cached specs.
+	MetricSpecReconcileChan() <-chan event.GenericEvent
 }
 
 type scaleHandler struct {
@@ -91,6 +98,9 @@ type scaleHandler struct {
 	// redundant, but it will speed up the lookups
 	metricToSubscriptions map[metricMeta][]*RawMetricSubscriptions
 	subsLock              *sync.RWMutex
+	// metricSpecReconcileCh delivers reconcile requests for ScaledObjects whose
+	// external-push scalers have streamed updated metric specs.
+	metricSpecReconcileCh chan event.GenericEvent
 }
 
 // NewScaleHandler creates a ScaleHandler object
@@ -109,6 +119,82 @@ func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, recon
 		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
 		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
 		subsLock:                 &sync.RWMutex{},
+		metricSpecReconcileCh:    make(chan event.GenericEvent, 1024),
+	}
+}
+
+// MetricSpecReconcileChan returns the channel of reconcile requests triggered
+// by streamed metric spec updates. See the ScaleHandler interface for details.
+func (h *scaleHandler) MetricSpecReconcileChan() <-chan event.GenericEvent {
+	return h.metricSpecReconcileCh
+}
+
+// enqueueMetricSpecReconcile asks the ScaledObject reconciler to reconcile the
+// named ScaledObject. Updates are never dropped because the shared reconcile
+// channel is full; instead this call waits for channel capacity or returns
+// when ctx is cancelled.
+func (h *scaleHandler) enqueueMetricSpecReconcile(ctx context.Context, name, namespace string) {
+	evt := event.GenericEvent{Object: &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+	}}
+	select {
+	case <-ctx.Done():
+	case h.metricSpecReconcileCh <- evt:
+	}
+}
+
+// watchMetricSpecUpdates forwards streamed metric spec updates into the latest
+// ScalersCache for the ScaledObject. This keeps StreamMetricSpec working across
+// cache invalidations caused by scaler errors, where the original cache
+// instance is closed and replaced but the existing push-scaler stream is still
+// alive.
+//
+// The watcher is bound to the identity (uid and generation) of the ScaledObject
+// that created it. Because cancelling the scale-loop context does not guarantee
+// the watcher stops before it processes a buffered stream response (Go may pick
+// the stream case over ctx.Done() when both are ready), the resolved cache is
+// verified against that identity before applying the update. This prevents a
+// stale watcher from writing an old generation's metric spec into a newer
+// generation's cache, or into a cache belonging to a different object that was
+// recreated under the same namespace and name. Same-identity cache
+// replacements (e.g. after a scaler error) keep the same uid and generation, so
+// legitimate updates still flow.
+func (h *scaleHandler) watchMetricSpecUpdates(ctx context.Context, scaledObjectName, scaledObjectNamespace string, triggerIndex int, streamer scalers.MetricSpecStreamer, uid types.UID, generation int64) {
+	logger := log.WithValues("namespace", scaledObjectNamespace, "name", scaledObjectName, "triggerIndex", triggerIndex)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case specs, ok := <-streamer.MetricSpecChan():
+			if !ok {
+				return
+			}
+
+			// Fast-path: bail out if the scale loop was cancelled while this
+			// response was buffered. This is only an optimization; the identity
+			// check below is the actual guard against applying stale updates.
+			if ctx.Err() != nil {
+				return
+			}
+
+			scalersCache, err := h.getScalersCacheForScaledObject(ctx, scaledObjectName, scaledObjectNamespace)
+			if err != nil {
+				if ctx.Err() != nil {
+					return
+				}
+				logger.Error(err, "error getting scalers cache for metric spec update")
+				continue
+			}
+
+			// UpdateMetricSpecForScaler validates the cache identity (uid and
+			// generation) and applies the update atomically under the cache
+			// lock, so the cache cannot become stale between the check and the
+			// write.
+			if scalersCache.UpdateMetricSpecForScaler(triggerIndex, specs, uid, generation) {
+				h.enqueueMetricSpecReconcile(ctx, scaledObjectName, scaledObjectNamespace)
+			}
+		}
 	}
 }
 
@@ -222,7 +308,13 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 	}
 
 	for i, ps := range scalersCache.GetPushScalers() {
-		go func(s scalers.PushScaler, triggerIndex int) {
+		// Only ScaledObjects own an HPA that can be re-targeted via StreamMetricSpec.
+		if so, isScaledObject := scalableObject.(*kedav1alpha1.ScaledObject); isScaledObject {
+			if streamer, ok := ps.Scaler.(scalers.MetricSpecStreamer); ok {
+				go h.watchMetricSpecUpdates(ctx, so.Name, so.Namespace, ps.TriggerIndex, streamer, so.UID, so.Generation)
+			}
+		}
+		go func(s scalers.PushScaler, triggerIndex, pushScalerIndex int) {
 			activeCh := make(chan bool)
 			go s.Run(ctx, activeCh)
 			for {
@@ -231,12 +323,12 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 					return
 				case active, channelOpen := <-activeCh:
 					if !channelOpen {
-						logger.V(1).Info("Push scaler channel closed", "scalableObject", scalableObject, "pushScalerIndex", i)
+						logger.V(1).Info("Push scaler channel closed", "scalableObject", scalableObject, "pushScalerIndex", pushScalerIndex)
 						return
 					}
 					if !active {
 						// inactivation events are ignored and inactivation happens through the standard metric scaling logic
-						logger.V(4).Info("Push scaler inactivation event received", "scalableObject", scalableObject, "pushScalerIndex", i)
+						logger.V(4).Info("Push scaler inactivation event received", "scalableObject", scalableObject, "pushScalerIndex", pushScalerIndex)
 						continue
 					}
 					switch scalableObject.(type) {
@@ -265,7 +357,7 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 					}
 				}
 			}
-		}(ps.Scaler, ps.TriggerIndex)
+		}(ps.Scaler, ps.TriggerIndex, i)
 	}
 }
 
