@@ -1,0 +1,59 @@
+# go-mssqldb Docker Ignore File
+# Exclude files not needed in the container build context
+
+# Git
+.git/
+.gitignore
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Test coverage
+*.cover
+*.coverprofile
+coverage.out
+coverage.html
+
+# Dependency directories
+vendor/
+
+# Documentation and non-essential files at the repository root
+/README.md
+/CONTRIBUTING.md
+/CHANGELOG.md
+LICENSE*
+SECURITY*
+
+# CI/CD files (not needed in container)
+.github/
+appveyor.yml
+
+# Test output and temporary files
+*.log
+*.tmp
+tmp/
+
+# Dev container configuration (not needed in image build)
+.devcontainer/

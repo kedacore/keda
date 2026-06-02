@@ -6,11 +6,25 @@
 *.log
 *.swp
 *~
+
+# Coverage artifacts
 coverage.json
 coverage.txt
 coverage.xml
+coverage.out
+*.out
+coverage/
+cov/
+cov*
+integ_cov*
+final.out
+coverage_all.txt
+
 testresults.xml
 .azureconnstr
+
+# Test executables
+*.test.exe
 
 # Example binaries  
 examples/*/simple

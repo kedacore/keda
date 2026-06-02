@@ -1,0 +1,113 @@
+# go-mssqldb - Microsoft's Official Go Driver for SQL Server
+
+> Microsoft's official Go driver for SQL Server and Azure SQL Database
+> For complete reference, see: llms-full.txt
+
+## Quick Start
+
+```go
+import (
+    "database/sql"
+    "log"
+    
+    _ "github.com/microsoft/go-mssqldb"
+)
+
+func main() {
+    db, err := sql.Open("sqlserver", "sqlserver://user:password@localhost:1433?database=mydb")
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer db.Close()
+    
+    // Query example using positional parameters (@p1, @p2, etc.)
+    rows, err := db.Query("SELECT @p1 AS Value", 42)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer rows.Close()
+}
+```
+
+## Installation
+
+```bash
+go get github.com/microsoft/go-mssqldb
+```
+
+## Key Features
+
+- Works with SQL Server 2005+, SQL database in Microsoft Fabric, and Azure SQL Database
+- Supports Windows Authentication, SQL Authentication, Azure AD, Entra, and Kerberos
+- Always Encrypted support
+- Bulk copy operations
+- Named pipes and shared memory connections on Windows
+- Table-valued parameters
+- Stored procedure support with output parameters
+
+## Connection String Formats
+
+### URL Format (Recommended)
+```
+sqlserver://username:password@host:port?database=mydb
+sqlserver://username:password@host/instance?database=mydb
+```
+
+### ADO Format
+```
+server=localhost;user id=sa;password=secret;database=mydb
+```
+
+### ODBC Format
+```
+odbc:server=localhost;user id=sa;password=secret;database=mydb
+```
+
+## Azure SQL Database with Azure AD
+
+```go
+import (
+    "database/sql"
+    "github.com/microsoft/go-mssqldb/azuread"
+)
+
+func main() {
+    // Enable TLS with certificate validation for Azure SQL
+    db, err := sql.Open(azuread.DriverName, 
+        "sqlserver://myserver.database.windows.net?database=mydb&fedauth=ActiveDirectoryDefault&encrypt=true&TrustServerCertificate=false")
+}
+```
+
+## Driver Names
+
+- `sqlserver` - Standard driver, use `@name` or `@p1` parameter syntax
+- `azuresql` - Azure AD authentication support (import `azuread` package)
+- `mssql` - Deprecated, uses `?` parameter syntax
+
+## Common Patterns
+
+### Query with Named Parameters
+```go
+db.QueryContext(ctx, "SELECT * FROM users WHERE id = @ID", sql.Named("ID", 123))
+```
+
+### Execute Stored Procedure
+```go
+var result int
+db.ExecContext(ctx, "sp_MyProc", sql.Named("Input", "value"), sql.Named("Output", sql.Out{Dest: &result}))
+```
+
+### Bulk Insert
+```go
+import mssql "github.com/microsoft/go-mssqldb"
+
+stmt, _ := db.Prepare(mssql.CopyIn("tablename", mssql.BulkOptions{}, "col1", "col2"))
+stmt.Exec(val1, val2)
+stmt.Exec() // Flush
+```
+
+## Documentation
+
+- Full documentation: https://pkg.go.dev/github.com/microsoft/go-mssqldb
+- README: https://github.com/microsoft/go-mssqldb/blob/main/README.md
+- Examples: https://github.com/microsoft/go-mssqldb/tree/main/examples
