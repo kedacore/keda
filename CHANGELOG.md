@@ -83,6 +83,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
+- **General**: Fix `ceilToInt64` float-to-int truncation overflow that silently wraps to `MinInt64` for values >= 2^63 ([#7796](https://github.com/kedacore/keda/issues/7796))
 - **General**: Fix CVE-2026-42151, CVE-2026-42154, CVE-2026-40179 ([#7868](https://github.com/kedacore/keda/issues/7868))
 - **General**: Fix nil pointer dereference in `customScalingStrategy.GetEffectiveMaxScale` when `customScalingQueueLengthDeduction` is omitted; the optional field is now treated as zero deduction instead of panicking ([#7798](https://github.com/kedacore/keda/issues/7798))
 - **General**: Fix `ScaledJob` CRD validation to include "default" as a valid value for `scalingStrategy.strategy` ([#7855](https://github.com/kedacore/keda/issues/7855))
