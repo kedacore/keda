@@ -19,14 +19,14 @@ package process
 import (
 	"bytes"
 	"html/template"
-	"sort"
+	"slices"
 	"strings"
 )
 
 // RenderTemplates returns an []string to render the templates
 //
 // Deprecated: will be removed in favor of Arguments.
-func RenderTemplates(argTemplates []string, data interface{}) (args []string, err error) {
+func RenderTemplates(argTemplates []string, data any) (args []string, err error) {
 	var t *template.Template
 
 	for _, arg := range argTemplates {
@@ -82,7 +82,7 @@ func SliceToArguments(sliceArgs []string, args *Arguments) []string {
 // Deprecated: will be removed when RenderTemplates is removed.
 type TemplateDefaults struct {
 	// Data will be used to render the template.
-	Data interface{}
+	Data any
 	// Defaults will be used to default structured arguments if no template is passed.
 	Defaults map[string][]string
 	// MinimalDefaults will be used to default structured arguments if a template is passed.
@@ -230,7 +230,7 @@ func (a *Arguments) AsStrings(defaults map[string][]string) []string {
 	for key := range a.values {
 		keysInOrder = append(keysInOrder, key)
 	}
-	sort.Strings(keysInOrder)
+	slices.Sort(keysInOrder)
 
 	var res []string
 	for _, key := range keysInOrder {

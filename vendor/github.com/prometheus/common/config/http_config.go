@@ -32,11 +32,11 @@ import (
 	"time"
 
 	conntrack "github.com/mwitkow/go-conntrack"
+	"go.yaml.in/yaml/v2"
 	"golang.org/x/net/http/httpproxy"
 	"golang.org/x/net/http2"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
-	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -72,7 +72,7 @@ var TLSVersions = map[string]TLSVersion{
 
 func (tv *TLSVersion) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var s string
-	err := unmarshal((*string)(&s))
+	err := unmarshal(&s)
 	if err != nil {
 		return err
 	}
@@ -225,7 +225,7 @@ func (u *URL) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaler interface for URL.
 func (u URL) MarshalJSON() ([]byte, error) {
 	if u.URL != nil {
-		return json.Marshal(u.URL.String())
+		return json.Marshal(u.String())
 	}
 	return []byte("null"), nil
 }
@@ -245,13 +245,13 @@ type OAuth2 struct {
 	ProxyConfig     `yaml:",inline"`
 }
 
-// UnmarshalYAML implements the yaml.Unmarshaler interface
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
 func (o *OAuth2) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type plain OAuth2
 	if err := unmarshal((*plain)(o)); err != nil {
 		return err
 	}
-	return o.ProxyConfig.Validate()
+	return o.Validate()
 }
 
 // UnmarshalJSON implements the json.Marshaler interface for URL.
@@ -260,7 +260,7 @@ func (o *OAuth2) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, (*plain)(o)); err != nil {
 		return err
 	}
-	return o.ProxyConfig.Validate()
+	return o.Validate()
 }
 
 // SetDirectory joins any relative file paths with dir.
@@ -346,7 +346,7 @@ func nonZeroCount[T comparable](values ...T) int {
 	var zero T
 	for _, value := range values {
 		if value != zero {
-			count += 1
+			count++
 		}
 	}
 	return count
@@ -363,7 +363,7 @@ func (c *HTTPClientConfig) Validate() error {
 	if (c.BasicAuth != nil || c.OAuth2 != nil) && (len(c.BearerToken) > 0 || len(c.BearerTokenFile) > 0) {
 		return errors.New("at most one of basic_auth, oauth2, bearer_token & bearer_token_file must be configured")
 	}
-	if c.BasicAuth != nil && nonZeroCount(string(c.BasicAuth.Username) != "", c.BasicAuth.UsernameFile != "", c.BasicAuth.UsernameRef != "") > 1 {
+	if c.BasicAuth != nil && nonZeroCount(c.BasicAuth.Username != "", c.BasicAuth.UsernameFile != "", c.BasicAuth.UsernameRef != "") > 1 {
 		return errors.New("at most one of basic_auth username, username_file & username_ref must be configured")
 	}
 	if c.BasicAuth != nil && nonZeroCount(string(c.BasicAuth.Password) != "", c.BasicAuth.PasswordFile != "", c.BasicAuth.PasswordRef != "") > 1 {
@@ -423,7 +423,7 @@ func (c *HTTPClientConfig) Validate() error {
 	return nil
 }
 
-// UnmarshalYAML implements the yaml.Unmarshaler interface
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
 func (c *HTTPClientConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type plain HTTPClientConfig
 	*c = DefaultHTTPClientConfig
@@ -542,8 +542,14 @@ func (s *secretManagerOption) applyToTLSConfigOptions(opts *tlsConfigOptions) {
 	opts.secretManager = s.secretManager
 }
 
+// SecretManagerOption is an option for providing a SecretManager.
+type SecretManagerOption interface {
+	TLSConfigOption
+	HTTPClientOption
+}
+
 // WithSecretManager allows setting the secret manager.
-func WithSecretManager(manager SecretManager) *secretManagerOption {
+func WithSecretManager(manager SecretManager) SecretManagerOption {
 	return &secretManagerOption{
 		secretManager: manager,
 	}
@@ -604,8 +610,8 @@ func NewRoundTripperFromConfigWithContext(ctx context.Context, cfg HTTPClientCon
 		// The only timeout we care about is the configured scrape timeout.
 		// It is applied on request. So we leave out any timings here.
 		var rt http.RoundTripper = &http.Transport{
-			Proxy:                 cfg.ProxyConfig.Proxy(),
-			ProxyConnectHeader:    cfg.ProxyConfig.GetProxyConnectHeader(),
+			Proxy:                 cfg.Proxy(),
+			ProxyConnectHeader:    cfg.GetProxyConnectHeader(),
 			MaxIdleConns:          20000,
 			MaxIdleConnsPerHost:   1000, // see https://github.com/golang/go/issues/13801
 			DisableKeepAlives:     !opts.keepAlivesEnabled,
@@ -726,11 +732,11 @@ func (s *InlineSecret) Fetch(context.Context) (string, error) {
 	return s.text, nil
 }
 
-func (s *InlineSecret) Description() string {
+func (*InlineSecret) Description() string {
 	return "inline"
 }
 
-func (s *InlineSecret) Immutable() bool {
+func (*InlineSecret) Immutable() bool {
 	return true
 }
 
@@ -742,7 +748,7 @@ func NewFileSecret(file string) *FileSecret {
 	return &FileSecret{file: file}
 }
 
-func (s *FileSecret) Fetch(ctx context.Context) (string, error) {
+func (s *FileSecret) Fetch(context.Context) (string, error) {
 	fileBytes, err := os.ReadFile(s.file)
 	if err != nil {
 		return "", fmt.Errorf("unable to read file %s: %w", s.file, err)
@@ -754,7 +760,7 @@ func (s *FileSecret) Description() string {
 	return "file " + s.file
 }
 
-func (s *FileSecret) Immutable() bool {
+func (*FileSecret) Immutable() bool {
 	return false
 }
 
@@ -772,7 +778,7 @@ func (s *refSecret) Description() string {
 	return "ref " + s.ref
 }
 
-func (s *refSecret) Immutable() bool {
+func (*refSecret) Immutable() bool {
 	return false
 }
 
@@ -914,8 +920,8 @@ func (rt *oauth2RoundTripper) newOauth2TokenSource(req *http.Request, secret str
 	tlsTransport := func(tlsConfig *tls.Config) (http.RoundTripper, error) {
 		return &http.Transport{
 			TLSClientConfig:       tlsConfig,
-			Proxy:                 rt.config.ProxyConfig.Proxy(),
-			ProxyConnectHeader:    rt.config.ProxyConfig.GetProxyConnectHeader(),
+			Proxy:                 rt.config.Proxy(),
+			ProxyConnectHeader:    rt.config.GetProxyConnectHeader(),
 			DisableKeepAlives:     !rt.opts.keepAlivesEnabled,
 			MaxIdleConns:          20,
 			MaxIdleConnsPerHost:   1, // see https://github.com/golang/go/issues/13801
@@ -1224,7 +1230,7 @@ func (c *TLSConfig) getClientCertificate(ctx context.Context, secretManager Secr
 		}
 	}
 
-	keySecret, err := toSecret(secretManager, Secret(c.Key), c.KeyFile, c.KeyRef)
+	keySecret, err := toSecret(secretManager, c.Key, c.KeyFile, c.KeyRef)
 	if err != nil {
 		return nil, fmt.Errorf("unable to use client key: %w", err)
 	}
@@ -1362,9 +1368,9 @@ func (t *tlsRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	t.mtx.RLock()
-	equal := bytes.Equal(caHash[:], t.hashCAData) &&
-		bytes.Equal(certHash[:], t.hashCertData) &&
-		bytes.Equal(keyHash[:], t.hashKeyData)
+	equal := bytes.Equal(caHash, t.hashCAData) &&
+		bytes.Equal(certHash, t.hashCertData) &&
+		bytes.Equal(keyHash, t.hashKeyData)
 	rt := t.rt
 	t.mtx.RUnlock()
 	if equal {
@@ -1387,9 +1393,9 @@ func (t *tlsRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	t.mtx.Lock()
 	t.rt = rt
-	t.hashCAData = caHash[:]
-	t.hashCertData = certHash[:]
-	t.hashKeyData = keyHash[:]
+	t.hashCAData = caHash
+	t.hashCertData = certHash
+	t.hashKeyData = keyHash
 	t.mtx.Unlock()
 
 	return rt.RoundTrip(req)
@@ -1508,7 +1514,7 @@ func (c *ProxyConfig) Proxy() (fn func(*http.Request) (*url.URL, error)) {
 		}
 		return
 	}
-	if c.ProxyURL.URL != nil && c.ProxyURL.URL.String() != "" {
+	if c.ProxyURL.URL != nil && c.ProxyURL.String() != "" {
 		if c.NoProxy == "" {
 			c.proxyFunc = http.ProxyURL(c.ProxyURL.URL)
 			return

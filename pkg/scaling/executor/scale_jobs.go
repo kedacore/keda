@@ -85,12 +85,12 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 	wasActive := activeCond.IsTrue()
 	if isActive {
 		if !wasActive {
-			e.recorder.Event(scaledJob, corev1.EventTypeNormal, eventreason.ScaledJobActive, "Scaling is performed because triggers are active")
+			e.recorder.Eventf(scaledJob, nil, corev1.EventTypeNormal, eventreason.ScaledJobActive, eventreason.ScaledJobActive, "%s", "Scaling is performed because triggers are active")
 		}
 		result.Conditions.SetActiveCondition(metav1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active")
 	} else {
 		if wasActive {
-			e.recorder.Event(scaledJob, corev1.EventTypeNormal, eventreason.ScaledJobInactive, "Scaling is not performed because triggers are not active")
+			e.recorder.Eventf(scaledJob, nil, corev1.EventTypeNormal, eventreason.ScaledJobInactive, eventreason.ScaledJobInactive, "%s", "Scaling is not performed because triggers are not active")
 		}
 		result.Conditions.SetActiveCondition(metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active")
 	}
@@ -132,12 +132,12 @@ func (e *scaleExecutor) createJobs(ctx context.Context, logger logr.Logger, scal
 		err := e.client.Create(ctx, job)
 		if err != nil {
 			logger.Error(err, "Failed to create a new Job")
-			e.recorder.Eventf(scaledJob, corev1.EventTypeWarning, eventreason.KEDAJobCreateFailed, "Failed to create job %s: %v", job.GenerateName, err)
+			e.recorder.Eventf(scaledJob, nil, corev1.EventTypeWarning, eventreason.KEDAJobCreateFailed, eventreason.KEDAJobCreateFailed, "Failed to create job %s: %v", job.GenerateName, err)
 		}
 	}
 
 	logger.Info("Created jobs", "Number of jobs", scaleTo)
-	e.recorder.Eventf(scaledJob, corev1.EventTypeNormal, eventreason.KEDAJobsCreated, "Created %d jobs", scaleTo)
+	e.recorder.Eventf(scaledJob, nil, corev1.EventTypeNormal, eventreason.KEDAJobsCreated, eventreason.KEDAJobsCreated, "Created %d jobs", scaleTo)
 }
 
 func (e *scaleExecutor) generateJobs(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, scaleTo int64) []*batchv1.Job {

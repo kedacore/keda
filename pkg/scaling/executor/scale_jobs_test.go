@@ -30,7 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -501,7 +501,7 @@ func getMockScaleExecutor(client *mock_client.MockClient) *scaleExecutor {
 		scaleClient:      nil,
 		reconcilerScheme: scheme,
 		logger:           logf.Log.WithName("scaleexecutor"),
-		recorder:         record.NewFakeRecorder(1),
+		recorder:         events.NewFakeRecorder(1),
 	}
 }
 

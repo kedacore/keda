@@ -4250,6 +4250,42 @@ type EntityManagementActorStitchedFields struct {
 	EntitySearch EntityManagementEntitySearchResult `json:"entitySearch,omitempty"`
 }
 
+// special
+func (x *EntityManagementActorStitchedFields) UnmarshalJSON(b []byte) error {
+	var objMap map[string]*json.RawMessage
+	err := json.Unmarshal(b, &objMap)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range objMap {
+		if v == nil {
+			continue
+		}
+
+		switch k {
+		case "entity":
+			if v == nil {
+				continue
+			}
+			xxx, err := UnmarshalEntityManagementEntityInterface(*v)
+			if err != nil {
+				return err
+			}
+			if xxx != nil {
+				x.Entity = *xxx
+			}
+		case "entitySearch":
+			err = json.Unmarshal(*v, &x.EntitySearch)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 // EntityManagementAgentConfigurationEntity - A configuration that can contain multiple immutable versions and can be deployed to a fleet
 type EntityManagementAgentConfigurationEntity struct {
 	// The agentType
@@ -6096,7 +6132,7 @@ type FleetControlAgentInput struct {
 	// Agent type
 	AgentType string `json:"agentType"`
 	// Configuration version list for this agent
-	ConfigurationVersionList []FleetControlConfigurationVersionListInput `json:"configurationVersionList,omitempty"`
+	ConfigurationVersionList []FleetControlConfigurationVersionListInput `json:"configurationVersionList"`
 	// Agent version
 	Version string `json:"version"`
 }

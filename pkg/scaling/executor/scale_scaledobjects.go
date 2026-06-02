@@ -212,11 +212,11 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 			}
 			logger.Info(msg, "Original Replicas Count", currentReplicas, "New Replicas Count", scaleToReplicas)
 
-			e.recorder.Eventf(scaledObject, corev1.EventTypeNormal, eventreason.KEDAScaleTargetDeactivated,
+			e.recorder.Eventf(scaledObject, nil, corev1.EventTypeNormal, eventreason.KEDAScaleTargetDeactivated, eventreason.KEDAScaleTargetDeactivated,
 				"Deactivated %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, scaleToReplicas)
 			result.Conditions.SetActiveCondition(metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active")
 		} else {
-			e.recorder.Eventf(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScaleTargetDeactivationFailed,
+			e.recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScaleTargetDeactivationFailed, eventreason.KEDAScaleTargetDeactivationFailed,
 				"Failed to deactivate %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, scaleToReplicas)
 		}
 	} else {
@@ -268,17 +268,12 @@ func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Log
 			)
 		}
 
-		e.recorder.Event(
-			scaledObject,
-			corev1.EventTypeNormal,
-			eventreason.KEDAScaleTargetActivated,
-			eventMessage,
-		)
+		e.recorder.Eventf(scaledObject, nil, corev1.EventTypeNormal, eventreason.KEDAScaleTargetActivated, eventreason.KEDAScaleTargetActivated, "%s", eventMessage)
 
 		// Scale was successful. Record lastActiveTime in the result for the handler to persist.
 		result.LastActiveTime = &metav1.Time{Time: time.Now()}
 	} else {
-		e.recorder.Eventf(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScaleTargetActivationFailed, "Failed to scale %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, replicas)
+		e.recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScaleTargetActivationFailed, eventreason.KEDAScaleTargetActivationFailed, "Failed to scale %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, replicas)
 	}
 }
 

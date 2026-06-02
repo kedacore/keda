@@ -2,7 +2,7 @@
 
 package swov1
 
-// Generated from OpenAPI doc version 1.0.15 and generator version 2.879.13
+// Generated from OpenAPI doc version 1.0.16 and generator version 2.884.4
 
 import (
 	"context"
@@ -150,9 +150,9 @@ func WithTimeout(timeout time.Duration) SDKOption {
 // New creates a new instance of the SDK with the provided options
 func New(opts ...SDKOption) *Swo {
 	sdk := &Swo{
-		SDKVersion: "0.14.0",
+		SDKVersion: "0.15.1",
 		sdkConfiguration: config.SDKConfiguration{
-			UserAgent:  "speakeasy-sdk/go 0.14.0 2.879.13 1.0.15 github.com/solarwinds/swo-sdk-go/swov1",
+			UserAgent:  "speakeasy-sdk/go 0.15.1 2.884.4 1.0.16 github.com/solarwinds/swo-sdk-go/swov1",
 			ServerList: ServerList,
 			ServerVariables: []map[string]string{
 				{

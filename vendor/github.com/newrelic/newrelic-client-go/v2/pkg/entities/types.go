@@ -11971,7 +11971,7 @@ type AttributeMap map[string]interface{}
 type DashboardWidgetRawConfiguration []byte
 
 // EntityAlertViolationInt - The `ViolationInt` scalar type represents 52-bit signed integers
-type EntityAlertViolationInt int
+type EntityAlertViolationInt int64
 
 // Float - The `Float` scalar type represents signed double-precision fractional
 // values as specified by

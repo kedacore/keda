@@ -461,8 +461,10 @@ type (
 		// Optional: default false
 		WaitForCancellation bool
 
-		// WorkflowIDReusePolicy - Whether server allow reuse of workflow ID, can be useful
-		// for dedup logic if set to WorkflowIdReusePolicyRejectDuplicate
+		// WorkflowIDReusePolicy - Controls how the server handles attempts to reuse the ID of a completed workflow.
+		// This can be useful for dedupe logic if set to WorkflowIdReusePolicyRejectDuplicate.
+		//
+		// Optional: defaults to AllowDuplicate.
 		WorkflowIDReusePolicy enumspb.WorkflowIdReusePolicy
 
 		// RetryPolicy specify how to retry child workflow if error happens.
@@ -3060,7 +3062,7 @@ func (c nexusClient) ExecuteOperation(ctx Context, operation any, input any, opt
 	})
 }
 
-func (wc *workflowEnvironmentInterceptor) prepareNexusOperationParams(ctx Context, input ExecuteNexusOperationInput) (executeNexusOperationParams, error) {
+func (wc *workflowEnvironmentInterceptor) prepareNexusOperationParams(ctx Context, input ExecuteNexusOperationInput) (ExecuteNexusOperationParams, error) {
 	dc := WithWorkflowContext(ctx, wc.env.GetDataConverter())
 
 	var ok bool
@@ -3073,22 +3075,22 @@ func (wc *workflowEnvironmentInterceptor) prepareNexusOperationParams(ctx Contex
 		operationName = regOp.Name()
 		inputType := reflect.TypeOf(input.Input)
 		if inputType != nil && !inputType.AssignableTo(regOp.InputType()) {
-			return executeNexusOperationParams{}, fmt.Errorf("cannot assign argument of type %q to type %q for operation %q", inputType, regOp.InputType(), operationName)
+			return ExecuteNexusOperationParams{}, fmt.Errorf("cannot assign argument of type %q to type %q for operation %q", inputType, regOp.InputType(), operationName)
 		}
 	} else {
-		return executeNexusOperationParams{}, fmt.Errorf("invalid 'operation' parameter, must be an OperationReference or a string")
+		return ExecuteNexusOperationParams{}, fmt.Errorf("invalid 'operation' parameter, must be an OperationReference or a string")
 	}
 
 	payload, err := dc.ToPayload(input.Input)
 	if err != nil {
-		return executeNexusOperationParams{}, err
+		return ExecuteNexusOperationParams{}, err
 	}
 
 	if input.Options.CancellationType == NexusOperationCancellationTypeUnspecified {
 		input.Options.CancellationType = NexusOperationCancellationTypeWaitCompleted
 	}
 
-	return executeNexusOperationParams{
+	return ExecuteNexusOperationParams{
 		client:      input.Client,
 		operation:   operationName,
 		input:       payload,

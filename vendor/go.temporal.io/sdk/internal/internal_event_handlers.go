@@ -636,7 +636,7 @@ func (wc *workflowEnvironmentImpl) ExecuteChildWorkflow(
 		tagWorkflowType, params.WorkflowType.Name)
 }
 
-func (wc *workflowEnvironmentImpl) ExecuteNexusOperation(params executeNexusOperationParams, callback func(*commonpb.Payload, error), startedHandler func(token string, e error)) int64 {
+func (wc *workflowEnvironmentImpl) ExecuteNexusOperation(params ExecuteNexusOperationParams, callback func(*commonpb.Payload, error), startedHandler func(token string, e error)) int64 {
 	seq := wc.GenerateSequence()
 	scheduleTaskAttr := &commandpb.ScheduleNexusOperationCommandAttributes{
 		Endpoint:               params.client.Endpoint(),

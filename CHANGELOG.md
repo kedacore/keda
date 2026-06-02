@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.20.0](#v2200)
 - [v2.19.0](#v2190)
 - [v2.18.3](#v2183)
 - [v2.18.2](#v2182)
@@ -68,13 +69,43 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **General**: Add `scalingModifiers` fallback behavior ([#7366](https://github.com/kedacore/keda/discussions/7366))
-- **General**: Introduce Elastic Forecast Scaler ([#7494](https://github.com/kedacore/keda/issues/7494))
-- **General**: Introduce new OpenSearch Scaler ([#7456](https://github.com/kedacore/keda/issues/7456))
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 #### Experimental
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Improvements
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Fixes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Deprecations
+
+You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
+
+New deprecation(s):
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Breaking Changes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Other
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+## v2.20.0
+
+### New
+
+- **General**: Add `scalingModifiers` fallback behavior ([#7366](https://github.com/kedacore/keda/discussions/7366))
+- **General**: Introduce Elastic Forecast Scaler ([#7494](https://github.com/kedacore/keda/issues/7494))
+- **General**: Introduce new OpenSearch Scaler ([#7456](https://github.com/kedacore/keda/issues/7456))
 
 ### Improvements
 
@@ -101,6 +132,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Check updated status for Fallback condition instead of ScaledObject ([#7488](https://github.com/kedacore/keda/issues/7488))
 - **General**: Fail fast in `GetMetrics` when the gRPC connection is in Shutdown state instead of waiting for context timeout ([#7251](https://github.com/kedacore/keda/issues/7251))
 - **General**: Fix int64 overflow in milli-quantity conversion for very large metric values ([#7441](https://github.com/kedacore/keda/issues/7441))
+- **General**: Fix `keda_scaler_active` not being emitted for CPU and memory triggers ([#4945](https://github.com/kedacore/keda/issues/4945))
 - **General**: Fix misleading namespace in error log when secret access is restricted ([#7739](https://github.com/kedacore/keda/issues/7739))
 - **General**: Fix race in scalers cache rebuild that caused transient scaler errors ([#7574](https://github.com/kedacore/keda/issues/7574))
 - **General**: Fix ScaledJob emitting wrong CloudEvent type (`ScaledObjectReadyType` instead of `ScaledJobReadyType`) when transitioning to ready state ([#7792](https://github.com/kedacore/keda/issues/7792))
@@ -149,23 +181,21 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
 
-New deprecation(s):
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
 ### Breaking Changes
 
-- **GCP PubSub Scaler**: The 'subscriptionSize' setting is DEPRECATED and is removed in v2.20 - Use 'mode' and 'value' instead ([#7720](https://github.com/kedacore/keda/issues/7720))
+- **GCP PubSub Scaler**: The `subscriptionSize` setting is DEPRECATED and is removed in v2.20 - Use `mode` and `value` instead ([#7720](https://github.com/kedacore/keda/issues/7720))
 - **Huawei Cloudeye Scaler**: The `minMetricValue` setting is DEPRECATED and is removed - Use `activationTargetMetricValue` instead ([#7436](https://github.com/kedacore/keda/issues/7436))
-- **IBM MQ scaler**: The `tls` setting code is removed ([#6094](https://github.com/kedacore/keda/issues/6094))
-- **InfluxDB scaler**: The 'authToken' setting from triggerMetadata is DEPRECATED and is removed in v2.20 - Use 'authToken' from resolvedEnv or authParams instead ([#7722](https://github.com/kedacore/keda/issues/7722))
+- **IBM MQ Scaler**: The `tls` setting code is removed ([#6094](https://github.com/kedacore/keda/issues/6094))
+- **InfluxDB Scaler**: The `authToken` setting from `triggerMetadata` is DEPRECATED and is removed in v2.20 - Use `authToken` from `resolvedEnv` or `authParams` instead ([#7722](https://github.com/kedacore/keda/issues/7722))
 
 ### Other
 
+- **General**: Migrate event recording RBAC from core `events` to `events.k8s.io` ([#7781](https://github.com/kedacore/keda/pull/7781))
+- **General**: Migrate metrics service gRPC response away from Kubernetes API protobuf types for Kubernetes 0.35 ([#7781](https://github.com/kedacore/keda/pull/7781))
 - **General**: Remove dead code from authentication package and drop unused `authModes` field from ArangoDB, Loki, Prometheus and PredictKube scalers ([#7726](https://github.com/kedacore/keda/pull/7726))
 - **General**: Use informer cache for ReplicaSet lookups in GetCurrentReplicas to reduce API server load ([#7466](https://github.com/kedacore/keda/pull/7466))
 - **External Scaler**: Fix race condition in `TestWaitForState` causing flaky test under `-race` detector ([#7542](https://github.com/kedacore/keda/issues/7542))
-- **GCP scaler**: Replaced credentialsFromJSON to credentialsFromJSONWithType ([#7523](https://github.com/kedacore/keda/pull/7523))
+- **GCP Scaler**: Replace `credentialsFromJSON` with `credentialsFromJSONWithType` ([#7523](https://github.com/kedacore/keda/pull/7523))
 - **Kafka Scaler**: Refactor Kafka Scaler ([#7528](https://github.com/kedacore/keda/pull/7528))
 
 ## v2.19.0

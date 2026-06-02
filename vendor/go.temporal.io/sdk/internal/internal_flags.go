@@ -53,7 +53,7 @@ var sdkFlagsAllowed = map[sdkFlag]bool{
 	SDKPriorityUpdateHandling:             true,
 	SDKFlagBlockedSelectorSignalReceive:   false,
 	SDKFlagCancelAwaitTimerOnCondition:    false,
-	SDKFlagMemoUserDCEncode:               false,
+	SDKFlagMemoUserDCEncode:               true,
 	SDKFlagWorkflowNewChannelLostMessages: false,
 }
 

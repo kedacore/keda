@@ -8,7 +8,7 @@ import (
 
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/api/proxy"
-	sdkpb "go.temporal.io/sdk/internal/temporalapi/sdk/v1"
+	sdkpb "go.temporal.io/api/sdk/v1"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"

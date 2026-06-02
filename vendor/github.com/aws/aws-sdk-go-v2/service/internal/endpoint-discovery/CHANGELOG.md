@@ -1,3 +1,7 @@
+# v1.12.0 (2026-05-22)
+
+* **Feature**: Validate discovered endpoint before overwriting request host in case cached tampered endpoints pollute request
+
 # v1.11.23 (2026-04-29)
 
 * **Dependency Update**: Update to smithy-go v1.25.1.
