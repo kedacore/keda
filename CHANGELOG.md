@@ -82,6 +82,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
+- **General**: Fix `ceilToInt64` float-to-int truncation overflow that silently wraps to `MinInt64` for values >= 2^63 ([#7796](https://github.com/kedacore/keda/issues/7796))
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Deprecations
