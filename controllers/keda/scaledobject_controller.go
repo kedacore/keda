@@ -122,6 +122,13 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 	if r.EventEmitter == nil {
 		return fmt.Errorf("ScaledObjectReconciler.EventEmitter is not initialized")
 	}
+	// WATCH_LABEL_SELECTOR scopes this operator to ScaledObjects matching the selector.
+	// Empty or unset means watch everything (backward compatible).
+	labelSelectorPredicate, err := util.WatchLabelSelectorPredicate()
+	if err != nil {
+		return err
+	}
+
 	// Start controller
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
@@ -129,14 +136,17 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 		// (in this case metadata.Generation does not change)
 		// so reconcile loop is not started on Status updates
 		For(&kedav1alpha1.ScaledObject{}, builder.WithPredicates(
-			predicate.Or(
-				kedacontrollerutil.PausedPredicate{},
-				kedacontrollerutil.PausedReplicasPredicate{},
-				kedacontrollerutil.PausedScaleInPredicate{},
-				kedacontrollerutil.PausedScaleOutPredicate{},
-				kedacontrollerutil.ScaleObjectReadyConditionPredicate{},
-				kedacontrollerutil.ForceActivationPredicate{},
-				predicate.GenerationChangedPredicate{},
+			predicate.And(
+				labelSelectorPredicate,
+				predicate.Or(
+					kedacontrollerutil.PausedPredicate{},
+					kedacontrollerutil.PausedReplicasPredicate{},
+					kedacontrollerutil.PausedScaleInPredicate{},
+					kedacontrollerutil.PausedScaleOutPredicate{},
+					kedacontrollerutil.ScaleObjectReadyConditionPredicate{},
+					kedacontrollerutil.ForceActivationPredicate{},
+					predicate.GenerationChangedPredicate{},
+				),
 			),
 		)).
 		WithEventFilter(util.IgnoreOtherNamespaces()).
