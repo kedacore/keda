@@ -103,7 +103,6 @@ func (DeploymentReachability) EnumDescriptor() ([]byte, []int) {
 //
 // Specify the drainage status for a Worker Deployment Version so users can decide whether they
 // can safely decommission the version.
-// Experimental. Worker Deployments are experimental and might significantly change in the future.
 type VersionDrainageStatus int32
 
 const (
@@ -175,8 +174,6 @@ func (VersionDrainageStatus) EnumDescriptor() ([]byte, []int) {
 //   - Whether or not Temporal Server considers this worker's version (Build ID) when dispatching
 //     tasks to it.
 //   - Whether or not the workflows processed by this worker are versioned using the worker's version.
-//
-// Experimental. Worker Deployments are experimental and might significantly change in the future.
 type WorkerVersioningMode int32
 
 const (
@@ -258,7 +255,6 @@ func (WorkerVersioningMode) EnumDescriptor() ([]byte, []int) {
 //	aip.dev/not-precedent: Call this status because it is . --)
 //
 // Specify the status of a Worker Deployment Version.
-// Experimental. Worker Deployments are experimental and might significantly change in the future.
 type WorkerDeploymentVersionStatus int32
 
 const (
@@ -281,6 +277,9 @@ const (
 	// not query closed workflows. If the user does query closed workflows for some time x after
 	// workflows are closed, they should decommission the version after it has been drained for that duration.
 	WORKER_DEPLOYMENT_VERSION_STATUS_DRAINED WorkerDeploymentVersionStatus = 5
+	// The Worker Deployment Version is created by user (via `CreateWorkerDeploymentVersion` API)
+	// but server has not seen any poller for it yet.
+	WORKER_DEPLOYMENT_VERSION_STATUS_CREATED WorkerDeploymentVersionStatus = 6
 )
 
 // Enum value maps for WorkerDeploymentVersionStatus.
@@ -292,6 +291,7 @@ var (
 		3: "WORKER_DEPLOYMENT_VERSION_STATUS_RAMPING",
 		4: "WORKER_DEPLOYMENT_VERSION_STATUS_DRAINING",
 		5: "WORKER_DEPLOYMENT_VERSION_STATUS_DRAINED",
+		6: "WORKER_DEPLOYMENT_VERSION_STATUS_CREATED",
 	}
 	WorkerDeploymentVersionStatus_value = map[string]int32{
 		"WORKER_DEPLOYMENT_VERSION_STATUS_UNSPECIFIED": 0,
@@ -300,6 +300,7 @@ var (
 		"WORKER_DEPLOYMENT_VERSION_STATUS_RAMPING":     3,
 		"WORKER_DEPLOYMENT_VERSION_STATUS_DRAINING":    4,
 		"WORKER_DEPLOYMENT_VERSION_STATUS_DRAINED":     5,
+		"WORKER_DEPLOYMENT_VERSION_STATUS_CREATED":     6,
 	}
 )
 
@@ -323,6 +324,8 @@ func (x WorkerDeploymentVersionStatus) String() string {
 		return "Draining"
 	case WORKER_DEPLOYMENT_VERSION_STATUS_DRAINED:
 		return "Drained"
+	case WORKER_DEPLOYMENT_VERSION_STATUS_CREATED:
+		return "Created"
 	default:
 		return strconv.Itoa(int(x))
 	}
@@ -363,14 +366,15 @@ const file_temporal_api_enums_v1_deployment_proto_rawDesc = "" +
 	"\x14WorkerVersioningMode\x12&\n" +
 	"\"WORKER_VERSIONING_MODE_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"WORKER_VERSIONING_MODE_UNVERSIONED\x10\x01\x12$\n" +
-	" WORKER_VERSIONING_MODE_VERSIONED\x10\x02*\xb9\x02\n" +
+	" WORKER_VERSIONING_MODE_VERSIONED\x10\x02*\xe7\x02\n" +
 	"\x1dWorkerDeploymentVersionStatus\x120\n" +
 	",WORKER_DEPLOYMENT_VERSION_STATUS_UNSPECIFIED\x10\x00\x12-\n" +
 	")WORKER_DEPLOYMENT_VERSION_STATUS_INACTIVE\x10\x01\x12,\n" +
 	"(WORKER_DEPLOYMENT_VERSION_STATUS_CURRENT\x10\x02\x12,\n" +
 	"(WORKER_DEPLOYMENT_VERSION_STATUS_RAMPING\x10\x03\x12-\n" +
 	")WORKER_DEPLOYMENT_VERSION_STATUS_DRAINING\x10\x04\x12,\n" +
-	"(WORKER_DEPLOYMENT_VERSION_STATUS_DRAINED\x10\x05B\x87\x01\n" +
+	"(WORKER_DEPLOYMENT_VERSION_STATUS_DRAINED\x10\x05\x12,\n" +
+	"(WORKER_DEPLOYMENT_VERSION_STATUS_CREATED\x10\x06B\x87\x01\n" +
 	"\x18io.temporal.api.enums.v1B\x0fDeploymentProtoP\x01Z!go.temporal.io/api/enums/v1;enums\xaa\x02\x17Temporalio.Api.Enums.V1\xea\x02\x1aTemporalio::Api::Enums::V1b\x06proto3"
 
 var (

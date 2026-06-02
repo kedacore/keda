@@ -18,31 +18,28 @@ package v1alpha1
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"slices"
 
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 var cloudeventsourcelog = logf.Log.WithName("cloudeventsource-validation-webhook")
 
 func (ces *CloudEventSource) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
+	return ctrl.NewWebhookManagedBy(mgr, ces).
 		WithValidator(&CloudEventSourceCustomValidator{}).
-		For(ces).
 		Complete()
 }
 
 func (cces *ClusterCloudEventSource) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
+	return ctrl.NewWebhookManagedBy(mgr, cces).
 		WithValidator(&ClusterCloudEventSourceCustomValidator{}).
-		For(cces).
 		Complete()
 }
 
@@ -51,50 +48,44 @@ func (cces *ClusterCloudEventSource) SetupWebhookWithManager(mgr ctrl.Manager) e
 // CloudEventSourceCustomValidator is a custom validator for CloudEventSource objects
 type CloudEventSourceCustomValidator struct{}
 
-func (cescv CloudEventSourceCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+func (cescv CloudEventSourceCustomValidator) ValidateCreate(ctx context.Context, ces *CloudEventSource) (warnings admission.Warnings, err error) {
 	request, err := admission.RequestFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	ces := obj.(*CloudEventSource)
 	return ces.ValidateCreate(request.DryRun)
 }
 
-func (cescv CloudEventSourceCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (warnings admission.Warnings, err error) {
+func (cescv CloudEventSourceCustomValidator) ValidateUpdate(ctx context.Context, old, ces *CloudEventSource) (warnings admission.Warnings, err error) {
 	request, err := admission.RequestFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	ces := newObj.(*CloudEventSource)
-	old := oldObj.(*CloudEventSource)
 	return ces.ValidateUpdate(old, request.DryRun)
 }
 
-func (cescv CloudEventSourceCustomValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+func (cescv CloudEventSourceCustomValidator) ValidateDelete(ctx context.Context, ces *CloudEventSource) (warnings admission.Warnings, err error) {
 	request, err := admission.RequestFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	ces := obj.(*CloudEventSource)
 	return ces.ValidateDelete(request.DryRun)
 }
 
-var _ webhook.CustomValidator = &CloudEventSourceCustomValidator{}
+var _ admission.Validator[*CloudEventSource] = &CloudEventSourceCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (ces *CloudEventSource) ValidateCreate(_ *bool) (admission.Warnings, error) {
-	val, _ := json.MarshalIndent(ces, "", "  ")
-	cloudeventsourcelog.Info(fmt.Sprintf("validating cloudeventsource creation for %s", string(val)))
+	cloudeventsourcelog.Info("validating cloudeventsource creation", "namespace", ces.Namespace, "name", ces.Name, "cloudeventsource", ces)
 	return validateSpec(&ces.Spec)
 }
 
 func (ces *CloudEventSource) ValidateUpdate(old runtime.Object, _ *bool) (admission.Warnings, error) {
-	val, _ := json.MarshalIndent(ces, "", "  ")
-	cloudeventsourcelog.V(1).Info(fmt.Sprintf("validating cloudeventsource update for %s", string(val)))
+	cloudeventsourcelog.V(1).Info("validating cloudeventsource update", "namespace", ces.Namespace, "name", ces.Name, "cloudeventsource", ces)
 
 	oldCes := old.(*CloudEventSource)
 	if isCloudEventSourceRemovingFinalizer(ces.ObjectMeta, oldCes.ObjectMeta, ces.Spec, oldCes.Spec) {
-		cloudeventsourcelog.V(1).Info("finalizer removal, skipping validation")
+		cloudeventsourcelog.V(1).Info("finalizer removal, skipping validation", "namespace", ces.Namespace, "name", ces.Name)
 		return nil, nil
 	}
 	return validateSpec(&ces.Spec)
@@ -109,50 +100,44 @@ func (ces *CloudEventSource) ValidateDelete(_ *bool) (admission.Warnings, error)
 // ClusterCloudEventSourceCustomValidator is a custom validator for ClusterCloudEventSource objects
 type ClusterCloudEventSourceCustomValidator struct{}
 
-func (ccescv ClusterCloudEventSourceCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+func (ccescv ClusterCloudEventSourceCustomValidator) ValidateCreate(ctx context.Context, cces *ClusterCloudEventSource) (warnings admission.Warnings, err error) {
 	request, err := admission.RequestFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	cces := obj.(*ClusterCloudEventSource)
 	return cces.ValidateCreate(request.DryRun)
 }
 
-func (ccescv ClusterCloudEventSourceCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (warnings admission.Warnings, err error) {
+func (ccescv ClusterCloudEventSourceCustomValidator) ValidateUpdate(ctx context.Context, old, cces *ClusterCloudEventSource) (warnings admission.Warnings, err error) {
 	request, err := admission.RequestFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	cces := newObj.(*ClusterCloudEventSource)
-	old := oldObj.(*ClusterCloudEventSource)
 	return cces.ValidateUpdate(old, request.DryRun)
 }
 
-func (ccescv ClusterCloudEventSourceCustomValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+func (ccescv ClusterCloudEventSourceCustomValidator) ValidateDelete(ctx context.Context, cces *ClusterCloudEventSource) (warnings admission.Warnings, err error) {
 	request, err := admission.RequestFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	cces := obj.(*ClusterCloudEventSource)
 	return cces.ValidateDelete(request.DryRun)
 }
 
-var _ webhook.CustomValidator = &ClusterCloudEventSourceCustomValidator{}
+var _ admission.Validator[*ClusterCloudEventSource] = &ClusterCloudEventSourceCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (cces *ClusterCloudEventSource) ValidateCreate(_ *bool) (admission.Warnings, error) {
-	val, _ := json.MarshalIndent(cces, "", "  ")
-	cloudeventsourcelog.Info(fmt.Sprintf("validating clustercloudeventsource creation for %s", string(val)))
+	cloudeventsourcelog.Info("validating clustercloudeventsource creation", "name", cces.Name, "clustercloudeventsource", cces)
 	return validateSpec(&cces.Spec)
 }
 
 func (cces *ClusterCloudEventSource) ValidateUpdate(old runtime.Object, _ *bool) (admission.Warnings, error) {
-	val, _ := json.MarshalIndent(cces, "", "  ")
-	cloudeventsourcelog.V(1).Info(fmt.Sprintf("validating clustercloudeventsource update for %s", string(val)))
+	cloudeventsourcelog.V(1).Info("validating clustercloudeventsource update", "name", cces.Name, "clustercloudeventsource", cces)
 
 	oldCes := old.(*ClusterCloudEventSource)
 	if isCloudEventSourceRemovingFinalizer(cces.ObjectMeta, oldCes.ObjectMeta, cces.Spec, oldCes.Spec) {
-		cloudeventsourcelog.V(1).Info("finalizer removal, skipping validation")
+		cloudeventsourcelog.V(1).Info("finalizer removal, skipping validation", "name", cces.Name)
 		return nil, nil
 	}
 	return validateSpec(&cces.Spec)
@@ -163,12 +148,7 @@ func (cces *ClusterCloudEventSource) ValidateDelete(_ *bool) (admission.Warnings
 }
 
 func isCloudEventSourceRemovingFinalizer(om metav1.ObjectMeta, oldOm metav1.ObjectMeta, spec CloudEventSourceSpec, oldSpec CloudEventSourceSpec) bool {
-	cesSpec, _ := json.MarshalIndent(spec, "", "  ")
-	oldCesSpec, _ := json.MarshalIndent(oldSpec, "", "  ")
-	cesSpecString := string(cesSpec)
-	oldCesSpecString := string(oldCesSpec)
-
-	return len(om.Finalizers) == 0 && len(oldOm.Finalizers) == 1 && cesSpecString == oldCesSpecString
+	return len(om.Finalizers) == 0 && len(oldOm.Finalizers) == 1 && equality.Semantic.DeepEqual(spec, oldSpec)
 }
 
 func validateSpec(spec *CloudEventSourceSpec) (admission.Warnings, error) {

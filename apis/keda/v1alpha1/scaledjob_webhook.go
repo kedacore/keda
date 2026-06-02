@@ -18,23 +18,20 @@ package v1alpha1
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 var scaledjoblog = logf.Log.WithName("scaledjob-validation-webhook")
 
 func (s *ScaledJob) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
+	return ctrl.NewWebhookManagedBy(mgr, s).
 		WithValidator(&ScaledJobCustomValidator{}).
-		For(s).
 		Complete()
 }
 
@@ -43,50 +40,44 @@ func (s *ScaledJob) SetupWebhookWithManager(mgr ctrl.Manager) error {
 // ScaledJobCustomValidator is a custom validator for ScaledJob objects
 type ScaledJobCustomValidator struct{}
 
-func (sjcv ScaledJobCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+func (sjcv ScaledJobCustomValidator) ValidateCreate(ctx context.Context, sj *ScaledJob) (warnings admission.Warnings, err error) {
 	request, err := admission.RequestFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	sj := obj.(*ScaledJob)
 	return sj.ValidateCreate(request.DryRun)
 }
 
-func (sjcv ScaledJobCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (warnings admission.Warnings, err error) {
+func (sjcv ScaledJobCustomValidator) ValidateUpdate(ctx context.Context, old, sj *ScaledJob) (warnings admission.Warnings, err error) {
 	request, err := admission.RequestFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	sj := newObj.(*ScaledJob)
-	old := oldObj.(*ScaledJob)
 	return sj.ValidateUpdate(old, request.DryRun)
 }
 
-func (sjcv ScaledJobCustomValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+func (sjcv ScaledJobCustomValidator) ValidateDelete(ctx context.Context, sj *ScaledJob) (warnings admission.Warnings, err error) {
 	request, err := admission.RequestFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	sj := obj.(*ScaledJob)
 	return sj.ValidateDelete(request.DryRun)
 }
 
-var _ webhook.CustomValidator = &ScaledJobCustomValidator{}
+var _ admission.Validator[*ScaledJob] = &ScaledJobCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (s *ScaledJob) ValidateCreate(dryRun *bool) (admission.Warnings, error) {
-	val, _ := json.MarshalIndent(s, "", "  ")
-	scaledjoblog.Info(fmt.Sprintf("validating scaledjob creation for %s", string(val)))
+	scaledjoblog.Info("validating scaledjob creation", "namespace", s.Namespace, "name", s.Name, "scaledjob", s)
 	return nil, verifyTriggers(s, "create", *dryRun)
 }
 
 func (s *ScaledJob) ValidateUpdate(old runtime.Object, dryRun *bool) (admission.Warnings, error) {
-	val, _ := json.MarshalIndent(s, "", "  ")
-	scaledobjectlog.V(1).Info(fmt.Sprintf("validating scaledjob update for %s", string(val)))
+	scaledjoblog.V(1).Info("validating scaledjob update", "namespace", s.Namespace, "name", s.Name, "scaledjob", s)
 
-	oldTa := old.(*ScaledJob)
-	if isScaledJobRemovingFinalizer(s.ObjectMeta, oldTa.ObjectMeta, s.Spec, oldTa.Spec) {
-		scaledjoblog.V(1).Info("finalizer removal, skipping validation")
+	oldSj := old.(*ScaledJob)
+	if isScaledJobRemovingFinalizer(s.ObjectMeta, oldSj.ObjectMeta, s.Spec, oldSj.Spec) {
+		scaledjoblog.V(1).Info("finalizer removal, skipping validation", "namespace", s.Namespace, "name", s.Name)
 		return nil, nil
 	}
 	return nil, verifyTriggers(s, "update", *dryRun)
@@ -97,10 +88,5 @@ func (s *ScaledJob) ValidateDelete(_ *bool) (admission.Warnings, error) {
 }
 
 func isScaledJobRemovingFinalizer(om metav1.ObjectMeta, oldOm metav1.ObjectMeta, spec ScaledJobSpec, oldSpec ScaledJobSpec) bool {
-	taSpec, _ := json.MarshalIndent(spec, "", "  ")
-	oldTaSpec, _ := json.MarshalIndent(oldSpec, "", "  ")
-	taSpecString := string(taSpec)
-	oldTaSpecString := string(oldTaSpec)
-
-	return len(om.Finalizers) == 0 && len(oldOm.Finalizers) == 1 && taSpecString == oldTaSpecString
+	return len(om.Finalizers) == 0 && len(oldOm.Finalizers) == 1 && equality.Semantic.DeepEqual(spec, oldSpec)
 }

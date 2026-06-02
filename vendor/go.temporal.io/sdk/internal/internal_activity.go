@@ -51,6 +51,10 @@ type (
 		VersioningIntent       VersioningIntent
 		Summary                string
 		Priority               *commonpb.Priority
+		// ScheduleID must be generated before serialization to give
+		// codecs/converters access to ActivityID, while maintaining
+		// backwards compatibility with how ActivityID is generated.
+		ScheduleID int64
 	}
 
 	// ExecuteLocalActivityOptions options for executing a local activity
@@ -64,23 +68,25 @@ type (
 	// ExecuteActivityParams parameters for executing an activity
 	ExecuteActivityParams struct {
 		ExecuteActivityOptions
-		ActivityType  ActivityType
-		Input         *commonpb.Payloads
-		DataConverter converter.DataConverter
-		Header        *commonpb.Header
+		ActivityType     ActivityType
+		Input            *commonpb.Payloads
+		DataConverter    converter.DataConverter    // context-aware DC from ExecuteActivity
+		FailureConverter converter.FailureConverter // context-aware FC from ExecuteActivity
+		Header           *commonpb.Header
 	}
 
 	// ExecuteLocalActivityParams parameters for executing a local activity
 	ExecuteLocalActivityParams struct {
 		ExecuteLocalActivityOptions
-		ActivityFn    interface{} // local activity function pointer
-		ActivityType  string      // local activity type
-		InputArgs     []interface{}
-		WorkflowInfo  *WorkflowInfo
-		DataConverter converter.DataConverter
-		Attempt       int32
-		ScheduledTime time.Time
-		Header        *commonpb.Header
+		ActivityFn       interface{} // local activity function pointer
+		ActivityType     string      // local activity type
+		InputArgs        []interface{}
+		WorkflowInfo     *WorkflowInfo
+		DataConverter    converter.DataConverter    // context-aware DC from ExecuteLocalActivity
+		FailureConverter converter.FailureConverter // context-aware FC from ExecuteLocalActivity
+		Attempt          int32
+		ScheduledTime    time.Time
+		Header           *commonpb.Header
 	}
 
 	// AsyncActivityClient for requesting activity execution

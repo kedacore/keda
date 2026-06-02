@@ -4,9 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/google/uuid"
 	"sync/atomic"
 	"time"
+
+	"github.com/google/uuid"
 
 	commonpb "go.temporal.io/api/common/v1"
 	enumspb "go.temporal.io/api/enums/v1"
@@ -17,6 +18,7 @@ import (
 
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/internal/common/metrics"
+	"go.temporal.io/sdk/internal/extstore"
 	ilog "go.temporal.io/sdk/internal/log"
 	"go.temporal.io/sdk/log"
 )
@@ -178,7 +180,17 @@ type (
 		//  To fail the activity with an error.
 		//      CompleteActivity(token, nil, temporal.NewApplicationError("reason", details)
 		// The activity can fail with below errors ApplicationError, TimeoutError, CanceledError.
+		//
+		// If using a context-aware converter (DataConverterWithSerializationContext or
+		// FailureConverterWithSerializationContext), consider using
+		// CompleteActivityWithOptions to provide full activity metadata
+		// (ActivityType, WorkflowType, TaskQueue) to your codec.
 		CompleteActivity(ctx context.Context, taskToken []byte, result interface{}, err error) error
+
+		// CompleteActivityWithOptions reports activity completed with full context options.
+		// Similar to CompleteActivity but accepts a struct with optional ActivitySerializationContext
+		// fields (ActivityType, WorkflowType, TaskQueue, etc.) for custom codec support.
+		CompleteActivityWithOptions(ctx context.Context, opts CompleteActivityOptions) error
 
 		// CompleteActivityByID reports activity completed.
 		// Similar to CompleteActivity, but may save the user from keeping taskToken info.
@@ -196,7 +208,17 @@ type (
 		//  - ApplicationError
 		//  - TimeoutError
 		//  - CanceledError
+		//
+		// If using a context-aware converter (DataConverterWithSerializationContext or
+		// FailureConverterWithSerializationContext), consider using
+		// CompleteActivityByIDWithOptions to provide full activity metadata
+		// (ActivityType, WorkflowType, TaskQueue) to your codec.
 		CompleteActivityByID(ctx context.Context, namespace, workflowID, runID, activityID string, result interface{}, err error) error
+
+		// CompleteActivityByIDWithOptions reports activity completed with full context options.
+		// Similar to CompleteActivityByID but accepts a struct with optional ActivitySerializationContext
+		// fields (ActivityType, WorkflowType, TaskQueue) for custom codec support.
+		CompleteActivityByIDWithOptions(ctx context.Context, opts CompleteActivityByIDOptions) error
 
 		// CompleteActivityByActivityID reports activity completed.
 		// Similar to CompleteActivity, but may save the user from keeping taskToken info.
@@ -212,7 +234,17 @@ type (
 		//  - ApplicationError
 		//  - TimeoutError
 		//  - CanceledError
+		//
+		// If using a context-aware converter (DataConverterWithSerializationContext or
+		// FailureConverterWithSerializationContext), consider using
+		// CompleteActivityByActivityIDWithOptions to provide full activity metadata
+		// (ActivityType, WorkflowType, TaskQueue) to your codec.
 		CompleteActivityByActivityID(ctx context.Context, namespace, activityID, activityRunID string, result interface{}, err error) error
+
+		// CompleteActivityByActivityIDWithOptions reports standalone activity completed with full context options.
+		// Similar to CompleteActivityByActivityID but accepts a struct with optional
+		// ActivitySerializationContext fields for custom codec support.
+		CompleteActivityByActivityIDWithOptions(ctx context.Context, opts CompleteActivityByActivityIDOptions) error
 
 		// RecordActivityHeartbeat records heartbeat for an activity.
 		// details - is the progress you want to record along with heart beat for this activity.
@@ -220,7 +252,17 @@ type (
 		//  - serviceerror.NotFound
 		//  - serviceerror.Internal
 		//  - serviceerror.Unavailable
+		//
+		// If using a context-aware converter (DataConverterWithSerializationContext or
+		// FailureConverterWithSerializationContext), consider using
+		// RecordActivityHeartbeatWithOptions to provide full activity metadata
+		// (ActivityType, WorkflowType, TaskQueue) to your codec.
 		RecordActivityHeartbeat(ctx context.Context, taskToken []byte, details ...interface{}) error
+
+		// RecordActivityHeartbeatWithOptions records heartbeat with full context options.
+		// Similar to RecordActivityHeartbeat but accepts a struct with optional
+		// ActivitySerializationContext fields for custom codec support.
+		RecordActivityHeartbeatWithOptions(ctx context.Context, opts RecordActivityHeartbeatOptions) error
 
 		// RecordActivityHeartbeatByID records heartbeat for an activity.
 		// details - is the progress you want to record along with heart beat for this activity.
@@ -228,7 +270,17 @@ type (
 		//  - serviceerror.NotFound
 		//  - serviceerror.Internal
 		//  - serviceerror.Unavailable
+		//
+		// If using a context-aware converter (DataConverterWithSerializationContext or
+		// FailureConverterWithSerializationContext), consider using
+		// RecordActivityHeartbeatByIDWithOptions to provide full activity metadata
+		// (ActivityType, WorkflowType, TaskQueue) to your codec.
 		RecordActivityHeartbeatByID(ctx context.Context, namespace, workflowID, runID, activityID string, details ...interface{}) error
+
+		// RecordActivityHeartbeatByIDWithOptions records heartbeat with full context options.
+		// Similar to RecordActivityHeartbeatByID but accepts a struct with optional
+		// ActivitySerializationContext fields for custom codec support.
+		RecordActivityHeartbeatByIDWithOptions(ctx context.Context, opts RecordActivityHeartbeatByIDOptions) error
 
 		// ListClosedWorkflow gets closed workflow executions based on request filters
 		// The errors it can return:
@@ -482,6 +534,30 @@ type (
 		// NOTE: Experimental
 		CountActivities(ctx context.Context, options ClientCountActivitiesOptions) (*ClientCountActivitiesResult, error)
 
+		// NewNexusClient creates a new Nexus client bound to the given endpoint and service.
+		// This is for standalone Nexus operations outside of workflow context.
+		// For Nexus operations within workflows, use workflow.NewNexusClient instead.
+		//
+		// NOTE: Experimental
+		NewNexusClient(options ClientNexusClientOptions) (ClientNexusClient, error)
+
+		// GetNexusOperationHandle creates a handle to the referenced Nexus operation.
+		// No network call is made. The handle can be used to poll, describe, cancel, or terminate.
+		//
+		// NOTE: Experimental
+		GetNexusOperationHandle(options ClientGetNexusOperationHandleOptions) ClientNexusOperationHandle
+
+		// ListNexusOperations lists Nexus operation executions based on query.
+		// Currently, all errors are returned in the iterator and not the base level error.
+		//
+		// NOTE: Experimental
+		ListNexusOperations(ctx context.Context, options ClientListNexusOperationsOptions) (ClientListNexusOperationsResult, error)
+
+		// CountNexusOperations counts Nexus operation executions based on query.
+		//
+		// NOTE: Experimental
+		CountNexusOperations(ctx context.Context, options ClientCountNexusOperationsOptions) (*ClientCountNexusOperationsResult, error)
+
 		// WorkflowService provides access to the underlying gRPC service. This should only be used for advanced use cases
 		// that cannot be accomplished via other Client methods. Unlike calls to other Client methods, calls directly to the
 		// service are not configured with internal semantics such as automatic retries.
@@ -503,6 +579,255 @@ type (
 
 		// Close client and clean up underlying resources.
 		Close()
+	}
+
+	// CompleteActivityByIDOptions provides options for CompleteActivityByIDWithOptions.
+	//
+	// ActivityType, WorkflowType, and TaskQueue values are not validated by the SDK.
+	// Providing incorrect values may cause serialization/deserialization mismatches
+	// if your codec uses them, for example, as encryption keys or signature input.
+	//
+	// Exposed as: [go.temporal.io/sdk/client.CompleteActivityByIDOptions]
+	CompleteActivityByIDOptions struct {
+		// Namespace is the Temporal Namespace containing the Workflow Execution.
+		// This is the request Namespace used to locate the Activity, matching the
+		// namespace parameter on CompleteActivityByID.
+		//
+		// This field is required.
+		Namespace string
+
+		// WorkflowID is the ID of the Workflow Execution that scheduled the Activity.
+		//
+		// This field is required.
+		WorkflowID string
+
+		// RunID is the Run ID of the Workflow Execution that scheduled the Activity.
+		// Leave empty to target the latest run for WorkflowID.
+		RunID string
+
+		// ActivityID is the ID of the Activity to complete.
+		//
+		// This field is required.
+		ActivityID string
+
+		// Result completes the Activity as successful with this value.
+		// If both Result and Err are set, Err takes precedence.
+		Result interface{}
+
+		// Err completes the Activity as failed with this error.
+		// If both Result and Err are set, Err takes precedence.
+		Err error
+
+		// Optional fields for ActivitySerializationContext.
+		// When set, these are passed to DataConverterWithSerializationContext and
+		// FailureConverterWithSerializationContext to provide activity metadata
+		// for encoding. Useful when the caller has access to this metadata.
+
+		// ActivityType is the optional Activity Type to include in the Activity
+		// serialization context when encoding Result or Err.
+		ActivityType string
+
+		// WorkflowType is the optional Workflow Type to include in the Activity
+		// serialization context when encoding Result or Err.
+		WorkflowType string
+
+		// TaskQueue is the optional Task Queue to include in the Activity
+		// serialization context when encoding Result or Err.
+		TaskQueue string
+	}
+
+	// RecordActivityHeartbeatByIDOptions provides options for RecordActivityHeartbeatByIDWithOptions.
+	//
+	// ActivityType, WorkflowType, and TaskQueue values are not validated by the SDK.
+	// Providing incorrect values may cause serialization/deserialization mismatches
+	// if your codec uses them, for example, as encryption keys or signature input.
+	//
+	// Exposed as: [go.temporal.io/sdk/client.RecordActivityHeartbeatByIDOptions]
+	RecordActivityHeartbeatByIDOptions struct {
+		// Namespace is the Temporal Namespace containing the Workflow Execution.
+		// If empty, the Client's Namespace is used.
+		// This is the request Namespace used to locate the Activity, matching the
+		// namespace parameter on RecordActivityHeartbeatByID.
+		Namespace string
+
+		// WorkflowID is the ID of the Workflow Execution that scheduled the Activity.
+		//
+		// This field is required.
+		WorkflowID string
+
+		// RunID is the Run ID of the Workflow Execution that scheduled the Activity.
+		// Leave empty to target the latest run for WorkflowID.
+		RunID string
+
+		// ActivityID is the ID of the Activity to heartbeat.
+		//
+		// This field is required.
+		ActivityID string
+
+		// Details are the Activity heartbeat details to report.
+		// These values are encoded with the Client's DataConverter and may be
+		// stored externally if ExternalStorage is configured.
+		Details []interface{}
+
+		// Optional fields for ActivitySerializationContext.
+
+		// ActivityType is the optional Activity Type to include in the Activity
+		// serialization context when encoding Details.
+		ActivityType string
+
+		// WorkflowType is the optional Workflow Type to include in the Activity
+		// serialization context when encoding Details.
+		WorkflowType string
+
+		// TaskQueue is the optional Task Queue to include in the Activity
+		// serialization context when encoding Details.
+		TaskQueue string
+	}
+
+	// CompleteActivityOptions provides options for CompleteActivityWithOptions.
+	//
+	// Serialization context values are not validated by the SDK. Providing
+	// incorrect values may cause serialization/deserialization mismatches if your
+	// codec uses them, for example, as encryption keys or signature input.
+	//
+	// Exposed as: [go.temporal.io/sdk/client.CompleteActivityOptions]
+	CompleteActivityOptions struct {
+		// TaskToken identifies the Activity Task to complete.
+		//
+		// This field is required.
+		TaskToken []byte
+
+		// Result completes the Activity as successful with this value.
+		// If both Result and Err are set, Err takes precedence.
+		Result interface{}
+
+		// Err completes the Activity as failed or canceled with this error.
+		// If both Result and Err are set, Err takes precedence.
+		Err error
+
+		// Optional fields for ActivitySerializationContext.
+		// When set, these are passed to DataConverterWithSerializationContext and
+		// FailureConverterWithSerializationContext to provide activity metadata
+		// for encoding.
+
+		// Namespace is the optional Temporal Namespace to include in serialization
+		// and external storage context. If empty, the Client's Namespace is used
+		// for this context.
+		// This field does not change the Namespace used to complete the Activity,
+		// and should not differ from the Client's Namespace.
+		Namespace string
+
+		// WorkflowID is the optional Workflow ID to include in the Activity
+		// serialization context.
+		WorkflowID string
+
+		// ActivityType is the optional Activity Type to include in the Activity
+		// serialization context when encoding Result or Err.
+		ActivityType string
+
+		// WorkflowType is the optional Workflow Type to include in the Activity
+		// serialization context when encoding Result or Err.
+		WorkflowType string
+
+		// TaskQueue is the optional Task Queue to include in the Activity
+		// serialization context when encoding Result or Err.
+		TaskQueue string
+	}
+
+	// CompleteActivityByActivityIDOptions provides options for CompleteActivityByActivityIDWithOptions.
+	//
+	// WorkflowID, ActivityType, WorkflowType, and TaskQueue values are not validated
+	// by the SDK. Providing incorrect values may cause serialization/deserialization
+	// mismatches if your codec uses them, for example, as encryption keys or
+	// signature input.
+	//
+	// Exposed as: [go.temporal.io/sdk/client.CompleteActivityByActivityIDOptions]
+	CompleteActivityByActivityIDOptions struct {
+		// Namespace is the Temporal Namespace containing the Activity.
+		// This is the request Namespace used to locate the standalone Activity,
+		// matching the namespace parameter on CompleteActivityByActivityID.
+		//
+		// This field is required.
+		Namespace string
+
+		// ActivityID is the ID of the Activity to complete.
+		//
+		// This field is required.
+		ActivityID string
+
+		// ActivityRunID is the Run ID of the Activity to complete.
+		// Leave empty to target the latest run for ActivityID.
+		ActivityRunID string
+
+		// Result completes the Activity as successful with this value.
+		// If both Result and Err are set, Err takes precedence.
+		Result interface{}
+
+		// Err completes the Activity as failed or canceled with this error.
+		// If both Result and Err are set, Err takes precedence.
+		Err error
+
+		// Optional fields for ActivitySerializationContext.
+
+		// WorkflowID is the optional Workflow ID to include in the Activity
+		// serialization context when encoding Result or Err.
+		WorkflowID string
+
+		// ActivityType is the optional Activity Type to include in the Activity
+		// serialization context when encoding Result or Err.
+		ActivityType string
+
+		// WorkflowType is the optional Workflow Type to include in the Activity
+		// serialization context when encoding Result or Err.
+		WorkflowType string
+
+		// TaskQueue is the optional Task Queue to include in the Activity
+		// serialization context when encoding Result or Err.
+		TaskQueue string
+	}
+
+	// RecordActivityHeartbeatOptions provides options for RecordActivityHeartbeatWithOptions.
+	//
+	// Serialization context values are not validated by the SDK. Providing
+	// incorrect values may cause serialization/deserialization mismatches if your
+	// codec uses them, for example, as encryption keys or signature input.
+	//
+	// Exposed as: [go.temporal.io/sdk/client.RecordActivityHeartbeatOptions]
+	RecordActivityHeartbeatOptions struct {
+		// TaskToken identifies the Activity Task to heartbeat.
+		//
+		// This field is required.
+		TaskToken []byte
+
+		// Details are the Activity heartbeat details to report.
+		// These values are encoded with the Client's DataConverter and may be
+		// stored externally if ExternalStorage is configured.
+		Details []interface{}
+
+		// Optional fields for ActivitySerializationContext.
+
+		// Namespace is the optional Temporal Namespace to include in serialization
+		// and external storage context. If empty, the Client's Namespace is used
+		// for this context.
+		// This field does not change the Namespace used to heartbeat the Activity,
+		// and should not differ from the Client's Namespace.
+		Namespace string
+
+		// WorkflowID is the optional Workflow ID to include in the Activity
+		// serialization context when encoding Details.
+		WorkflowID string
+
+		// ActivityType is the optional Activity Type to include in the Activity
+		// serialization context when encoding Details.
+		ActivityType string
+
+		// WorkflowType is the optional Workflow Type to include in the Activity
+		// serialization context when encoding Details.
+		WorkflowType string
+
+		// TaskQueue is the optional Task Queue to include in the Activity
+		// serialization context when encoding Details.
+		TaskQueue string
 	}
 
 	// ClientOptions are optional parameters for Client creation.
@@ -612,6 +937,21 @@ type (
 		//
 		// NOTE: Experimental
 		WorkerHeartbeatInterval time.Duration
+
+		// ExternalStorage configures external payload storage for this client.
+		// When set, payloads that exceed ExternalStorage.PayloadSizeThreshold
+		// are offloaded to an external store (e.g. S3, GCS) by the configured
+		// driver(s), and a storage reference is substituted into the history event.
+		// References are resolved back to the original payloads transparently before
+		// they reach the data converter or application code.
+		//
+		// NOTE: Experimental
+		ExternalStorage converter.ExternalStorage
+
+		// Configuration for when payload sizes exceed limits.
+		//
+		// NOTE: Experimental
+		PayloadLimits PayloadLimitOptions
 	}
 
 	// HeadersProvider returns a map of gRPC headers that should be used on every request.
@@ -1084,7 +1424,6 @@ func newClient(ctx context.Context, options ClientOptions, existing Client) (Cli
 
 	if options.Logger == nil {
 		options.Logger = ilog.NewDefaultLogger()
-		options.Logger.Info("No logger configured for temporal client. Created default one.")
 	}
 
 	// Validate mutually exclusive TLS options
@@ -1235,6 +1574,18 @@ func NewServiceClient(workflowServiceClient workflowservice.WorkflowServiceClien
 		heartbeatInterval = options.WorkerHeartbeatInterval
 	}
 
+	storageParams, err := extstore.ExternalStorageToParams(options.ExternalStorage)
+	if err != nil {
+		panic(fmt.Sprintf("invalid ExternalStorage options: %v", err))
+	}
+
+	storageDriverTypes := collectStorageDriverTypes(options.ExternalStorage.Drivers)
+
+	payloadWarningLimits, err := payloadLimitOptionsToLimits(options.PayloadLimits)
+	if err != nil {
+		panic(fmt.Sprintf("invalid PayloadLimits options: %v", err))
+	}
+
 	client := &WorkflowClient{
 		workflowService:          workflowServiceClient,
 		conn:                     conn,
@@ -1256,6 +1607,9 @@ func NewServiceClient(workflowServiceClient workflowservice.WorkflowServiceClien
 		getSystemInfoTimeout:    options.ConnectionOptions.GetSystemInfoTimeout,
 		workerHeartbeatInterval: heartbeatInterval,
 		workerGroupingKey:       uuid.NewString(),
+		storageParams:           storageParams,
+		storageDriverTypes:      storageDriverTypes,
+		payloadWarningLimits:    payloadWarningLimits,
 	}
 
 	if heartbeatInterval > 0 {
@@ -1263,7 +1617,11 @@ func NewServiceClient(workflowServiceClient workflowservice.WorkflowServiceClien
 	}
 
 	// Create outbound interceptor by wrapping backwards through chain
-	client.interceptor = &workflowClientInterceptor{client: client}
+	client.interceptor = &workflowClientInterceptor{
+		client:                 client,
+		inboundPayloadVisitor:  extstore.NewExternalRetrievalVisitor(storageParams),
+		outboundPayloadVisitor: client.newOutboundPayloadVisitor(),
+	}
 	for i := len(options.Interceptors) - 1; i >= 0; i-- {
 		client.interceptor = options.Interceptors[i].InterceptClient(client.interceptor)
 	}
@@ -1479,4 +1837,21 @@ func SetResponseInfoOnStartWorkflowOptions(opts *StartWorkflowOptions) *startWor
 		opts.responseInfo = &startWorkflowResponseInfo{}
 	}
 	return opts.responseInfo
+}
+
+// collectStorageDriverTypes returns deduplicated driver types from the given drivers.
+func collectStorageDriverTypes(drivers []converter.StorageDriver) []string {
+	if len(drivers) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(drivers))
+	result := make([]string, 0, len(drivers))
+	for _, d := range drivers {
+		t := d.Type()
+		if _, found := seen[t]; !found {
+			seen[t] = struct{}{}
+			result = append(result, t)
+		}
+	}
+	return result
 }

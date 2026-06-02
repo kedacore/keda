@@ -92,7 +92,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 		// nosemgrep: invalid-usage-of-modified-variable
 		scaler, config, err := factory()
 		if err != nil {
-			h.recorder.Event(withTriggers, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
+			h.recorder.Eventf(withTriggers, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, eventreason.KEDAScalerFailed, "%s", err.Error())
 			logger.Error(err, "error resolving auth params", "triggerIndex", triggerIndex)
 			if scaler != nil {
 				if closeErr := scaler.Close(ctx); closeErr != nil {
@@ -107,7 +107,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 			return nil, err
 		}
 		msg := fmt.Sprintf(message.ScalerIsBuiltMsg, trigger.Type)
-		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.KEDAScalersStarted, msg)
+		h.recorder.Eventf(withTriggers, nil, corev1.EventTypeNormal, eventreason.KEDAScalersStarted, eventreason.KEDAScalersStarted, "%s", msg)
 
 		result = append(result, cache.ScalerBuilder{
 			Scaler:       scaler,
@@ -173,6 +173,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewDatadogScaler(config)
 	case "dynatrace":
 		return scalers.NewDynatraceScaler(config)
+	case "elastic-forecast":
+		return scalers.NewElasticForecastScaler(config)
 	case "elasticsearch":
 		return scalers.NewElasticsearchScaler(config)
 	case "etcd":
@@ -232,6 +234,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewNSQScaler(config)
 	case "opencost":
 		return scalers.NewOpenCostScaler(config)
+	case "opensearch":
+		return scalers.NewOpensearchScaler(config)
 	case "openstack-metric":
 		return scalers.NewOpenstackMetricScaler(ctx, config)
 	case "openstack-swift":

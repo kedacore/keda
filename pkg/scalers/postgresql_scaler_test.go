@@ -91,6 +91,54 @@ func TestPostgreSQLConnectionStringGeneration(t *testing.T) {
 	}
 }
 
+func TestEscapePostgreConnectionParameter(t *testing.T) {
+	tests := map[string]struct {
+		input string
+		want  string
+	}{
+		"simple":              {input: "simple", want: "simple"},
+		"space":               {input: "with space", want: "'with space'"},
+		"tab":                 {input: "user\tsslmode=disable", want: "'user\tsslmode=disable'"},
+		"newline":             {input: "user\nhost=attacker", want: "'user\nhost=attacker'"},
+		"single quote":        {input: "user'name", want: "'user\\'name'"},
+		"backslash":           {input: `user\name`, want: `'user\\name'`},
+		"quote and backslash": {input: `user\'name`, want: `'user\\\'name'`},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			if got := escapePostgreConnectionParameter(tt.input); got != tt.want {
+				t.Errorf("expected %q, got %q", tt.want, got)
+			}
+		})
+	}
+}
+
+func TestPostgreSQLConnectionStringGenerationEscapesWhitespace(t *testing.T) {
+	meta, _, err := parsePostgreSQLMetadata(logr.Discard(), &scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"query":            "test_query",
+			"targetQueryValue": "5",
+			"host":             "db.example",
+			"port":             "5432",
+			"dbName":           "testdb",
+			"userName":         "user\tsslmode=disable",
+			"sslmode":          "require",
+		},
+		AuthParams: map[string]string{
+			"password": "secret\nhost=attacker",
+		},
+	})
+	if err != nil {
+		t.Fatal("Could not parse metadata:", err)
+	}
+
+	expected := "host=db.example port=5432 user='user\tsslmode=disable' dbname=testdb sslmode=require password='secret\nhost=attacker'"
+	if meta.Connection != expected {
+		t.Errorf("Error generating connectionString, expected %q and got %q", expected, meta.Connection)
+	}
+}
+
 var testPodIdentityAzureWorkloadPostgreSQLConnectionstring = []postgreSQLConnectionStringTestData{
 	// from meta
 	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5", "host": "localhost", "port": "1234", "dbName": "testDb", "userName": "user", "sslmode": "required"}, connectionString: "host=localhost port=1234 user=user dbname=testDb sslmode=required %PASSWORD%"},

@@ -185,7 +185,7 @@ func (s *Logs) SearchLogs(ctx context.Context, request operations.SearchLogsRequ
 
 			_, err = s.hooks.AfterError(hooks.AfterErrorContext{HookContext: hookCtx}, nil, err)
 			return nil, err
-		} else if utils.MatchStatusCodes([]string{"400", "401", "4XX", "500", "5XX"}, httpRes.StatusCode) {
+		} else if utils.MatchStatusCodes([]string{"4XX", "5XX"}, httpRes.StatusCode) {
 			_httpRes, err := s.hooks.AfterError(hooks.AfterErrorContext{HookContext: hookCtx}, httpRes, nil)
 			if err != nil {
 				return nil, err
@@ -238,16 +238,7 @@ func (s *Logs) SearchLogs(ctx context.Context, request operations.SearchLogsRequ
 
 		return s.SearchLogs(
 			ctx,
-			operations.SearchLogsRequest{
-				Filter:    request.Filter,
-				Group:     request.Group,
-				EntityID:  request.EntityID,
-				StartTime: request.StartTime,
-				EndTime:   request.EndTime,
-				Direction: request.Direction,
-				PageSize:  request.PageSize,
-				SkipToken: request.SkipToken,
-			},
+			request,
 			opts...,
 		)
 	}
@@ -514,7 +505,7 @@ func (s *Logs) ListLogArchives(ctx context.Context, request operations.ListLogAr
 
 			_, err = s.hooks.AfterError(hooks.AfterErrorContext{HookContext: hookCtx}, nil, err)
 			return nil, err
-		} else if utils.MatchStatusCodes([]string{"400", "401", "4XX", "500", "5XX"}, httpRes.StatusCode) {
+		} else if utils.MatchStatusCodes([]string{"4XX", "5XX"}, httpRes.StatusCode) {
 			_httpRes, err := s.hooks.AfterError(hooks.AfterErrorContext{HookContext: hookCtx}, httpRes, nil)
 			if err != nil {
 				return nil, err
@@ -567,12 +558,7 @@ func (s *Logs) ListLogArchives(ctx context.Context, request operations.ListLogAr
 
 		return s.ListLogArchives(
 			ctx,
-			operations.ListLogArchivesRequest{
-				StartTime: request.StartTime,
-				EndTime:   request.EndTime,
-				PageSize:  request.PageSize,
-				SkipToken: request.SkipToken,
-			},
+			request,
 			opts...,
 		)
 	}

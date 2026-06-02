@@ -16,7 +16,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/eventreason"
@@ -29,6 +29,12 @@ const (
 	ENT                  = "ent"
 	REPO                 = "repo"
 	githubDefaultPerPage = 30
+	// githubScalerMaxCacheEntries caps the etags, previousJobs, and
+	// previousWfrs maps. Without it the etags map grows once per workflow run
+	// for the lifetime of the operator pod (the URL contains the run ID), and
+	// previousJobs and previousWfrs grow once per distinct repository name
+	// returned by the API.
+	githubScalerMaxCacheEntries = 5000
 )
 
 var reservedLabels = []string{"self-hosted", "linux", "x64"}
@@ -38,7 +44,7 @@ type githubRunnerScaler struct {
 	metadata                *githubRunnerMetadata
 	httpClient              *http.Client
 	logger                  logr.Logger
-	recorder                record.EventRecorder
+	recorder                events.EventRecorder
 	scaledObject            runtime.Object
 	etags                   map[string]string
 	previousRepos           []string
@@ -363,8 +369,8 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 
 	if meta.ApplicationID != 0 && meta.InstallationID != 0 && meta.ApplicationKey != "" {
-		httpTrans := kedautil.CreateHTTPTransport(false)
-		hc, err := gha.New(httpTrans, meta.ApplicationID, meta.InstallationID, []byte(meta.ApplicationKey))
+		rt := kedautil.CreateRT(false)
+		hc, err := gha.New(rt, meta.ApplicationID, meta.InstallationID, []byte(meta.ApplicationKey))
 		if err != nil {
 			return nil, fmt.Errorf("error creating GitHub App client: %w, \n appID: %d, instID: %d", err, meta.ApplicationID, meta.InstallationID)
 		}
@@ -630,8 +636,16 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 		if s.previousJobs[repoName] != nil {
 			return s.previousJobs[repoName], nil
 		}
-
-		return nil, fmt.Errorf("request for jobs returned status: %d %s but previous jobs is not set", statusCode, http.StatusText(statusCode))
+		// Stale etag without a paired previousJobs entry, e.g. after pruneCaches
+		// evicted the previous entry. Drop the etag and retry as a cache miss.
+		delete(s.etags, apiURL)
+		body, statusCode, err = s.getGithubRequest(ctx, apiURL, s.metadata, s.httpClient)
+		if err != nil {
+			return nil, err
+		}
+		if statusCode == 304 {
+			return nil, fmt.Errorf("request for jobs returned status: %d %s but previous jobs is not set", statusCode, http.StatusText(statusCode))
+		}
 	}
 
 	var jobs Jobs
@@ -665,8 +679,18 @@ func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName strin
 		if s.previousWfrs[repoName][status] != nil {
 			return s.previousWfrs[repoName][status], nil
 		}
-
-		return nil, fmt.Errorf("request for workflow runs returned status: %d %s but previous workflow runs is not set. Repo: %s, Status: %s", statusCode, http.StatusText(statusCode), repoName, status)
+		// Stale etag without a paired previousWfrs entry, e.g. after pruneCaches
+		// evicted the previous entry. Drop the etag and retry as a cache miss.
+		delete(s.etags, apiURL)
+		body, statusCode, err = s.getGithubRequest(ctx, apiURL, s.metadata, s.httpClient)
+		if err != nil && statusCode == 404 {
+			return nil, nil
+		} else if err != nil {
+			return nil, err
+		}
+		if statusCode == 304 {
+			return nil, fmt.Errorf("request for workflow runs returned status: %d %s but previous workflow runs is not set. Repo: %s, Status: %s", statusCode, http.StatusText(statusCode), repoName, status)
+		}
 	}
 
 	var wfrs WorkflowRuns
@@ -733,7 +757,7 @@ func (s *githubRunnerScaler) isRateLimited() bool {
 func (s *githubRunnerScaler) getCachedQueueLength() (int64, error) {
 	if !s.previousQueueLengthTime.IsZero() {
 		if s.recorder != nil {
-			s.recorder.Event(s.scaledObject, corev1.EventTypeNormal, eventreason.KEDAScalersInfo,
+			s.recorder.Eventf(s.scaledObject, nil, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo,
 				fmt.Sprintf("Github API rate limit exceeded. Cached queue length: %d, last successful cache at %s",
 					s.previousQueueLength, s.previousQueueLengthTime))
 		}
@@ -741,6 +765,36 @@ func (s *githubRunnerScaler) getCachedQueueLength() (int64, error) {
 	}
 
 	return -1, fmt.Errorf("GitHub API rate limit exceeded. No cached queue length available")
+}
+
+// pruneCaches removes previousWfrs entries for repos missing from currentRepos
+// and caps all three caches to githubScalerMaxCacheEntries.
+func (s *githubRunnerScaler) pruneCaches(currentRepos []string) {
+	repoSet := make(map[string]struct{}, len(currentRepos))
+	for _, r := range currentRepos {
+		repoSet[r] = struct{}{}
+	}
+	for repo := range s.previousWfrs {
+		if _, ok := repoSet[repo]; !ok {
+			delete(s.previousWfrs, repo)
+		}
+	}
+	evictExcess(s.previousWfrs, githubScalerMaxCacheEntries)
+	evictExcess(s.previousJobs, githubScalerMaxCacheEntries)
+	evictExcess(s.etags, githubScalerMaxCacheEntries)
+}
+
+// evictExcess removes arbitrary entries from m until len(m) <= limit. Map
+// iteration is randomized in Go, so this is a simple bound rather than LRU.
+func evictExcess[K comparable, V any](m map[K]V, limit int) {
+	over := len(m) - limit
+	for k := range m {
+		if over <= 0 {
+			break
+		}
+		delete(m, k)
+		over--
+	}
 }
 
 // GetWorkflowQueueLength returns the number of workflow jobs in the queue
@@ -758,6 +812,10 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 			return s.getCachedQueueLength()
 		}
 		return -1, err
+	}
+
+	if s.metadata.EnableEtags {
+		s.pruneCaches(repos)
 	}
 
 	var allWfrs []WorkflowRuns

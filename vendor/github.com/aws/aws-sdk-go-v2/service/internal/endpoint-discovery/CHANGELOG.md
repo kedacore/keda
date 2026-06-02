@@ -1,3 +1,17 @@
+# v1.12.0 (2026-05-22)
+
+* **Feature**: Validate discovered endpoint before overwriting request host in case cached tampered endpoints pollute request
+
+# v1.11.23 (2026-04-29)
+
+* **Dependency Update**: Update to smithy-go v1.25.1.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.11.22 (2026-04-17)
+
+* **Dependency Update**: Bump smithy-go to 1.25.0 to support endpointBdd trait
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.11.21 (2026-03-26)
 
 * **Dependency Update**: Updated to the latest SDK module versions

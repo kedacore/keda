@@ -76,6 +76,13 @@ func MarshalJSON(v interface{}, tag reflect.StructTag, topLevel bool) ([]byte, e
 					continue
 				}
 
+				if omitEmpty && fieldVal.Kind() != reflect.Struct && fieldVal.IsZero() {
+					continue
+				}
+
+				if omitEmpty && isEmptyContainer(field.Type, fieldVal) {
+					continue
+				}
 			}
 
 			if !field.IsExported() && field.Tag.Get("const") == "" {
@@ -341,6 +348,12 @@ func marshalValue(v interface{}, tag reflect.StructTag) (json.RawMessage, error)
 			return []byte("null"), nil
 		}
 
+		// []byte is special-cased by encoding/json to use base64 encoding.
+		// Delegate directly to avoid treating individual bytes as array elements.
+		if typ.Elem().Kind() == reflect.Uint8 {
+			return json.Marshal(val.Interface())
+		}
+
 		out := []json.RawMessage{}
 
 		for i := 0; i < val.Len(); i++ {
@@ -525,9 +538,23 @@ func unmarshalValue(value json.RawMessage, v reflect.Value, tag reflect.StructTa
 			m.SetMapIndex(reflect.ValueOf(k), itemVal.Elem())
 		}
 
+		// Dereference pointer before setting the map value.
+		// v may be a pointer to a map (e.g., from reflect.ValueOf(&mapVar)).
+		if v.Kind() == reflect.Ptr {
+			v = v.Elem()
+		}
 		v.Set(m)
 		return nil
 	case reflect.Slice, reflect.Array:
+		// []byte is special-cased by encoding/json to use base64 encoding.
+		// Delegate directly to avoid treating the base64 string as a JSON array.
+		if typ.Elem().Kind() == reflect.Uint8 {
+			if v.CanAddr() {
+				return json.Unmarshal(value, v.Addr().Interface())
+			}
+			return json.Unmarshal(value, v.Interface())
+		}
+
 		var unmarshaled []json.RawMessage
 
 		if err := json.Unmarshal(value, &unmarshaled); err != nil {
@@ -569,7 +596,7 @@ func unmarshalValue(value json.RawMessage, v reflect.Value, tag reflect.StructTa
 			}
 
 			if v.Kind() == reflect.Ptr {
-				if v.IsNil() {
+				if v.IsNil() && v.CanSet() {
 					v.Set(reflect.New(typ))
 				}
 				v = v.Elem()
@@ -617,7 +644,7 @@ func unmarshalValue(value json.RawMessage, v reflect.Value, tag reflect.StructTa
 			}
 
 			if v.Kind() == reflect.Ptr {
-				if v.IsNil() {
+				if v.IsNil() && v.CanSet() {
 					v.Set(reflect.New(typ))
 				}
 				v = v.Elem()

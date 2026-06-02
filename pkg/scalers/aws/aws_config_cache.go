@@ -137,7 +137,7 @@ func (a *sharedConfigCache) RemoveCachedEntry(awsAuthorization AuthorizationMeta
 		if len(cachedEntry.usages) == 0 {
 			delete(a.items, key)
 		} else {
-			a.items[awsAuthorization.AwsRoleArn] = cachedEntry
+			a.items[key] = cachedEntry
 		}
 	}
 }

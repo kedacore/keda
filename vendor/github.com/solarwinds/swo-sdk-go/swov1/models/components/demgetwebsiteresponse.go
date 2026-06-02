@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// DemGetWebsiteResponseStatus - Current availability status of the website.
 type DemGetWebsiteResponseStatus string
 
 const (
@@ -239,6 +240,32 @@ func (d *DemGetWebsiteResponseSsl) GetIgnoreIntermediateCertificates() *bool {
 	return d.IgnoreIntermediateCertificates
 }
 
+// DemGetWebsiteResponseAuthentication -   Configure HTTP basic authentication for the availability probe requests.
+//
+//	The credentialId field accepts a DEM credential ID, not a plaintext password.
+//	If omitted or set to null, no authentication is applied.
+type DemGetWebsiteResponseAuthentication struct {
+	// Username for HTTP basic authentication.
+	Username string `json:"username"`
+	//   The ID of a DEM synthetic credential. The credential's value is used as the password.
+	//   If omitted or set to null, authentication proceeds with the username only.
+	CredentialID *string `json:"credentialId,omitempty"`
+}
+
+func (d *DemGetWebsiteResponseAuthentication) GetUsername() string {
+	if d == nil {
+		return ""
+	}
+	return d.Username
+}
+
+func (d *DemGetWebsiteResponseAuthentication) GetCredentialID() *string {
+	if d == nil {
+		return nil
+	}
+	return d.CredentialID
+}
+
 // DemGetWebsiteResponseAvailabilityCheckSettings -   Use this field to configure availability tests for the website.
 //
 //	You are required to configure at least availability monitoring or real user monitoring to be able to create website.
@@ -247,7 +274,7 @@ type DemGetWebsiteResponseAvailabilityCheckSettings struct {
 	PlatformOptions *DemGetWebsiteResponsePlatformOptions `json:"platformOptions,omitempty"`
 	//   Configure locations of the synthetic availability test probes.
 	//   Acceptable values depend on the selected type and actual values of existing probes.
-	TestFrom DemTestFrom `json:"testFrom"`
+	TestFrom *DemTestFrom `json:"testFrom,omitempty"`
 	// Configure how often availability tests should be performed. Provide a number of seconds that is one of 60, 300, 600, 900, 1800, 3600, 7200, 14400.
 	TestIntervalInSeconds float64 `json:"testIntervalInSeconds"`
 	//   Default conditions when the entity is considered down.
@@ -274,6 +301,10 @@ type DemGetWebsiteResponseAvailabilityCheckSettings struct {
 	//   Configure data that will be sent as POST request body by the synthetic probe.
 	//   If omitted or set to null/empty string, the probe will send the usual GET requests.
 	PostData *string `json:"postData,omitempty"`
+	//   Configure HTTP basic authentication for the availability probe requests.
+	//   The credentialId field accepts a DEM credential ID, not a plaintext password.
+	//   If omitted or set to null, no authentication is applied.
+	Authentication *DemGetWebsiteResponseAuthentication `json:"authentication,omitempty"`
 }
 
 func (d *DemGetWebsiteResponseAvailabilityCheckSettings) GetPlatformOptions() *DemGetWebsiteResponsePlatformOptions {
@@ -283,9 +314,9 @@ func (d *DemGetWebsiteResponseAvailabilityCheckSettings) GetPlatformOptions() *D
 	return d.PlatformOptions
 }
 
-func (d *DemGetWebsiteResponseAvailabilityCheckSettings) GetTestFrom() DemTestFrom {
+func (d *DemGetWebsiteResponseAvailabilityCheckSettings) GetTestFrom() *DemTestFrom {
 	if d == nil {
-		return DemTestFrom{}
+		return nil
 	}
 	return d.TestFrom
 }
@@ -346,12 +377,22 @@ func (d *DemGetWebsiteResponseAvailabilityCheckSettings) GetPostData() *string {
 	return d.PostData
 }
 
+func (d *DemGetWebsiteResponseAvailabilityCheckSettings) GetAuthentication() *DemGetWebsiteResponseAuthentication {
+	if d == nil {
+		return nil
+	}
+	return d.Authentication
+}
+
 // DemGetWebsiteResponseRum - Use this field to configure real user monitoring (RUM) for the website.
 // You are required to configure at least availability monitoring or real user monitoring to be able to create website.
 type DemGetWebsiteResponseRum struct {
-	ApdexTimeInSeconds *int    `json:"apdexTimeInSeconds,omitempty"`
-	Snippet            *string `json:"snippet,omitempty"`
-	Spa                bool    `json:"spa"`
+	// Apdex time threshold in seconds for performance satisfaction scoring.
+	ApdexTimeInSeconds *int `json:"apdexTimeInSeconds,omitempty"`
+	// JavaScript snippet to embed for real user monitoring.
+	Snippet *string `json:"snippet,omitempty"`
+	// Whether the website is a single-page application (SPA).
+	Spa bool `json:"spa"`
 }
 
 func (d *DemGetWebsiteResponseRum) GetApdexTimeInSeconds() *int {
@@ -376,8 +417,11 @@ func (d *DemGetWebsiteResponseRum) GetSpa() bool {
 }
 
 type DemGetWebsiteResponse struct {
-	ID     string                      `json:"id"`
-	Type   string                      `json:"type"`
+	// Unique identifier of the website.
+	ID string `json:"id"`
+	// Entity type, always 'Website'.
+	Type string `json:"type"`
+	// Current availability status of the website.
 	Status DemGetWebsiteResponseStatus `json:"status"`
 	//   Name of the website, which must be unique within the organization.
 	//   The website must also not contain any control characters, any white space other than space (U+0020), or any consecutive, leading or trailing spaces.

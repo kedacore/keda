@@ -36,6 +36,10 @@ func (s *workflowServiceProxyServer) CountActivityExecutions(ctx context.Context
 	return s.client.CountActivityExecutions(s.reqCtx(ctx), in0)
 }
 
+func (s *workflowServiceProxyServer) CountNexusOperationExecutions(ctx context.Context, in0 *workflowservice.CountNexusOperationExecutionsRequest) (*workflowservice.CountNexusOperationExecutionsResponse, error) {
+	return s.client.CountNexusOperationExecutions(s.reqCtx(ctx), in0)
+}
+
 func (s *workflowServiceProxyServer) CountSchedules(ctx context.Context, in0 *workflowservice.CountSchedulesRequest) (*workflowservice.CountSchedulesResponse, error) {
 	return s.client.CountSchedules(s.reqCtx(ctx), in0)
 }
@@ -48,12 +52,24 @@ func (s *workflowServiceProxyServer) CreateSchedule(ctx context.Context, in0 *wo
 	return s.client.CreateSchedule(s.reqCtx(ctx), in0)
 }
 
+func (s *workflowServiceProxyServer) CreateWorkerDeployment(ctx context.Context, in0 *workflowservice.CreateWorkerDeploymentRequest) (*workflowservice.CreateWorkerDeploymentResponse, error) {
+	return s.client.CreateWorkerDeployment(s.reqCtx(ctx), in0)
+}
+
+func (s *workflowServiceProxyServer) CreateWorkerDeploymentVersion(ctx context.Context, in0 *workflowservice.CreateWorkerDeploymentVersionRequest) (*workflowservice.CreateWorkerDeploymentVersionResponse, error) {
+	return s.client.CreateWorkerDeploymentVersion(s.reqCtx(ctx), in0)
+}
+
 func (s *workflowServiceProxyServer) CreateWorkflowRule(ctx context.Context, in0 *workflowservice.CreateWorkflowRuleRequest) (*workflowservice.CreateWorkflowRuleResponse, error) {
 	return s.client.CreateWorkflowRule(s.reqCtx(ctx), in0)
 }
 
 func (s *workflowServiceProxyServer) DeleteActivityExecution(ctx context.Context, in0 *workflowservice.DeleteActivityExecutionRequest) (*workflowservice.DeleteActivityExecutionResponse, error) {
 	return s.client.DeleteActivityExecution(s.reqCtx(ctx), in0)
+}
+
+func (s *workflowServiceProxyServer) DeleteNexusOperationExecution(ctx context.Context, in0 *workflowservice.DeleteNexusOperationExecutionRequest) (*workflowservice.DeleteNexusOperationExecutionResponse, error) {
+	return s.client.DeleteNexusOperationExecution(s.reqCtx(ctx), in0)
 }
 
 func (s *workflowServiceProxyServer) DeleteSchedule(ctx context.Context, in0 *workflowservice.DeleteScheduleRequest) (*workflowservice.DeleteScheduleResponse, error) {
@@ -94,6 +110,10 @@ func (s *workflowServiceProxyServer) DescribeDeployment(ctx context.Context, in0
 
 func (s *workflowServiceProxyServer) DescribeNamespace(ctx context.Context, in0 *workflowservice.DescribeNamespaceRequest) (*workflowservice.DescribeNamespaceResponse, error) {
 	return s.client.DescribeNamespace(s.reqCtx(ctx), in0)
+}
+
+func (s *workflowServiceProxyServer) DescribeNexusOperationExecution(ctx context.Context, in0 *workflowservice.DescribeNexusOperationExecutionRequest) (*workflowservice.DescribeNexusOperationExecutionResponse, error) {
+	return s.client.DescribeNexusOperationExecution(s.reqCtx(ctx), in0)
 }
 
 func (s *workflowServiceProxyServer) DescribeSchedule(ctx context.Context, in0 *workflowservice.DescribeScheduleRequest) (*workflowservice.DescribeScheduleResponse, error) {
@@ -196,6 +216,10 @@ func (s *workflowServiceProxyServer) ListNamespaces(ctx context.Context, in0 *wo
 	return s.client.ListNamespaces(s.reqCtx(ctx), in0)
 }
 
+func (s *workflowServiceProxyServer) ListNexusOperationExecutions(ctx context.Context, in0 *workflowservice.ListNexusOperationExecutionsRequest) (*workflowservice.ListNexusOperationExecutionsResponse, error) {
+	return s.client.ListNexusOperationExecutions(s.reqCtx(ctx), in0)
+}
+
 func (s *workflowServiceProxyServer) ListOpenWorkflowExecutions(ctx context.Context, in0 *workflowservice.ListOpenWorkflowExecutionsRequest) (*workflowservice.ListOpenWorkflowExecutionsResponse, error) {
 	return s.client.ListOpenWorkflowExecutions(s.reqCtx(ctx), in0)
 }
@@ -236,6 +260,10 @@ func (s *workflowServiceProxyServer) PauseActivity(ctx context.Context, in0 *wor
 	return s.client.PauseActivity(s.reqCtx(ctx), in0)
 }
 
+func (s *workflowServiceProxyServer) PauseActivityExecution(ctx context.Context, in0 *workflowservice.PauseActivityExecutionRequest) (*workflowservice.PauseActivityExecutionResponse, error) {
+	return s.client.PauseActivityExecution(s.reqCtx(ctx), in0)
+}
+
 func (s *workflowServiceProxyServer) PauseWorkflowExecution(ctx context.Context, in0 *workflowservice.PauseWorkflowExecutionRequest) (*workflowservice.PauseWorkflowExecutionResponse, error) {
 	return s.client.PauseWorkflowExecution(s.reqCtx(ctx), in0)
 }
@@ -246,6 +274,10 @@ func (s *workflowServiceProxyServer) PollActivityExecution(ctx context.Context, 
 
 func (s *workflowServiceProxyServer) PollActivityTaskQueue(ctx context.Context, in0 *workflowservice.PollActivityTaskQueueRequest) (*workflowservice.PollActivityTaskQueueResponse, error) {
 	return s.client.PollActivityTaskQueue(s.reqCtx(ctx), in0)
+}
+
+func (s *workflowServiceProxyServer) PollNexusOperationExecution(ctx context.Context, in0 *workflowservice.PollNexusOperationExecutionRequest) (*workflowservice.PollNexusOperationExecutionResponse, error) {
+	return s.client.PollNexusOperationExecution(s.reqCtx(ctx), in0)
 }
 
 func (s *workflowServiceProxyServer) PollNexusTaskQueue(ctx context.Context, in0 *workflowservice.PollNexusTaskQueueRequest) (*workflowservice.PollNexusTaskQueueResponse, error) {
@@ -284,12 +316,20 @@ func (s *workflowServiceProxyServer) RequestCancelActivityExecution(ctx context.
 	return s.client.RequestCancelActivityExecution(s.reqCtx(ctx), in0)
 }
 
+func (s *workflowServiceProxyServer) RequestCancelNexusOperationExecution(ctx context.Context, in0 *workflowservice.RequestCancelNexusOperationExecutionRequest) (*workflowservice.RequestCancelNexusOperationExecutionResponse, error) {
+	return s.client.RequestCancelNexusOperationExecution(s.reqCtx(ctx), in0)
+}
+
 func (s *workflowServiceProxyServer) RequestCancelWorkflowExecution(ctx context.Context, in0 *workflowservice.RequestCancelWorkflowExecutionRequest) (*workflowservice.RequestCancelWorkflowExecutionResponse, error) {
 	return s.client.RequestCancelWorkflowExecution(s.reqCtx(ctx), in0)
 }
 
 func (s *workflowServiceProxyServer) ResetActivity(ctx context.Context, in0 *workflowservice.ResetActivityRequest) (*workflowservice.ResetActivityResponse, error) {
 	return s.client.ResetActivity(s.reqCtx(ctx), in0)
+}
+
+func (s *workflowServiceProxyServer) ResetActivityExecution(ctx context.Context, in0 *workflowservice.ResetActivityExecutionRequest) (*workflowservice.ResetActivityExecutionResponse, error) {
+	return s.client.ResetActivityExecution(s.reqCtx(ctx), in0)
 }
 
 func (s *workflowServiceProxyServer) ResetStickyTaskQueue(ctx context.Context, in0 *workflowservice.ResetStickyTaskQueueRequest) (*workflowservice.ResetStickyTaskQueueResponse, error) {
@@ -384,6 +424,10 @@ func (s *workflowServiceProxyServer) StartBatchOperation(ctx context.Context, in
 	return s.client.StartBatchOperation(s.reqCtx(ctx), in0)
 }
 
+func (s *workflowServiceProxyServer) StartNexusOperationExecution(ctx context.Context, in0 *workflowservice.StartNexusOperationExecutionRequest) (*workflowservice.StartNexusOperationExecutionResponse, error) {
+	return s.client.StartNexusOperationExecution(s.reqCtx(ctx), in0)
+}
+
 func (s *workflowServiceProxyServer) StartWorkflowExecution(ctx context.Context, in0 *workflowservice.StartWorkflowExecutionRequest) (*workflowservice.StartWorkflowExecutionResponse, error) {
 	return s.client.StartWorkflowExecution(s.reqCtx(ctx), in0)
 }
@@ -394,6 +438,10 @@ func (s *workflowServiceProxyServer) StopBatchOperation(ctx context.Context, in0
 
 func (s *workflowServiceProxyServer) TerminateActivityExecution(ctx context.Context, in0 *workflowservice.TerminateActivityExecutionRequest) (*workflowservice.TerminateActivityExecutionResponse, error) {
 	return s.client.TerminateActivityExecution(s.reqCtx(ctx), in0)
+}
+
+func (s *workflowServiceProxyServer) TerminateNexusOperationExecution(ctx context.Context, in0 *workflowservice.TerminateNexusOperationExecutionRequest) (*workflowservice.TerminateNexusOperationExecutionResponse, error) {
+	return s.client.TerminateNexusOperationExecution(s.reqCtx(ctx), in0)
 }
 
 func (s *workflowServiceProxyServer) TerminateWorkflowExecution(ctx context.Context, in0 *workflowservice.TerminateWorkflowExecutionRequest) (*workflowservice.TerminateWorkflowExecutionResponse, error) {
@@ -408,8 +456,16 @@ func (s *workflowServiceProxyServer) UnpauseActivity(ctx context.Context, in0 *w
 	return s.client.UnpauseActivity(s.reqCtx(ctx), in0)
 }
 
+func (s *workflowServiceProxyServer) UnpauseActivityExecution(ctx context.Context, in0 *workflowservice.UnpauseActivityExecutionRequest) (*workflowservice.UnpauseActivityExecutionResponse, error) {
+	return s.client.UnpauseActivityExecution(s.reqCtx(ctx), in0)
+}
+
 func (s *workflowServiceProxyServer) UnpauseWorkflowExecution(ctx context.Context, in0 *workflowservice.UnpauseWorkflowExecutionRequest) (*workflowservice.UnpauseWorkflowExecutionResponse, error) {
 	return s.client.UnpauseWorkflowExecution(s.reqCtx(ctx), in0)
+}
+
+func (s *workflowServiceProxyServer) UpdateActivityExecutionOptions(ctx context.Context, in0 *workflowservice.UpdateActivityExecutionOptionsRequest) (*workflowservice.UpdateActivityExecutionOptionsResponse, error) {
+	return s.client.UpdateActivityExecutionOptions(s.reqCtx(ctx), in0)
 }
 
 func (s *workflowServiceProxyServer) UpdateActivityOptions(ctx context.Context, in0 *workflowservice.UpdateActivityOptionsRequest) (*workflowservice.UpdateActivityOptionsResponse, error) {
@@ -436,6 +492,10 @@ func (s *workflowServiceProxyServer) UpdateWorkerConfig(ctx context.Context, in0
 	return s.client.UpdateWorkerConfig(s.reqCtx(ctx), in0)
 }
 
+func (s *workflowServiceProxyServer) UpdateWorkerDeploymentVersionComputeConfig(ctx context.Context, in0 *workflowservice.UpdateWorkerDeploymentVersionComputeConfigRequest) (*workflowservice.UpdateWorkerDeploymentVersionComputeConfigResponse, error) {
+	return s.client.UpdateWorkerDeploymentVersionComputeConfig(s.reqCtx(ctx), in0)
+}
+
 func (s *workflowServiceProxyServer) UpdateWorkerDeploymentVersionMetadata(ctx context.Context, in0 *workflowservice.UpdateWorkerDeploymentVersionMetadataRequest) (*workflowservice.UpdateWorkerDeploymentVersionMetadataResponse, error) {
 	return s.client.UpdateWorkerDeploymentVersionMetadata(s.reqCtx(ctx), in0)
 }
@@ -450,4 +510,8 @@ func (s *workflowServiceProxyServer) UpdateWorkflowExecution(ctx context.Context
 
 func (s *workflowServiceProxyServer) UpdateWorkflowExecutionOptions(ctx context.Context, in0 *workflowservice.UpdateWorkflowExecutionOptionsRequest) (*workflowservice.UpdateWorkflowExecutionOptionsResponse, error) {
 	return s.client.UpdateWorkflowExecutionOptions(s.reqCtx(ctx), in0)
+}
+
+func (s *workflowServiceProxyServer) ValidateWorkerDeploymentVersionComputeConfig(ctx context.Context, in0 *workflowservice.ValidateWorkerDeploymentVersionComputeConfigRequest) (*workflowservice.ValidateWorkerDeploymentVersionComputeConfigResponse, error) {
+	return s.client.ValidateWorkerDeploymentVersionComputeConfig(s.reqCtx(ctx), in0)
 }

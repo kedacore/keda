@@ -1,6 +1,26 @@
 # Changes
 
 
+## [1.62.2](https://github.com/googleapis/google-cloud-go/releases/tag/storage%2Fv1.62.2) (2026-05-18)
+
+### Features
+
+* enable open telemetry attrs (#14426) ([74eab64](https://github.com/googleapis/google-cloud-go/commit/74eab64d1b4e22d8c79b0de4e5fc9a36bc4c6c19))
+
+### Bug Fixes
+
+* Set default chunkRetryDeadline to 32s in NewWriterFromAppendableObject (#14458) ([ec7c7d6](https://github.com/googleapis/google-cloud-go/commit/ec7c7d66eb0bf6e52a3ae1f529cb8e5de6f8dc86))
+* refactor userProject metadata propagation in ListObjects  (#14533) ([fbb543e](https://github.com/googleapis/google-cloud-go/commit/fbb543e3bb0d9b45c8e9aa167b6551c154f23169))
+* restore metadata operations timeout in gRPC (#14575) ([275ff56](https://github.com/googleapis/google-cloud-go/commit/275ff562aee8c0201b9e5bf2913bb85bcdbe947a))
+
+## [1.62.1](https://github.com/googleapis/google-cloud-go/releases/tag/storage%2Fv1.62.1) (2026-04-13)
+
+### Bug Fixes
+
+* Add retry logic for "http2: client connection lost" ([df22e9e](https://github.com/googleapis/google-cloud-go/commit/df22e9e38ea6de00d858ef00475ae286d3fc6834))
+
+* Remove redundant gRPC imports from grpc_dp_diag.go ([c5511e2](https://github.com/googleapis/google-cloud-go/commit/c5511e2101cefbf8b6e54193e39382e86b49d822))
+
 ## [1.62.0](https://github.com/googleapis/google-cloud-go/releases/tag/storage%2Fv1.62.0) (2026-04-06)
 
 ### Features
@@ -61,6 +81,12 @@
 ### Documentation
 
 * Update documentation for `BidiReadObject`, `ReadObjectRequest`, and `ObjectContexts` ([611f239](https://github.com/googleapis/google-cloud-go/commit/611f239219225fb03f6475c7238f497a349961e2))
+
+## [1.59.3](https://github.com/googleapis/google-cloud-go/releases/tag/storage%2Fv1.59.3) (2026-05-05)
+
+### Bug Fixes
+
+* handle MRD hang corner case (#14509) ([1ca3b6f](https://github.com/googleapis/google-cloud-go/commit/1ca3b6f02d35f87c336e34358e16985557c7fd58))
 
 ## [1.59.2](https://github.com/googleapis/google-cloud-go/releases/tag/storage%2Fv1.59.2) (2026-01-28)
 

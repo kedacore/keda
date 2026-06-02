@@ -39,7 +39,7 @@ func (e *Category) UnmarshalJSON(data []byte) error {
 	}
 }
 
-// Healthscore
+// Healthscore - Health score of the entity. Deprecated: use healthState instead.
 //
 // Deprecated: This will be removed in a future release, please migrate away from it as soon as possible.
 type Healthscore struct {
@@ -135,6 +135,8 @@ type EntitiesEntity struct {
 	LastSeenTime time.Time `json:"lastSeenTime"`
 	// Flag telling if given entity is in maintenance mode.
 	InMaintenance bool `json:"inMaintenance"`
+	// Health score of the entity. Deprecated: use healthState instead.
+	//
 	// Deprecated: This will be removed in a future release, please migrate away from it as soon as possible.
 	Healthscore *Healthscore `json:"healthscore,omitempty"`
 	// Health state of the entity.

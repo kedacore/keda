@@ -92,7 +92,6 @@ type predictKubeMetadata struct {
 	APIKey              string                 `keda:"name=apiKey, order=authParams"`
 	Threshold           float64                `keda:"name=threshold, order=triggerMetadata, optional"`
 	ActivationThreshold float64                `keda:"name=activationThreshold, order=triggerMetadata, optional"`
-	AuthModes           string                 `keda:"name=authModes, order=triggerMetadata, optional"`
 
 	predictHorizon    time.Duration
 	historyTimeWindow time.Duration
@@ -393,7 +392,10 @@ func parsePredictKubeMetadata(config *scalersconfig.ScalerConfig) (result *predi
 }
 
 func (s *PredictKubeScaler) ping(ctx context.Context) (err error) {
-	_, err = s.api.Runtimeinfo(ctx)
+	// Use a portable Prometheus-API instant query rather than
+	// /api/v1/status/runtimeinfo, which is Prometheus-only and not
+	// implemented by VictoriaMetrics, M3DB, Thanos sidecar, etc.
+	_, _, err = s.api.Query(ctx, "vector(1)", time.Now())
 	return err
 }
 
@@ -402,7 +404,7 @@ func (s *PredictKubeScaler) initPredictKubePrometheusConn(ctx context.Context) (
 	// create http.RoundTripper with auth settings from ScalerConfig
 	roundTripper, err := authentication.CreateHTTPRoundTripper(
 		authentication.FastHTTP,
-		s.metadata.PrometheusAuth.ToAuthMeta(),
+		s.metadata.PrometheusAuth,
 	)
 	if err != nil {
 		s.logger.V(1).Error(err, "init Prometheus client http transport")

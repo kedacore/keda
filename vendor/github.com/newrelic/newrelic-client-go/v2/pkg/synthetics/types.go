@@ -1409,6 +1409,8 @@ type SyntheticsPrivateLocationMutationResult struct {
 	LocationId string `json:"locationId,omitempty"`
 	// The name of the private location
 	Name string `json:"name,omitempty"`
+	// Specifies whether the private location is shared across the organization
+	Shared bool `json:"shared,omitempty"`
 	// Specifies whether the private location requires a password for scripted monitors
 	VerifiedScriptExecution bool `json:"verifiedScriptExecution,omitempty"`
 }

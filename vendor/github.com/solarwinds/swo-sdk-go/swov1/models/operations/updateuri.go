@@ -7,6 +7,7 @@ import (
 )
 
 type UpdateURIRequest struct {
+	// Entity ID.
 	EntityID string `pathParam:"style=simple,explode=false,name=entityId"`
 	// The updated URI monitoring configuration
 	DemURI components.DemURI `request:"mediaType=application/json"`

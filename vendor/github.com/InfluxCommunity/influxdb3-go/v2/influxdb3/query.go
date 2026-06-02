@@ -70,7 +70,7 @@ func (c *Client) initializeQueryClient(hostPortURL string, secure bool, proxyURL
 		if prevHTTPSProxy != "" && prevHTTPSProxy != proxyURL.String() {
 			slog.Warn(
 				fmt.Sprintf("Environment variable HTTPS_PROXY is already set, "+
-					"it's value will be overridden with: %s", proxyURL.String()),
+					"its value will be overridden with: %s", proxyURL.String()),
 			)
 		}
 		err := os.Setenv("HTTPS_PROXY", proxyURL.String())

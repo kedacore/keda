@@ -290,7 +290,10 @@ func (l *loader) typeCheck(pkg *Package) {
 	illTyped := len(errs) > 0
 	if !illTyped {
 		for _, importedPkg := range pkg.Imports() {
-			if importedPkg.IllTyped {
+			importedPkg.Lock()
+			isIllTyped := importedPkg.IllTyped
+			importedPkg.Unlock()
+			if isIllTyped {
 				illTyped = true
 				break
 			}

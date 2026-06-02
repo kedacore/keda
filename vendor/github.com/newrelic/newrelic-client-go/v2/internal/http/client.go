@@ -319,49 +319,20 @@ func logNice(body string) string {
 	return newBody
 }
 
-// obfuscate receives a string, and replaces everything after the first 8
-// characters with an asterisk before returning the result.
-func obfuscate(input string) string {
-	result := make([]string, len(input))
-	parts := strings.Split(input, "")
-
-	for i, x := range parts {
-		if i < 8 {
-			result[i] = x
-		} else {
-			result[i] = "*"
-		}
-	}
-
-	return strings.Join(result, "")
-}
-
-func logCleanHeaderMarshalJSON(header http.Header) ([]byte, error) {
+// redactedHeaders returns a copy of the header map with sensitive auth header
+// values replaced by the literal "[REDACTED]". Non-sensitive headers are kept
+// as-is so Trace logs remain useful for debugging.
+func redactedHeaders(header http.Header) http.Header {
 	h := http.Header{}
-
 	for k, values := range header {
-		if _, ok := h[k]; ok {
-			h[k] = make([]string, len(values))
-		}
-
 		switch k {
 		case "Api-Key", "X-Api-Key", "X-Insert-Key":
-			newValues := []string{}
-			for _, v := range values {
-				newValues = append(newValues, obfuscate(v))
-			}
-
-			if len(newValues) > 0 {
-				h[k] = newValues
-			} else {
-				h[k] = values
-			}
+			h[k] = []string{"[REDACTED]"}
 		default:
 			h[k] = values
 		}
 	}
-
-	return json.Marshal(h)
+	return h
 }
 
 // Do initiates an HTTP request as configured by the passed Request struct.
@@ -434,7 +405,7 @@ func (c *Client) innerDo(req *Request, errorValue ErrorResponse, i int) (*http.R
 		return nil, nil, false, err
 	}
 
-	logHeaders, err := logCleanHeaderMarshalJSON(r.Header)
+	logHeaders, err := json.Marshal(redactedHeaders(r.Header))
 	if err != nil {
 		return nil, nil, false, err
 	}

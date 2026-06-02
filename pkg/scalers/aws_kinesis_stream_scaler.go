@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
@@ -24,6 +25,7 @@ type awsKinesisStreamScaler struct {
 	metricType           v2.MetricTargetType
 	metadata             *awsKinesisStreamMetadata
 	kinesisWrapperClient KinesisWrapperClient
+	httpClient           *http.Client
 	logger               logr.Logger
 }
 
@@ -64,7 +66,8 @@ func NewAwsKinesisStreamScaler(ctx context.Context, config *scalersconfig.Scaler
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Kinesis stream metadata: %w", err)
 	}
-	awsKinesisClient, err := createKinesisClient(ctx, meta)
+	httpClient := awsutils.NewHTTPClient()
+	awsKinesisClient, err := createKinesisClient(ctx, meta, httpClient)
 	if err != nil {
 		return nil, fmt.Errorf("error creating kinesis client: %w", err)
 	}
@@ -75,7 +78,8 @@ func NewAwsKinesisStreamScaler(ctx context.Context, config *scalersconfig.Scaler
 		kinesisWrapperClient: &kinesisWrapperClient{
 			kinesisClient: awsKinesisClient,
 		},
-		logger: logger,
+		httpClient: httpClient,
+		logger:     logger,
 	}, nil
 }
 
@@ -97,7 +101,7 @@ func parseAwsKinesisStreamMetadata(config *scalersconfig.ScalerConfig) (*awsKine
 	return meta, nil
 }
 
-func createKinesisClient(ctx context.Context, metadata *awsKinesisStreamMetadata) (*kinesis.Client, error) {
+func createKinesisClient(ctx context.Context, metadata *awsKinesisStreamMetadata, httpClient *http.Client) (*kinesis.Client, error) {
 	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsAuthorization)
 	if err != nil {
 		return nil, err
@@ -106,11 +110,17 @@ func createKinesisClient(ctx context.Context, metadata *awsKinesisStreamMetadata
 		if metadata.AwsEndpoint != "" {
 			options.BaseEndpoint = aws.String(metadata.AwsEndpoint)
 		}
+		if httpClient != nil {
+			options.HTTPClient = httpClient
+		}
 	}), nil
 }
 
 func (s *awsKinesisStreamScaler) Close(context.Context) error {
 	awsutils.ClearAwsConfig(s.metadata.awsAuthorization)
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 
