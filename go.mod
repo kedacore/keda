@@ -43,7 +43,7 @@ require (
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.7.2
 	github.com/DataDog/datadog-api-client-go v1.16.0
 	github.com/Huawei/gophercloud v1.0.21
-	github.com/IBM/sarama v1.49.0
+	github.com/IBM/sarama v1.50.1
 	github.com/InfluxCommunity/influxdb3-go/v2 v2.15.0
 	github.com/arangodb/go-driver v1.6.9
 	github.com/aws/aws-msk-iam-sasl-signer-go v1.0.4
@@ -195,7 +195,6 @@ require (
 	github.com/dennwc/varint v1.0.0 // indirect
 	github.com/dnephin/pflag v1.0.7 // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
-	github.com/eapache/queue v1.1.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
 	github.com/envoyproxy/go-control-plane/envoy v1.37.0 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.3.3 // indirect
@@ -313,7 +312,7 @@ require (
 	github.com/samber/lo v1.52.0 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
-	github.com/signalfx/signalfx-go v1.54.0 // indirect
+	github.com/signalfx/signalfx-go v1.54.0
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
