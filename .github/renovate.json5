@@ -1,0 +1,132 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: [
+    // https://docs.renovatebot.com/presets-config/#configbest-practices
+    "config:best-practices",
+    "customManagers:dockerfileVersions",
+    "customManagers:githubActionsVersions",
+    "customManagers:makefileVersions",
+    "schedule:weekly",
+    ":gitSignOff",
+    ":prHourlyLimitNone",
+  ],
+  commitBodyTable: true,
+  labels: ["dependencies"],
+  osvVulnerabilityAlerts: true,
+  packageRules: [
+    // --- GitHub Actions ---
+    {
+      matchManagers: ["github-actions"],
+      matchUpdateTypes: ["minor", "patch"],
+      groupName: "GitHub Actions (non-major)",
+    },
+
+    // --- Go modules ---
+    {
+      matchManagers: ["gomod"],
+      matchUpdateTypes: ["minor", "patch"],
+      groupName: "Go Dependencies (non-major)",
+    },
+    // Split minor and patch for k8s packages so patch fixes
+    // can be merged independently of k8s minor version bumps.
+    {
+      matchManagers: ["gomod"],
+      matchPackageNames: [
+        "k8s.io/**",
+        "sigs.k8s.io/controller-runtime",
+        "sigs.k8s.io/controller-tools",
+        "sigs.k8s.io/custom-metrics-apiserver",
+      ],
+      separateMinorPatch: true,
+    },
+    {
+      matchManagers: ["gomod"],
+      matchPackageNames: [
+        "k8s.io/**",
+        "sigs.k8s.io/controller-runtime",
+        "sigs.k8s.io/controller-tools",
+        "sigs.k8s.io/custom-metrics-apiserver",
+      ],
+      matchUpdateTypes: ["minor"],
+      groupName: "Kubernetes Dependencies",
+    },
+    {
+      matchManagers: ["gomod"],
+      matchPackageNames: ["github.com/prometheus/**"],
+      matchUpdateTypes: ["minor", "patch"],
+      groupName: "Prometheus Dependencies",
+    },
+    {
+      matchManagers: ["gomod"],
+      matchPackageNames: ["github.com/aws/aws-sdk-go-v2/**"],
+      matchUpdateTypes: ["minor", "patch"],
+      groupName: "AWS SDK",
+    },
+    {
+      matchManagers: ["gomod"],
+      matchPackageNames: ["github.com/Azure/azure-sdk-for-go/**"],
+      matchUpdateTypes: ["minor", "patch"],
+      groupName: "Azure SDK",
+    },
+    {
+      matchManagers: ["gomod"],
+      matchPackageNames: ["go.opentelemetry.io/**"],
+      matchUpdateTypes: ["minor", "patch"],
+      groupName: "OpenTelemetry",
+    },
+    {
+      matchManagers: ["gomod"],
+      matchPackageNames: ["cloud.google.com/go/**", "google.golang.org/api"],
+      matchUpdateTypes: ["minor", "patch"],
+      groupName: "Google Cloud SDK",
+    },
+
+    // --- Custom regex ---
+    // Deps annotated with @only-patch should only receive patch updates.
+    {
+      matchManagers: ["custom.regex"],
+      matchDepNames: ["/@only-patch/"],
+      matchUpdateTypes: ["minor", "major"],
+      enabled: false,
+    },
+
+    // --- Pre-commit ---
+    {
+      matchManagers: ["pre-commit"],
+      groupName: "Pre-commit Hooks",
+    },
+
+    // --- DevContainer ---
+    {
+      matchFileNames: [".devcontainer/**"],
+      pinDigests: false,
+    },
+  ],
+  customManagers: [
+    // Versions in Go source files annotated with // renovate: comments.
+    {
+      customType: "regex",
+      managerFilePatterns: ["**/*.go"],
+      matchStrings: [
+        '// renovate: datasource=(?<datasource>.+?)\\s+\\S+\\s*=\\s*"(?<depName>.+?):(?<currentValue>.+?)"',
+        '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n\\s+\\S+\\s*=\\s*"(?<currentValue>[^"]+)"',
+      ],
+    },
+    // Versions in YAML list items in workflow files.
+    {
+      customType: "regex",
+      managerFilePatterns: [".github/workflows/**"],
+      matchStrings: [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?:\\s+packageName=(?<packageName>\\S+))?\\n\\s+- (?<currentValue>\\S+)",
+      ],
+    },
+  ],
+  postUpdateOptions: ["gomodTidy", "gomodUpdateImportPaths"],
+  "pre-commit": {
+    enabled: true,
+  },
+  vulnerabilityAlerts: {
+    enabled: true,
+    addLabels: ["security"],
+  },
+}
