@@ -136,7 +136,7 @@ func (h *scaleHandler) HandleScalableObject(ctx context.Context, scalableObject 
 		}
 		h.scaleLoopContexts.Store(key, cancel)
 	} else {
-		h.recorder.Eventf(withTriggers, nil, corev1.EventTypeNormal, eventreason.KEDAScalersStarted, eventreason.KEDAScalersStarted, "%s", message.ScalerStartMsg)
+		h.recorder.Eventf(withTriggers, nil, corev1.EventTypeNormal, eventreason.KEDAScalersStarted, "ScalersWatchStarted", "%s", message.ScalerStartMsg)
 	}
 
 	// a mutex is used to synchronize scale requests per scalableObject

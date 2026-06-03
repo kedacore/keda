@@ -81,7 +81,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Fix `KEDAScalersStarted` "Started scalers watch" event not being emitted for ScaledJobs because it shared an events.k8s.io aggregation key with the per-scaler "scaler is built" event ([#7820](https://github.com/kedacore/keda/pull/7820))
 
 ### Deprecations
 
