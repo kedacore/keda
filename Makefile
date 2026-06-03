@@ -47,6 +47,7 @@ COSIGN_FLAGS ?= -y -a GIT_HASH=${GIT_COMMIT} -a GIT_VERSION=${VERSION} -a BUILD_
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.35
 
+# renovate: datasource=github-releases depName=golangci/golangci-lint
 GOLANGCI_VERSION:=2.11.4
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
