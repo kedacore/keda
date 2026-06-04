@@ -12,44 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package gomock is a mock framework for Go.
-//
-// Standard usage:
-//   (1) Define an interface that you wish to mock.
-//         type MyInterface interface {
-//           SomeMethod(x int64, y string)
-//         }
-//   (2) Use mockgen to generate a mock from the interface.
-//   (3) Use the mock in a test:
-//         func TestMyThing(t *testing.T) {
-//           mockCtrl := gomock.NewController(t)
-//           defer mockCtrl.Finish()
-//
-//           mockObj := something.NewMockMyInterface(mockCtrl)
-//           mockObj.EXPECT().SomeMethod(4, "blah")
-//           // pass mockObj to a real object and play with it.
-//         }
-//
-// By default, expected calls are not enforced to run in any particular order.
-// Call order dependency can be enforced by use of InOrder and/or Call.After.
-// Call.After can create more varied call order dependencies, but InOrder is
-// often more convenient.
-//
-// The following examples create equivalent call order dependencies.
-//
-// Example of using Call.After to chain expected call order:
-//
-//     firstCall := mockObj.EXPECT().SomeMethod(1, "first")
-//     secondCall := mockObj.EXPECT().SomeMethod(2, "second").After(firstCall)
-//     mockObj.EXPECT().SomeMethod(3, "third").After(secondCall)
-//
-// Example of using InOrder to declare expected call order:
-//
-//     gomock.InOrder(
-//         mockObj.EXPECT().SomeMethod(1, "first"),
-//         mockObj.EXPECT().SomeMethod(2, "second"),
-//         mockObj.EXPECT().SomeMethod(3, "third"),
-//     )
 package gomock
 
 import (

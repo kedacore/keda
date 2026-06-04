@@ -194,6 +194,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewPubSubScaler(config)
 	case "gcp-stackdriver":
 		return scalers.NewStackdriverScaler(ctx, config)
+	case "gcp-spanner":
+		return scalers.NewGcpSpannerScaler(config)
 	case "gcp-storage":
 		return scalers.NewGcsScaler(config)
 	case "github-runner":
