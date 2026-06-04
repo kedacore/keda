@@ -44,14 +44,12 @@ var (
 	deploymentName = fmt.Sprintf("%s-deployment", testName)
 	scaledObjName  = fmt.Sprintf("%s-so", testName)
 	// Spanner resource identifiers — derived from credentials / env.
-	projectID  = fmt.Sprintf("%s", creds["project_id"])
+	projectID  = fmt.Sprintf("%v", creds["project_id"])
 	instanceID = envOrDefault("TF_GCP_SPANNER_INSTANCE_ID", "keda-test-instance")
 	databaseID = envOrDefault("TF_GCP_SPANNER_DATABASE_ID", "keda-test-db")
 	// SQL used by the ScaledObject trigger — must return a single INT64 value.
-	scalerQuery = fmt.Sprintf(
-		"SELECT COUNT(*) FROM keda_test_jobs WHERE status = 'pending'",
-	)
-	gsPrefix = fmt.Sprintf("kubectl exec --namespace %s deploy/gcp-sdk -- ", testNamespace)
+	scalerQuery = "SELECT COUNT(*) FROM keda_test_jobs WHERE status = 'pending'"
+	gsPrefix    = fmt.Sprintf("kubectl exec --namespace %s deploy/gcp-sdk -- ", testNamespace)
 )
 
 func envOrDefault(key, def string) string {

@@ -100,15 +100,15 @@ func newSpannerClient(ctx context.Context, meta *spannerMetadata) (*spanner.Clie
 	case meta.gcpAuthorization.PodIdentityProviderEnabled:
 		// ADC via workload identity — no extra options needed.
 	case meta.gcpAuthorization.GoogleApplicationCredentials != "":
-		opts = append(opts, option.WithCredentialsJSON([]byte(meta.gcpAuthorization.GoogleApplicationCredentials)))
+		opts = append(opts, option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(meta.gcpAuthorization.GoogleApplicationCredentials)))
 	case meta.gcpAuthorization.GoogleApplicationCredentialsFile != "":
-		opts = append(opts, option.WithCredentialsFile(meta.gcpAuthorization.GoogleApplicationCredentialsFile))
+		opts = append(opts, option.WithAuthCredentialsFile(option.ServiceAccount, meta.gcpAuthorization.GoogleApplicationCredentialsFile))
 	}
 
 	return spanner.NewClient(ctx, db, opts...)
 }
 
-func (s *spannerScaler) Close(ctx context.Context) error {
+func (s *spannerScaler) Close(_ context.Context) error {
 	if s.client != nil {
 		s.client.Close()
 	}
