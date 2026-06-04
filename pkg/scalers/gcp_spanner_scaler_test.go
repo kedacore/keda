@@ -133,7 +133,6 @@ var testSpannerMetadataCases = []parseSpannerMetadataTestData{
 
 func TestSpannerParseMetadata(t *testing.T) {
 	for _, tc := range testSpannerMetadataCases {
-		tc := tc
 		t.Run(tc.desc, func(t *testing.T) {
 			_, err := parseSpannerMetadata(&scalersconfig.ScalerConfig{
 				AuthParams:      tc.authParams,
@@ -205,7 +204,6 @@ var spannerMetricNameCases = []spannerMetricNameCase{
 
 func TestSpannerGetMetricSpecForScaling(t *testing.T) {
 	for _, tc := range spannerMetricNameCases {
-		tc := tc
 		t.Run(tc.desc, func(t *testing.T) {
 			meta, err := parseSpannerMetadata(&scalersconfig.ScalerConfig{
 				AuthParams:      map[string]string{"GoogleApplicationCredentials": `{"type":"service_account"}`},

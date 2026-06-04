@@ -256,13 +256,13 @@ func TestSpannerIntegration_GetMetricSpecForScaling(t *testing.T) {
 // it mutates the Spanner table between polls and asserts that the scaler's
 // metric value and activity flag track the real workload.
 //
-//   targetValue=2  activationValue=1
+//	targetValue=2  activationValue=1
 //
-//   step 0: 0 pending  → value=0, active=false  (below activation)
-//   step 1: 2 pending  → value=2, active=true   (at target → 1 replica)
-//   step 2: 6 pending  → value=6, active=true   (3× target → 3 replicas)
-//   step 3: 1 pending  → value=1, active=false  (== activation threshold → inactive)
-//   step 4: 0 pending  → value=0, active=false  (scale-to-zero)
+//	step 0: 0 pending  → value=0, active=false  (below activation)
+//	step 1: 2 pending  → value=2, active=true   (at target → 1 replica)
+//	step 2: 6 pending  → value=6, active=true   (3× target → 3 replicas)
+//	step 3: 1 pending  → value=1, active=false  (== activation threshold → inactive)
+//	step 4: 0 pending  → value=0, active=false  (scale-to-zero)
 func TestSpannerIntegration_ScalingSimulation(t *testing.T) {
 	_, httpBase := requireEmulator(t)
 	setupEmulator(t, httpBase) // ensures instance/db/table exist; clears + seeds 2 pending rows
