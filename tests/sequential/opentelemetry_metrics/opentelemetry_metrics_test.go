@@ -44,6 +44,9 @@ var (
 	deploymentName                           = fmt.Sprintf("%s-deployment", testName)
 	monitoredDeploymentName                  = fmt.Sprintf("%s-monitored", testName)
 	scaledObjectName                         = fmt.Sprintf("%s-so", testName)
+	resourceMetricDeploymentName             = fmt.Sprintf("%s-resource-deployment", testName)
+	resourceMetricScaledObjectName           = fmt.Sprintf("%s-resource-so", testName)
+	resourceMetricScalerName                 = fmt.Sprintf("%s-resource-cpu-scaler", testName)
 	httpClientScaledObjectName               = fmt.Sprintf("%s-so-http-client", testName)
 	wrongScaledObjectName                    = fmt.Sprintf("%s-so-wrong", testName)
 	scaledObjectGrpcName                     = fmt.Sprintf("%s-so-grpc", testName)
@@ -69,26 +72,29 @@ var (
 )
 
 type templateData struct {
-	TestName                      string
-	TestNamespace                 string
-	DeploymentName                string
-	ScaledObjectName              string
-	HTTPClientScaledObjectName    string
-	ScaledJobName                 string
-	ScaledObjectGrpcName          string
-	WrongScaledObjectName         string
-	WrongScaledJobName            string
-	WrongScalerName               string
-	EmptyUpstreamScaledObjectName string
-	HTTPClientScalerName          string
-	CronScaledJobName             string
-	MonitoredDeploymentName       string
-	ClientName                    string
-	CloudEventSourceName          string
-	WrongCloudEventSourceName     string
-	CloudEventHTTPReceiverName    string
-	CloudEventHTTPServiceName     string
-	CloudEventHTTPServiceURL      string
+	TestName                       string
+	TestNamespace                  string
+	DeploymentName                 string
+	ScaledObjectName               string
+	ResourceMetricDeploymentName   string
+	ResourceMetricScaledObjectName string
+	ResourceMetricScalerName       string
+	HTTPClientScaledObjectName     string
+	ScaledJobName                  string
+	ScaledObjectGrpcName           string
+	WrongScaledObjectName          string
+	WrongScaledJobName             string
+	WrongScalerName                string
+	EmptyUpstreamScaledObjectName  string
+	HTTPClientScalerName           string
+	CronScaledJobName              string
+	MonitoredDeploymentName        string
+	ClientName                     string
+	CloudEventSourceName           string
+	WrongCloudEventSourceName      string
+	CloudEventHTTPReceiverName     string
+	CloudEventHTTPServiceName      string
+	CloudEventHTTPServiceURL       string
 }
 
 const (
@@ -138,6 +144,34 @@ spec:
           image: ghcr.io/nginx/nginx-unprivileged:1.26
 `
 
+	resourceMetricDeploymentTemplate = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.ResourceMetricDeploymentName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.ResourceMetricDeploymentName}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{.ResourceMetricDeploymentName}}
+  template:
+    metadata:
+      labels:
+        app: {{.ResourceMetricDeploymentName}}
+    spec:
+      containers:
+        - name: {{.ResourceMetricDeploymentName}}
+          image: ghcr.io/nginx/nginx-unprivileged:1.26
+          resources:
+            requests:
+              cpu: "200m"
+            limits:
+              cpu: "500m"
+`
+
 	scaledObjectTemplate = `
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -157,6 +191,26 @@ spec:
       metadata:
         podSelector: 'app={{.MonitoredDeploymentName}}'
         value: '1'
+`
+
+	resourceMetricScaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ResourceMetricScaledObjectName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.ResourceMetricDeploymentName}}
+  pollingInterval: 5
+  minReplicaCount: 1
+  maxReplicaCount: 2
+  triggers:
+    - type: cpu
+      name: {{.ResourceMetricScalerName}}
+      metricType: Utilization
+      metadata:
+        value: "50"
 `
 
 	scaledObjectGrpcTemplate = `
@@ -613,30 +667,35 @@ func TestOpenTelemetryMetrics(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestName:                      testName,
-			TestNamespace:                 testNamespace,
-			DeploymentName:                deploymentName,
-			ScaledObjectName:              scaledObjectName,
-			HTTPClientScaledObjectName:    httpClientScaledObjectName,
-			WrongScaledObjectName:         wrongScaledObjectName,
-			ScaledObjectGrpcName:          scaledObjectGrpcName,
-			ScaledJobName:                 scaledJobName,
-			WrongScaledJobName:            wrongScaledJobName,
-			WrongScalerName:               wrongScalerName,
-			EmptyUpstreamScaledObjectName: emptyUpstreamScaledObjectName,
-			HTTPClientScalerName:          httpClientScalerName,
-			MonitoredDeploymentName:       monitoredDeploymentName,
-			ClientName:                    clientName,
-			CronScaledJobName:             cronScaledJobName,
-			CloudEventSourceName:          cloudEventSourceName,
-			WrongCloudEventSourceName:     wrongCloudEventSourceName,
-			CloudEventHTTPReceiverName:    cloudEventHTTPReceiverName,
-			CloudEventHTTPServiceName:     cloudEventHTTPServiceName,
-			CloudEventHTTPServiceURL:      cloudEventHTTPServiceURL,
+			TestName:                       testName,
+			TestNamespace:                  testNamespace,
+			DeploymentName:                 deploymentName,
+			ScaledObjectName:               scaledObjectName,
+			ResourceMetricDeploymentName:   resourceMetricDeploymentName,
+			ResourceMetricScaledObjectName: resourceMetricScaledObjectName,
+			ResourceMetricScalerName:       resourceMetricScalerName,
+			HTTPClientScaledObjectName:     httpClientScaledObjectName,
+			WrongScaledObjectName:          wrongScaledObjectName,
+			ScaledObjectGrpcName:           scaledObjectGrpcName,
+			ScaledJobName:                  scaledJobName,
+			WrongScaledJobName:             wrongScaledJobName,
+			WrongScalerName:                wrongScalerName,
+			EmptyUpstreamScaledObjectName:  emptyUpstreamScaledObjectName,
+			HTTPClientScalerName:           httpClientScalerName,
+			MonitoredDeploymentName:        monitoredDeploymentName,
+			ClientName:                     clientName,
+			CronScaledJobName:              cronScaledJobName,
+			CloudEventSourceName:           cloudEventSourceName,
+			WrongCloudEventSourceName:      wrongCloudEventSourceName,
+			CloudEventHTTPReceiverName:     cloudEventHTTPReceiverName,
+			CloudEventHTTPServiceName:      cloudEventHTTPServiceName,
+			CloudEventHTTPServiceURL:       cloudEventHTTPServiceURL,
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+			{Name: "resourceMetricDeploymentTemplate", Config: resourceMetricDeploymentTemplate},
+			{Name: "resourceMetricScaledObjectTemplate", Config: resourceMetricScaledObjectTemplate},
 			{Name: "scaledJobTemplate", Config: scaledJobTemplate},
 			{Name: "clientTemplate", Config: clientTemplate},
 			{Name: "authenticatioNTemplate", Config: authenticationTemplate},
@@ -733,6 +792,30 @@ func fetchAndParsePrometheusMetrics(t *testing.T, cmd string) map[string]*prommo
 	assert.NoErrorf(t, err, "cannot parse metrics - %s", err)
 
 	return families
+}
+
+func waitForOpenTelemetryMetric(t *testing.T, metricToWaitFor string, familyValidator func(family *prommodel.MetricFamily) bool) map[string]*prommodel.MetricFamily {
+	contextWithTimeout, cancel := context.WithTimeout(context.Background(), WaitShort)
+	defer cancel()
+	var family map[string]*prommodel.MetricFamily
+	err := KedaEventually(contextWithTimeout, func(ctx context.Context) (bool, error) {
+		t.Logf("Waiting for metric %s", metricToWaitFor)
+		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
+
+		if _, ok := family[metricToWaitFor]; ok {
+			if familyValidator(family[metricToWaitFor]) {
+				return true, nil
+			}
+			return false, nil
+		}
+		return false, nil
+	}, IntervalShort)
+
+	if err != nil {
+		t.Errorf("error waiting for metric %s: %v", metricToWaitFor, err)
+	}
+
+	return family
 }
 
 func testScalerMetricValue(t *testing.T) {
@@ -1029,8 +1112,20 @@ func testScalableObjectMetrics(t *testing.T) {
 func testScalerActiveMetric(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scaler active metric ---")
 
-	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
+	resourceScalerLabels := map[string]string{
+		"namespace":    testNamespace,
+		"scaledObject": resourceMetricScaledObjectName,
+		"scaler":       resourceMetricScalerName,
+		"scalerIndex":  "0",
+		"metric":       "cpu",
+	}
+
+	families := waitForOpenTelemetryMetric(t, "keda_scaler_active", func(family *prommodel.MetricFamily) bool {
+		return hasMetricWithLabelsAndGauge(family, resourceScalerLabels, 1)
+	})
 	assertScaledObjectFlagMetric(t, families, scaledObjectName, "keda_scaler_active", true)
+	assert.True(t, hasMetricWithLabelsAndGauge(families["keda_scaler_active"], resourceScalerLabels, 1),
+		"expected keda_scaler_active for CPU resource scaler")
 
 	t.Log("--- testing scaler active metric scaled down ---")
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)
@@ -1040,6 +1135,24 @@ func testScalerActiveMetric(t *testing.T, kc *kubernetes.Clientset) {
 
 	assertScaledObjectFlagMetric(t, families, scaledObjectName, "keda_scaler_active", false)
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 4, testNamespace)
+}
+
+func hasMetricWithLabelsAndGauge(family *prommodel.MetricFamily, expectedLabels map[string]string, expectedValue float64) bool {
+	for _, metric := range family.GetMetric() {
+		if metric.GetGauge().GetValue() == expectedValue && hasPrometheusLabels(metric.GetLabel(), expectedLabels) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasPrometheusLabels(labels []*prommodel.LabelPair, expectedLabels map[string]string) bool {
+	for name, value := range expectedLabels {
+		if ExtractPrometheusLabelValue(name, labels) != value {
+			return false
+		}
+	}
+	return true
 }
 
 func testScaledObjectPausedMetric(t *testing.T, data templateData) {
