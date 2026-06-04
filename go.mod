@@ -112,10 +112,10 @@ require (
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
 	go.etcd.io/etcd/client/v3 v3.6.11
 	go.mongodb.org/mongo-driver v1.17.9
-	go.opentelemetry.io/otel v1.43.0
+	go.opentelemetry.io/otel v1.44.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.43.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.43.0
-	go.opentelemetry.io/otel/metric v1.43.0
+	go.opentelemetry.io/otel/metric v1.44.0
 	go.opentelemetry.io/otel/sdk/metric v1.43.0
 	go.temporal.io/sdk v1.44.0
 	go.uber.org/mock v0.6.0
@@ -313,7 +313,7 @@ require (
 	github.com/samber/lo v1.52.0 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
-	github.com/signalfx/signalfx-go v1.54.0 // indirect
+	github.com/signalfx/signalfx-go v1.54.0
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
@@ -343,7 +343,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.43.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.43.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.43.0 // indirect
-	go.opentelemetry.io/otel/trace v1.43.0 // indirect
+	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
 	go.temporal.io/api v1.62.12
 	go.uber.org/atomic v1.11.0
