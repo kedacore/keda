@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -601,4 +602,56 @@ func createMetricSpec(averageValue int) v2.MetricSpec {
 			},
 		},
 	}
+}
+
+// TestUpdateStatusConcurrency verifies that concurrent calls to GetMetricsWithFallback
+// for different metrics of the same ScaledObject do not cause a
+// "fatal error: concurrent map iteration and map write" panic. Run this test with -race.
+func TestUpdateStatusConcurrency(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockClient := mock_client.NewMockClient(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	mockClient.EXPECT().Status().Return(statusWriter).AnyTimes()
+
+	so := &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-concurrent",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"anno1": "val1", "anno2": "val2", "anno3": "val3",
+			},
+			Labels: map[string]string{
+				"label1": "val1", "label2": "val2",
+			},
+		},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "myapp"},
+			Fallback: &kedav1alpha1.Fallback{
+				FailureThreshold: 3,
+				Replicas:         10,
+			},
+		},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			Health:     map[string]kedav1alpha1.HealthStatus{},
+			Conditions: *kedav1alpha1.GetInitializedConditions(),
+		},
+	}
+
+	suppressedErr := errors.New("scaler error")
+	metricSpec := createMetricSpec(3)
+
+	const concurrency = 20
+	var wg sync.WaitGroup
+	wg.Add(concurrency)
+	for i := 0; i < concurrency; i++ {
+		go func(i int) {
+			defer wg.Done()
+			mn := fmt.Sprintf("metric_%d", i)
+			_, _, _ = GetMetricsWithFallback(context.Background(), mockClient, nil, nil, suppressedErr, mn, so, metricSpec)
+		}(i)
+	}
+	wg.Wait()
 }

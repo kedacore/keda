@@ -81,6 +81,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
+- **General**: Fix concurrent map read/write data race in fallback `updateStatus` that caused panics when multiple triggers were scaling simultaneously ([#7838](https://github.com/kedacore/keda/issues/7838))
 - **General**: Fix `KEDAScalersStarted` "Started scalers watch" event not being emitted for ScaledJobs because it shared an events.k8s.io aggregation key with the per-scaler "scaler is built" event ([#7820](https://github.com/kedacore/keda/pull/7820))
 
 ### Deprecations

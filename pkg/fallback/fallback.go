@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"sync"
 
 	v2 "k8s.io/api/autoscaling/v2"
 	v1 "k8s.io/api/core/v1"
@@ -38,11 +39,18 @@ import (
 
 var log = logf.Log.WithName("fallback")
 
+// scaledObjectMu holds one mutex per ScaledObject to prevent concurrent map read/write in updateStatus.
+var scaledObjectMu sync.Map
+
 func isFallbackEnabled(scaledObject *kedav1alpha1.ScaledObject) bool {
 	return scaledObject.Spec.Fallback != nil
 }
 
 func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, scaleClient scale.ScalesGetter, metrics []external_metrics.ExternalMetricValue, suppressedError error, metricName string, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) ([]external_metrics.ExternalMetricValue, bool, error) {
+	mu, _ := scaledObjectMu.LoadOrStore(scaledObject.Namespace+"/"+scaledObject.Name, &sync.Mutex{})
+	mu.(*sync.Mutex).Lock()
+	defer mu.(*sync.Mutex).Unlock()
+
 	status := scaledObject.Status.DeepCopy()
 
 	initHealthStatus(status)
