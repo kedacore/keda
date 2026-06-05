@@ -97,7 +97,10 @@ New deprecation(s):
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Datadog Scaler**: Migrate Datadog to authentication.Config ([#7766](https://github.com/kedacore/keda/issues/7766))
+- **Github Runner Scaler**: Migrate Github_runner to authentication.Config ([#7766](https://github.com/kedacore/keda/issues/7766))
+- **Graphite Scaler**: Migrate Graphite to authentication.Config ([#7766](https://github.com/kedacore/keda/issues/7766))
+- **RabbitMQ Scaler**: Migrate RabbitMQ to authentication.Config ([#7766](https://github.com/kedacore/keda/issues/7766))
 
 ## v2.20.0
 
@@ -147,7 +150,6 @@ New deprecation(s):
 - **Azure Event Hub Scaler**: Reject non-positive `unprocessedEventThreshold` to prevent integer division by zero when computing lag ([#7732](https://github.com/kedacore/keda/issues/7732))
 - **Azure Pipelines Scaler**: Exclude already-assigned jobs from queue length ([#7747](https://github.com/kedacore/keda/issues/7747))
 - **Cron Scaler**: Fix metric name generation so cron expressions with comma-separated values no longer produce invalid metric names ([#7448](https://github.com/kedacore/keda/issues/7448))
-- **Datadog Scaler**: Migrate Datadog to authentication.Config ([#7766](https://github.com/kedacore/keda/issues/7766))
 - **External Scaler**: gRPC Pool uses TLS context in the key ([#7687](https://github.com/kedacore/keda/issues/7687))
 - **Forgejo Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **Forgejo Scaler**: Return correct activity to enable scale-to-zero ([#7527](https://github.com/kedacore/keda/issues/7527))
@@ -157,8 +159,6 @@ New deprecation(s):
 - **Github Runner Scaler**: Bound etag and per-repo caches to prevent unbounded memory growth when `enableEtags` is on ([#7685](https://github.com/kedacore/keda/issues/7685))
 - **Github Runner Scaler**: Improve URL construction and error handling ([#7495](https://github.com/kedacore/keda/pull/7495))
 - **Github Runner Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
-- **Github Runner Scaler**: Migrate Github_runner to authentication.Config ([#7766](https://github.com/kedacore/keda/issues/7766))
-- **Graphite Scaler**: Migrate Graphite to authentication.Config ([#7766](https://github.com/kedacore/keda/issues/7766))
 - **InfluxDB Scaler**: Make `authToken` optional to support unauthenticated InfluxDB instances ([#7616](https://github.com/kedacore/keda/issues/7616))
 - **Loki Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **Loki Scaler**: `serverAddress` now appends `/loki/api/v1/query` to the end of existing path instead of overriding ([#7648](https://github.com/kedacore/keda/pull/7648))
