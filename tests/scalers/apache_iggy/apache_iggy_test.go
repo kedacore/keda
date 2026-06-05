@@ -653,9 +653,12 @@ func testEnsureEvenDistributionOfPartitions(t *testing.T, kc *kubernetes.Clients
 // --- Helper functions ---
 
 func iggyCmd(t *testing.T, args string) (string, string) {
+	t.Helper()
 	cmd := fmt.Sprintf("iggy --tcp-server-address %s -u iggy -p iggy %s", iggyServerAddress, args)
 	stdout, stderr, err := ExecCommandOnSpecificPod(t, iggyClientName, testNamespace, cmd)
-	assert.NoErrorf(t, err, "iggy command failed: %s\nstdout: %s\nstderr: %s", cmd, stdout, stderr)
+	// This is a setup/fixture helper that every later step depends on, so fail fast
+	// (require) rather than letting a failed command cascade into confusing downstream errors.
+	require.NoErrorf(t, err, "iggy command failed: %s\nstdout: %s\nstderr: %s", cmd, stdout, stderr)
 	return stdout, stderr
 }
 
