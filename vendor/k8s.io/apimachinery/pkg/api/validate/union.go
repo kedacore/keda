@@ -19,6 +19,7 @@ package validate
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/operation"
@@ -47,15 +48,23 @@ type UnionValidationOptions struct {
 //
 // For example:
 //
-//	var UnionMembershipForABC := validate.NewUnionMembership([2]string{"a", "A"}, [2]string{"b", "B"}, [2]string{"c", "C"})
-//	func ValidateABC(ctx context.Context, op operation.Operation, fldPath *field.Path, in *ABC) (errs fields.ErrorList) {
+//	var UnionMembershipForABC := validate.NewUnionMembership(
+//	 	validate.NewUnionMember("a"),
+//	 	validate.NewUnionMember("b"),
+//	 	validate.NewUnionMember("c"),
+//	 )
+//	func ValidateABC(ctx context.Context, op operation.Operation, fldPath *field.Path, in *ABC) (errs field.ErrorList) {
 //		errs = append(errs, Union(ctx, op, fldPath, in, oldIn, UnionMembershipForABC,
 //			func(in *ABC) bool { return in.A != nil },
-//			func(in *ABC) bool { return in.B != ""},
+//			func(in *ABC) bool { return in.B != "" },
 //			func(in *ABC) bool { return in.C != 0 },
 //		)...)
 //		return errs
 //	}
+//
+// Note that T is "any", rather than "comparable", because union-members can be
+// slices, meaning T might be a struct with a slice, meaning it is not
+// comparable.
 func Union[T any](_ context.Context, op operation.Operation, fldPath *field.Path, obj, oldObj T, union *UnionMembership, isSetFns ...ExtractorFn[T, bool]) field.ErrorList {
 	options := UnionValidationOptions{
 		ErrorForEmpty: func(fldPath *field.Path, allFields []string) *field.Error {
@@ -77,12 +86,16 @@ func Union[T any](_ context.Context, op operation.Operation, fldPath *field.Path
 //
 // For example:
 //
-//	var UnionMembershipForABC = validate.NewDiscriminatedUnionMembership("type", [2]string{"a", "A"}, [2]string{"b", "B"}, [2]string{"c", "C"})
+//	var UnionMembershipForABC = validate.NewDiscriminatedUnionMembership("type",
+//	 	validate.NewDiscriminatedUnionMember("a", "A"),
+//	 	validate.NewDiscriminatedUnionMember("b", "B"),
+//	 	validate.NewDiscriminatedUnionMember("c", "C"),
+//	)
 //	func ValidateABC(ctx context.Context, op operation.Operation, fldPath *field.Path, in *ABC) (errs field.ErrorList) {
 //		errs = append(errs, DiscriminatedUnion(ctx, op, fldPath, in, oldIn, UnionMembershipForABC,
 //			func(in *ABC) string { return string(in.Type) },
 //			func(in *ABC) bool { return in.A != nil },
-//			func(in *ABC) bool { return in.B != ""},
+//			func(in *ABC) bool { return in.B != "" },
 //			func(in *ABC) bool { return in.C != 0 },
 //		)...)
 //		return errs
@@ -90,6 +103,10 @@ func Union[T any](_ context.Context, op operation.Operation, fldPath *field.Path
 //
 // It is not an error for the discriminatorValue to be unknown.  That must be
 // validated on its own.
+//
+// Note that T is "any", rather than "comparable", because union-members can be
+// slices, meaning T might be a struct with a slice, meaning it is not
+// comparable.
 func DiscriminatedUnion[T any, D ~string](_ context.Context, op operation.Operation, fldPath *field.Path, obj, oldObj T, union *UnionMembership, discriminatorExtractor ExtractorFn[T, D], isSetFns ...ExtractorFn[T, bool]) (errs field.ErrorList) {
 	if len(union.members) != len(isSetFns) {
 		return field.ErrorList{
@@ -98,6 +115,7 @@ func DiscriminatedUnion[T any, D ~string](_ context.Context, op operation.Operat
 					len(isSetFns), len(union.members))),
 		}
 	}
+	hasOldValue := !reflect.ValueOf(oldObj).IsZero() // because T is any, rather than comparable
 	var changed bool
 	discriminatorValue := discriminatorExtractor(obj)
 	if op.Type == operation.Update {
@@ -123,41 +141,48 @@ func DiscriminatedUnion[T any, D ~string](_ context.Context, op operation.Operat
 	}
 	// If the union discriminator and membership is unchanged, we don't need to
 	// re-validate.
-	if op.Type == operation.Update && !changed {
+	if op.Type == operation.Update && hasOldValue && !changed {
 		return nil
 	}
 	return errs
 }
 
-type member struct {
-	fieldName, discriminatorValue string
+// UnionMember represents a member of a union.
+type UnionMember struct {
+	fieldName          string
+	discriminatorValue string
+}
+
+// NewUnionMember returns a new UnionMember for the given field name.
+func NewUnionMember(fieldName string) UnionMember {
+	return UnionMember{fieldName: fieldName}
+}
+
+// NewDiscriminatedUnionMember returns a new UnionMember for the given field
+// name and discriminator value.
+func NewDiscriminatedUnionMember(fieldName, discriminatorValue string) UnionMember {
+	return UnionMember{fieldName: fieldName, discriminatorValue: discriminatorValue}
 }
 
 // UnionMembership represents an ordered list of field union memberships.
 type UnionMembership struct {
 	discriminatorName string
-	members           []member
+	members           []UnionMember
 }
 
 // NewUnionMembership returns a new UnionMembership for the given list of members.
-//
-// Each member is a [2]string to provide a fieldName and discriminatorValue pair, where
-// [0] identifies the field name and [1] identifies the union member Name.
-//
-// Field names must be unique.
-func NewUnionMembership(member ...[2]string) *UnionMembership {
+// Member names must be unique.
+func NewUnionMembership(member ...UnionMember) *UnionMembership {
 	return NewDiscriminatedUnionMembership("", member...)
 }
 
 // NewDiscriminatedUnionMembership returns a new UnionMembership for the given discriminator field and list of members.
 // members are provided in the same way as for NewUnionMembership.
-func NewDiscriminatedUnionMembership(discriminatorFieldName string, members ...[2]string) *UnionMembership {
-	u := &UnionMembership{}
-	u.discriminatorName = discriminatorFieldName
-	for _, fieldName := range members {
-		u.members = append(u.members, member{fieldName: fieldName[0], discriminatorValue: fieldName[1]})
+func NewDiscriminatedUnionMembership(discriminatorFieldName string, members ...UnionMember) *UnionMembership {
+	return &UnionMembership{
+		discriminatorName: discriminatorFieldName,
+		members:           members,
 	}
-	return u
 }
 
 // allFields returns a string listing all the field names of the member of a union for use in error reporting.
@@ -180,6 +205,7 @@ func unionValidate[T any](op operation.Operation, fldPath *field.Path,
 		}
 	}
 
+	hasOldValue := !reflect.ValueOf(oldObj).IsZero() // because T is any, rather than comparable
 	var specifiedFields []string
 	var changed bool
 	for i, fieldIsSet := range isSetFns {
@@ -194,7 +220,7 @@ func unionValidate[T any](op operation.Operation, fldPath *field.Path,
 	}
 
 	// If the union membership is unchanged, we don't need to re-validate.
-	if op.Type == operation.Update && !changed {
+	if op.Type == operation.Update && hasOldValue && !changed {
 		return nil
 	}
 

@@ -17,6 +17,7 @@ type CompoundCondition struct {
 	RunbookURL            string               `json:"runbookUrl,omitempty"`
 	ThresholdDuration     int                  `json:"thresholdDuration,omitempty"`
 	TriggerExpression     string               `json:"triggerExpression,omitempty"`
+	EntityGuid            string               `json:"entityGuid,omitempty"`
 }
 
 // ComponentCondition represents a component condition within a compound condition.
@@ -272,6 +273,7 @@ const (
 			alias
 		}
 		enabled
+		entityGuid
 		facetMatchingBehavior
 		name
 		policyId

@@ -241,7 +241,7 @@ jobs:
       - name: Scale cluster
         run: make scale-node-pool
         env:
-          NODE_POOL_SIZE: 3
+          NODE_POOL_SIZE: 5
           TEST_CLUSTER_NAME: keda-e2e-cluster-pr
 
       - name: Run end to end tests
@@ -277,7 +277,8 @@ jobs:
           set -euo pipefail
           PASSED="$E2E_RESULTS_DIR/passed.txt"
           FAILED="$E2E_RESULTS_DIR/failed.txt"
-          if [[ ! -f "$PASSED" && ! -f "$FAILED" ]]; then
+          SETUP_TEARDOWN="$E2E_RESULTS_DIR/setup_and_teardown.txt"
+          if [[ ! -f "$PASSED" && ! -f "$FAILED" && ! -s "$SETUP_TEARDOWN" ]]; then
             echo "no results files produced under $E2E_RESULTS_DIR; skipping comment update" >&2
             echo "should_post=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -289,6 +290,20 @@ jobs:
           {
             echo 'body<<E2E_RESULTS_EOF'
             echo ''
+            if [[ -s "$SETUP_TEARDOWN" ]]; then
+              setup_teardown_count=$(cat "$SETUP_TEARDOWN" | wc -l)
+              echo "> :warning: infrastructure failure: the e2e run did not complete normally"
+              echo ''
+              echo '<details open>'
+              echo "<summary>setup / teardown failures: ${setup_teardown_count}</summary>"
+              echo ''
+              echo '```'
+              cat "$SETUP_TEARDOWN"
+              echo '```'
+              echo ''
+              echo '</details>'
+              echo ''
+            fi
             echo '<details>'
             echo "<summary>passed tests: ${passed_count}</summary>"
             echo ''

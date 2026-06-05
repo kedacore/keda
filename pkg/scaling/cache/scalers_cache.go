@@ -25,7 +25,7 @@ import (
 
 	"github.com/expr-lang/expr/vm"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -44,22 +44,48 @@ type ScalersCache struct {
 	ScaledObject             *kedav1alpha1.ScaledObject
 	Scalers                  []ScalerBuilder
 	ScalableObjectGeneration int64
-	Recorder                 record.EventRecorder
+	Recorder                 events.EventRecorder
 	CompiledFormula          *vm.Program
+	ReaderDrainBudget        time.Duration
 	mutex                    sync.RWMutex
 	closed                   bool
 	activeReaders            sync.WaitGroup
 }
 
-// acquireReader returns ErrCacheClosed if the cache is closed, otherwise it increments activeReaders. The closed check and the Add must happen under the same RLock so Close()'s write Lock serializes against both. Caller must Done().
-func (c *ScalersCache) acquireReader() error {
+// acquireReader either reserves an activeReaders slot or returns ErrCacheClosed if the cache has been closed. The returned release function should be called by defer statement.
+// If ReaderDrainBudget > 0, the slot is auto-released by a timer if release is not called within the budget - this keeps activeReaders.Wait() bounded even if a reader is stuck in a third-party SDK that ignores ctx.
+// If ReaderDrainBudget <= 0 means "no budget"; the slot is held until release is called.
+func (c *ScalersCache) acquireReader() (release func(), err error) {
 	c.mutex.RLock()
-	defer c.mutex.RUnlock()
 	if c.closed {
-		return ErrCacheClosed
+		c.mutex.RUnlock()
+		return nil, ErrCacheClosed
 	}
 	c.activeReaders.Add(1)
-	return nil
+	c.mutex.RUnlock()
+
+	var once sync.Once
+	done := func() { once.Do(c.activeReaders.Done) }
+
+	if c.ReaderDrainBudget <= 0 {
+		return done, nil
+	}
+
+	timer := time.AfterFunc(c.ReaderDrainBudget, func() {
+		fired := false
+		once.Do(func() {
+			c.activeReaders.Done()
+			fired = true
+		})
+		if fired {
+			log.Info("scaler reader exceeded ReaderDrainBudget; releasing activeReaders slot to avoid blocking cache.Close", "budget", c.ReaderDrainBudget)
+		}
+	})
+
+	return func() {
+		timer.Stop()
+		done()
+	}, nil
 }
 
 type ScalerBuilder struct {
@@ -156,12 +182,11 @@ func (c *ScalersCache) GetMetricSpecForScaling(ctx context.Context) []v2.MetricS
 
 // GetMetricSpecForScalingForScaler returns metrics spec for a scaler identified by the metric name
 func (c *ScalersCache) GetMetricSpecForScalingForScaler(ctx context.Context, index int) ([]v2.MetricSpec, error) {
-	if err := c.acquireReader(); err != nil {
+	release, err := c.acquireReader()
+	if err != nil {
 		return nil, err
 	}
-	defer c.activeReaders.Done()
-
-	var err error
+	defer release()
 
 	sb, err := c.getScalerBuilder(index)
 	if err != nil {
@@ -190,10 +215,11 @@ func (c *ScalersCache) GetMetricSpecForScalingForScaler(ctx context.Context, ind
 // GetMetricsAndActivityForScaler returns metric value, activity and latency for a scaler identified by the metric name
 // and by the input index (from the list of scalers in this ScaledObject)
 func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index int, metricName string) ([]external_metrics.ExternalMetricValue, bool, time.Duration, error) {
-	if err := c.acquireReader(); err != nil {
+	release, err := c.acquireReader()
+	if err != nil {
 		return nil, false, -1, err
 	}
-	defer c.activeReaders.Done()
+	defer release()
 
 	sb, err := c.getScalerBuilder(index)
 	if err != nil {

@@ -17,12 +17,15 @@ limitations under the License.
 package scalersconfig
 
 import (
+	"fmt"
 	"net/url"
 	"testing"
 	"time"
 
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/events"
+	"k8s.io/klog/v2"
 )
 
 // TestBasicTypedConfig tests the basic types for typed config
@@ -738,23 +741,19 @@ func TestNestedOptionalParamNamesPropagate(t *testing.T) {
 	Expect(mockRec.Messages).To(BeEmpty(), "authModes was matched via the nested struct, no warnings expected")
 }
 
-// MockEventRecorder is a mock implementation of record.EventRecorder
+// MockEventRecorder is a mock implementation of events.EventRecorder
 type MockEventRecorder struct {
 	EventCalled bool
 	Message     string
 	Messages    []string
 }
 
-func (m *MockEventRecorder) Event(object runtime.Object, eventtype, reason, message string) {
+func (m *MockEventRecorder) Eventf(regarding, related runtime.Object, eventtype, reason, action, note string, args ...interface{}) {
 	m.EventCalled = true
-	m.Message = message
-	m.Messages = append(m.Messages, message)
+	m.Message = fmt.Sprintf(note, args...)
+	m.Messages = append(m.Messages, m.Message)
 }
 
-func (m *MockEventRecorder) Eventf(object runtime.Object, eventtype, reason, messageFmt string, args ...interface{}) {
-	// Not needed
-}
-
-func (m *MockEventRecorder) AnnotatedEventf(object runtime.Object, annotations map[string]string, eventtype, reason, messageFmt string, args ...interface{}) {
-	// Not needed
+func (m *MockEventRecorder) WithLogger(logger klog.Logger) events.EventRecorderLogger {
+	return m
 }

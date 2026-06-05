@@ -51,14 +51,14 @@ var Regions = map[Name]*Region{
 	},
 	JP: {
 		name:                  "JP",
-		infrastructureBaseURL: "https://infra-api.jp.newrelic.com/v2",
-		insightsBaseURL:       "https://insights-collector.jp01.nr-data.net/v1",
+		infrastructureBaseURL: "https://infra-api.jp.nr-data.net/v2",
+		insightsBaseURL:       "https://insights-collector.jp.nr-data.net/v1",
 		insightsKeysBaseURL:   "https://insights.jp.newrelic.com/internal_api/1",
-		logsBaseURL:           "https://log-api.jp.newrelic.com/log/v1",
+		logsBaseURL:           "https://log-api.jp.nr-data.net/log/v1",
 		nerdGraphBaseURL:      "https://api.jp.newrelic.com/graphql",
 		restBaseURL:           "https://api.jp.newrelic.com/v2",
 		syntheticsBaseURL:     "https://synthetics.jp.newrelic.com/synthetics/api",
-		metricsBaseURL:        "https://metric-api.jp.newrelic.com/metric/v1",
+		metricsBaseURL:        "https://metric-api.jp.nr-data.net/metric/v1",
 		blobServiceBaseURL:    "https://blob-api.service.jp.newrelic.com/v1/e",
 	},
 	Staging: {

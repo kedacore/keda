@@ -670,7 +670,9 @@ func (wtp *workflowTaskProcessor) RespondTaskCompletedWithMetrics(
 	} else if taskDuration > 5*time.Second {
 		wtp.logger.Info("[TMPRL1104] "+taskID+" Workflow task exceeded 5 seconds.", loggerDurationKeyVals...)
 	} else {
-		wtp.logger.Debug("[TMPRL1104] "+taskID+" Workflow task duration information.", loggerDurationKeyVals...)
+		traceLog(func() {
+			wtp.logger.Debug("Workflow task duration information.", loggerDurationKeyVals...)
+		})
 	}
 
 	var grpcMessageTooLargeErr *retry.GrpcMessageTooLargeError
@@ -903,7 +905,6 @@ func (callback *workflowTaskStorageMetrics) GetDriverNames() []string {
 	sort.Strings(names)
 	return names
 }
-
 
 func newLocalActivityPoller(
 	params workerExecutionParameters,

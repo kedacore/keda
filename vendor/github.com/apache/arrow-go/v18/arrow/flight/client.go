@@ -152,8 +152,13 @@ func CreateClientMiddleware(middleware CustomClientMiddleware) ClientMiddleware 
 					post.CallCompleted(csCtx, err)
 				}
 				if isHdrs {
-					hdrmd, _ := cs.Header()
-					hdrs.HeadersReceived(csCtx, metadata.Join(hdrmd, cs.Trailer()))
+					// Only retrieve headers and trailers if the stream completed successfully
+					// or with io.EOF. If the stream was cancelled or had an error before
+					// completion, headers/trailers may not be available.
+					if err == nil || errors.Is(err, io.EOF) {
+						hdrmd, _ := cs.Header()
+						hdrs.HeadersReceived(csCtx, metadata.Join(hdrmd, cs.Trailer()))
+					}
 				}
 			}
 			go func() {

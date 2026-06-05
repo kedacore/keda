@@ -230,10 +230,19 @@ func (c *Client) write(ctx context.Context, buff []byte, options *WriteOptions) 
 	resp, err := c.makeAPICall(ctx, *params)
 	if err != nil {
 		var svErr *ServerError
+		if options.UseV2Api && errors.As(err, &svErr) && svErr.StatusCode == http.StatusMethodNotAllowed &&
+			strings.HasSuffix(params.endpointURL.Path, "/api/v2/write") {
+			return fmt.Errorf(
+				"server doesn't support the V2 write API endpoint (/api/v2/write) (set UseV2Api=false; write options: {UseV2Api:%t,NoSync:%t,AcceptPartial:%t})",
+				options.UseV2Api,
+				options.NoSync,
+				options.AcceptPartial,
+			)
+		}
 		if !options.UseV2Api && errors.As(err, &svErr) && svErr.StatusCode == http.StatusMethodNotAllowed &&
 			strings.HasSuffix(params.endpointURL.Path, "/api/v3/write_lp") {
 			return fmt.Errorf(
-				"server doesn't support v3 write API (set WithUseV2Api(true); write options: {UseV2Api:%t,NoSync:%t,AcceptPartial:%t})",
+				"server doesn't support the V3 write API endpoint (/api/v3/write_lp) (set UseV2Api=true; write options: {UseV2Api:%t,NoSync:%t,AcceptPartial:%t})",
 				options.UseV2Api,
 				options.NoSync,
 				options.AcceptPartial,
@@ -306,7 +315,7 @@ func (c *Client) writeData(ctx context.Context, points []any, options *WriteOpti
 func encode(x any, options *WriteOptions) ([]byte, error) {
 	t := reflect.TypeOf(x)
 	v := reflect.ValueOf(x)
-	if t.Kind() == reflect.Ptr {
+	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 		v = v.Elem()
 	}
