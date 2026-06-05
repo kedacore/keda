@@ -256,7 +256,8 @@ func (s *apacheIggyScaler) GetMetricsAndActivity(_ context.Context, metricName s
 			// committed offset for this partition yet (expected for fresh consumers).
 			// Any other error (network, auth, server) is a genuine failure and must
 			// not be silently converted into a lag metric, so surface it instead.
-			if !errors.Is(err, ierror.ConsumerOffsetNotFound{}) {
+			var offsetNotFound ierror.ConsumerOffsetNotFound
+			if !errors.As(err, &offsetNotFound) {
 				return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error fetching consumer offset for partition %d: %w", partitionID, err)
 			}
 			s.logger.V(1).Info("No committed offset for partition, treating as no committed offset",
