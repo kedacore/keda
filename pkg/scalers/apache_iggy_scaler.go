@@ -251,30 +251,18 @@ func (s *apacheIggyScaler) GetMetricsAndActivity(_ context.Context, metricName s
 
 		partitionID := i
 		offset, err := s.client.GetConsumerOffset(s.consumer, s.streamID, s.topicID, &partitionID)
-		if err != nil {
-			// A typed ConsumerOffsetNotFound means the consumer group simply has no
-			// committed offset for this partition yet (expected for fresh consumers).
-			// Any other error (network, auth, server) is a genuine failure and must
-			// not be silently converted into a lag metric, so surface it instead.
-			var offsetNotFound ierror.ConsumerOffsetNotFound
-			if !errors.As(err, &offsetNotFound) {
-				return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error fetching consumer offset for partition %d: %w", partitionID, err)
-			}
-			s.logger.V(1).Info("No committed offset for partition, treating as no committed offset",
-				"partition", i)
-			retVal := int64(1)
-			if s.metadata.ScaleToZeroOnInvalidOffset {
-				retVal = iggyPartitionHighWatermark(topic, partitionID)
-			}
-			partitionLags = append(partitionLags, retVal)
-			partitionLagsWithPersistent = append(partitionLagsWithPersistent, retVal)
-			continue
+		// A typed ConsumerOffsetNotFound means the consumer group simply has no
+		// committed offset for this partition yet (expected for fresh consumers); the
+		// SDK likewise returns a nil offset with a nil error when the server responds
+		// with an empty payload. Both cases mean "no committed offset". Any other error
+		// (network, auth, server) is a genuine failure and must not be silently
+		// converted into a lag metric, so surface it instead.
+		var offsetNotFound ierror.ConsumerOffsetNotFound
+		if err != nil && !errors.As(err, &offsetNotFound) {
+			return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error fetching consumer offset for partition %d: %w", partitionID, err)
 		}
-
-		// The Iggy SDK returns nil offset with nil error when the server
-		// responds with an empty payload (e.g., no committed offset yet).
-		if offset == nil {
-			s.logger.V(1).Info("Nil offset returned for partition, treating as no committed offset",
+		if err != nil || offset == nil {
+			s.logger.V(1).Info("No committed offset for partition, treating as no committed offset",
 				"partition", i)
 			retVal := int64(1)
 			if s.metadata.ScaleToZeroOnInvalidOffset {
