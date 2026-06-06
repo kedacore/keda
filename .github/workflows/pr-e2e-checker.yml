@@ -5,6 +5,9 @@ on:
       - labeled
       - unlabeled
 
+permissions:
+  contents: read
+
 env:
   SKIP_E2E_TAG: skip-e2e
   E2E_CHECK_NAME: e2e tests
