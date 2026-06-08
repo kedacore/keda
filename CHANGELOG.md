@@ -141,6 +141,7 @@ New deprecation(s):
 - **General**: Fix ScaledObject Ready condition not reflecting HPA status ([#7649](https://github.com/kedacore/keda/issues/7649))
 - **General**: Handle paused scaling directly in reconciler ([#7663](https://github.com/kedacore/keda/issues/7663))
 - **General**: Honor `stderrthreshold` when `logtostderr` is enabled by updating klog to v2.140.0 ([#7568](https://github.com/kedacore/keda/pull/7568))
+- **General**: Jitter the first tick of each scale loop by `hash(UID) % pollingInterval` to prevent thundering-herd polling against external metric sources when many ScaledObjects are created in a short window or re-spawned after an operator restart ([#7676](https://github.com/kedacore/keda/pull/7676))
 - **General**: Limit projected service account token reads during Vault authentication ([#7783](https://github.com/kedacore/keda/issues/7783))
 - **General**: Reject ScaledObject creation and update when the name exceeds 63 characters ([#6998](https://github.com/kedacore/keda/issues/6998))
 - **AWS Scalers**: Fix TCP connection leak by closing HTTP idle connections on scaler `Close()` for SQS, Kinesis, DynamoDB, DynamoDB Streams, and CloudWatch scalers ([#7756](https://github.com/kedacore/keda/issues/7756))
