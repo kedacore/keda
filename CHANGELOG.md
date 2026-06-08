@@ -146,6 +146,7 @@ New deprecation(s):
 - **AWS Scalers**: Fix TCP connection leak by closing HTTP idle connections on scaler `Close()` for SQS, Kinesis, DynamoDB, DynamoDB Streams, and CloudWatch scalers ([#7756](https://github.com/kedacore/keda/issues/7756))
 - **Azure Data Explorer Scaler**: Remove clientSecretFromEnv support ([#7554](https://github.com/kedacore/keda/pull/7554))
 - **Azure Event Hub Scaler**: Reject non-positive `unprocessedEventThreshold` to prevent integer division by zero when computing lag ([#7732](https://github.com/kedacore/keda/issues/7732))
+- **Azure Monitor Scaler**: Set interval (granularity) equal to timespan so Azure returns a single aggregated data point ([#7524](https://github.com/kedacore/keda/issues/7524))
 - **Azure Pipelines Scaler**: Exclude already-assigned jobs from queue length ([#7747](https://github.com/kedacore/keda/issues/7747))
 - **Cron Scaler**: Fix metric name generation so cron expressions with comma-separated values no longer produce invalid metric names ([#7448](https://github.com/kedacore/keda/issues/7448))
 - **External Scaler**: gRPC Pool uses TLS context in the key ([#7687](https://github.com/kedacore/keda/issues/7687))
