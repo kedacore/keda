@@ -83,6 +83,13 @@ func (b *Bulk) sendBulkCommand(ctx context.Context) (err error) {
 			}
 		}
 		if bulkCol != nil {
+			// Note that for INSERT BULK operations, XMLTYPE is to be sent as NVARCHAR(N) or NVARCHAR(MAX) data type.
+			// An error is produced if XMLTYPE is specified.
+			//
+			// https://learn.microsoft.com/openspecs/windows_protocols/ms-tds/ab4a7d62-cd1f-4db1-b67d-ecae58f493e3
+			if bulkCol.ti.TypeId == typeXml {
+				bulkCol.ti.TypeId = typeNVarChar
+			}
 
 			if bulkCol.ti.TypeId == typeUdt {
 				//send udt as binary
@@ -99,11 +106,12 @@ func (b *Bulk) sendBulkCommand(ctx context.Context) (err error) {
 
 	//columns definitions
 	var col_defs bytes.Buffer
+	q := TSQLQuoter{}
 	for i, col := range b.bulkColumns {
 		if i != 0 {
 			col_defs.WriteString(", ")
 		}
-		col_defs.WriteString("[" + col.ColName + "] " + makeDecl(col.ti))
+		col_defs.WriteString(q.ID(col.ColName) + " " + makeDecl(col.ti))
 	}
 
 	//options
@@ -660,7 +668,7 @@ func (b *Bulk) makeParam(val DataValue, col columnStruct) (res param, err error)
 			buf[i] = ub[j]
 		}
 		res.buffer = buf
-	case typeBigVarBin, typeBigBinary:
+	case typeBigVarBin, typeBigBinary, typeImage:
 		switch val := val.(type) {
 		case []byte:
 			res.ti.Size = len(val)
@@ -678,7 +686,6 @@ func (b *Bulk) makeParam(val DataValue, col columnStruct) (res param, err error)
 			err = fmt.Errorf("mssql: invalid type for Guid column: %T %s", val, val)
 			return
 		}
-
 	default:
 		err = fmt.Errorf("mssql: type %x not implemented", col.ti.TypeId)
 	}

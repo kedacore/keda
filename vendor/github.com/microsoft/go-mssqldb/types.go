@@ -250,8 +250,16 @@ func writeVarLen(w io.Writer, ti *typeInfo, out bool, encoding msdsn.EncodeParam
 		if err = binary.Write(w, binary.LittleEndian, uint32(ti.Size)); err != nil {
 			return
 		}
-		if err = writeCollation(w, ti.Collation); err != nil {
-			return
+
+		// COLLATION occurs only if the type is BIGCHARTYPE, BIGVARCHARTYPE, TEXTTYPE, NTEXTTYPE,
+		// NCHARTYPE, or NVARCHARTYPE.
+		//
+		// https://learn.microsoft.com/openspecs/windows_protocols/ms-tds/cbe9c510-eae6-4b1f-9893-a098944d430a
+		switch ti.TypeId {
+		case typeText, typeNText:
+			if err = writeCollation(w, ti.Collation); err != nil {
+				return
+			}
 		}
 		ti.Writer = writeLongLenType
 	default:
@@ -576,6 +584,21 @@ func readLongLenType(ti *typeInfo, r *tdsBuffer, c *cryptoMetadata, encoding msd
 	panic("shoulnd't get here")
 }
 func writeLongLenType(w io.Writer, ti typeInfo, buf []byte, encoding msdsn.EncodeParameters) (err error) {
+	if buf == nil {
+		// According to the documentation, we MUST NOT specify the text pointer and timestamp when the value is NULL.
+		//
+		// https://learn.microsoft.com/openspecs/windows_protocols/ms-tds/3840ef93-3b10-4aca-9fd1-a210b8bb6d0c
+		//
+		// However, this approach fails with the error:
+		// "Expected the text length in data stream for bulk copy of text, ntext, or image data."
+		//
+		// But we can insert NULL successfully by setting the text pointer length to zero
+		// (without writing any additional bytes).
+		// Since there's no clear way to follow the documentation exactly, let's use this solution.
+		err = binary.Write(w, binary.LittleEndian, byte(0x00))
+		return
+	}
+
 	//textptr
 	err = binary.Write(w, binary.LittleEndian, byte(0x10))
 	if err != nil {
@@ -975,8 +998,12 @@ func encodeTimeInt(seconds, ns, scale int, buf []byte) {
 	buf[0] = byte(t)
 	buf[1] = byte(t >> 8)
 	buf[2] = byte(t >> 16)
-	buf[3] = byte(t >> 24)
-	buf[4] = byte(t >> 32)
+	if scale > 2 {
+		buf[3] = byte(t >> 24)
+	}
+	if scale > 4 {
+		buf[4] = byte(t >> 32)
+	}
 }
 
 func decodeTime(scale uint8, buf []byte, loc *time.Location) time.Time {
@@ -1183,7 +1210,7 @@ func makeGoLangScanType(ti typeInfo) reflect.Type {
 	case typeBigBinary:
 		return reflect.TypeOf([]byte{})
 	case typeVariant:
-		return reflect.TypeOf(nil)
+		return reflect.TypeOf((*interface{})(nil)).Elem()
 	case typeUdt:
 		return reflect.TypeOf([]byte{})
 	default:
@@ -1290,7 +1317,10 @@ func makeDecl(ti typeInfo) string {
 			panic("invalid size of DATETIMNTYPE")
 		}
 	case typeTimeN:
-		return "time"
+		if ti.Scale == 7 {
+			return "time"
+		}
+		return fmt.Sprintf("time(%d)", ti.Scale)
 	case typeDateTime2N:
 		return fmt.Sprintf("datetime2(%d)", ti.Scale)
 	case typeDateTimeOffsetN:
@@ -1301,6 +1331,8 @@ func makeDecl(ti typeInfo) string {
 		return "ntext"
 	case typeUdt:
 		return ti.UdtInfo.TypeName
+	case typeImage:
+		return "image"
 	case typeGuid:
 		return "uniqueidentifier"
 	case typeTvp:

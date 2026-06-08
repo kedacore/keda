@@ -175,6 +175,9 @@ type tdsSession struct {
 	connid          UniqueIdentifier
 	activityid      UniqueIdentifier
 	encoding        msdsn.EncodeParameters
+	// readDone is closed when the current processSingleResponse goroutine
+	// completes. startResponseReader waits on this to prevent concurrent buffer reads.
+	readDone chan struct{}
 }
 
 type alwaysEncryptedSettings struct {
@@ -198,7 +201,7 @@ type columnStruct struct {
 	cryptoMeta *cryptoMetadata
 }
 
-func (c columnStruct) isEncrypted() bool {
+func (c *columnStruct) isEncrypted() bool {
 	return isEncryptedFlag(c.Flags)
 }
 
@@ -206,7 +209,7 @@ func isEncryptedFlag(flags uint16) bool {
 	return colFlagEncrypted == (flags & colFlagEncrypted)
 }
 
-func (c columnStruct) originalTypeInfo() typeInfo {
+func (c *columnStruct) originalTypeInfo() typeInfo {
 	if c.isEncrypted() {
 		return c.cryptoMeta.typeInfo
 	}
@@ -1129,6 +1132,7 @@ func getTLSConn(conn *timeoutConn, p msdsn.Config, alpnSeq string) (tlsConn *tls
 }
 
 func connect(ctx context.Context, c *Connector, logger ContextLogger, p msdsn.Config) (res *tdsSession, err error) {
+	var cbt *integratedauth.ChannelBindings
 	isTransportEncrypted := false
 	// if instance is specified use instance resolution service
 	if len(p.Instance) > 0 && p.Port != 0 && uint64(p.LogFlags)&logDebug != 0 {
@@ -1172,11 +1176,18 @@ initiate_connection:
 	outbuf := newTdsBuffer(packetSize, toconn)
 
 	if p.Encryption == msdsn.EncryptionStrict {
-		outbuf.transport, err = getTLSConn(toconn, p, "tds/8.0")
+		tlsConn, err := getTLSConn(toconn, p, "tds/8.0")
 		if err != nil {
 			return nil, err
 		}
 		isTransportEncrypted = true
+		outbuf.transport = tlsConn
+		if p.EpaEnabled {
+			cbt, err = integratedauth.GenerateCBTFromTLSConnState(tlsConn.ConnectionState())
+			if err != nil {
+				logger.Log(ctx, msdsn.LogErrors, fmt.Sprintf("Error while generating Channel Bindings from TLS connection state: %v", err))
+			}
+		}
 	}
 	sess := newSession(outbuf, logger, p)
 
@@ -1253,8 +1264,14 @@ initiate_connection:
 					outbuf.transport = toconn
 				}
 			}
-		}
 
+			if p.EpaEnabled {
+				cbt, err = integratedauth.GenerateCBTFromTLSConnState(tlsConn.ConnectionState())
+				if err != nil {
+					logger.Log(ctx, msdsn.LogErrors, fmt.Sprintf("Error while generating Channel Bindings from TLS connection state: %v", err))
+				}
+			}
+		}
 	}
 
 	auth, err := integratedauth.GetIntegratedAuthenticator(p)
@@ -1268,6 +1285,11 @@ initiate_connection:
 
 	if auth != nil {
 		defer auth.Free()
+		if cbt != nil {
+			if authWithEPA, ok := auth.(integratedauth.AuthenticatorWithEPA); ok {
+				authWithEPA.SetChannelBinding(cbt)
+			}
+		}
 	}
 
 	login, err := prepareLogin(ctx, c, p, logger, auth, fedAuth, uint32(outbuf.PackageSize()))

@@ -73,6 +73,21 @@ func convertInputParameter(val interface{}) (interface{}, error) {
 		return val, nil
 	case civil.Time:
 		return val, nil
+	case NullDate:
+		if v.Valid {
+			return v.Date, nil
+		}
+		return val, nil
+	case NullDateTime:
+		if v.Valid {
+			return v.DateTime, nil
+		}
+		return val, nil
+	case NullTime:
+		if v.Valid {
+			return v.Time, nil
+		}
+		return val, nil
 	// case *apd.Decimal:
 	// 	return nil
 	case float32:

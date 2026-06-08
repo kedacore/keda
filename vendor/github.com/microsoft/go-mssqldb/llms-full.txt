@@ -1,0 +1,253 @@
+# go-mssqldb Complete Reference for LLMs
+
+> Microsoft's official Go driver for SQL Server and Azure SQL Database
+> Package: github.com/microsoft/go-mssqldb
+> License: BSD-3-Clause
+
+## Overview
+
+This is the recommended driver for connecting Go applications to:
+- Microsoft SQL Server (2005 and later)
+- Azure SQL Database
+- Azure SQL Managed Instance  
+- Azure Synapse Analytics
+
+## Installation
+
+```bash
+go get github.com/microsoft/go-mssqldb
+```
+
+## Driver Names
+
+| Driver | Package | Use Case |
+|--------|---------|----------|
+| `sqlserver` | main | Standard connections, use `@param` syntax |
+| `azuresql` | azuread | Azure AD authentication |
+| `mssql` | main | **DEPRECATED** - uses `?` syntax |
+
+## Import Patterns
+
+### Standard Connection
+```go
+import (
+    "database/sql"
+    _ "github.com/microsoft/go-mssqldb"
+)
+
+db, err := sql.Open("sqlserver", "sqlserver://user:password@localhost:1433?database=mydb")
+```
+
+### Azure AD Authentication
+```go
+import (
+    "database/sql"
+    "github.com/microsoft/go-mssqldb/azuread"
+)
+
+// Enable TLS with certificate validation for Azure SQL
+db, err := sql.Open(azuread.DriverName, "sqlserver://server.database.windows.net?database=mydb&fedauth=ActiveDirectoryDefault&encrypt=true&TrustServerCertificate=false")
+```
+
+### Kerberos Authentication (Linux)
+```go
+import (
+    _ "github.com/microsoft/go-mssqldb"
+    _ "github.com/microsoft/go-mssqldb/integratedauth/krb5"
+)
+
+db, err := sql.Open("sqlserver", "sqlserver://user@host/instance?authenticator=krb5&krb5-configfile=/etc/krb5.conf")
+```
+
+## Connection String Formats
+
+### URL Format (Recommended)
+```
+sqlserver://user:password@host:port?database=dbname
+sqlserver://user:password@host/instance?database=dbname
+sqlserver://user:password@server.database.windows.net?database=dbname&fedauth=ActiveDirectoryDefault&encrypt=true&TrustServerCertificate=false
+```
+
+### ADO Format
+```
+server=localhost;user id=sa;password=secret;database=mydb
+server=localhost\SQLEXPRESS;user id=sa;password=secret;database=mydb
+```
+
+### ODBC Format
+```
+odbc:server=localhost;user id=sa;password=secret;database=mydb
+```
+
+## Connection Parameters
+
+| Parameter | Description | Default / Recommendation |
+|-----------|-------------|---------------------------|
+| `database` | Database name | - |
+| `user id` | Username (DOMAIN\User for Windows auth) | - |
+| `password` | Password | - |
+| `encrypt` | `true`, `false`, `strict`, `disable` | **Recommended:** `true` (or `strict`) for production |
+| `TrustServerCertificate` | Skip cert verification | **Recommended:** `false` (validate server certificate) |
+| `connection timeout` | Seconds (0=no timeout) | 0 |
+| `app name` | Application name | go-mssqldb |
+| `authenticator` | `ntlm`, `winsspi`, `krb5` | platform default |
+
+> **Security Note**: For production and Azure SQL connections, always set `encrypt=true` and `TrustServerCertificate=false` to ensure encrypted connections with proper server identity verification.
+
+## Query Parameter Syntax
+
+**IMPORTANT**: When using the `sqlserver` driver, use `@name` or `@p1, @p2, ...` - NOT `$1` or `?`.
+The deprecated `mssql` driver supports `?` placeholders via token replacement, but new code should use `sqlserver`.
+
+### Named Parameters
+```go
+rows, err := db.QueryContext(ctx,
+    "SELECT * FROM users WHERE id = @ID AND status = @Status",
+    sql.Named("ID", 123),
+    sql.Named("Status", "active"),
+)
+```
+
+### Positional Parameters
+```go
+rows, err := db.QueryContext(ctx,
+    "SELECT * FROM users WHERE id = @p1 AND status = @p2",
+    123, "active",
+)
+```
+
+## Common Operations
+
+### Execute Query
+```go
+rows, err := db.QueryContext(ctx, "SELECT id, name FROM users WHERE active = @p1", true)
+if err != nil {
+    log.Fatal(err)
+}
+defer rows.Close()
+
+for rows.Next() {
+    var id int
+    var name string
+    if err := rows.Scan(&id, &name); err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("ID: %d, Name: %s\n", id, name)
+}
+```
+
+### Execute Statement
+```go
+result, err := db.ExecContext(ctx, "UPDATE users SET status = @p1 WHERE id = @p2", "inactive", 123)
+if err != nil {
+    log.Fatal(err)
+}
+rowsAffected, _ := result.RowsAffected()
+```
+
+### Stored Procedure with Output
+```go
+var outputValue string
+_, err := db.ExecContext(ctx, "sp_MyProcedure",
+    sql.Named("InputParam", "test"),
+    sql.Named("OutputParam", sql.Out{Dest: &outputValue}),
+)
+```
+
+### Return Status
+```go
+import mssql "github.com/microsoft/go-mssqldb"
+
+var returnStatus mssql.ReturnStatus
+_, err := db.ExecContext(ctx, "sp_MyProcedure", &returnStatus)
+fmt.Printf("Return status: %d\n", returnStatus)
+```
+
+### Bulk Copy
+```go
+import mssql "github.com/microsoft/go-mssqldb"
+
+txn, _ := db.Begin()
+stmt, _ := txn.Prepare(mssql.CopyIn("tablename", mssql.BulkOptions{}, "col1", "col2", "col3"))
+
+for _, row := range data {
+    stmt.Exec(row.Col1, row.Col2, row.Col3)
+}
+
+stmt.Exec()  // Flush remaining rows
+stmt.Close()
+txn.Commit()
+```
+
+### Get Last Insert ID (NOT LastInsertId!)
+```go
+// ✅ CORRECT: Use OUTPUT clause
+var newID int64
+err := db.QueryRowContext(ctx,
+    "INSERT INTO users (name) OUTPUT INSERTED.id VALUES (@p1)",
+    "John",
+).Scan(&newID)
+
+// ✅ CORRECT: Use SCOPE_IDENTITY()
+err = db.QueryRowContext(ctx,
+    "INSERT INTO users (name) VALUES (@p1); SELECT CAST(SCOPE_IDENTITY() AS bigint)",
+    "John",
+).Scan(&newID)
+
+// ❌ WRONG: LastInsertId() doesn't work with SQL Server
+result, _ := db.Exec("INSERT INTO users (name) VALUES (@p1)", "John")
+id, err := result.LastInsertId()  // Returns -1 and an error on Go 1.10+, not supported!
+```
+
+## Azure AD fedauth Values
+
+| Value | Description |
+|-------|-------------|
+| `ActiveDirectoryDefault` | DefaultAzureCredential chain (recommended) |
+| `ActiveDirectoryMSI` | Managed Identity |
+| `ActiveDirectoryServicePrincipal` | Service principal with secret/cert |
+| `ActiveDirectoryPassword` | Username and password |
+| `ActiveDirectoryAzCli` | Azure CLI credentials |
+| `ActiveDirectoryInteractive` | Browser-based interactive |
+| `ActiveDirectoryDeviceCode` | Device code flow |
+
+## Type Mappings
+
+| Go Type | SQL Server Type |
+|---------|-----------------|
+| `string` | nvarchar |
+| `mssql.VarChar` | varchar |
+| `time.Time` | datetimeoffset or datetime (TDS version dependent) |
+| `mssql.DateTime1` | datetime |
+| `civil.Date` | date |
+| `civil.DateTime` | datetime2 |
+| `civil.Time` | time |
+| `mssql.TVP` | table type |
+| `decimal.Decimal` | decimal |
+
+## Common Mistakes to Avoid
+
+1. **Wrong driver name**: Use `"sqlserver"` not `"mssql"`
+2. **Wrong parameter syntax**: Use `@name` or `@p1` not `$1` or `?`
+3. **Using LastInsertId()**: Use OUTPUT clause or SCOPE_IDENTITY() instead
+4. **Azure AD without package**: Must import `github.com/microsoft/go-mssqldb/azuread`
+5. **Missing context**: Always use `QueryContext`/`ExecContext` for timeout control
+
+## Features
+
+- SQL Server 2005+ and Azure SQL Database
+- Windows Authentication, SQL Authentication, Azure AD, Kerberos
+- Always Encrypted column encryption
+- Bulk copy operations
+- Stored procedures with output parameters
+- Table-valued parameters
+- Named pipes and shared memory (Windows)
+- Query notifications
+- TLS/SSL encryption
+
+## Links
+
+- GitHub: https://github.com/microsoft/go-mssqldb
+- pkg.go.dev: https://pkg.go.dev/github.com/microsoft/go-mssqldb
+- Wiki: https://github.com/microsoft/go-mssqldb/wiki
+- Examples: https://github.com/microsoft/go-mssqldb/tree/main/examples
