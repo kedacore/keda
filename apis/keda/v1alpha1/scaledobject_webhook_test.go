@@ -65,6 +65,28 @@ var _ = It("should validate the so creation when there are other SO for other wo
 	}).ShouldNot(HaveOccurred())
 })
 
+var _ = It("should validate the so creation when another SO targets the same name with a different Kind", func() {
+	// Regression coverage for the scaleTargetRefNameIdx field index: SOs
+	// sharing a scaleTargetRef.Name are returned by the indexed List
+	// together, and verifyScaledObjects must disambiguate them by GVK so a
+	// Deployment "foo" and a StatefulSet "foo" can coexist in one namespace.
+	namespaceName := "same-name-different-kind"
+	sharedTargetName := "shared-target"
+	namespace := createNamespace(namespaceName)
+	soDeployment := createScaledObject("so-for-deployment", namespaceName, sharedTargetName, "apps/v1", "Deployment", false, map[string]string{}, "")
+	soStatefulSet := createScaledObject("so-for-statefulset", namespaceName, sharedTargetName, "apps/v1", "StatefulSet", false, map[string]string{}, "")
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), soDeployment)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), soStatefulSet)
+	}).ShouldNot(HaveOccurred())
+})
+
 var _ = It("should validate the so creation when there are other HPA for other workloads", func() {
 
 	namespaceName := "valid-other-hpa"
