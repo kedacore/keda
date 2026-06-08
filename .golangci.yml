@@ -5,7 +5,7 @@ run:
   # add the build tags to include e2e tests files
   build-tags:
   - e2e
-  modules-download-mode: vendor
+
 linters:
   default: none
   enable:
@@ -176,7 +176,6 @@ linters:
           - dupl
         path: pkg/scalers/azure/azure_storage.go
     paths:
-      - vendor
       - third_party$
       - builtin$
       - examples$
@@ -194,7 +193,6 @@ formatters:
   exclusions:
     generated: lax
     paths:
-      - vendor
       - third_party$
       - builtin$
       - examples$
