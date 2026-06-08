@@ -125,6 +125,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	switch triggerType {
 	case "activemq":
 		return scalers.NewActiveMQScaler(config)
+	case "apache-iggy":
+		return scalers.NewApacheIggyScaler(config)
 	case "apache-kafka":
 		return scalers.NewApacheKafkaScaler(ctx, config)
 	case "arangodb":

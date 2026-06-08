@@ -41,6 +41,70 @@ scalers:
           type: string
           default: "0"
           metadataVariableReadable: true
+    - type: apache-iggy
+      parameters:
+        - name: serverAddress
+          type: string
+          metadataVariableReadable: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: streamId
+          type: string
+          metadataVariableReadable: true
+        - name: topicId
+          type: string
+          metadataVariableReadable: true
+        - name: consumerGroupId
+          type: string
+          metadataVariableReadable: true
+        - name: lagThreshold
+          type: string
+          default: "10"
+          metadataVariableReadable: true
+        - name: activationLagThreshold
+          type: string
+          default: "0"
+          metadataVariableReadable: true
+        - name: partitionLimitation
+          type: string
+          optional: true
+          rangeSeparator: '-'
+          metadataVariableReadable: true
+        - name: limitToPartitionsWithLag
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: excludePersistentLag
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: scaleToZeroOnInvalidOffset
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: allowIdleConsumers
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: ensureEvenDistributionOfPartitions
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: username
+          type: string
+          optional: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: password
+          type: string
+          optional: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: accessToken
+          type: string
+          optional: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
     - type: apache-kafka
       parameters:
         - name: bootstrapServers
