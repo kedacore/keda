@@ -41,6 +41,7 @@ var log = logf.Log.WithName("scalers_cache")
 var ErrCacheClosed = errors.New("scalers cache is closed")
 
 type ScalersCache struct {
+	ScaledObjectUpdateLock   sync.RWMutex // serializes updates to the ScaledObject
 	ScaledObject             *kedav1alpha1.ScaledObject
 	Scalers                  []ScalerBuilder
 	ScalableObjectGeneration int64

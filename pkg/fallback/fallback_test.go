@@ -74,11 +74,36 @@ var _ = Describe("fallback", func() {
 		metricSpec := createMetricSpec(3)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		metrics, _, err = GetMetricsWithFallback(context.Background(), client, scaleClient, metrics, err, metricName, so, metricSpec)
+		metrics, _, err = GetMetricsWithFallback(newHandler(client, scaleClient, so), metrics, err, metricName, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		value := metrics[0].Value.AsApproximateFloat64()
 		Expect(value).Should(Equal(expectedMetricValue))
+	})
+
+	It("should initialise the health status on success when fallback is enabled and status is empty", func() {
+		expectedMetricValue := float64(6)
+		primeGetMetrics(scaler, expectedMetricValue)
+
+		// nil Health map: a freshly created fallback ScaledObject whose first poll succeeds
+		so := buildScaledObject(
+			&kedav1alpha1.Fallback{
+				FailureThreshold: int32(3),
+				Replicas:         int32(10),
+			},
+			nil,
+		)
+
+		metricSpec := createMetricSpec(3)
+		expectStatusPatch(ctrl, client)
+
+		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
+		metrics, _, err = GetMetricsWithFallback(newHandler(client, scaleClient, so), metrics, err, metricName, metricSpec)
+
+		Expect(err).ToNot(HaveOccurred())
+		value := metrics[0].Value.AsApproximateFloat64()
+		Expect(value).Should(Equal(expectedMetricValue))
+		Expect(so.Status.Health[metricName]).To(haveFailureAndStatus(0, kedav1alpha1.HealthStatusHappy))
 	})
 
 	It("should reset the health status when scaler metrics are available when fallback is enabled", func() {
@@ -105,7 +130,7 @@ var _ = Describe("fallback", func() {
 		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		metrics, _, err = GetMetricsWithFallback(context.Background(), client, scaleClient, metrics, err, metricName, so, metricSpec)
+		metrics, _, err = GetMetricsWithFallback(newHandler(client, scaleClient, so), metrics, err, metricName, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		value := metrics[0].Value.AsApproximateFloat64()
@@ -134,7 +159,7 @@ var _ = Describe("fallback", func() {
 		expectNoStatusPatch(ctrl)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		metrics, _, err = GetMetricsWithFallback(context.Background(), client, scaleClient, metrics, err, metricName, so, metricSpec)
+		metrics, _, err = GetMetricsWithFallback(newHandler(client, scaleClient, so), metrics, err, metricName, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		value := metrics[0].Value.AsApproximateFloat64()
@@ -150,7 +175,7 @@ var _ = Describe("fallback", func() {
 		expectNoStatusPatch(ctrl)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		_, _, err = GetMetricsWithFallback(context.Background(), client, scaleClient, metrics, err, metricName, so, metricSpec)
+		_, _, err = GetMetricsWithFallback(newHandler(client, scaleClient, so), metrics, err, metricName, metricSpec)
 
 		Expect(err).ShouldNot(BeNil())
 		Expect(err.Error()).Should(Equal("some error"))
@@ -179,7 +204,7 @@ var _ = Describe("fallback", func() {
 		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		_, _, err = GetMetricsWithFallback(context.Background(), client, scaleClient, metrics, err, metricName, so, metricSpec)
+		_, _, err = GetMetricsWithFallback(newHandler(client, scaleClient, so), metrics, err, metricName, metricSpec)
 
 		Expect(err).ShouldNot(BeNil())
 		Expect(err.Error()).Should(Equal("some error"))
@@ -211,7 +236,7 @@ var _ = Describe("fallback", func() {
 		mockScaleAndDeployment(ctrl, client, scaleClient, 5)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		metrics, _, err = GetMetricsWithFallback(context.Background(), client, scaleClient, metrics, err, metricName, so, metricSpec)
+		metrics, _, err = GetMetricsWithFallback(newHandler(client, scaleClient, so), metrics, err, metricName, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		value := metrics[0].Value.AsApproximateFloat64()
@@ -247,7 +272,7 @@ var _ = Describe("fallback", func() {
 		mockScaleAndDeployment(ctrl, client, scaleClient, 5)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		metrics, _, err = GetMetricsWithFallback(context.Background(), client, scaleClient, metrics, err, metricName, so, metricSpec)
+		metrics, _, err = GetMetricsWithFallback(newHandler(client, scaleClient, so), metrics, err, metricName, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		value := metrics[0].Value.AsApproximateFloat64()
@@ -276,7 +301,7 @@ var _ = Describe("fallback", func() {
 		metricSpec := createMetricSpec(10)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		_, _, err = GetMetricsWithFallback(context.Background(), client, scaleClient, metrics, err, metricName, so, metricSpec)
+		_, _, err = GetMetricsWithFallback(newHandler(client, scaleClient, so), metrics, err, metricName, metricSpec)
 
 		Expect(err).ShouldNot(BeNil())
 		Expect(err.Error()).Should(Equal("some error"))
@@ -312,7 +337,7 @@ var _ = Describe("fallback", func() {
 		mockScaleAndDeployment(ctrl, client, scaleClient, 5)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		_, _, err = GetMetricsWithFallback(context.Background(), client, scaleClient, metrics, err, metricName, so, metricSpec)
+		_, _, err = GetMetricsWithFallback(newHandler(client, scaleClient, so), metrics, err, metricName, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		condition := so.Status.Conditions.GetFallbackCondition()
@@ -346,7 +371,7 @@ var _ = Describe("fallback", func() {
 		metricSpec := createMetricSpec(10)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		_, _, err = GetMetricsWithFallback(context.Background(), client, scaleClient, metrics, err, metricName, so, metricSpec)
+		_, _, err = GetMetricsWithFallback(newHandler(client, scaleClient, so), metrics, err, metricName, metricSpec)
 
 		Expect(err).ShouldNot(BeNil())
 		Expect(err.Error()).Should(Equal("some error"))
@@ -380,7 +405,7 @@ var _ = Describe("fallback", func() {
 		mockScaleAndDeployment(ctrl, client, scaleClient, 4)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		metrics, _, err = GetMetricsWithFallback(context.Background(), client, scaleClient, metrics, err, metricName, so, metricSpec)
+		metrics, _, err = GetMetricsWithFallback(newHandler(client, scaleClient, so), metrics, err, metricName, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		value := metrics[0].Value.AsApproximateFloat64()
@@ -414,7 +439,7 @@ var _ = Describe("fallback", func() {
 		mockScaleAndDeployment(ctrl, client, scaleClient, 6)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		metrics, _, err = GetMetricsWithFallback(context.Background(), client, scaleClient, metrics, err, metricName, so, metricSpec)
+		metrics, _, err = GetMetricsWithFallback(newHandler(client, scaleClient, so), metrics, err, metricName, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		value := metrics[0].Value.AsApproximateFloat64()
@@ -446,7 +471,7 @@ var _ = Describe("fallback", func() {
 		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		metrics, _, err = GetMetricsWithFallback(context.Background(), client, scaleClient, metrics, err, metricName, so, metricSpec)
+		metrics, _, err = GetMetricsWithFallback(newHandler(client, scaleClient, so), metrics, err, metricName, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		value := metrics[0].Value.AsApproximateFloat64()
@@ -643,6 +668,9 @@ func TestUpdateStatusConcurrency(t *testing.T) {
 	suppressedErr := errors.New("scaler error")
 	metricSpec := createMetricSpec(3)
 
+	// lock from ScalersCache
+	updateLock := &sync.RWMutex{}
+
 	const concurrency = 20
 	var wg sync.WaitGroup
 	wg.Add(concurrency)
@@ -650,8 +678,25 @@ func TestUpdateStatusConcurrency(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			mn := fmt.Sprintf("metric_%d", i)
-			_, _, _ = GetMetricsWithFallback(context.Background(), mockClient, nil, nil, suppressedErr, mn, so, metricSpec)
+			soh := ScaledObjectHandler{
+				Ctx:          context.Background(),
+				KubeClient:   mockClient,
+				UpdateLock:   updateLock,
+				ScaledObject: so,
+			}
+			_, _, _ = GetMetricsWithFallback(soh, nil, suppressedErr, mn, metricSpec)
 		}(i)
 	}
 	wg.Wait()
+}
+
+// newHandler builds a ScaledObjectHandler for tests with a fresh per-ScaledObject lock.
+func newHandler(client *mock_client.MockClient, scaleClient *mock_scale.MockScalesGetter, so *kedav1alpha1.ScaledObject) ScaledObjectHandler {
+	return ScaledObjectHandler{
+		Ctx:          context.Background(),
+		KubeClient:   client,
+		ScaleClient:  scaleClient,
+		UpdateLock:   &sync.RWMutex{},
+		ScaledObject: so,
+	}
 }
