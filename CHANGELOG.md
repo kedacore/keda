@@ -139,6 +139,7 @@ New deprecation(s):
 - **General**: Fix ScaledJob emitting wrong CloudEvent type (`ScaledObjectReadyType` instead of `ScaledJobReadyType`) when transitioning to ready state ([#7792](https://github.com/kedacore/keda/issues/7792))
 - **General**: Fix ScaledObject admission webhook to return validation error from `verifyReplicaCount`, preventing invalid ScaledObjects from being created ([#5954](https://github.com/kedacore/keda/issues/5954))
 - **General**: Fix ScaledObject Ready condition not reflecting HPA status ([#7649](https://github.com/kedacore/keda/issues/7649))
+- **General**: Guard `GetCurrentReplicas` against nil `Status.ScaleTargetGVKR` to prevent operator panics under the cache race documented in ([#4389](https://github.com/kedacore/keda/issues/4389)) / ([#4955](https://github.com/kedacore/keda/issues/4955))
 - **General**: Handle paused scaling directly in reconciler ([#7663](https://github.com/kedacore/keda/issues/7663))
 - **General**: Honor `stderrthreshold` when `logtostderr` is enabled by updating klog to v2.140.0 ([#7568](https://github.com/kedacore/keda/pull/7568))
 - **General**: Limit projected service account token reads during Vault authentication ([#7783](https://github.com/kedacore/keda/issues/7783))
