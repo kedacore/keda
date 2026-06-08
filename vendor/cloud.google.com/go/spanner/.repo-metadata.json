@@ -1,0 +1,10 @@
+{
+    "api_shortname": "spanner",
+    "client_documentation": "https://cloud.google.com/go/docs/reference/cloud.google.com/go/spanner/latest",
+    "client_library_type": "manual",
+    "description": "Cloud Spanner",
+    "distribution_name": "cloud.google.com/go/spanner",
+    "language": "go",
+    "library_type": "GAPIC_MANUAL",
+    "release_level": "stable"
+}

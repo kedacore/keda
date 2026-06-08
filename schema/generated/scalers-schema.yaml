@@ -1440,6 +1440,28 @@ scalers:
           optional: true
           metadataVariableReadable: true
           envVariableReadable: true
+    - type: gcp-spanner
+      parameters:
+        - name: projectId
+          type: string
+          metadataVariableReadable: true
+        - name: instanceId
+          type: string
+          metadataVariableReadable: true
+        - name: databaseId
+          type: string
+          metadataVariableReadable: true
+        - name: query
+          type: string
+          metadataVariableReadable: true
+        - name: targetValue
+          type: string
+          default: "5"
+          metadataVariableReadable: true
+        - name: activationValue
+          type: string
+          default: "0"
+          metadataVariableReadable: true
     - type: gcp-storage
       parameters:
         - name: bucketName

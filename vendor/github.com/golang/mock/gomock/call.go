@@ -108,19 +108,25 @@ func (c *Call) MaxTimes(n int) *Call {
 // DoAndReturn declares the action to run when the call is matched.
 // The return values from this function are returned by the mocked function.
 // It takes an interface{} argument to support n-arity functions.
+// The anonymous function must match the function signature mocked method.
 func (c *Call) DoAndReturn(f interface{}) *Call {
 	// TODO: Check arity and types here, rather than dying badly elsewhere.
 	v := reflect.ValueOf(f)
 
 	c.addAction(func(args []interface{}) []interface{} {
 		c.t.Helper()
-		vArgs := make([]reflect.Value, len(args))
 		ft := v.Type()
 		if c.methodType.NumIn() != ft.NumIn() {
-			c.t.Fatalf("wrong number of arguments in DoAndReturn func for %T.%v: got %d, want %d [%s]",
-				c.receiver, c.method, ft.NumIn(), c.methodType.NumIn(), c.origin)
+			if ft.IsVariadic() {
+				c.t.Fatalf("wrong number of arguments in DoAndReturn func for %T.%v The function signature must match the mocked method, a variadic function cannot be used.",
+					c.receiver, c.method)
+			} else {
+				c.t.Fatalf("wrong number of arguments in DoAndReturn func for %T.%v: got %d, want %d [%s]",
+					c.receiver, c.method, ft.NumIn(), c.methodType.NumIn(), c.origin)
+			}
 			return nil
 		}
+		vArgs := make([]reflect.Value, len(args))
 		for i := 0; i < len(args); i++ {
 			if args[i] != nil {
 				vArgs[i] = reflect.ValueOf(args[i])
@@ -143,19 +149,25 @@ func (c *Call) DoAndReturn(f interface{}) *Call {
 // return values are ignored to retain backward compatibility. To use the
 // return values call DoAndReturn.
 // It takes an interface{} argument to support n-arity functions.
+// The anonymous function must match the function signature mocked method.
 func (c *Call) Do(f interface{}) *Call {
 	// TODO: Check arity and types here, rather than dying badly elsewhere.
 	v := reflect.ValueOf(f)
 
 	c.addAction(func(args []interface{}) []interface{} {
 		c.t.Helper()
-		if c.methodType.NumIn() != v.Type().NumIn() {
-			c.t.Fatalf("wrong number of arguments in Do func for %T.%v: got %d, want %d [%s]",
-				c.receiver, c.method, v.Type().NumIn(), c.methodType.NumIn(), c.origin)
+		ft := v.Type()
+		if c.methodType.NumIn() != ft.NumIn() {
+			if ft.IsVariadic() {
+				c.t.Fatalf("wrong number of arguments in Do func for %T.%v The function signature must match the mocked method, a variadic function cannot be used.",
+					c.receiver, c.method)
+			} else {
+				c.t.Fatalf("wrong number of arguments in Do func for %T.%v: got %d, want %d [%s]",
+					c.receiver, c.method, ft.NumIn(), c.methodType.NumIn(), c.origin)
+			}
 			return nil
 		}
 		vArgs := make([]reflect.Value, len(args))
-		ft := v.Type()
 		for i := 0; i < len(args); i++ {
 			if args[i] != nil {
 				vArgs[i] = reflect.ValueOf(args[i])
@@ -217,8 +229,8 @@ func (c *Call) Times(n int) *Call {
 }
 
 // SetArg declares an action that will set the nth argument's value,
-// indirected through a pointer. Or, in the case of a slice, SetArg
-// will copy value's elements into the nth argument.
+// indirected through a pointer. Or, in the case of a slice and map, SetArg
+// will copy value's elements/key-value pairs into the nth argument.
 func (c *Call) SetArg(n int, value interface{}) *Call {
 	c.t.Helper()
 
@@ -243,8 +255,10 @@ func (c *Call) SetArg(n int, value interface{}) *Call {
 		// nothing to do
 	case reflect.Slice:
 		// nothing to do
+	case reflect.Map:
+		// nothing to do
 	default:
-		c.t.Fatalf("SetArg(%d, ...) referring to argument of non-pointer non-interface non-slice type %v [%s]",
+		c.t.Fatalf("SetArg(%d, ...) referring to argument of non-pointer non-interface non-slice non-map type %v [%s]",
 			n, at, c.origin)
 	}
 
@@ -253,6 +267,8 @@ func (c *Call) SetArg(n int, value interface{}) *Call {
 		switch reflect.TypeOf(args[n]).Kind() {
 		case reflect.Slice:
 			setSlice(args[n], v)
+		case reflect.Map:
+			setMap(args[n], v)
 		default:
 			reflect.ValueOf(args[n]).Elem().Set(v)
 		}
@@ -429,6 +445,16 @@ func setSlice(arg interface{}, v reflect.Value) {
 	va := reflect.ValueOf(arg)
 	for i := 0; i < v.Len(); i++ {
 		va.Index(i).Set(v.Index(i))
+	}
+}
+
+func setMap(arg interface{}, v reflect.Value) {
+	va := reflect.ValueOf(arg)
+	for _, e := range va.MapKeys() {
+		va.SetMapIndex(e, reflect.Value{})
+	}
+	for _, e := range v.MapKeys() {
+		va.SetMapIndex(e, v.MapIndex(e))
 	}
 }
 
