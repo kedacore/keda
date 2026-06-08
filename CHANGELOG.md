@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.20.1](#v2201)
 - [v2.20.0](#v2200)
 - [v2.19.0](#v2190)
 - [v2.18.3](#v2183)
@@ -81,8 +82,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
-- **General**: Fix concurrent map read/write data race in fallback `updateStatus` that caused panics when multiple triggers were scaling simultaneously ([#7838](https://github.com/kedacore/keda/issues/7838))
-- **General**: Fix `KEDAScalersStarted` "Started scalers watch" event not being emitted for ScaledJobs because it shared an events.k8s.io aggregation key with the per-scaler "scaler is built" event ([#7820](https://github.com/kedacore/keda/pull/7820))
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Deprecations
 
@@ -99,6 +99,13 @@ New deprecation(s):
 ### Other
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+## v2.20.1
+
+### Fixes
+
+- **General**: Fix concurrent map read/write data race in fallback `updateStatus` that caused panics when multiple triggers were scaling simultaneously ([#7838](https://github.com/kedacore/keda/issues/7838))
+- **General**: Fix `KEDAScalersStarted` "Started scalers watch" event not being emitted for ScaledJobs because it shared an events.k8s.io aggregation key with the per-scaler "scaler is built" event ([#7820](https://github.com/kedacore/keda/pull/7820))
 
 ## v2.20.0
 
