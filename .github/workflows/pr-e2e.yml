@@ -418,8 +418,11 @@ jobs:
 
       - name: Create k8s ${{ inputs.kubernetesVersion }} Kind Cluster
         uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
+        env:
+          # renovate: datasource=docker depName=kindest/node
+          NODE_IMAGE_VERSION: v1.32.0
         with:
-          node_image: kindest/node:v1.32.0@sha256:c48c62eac5da28cdadcf560d1d8616cfa6783b58f0d94cf63ad1bf49600cb027
+          node_image: kindest/node:${{ env.NODE_IMAGE_VERSION }}
           cluster_name: arm-smoke-test-${{ github.run_id }}
 
       - name: Run smoke test
@@ -498,11 +501,20 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
 
       - name: Install Kubernetes
+        env:
+          # renovate: datasource=github-releases depName=kubernetes-sigs/kind
+          KIND_VERSION: v0.29.0
+          # renovate: datasource=docker depName=vishnubijukumar/kindest-node-s390x
+          KINDEST_NODE_S390X_VERSION: v0.29.0
+          # renovate: datasource=docker depName=vishnubijukumar/kindnetd
+          KINDNETD_S390X_VERSION: v20250512-s390x
+          # renovate: datasource=docker depName=vishnubijukumar/local-path-provisioner
+          LOCAL_PATH_PROVISIONER_S390X_VERSION: v1
         run: |
-          go install sigs.k8s.io/kind@v0.29.0
-          kind create cluster --name s390x-smoke-test-${{ github.run_id }} --image vishnubijukumar/kindest-node-s390x:v0.29.0
-          kubectl -n kube-system set image daemonset/kindnet kindnet-cni=docker.io/vishnubijukumar/kindnetd:v20250512-s390x
-          kubectl -n local-path-storage set image deployment/local-path-provisioner local-path-provisioner=docker.io/vishnubijukumar/local-path-provisioner:v1
+          go install sigs.k8s.io/kind@${KIND_VERSION}
+          kind create cluster --name s390x-smoke-test-${{ github.run_id }} --image vishnubijukumar/kindest-node-s390x:${KINDEST_NODE_S390X_VERSION}
+          kubectl -n kube-system set image daemonset/kindnet kindnet-cni=docker.io/vishnubijukumar/kindnetd:${KINDNETD_S390X_VERSION}
+          kubectl -n local-path-storage set image deployment/local-path-provisioner local-path-provisioner=docker.io/vishnubijukumar/local-path-provisioner:${LOCAL_PATH_PROVISIONER_S390X_VERSION}
 
           curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/s390x/kubectl"
           chmod +x kubectl
