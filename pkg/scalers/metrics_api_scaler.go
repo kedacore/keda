@@ -44,7 +44,7 @@ type metricsAPIScaler struct {
 type metricsAPIScalerMetadata struct {
 	TargetValue                       float64         `keda:"name=targetValue,order=triggerMetadata,optional"`
 	ActivationTargetValue             float64         `keda:"name=activationTargetValue,order=triggerMetadata,default=0"`
-	URL                               string          `keda:"name=url,order=triggerMetadata"`
+	URL                               string          `keda:"name=url,order=authParams;triggerMetadata"`
 	Format                            APIFormat       `keda:"name=format,order=triggerMetadata,default=json,enum=prometheus;json;xml;yaml"`
 	ValueLocation                     string          `keda:"name=valueLocation,order=triggerMetadata"`
 	UnsafeSsl                         bool            `keda:"name=unsafeSsl,order=triggerMetadata,default=false"`
@@ -135,7 +135,23 @@ func parseMetricsAPIMetadata(config *scalersconfig.ScalerConfig) (*metricsAPISca
 		return nil, fmt.Errorf("no targetValue given in metadata")
 	}
 
+	if metricsAPIUsesClusterAuthCredentials(config, meta) && strings.TrimSpace(config.AuthParams["url"]) == "" {
+		return nil, fmt.Errorf("metrics-api scaler using ClusterTriggerAuthentication credentials must provide url from ClusterTriggerAuthentication auth params")
+	}
+
 	return meta, nil
+}
+
+func metricsAPIUsesClusterAuthCredentials(config *scalersconfig.ScalerConfig, meta *metricsAPIScalerMetadata) bool {
+	if config.AuthenticationRefKind != "ClusterTriggerAuthentication" || meta.MetricsAPIAuth == nil || meta.MetricsAPIAuth.Disabled() {
+		return false
+	}
+
+	authParams := config.AuthParams
+	return (meta.MetricsAPIAuth.EnabledAPIKeyAuth() && authParams["apiKey"] != "") ||
+		(meta.MetricsAPIAuth.EnabledBasicAuth() && (authParams["username"] != "" || authParams["password"] != "")) ||
+		(meta.MetricsAPIAuth.EnabledBearerAuth() && (authParams["bearerToken"] != "" || authParams["token"] != "")) ||
+		(meta.MetricsAPIAuth.EnabledTLS() && (authParams["cert"] != "" || authParams["key"] != "" || authParams["ca"] != ""))
 }
 
 // GetValueFromResponse uses provided valueLocation to access the numeric value in provided body using the format specified.

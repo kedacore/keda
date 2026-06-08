@@ -3129,7 +3129,8 @@
                 {
                     "name": "url",
                     "type": "string",
-                    "metadataVariableReadable": true
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "format",

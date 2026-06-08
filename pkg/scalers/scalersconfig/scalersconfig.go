@@ -46,6 +46,9 @@ type ScalerConfig struct {
 	// Trigger type (name of the trigger, also the scaler name)
 	TriggerType string
 
+	// AuthenticationRefKind specifies whether the trigger references a TriggerAuthentication or ClusterTriggerAuthentication
+	AuthenticationRefKind string
+
 	// Marks whether we should query metrics only during the polling interval
 	// Any requests for metrics in between are read from the cache
 	TriggerUseCachedMetrics bool
