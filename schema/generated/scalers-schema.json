@@ -99,6 +99,12 @@
                     "metadataVariableReadable": true
                 },
                 {
+                    "name": "threadsPerConsumer",
+                    "type": "string",
+                    "default": "1",
+                    "metadataVariableReadable": true
+                },
+                {
                     "name": "activationLagThreshold",
                     "type": "string",
                     "default": "0",
@@ -2686,6 +2692,12 @@
                     "name": "lagThreshold",
                     "type": "string",
                     "default": "10",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "threadsPerConsumer",
+                    "type": "string",
+                    "default": "1",
                     "metadataVariableReadable": true
                 },
                 {
