@@ -26,6 +26,7 @@ import (
 	. "github.com/onsi/gomega"
 	"go.uber.org/atomic"
 	v2 "k8s.io/api/autoscaling/v2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
@@ -386,5 +387,151 @@ func TestScalersCache_ConcurrentCloseAndRead(t *testing.T) {
 		if readErr != nil && !errors.Is(readErr, ErrCacheClosed) {
 			t.Fatalf("iteration %d: unexpected error from concurrent read: %v", i, readErr)
 		}
+	}
+}
+
+func TestScalersCache_UpdateMetricSpecForScaler(t *testing.T) {
+	scaler := newFakeScaler(nil)
+	c := newCacheWithScaler(scaler)
+
+	newSpecs := []v2.MetricSpec{{
+		External: &v2.ExternalMetricSource{
+			Metric: v2.MetricIdentifier{
+				Name:     "updated-metric",
+				Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"source": "stream"}},
+			},
+		},
+		Type: "External",
+	}}
+
+	if !c.UpdateMetricSpecForScaler(0, newSpecs) {
+		t.Fatal("UpdateMetricSpecForScaler should report true for a valid index")
+	}
+
+	// Mutate the caller-owned slice after storing it; the cache must keep its own deep copy.
+	newSpecs[0].External.Metric.Name = "mutated"
+	newSpecs[0].External.Metric.Selector.MatchLabels["source"] = "mutated"
+
+	specs := c.GetMetricSpecForScaling(context.Background())
+	if len(specs) != 1 {
+		t.Fatalf("expected 1 spec, got %d", len(specs))
+	}
+	if specs[0].External.Metric.Name != "updated-metric" {
+		t.Fatalf("expected updated-metric, got %s", specs[0].External.Metric.Name)
+	}
+	if specs[0].External.Metric.Selector.MatchLabels["source"] != "stream" {
+		t.Fatalf("expected selector source=stream, got %q", specs[0].External.Metric.Selector.MatchLabels["source"])
+	}
+}
+
+func TestScalersCache_UpdateMetricSpecForScaler_InvalidIndex(t *testing.T) {
+	scaler := newFakeScaler(nil)
+	c := newCacheWithScaler(scaler)
+
+	if c.UpdateMetricSpecForScaler(-1, []v2.MetricSpec{}) {
+		t.Fatal("UpdateMetricSpecForScaler should report false for a negative index")
+	}
+	if c.UpdateMetricSpecForScaler(5, []v2.MetricSpec{}) {
+		t.Fatal("UpdateMetricSpecForScaler should report false for an out-of-range index")
+	}
+}
+
+func TestScalersCache_GetMetricSpecForScalingForScaler_UsesCachedSpecs(t *testing.T) {
+	scaler := newFakeScaler(nil)
+	c := newCacheWithScaler(scaler)
+
+	cachedSpecs := []v2.MetricSpec{{
+		External: &v2.ExternalMetricSource{
+			Metric: v2.MetricIdentifier{
+				Name:     "cached-metric",
+				Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"owner": "cache"}},
+			},
+		},
+		Type: "External",
+	}}
+	c.UpdateMetricSpecForScaler(0, cachedSpecs)
+
+	specs, err := c.GetMetricSpecForScalingForScaler(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(specs) != 1 {
+		t.Fatalf("expected 1 spec, got %d", len(specs))
+	}
+	if specs[0].External.Metric.Name != "cached-metric" {
+		t.Fatalf("expected cached-metric, got %s", specs[0].External.Metric.Name)
+	}
+
+	// Mutating the returned spec must not bleed back into the cache.
+	specs[0].External.Metric.Name = "mutated"
+	specs[0].External.Metric.Selector.MatchLabels["owner"] = "mutated"
+
+	specsAgain, err := c.GetMetricSpecForScalingForScaler(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("unexpected error on second read: %v", err)
+	}
+	if specsAgain[0].External.Metric.Name != "cached-metric" {
+		t.Fatalf("expected cached-metric on second read, got %s", specsAgain[0].External.Metric.Name)
+	}
+	if specsAgain[0].External.Metric.Selector.MatchLabels["owner"] != "cache" {
+		t.Fatalf("expected selector owner=cache on second read, got %q", specsAgain[0].External.Metric.Selector.MatchLabels["owner"])
+	}
+}
+
+type fakePushScaler struct {
+	fakeScaler
+	specCh chan []v2.MetricSpec
+}
+
+func (f *fakePushScaler) Run(_ context.Context, active chan<- bool) {
+	defer close(active)
+}
+
+func (f *fakePushScaler) MetricSpecChan() <-chan []v2.MetricSpec {
+	return f.specCh
+}
+
+var _ scalers.PushScaler = (*fakePushScaler)(nil)
+var _ scalers.MetricSpecStreamer = (*fakePushScaler)(nil)
+
+func TestScalersCache_WatchMetricSpecUpdates(t *testing.T) {
+	specCh := make(chan []v2.MetricSpec, 1)
+	ps := &fakePushScaler{
+		fakeScaler: *newFakeScaler(nil),
+		specCh:     specCh,
+	}
+	c := &ScalersCache{
+		Scalers: []ScalerBuilder{{
+			Scaler:       ps,
+			ScalerConfig: scalersconfig.ScalerConfig{},
+		}},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	updated := make(chan struct{}, 1)
+	go c.WatchMetricSpecUpdates(ctx, 0, ps, func() {
+		select {
+		case updated <- struct{}{}:
+		default:
+		}
+	})
+
+	specCh <- []v2.MetricSpec{{
+		External: &v2.ExternalMetricSource{
+			Metric: v2.MetricIdentifier{Name: "watched-metric"},
+		},
+		Type: "External",
+	}}
+
+	select {
+	case <-updated:
+		specs := c.GetMetricSpecForScaling(context.Background())
+		if len(specs) != 1 || specs[0].External.Metric.Name != "watched-metric" {
+			t.Fatalf("unexpected specs: %v", specs)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for onUpdate callback")
 	}
 }

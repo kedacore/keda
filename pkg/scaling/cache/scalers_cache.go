@@ -90,9 +90,23 @@ func (c *ScalersCache) acquireReader() (release func(), err error) {
 }
 
 type ScalerBuilder struct {
-	Scaler       scalers.Scaler
-	ScalerConfig scalersconfig.ScalerConfig
-	Factory      func() (scalers.Scaler, *scalersconfig.ScalerConfig, error)
+	Scaler            scalers.Scaler
+	ScalerConfig      scalersconfig.ScalerConfig
+	Factory           func() (scalers.Scaler, *scalersconfig.ScalerConfig, error)
+	CachedMetricSpecs []v2.MetricSpec
+}
+
+func cloneMetricSpecs(specs []v2.MetricSpec) []v2.MetricSpec {
+	if specs == nil {
+		return nil
+	}
+
+	cloned := make([]v2.MetricSpec, 0, len(specs))
+	for i := range specs {
+		spec := specs[i]
+		cloned = append(cloned, *spec.DeepCopy())
+	}
+	return cloned
 }
 
 // GetScalers returns array of scalers and scaler config stored in the cache
@@ -170,18 +184,24 @@ func (c *ScalersCache) Close(ctx context.Context) {
 	}
 }
 
-// GetMetricSpecForScaling returns metrics specs for all scalers in the cache
+// GetMetricSpecForScaling returns metrics specs for all scalers in the cache.
+// If a scaler has cached metric specs from StreamMetricSpec, those take precedence.
 func (c *ScalersCache) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 	var spec []v2.MetricSpec
 	for _, s := range c.Scalers {
-		spec = append(spec, s.Scaler.GetMetricSpecForScaling(ctx)...)
+		if s.CachedMetricSpecs != nil {
+			spec = append(spec, cloneMetricSpecs(s.CachedMetricSpecs)...)
+		} else {
+			spec = append(spec, s.Scaler.GetMetricSpecForScaling(ctx)...)
+		}
 	}
 	return spec
 }
 
-// GetMetricSpecForScalingForScaler returns metrics spec for a scaler identified by the metric name
+// GetMetricSpecForScalingForScaler returns metrics spec for a scaler identified by the metric name.
+// If the scaler has cached metric specs from StreamMetricSpec, those take precedence.
 func (c *ScalersCache) GetMetricSpecForScalingForScaler(ctx context.Context, index int) ([]v2.MetricSpec, error) {
 	release, err := c.acquireReader()
 	if err != nil {
@@ -192,6 +212,10 @@ func (c *ScalersCache) GetMetricSpecForScalingForScaler(ctx context.Context, ind
 	sb, err := c.getScalerBuilder(index)
 	if err != nil {
 		return nil, err
+	}
+
+	if sb.CachedMetricSpecs != nil {
+		return cloneMetricSpecs(sb.CachedMetricSpecs), nil
 	}
 
 	metricSpecs := sb.Scaler.GetMetricSpecForScaling(ctx)
@@ -247,6 +271,43 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 	return metric, activity, time.Since(startTime), err
 }
 
+// UpdateMetricSpecForScaler replaces the cached metric specs for a given scaler
+// index. It reports whether the update was applied (false if the cache is
+// closed or the index is out of range).
+func (c *ScalersCache) UpdateMetricSpecForScaler(index int, specs []v2.MetricSpec) bool {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	if c.closed || index < 0 || index >= len(c.Scalers) {
+		return false
+	}
+
+	c.Scalers[index].CachedMetricSpecs = cloneMetricSpecs(specs)
+	return true
+}
+
+// WatchMetricSpecUpdates reads from the MetricSpecStreamer channel and updates
+// the cached specs for the given scaler index. After a successful update it
+// invokes onUpdate (if non-nil) so the caller can trigger a reconcile that
+// propagates the new specs to the HPA. The HPA itself is always rebuilt by the
+// ScaledObject reconciler from GetMetricSpecForScaling, which keeps the spec
+// construction logic in a single place.
+func (c *ScalersCache) WatchMetricSpecUpdates(ctx context.Context, index int, streamer scalers.MetricSpecStreamer, onUpdate func()) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case specs, ok := <-streamer.MetricSpecChan():
+			if !ok {
+				return
+			}
+			if c.UpdateMetricSpecForScaler(index, specs) && onUpdate != nil {
+				onUpdate()
+			}
+		}
+	}
+}
+
 func (c *ScalersCache) refreshScaler(ctx context.Context, index int) (scalers.Scaler, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -267,9 +328,10 @@ func (c *ScalersCache) refreshScaler(ctx context.Context, index int) (scalers.Sc
 	}
 
 	c.Scalers[index] = ScalerBuilder{
-		Scaler:       newScaler,
-		ScalerConfig: *sConfig,
-		Factory:      oldSb.Factory,
+		Scaler:            newScaler,
+		ScalerConfig:      *sConfig,
+		Factory:           oldSb.Factory,
+		CachedMetricSpecs: cloneMetricSpecs(oldSb.CachedMetricSpecs),
 	}
 
 	oldSb.Scaler.Close(ctx)
