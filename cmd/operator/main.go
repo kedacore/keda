@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	kubeinformers "k8s.io/client-go/informers"
@@ -146,6 +147,22 @@ func main() {
 		os.Exit(1)
 	}
 
+	// WATCH_LABEL_SELECTOR scopes cached objects via the API server's
+	// labelSelector so non-matching ScaledObjects / ScaledJobs / HPAs
+	// never enter the informer. Owns(HPA) reconciles parent SOs, so the
+	// HPA cache must be filtered too (KEDA copies SO labels onto the HPA).
+	byObject, err := kedautil.WatchLabelSelectorByObject(
+		&kedav1alpha1.ScaledObject{},
+		&kedav1alpha1.ScaledJob{},
+		&kedav1alpha1.TriggerAuthentication{},
+		&kedav1alpha1.ClusterTriggerAuthentication{},
+		&autoscalingv2.HorizontalPodAutoscaler{},
+	)
+	if err != nil {
+		setupLog.Error(err, "failed to parse WATCH_LABEL_SELECTOR")
+		os.Exit(1)
+	}
+
 	leaseDuration, err := kedautil.ResolveOsEnvDuration("KEDA_OPERATOR_LEADER_ELECTION_LEASE_DURATION")
 	if err != nil {
 		setupLog.Error(err, "invalid KEDA_OPERATOR_LEADER_ELECTION_LEASE_DURATION")
@@ -189,6 +206,7 @@ func main() {
 		Cache: ctrlcache.Options{
 			DefaultNamespaces: namespaces,
 			DefaultTransform:  kedautil.CacheObjectTransform,
+			ByObject:          byObject,
 		},
 		HealthProbeBindAddress:  probeAddr,
 		PprofBindAddress:        profilingAddr,

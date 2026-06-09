@@ -95,8 +95,15 @@ func (r *TriggerAuthenticationReconciler) Reconcile(ctx context.Context, req ctr
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *TriggerAuthenticationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// WATCH_LABEL_SELECTOR scopes this operator to TriggerAuthentications matching the selector.
+	labelSelectorPredicate, err := util.WatchLabelSelectorPredicate()
+	if err != nil {
+		return err
+	}
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&kedav1alpha1.TriggerAuthentication{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&kedav1alpha1.TriggerAuthentication{}, builder.WithPredicates(
+			predicate.And(labelSelectorPredicate, predicate.GenerationChangedPredicate{}),
+		)).
 		WithEventFilter(util.IgnoreOtherNamespaces()).
 		Complete(r)
 }

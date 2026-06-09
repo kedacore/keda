@@ -35,6 +35,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 // ClusterTriggerAuthenticationReconciler reconciles a ClusterTriggerAuthentication object
@@ -94,8 +95,15 @@ func (r *ClusterTriggerAuthenticationReconciler) Reconcile(ctx context.Context, 
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ClusterTriggerAuthenticationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// WATCH_LABEL_SELECTOR scopes this operator to ClusterTriggerAuthentications matching the selector.
+	labelSelectorPredicate, err := util.WatchLabelSelectorPredicate()
+	if err != nil {
+		return err
+	}
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&kedav1alpha1.ClusterTriggerAuthentication{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&kedav1alpha1.ClusterTriggerAuthentication{}, builder.WithPredicates(
+			predicate.And(labelSelectorPredicate, predicate.GenerationChangedPredicate{}),
+		)).
 		Complete(r)
 }
 
