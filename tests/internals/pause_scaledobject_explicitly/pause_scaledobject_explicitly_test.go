@@ -134,6 +134,7 @@ func TestScaler(t *testing.T) {
 		testHPANotExistWhilePaused(t, kc)
 		testHPANotExistWhilePausedReplicas(t, kc)
 		testPausedAnnotationTakesPrecedenceOverPauseScaleIn(t, kc)
+		testPausedAnnotationTakesPrecedenceWhenPauseScaleInIsAdded(t, kc)
 		testChangePausedReplicasValue(t, kc)
 		testSwitchFromPausedReplicasToPaused(t, kc)
 
@@ -345,6 +346,20 @@ func testPausedAnnotationTakesPrecedenceOverPauseScaleIn(t *testing.T, kc *kuber
 
 	removeScaledObjectPausedAnnotation(t)
 	removeScaledObjectPausedScaleInAnnotation(t)
+	time.Sleep(5 * time.Second)
+}
+
+func testPausedAnnotationTakesPrecedenceWhenPauseScaleInIsAdded(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing paused annotation stays in effect when paused-scale-in is added ---")
+
+	upsertScaledObjectPausedAnnotation(t)
+	waitForHPADeleted(t, kc, "HPA should not exist while paused=true is set")
+
+	upsertScaledObjectPausedScaleInAnnotation(t)
+	waitForHPADeleted(t, kc, "HPA should not exist after adding paused-scale-in while paused=true is set")
+
+	removeScaledObjectPausedScaleInAnnotation(t)
+	removeScaledObjectPausedAnnotation(t)
 	time.Sleep(5 * time.Second)
 }
 
