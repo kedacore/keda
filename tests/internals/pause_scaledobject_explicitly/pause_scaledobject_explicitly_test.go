@@ -212,7 +212,7 @@ func waitForHPADeleted(t *testing.T, kc *kubernetes.Clientset, message string) {
 		}
 		time.Sleep(5 * time.Second)
 	}
-	assert.True(t, errors.IsNotFound(err), message)
+	assert.Truef(t, errors.IsNotFound(err), "%s: last observed error: %v", message, err)
 }
 
 func testPauseWhenScaleOut(t *testing.T, kc *kubernetes.Clientset) {
