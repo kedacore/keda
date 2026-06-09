@@ -577,11 +577,16 @@ func (b *Broker) Produce(request *ProduceRequest) (*ProduceResponse, error) {
 // Fetch returns a FetchResponse or error
 func (b *Broker) Fetch(request *FetchRequest) (*FetchResponse, error) {
 	defer func() {
-		if b.fetchRate != nil {
-			b.fetchRate.Mark(1)
+		// snapshot meters under the lock; Open may reassign them on reconnect
+		b.lock.Lock()
+		fetchRate, brokerFetchRate := b.fetchRate, b.brokerFetchRate
+		b.lock.Unlock()
+
+		if fetchRate != nil {
+			fetchRate.Mark(1)
 		}
-		if b.brokerFetchRate != nil {
-			b.brokerFetchRate.Mark(1)
+		if brokerFetchRate != nil {
+			brokerFetchRate.Mark(1)
 		}
 	}()
 
@@ -1172,6 +1177,22 @@ func (b *Broker) sendAndReceive(req protocolBody, res protocolBody) error {
 	return nil
 }
 
+// negotiateApiVersion clamps pb's version to the broker's advertised maximum
+// for pb's API (treating pb's current version as the client max). When the
+// broker has not advertised ApiVersions info, pb's version is left untouched
+// (optimistic). Returns (0, false) if the resulting version is below
+// minVersion.
+func (b *Broker) negotiateApiVersion(pb protocolBody, minVersion int16) (int16, bool) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	_ = restrictApiVersion(pb, b.brokerAPIVersions)
+	if pb.version() < minVersion {
+		return 0, false
+	}
+	return pb.version(), true
+}
+
 func handleResponsePromise(req protocolBody, res protocolBody, promise *responsePromise, metricRegistry metrics.Registry) error {
 	select {
 	case buf := <-promise.packets:
@@ -1688,7 +1709,11 @@ func (b *Broker) sendAndReceiveSASLSCRAMv0() error {
 			Logger.Printf("Failed to read response header while authenticating with SASL to broker %s: %s\n", b.addr, err.Error())
 			return err
 		}
-		payload := make([]byte, int32(binary.BigEndian.Uint32(header)))
+		payloadLength := binary.BigEndian.Uint32(header)
+		if int64(payloadLength) > int64(MaxResponseSize) {
+			return PacketDecodingError{fmt.Sprintf("SASL response of length %d too large", payloadLength)}
+		}
+		payload := make([]byte, int(payloadLength))
 		n, err := b.readFull(payload)
 		if err != nil {
 			b.addRequestInFlightMetrics(-1)

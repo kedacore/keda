@@ -103,8 +103,8 @@ github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapp
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.55.0/go.mod h1:Mf6O40IAyB9zR/1J8nGDDPirZQQPbYJni8Yisy7NTMc=
 github.com/Huawei/gophercloud v1.0.21 h1:HhtzZzRGZiVmLypqHlXrGAcdC1TJW99FLewfPSVktpY=
 github.com/Huawei/gophercloud v1.0.21/go.mod h1:TUtAO2PE+Nj7/QdfUXbhi5Xu0uFKVccyukPA7UCxD9w=
-github.com/IBM/sarama v1.49.0 h1:FhLbVia5yi426qttj0kNTI86vPc3v+/3mGHkif1Fsao=
-github.com/IBM/sarama v1.49.0/go.mod h1:m/Q1aFezH82/AglfTpJbw/fO0ZybYXhPgTmvajiZX50=
+github.com/IBM/sarama v1.50.1 h1:OcXFv571hg+h6N8NL3mFIEdK+80t1m51kf/KZQtbfPA=
+github.com/IBM/sarama v1.50.1/go.mod h1:+ggHBIXkEU3KXhAm2nCzCu7ohBD1pBIaXCRk1ftPkjY=
 github.com/InfluxCommunity/influxdb3-go/v2 v2.15.0 h1:kBpwuEsQPwIYeN/CwqkI67oM5np7wCsb6tyc/SRMCi8=
 github.com/InfluxCommunity/influxdb3-go/v2 v2.15.0/go.mod h1:eH3vGsCCehBWYQDj7xO/S0jHU2XOrBLxLWQHLWNni50=
 github.com/Masterminds/semver/v3 v3.1.1/go.mod h1:VPu/7SZ7ePZ3QOrcuXROw5FAcLl4a0cBrbBpGY/8hQs=
@@ -269,8 +269,6 @@ github.com/dysnix/predictkube-proto v0.0.0-20250415003810-aa0af0a0019b h1:qrTX94
 github.com/dysnix/predictkube-proto v0.0.0-20250415003810-aa0af0a0019b/go.mod h1:kx1DeePrunRsSlYET5I0u4kEAgFNtFizLO76LQYWuWc=
 github.com/eapache/go-resiliency v1.7.0 h1:n3NRTnBn5N0Cbi/IeOHuQn9s2UwVUH7Ga0ZWcP+9JTA=
 github.com/eapache/go-resiliency v1.7.0/go.mod h1:5yPzW0MIvSe0JDsv0v+DvcjEv2FyD6iZYSs1ZI+iQho=
-github.com/eapache/queue v1.1.0 h1:YOEu7KNc61ntiQlcEeUIoDTJ2o8mQznoNvUhiigpIqc=
-github.com/eapache/queue v1.1.0/go.mod h1:6eCeP0CKFpHLu8blIFXhExK/dRa7WDZfr6jVFPTqq+I=
 github.com/elastic/go-elasticsearch/v7 v7.17.10 h1:TCQ8i4PmIJuBunvBS6bwT2ybzVFxxUhhltAs3Gyu1yo=
 github.com/elastic/go-elasticsearch/v7 v7.17.10/go.mod h1:OJ4wdbtDNk5g503kvlHLyErCgQwwzmDtaFC4XyOxXA4=
 github.com/elazarl/goproxy v0.0.0-20231117061959-7cc037d33fb5 h1:m62nsMU279qRD9PQSWD1l66kmkXzuYcnVJqL4XLeV2M=

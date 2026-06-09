@@ -250,9 +250,10 @@ github.com/Huawei/gophercloud/openstack/identity/v3/services
 github.com/Huawei/gophercloud/openstack/identity/v3/tokens
 github.com/Huawei/gophercloud/openstack/utils
 github.com/Huawei/gophercloud/pagination
-# github.com/IBM/sarama v1.49.0
+# github.com/IBM/sarama v1.50.1
 ## explicit; go 1.25.0
 github.com/IBM/sarama
+github.com/IBM/sarama/internal/queue
 # github.com/InfluxCommunity/influxdb3-go/v2 v2.15.0
 ## explicit; go 1.25.0
 github.com/InfluxCommunity/influxdb3-go/v2/influxdb3
@@ -592,9 +593,6 @@ github.com/dysnix/predictkube-proto/external/proto/services
 # github.com/eapache/go-resiliency v1.7.0
 ## explicit; go 1.13
 github.com/eapache/go-resiliency/breaker
-# github.com/eapache/queue v1.1.0
-## explicit
-github.com/eapache/queue
 # github.com/elastic/go-elasticsearch/v7 v7.17.10
 ## explicit; go 1.11
 github.com/elastic/go-elasticsearch/v7
