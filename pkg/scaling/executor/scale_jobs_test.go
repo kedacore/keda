@@ -128,6 +128,26 @@ func TestCustomScalingStrategy(t *testing.T) {
 	assert.Equal(t, int64(4), maxScaleValue(strategy.GetEffectiveMaxScale(3, 2, 0, 4, 1)))
 }
 
+func TestCustomScalingStrategyNilQueueLengthDeduction(t *testing.T) {
+	logger := logf.Log.WithName("ScaledJobTest")
+	scaledJob := &kedav1alpha1.ScaledJob{
+		Spec: kedav1alpha1.ScaledJobSpec{
+			ScalingStrategy: kedav1alpha1.ScalingStrategy{
+				Strategy:                          "custom",
+				CustomScalingQueueLengthDeduction: nil,
+				CustomScalingRunningJobPercentage: "0.5",
+			},
+		},
+	}
+	scaledJob.Name = "custom"
+	strategy := NewScalingStrategy(logger, scaledJob)
+
+	assert.Equal(t, "executor.customScalingStrategy", fmt.Sprintf("%T", strategy))
+	// nil deduction should behave as zero deduction
+	assert.Equal(t, int64(2), maxScaleValue(strategy.GetEffectiveMaxScale(3, 2, 0, 5, 1)))
+	assert.Equal(t, int64(10), maxScaleValue(strategy.GetEffectiveMaxScale(10, 0, 0, 10, 1)))
+}
+
 func TestAccurateScalingStrategy(t *testing.T) {
 	logger := logf.Log.WithName("ScaledJobTest")
 	strategy := NewScalingStrategy(logger, getMockScaledJobWithStrategy("accurate", "accurate", 0, "0"))
