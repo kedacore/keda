@@ -133,6 +133,7 @@ func TestScaler(t *testing.T) {
 		testBothPauseAnnotationActive(t, kc)
 		testHPANotExistWhilePaused(t, kc)
 		testHPANotExistWhilePausedReplicas(t, kc)
+		testPausedAnnotationTakesPrecedenceOverPauseScaleIn(t, kc)
 		testChangePausedReplicasValue(t, kc)
 		testSwitchFromPausedReplicasToPaused(t, kc)
 
@@ -177,6 +178,28 @@ func upsertScaledObjectPausedReplicasAnnotation(t assert.TestingT, value int) {
 func removeScaledObjectPausedReplicasAnnotation(t assert.TestingT) {
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledobject/%s -n %s autoscaling.keda.sh/paused-replicas- --overwrite", scaledObjectName, testNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+}
+
+func upsertScaledObjectPausedScaleInAnnotation(t assert.TestingT) {
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledobject/%s -n %s autoscaling.keda.sh/paused-scale-in=true --overwrite", scaledObjectName, testNamespace))
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+}
+
+func removeScaledObjectPausedScaleInAnnotation(t assert.TestingT) {
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledobject/%s -n %s autoscaling.keda.sh/paused-scale-in- --overwrite", scaledObjectName, testNamespace))
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+}
+
+func waitForHPADeleted(t *testing.T, kc *kubernetes.Clientset, message string) {
+	var err error
+	for i := 0; i < 12; i++ {
+		_, err = kc.AutoscalingV2().HorizontalPodAutoscalers(testNamespace).Get(context.Background(), hpaName, metav1.GetOptions{})
+		if errors.IsNotFound(err) {
+			return
+		}
+		time.Sleep(5 * time.Second)
+	}
+	assert.True(t, errors.IsNotFound(err), message)
 }
 
 func testPauseWhenScaleOut(t *testing.T, kc *kubernetes.Clientset) {
@@ -306,6 +329,22 @@ func testHPANotExistWhilePausedReplicas(t *testing.T, kc *kubernetes.Clientset) 
 	assert.True(t, errors.IsNotFound(err), "HPA should not exist while paused with paused-replicas")
 
 	removeScaledObjectPausedReplicasAnnotation(t)
+	time.Sleep(5 * time.Second)
+}
+
+func testPausedAnnotationTakesPrecedenceOverPauseScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing paused annotation takes precedence over paused-scale-in ---")
+
+	upsertScaledObjectPausedScaleInAnnotation(t)
+
+	_, err := WaitForHpaCreation(t, kc, hpaName, testNamespace, 12, 5)
+	assert.NoError(t, err, "HPA should exist while only paused-scale-in is set")
+
+	upsertScaledObjectPausedAnnotation(t)
+	waitForHPADeleted(t, kc, "HPA should not exist while paused=true is set with paused-scale-in")
+
+	removeScaledObjectPausedAnnotation(t)
+	removeScaledObjectPausedScaleInAnnotation(t)
 	time.Sleep(5 * time.Second)
 }
 
