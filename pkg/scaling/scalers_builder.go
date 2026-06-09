@@ -163,6 +163,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewBeanstalkdScaler(config)
 	case "cassandra":
 		return scalers.NewCassandraScaler(config)
+	case "clickhouse":
+		return scalers.NewClickHouseScaler(config)
 	case "couchdb":
 		return scalers.NewCouchDBScaler(ctx, config)
 	case "cpu":
