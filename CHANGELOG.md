@@ -98,7 +98,10 @@ New deprecation(s):
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Datadog Scaler**: Migrate Datadog to authentication.Config ([#7766](https://github.com/kedacore/keda/issues/7766))
+- **Github Runner Scaler**: Migrate Github_runner to authentication.Config ([#7766](https://github.com/kedacore/keda/issues/7766))
+- **Graphite Scaler**: Migrate Graphite to authentication.Config ([#7766](https://github.com/kedacore/keda/issues/7766))
+- **RabbitMQ Scaler**: Migrate RabbitMQ to authentication.Config ([#7766](https://github.com/kedacore/keda/issues/7766))
 
 ## v2.20.1
 
