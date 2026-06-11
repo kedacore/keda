@@ -1,0 +1,48 @@
+version: "2"
+run:
+  tests: false
+linters:
+  default: none
+  enable:
+    - asciicheck
+    - bodyclose
+    - gocritic
+    - govet
+    - ineffassign
+    - misspell
+    - staticcheck
+  settings:
+    gocritic:
+      disabled-checks:
+        - commentFormatting
+        - singleCaseSwitch
+  exclusions:
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters: [staticcheck]
+        path: "lib/cityhash102"
+    paths:
+      - benchmark
+      - examples
+      - tests
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    paths:
+      - examples
+  settings:
+    gofmt:
+      rewrite-rules:
+        - pattern: interface{}
+          replacement: any
+        - pattern: a[b:len(a)]
+          replacement: a[b:]
+    goimports:
+      local-prefixes:
+        - "github.com/ClickHouse/clickhouse-go/v2"

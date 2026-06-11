@@ -1,0 +1,28 @@
+services:
+  clickhouse:
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: 1
+    networks:
+      - clickhouse
+    hostname: clickhouse
+    container_name: clickhouse
+    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-25.12-alpine}'
+    ports:
+      - 127.0.0.1:8123:8123
+      - 127.0.0.1:9000:9000
+      - 127.0.0.1:9009:9009
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://127.0.0.1:8123/ping",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+networks:
+  clickhouse: null
