@@ -616,6 +616,7 @@ func TestPrometheusMetrics(t *testing.T) {
 	testWebhookMetrics(t, data)
 	testScalableObjectMetrics(t)
 	testScaledObjectPausedMetric(t, data)
+	testScaledObjectReadyMetric(t, data)
 	testCloudEventEmitted(t, data)
 	testCloudEventEmittedError(t, data)
 	testEmptyUpstreamResponse(t, data)
@@ -1066,6 +1067,61 @@ func testScaledObjectPausedMetric(t *testing.T, data templateData) {
 		return metricValue == float64(0)
 	})
 	assertScaledObjectPausedMetric(t, families, scaledObjectName, false)
+}
+
+func getScaledObjectReadyValue(family *prommodel.MetricFamily, name string) (float64, bool) {
+	metrics := family.GetMetric()
+	for _, metric := range metrics {
+		labels := metric.GetLabel()
+		for _, label := range labels {
+			if *label.Name == labelScaledObject && *label.Value == name {
+				return *metric.Gauge.Value, true
+			}
+		}
+	}
+	return 0, false
+}
+
+func assertScaledObjectReadyMetric(t *testing.T, families map[string]*prommodel.MetricFamily, scaledObjectName string, expected bool) {
+	family, ok := families["keda_scaled_object_ready"]
+	if !ok {
+		t.Errorf("keda_scaled_object_ready metric not available")
+		return
+	}
+
+	metricValue, found := getScaledObjectReadyValue(family, scaledObjectName)
+	if !found {
+		t.Errorf("keda_scaled_object_ready metric not found for ScaledObject %s", scaledObjectName)
+		return
+	}
+
+	expectedMetricValue := 0
+	if expected {
+		expectedMetricValue = 1
+	}
+	assert.Equal(t, float64(expectedMetricValue), metricValue)
+}
+
+func testScaledObjectReadyMetric(t *testing.T, data templateData) {
+	t.Log("--- testing scaledobject ready metric ---")
+
+	// the correctly configured ScaledObject should report ready == 1
+	families := WaitForPrometheusMetric(t, "keda_scaled_object_ready", func(family *prommodel.MetricFamily) bool {
+		value, found := getScaledObjectReadyValue(family, scaledObjectName)
+		return found && value == float64(1)
+	})
+	assertScaledObjectReadyMetric(t, families, scaledObjectName, true)
+
+	// a misconfigured ScaledObject should report ready == 0
+	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
+
+	families = WaitForPrometheusMetric(t, "keda_scaled_object_ready", func(family *prommodel.MetricFamily) bool {
+		value, found := getScaledObjectReadyValue(family, wrongScaledObjectName)
+		return found && value == float64(0)
+	})
+	assertScaledObjectReadyMetric(t, families, wrongScaledObjectName, false)
+
+	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 }
 
 func testOperatorMetrics(t *testing.T, kc *kubernetes.Clientset, data templateData) {
