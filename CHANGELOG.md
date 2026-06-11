@@ -78,7 +78,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Add `keda_scaled_object_ready` metric exposing whether a ScaledObject's `Ready` condition is `True` ([#5663](https://github.com/kedacore/keda/issues/5663))
 
 ### Fixes
 

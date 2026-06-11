@@ -77,6 +77,15 @@ var (
 		},
 		[]string{"namespace", "scaledObject"},
 	)
+	scaledObjectReady = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaled_object",
+			Name:      "ready",
+			Help:      "Indicates whether a ScaledObject is ready (1), or not (0).",
+		},
+		[]string{"namespace", "scaledObject"},
+	)
 	scalerErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: DefaultPromMetricsNamespace,
@@ -195,6 +204,7 @@ func NewPromMetrics() *PromMetrics {
 	metrics.Registry.MustRegister(scalerErrors)
 	metrics.Registry.MustRegister(scaledObjectErrors)
 	metrics.Registry.MustRegister(scaledObjectPaused)
+	metrics.Registry.MustRegister(scaledObjectReady)
 	metrics.Registry.MustRegister(triggerRegistered)
 	metrics.Registry.MustRegister(crdRegistered)
 	metrics.Registry.MustRegister(scaledJobErrors)
@@ -260,6 +270,18 @@ func (p *PromMetrics) RecordScaledObjectPaused(namespace string, scaledObject st
 	}
 
 	scaledObjectPaused.With(labels).Set(float64(activeVal))
+}
+
+// RecordScaledObjectReady marks whether the current ScaledObject is ready.
+func (p *PromMetrics) RecordScaledObjectReady(namespace string, scaledObject string, ready bool) {
+	labels := prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject}
+
+	readyVal := 0
+	if ready {
+		readyVal = 1
+	}
+
+	scaledObjectReady.With(labels).Set(float64(readyVal))
 }
 
 // RecordScalerError counts the number of errors occurred in trying to get an external metric used by the HPA
