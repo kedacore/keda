@@ -82,7 +82,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Restore gRPC reconnect backoff in the metrics service client; an unset `Backoff` in `WithConnectParams` disabled backoff and caused a zero-delay reconnect loop that flooded logs when keda-operator was unreachable ([#7856](https://github.com/kedacore/keda/issues/7856))
 
 ### Deprecations
 
