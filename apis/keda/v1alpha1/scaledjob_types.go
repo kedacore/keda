@@ -66,7 +66,7 @@ type ScaledJobSpec struct {
 	FailedJobsHistoryLimit *int32 `json:"failedJobsHistoryLimit,omitempty"`
 	// Deprecated: Use Rollout.Strategy instead (see https://github.com/kedacore/keda/issues/3596).
 	// +optional
-	// +kubebuilder:validation:Enum=gradual;immediate
+	// +kubebuilder:validation:Enum=default;gradual;immediate
 	RolloutStrategy string `json:"rolloutStrategy,omitempty"`
 	// +optional
 	Rollout Rollout `json:"rollout,omitempty"`
@@ -132,7 +132,7 @@ type ScalingStrategy struct {
 // +optional
 type Rollout struct {
 	// +optional
-	// +kubebuilder:validation:Enum=gradual;immediate
+	// +kubebuilder:validation:Enum=default;gradual;immediate
 	Strategy string `json:"strategy,omitempty"`
 	// +optional
 	// +kubebuilder:validation:Enum=foreground;background

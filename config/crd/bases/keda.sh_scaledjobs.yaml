@@ -9028,6 +9028,7 @@ spec:
                     type: string
                   strategy:
                     enum:
+                    - default
                     - gradual
                     - immediate
                     type: string
@@ -9035,6 +9036,7 @@ spec:
               rolloutStrategy:
                 description: 'Deprecated: Use Rollout.Strategy instead (see https://github.com/kedacore/keda/issues/3596).'
                 enum:
+                - default
                 - gradual
                 - immediate
                 type: string

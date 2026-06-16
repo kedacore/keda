@@ -82,7 +82,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Add `default` to `ScaledJob` `rollout.strategy` CRD enum to match documented values ([#7864](https://github.com/kedacore/keda/issues/7864))
 
 ### Deprecations
 
