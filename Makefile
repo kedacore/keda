@@ -175,9 +175,9 @@ clientset-generate: ## Generate client-go clientset, listers and informers.
 	./hack/update-codegen.sh
 
 proto-gen: protoc-gen ## Generate Liiklus, ExternalScaler and MetricsService proto
-	PATH="$(LOCALBIN):$(PATH)" protoc -I vendor --proto_path=hack LiiklusService.proto --go_out=pkg/scalers/liiklus --go-grpc_out=pkg/scalers/liiklus
-	PATH="$(LOCALBIN):$(PATH)" protoc -I vendor --proto_path=pkg/scalers/externalscaler externalscaler.proto --go_out=pkg/scalers/externalscaler --go-grpc_out=pkg/scalers/externalscaler
-	PATH="$(LOCALBIN):$(PATH)" protoc -I vendor --proto_path=pkg/metricsservice/api metrics.proto --go_out=pkg/metricsservice/api --go-grpc_out=pkg/metricsservice/api
+	PATH="$(LOCALBIN):$(PATH)" protoc --proto_path=hack LiiklusService.proto --go_out=pkg/scalers/liiklus --go-grpc_out=pkg/scalers/liiklus
+	PATH="$(LOCALBIN):$(PATH)" protoc --proto_path=pkg/scalers/externalscaler externalscaler.proto --go_out=pkg/scalers/externalscaler --go-grpc_out=pkg/scalers/externalscaler
+	PATH="$(LOCALBIN):$(PATH)" protoc --proto_path=pkg/metricsservice/api metrics.proto --go_out=pkg/metricsservice/api --go-grpc_out=pkg/metricsservice/api
 
 .PHONY: mockgen-gen
 mockgen-gen: mockgen pkg/mock/mock_scaling/mock_interface.go pkg/mock/mock_scaling/mock_executor/mock_interface.go pkg/mock/mock_scaler/mock_scaler.go pkg/mock/mock_scale/mock_interfaces.go pkg/mock/mock_client/mock_interfaces.go pkg/scalers/liiklus/mocks/mock_liiklus.go pkg/mock/mock_secretlister/mock_interfaces.go pkg/mock/mock_eventemitter/mock_interface.go
@@ -190,13 +190,13 @@ pkg/mock/mock_scaler/mock_scaler.go: pkg/scalers/scaler.go
 	$(MOCKGEN) -destination=$@ -package=mock_scalers -source=$^
 pkg/mock/mock_eventemitter/mock_interface.go: pkg/eventemitter/eventemitter.go
 	$(MOCKGEN) -destination=$@ -package=mock_eventemitter -source=$^
-pkg/mock/mock_secretlister/mock_interfaces.go: vendor/k8s.io/client-go/listers/core/v1/secret.go
+pkg/mock/mock_secretlister/mock_interfaces.go:
 	mkdir -p pkg/mock/mock_secretlister
 	$(MOCKGEN) k8s.io/client-go/listers/core/v1 SecretLister,SecretNamespaceLister > $@
-pkg/mock/mock_scale/mock_interfaces.go: vendor/k8s.io/client-go/scale/interfaces.go
+pkg/mock/mock_scale/mock_interfaces.go:
 	mkdir -p pkg/mock/mock_scale
 	$(MOCKGEN) k8s.io/client-go/scale ScalesGetter,ScaleInterface > $@
-pkg/mock/mock_client/mock_interfaces.go: vendor/sigs.k8s.io/controller-runtime/pkg/client/interfaces.go
+pkg/mock/mock_client/mock_interfaces.go:
 	mkdir -p pkg/mock/mock_client
 	$(MOCKGEN) sigs.k8s.io/controller-runtime/pkg/client Patch,Reader,Writer,StatusClient,StatusWriter,Client,WithWatch,FieldIndexer > $@
 pkg/scalers/liiklus/mocks/mock_liiklus.go:
@@ -212,16 +212,15 @@ build: update-mod generate fmt vet manager adapter webhooks ## Build Operator (m
 
 update-mod:
 	go mod tidy
-	go mod vendor
 
 manager: generate
-	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -mod=vendor -o bin/keda cmd/operator/main.go
+	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -o bin/keda cmd/operator/main.go
 
 adapter: generate
-	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -mod=vendor -o bin/keda-adapter cmd/adapter/main.go
+	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -o bin/keda-adapter cmd/adapter/main.go
 
 webhooks: generate
-	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -mod=vendor -o bin/keda-admission-webhooks cmd/webhooks/main.go
+	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -o bin/keda-admission-webhooks cmd/webhooks/main.go
 
 run: manifests generate ## Run a controller from your host.
 	KEDA_CLUSTER_OBJECT_NAMESPACE=keda WATCH_NAMESPACE="" go run -ldflags $(GO_LDFLAGS) ./cmd/operator/main.go $(ARGS)
@@ -352,39 +351,39 @@ PROTOCGEN_GRPC ?= $(LOCALBIN)/protoc-gen-go-grpc
 GO_JUNIT_REPORT ?= $(LOCALBIN)/go-junit-report
 
 .PHONY: controller-gen
-controller-gen: $(CONTROLLER_GEN) ## Install controller-gen from vendor dir if necessary.
+controller-gen: $(CONTROLLER_GEN) ## Install controller-gen if necessary.
 $(CONTROLLER_GEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/controller-gen || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen
 
 .PHONY: kustomize
-kustomize: $(KUSTOMIZE) ## Install kustomize from vendor dir if necessary.
+kustomize: $(KUSTOMIZE) ## Install kustomize if necessary.
 $(KUSTOMIZE): $(LOCALBIN)
 	test -s $(LOCALBIN)/kustomize || GOBIN=$(LOCALBIN) go install sigs.k8s.io/kustomize/kustomize/v5
 
 .PHONY: envtest
-envtest: $(ENVTEST) ## Install envtest-setup from vendor dir if necessary.
+envtest: $(ENVTEST) ## Install envtest-setup if necessary.
 $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest
 
 .PHONY: gotestsum
-gotestsum: $(GOTESTSUM) ## Install gotestsum from vendor dir if necessary.
+gotestsum: $(GOTESTSUM) ## Install gotestsum if necessary.
 $(GOTESTSUM): $(LOCALBIN)
 	test -s $(LOCALBIN)/gotestsum || GOBIN=$(LOCALBIN) go install gotest.tools/gotestsum@latest
 
 .PHONY: mockgen
-mockgen: $(MOCKGEN) ## Install mockgen from vendor dir if necessary.
+mockgen: $(MOCKGEN) ## Install mockgen if necessary.
 $(MOCKGEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/mockgen || GOBIN=$(LOCALBIN) go install go.uber.org/mock/mockgen
 
 .PHONY: protoc-gen
-protoc-gen: $(PROTOCGEN) $(PROTOCGEN_GRPC) ## Install protoc-gen from vendor dir if necessary.
+protoc-gen: $(PROTOCGEN) $(PROTOCGEN_GRPC) ## Install protoc-gen if necessary.
 $(PROTOCGEN): $(LOCALBIN)
 	GOBIN=$(LOCALBIN) go install google.golang.org/protobuf/cmd/protoc-gen-go
 $(PROTOCGEN_GRPC): $(LOCALBIN)
 	GOBIN=$(LOCALBIN) go install google.golang.org/grpc/cmd/protoc-gen-go-grpc
 
 .PHONY: go-junit-report
-go-junit-report: $(GO_JUNIT_REPORT) ## Install go-junit-report from vendor dir if necessary.
+go-junit-report: $(GO_JUNIT_REPORT) ## Install go-junit-report if necessary.
 $(GO_JUNIT_REPORT): $(LOCALBIN)
 	test -s $(LOCALBIN)/go-junit-report || GOBIN=$(LOCALBIN) go install github.com/jstemmer/go-junit-report/v2
 

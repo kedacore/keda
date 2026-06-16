@@ -7,6 +7,11 @@ ARG GIT_VERSION=main
 
 WORKDIR /workspace
 
+COPY go.mod go.sum ./
+ARG GOMODCACHE=/go/pkg/mod
+RUN --mount=type=cache,target=${GOMODCACHE} \
+  go mod download
+
 COPY Makefile Makefile
 
 # Copy the go source
@@ -17,19 +22,15 @@ COPY apis/ apis/
 COPY controllers/ controllers/
 COPY pkg/ pkg/
 COPY schema/ schema/
-COPY vendor/ vendor/
-COPY go.mod go.mod
-COPY go.sum go.sum
 
 # Build
 # https://www.docker.com/blog/faster-multi-platform-builds-dockerfile-cross-compilation-guide/
 ARG TARGETOS
 ARG TARGETARCH
 ARG GOCACHE=/root/.cache/go-build
-RUN  go env -w GOCACHE=${GOCACHE}
-RUN --mount=type=cache,target=${GOCACHE} \
-    VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION} TARGET_OS=$TARGETOS ARCH=$TARGETARCH \
-    make webhooks
+RUN --mount=type=cache,target=${GOCACHE} --mount=type=cache,target=${GOMODCACHE} \
+  VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION} TARGET_OS=$TARGETOS ARCH=$TARGETARCH \
+  make webhooks
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details

@@ -70,7 +70,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Introduce new ClickHouse Scaler ([#7418](https://github.com/kedacore/keda/issues/7418))
 
 #### Experimental
 

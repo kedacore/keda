@@ -1,6 +1,6 @@
 default_stages: [pre-commit, pre-push]
 minimum_pre_commit_version: "4.0.0"
-exclude: (^vendor/|^pkg/generated/)
+exclude: ^pkg/generated/
 repos:
   - repo: https://github.com/dnephin/pre-commit-golang
     rev: v0.5.1
