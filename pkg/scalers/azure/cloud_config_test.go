@@ -23,9 +23,9 @@ import (
 )
 
 type environmentFromNameTestData struct {
-	name        string
-	expected    AzEnvironment
-	isError     bool
+	name	string
+	expected	AzEnvironment
+	isError	bool
 }
 
 var environmentFromNameTestDataset = []environmentFromNameTestData{
@@ -59,10 +59,10 @@ func TestEnvironmentFromName(t *testing.T) {
 
 func TestEnvironmentFromFile(t *testing.T) {
 	expected := AzEnvironment{
-		Name:                      "CustomCloud",
-		ResourceManagerEndpoint:   "https://management.custom.cloud/",
-		ActiveDirectoryEndpoint:   "https://login.custom.cloud/",
-		StorageEndpointSuffix:     "core.custom.cloud",
+		Name:	"CustomCloud",
+		ResourceManagerEndpoint:	"https://management.custom.cloud/",
+		ActiveDirectoryEndpoint:	"https://login.custom.cloud/",
+		StorageEndpointSuffix:	"core.custom.cloud",
 	}
 
 	data, err := json.Marshal(expected)
@@ -105,8 +105,8 @@ func TestEnvironmentFromFileNotFound(t *testing.T) {
 
 func TestSetEnvironment(t *testing.T) {
 	customEnv := AzEnvironment{
-		Name:                    "TestCustomCloud",
-		ResourceManagerEndpoint: "https://management.test.cloud/",
+		Name:	"TestCustomCloud",
+		ResourceManagerEndpoint:	"https://management.test.cloud/",
 	}
 	SetEnvironment("AzureTestCustomCloud", customEnv)
 
