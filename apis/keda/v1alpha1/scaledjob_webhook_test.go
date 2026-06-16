@@ -44,9 +44,9 @@ var _ = It("should validate empty triggers in ScaledJob", func() {
 
 func TestVerifyScaledJobScalingStrategy(t *testing.T) {
 	tests := []struct {
-		name      string
+		name       string
 		percentage string
-		wantErr   bool
+		wantErr    bool
 	}{
 		{"empty percentage is valid", "", false},
 		{"valid float 0.5", "0.5", false},
