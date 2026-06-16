@@ -1,0 +1,38 @@
+# {{ .Name }}
+
+[![Release](https://img.shields.io/github/release/avast/retry-go.svg?style=flat-square)](https://github.com/avast/retry-go/releases/latest)
+[![Software License](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square)](LICENSE.md)
+![GitHub Actions](https://github.com/avast/retry-go/actions/workflows/workflow.yaml/badge.svg)
+[![Go Report Card](https://goreportcard.com/badge/github.com/avast/retry-go?style=flat-square)](https://goreportcard.com/report/github.com/avast/retry-go)
+[![Go Reference](https://pkg.go.dev/badge/github.com/avast/retry-go/v4.svg)](https://pkg.go.dev/github.com/avast/retry-go/v4)
+[![codecov.io](https://codecov.io/github/avast/retry-go/coverage.svg?branch=main)](https://codecov.io/github/avast/retry-go?branch=main)
+[![Sourcegraph](https://sourcegraph.com/github.com/avast/retry-go/-/badge.svg)](https://sourcegraph.com/github.com/avast/retry-go?badge)
+
+{{ .EmitSynopsis }}
+
+{{ .EmitUsage }}
+
+## Contributing
+
+Contributions are very much welcome.
+
+### Makefile
+
+Makefile provides several handy rules, like README.md `generator` , `setup` for prepare build/dev environment, `test`, `cover`, etc...
+
+Try `make help` for more information.
+
+### Before pull request
+
+> maybe you need `make setup` in order to setup environment
+
+please try:
+* run tests (`make test`)
+* run linter (`make lint`)
+* if your IDE don't automaticaly do `go fmt`, run `go fmt` (`make fmt`)
+
+### README
+
+README.md are generate from template [.godocdown.tmpl](.godocdown.tmpl) and code documentation via [godocdown](https://github.com/robertkrimen/godocdown).
+
+Never edit README.md direct, because your change will be lost.

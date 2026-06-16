@@ -1,0 +1,46 @@
+goos: darwin
+goarch: amd64
+pkg: github.com/avast/retry-go/v4
+cpu: Intel(R) Core(TM) i9-9980HK CPU @ 2.40GHz
+BenchmarkDo-16                    	       3	 406306609 ns/op	    2701 B/op	      48 allocs/op
+BenchmarkDo-16                    	       3	 419470846 ns/op	    2693 B/op	      47 allocs/op
+BenchmarkDo-16                    	       2	 567716303 ns/op	    2696 B/op	      47 allocs/op
+BenchmarkDo-16                    	       2	 562713288 ns/op	    2696 B/op	      47 allocs/op
+BenchmarkDo-16                    	       3	 418301987 ns/op	    2693 B/op	      47 allocs/op
+BenchmarkDo-16                    	       2	 541207332 ns/op	    2696 B/op	      47 allocs/op
+BenchmarkDo-16                    	       2	 526211617 ns/op	    2696 B/op	      47 allocs/op
+BenchmarkDo-16                    	       2	 517419526 ns/op	    2696 B/op	      47 allocs/op
+BenchmarkDo-16                    	       3	 478391497 ns/op	    2693 B/op	      47 allocs/op
+BenchmarkDo-16                    	       3	 452548175 ns/op	    2725 B/op	      47 allocs/op
+BenchmarkDoWithData-16            	       3	 463040866 ns/op	    2693 B/op	      47 allocs/op
+BenchmarkDoWithData-16            	       3	 496158943 ns/op	    2693 B/op	      47 allocs/op
+BenchmarkDoWithData-16            	       3	 488367012 ns/op	    2725 B/op	      47 allocs/op
+BenchmarkDoWithData-16            	       3	 454618897 ns/op	    2693 B/op	      47 allocs/op
+BenchmarkDoWithData-16            	       3	 435430056 ns/op	    2693 B/op	      47 allocs/op
+BenchmarkDoWithData-16            	       2	 552289967 ns/op	    2744 B/op	      48 allocs/op
+BenchmarkDoWithData-16            	       3	 569748815 ns/op	    2693 B/op	      47 allocs/op
+BenchmarkDoWithData-16            	       3	 416597207 ns/op	    2725 B/op	      47 allocs/op
+BenchmarkDoWithData-16            	       3	 358455415 ns/op	    2725 B/op	      47 allocs/op
+BenchmarkDoWithData-16            	       3	 455297803 ns/op	    2725 B/op	      47 allocs/op
+BenchmarkDoNoErrors-16            	 7035135	       161.9 ns/op	     208 B/op	       4 allocs/op
+BenchmarkDoNoErrors-16            	 7389806	       161.3 ns/op	     208 B/op	       4 allocs/op
+BenchmarkDoNoErrors-16            	 7394016	       161.5 ns/op	     208 B/op	       4 allocs/op
+BenchmarkDoNoErrors-16            	 7380039	       162.2 ns/op	     208 B/op	       4 allocs/op
+BenchmarkDoNoErrors-16            	 7424865	       162.2 ns/op	     208 B/op	       4 allocs/op
+BenchmarkDoNoErrors-16            	 7111860	       160.5 ns/op	     208 B/op	       4 allocs/op
+BenchmarkDoNoErrors-16            	 7285305	       162.6 ns/op	     208 B/op	       4 allocs/op
+BenchmarkDoNoErrors-16            	 7410627	       160.7 ns/op	     208 B/op	       4 allocs/op
+BenchmarkDoNoErrors-16            	 7340961	       161.6 ns/op	     208 B/op	       4 allocs/op
+BenchmarkDoNoErrors-16            	 7295727	       164.1 ns/op	     208 B/op	       4 allocs/op
+BenchmarkDoWithDataNoErrors-16    	 7357304	       159.9 ns/op	     208 B/op	       4 allocs/op
+BenchmarkDoWithDataNoErrors-16    	 6649852	       166.9 ns/op	     208 B/op	       4 allocs/op
+BenchmarkDoWithDataNoErrors-16    	 6938404	       176.3 ns/op	     208 B/op	       4 allocs/op
+BenchmarkDoWithDataNoErrors-16    	 7181965	       160.4 ns/op	     208 B/op	       4 allocs/op
+BenchmarkDoWithDataNoErrors-16    	 7311484	       166.2 ns/op	     208 B/op	       4 allocs/op
+BenchmarkDoWithDataNoErrors-16    	 6939157	       169.7 ns/op	     208 B/op	       4 allocs/op
+BenchmarkDoWithDataNoErrors-16    	 6648344	       179.0 ns/op	     208 B/op	       4 allocs/op
+BenchmarkDoWithDataNoErrors-16    	 6794847	       177.0 ns/op	     208 B/op	       4 allocs/op
+BenchmarkDoWithDataNoErrors-16    	 6782588	       171.4 ns/op	     208 B/op	       4 allocs/op
+BenchmarkDoWithDataNoErrors-16    	 7279119	       166.9 ns/op	     208 B/op	       4 allocs/op
+PASS
+ok  	github.com/avast/retry-go/v4	73.128s
