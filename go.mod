@@ -2,26 +2,6 @@ module github.com/kedacore/keda/v2
 
 go 1.26.0
 
-replace (
-	// pin k8s.io to v0.35.5 & sigs.k8s.io/controller-runtime to v0.23.3
-	github.com/google/cel-go => github.com/google/cel-go v0.26.0
-	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.23.2
-	github.com/prometheus/client_model => github.com/prometheus/client_model v0.6.2
-	github.com/prometheus/common => github.com/prometheus/common v0.66.1
-	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.304.2
-	k8s.io/api => k8s.io/api v0.35.5
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.35.5
-	k8s.io/apimachinery => k8s.io/apimachinery v0.35.5
-	k8s.io/apiserver => k8s.io/apiserver v0.35.5
-	k8s.io/client-go => k8s.io/client-go v0.35.5
-	k8s.io/code-generator => k8s.io/code-generator v0.35.5
-	k8s.io/component-base => k8s.io/component-base v0.35.5
-	k8s.io/gengo/v2 => k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b
-	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20250910181357-589584f1c912
-	k8s.io/metrics => k8s.io/metrics v0.35.5
-	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.23.3
-)
-
 require (
 	cloud.google.com/go/compute/metadata v0.9.0
 	cloud.google.com/go/monitoring v1.29.0
@@ -128,21 +108,26 @@ require (
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/gotestsum v1.13.0
-	k8s.io/api v0.36.0
-	k8s.io/apimachinery v0.36.0
-	k8s.io/apiserver v0.36.0
-	k8s.io/client-go v0.36.0
-	k8s.io/code-generator v0.36.0
-	k8s.io/component-base v0.36.0
+	k8s.io/api v0.35.5
+	k8s.io/apimachinery v0.35.5
+	k8s.io/apiserver v0.35.5
+	k8s.io/client-go v0.35.5
+	k8s.io/code-generator v0.35.5
+	k8s.io/component-base v0.35.5
 	k8s.io/klog/v2 v2.140.0
 	k8s.io/kube-openapi v0.0.0-20260427204847-8949caaa1199
 	k8s.io/metrics v0.35.0
 	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5
 	sigs.k8s.io/controller-runtime v0.23.3
-	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.24.1
-	sigs.k8s.io/controller-tools v0.21.0
+	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20251120014536-56f7b6493b03
+	sigs.k8s.io/controller-tools v0.20.1
 	sigs.k8s.io/custom-metrics-apiserver v1.35.0
 	sigs.k8s.io/kustomize/kustomize/v5 v5.8.1
+)
+
+require (
+	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
+	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
 )
 
 require (
@@ -254,7 +239,6 @@ require (
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3 // indirect
-	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 // indirect
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -297,7 +281,6 @@ require (
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
-	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
 	github.com/nexus-rpc/sdk-go v0.6.0 // indirect
 	github.com/oapi-codegen/runtime v1.1.2 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
@@ -313,13 +296,12 @@ require (
 	github.com/samber/lo v1.52.0 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
-	github.com/signalfx/signalfx-go v1.54.0 // indirect
+	github.com/signalfx/signalfx-go v1.54.0
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.6.0 // indirect
 	github.com/spyzhov/ajson v0.9.6 // indirect
-	github.com/stoewer/go-strcase v1.3.1 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect
 	github.com/tidwall/match v1.2.0 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
@@ -369,9 +351,9 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/sourcemap.v1 v1.0.5 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/apiextensions-apiserver v0.36.0 // indirect
+	k8s.io/apiextensions-apiserver v0.35.5 // indirect
 	k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b // indirect
-	k8s.io/kms v0.35.5 // indirect
+	k8s.io/kms v0.36.0 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.34.0 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/kustomize/api v0.21.1 // indirect

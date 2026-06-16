@@ -781,7 +781,8 @@ func (d *Definition) loadFields() error {
 		return nil
 	}
 
-	for field := range d.Output.Fields() {
+	for i := 0; i < d.Output.NumField(); i++ {
+		field := d.Output.Field(i)
 		if field.PkgPath != "" {
 			// as per the reflect package docs, pkgpath is empty for exported fields,
 			// so non-empty package path means a private field, which we should skip
