@@ -82,6 +82,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
+- **General**: Fix nil pointer panic in `GetCurrentReplicas` when `ScaleTargetGVKR` status is not yet populated during heavy ScaledObject churn ([#7863](https://github.com/kedacore/keda/issues/7863))
 - **General**: Fix `ScaledJob` CRD validation to include "default" as a valid value for `scalingStrategy.strategy` ([#7855](https://github.com/kedacore/keda/issues/7855))
 
 ### Deprecations

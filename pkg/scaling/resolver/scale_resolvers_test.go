@@ -27,6 +27,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
+	appsv1 "k8s.io/api/apps/v1"
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1234,4 +1235,65 @@ func TestResolveAuthSecret_UnrestrictedAccess_UsesOriginalNamespace(t *testing.T
 	)
 
 	assert.Equal(t, secretData, result)
+}
+
+func TestGetCurrentReplicas_NilScaleTargetGVKR_RefreshFindsIt(t *testing.T) {
+	if err := kedav1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		t.Fatalf("failed to add scheme: %v", err)
+	}
+
+	replicas := int32(3)
+	storedSO := &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-so",
+			Namespace: namespace,
+		},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "my-deploy"},
+		},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			ScaleTargetGVKR: &kedav1alpha1.GroupVersionKindResource{
+				Group:    "apps",
+				Version:  "v1",
+				Kind:     "Deployment",
+				Resource: "deployments",
+			},
+		},
+	}
+	deploy := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: "my-deploy", Namespace: namespace},
+		Spec:       appsv1.DeploymentSpec{Replicas: &replicas},
+	}
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(storedSO, deploy).Build()
+
+	callerSO := storedSO.DeepCopy()
+	callerSO.Status.ScaleTargetGVKR = nil
+
+	got, err := GetCurrentReplicas(context.Background(), fakeClient, nil, callerSO)
+	assert.NoError(t, err)
+	assert.Equal(t, replicas, got)
+}
+
+func TestGetCurrentReplicas_NilScaleTargetGVKR_StillNilAfterRefresh(t *testing.T) {
+	if err := kedav1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		t.Fatalf("failed to add scheme: %v", err)
+	}
+
+	storedSO := &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-so",
+			Namespace: namespace,
+		},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "my-deploy"},
+		},
+	}
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(storedSO).Build()
+
+	callerSO := storedSO.DeepCopy()
+
+	got, err := GetCurrentReplicas(context.Background(), fakeClient, nil, callerSO)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "ScaleTargetGVKR")
+	assert.Equal(t, int32(0), got)
 }
