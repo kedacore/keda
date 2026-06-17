@@ -72,7 +72,7 @@ type githubRunnerMetadata struct {
 	InstallationID                         int64  `keda:"name=installationID, order=triggerMetadata;resolvedEnv, optional"`
 	ApplicationKey                         string `keda:"name=appKey, order=authParams, optional"`
 
-	Auth *authentication.Config
+	Auth *authentication.Config `keda:"optional"`
 }
 
 type WorkflowRuns struct {
@@ -407,16 +407,19 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 }
 
 func (meta *githubRunnerMetadata) Validate() error {
-	if meta.ApplicationKey == "" && meta.PersonalAccessToken == "" {
-		return fmt.Errorf("no personalAccessToken or appKey given")
+	if meta.Auth == nil {
+		meta.Auth = &authentication.Config{}
+	}
+	if meta.ApplicationKey == "" && meta.PersonalAccessToken == "" && !meta.Auth.EnabledBearerAuth() {
+		return fmt.Errorf("no personalAccessToken/bearerToken or appKey given")
 	}
 	if meta.ApplicationID != 0 || meta.InstallationID != 0 || meta.ApplicationKey != "" {
 		if err := validateGitHubApp(meta); err != nil {
 			return err
 		}
 	}
-	meta.Auth = &authentication.Config{}
-	if meta.ApplicationID == 0 && meta.PersonalAccessToken != "" {
+	// Legacy bridge: only map personalAccessToken if no GitHub App is in use and Auth has no mode yet.
+	if meta.Auth.Disabled() && meta.ApplicationID == 0 && meta.PersonalAccessToken != "" {
 		meta.Auth.Modes = []authentication.Type{authentication.BearerAuthType}
 		meta.Auth.BearerToken = meta.PersonalAccessToken
 	}
