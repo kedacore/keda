@@ -711,8 +711,9 @@ func TestUnexpectedOptional(t *testing.T) {
 // TestNestedOptionalParamNamesPropagate verifies that when a scaler embeds an optional nested struct (e.g. *authentication.Config), the field names declared inside that nested struct count as parsed for the parent.
 func TestNestedOptionalParamNamesPropagate(t *testing.T) {
 	RegisterTestingT(t)
+	prev := checkUnexpectedParamEnabled
 	checkUnexpectedParamEnabled = true
-	defer func() { checkUnexpectedParamEnabled = false }()
+	defer func() { checkUnexpectedParamEnabled = prev }()
 
 	type nestedAuth struct {
 		Modes []string `keda:"name=authModes;authMode, order=triggerMetadata, optional"`
