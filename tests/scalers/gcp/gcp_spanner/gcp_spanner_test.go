@@ -229,10 +229,11 @@ func setupSpanner(t *testing.T) error {
 	}
 
 	t.Log("--- creating test table ---")
-	ddl := "CREATE TABLE IF NOT EXISTS keda_test_jobs (id INT64 NOT NULL, status STRING(64) NOT NULL) PRIMARY KEY (id)"
+	// ParseCommand splits on spaces respecting single-quotes only, so the DDL
+	// value must be wrapped in single-quotes, not Go %q double-quotes.
 	cmd = spannerCmd(
-		"gcloud spanner databases ddl update %s --instance=%s --project=%s --ddl=%q",
-		databaseID, instanceID, projectID, ddl,
+		"gcloud spanner databases ddl update %s --instance=%s --project=%s --ddl='CREATE TABLE IF NOT EXISTS keda_test_jobs (id INT64 NOT NULL, status STRING(64) NOT NULL) PRIMARY KEY (id)'",
+		databaseID, instanceID, projectID,
 	)
 	_, err = ExecuteCommand(cmd)
 	if !assert.NoErrorf(t, err, "failed to create test table: %s", err) {
@@ -241,8 +242,8 @@ func setupSpanner(t *testing.T) error {
 
 	t.Log("--- clearing stale rows ---")
 	_, _ = ExecuteCommand(spannerCmd(
-		"gcloud spanner rows delete --table=keda_test_jobs --instance=%s --database=%s --project=%s --keys=ALL",
-		instanceID, databaseID, projectID,
+		"gcloud spanner databases execute-sql %s --instance=%s --project=%s --sql='DELETE FROM keda_test_jobs WHERE true'",
+		databaseID, instanceID, projectID,
 	))
 
 	return nil
@@ -252,8 +253,8 @@ func cleanupSpanner(t *testing.T) {
 	t.Helper()
 	t.Log("--- removing test rows ---")
 	_, _ = ExecuteCommand(spannerCmd(
-		"gcloud spanner rows delete --table=keda_test_jobs --instance=%s --database=%s --project=%s --keys=ALL",
-		instanceID, databaseID, projectID,
+		"gcloud spanner databases execute-sql %s --instance=%s --project=%s --sql='DELETE FROM keda_test_jobs WHERE true'",
+		databaseID, instanceID, projectID,
 	))
 }
 
@@ -277,8 +278,8 @@ func clearAllRows(t *testing.T) {
 	t.Helper()
 	t.Log("--- clearing all rows ---")
 	_, _ = ExecuteCommand(spannerCmd(
-		"gcloud spanner rows delete --table=keda_test_jobs --instance=%s --database=%s --project=%s --keys=ALL",
-		instanceID, databaseID, projectID,
+		"gcloud spanner databases execute-sql %s --instance=%s --project=%s --sql='DELETE FROM keda_test_jobs WHERE true'",
+		databaseID, instanceID, projectID,
 	))
 }
 
