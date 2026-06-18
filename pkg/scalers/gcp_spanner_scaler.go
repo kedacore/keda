@@ -98,11 +98,18 @@ func newSpannerClient(ctx context.Context, meta *spannerMetadata) (*spanner.Clie
 
 	switch {
 	case meta.gcpAuthorization.PodIdentityProviderEnabled:
-		// ADC via workload identity — no extra options needed.
+		// Workload Identity / ADC — the SDK picks up credentials from the
+		// metadata server automatically; no explicit option is needed.
 	case meta.gcpAuthorization.GoogleApplicationCredentials != "":
 		opts = append(opts, option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(meta.gcpAuthorization.GoogleApplicationCredentials)))
 	case meta.gcpAuthorization.GoogleApplicationCredentialsFile != "":
 		opts = append(opts, option.WithAuthCredentialsFile(option.ServiceAccount, meta.gcpAuthorization.GoogleApplicationCredentialsFile))
+	default:
+		// No explicit credentials and no pod identity — the SDK will attempt
+		// Application Default Credentials (ADC) from the environment
+		// (GOOGLE_APPLICATION_CREDENTIALS, gcloud default, metadata server).
+		// GetGCPAuthorization already rejected this path in production; we reach
+		// here only when SPANNER_EMULATOR_HOST bypasses auth validation.
 	}
 
 	return spanner.NewClient(ctx, db, opts...)
@@ -127,7 +134,12 @@ func (s *spannerScaler) getQueryResult(ctx context.Context) (int64, error) {
 
 	row, err := iter.Next()
 	if errors.Is(err, iterator.Done) {
-		// No rows — treat as 0 so KEDA can scale to zero cleanly.
+		// No rows returned. COUNT(*) never produces an empty result set, so
+		// reaching here means the query is a single-value SELECT that matched
+		// nothing. Treat as 0 so KEDA scales to zero cleanly rather than
+		// surfacing a spurious error.
+		s.logger.V(1).Info("query returned no rows, treating value as 0",
+			"query", s.metadata.Query)
 		return 0, nil
 	}
 	if err != nil {
