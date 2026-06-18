@@ -9059,6 +9059,7 @@ spec:
                     type: array
                   strategy:
                     enum:
+                    - default
                     - custom
                     - accurate
                     - eager
