@@ -1,0 +1,65 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: keda:edit
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+    app.kubernetes.io/name: keda-operator
+    app.kubernetes.io/part-of: keda-operator
+rules:
+- apiGroups:
+  - keda.sh
+  resources:
+  - clustertriggerauthentications
+  - scaledjobs
+  - scaledobjects
+  - triggerauthentications
+  verbs:
+  - create
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - eventing.keda.sh
+  resources:
+  - cloudeventsources
+  - clustercloudeventsources
+  verbs:
+  - create
+  - delete
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: keda:view
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+    app.kubernetes.io/name: keda-operator
+    app.kubernetes.io/part-of: keda-operator
+rules:
+- apiGroups:
+  - keda.sh
+  resources:
+  - clustertriggerauthentications
+  - scaledjobs
+  - scaledobjects
+  - triggerauthentications
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - eventing.keda.sh
+  resources:
+  - cloudeventsources
+  - clustercloudeventsources
+  verbs:
+  - get
+  - list
+  - watch
