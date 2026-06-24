@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -44,9 +45,10 @@ var (
 	deploymentName = fmt.Sprintf("%s-deployment", testName)
 	scaledObjName  = fmt.Sprintf("%s-so", testName)
 	// Spanner resource identifiers — derived from credentials / env.
-	projectID  = fmt.Sprintf("%v", creds["project_id"])
-	instanceID = envOrDefault("TF_GCP_SPANNER_INSTANCE_ID", "keda-test-instance")
-	databaseID = envOrDefault("TF_GCP_SPANNER_DATABASE_ID", "keda-test-db")
+	projectID      = fmt.Sprintf("%v", creds["project_id"])
+	instanceID     = fmt.Sprintf("keda-e2e-spanner-%d", time.Now().UnixNano())
+	databaseID     = "keda-e2e-db"
+	instanceConfig = envOrDefault("TF_GCP_SPANNER_INSTANCE_CONFIG", "regional-us-central1")
 	// SQL used by the ScaledObject trigger — must return a single INT64 value.
 	scalerQuery = "SELECT COUNT(*) FROM keda_test_jobs WHERE status = 'pending'"
 	gsPrefix    = fmt.Sprintf("kubectl exec --namespace %s deploy/gcp-sdk -- ", testNamespace)
@@ -203,7 +205,6 @@ func TestScaler(t *testing.T) {
 	if err := setupSpanner(t); err != nil {
 		return
 	}
-	defer cleanupSpanner(t)
 
 	testActivation(t, kc)
 	testScaleOut(t, kc)
@@ -228,11 +229,35 @@ func setupSpanner(t *testing.T) error {
 		return err
 	}
 
-	t.Log("--- creating test table ---")
-	// ParseCommand splits on spaces respecting single-quotes only, so the DDL
-	// value must be wrapped in single-quotes, not Go %q double-quotes.
+	t.Logf("--- creating Spanner instance %s ---", instanceID)
 	cmd = spannerCmd(
-		"gcloud spanner databases ddl update %s --instance=%s --project=%s --ddl='CREATE TABLE IF NOT EXISTS keda_test_jobs (id INT64 NOT NULL, status STRING(64) NOT NULL) PRIMARY KEY (id)'",
+		"gcloud spanner instances create %s --config=%s --description=keda-e2e-test --processing-units=100 --project=%s",
+		instanceID, instanceConfig, projectID,
+	)
+	_, err = ExecuteCommand(cmd)
+	if !assert.NoErrorf(t, err, "failed to create Spanner instance: %s", err) {
+		return err
+	}
+	// Register cleanup immediately so the instance is deleted even if a later
+	// setup step fails and setupSpanner returns an error.
+	t.Cleanup(func() { cleanupSpanner(t) })
+
+	t.Logf("--- creating Spanner database %s ---", databaseID)
+	cmd = spannerCmd(
+		"gcloud spanner databases create %s --instance=%s --project=%s",
+		databaseID, instanceID, projectID,
+	)
+	_, err = ExecuteCommand(cmd)
+	if !assert.NoErrorf(t, err, "failed to create Spanner database: %s", err) {
+		return err
+	}
+
+	t.Log("--- creating test table ---")
+	// ParseCommand (tests/helper) splits on spaces honouring single-quotes only.
+	// The flag and its value must be separated by a space so that the
+	// single-quoted value becomes a standalone token and its quotes are stripped.
+	cmd = spannerCmd(
+		"gcloud spanner databases ddl update %s --instance=%s --project=%s --ddl 'CREATE TABLE keda_test_jobs (id INT64 NOT NULL, status STRING(64) NOT NULL) PRIMARY KEY (id)'",
 		databaseID, instanceID, projectID,
 	)
 	_, err = ExecuteCommand(cmd)
@@ -240,21 +265,16 @@ func setupSpanner(t *testing.T) error {
 		return err
 	}
 
-	t.Log("--- clearing stale rows ---")
-	_, _ = ExecuteCommand(spannerCmd(
-		"gcloud spanner databases execute-sql %s --instance=%s --project=%s --sql='DELETE FROM keda_test_jobs WHERE true'",
-		databaseID, instanceID, projectID,
-	))
-
 	return nil
 }
 
 func cleanupSpanner(t *testing.T) {
 	t.Helper()
-	t.Log("--- removing test rows ---")
+	t.Logf("--- deleting Spanner instance %s ---", instanceID)
+	// Deleting the instance also removes all databases and tables within it.
 	_, _ = ExecuteCommand(spannerCmd(
-		"gcloud spanner databases execute-sql %s --instance=%s --project=%s --sql='DELETE FROM keda_test_jobs WHERE true'",
-		databaseID, instanceID, projectID,
+		"gcloud spanner instances delete %s --project=%s --quiet",
+		instanceID, projectID,
 	))
 }
 
@@ -278,7 +298,7 @@ func clearAllRows(t *testing.T) {
 	t.Helper()
 	t.Log("--- clearing all rows ---")
 	_, _ = ExecuteCommand(spannerCmd(
-		"gcloud spanner databases execute-sql %s --instance=%s --project=%s --sql='DELETE FROM keda_test_jobs WHERE true'",
+		"gcloud spanner databases execute-sql %s --instance=%s --project=%s --sql 'DELETE FROM keda_test_jobs WHERE true'",
 		databaseID, instanceID, projectID,
 	))
 }
