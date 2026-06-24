@@ -259,6 +259,26 @@ func (c *GrpcClient) WaitForConnectionReady(ctx context.Context, logger logr.Log
 	}
 }
 
+// WaitWhileConnectionReady blocks while the gRPC connection remains in the Ready
+// state, returning as soon as it transitions away from Ready (e.g. because the
+// connection was lost) or the context is cancelled.
+// Returns true if the connection left the Ready state, false if the context is cancelled.
+func (c *GrpcClient) WaitWhileConnectionReady(ctx context.Context, logger logr.Logger) bool {
+	for {
+		currentState := c.connection.GetState()
+		if currentState != connectivity.Ready {
+			return true
+		}
+
+		if !c.connection.WaitForStateChange(ctx, currentState) {
+			// Context was cancelled
+			return false
+		}
+
+		logger.V(1).Info("gRPC connection state changed away from ready", "currentState", c.connection.GetState().String())
+	}
+}
+
 // GetServerURL returns url of the gRPC server this client is connected to
 func (c *GrpcClient) GetServerURL() string {
 	return c.connection.Target()
