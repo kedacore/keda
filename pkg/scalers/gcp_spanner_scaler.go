@@ -11,8 +11,6 @@ import (
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/gcp"
@@ -30,15 +28,26 @@ type spannerScaler struct {
 }
 
 type spannerMetadata struct {
-	ProjectID       string  `keda:"name=projectId,       order=triggerMetadata"`
-	InstanceID      string  `keda:"name=instanceId,      order=triggerMetadata"`
-	DatabaseID      string  `keda:"name=databaseId,      order=triggerMetadata"`
-	Query           string  `keda:"name=query,           order=triggerMetadata"`
-	TargetValue     float64 `keda:"name=targetValue,     order=triggerMetadata, default=5"`
-	ActivationValue float64 `keda:"name=activationValue, order=triggerMetadata, default=0"`
+	ProjectID       string  `keda:"name=projectId,              order=triggerMetadata"`
+	InstanceID      string  `keda:"name=instanceId,             order=triggerMetadata"`
+	DatabaseID      string  `keda:"name=databaseId,             order=triggerMetadata"`
+	Query           string  `keda:"name=query,                  order=triggerMetadata"`
+	TargetValue     float64 `keda:"name=targetValue,            order=triggerMetadata, default=5"`
+	ActivationValue float64 `keda:"name=activationValue,        order=triggerMetadata, default=0"`
+
+	Credentials            string `keda:"name=credentials,            order=triggerMetadata;resolvedEnv, optional"`
+	CredentialsFromEnvFile string `keda:"name=credentialsFromEnvFile, order=triggerMetadata;resolvedEnv, optional"`
 
 	gcpAuthorization *gcp.AuthorizationMetadata
+	metricName       string
 	triggerIndex     int
+}
+
+func (m *spannerMetadata) Validate() error {
+	if m.TargetValue <= 0 {
+		return fmt.Errorf("targetValue must be greater than 0, got %v", m.TargetValue)
+	}
+	return nil
 }
 
 // NewGcpSpannerScaler creates a new spannerScaler.
@@ -73,6 +82,16 @@ func parseSpannerMetadata(config *scalersconfig.ScalerConfig) (*spannerMetadata,
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, err
 	}
+
+	meta.metricName = GenerateMetricNameWithIndex(
+		config.TriggerIndex,
+		kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s",
+			spannerMetricNamePrefix,
+			meta.InstanceID,
+			meta.DatabaseID,
+			meta.ProjectID,
+		)),
+	)
 
 	// When SPANNER_EMULATOR_HOST is set the SDK handles auth automatically;
 	// credentials are not required in that case.
@@ -160,28 +179,14 @@ func (s *spannerScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 		return nil, false, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewMilliQuantity(count*1000, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(count))
 
 	return []external_metrics.ExternalMetricValue{metric}, float64(count) > s.metadata.ActivationValue, nil
 }
 
 func (s *spannerScaler) GetMetricSpecForScaling(_ context.Context) []v2.MetricSpec {
-	metricName := GenerateMetricNameWithIndex(
-		s.metadata.triggerIndex,
-		kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s-%s",
-			spannerMetricNamePrefix,
-			s.metadata.InstanceID,
-			s.metadata.DatabaseID,
-			s.metadata.ProjectID,
-		)),
-	)
-
 	externalMetric := &v2.ExternalMetricSource{
-		Metric: v2.MetricIdentifier{Name: metricName},
+		Metric: v2.MetricIdentifier{Name: s.metadata.metricName},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.TargetValue),
 	}
 	return []v2.MetricSpec{{External: externalMetric, Type: externalMetricType}}

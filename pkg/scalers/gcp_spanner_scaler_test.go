@@ -129,6 +129,22 @@ var testSpannerMetadataCases = []parseSpannerMetadataTestData{
 		metadata:   spannerRequiredFields,
 		isError:    false,
 	},
+	{
+		desc:       "targetValue zero is invalid",
+		authParams: map[string]string{"GoogleApplicationCredentials": `{"type":"service_account"}`},
+		metadata: withOverrides(spannerRequiredFields, map[string]string{
+			"targetValue": "0",
+		}),
+		isError: true,
+	},
+	{
+		desc:       "targetValue negative is invalid",
+		authParams: map[string]string{"GoogleApplicationCredentials": `{"type":"service_account"}`},
+		metadata: withOverrides(spannerRequiredFields, map[string]string{
+			"targetValue": "-1",
+		}),
+		isError: true,
+	},
 }
 
 func TestSpannerParseMetadata(t *testing.T) {

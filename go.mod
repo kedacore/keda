@@ -26,6 +26,7 @@ require (
 	cloud.google.com/go/compute/metadata v0.9.0
 	cloud.google.com/go/monitoring v1.29.0
 	cloud.google.com/go/secretmanager v1.20.0
+	cloud.google.com/go/spanner v1.91.0
 	cloud.google.com/go/storage v1.62.2
 	dario.cat/mergo v1.0.2
 	github.com/Azure/azure-amqp-common-go/v4 v4.2.0
@@ -147,7 +148,6 @@ require (
 )
 
 require (
-	cloud.google.com/go/spanner v1.91.0 // indirect
 	github.com/ClickHouse/ch-go v0.71.0 // indirect
 	github.com/GoogleCloudPlatform/grpc-gcp-go/grpcgcp v1.6.0 // indirect
 	github.com/go-faster/city v1.0.1 // indirect
