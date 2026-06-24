@@ -55,6 +55,9 @@ func TestVerifyScaledJobScalingStrategy(t *testing.T) {
 		{"valid float 0.0", "0.0", false},
 		{"not a float", "abc", true},
 		{"partially numeric", "1.5abc", true},
+		{"NaN", "NaN", true},
+		{"positive infinity", "+Inf", true},
+		{"negative infinity", "-Inf", true},
 	}
 
 	for _, tt := range tests {

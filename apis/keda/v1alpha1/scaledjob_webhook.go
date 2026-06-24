@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"math"
 	"strconv"
 
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -96,7 +97,8 @@ func verifyScaledJobScalingStrategy(s *ScaledJob) error {
 	if p == "" {
 		return nil
 	}
-	if _, err := strconv.ParseFloat(p, 64); err != nil {
+	v, err := strconv.ParseFloat(p, 64)
+	if err != nil || math.IsNaN(v) || math.IsInf(v, 0) {
 		return fmt.Errorf("ScaledJob.spec.scalingStrategy.customScalingRunningJobPercentage must be a valid floating-point number, got %q", p)
 	}
 	return nil
