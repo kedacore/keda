@@ -2366,6 +2366,20 @@
                     "type": "string",
                     "default": "0",
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "credentials",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "credentialsFromEnvFile",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
                 }
             ]
         },
