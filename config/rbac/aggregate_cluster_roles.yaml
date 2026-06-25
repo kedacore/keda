@@ -6,8 +6,6 @@ metadata:
   labels:
     rbac.authorization.k8s.io/aggregate-to-admin: "true"
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
-    app.kubernetes.io/name: keda-operator
-    app.kubernetes.io/part-of: keda-operator
 rules:
 - apiGroups:
   - keda.sh
@@ -19,6 +17,7 @@ rules:
   verbs:
   - create
   - delete
+  - deletecollection
   - patch
   - update
 - apiGroups:
@@ -29,6 +28,7 @@ rules:
   verbs:
   - create
   - delete
+  - deletecollection
   - patch
   - update
 ---
@@ -40,8 +40,6 @@ metadata:
     rbac.authorization.k8s.io/aggregate-to-admin: "true"
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
     rbac.authorization.k8s.io/aggregate-to-view: "true"
-    app.kubernetes.io/name: keda-operator
-    app.kubernetes.io/part-of: keda-operator
 rules:
 - apiGroups:
   - keda.sh
