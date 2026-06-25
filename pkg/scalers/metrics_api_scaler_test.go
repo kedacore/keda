@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	discoveryV1 "k8s.io/api/discovery/v1"
@@ -177,7 +178,7 @@ func TestGetValueFromResponse(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(string(tc.format)+": "+tc.name, func(t *testing.T) {
-			v, err := GetValueFromResponse(tc.input, tc.key, tc.format)
+			v, err := GetValueFromResponse(tc.input, tc.key, tc.format, parser.NewParser(parser.Options{}))
 
 			if tc.expectErr {
 				assert.Error(t, err)

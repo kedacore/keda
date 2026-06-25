@@ -8,7 +8,7 @@ replace (
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model => github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common => github.com/prometheus/common v0.66.1
-	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.304.2
+	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.311.3
 	k8s.io/api => k8s.io/api v0.35.5
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.35.5
 	k8s.io/apimachinery => k8s.io/apimachinery v0.35.5
