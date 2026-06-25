@@ -206,9 +206,7 @@ func TestScaler(t *testing.T) {
 	sdkReady := WaitForDeploymentReplicaReadyCount(t, kc, "gcp-sdk", testNamespace, 1, 60, 1)
 	require.True(t, sdkReady, "gcp-sdk pod must be ready before the test can proceed")
 
-	if err := setupSpanner(t); err != nil {
-		return
-	}
+	require.NoError(t, setupSpanner(t), "failed to set up Spanner resources")
 
 	testActivation(t, kc)
 	testScaleOut(t, kc)
