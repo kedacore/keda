@@ -1712,3 +1712,67 @@ func TestHandleResult_DeltaDoesNotOverwriteConcurrentChanges(t *testing.T) {
 	assert.True(t, patchedObj.Status.TriggersActivity["trigger-a"].IsActive, "concurrent update to trigger-a must be preserved")
 	assert.True(t, patchedObj.Status.TriggersActivity["trigger-b"].IsActive, "trigger-b updated by push scaler")
 }
+
+func TestHandleResult_DoesNotClobberFreshUnpauseWithStalePausedResult(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	sh := scaleHandler{client: mockClient}
+
+	// stale object the executor computed its result against: pause annotation
+	// still present, status already reflects Paused=true.
+	staleSO := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "test",
+			Namespace:   "ns",
+			Annotations: map[string]string{"autoscaling.keda.sh/paused": "true"},
+		},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			Conditions: kedav1alpha1.Conditions{
+				{Type: kedav1alpha1.ConditionPaused, Status: metav1.ConditionTrue},
+			},
+		},
+	}
+
+	// fresh object returned by Get: the pause annotation has since been removed
+	// and the reconciler has already persisted Paused=false.
+	freshSO := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "ns"},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			Conditions: kedav1alpha1.Conditions{
+				{Type: kedav1alpha1.ConditionPaused, Status: metav1.ConditionFalse},
+			},
+		},
+	}
+
+	var patchedObj *kedav1alpha1.ScaledObject
+
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...interface{}) error {
+			*obj = *freshSO.DeepCopy()
+			return nil
+		})
+	mockClient.EXPECT().Status().Return(statusWriter).AnyTimes()
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ interface{}, _ ...interface{}) error {
+			patchedObj = obj
+			return nil
+		}).AnyTimes()
+
+	// executor's result, computed against the stale object: still says Paused=true.
+	// A Ready condition is also included so the delta is non-empty even when the
+	// Paused guard fires, guaranteeing a Patch is issued and the assertion below
+	// is always exercised.
+	result := executor.ScaleResult{
+		Conditions: kedav1alpha1.Conditions{
+			{Type: kedav1alpha1.ConditionPaused, Status: metav1.ConditionTrue, Reason: "ScaledObjectPaused", Message: "ScaledObject is paused"},
+			{Type: kedav1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "ScaledObjectReady", Message: "ScaledObject is defined correctly and is ready for scaling"},
+		},
+	}
+	sh.handleResult(context.Background(), &staleSO, result)
+
+	assert.NotNil(t, patchedObj, "handleResult must issue a status Patch when result contains non-paused conditions")
+	assert.Equal(t, metav1.ConditionFalse, patchedObj.Status.Conditions.GetPausedCondition().Status,
+		"a stale Paused=true result must not clobber the freshly persisted unpause (#6421)")
+}

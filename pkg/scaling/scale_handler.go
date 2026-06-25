@@ -319,6 +319,23 @@ func (h *scaleHandler) handleResult(ctx context.Context, obj kedav1alpha1.Scalab
 		// apply conditions from the result
 		conds := current.GetStatusConditions()
 		for _, cond := range result.Conditions {
+			if cond.Type == kedav1alpha1.ConditionPaused && cond.Status == metav1.ConditionTrue {
+				// result.Conditions was computed against a possibly-stale cached read of
+				// the object. Re-validate the Paused condition against the freshly
+				// fetched current object before applying it, so a stale "still paused"
+				// decision from this scale loop iteration can't clobber a more recent
+				// unpause already persisted by the reconciler (#6421).
+				var needsPause bool
+				switch typedCurrent := current.(type) {
+				case *kedav1alpha1.ScaledObject:
+					needsPause = typedCurrent.NeedToBePausedByAnnotation()
+				case *kedav1alpha1.ScaledJob:
+					needsPause = typedCurrent.NeedToBePausedByAnnotation()
+				}
+				if !needsPause {
+					continue
+				}
+			}
 			conds.SetCondition(cond.Type, cond.Status, cond.Reason, cond.Message)
 		}
 
