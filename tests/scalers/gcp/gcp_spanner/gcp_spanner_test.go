@@ -4,6 +4,7 @@
 package gcp_spanner_test
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -11,9 +12,12 @@ import (
 	"testing"
 	"time"
 
+	instance "cloud.google.com/go/spanner/admin/instance/apiv1"
+	instancepb "cloud.google.com/go/spanner/admin/instance/apiv1/instancepb"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/api/option"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -268,14 +272,32 @@ func setupSpanner(t *testing.T) error {
 	return nil
 }
 
+// cleanupSpanner deletes the Spanner instance (and all its databases) directly
+// via the Go Admin API, bypassing gcloud. This avoids a race where
+// DeleteKubernetesResources removes the gcp-sdk pod before t.Cleanup runs,
+// which would leave the instance orphaned and incurring billing.
 func cleanupSpanner(t *testing.T) {
 	t.Helper()
-	t.Logf("--- deleting Spanner instance %s ---", instanceID)
-	// Deleting the instance also removes all databases and tables within it.
-	_, _ = ExecuteCommand(spannerCmd(
-		"gcloud spanner instances delete %s --project=%s --quiet",
-		instanceID, projectID,
-	))
+	t.Logf("--- deleting Spanner instance %s via Go Admin API ---", instanceID)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	adminClient, err := instance.NewInstanceAdminClient(ctx,
+		option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(gcpKey)),
+	)
+	if err != nil {
+		t.Logf("WARNING: failed to create instance admin client, instance %s may need manual cleanup: %v", instanceID, err)
+		return
+	}
+	defer adminClient.Close()
+
+	instanceName := fmt.Sprintf("projects/%s/instances/%s", projectID, instanceID)
+	if err := adminClient.DeleteInstance(ctx, &instancepb.DeleteInstanceRequest{
+		Name: instanceName,
+	}); err != nil {
+		t.Logf("WARNING: failed to delete Spanner instance %s, may need manual cleanup: %v", instanceID, err)
+	}
 }
 
 // insertPendingRows inserts n rows with status='pending' starting at the given

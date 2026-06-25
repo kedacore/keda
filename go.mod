@@ -148,6 +148,7 @@ require (
 )
 
 require (
+	cloud.google.com/go/longrunning v0.9.0 // indirect
 	github.com/ClickHouse/ch-go v0.71.0 // indirect
 	github.com/GoogleCloudPlatform/grpc-gcp-go/grpcgcp v1.6.0 // indirect
 	github.com/go-faster/city v1.0.1 // indirect
