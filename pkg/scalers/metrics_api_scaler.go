@@ -34,12 +34,11 @@ import (
 )
 
 type metricsAPIScaler struct {
-	metricType   v2.MetricTargetType
-	metadata     *metricsAPIScalerMetadata
-	httpClient   *http.Client
-	logger       logr.Logger
-	kubeClient   client.Client
-	promQLParser parser.Parser
+	metricType v2.MetricTargetType
+	metadata   *metricsAPIScalerMetadata
+	httpClient *http.Client
+	logger     logr.Logger
+	kubeClient client.Client
 }
 
 type metricsAPIScalerMetadata struct {
@@ -85,6 +84,10 @@ const (
 	MinAggregationType     AggregationType = "min"
 )
 
+var (
+	promQLParser parser.Parser = parser.NewParser(parser.Options{})
+)
+
 // NewMetricsAPIScaler creates a new HTTP scaler
 func NewMetricsAPIScaler(config *scalersconfig.ScalerConfig, kubeClient client.Client) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -115,12 +118,11 @@ func NewMetricsAPIScaler(config *scalersconfig.ScalerConfig, kubeClient client.C
 	}
 
 	return &metricsAPIScaler{
-		metricType:   metricType,
-		metadata:     meta,
-		httpClient:   httpClient,
-		kubeClient:   kubeClient,
-		logger:       InitializeLogger(config, "metrics_api_scaler"),
-		promQLParser: parser.NewParser(parser.Options{}),
+		metricType: metricType,
+		metadata:   meta,
+		httpClient: httpClient,
+		kubeClient: kubeClient,
+		logger:     InitializeLogger(config, "metrics_api_scaler"),
 	}, nil
 }
 
@@ -141,10 +143,10 @@ func parseMetricsAPIMetadata(config *scalersconfig.ScalerConfig) (*metricsAPISca
 }
 
 // GetValueFromResponse uses provided valueLocation to access the numeric value in provided body using the format specified.
-func GetValueFromResponse(body []byte, valueLocation string, format APIFormat, promQLParser parser.Parser) (float64, error) {
+func GetValueFromResponse(body []byte, valueLocation string, format APIFormat) (float64, error) {
 	switch format {
 	case PrometheusFormat:
-		return getValueFromPrometheusResponse(body, valueLocation, promQLParser)
+		return getValueFromPrometheusResponse(body, valueLocation)
 	case JSONFormat:
 		return getValueFromJSONResponse(body, valueLocation)
 	case XMLFormat:
@@ -157,7 +159,7 @@ func GetValueFromResponse(body []byte, valueLocation string, format APIFormat, p
 }
 
 // getValueFromPrometheusResponse uses provided valueLocation to access the numeric value in provided body
-func getValueFromPrometheusResponse(body []byte, valueLocation string, promQLParser parser.Parser) (float64, error) {
+func getValueFromPrometheusResponse(body []byte, valueLocation string) (float64, error) {
 	matchers, err := promQLParser.ParseMetricSelector(valueLocation)
 	if err != nil {
 		return 0, err
@@ -495,7 +497,7 @@ func (s *metricsAPIScaler) getMetricValueFromURL(ctx context.Context, url *strin
 	if err != nil {
 		return 0, err
 	}
-	v, err := GetValueFromResponse(b, s.metadata.ValueLocation, s.metadata.Format, s.promQLParser)
+	v, err := GetValueFromResponse(b, s.metadata.ValueLocation, s.metadata.Format)
 	if err != nil {
 		return 0, err
 	}
