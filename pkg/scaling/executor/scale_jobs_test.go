@@ -128,6 +128,32 @@ func TestCustomScalingStrategy(t *testing.T) {
 	assert.Equal(t, int64(4), maxScaleValue(strategy.GetEffectiveMaxScale(3, 2, 0, 4, 1)))
 }
 
+// TestCustomScalingStrategyNilQueueLengthDeduction is a regression test for
+// issue #7798: a nil CustomScalingQueueLengthDeduction (an omitempty *int32
+// field) must be treated as zero deduction instead of panicking with a nil
+// pointer dereference.
+func TestCustomScalingStrategyNilQueueLengthDeduction(t *testing.T) {
+	// Direct struct construction: deduction is nil, percentage is set.
+	percentage := 0.5
+	strategy := customScalingStrategy{
+		CustomScalingQueueLengthDeduction: nil,
+		CustomScalingRunningJobPercentage: &percentage,
+	}
+	// maxScale(10) - deduction(0) - int64(float64(2)*0.5) = 9
+	assert.Equal(t, int64(9), maxScaleValue(strategy.GetEffectiveMaxScale(10, 2, 0, 100, 1)))
+	// With no running jobs the deduction being nil should yield maxScale.
+	assert.Equal(t, int64(10), maxScaleValue(strategy.GetEffectiveMaxScale(10, 0, 0, 100, 1)))
+
+	// End-to-end via NewScalingStrategy: a ScaledJob that uses the "custom"
+	// strategy with a valid CustomScalingRunningJobPercentage but omits the
+	// optional CustomScalingQueueLengthDeduction field.
+	logger := logf.Log.WithName("ScaledJobTest")
+	scaledJob := getMockScaledJobWithCustomStrategyNilDeduction("custom", "custom", "0.5")
+	strategyFromFactory := NewScalingStrategy(logger, scaledJob)
+	assert.Equal(t, "executor.customScalingStrategy", fmt.Sprintf("%T", strategyFromFactory))
+	assert.Equal(t, int64(9), maxScaleValue(strategyFromFactory.GetEffectiveMaxScale(10, 2, 0, 100, 1)))
+}
+
 func TestAccurateScalingStrategy(t *testing.T) {
 	logger := logf.Log.WithName("ScaledJobTest")
 	strategy := NewScalingStrategy(logger, getMockScaledJobWithStrategy("accurate", "accurate", 0, "0"))
@@ -556,6 +582,19 @@ func getMockScaledJobWithCustomStrategyWithNilParameter(name, scalingStrategy st
 		Spec: kedav1alpha1.ScaledJobSpec{
 			ScalingStrategy: kedav1alpha1.ScalingStrategy{
 				Strategy: scalingStrategy,
+			},
+		},
+	}
+	scaledJob.Name = name
+	return scaledJob
+}
+
+func getMockScaledJobWithCustomStrategyNilDeduction(name, scalingStrategy, customScalingRunningJobPercentage string) *kedav1alpha1.ScaledJob {
+	scaledJob := &kedav1alpha1.ScaledJob{
+		Spec: kedav1alpha1.ScaledJobSpec{
+			ScalingStrategy: kedav1alpha1.ScalingStrategy{
+				Strategy:                          scalingStrategy,
+				CustomScalingRunningJobPercentage: customScalingRunningJobPercentage,
 			},
 		},
 	}
