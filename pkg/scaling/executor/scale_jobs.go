@@ -465,7 +465,16 @@ type customScalingStrategy struct {
 }
 
 func (s customScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, _, maxReplicaCount, scaleTo int64) (int64, int64) {
-	return min(maxScale-int64(*s.CustomScalingQueueLengthDeduction)-int64(float64(runningJobCount)*(*s.CustomScalingRunningJobPercentage)), maxReplicaCount), scaleTo
+	var deduction int64
+	if s.CustomScalingQueueLengthDeduction != nil {
+		deduction = int64(*s.CustomScalingQueueLengthDeduction)
+	}
+	var runningPercentage float64
+	if s.CustomScalingRunningJobPercentage != nil {
+		runningPercentage = *s.CustomScalingRunningJobPercentage
+	}
+	result := maxScale - deduction - int64(float64(runningJobCount)*runningPercentage)
+	return min(result, maxReplicaCount), scaleTo
 }
 
 type accurateScalingStrategy struct {
