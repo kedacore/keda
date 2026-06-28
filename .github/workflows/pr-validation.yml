@@ -119,7 +119,7 @@ jobs:
 
       - name: Create test Summary
         if: always() && steps.filter.outputs.go == 'true'
-        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86 # v2.4
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5 # v2.6
         with:
           paths: |
             report.xml
