@@ -19,9 +19,9 @@ jobs:
       image_tag: "pr-${{ steps.parser.outputs.pr_num }}-${{ steps.parser.outputs.commit_sha }}"
       commit_sha: ${{ steps.parser.outputs.commit_sha }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - uses: tspascoal/get-user-teams-membership@818140d631d5f29f26b151afbe4179f87d9ceb5e # v4.0.1
+      - uses: tspascoal/get-user-teams-membership@b2546c5affc730fd8e3d8483ae9ad3621938c2f9 # v4.0.2
         id: checkUserMember
         with:
           username: ${{ github.actor }}
@@ -107,7 +107,7 @@ jobs:
           output: |
             {"summary": "🚧 Tests are running. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -135,7 +135,7 @@ jobs:
           make e2e-regex-check
 
       - name: React to comment with failure
-        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
+        uses: dkershner6/reaction-action@7aa897865eb9a5a1b9d6f1ab16bfcae1ce1b0334 # v3.0.0
         if: steps.regex-validation.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -183,7 +183,7 @@ jobs:
         run: exit 1
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           # Username used to log in to a Docker registry. If not set then no login will occur
           username: ${{ github.repository_owner }}
@@ -193,7 +193,7 @@ jobs:
           registry: ghcr.io
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
       - name: Publish on GitHub Container Registry
         run: make publish-multiarch
@@ -221,7 +221,7 @@ jobs:
           output: |
             {"summary": "🚧 Tests are running. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -400,12 +400,12 @@ jobs:
             {"summary": "🚧 Tests are running. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Check out code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 1
 
       - name: Setup Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: 'go.mod'
 
@@ -481,12 +481,12 @@ jobs:
             {"summary": "🚧 Tests are running. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Check out code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 1
 
       - name: Setup Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: 'go.mod'
 
@@ -567,7 +567,7 @@ jobs:
           needs.run-e2e-test.outputs.test-outcome == 'success' &&
           needs.run-arm-smoke-test.outputs.test-outcome == 'success' &&
           needs.run-s390x-smoke-test.outputs.test-outcome == 'success'
-        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
+        uses: dkershner6/reaction-action@7aa897865eb9a5a1b9d6f1ab16bfcae1ce1b0334 # v3.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commentId: ${{ github.event.comment.id }}
@@ -578,7 +578,7 @@ jobs:
           needs.run-e2e-test.outputs.test-outcome != 'success' ||
           needs.run-arm-smoke-test.outputs.test-outcome != 'success' ||
           needs.run-s390x-smoke-test.outputs.test-outcome != 'success'
-        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
+        uses: dkershner6/reaction-action@7aa897865eb9a5a1b9d6f1ab16bfcae1ce1b0334 # v3.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commentId: ${{ github.event.comment.id }}

@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.20.1](#v2201)
 - [v2.20.0](#v2200)
 - [v2.19.0](#v2190)
 - [v2.18.3](#v2183)
@@ -69,7 +70,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Introduce new ClickHouse Scaler ([#7418](https://github.com/kedacore/keda/issues/7418))
 
 #### Experimental
 
@@ -81,7 +82,11 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
-- **General**: Fix `KEDAScalersStarted` "Started scalers watch" event not being emitted for ScaledJobs because it shared an events.k8s.io aggregation key with the per-scaler "scaler is built" event ([#7820](https://github.com/kedacore/keda/pull/7820))
+- **General**: Fix CVE-2026-42151, CVE-2026-42154, CVE-2026-40179 ([#7868](https://github.com/kedacore/keda/issues/7868))
+- **General**: Fix nil pointer dereference in `customScalingStrategy.GetEffectiveMaxScale` when `customScalingQueueLengthDeduction` is omitted; the optional field is now treated as zero deduction instead of panicking ([#7798](https://github.com/kedacore/keda/issues/7798))
+- **General**: Fix `ScaledJob` CRD validation to include "default" as a valid value for `scalingStrategy.strategy` ([#7855](https://github.com/kedacore/keda/issues/7855))
+- **General**: Restore gRPC reconnect backoff in the metrics service client; an unset `Backoff` in `WithConnectParams` disabled backoff and caused a zero-delay reconnect loop that flooded logs when keda-operator was unreachable ([#7856](https://github.com/kedacore/keda/issues/7856))
+- **Azure Blob Storage Scaler**: Fix `globPattern` never matching when written in path-style with a leading `/`, since blob names never have one ([#6492](https://github.com/kedacore/keda/issues/6492))
 
 ### Deprecations
 
@@ -101,6 +106,13 @@ New deprecation(s):
 - **GitHub Runner Scaler**: Migrate GitHub Runner to authentication.Config ([#7766](https://github.com/kedacore/keda/issues/7766))
 - **Graphite Scaler**: Migrate Graphite to authentication.Config ([#7766](https://github.com/kedacore/keda/issues/7766))
 - **RabbitMQ Scaler**: Migrate RabbitMQ to authentication.Config ([#7766](https://github.com/kedacore/keda/issues/7766))
+
+## v2.20.1
+
+### Fixes
+
+- **General**: Fix concurrent map read/write data race in fallback `updateStatus` that caused panics when multiple triggers were scaling simultaneously ([#7838](https://github.com/kedacore/keda/issues/7838))
+- **General**: Fix `KEDAScalersStarted` "Started scalers watch" event not being emitted for ScaledJobs because it shared an events.k8s.io aggregation key with the per-scaler "scaler is built" event ([#7820](https://github.com/kedacore/keda/pull/7820))
 
 ## v2.20.0
 
@@ -141,6 +153,7 @@ New deprecation(s):
 - **General**: Fix ScaledJob emitting wrong CloudEvent type (`ScaledObjectReadyType` instead of `ScaledJobReadyType`) when transitioning to ready state ([#7792](https://github.com/kedacore/keda/issues/7792))
 - **General**: Fix ScaledObject admission webhook to return validation error from `verifyReplicaCount`, preventing invalid ScaledObjects from being created ([#5954](https://github.com/kedacore/keda/issues/5954))
 - **General**: Fix ScaledObject Ready condition not reflecting HPA status ([#7649](https://github.com/kedacore/keda/issues/7649))
+- **General**: Guard `GetCurrentReplicas` against nil `Status.ScaleTargetGVKR` to prevent operator panics under the cache race documented in ([#4389](https://github.com/kedacore/keda/issues/4389)) / ([#4955](https://github.com/kedacore/keda/issues/4955))
 - **General**: Handle paused scaling directly in reconciler ([#7663](https://github.com/kedacore/keda/issues/7663))
 - **General**: Honor `stderrthreshold` when `logtostderr` is enabled by updating klog to v2.140.0 ([#7568](https://github.com/kedacore/keda/pull/7568))
 - **General**: Limit projected service account token reads during Vault authentication ([#7783](https://github.com/kedacore/keda/issues/7783))

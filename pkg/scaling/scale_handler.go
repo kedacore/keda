@@ -557,9 +557,10 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject ked
 /// --------------------------------------------------------------------------- ///
 
 // processMetricsWithFallback processes metrics with fallback support and handles metric recording
-func (h *scaleHandler) processMetricsWithFallback(ctx context.Context, rawMetrics []external_metrics.ExternalMetricValue, rawErr error, metricName string, triggerName string, triggerIndex int, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, sendRawMetricsCondition bool, isMetricActive bool, logger logr.Logger) ([]external_metrics.ExternalMetricValue, bool, error) {
+func (h *scaleHandler) processMetricsWithFallback(soh fallback.ScaledObjectHandler, rawMetrics []external_metrics.ExternalMetricValue, rawErr error, metricName string, triggerName string, triggerIndex int, metricSpec v2.MetricSpec, sendRawMetricsCondition bool, isMetricActive bool, logger logr.Logger) ([]external_metrics.ExternalMetricValue, bool, error) {
 	// check if we need to set a fallback
-	metrics, fallbackActive, err := fallback.GetMetricsWithFallback(ctx, h.client, h.scaleClient, rawMetrics, rawErr, metricName, scaledObject, metricSpec)
+	metrics, fallbackActive, err := fallback.GetMetricsWithFallback(soh, rawMetrics, rawErr, metricName, metricSpec)
+	so := soh.ScaledObject
 
 	if err != nil {
 		logger.Error(err, "error getting metric for trigger", "trigger", triggerName)
@@ -567,12 +568,12 @@ func (h *scaleHandler) processMetricsWithFallback(ctx context.Context, rawMetric
 		// Record metrics
 		for _, metric := range metrics {
 			metricValue := metric.Value.AsApproximateFloat64()
-			metricscollector.RecordScalerMetric(scaledObject.Namespace, scaledObject.Name, triggerName, triggerIndex, metric.MetricName, true, metricValue)
+			metricscollector.RecordScalerMetric(so.Namespace, so.Name, triggerName, triggerIndex, metric.MetricName, true, metricValue)
 		}
 
 		// Send raw metrics if conditions are met
 		if sendRawMetricsCondition {
-			go h.sendWhenSubscribed(scaledObject.Name, scaledObject.Namespace, triggerName, isMetricActive, metrics)
+			go h.sendWhenSubscribed(so.Name, so.Namespace, triggerName, isMetricActive, metrics)
 		}
 	}
 
@@ -708,7 +709,14 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 					}
 
 					// Use the helper function to process metrics with fallback
-					metrics, fallbackActive, err := h.processMetricsWithFallback(ctx, rawMetrics, rawErr, metricName, triggerName, triggerIndex, scaledObject, spec, shouldSendRawMetrics(RawMetricsHPA), isMetricActive, logger)
+					soh := fallback.ScaledObjectHandler{
+						Ctx:          ctx,
+						KubeClient:   h.client,
+						ScaleClient:  h.scaleClient,
+						UpdateLock:   &scalersCache.ScaledObjectUpdateLock,
+						ScaledObject: scaledObject,
+					}
+					metrics, fallbackActive, err := h.processMetricsWithFallback(soh, rawMetrics, rawErr, metricName, triggerName, triggerIndex, spec, shouldSendRawMetrics(RawMetricsHPA), isMetricActive, logger)
 
 					result.metricName = metricName
 					result.triggerName = triggerName
@@ -974,7 +982,14 @@ func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler
 		logger.V(1).Info("Getting metrics and activity from scaler", "scaler", result.TriggerName, "metricName", metricName, "metrics", rawMetrics, "activity", isMetricActive, "scalerError", rawErr)
 
 		// Use the helper function to process metrics with fallback
-		metrics, fallbackActive, err := h.processMetricsWithFallback(ctx, rawMetrics, rawErr, metricName, result.TriggerName, triggerIndex, scaledObject, spec, shouldSendRawMetrics(RawMetricsPollingInterval), isMetricActive, logger)
+		soh := fallback.ScaledObjectHandler{
+			Ctx:          ctx,
+			KubeClient:   h.client,
+			ScaleClient:  h.scaleClient,
+			UpdateLock:   &scalersCache.ScaledObjectUpdateLock,
+			ScaledObject: scaledObject,
+		}
+		metrics, fallbackActive, err := h.processMetricsWithFallback(soh, rawMetrics, rawErr, metricName, result.TriggerName, triggerIndex, spec, shouldSendRawMetrics(RawMetricsPollingInterval), isMetricActive, logger)
 
 		// Store fallback information
 		if fallbackActive {

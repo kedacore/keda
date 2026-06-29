@@ -84,6 +84,10 @@ const (
 	MinAggregationType     AggregationType = "min"
 )
 
+var (
+	promQLParser parser.Parser = parser.NewParser(parser.Options{})
+)
+
 // NewMetricsAPIScaler creates a new HTTP scaler
 func NewMetricsAPIScaler(config *scalersconfig.ScalerConfig, kubeClient client.Client) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -156,7 +160,7 @@ func GetValueFromResponse(body []byte, valueLocation string, format APIFormat) (
 
 // getValueFromPrometheusResponse uses provided valueLocation to access the numeric value in provided body
 func getValueFromPrometheusResponse(body []byte, valueLocation string) (float64, error) {
-	matchers, err := parser.ParseMetricSelector(valueLocation)
+	matchers, err := promQLParser.ParseMetricSelector(valueLocation)
 	if err != nil {
 		return 0, err
 	}
