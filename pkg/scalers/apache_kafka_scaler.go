@@ -53,6 +53,7 @@ type apacheKafkaMetadata struct {
 	Topic                  []string          `keda:"name=topic,                  order=triggerMetadata;resolvedEnv, optional"`
 	PartitionLimitation    []int             `keda:"name=partitionLimitation,    order=triggerMetadata, optional, range"`
 	LagThreshold           int64             `keda:"name=lagThreshold,           order=triggerMetadata, default=10"`
+	ThreadsPerConsumer     int64             `keda:"name=threadsPerConsumer,	 order=triggerMetadata,	default=1"`
 	ActivationLagThreshold int64             `keda:"name=activationLagThreshold, order=triggerMetadata, default=0"`
 	OffsetResetPolicy      offsetResetPolicy `keda:"name=offsetResetPolicy,      order=triggerMetadata, enum=earliest;latest, default=latest"`
 	AllowIdleConsumers     bool              `keda:"name=allowIdleConsumers,     order=triggerMetadata, optional"`
@@ -90,6 +91,9 @@ func (a *apacheKafkaMetadata) enableTLS() bool {
 func (a *apacheKafkaMetadata) Validate() error {
 	if a.LagThreshold <= 0 {
 		return fmt.Errorf("lagThreshold must be a positive number")
+	}
+	if a.ThreadsPerConsumer <= 0 {
+		return fmt.Errorf("threadsPerConsumer must be positive number")
 	}
 	if a.ActivationLagThreshold < 0 {
 		return fmt.Errorf("activationLagThreshold must be a positive number")
@@ -408,11 +412,29 @@ func (s *apacheKafkaScaler) GetMetricSpecForScaling(context.Context) []v2.Metric
 		metricName = fmt.Sprintf("kafka-%s-topics", s.metadata.Group)
 	}
 
+	/*
+		Assume:
+			Total Lag Across Partitions = T
+			Desired Lag Per Partition = D
+			Threads Per Consumer = P
+
+		Then:
+			Number of Replicas =~ (T / D) = N
+			But when each replica has multiple consumers running as threads = (N / P)
+
+		Effectively:
+			= T / (D * P)
+
+		targetMetric = (D * P)
+
+	*/
+	targetMetric := s.metadata.LagThreshold * s.metadata.ThreadsPerConsumer
+
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(metricName)),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.LagThreshold),
+		Target: GetMetricTarget(s.metricType, targetMetric),
 	}
 	metricSpec := v2.MetricSpec{External: externalMetric, Type: kafkaMetricType}
 	return []v2.MetricSpec{metricSpec}
@@ -511,16 +533,16 @@ func (s *apacheKafkaScaler) getTotalLag(ctx context.Context) (int64, int64, erro
 		upperBound := totalTopicPartitions
 		// Ensure that the number of partitions is evenly distributed across the number of consumers
 		if s.metadata.EnsureEvenDistributionOfPartitions {
-			nextFactor := getNextFactorThatBalancesConsumersToTopicPartitions(totalLag, totalTopicPartitions, s.metadata.LagThreshold)
+			nextFactor := getNextFactorThatBalancesConsumersToTopicPartitions(totalLag, totalTopicPartitions, s.metadata.LagThreshold, s.metadata.ThreadsPerConsumer)
 			s.logger.V(1).Info(fmt.Sprintf("Kafka scaler: Providing metrics to ensure even distribution of partitions on totalLag %v, topicPartitions %v, evenPartitions %v", totalLag, totalTopicPartitions, nextFactor))
-			totalLag = nextFactor * s.metadata.LagThreshold
+			totalLag = nextFactor * (s.metadata.LagThreshold * s.metadata.ThreadsPerConsumer)
 		}
 		if s.metadata.LimitToPartitionsWithLag {
 			upperBound = partitionsWithLag
 		}
 
-		if (totalLag / s.metadata.LagThreshold) > upperBound {
-			totalLag = upperBound * s.metadata.LagThreshold
+		if (totalLag / (s.metadata.LagThreshold * s.metadata.ThreadsPerConsumer)) > upperBound {
+			totalLag = upperBound * (s.metadata.LagThreshold * s.metadata.ThreadsPerConsumer)
 		}
 	}
 	return totalLag, totalLagWithPersistent, nil
