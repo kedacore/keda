@@ -78,7 +78,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
-- **Kafka**: Add optional `fullMetadata` trigger metadata field to control Sarama's full-cluster metadata refresh, reducing operator memory for topic-scoped triggers ([#7453](https://github.com/kedacore/keda/issues/7453))
+- **Kafka Scaler**: Add optional `fullMetadata` trigger metadata field to control Sarama's full cluster metadata refresh, reducing operator memory for topic scoped triggers ([#7453](https://github.com/kedacore/keda/issues/7453))
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Fixes

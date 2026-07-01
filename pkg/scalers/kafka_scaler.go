@@ -455,7 +455,7 @@ func getKafkaClients(ctx context.Context, metadata kafkaMetadata) (sarama.Client
 			if !client.Closed() {
 				client.Close()
 			}
-			return nil, nil, fmt.Errorf("error registering topic metadata: %w", err)
+			return nil, nil, fmt.Errorf("error registering topic metadata for topic %q: %w", metadata.Topic, err)
 		}
 	}
 

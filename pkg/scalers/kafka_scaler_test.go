@@ -629,6 +629,35 @@ func TestKafkaClientsOAuthTokenProvider(t *testing.T) {
 	}
 }
 
+func TestKafkaClientConfigFullMetadata(t *testing.T) {
+	testData := []struct {
+		name                 string
+		metadata             map[string]string
+		expectedFullMetadata bool
+	}{
+		{"default is full metadata", map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, true},
+		{"fullMetadata false is topic-scoped", map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "fullMetadata": "false"}, false},
+	}
+
+	for _, tt := range testData {
+		t.Run(tt.name, func(t *testing.T) {
+			meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: tt.metadata, AuthParams: validWithoutAuthParams}, logr.Discard())
+			if err != nil {
+				t.Fatal("Could not parse metadata:", err)
+			}
+
+			cfg, err := getKafkaClientConfig(context.TODO(), meta)
+			if err != nil {
+				t.Error("Expected success but got error", err)
+			}
+
+			if cfg.Metadata.Full != tt.expectedFullMetadata {
+				t.Errorf("Expected Metadata.Full %t but got %t", tt.expectedFullMetadata, cfg.Metadata.Full)
+			}
+		})
+	}
+}
+
 func TestKafkaGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range kafkaMetricIdentifiers {
 		meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams, TriggerIndex: testData.triggerIndex}, logr.Discard())
