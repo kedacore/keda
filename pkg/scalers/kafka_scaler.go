@@ -72,6 +72,7 @@ type kafkaMetadata struct {
 	ScaleToZeroOnInvalidOffset         bool              `keda:"name=scaleToZeroOnInvalidOffset,order=triggerMetadata,default=false"`
 	LimitToPartitionsWithLag           bool              `keda:"name=limitToPartitionsWithLag,order=triggerMetadata,default=false"`
 	EnsureEvenDistributionOfPartitions bool              `keda:"name=ensureEvenDistributionOfPartitions,order=triggerMetadata,default=false"`
+	FullMetadata                       bool              `keda:"name=fullMetadata,order=triggerMetadata,default=true"`
 
 	VersionStr string `keda:"name=version,order=triggerMetadata,optional"`
 
@@ -143,6 +144,9 @@ func (m *kafkaMetadata) Validate() error {
 	}
 	if len(m.Topic) == 0 && m.EnsureEvenDistributionOfPartitions {
 		return fmt.Errorf("topic must be specified when using ensureEvenDistributionOfPartitions")
+	}
+	if !m.FullMetadata && len(m.Topic) == 0 {
+		return fmt.Errorf("topic must be specified when fullMetadata is false")
 	}
 
 	if err := m.parseTLS(); err != nil {
@@ -446,6 +450,15 @@ func getKafkaClients(ctx context.Context, metadata kafkaMetadata) (sarama.Client
 		return nil, nil, fmt.Errorf("error creating kafka client: %w", err)
 	}
 
+	if !metadata.FullMetadata && metadata.Topic != "" {
+		if err := client.RefreshMetadata(metadata.Topic); err != nil {
+			if !client.Closed() {
+				client.Close()
+			}
+			return nil, nil, fmt.Errorf("error registering topic metadata for topic %q: %w", metadata.Topic, err)
+		}
+	}
+
 	admin, err := sarama.NewClusterAdminFromClient(client)
 	if err != nil {
 		if !client.Closed() {
@@ -460,6 +473,7 @@ func getKafkaClients(ctx context.Context, metadata kafkaMetadata) (sarama.Client
 func getKafkaClientConfig(ctx context.Context, metadata kafkaMetadata) (*sarama.Config, error) {
 	config := sarama.NewConfig()
 	config.Version = metadata.version
+	config.Metadata.Full = metadata.FullMetadata
 
 	if metadata.saslType != KafkaSASLTypeNone && metadata.saslType != KafkaSASLTypeGSSAPI {
 		config.Net.SASL.Enable = true
