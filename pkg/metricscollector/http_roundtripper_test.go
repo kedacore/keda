@@ -201,3 +201,46 @@ func TestInstrumentedRoundTripper_ScalerContextKey_Missing(t *testing.T) {
 	Expect(resp).To(Equal(response))
 	defer resp.Body.Close()
 }
+
+// closeIdlerRoundTripper is a RoundTripper that also implements
+// CloseIdleConnections (like *http.Transport), recording how many times it was
+// called so tests can assert the wrapper forwards the call.
+type closeIdlerRoundTripper struct {
+	closeIdleConnectionsCalls int
+}
+
+func (c *closeIdlerRoundTripper) RoundTrip(_ *http.Request) (*http.Response, error) {
+	return fakeResponse(http.StatusOK), nil
+}
+
+func (c *closeIdlerRoundTripper) CloseIdleConnections() {
+	c.closeIdleConnectionsCalls++
+}
+
+func TestInstrumentedRoundTripper_ForwardsCloseIdleConnections(t *testing.T) {
+	RegisterTestingT(t)
+
+	next := &closeIdlerRoundTripper{}
+	rt := NewInstrumentedRoundTripper(next)
+
+	// http.Client.CloseIdleConnections() only reaches the underlying transport
+	// if the client's transport itself exposes CloseIdleConnections(). If the
+	// wrapper does not forward it, the call is a silent no-op and idle
+	// keep-alive connections leak (e.g. to Prometheus) on scaler Close/refresh.
+	client := &http.Client{Transport: rt}
+	client.CloseIdleConnections()
+
+	Expect(next.closeIdleConnectionsCalls).To(Equal(1))
+}
+
+func TestInstrumentedRoundTripper_CloseIdleConnections_NextWithoutCloseIdler(t *testing.T) {
+	RegisterTestingT(t)
+
+	// mockRoundTripper does not implement CloseIdleConnections; forwarding must
+	// be a safe no-op rather than panicking.
+	rt := NewInstrumentedRoundTripper(&mockRoundTripper{})
+
+	Expect(func() {
+		(&http.Client{Transport: rt}).CloseIdleConnections()
+	}).NotTo(Panic())
+}

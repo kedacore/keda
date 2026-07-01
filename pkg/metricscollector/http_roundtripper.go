@@ -96,6 +96,20 @@ func (r *InstrumentedRoundTripper) RoundTrip(req *http.Request) (*http.Response,
 	return resp, nil
 }
 
+// CloseIdleConnections forwards to the wrapped RoundTripper so that
+// http.Client.CloseIdleConnections() keeps working through this wrapper.
+// http.Client only closes idle connections when its Transport implements this
+// method; without forwarding, callers such as scaler Close() methods silently
+// fail to release idle keep-alive connections, leaking them to the upstream.
+func (r *InstrumentedRoundTripper) CloseIdleConnections() {
+	type closeIdler interface {
+		CloseIdleConnections()
+	}
+	if tr, ok := r.next.(closeIdler); ok {
+		tr.CloseIdleConnections()
+	}
+}
+
 // BuildScalerRequestCtx attaches scaler metadata used by HTTP client
 // instrumentation to the outbound request context.
 func BuildScalerRequestCtx(ctx context.Context, config scalersconfig.ScalerConfig, metricName string) context.Context {
