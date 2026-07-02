@@ -149,7 +149,7 @@ type HTTPDoer interface {
 // doc comment for motivation.
 //
 // Callers that need a private Transport (e.g. to supply a custom
-// *tls.Config) should use CreateHTTPTransportWithTLSConfig directly and
+// *tls.Config) should use CreateRTWithTLSConfig directly and
 // compose their own http.Client.
 func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 	// default the timeout to 300ms
