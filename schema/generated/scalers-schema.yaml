@@ -1868,6 +1868,10 @@ scalers:
           type: string
           default: "false"
           metadataVariableReadable: true
+        - name: fullMetadata
+          type: string
+          default: "true"
+          metadataVariableReadable: true
         - name: version
           type: string
           optional: true
