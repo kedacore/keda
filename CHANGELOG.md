@@ -70,6 +70,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+- **General**: Introduce new AWS S3 Scaler ([#7899](https://github.com/kedacore/keda/pull/7899))
 - **General**: Introduce new ClickHouse Scaler ([#7418](https://github.com/kedacore/keda/issues/7418))
 
 #### Experimental

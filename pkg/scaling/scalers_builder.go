@@ -139,6 +139,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewAwsDynamoDBStreamsScaler(ctx, config)
 	case "aws-kinesis-stream":
 		return scalers.NewAwsKinesisStreamScaler(ctx, config)
+	case "aws-s3":
+		return scalers.NewAwsS3Scaler(ctx, config)
 	case "aws-sqs-queue":
 		return scalers.NewAwsSqsQueueScaler(ctx, config)
 	case "azure-app-insights":
