@@ -187,6 +187,36 @@ func TestInstrumentedRoundTripper_NilNextUsesDefault(t *testing.T) {
 	Expect(fmt.Sprintf("%T", rt)).To(Equal("*metricscollector.InstrumentedRoundTripper"))
 }
 
+type mockClosableRoundTripper struct {
+	mockRoundTripper
+	closeIdleCalled bool
+}
+
+func (m *mockClosableRoundTripper) CloseIdleConnections() {
+	m.closeIdleCalled = true
+}
+
+func TestInstrumentedRoundTripper_CloseIdleConnectionsForwarded(t *testing.T) {
+	RegisterTestingT(t)
+
+	inner := &mockClosableRoundTripper{}
+	client := &http.Client{Transport: NewInstrumentedRoundTripper(inner)}
+
+	// http.Client.CloseIdleConnections forwards to the transport only if it
+	// implements CloseIdleConnections; before the fix this was a silent no-op.
+	client.CloseIdleConnections()
+	Expect(inner.closeIdleCalled).To(BeTrue())
+}
+
+func TestInstrumentedRoundTripper_CloseIdleConnectionsWithoutSupport(t *testing.T) {
+	RegisterTestingT(t)
+
+	client := &http.Client{Transport: NewInstrumentedRoundTripper(&mockRoundTripper{})}
+
+	// Must not panic when the wrapped transport has no CloseIdleConnections.
+	client.CloseIdleConnections()
+}
+
 func TestInstrumentedRoundTripper_ScalerContextKey_Missing(t *testing.T) {
 	RegisterTestingT(t)
 	response := fakeResponse(200)

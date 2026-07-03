@@ -96,6 +96,17 @@ func (r *InstrumentedRoundTripper) RoundTrip(req *http.Request) (*http.Response,
 	return resp, nil
 }
 
+// CloseIdleConnections forwards to the wrapped transport so that
+// http.Client.CloseIdleConnections() keeps working when the client's
+// transport is wrapped for instrumentation. Without this method the
+// stdlib's interface assertion fails silently and idle keep-alive
+// connections are never closed (see #7898).
+func (r *InstrumentedRoundTripper) CloseIdleConnections() {
+	if ci, ok := r.next.(interface{ CloseIdleConnections() }); ok {
+		ci.CloseIdleConnections()
+	}
+}
+
 // BuildScalerRequestCtx attaches scaler metadata used by HTTP client
 // instrumentation to the outbound request context.
 func BuildScalerRequestCtx(ctx context.Context, config scalersconfig.ScalerConfig, metricName string) context.Context {
