@@ -1321,6 +1321,8 @@ func checkCRTotalValues(t *testing.T, families map[string]*prommodel.MetricFamil
 func checkGRPCServerMetrics(t *testing.T, families map[string]*prommodel.MetricFamily) {
 	t.Log("--- testing grpc server metrics ---")
 
+	checkMetricsServiceGetMetricsPerformance(t, families)
+
 	family, ok := families["keda_internal_metricsservice_grpc_server_handled_total"]
 	if !ok {
 		t.Errorf("metric keda_internal_metricsservice_grpc_server_handled_total not available")
@@ -1542,6 +1544,8 @@ func checkWebhookValues(t *testing.T, families map[string]*prommodel.MetricFamil
 func checkMetricServerValues(t *testing.T, families map[string]*prommodel.MetricFamily) {
 	t.Log("--- testing metric server metrics ---")
 
+	checkExternalMetricsProviderPerformance(t, families)
+
 	family, ok := families["workqueue_adds_total"]
 	if !ok {
 		t.Errorf("metric workqueue_adds_total not available")
@@ -1572,6 +1576,62 @@ func checkMetricServerValues(t *testing.T, families map[string]*prommodel.Metric
 		}
 	}
 	assert.GreaterOrEqual(t, metricValue, 1.0, "apiserver_request_total has to be greater than 0")
+}
+
+func checkExternalMetricsProviderPerformance(t *testing.T, families map[string]*prommodel.MetricFamily) {
+	t.Log("--- testing external metrics provider performance metrics ---")
+
+	family, ok := families["keda_external_metrics_provider_requests_total"]
+	assert.True(t, ok, "keda_external_metrics_provider_requests_total not available")
+	if !ok {
+		return
+	}
+
+	metricValue := 0.0
+	for _, metric := range family.GetMetric() {
+		metricValue += *metric.Counter.Value
+	}
+	assert.GreaterOrEqual(t, metricValue, 1.0, "keda_external_metrics_provider_requests_total has to be greater than 0")
+
+	family, ok = families["keda_external_metrics_provider_request_duration_seconds"]
+	assert.True(t, ok, "keda_external_metrics_provider_request_duration_seconds not available")
+	if !ok {
+		return
+	}
+
+	metricValue = 0.0
+	for _, metric := range family.GetMetric() {
+		metricValue += float64(metric.GetHistogram().GetSampleCount())
+	}
+	assert.Greater(t, metricValue, 0.0, "keda_external_metrics_provider_request_duration_seconds has to be greater than 0")
+}
+
+func checkMetricsServiceGetMetricsPerformance(t *testing.T, families map[string]*prommodel.MetricFamily) {
+	t.Log("--- testing metricsservice get metrics performance metrics ---")
+
+	family, ok := families["keda_metricsservice_get_metrics_requests_total"]
+	assert.True(t, ok, "keda_metricsservice_get_metrics_requests_total not available")
+	if !ok {
+		return
+	}
+
+	metricValue := 0.0
+	for _, metric := range family.GetMetric() {
+		metricValue += *metric.Counter.Value
+	}
+	assert.GreaterOrEqual(t, metricValue, 1.0, "keda_metricsservice_get_metrics_requests_total has to be greater than 0")
+
+	family, ok = families["keda_metricsservice_get_metrics_duration_seconds"]
+	assert.True(t, ok, "keda_metricsservice_get_metrics_duration_seconds not available")
+	if !ok {
+		return
+	}
+
+	metricValue = 0.0
+	for _, metric := range family.GetMetric() {
+		metricValue += float64(metric.GetHistogram().GetSampleCount())
+	}
+	assert.Greater(t, metricValue, 0.0, "keda_metricsservice_get_metrics_duration_seconds has to be greater than 0")
 }
 
 func testCloudEventEmitted(t *testing.T, data templateData) {
