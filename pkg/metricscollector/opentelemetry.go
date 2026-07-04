@@ -52,8 +52,8 @@ var (
 	otHTTPClientRequestsCounter api.Int64Counter
 	otHTTPClientRequestDuration api.Float64Histogram
 
-	otMetricsServiceGetMetricsRequests  api.Int64Counter
-	otMetricsServiceGetMetricsDuration  api.Float64Histogram
+	otMetricsServiceGetMetricsRequests api.Int64Counter
+	otMetricsServiceGetMetricsDuration api.Float64Histogram
 )
 
 type OtelMetrics struct {
