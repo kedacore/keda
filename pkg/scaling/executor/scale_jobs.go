@@ -442,9 +442,22 @@ func NewScalingStrategy(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) S
 		logger.V(1).Info("Selecting Scale Strategy", "specified", scaledJob.Spec.ScalingStrategy.Strategy, "selected", "eager")
 		return eagerScalingStrategy{}
 	default:
+		if usesAzurePipelinesTrigger(scaledJob) {
+			logger.V(1).Info("Selecting Scale Strategy", "specified", scaledJob.Spec.ScalingStrategy.Strategy, "selected", "accurate", "reason", "azure-pipelines compatibility")
+			return accurateScalingStrategy{}
+		}
 		logger.V(1).Info("Selecting Scale Strategy", "specified", scaledJob.Spec.ScalingStrategy.Strategy, "selected", "default")
 		return defaultScalingStrategy{}
 	}
+}
+
+func usesAzurePipelinesTrigger(scaledJob *kedav1alpha1.ScaledJob) bool {
+	for _, trigger := range scaledJob.Spec.Triggers {
+		if trigger.Type == "azure-pipelines" {
+			return true
+		}
+	}
+	return false
 }
 
 // ScalingStrategy is an interface for switching scaling algorithm
