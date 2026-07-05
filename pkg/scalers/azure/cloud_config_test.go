@@ -58,6 +58,34 @@ func TestEnvironmentFromName(t *testing.T) {
 	}
 }
 
+func TestEnvironmentFromNameAzureStackCloud(t *testing.T) {
+	stackEnv := AzEnvironment{
+		Name:                    "AzureStackCloud",
+		ResourceManagerEndpoint: "https://management.region.stack.example/",
+	}
+	data, err := json.Marshal(stackEnv)
+	if err != nil {
+		t.Fatalf("failed to marshal stack environment: %v", err)
+	}
+	tmpFile := filepath.Join(t.TempDir(), "stack-env.json")
+	if err := os.WriteFile(tmpFile, data, 0600); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+
+	t.Setenv(EnvironmentFilepathName, tmpFile)
+
+	env, err := EnvironmentFromName("AZURESTACKCLOUD")
+	if err != nil {
+		t.Fatalf("EnvironmentFromName(AZURESTACKCLOUD) returned unexpected error: %v", err)
+	}
+	if env.Name != stackEnv.Name {
+		t.Errorf("expected env.Name=%q but got %q", stackEnv.Name, env.Name)
+	}
+	if env.ResourceManagerEndpoint != stackEnv.ResourceManagerEndpoint {
+		t.Errorf("expected ResourceManagerEndpoint=%q but got %q", stackEnv.ResourceManagerEndpoint, env.ResourceManagerEndpoint)
+	}
+}
+
 func TestEnvironmentFromFile(t *testing.T) {
 	expected := AzEnvironment{
 		Name:                    "CustomCloud",
@@ -85,6 +113,9 @@ func TestEnvironmentFromFile(t *testing.T) {
 	}
 	if env.ResourceManagerEndpoint != expected.ResourceManagerEndpoint {
 		t.Errorf("expected ResourceManagerEndpoint=%q but got %q", expected.ResourceManagerEndpoint, env.ResourceManagerEndpoint)
+	}
+	if env.ActiveDirectoryEndpoint != expected.ActiveDirectoryEndpoint {
+		t.Errorf("expected ActiveDirectoryEndpoint=%q but got %q", expected.ActiveDirectoryEndpoint, env.ActiveDirectoryEndpoint)
 	}
 	if env.StorageEndpointSuffix != expected.StorageEndpointSuffix {
 		t.Errorf("expected StorageEndpointSuffix=%q but got %q", expected.StorageEndpointSuffix, env.StorageEndpointSuffix)
@@ -122,5 +153,8 @@ func TestSetEnvironment(t *testing.T) {
 	}
 	if env.Name != customEnv.Name {
 		t.Errorf("expected env.Name=%q but got %q", customEnv.Name, env.Name)
+	}
+	if env.ResourceManagerEndpoint != customEnv.ResourceManagerEndpoint {
+		t.Errorf("expected ResourceManagerEndpoint=%q but got %q", customEnv.ResourceManagerEndpoint, env.ResourceManagerEndpoint)
 	}
 }
