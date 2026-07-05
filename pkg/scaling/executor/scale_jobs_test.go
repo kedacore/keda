@@ -85,6 +85,21 @@ func maxScaleValue(maxValue, _ int64) int64 {
 	return maxValue
 }
 
+func TestDefaultScalingStrategyAzurePipelinesAutoAccurate(t *testing.T) {
+	logger := logf.Log.WithName("ScaledJobTest")
+
+	scaledJob := getMockScaledJobWithTriggerType("default", "azure-pipelines")
+	strategy := NewScalingStrategy(logger, scaledJob)
+	assert.Equal(t, "executor.accurateScalingStrategy", fmt.Sprintf("%T", strategy))
+	// Issue scenario: 4 unassigned ADO jobs, 4 running K8s agents, 0 pending pods.
+	assert.Equal(t, int64(4), maxScaleValue(strategy.GetEffectiveMaxScale(4, 4, 0, 100, 4)))
+
+	scaledJobSQS := getMockScaledJobWithTriggerType("default", "aws-sqs-queue")
+	strategySQS := NewScalingStrategy(logger, scaledJobSQS)
+	assert.Equal(t, "executor.defaultScalingStrategy", fmt.Sprintf("%T", strategySQS))
+	assert.Equal(t, int64(0), maxScaleValue(strategySQS.GetEffectiveMaxScale(4, 4, 0, 100, 4)))
+}
+
 func TestDefaultScalingStrategy(t *testing.T) {
 	logger := logf.Log.WithName("ScaledJobTest")
 	strategy := NewScalingStrategy(logger, getMockScaledJobWithDefaultStrategy("default"))
@@ -609,6 +624,15 @@ func getMockScaledJobWithDefaultStrategy(name string) *kedav1alpha1.ScaledJob {
 		},
 	}
 	scaledJob.Name = name
+	return scaledJob
+}
+
+func getMockScaledJobWithTriggerType(name, triggerType string) *kedav1alpha1.ScaledJob {
+	scaledJob := getMockScaledJobWithDefaultStrategy(name)
+	scaledJob.Spec.ScalingStrategy.Strategy = "default"
+	scaledJob.Spec.Triggers = []kedav1alpha1.ScaleTriggers{
+		{Type: triggerType, Metadata: map[string]string{}},
+	}
 	return scaledJob
 }
 
