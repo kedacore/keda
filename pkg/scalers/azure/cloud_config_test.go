@@ -19,6 +19,7 @@ package azure
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -70,18 +71,12 @@ func TestEnvironmentFromFile(t *testing.T) {
 		t.Fatalf("failed to marshal test environment: %v", err)
 	}
 
-	f, err := os.CreateTemp("", "azure-env-*.json")
-	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-	defer os.Remove(f.Name())
-
-	if _, err = f.Write(data); err != nil {
+	tmpFile := filepath.Join(t.TempDir(), "azure-env.json")
+	if err := os.WriteFile(tmpFile, data, 0600); err != nil {
 		t.Fatalf("failed to write temp file: %v", err)
 	}
-	f.Close()
 
-	env, err := EnvironmentFromFile(f.Name())
+	env, err := EnvironmentFromFile(tmpFile)
 	if err != nil {
 		t.Fatalf("EnvironmentFromFile returned unexpected error: %v", err)
 	}
@@ -97,13 +92,24 @@ func TestEnvironmentFromFile(t *testing.T) {
 }
 
 func TestEnvironmentFromFileNotFound(t *testing.T) {
-	_, err := EnvironmentFromFile("/nonexistent/path/env.json")
+	missing := filepath.Join(t.TempDir(), "nonexistent.json")
+	_, err := EnvironmentFromFile(missing)
 	if err == nil {
 		t.Error("expected error for nonexistent file but got success")
 	}
 }
 
 func TestSetEnvironment(t *testing.T) {
+	const key = "AZURETESTCUSTOMCLOUD"
+	prev, existed := environments[key]
+	t.Cleanup(func() {
+		if existed {
+			environments[key] = prev
+		} else {
+			delete(environments, key)
+		}
+	})
+
 	customEnv := AzEnvironment{
 		Name:                    "TestCustomCloud",
 		ResourceManagerEndpoint: "https://management.test.cloud/",
@@ -117,7 +123,4 @@ func TestSetEnvironment(t *testing.T) {
 	if env.Name != customEnv.Name {
 		t.Errorf("expected env.Name=%q but got %q", customEnv.Name, env.Name)
 	}
-
-	// cleanup
-	delete(environments, "AZURETESTCUSTOMCLOUD")
 }
