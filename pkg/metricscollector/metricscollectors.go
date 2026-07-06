@@ -237,6 +237,11 @@ func RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bo
 	}
 }
 
+// RecordExternalMetricRequest records an HPA external metric request handled by keda-metrics-apiserver.
+func RecordExternalMetricRequest(durationSeconds float64, err error, namespace, scaledObject, metricName string) {
+	RecordAdapterExternalMetricRequest(durationSeconds, err, namespace, scaledObject, metricName)
+}
+
 // RecordMetricsServiceGetMetricsRequest records a GetMetrics gRPC request handled by keda-operator.
 func RecordMetricsServiceGetMetricsRequest(durationSeconds float64, err error, namespace, scaledObject, metricName string) {
 	for _, element := range collectors {

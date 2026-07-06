@@ -69,7 +69,8 @@ type adapterOtelPerformanceMetrics struct {
 	externalMetricDuration api.Float64Histogram
 }
 
-// RegisterAdapterPerformancePromMetrics registers HPA-facing performance metrics on the given registerer.
+// RegisterAdapterPerformancePromMetrics registers HPA-facing performance metrics.
+// Registration runs at most once; the first call wins and later calls are no-ops even if a different registerer is passed.
 // Intended for use by keda-metrics-apiserver which exposes metrics through legacyregistry.
 func RegisterAdapterPerformancePromMetrics(registerer prometheus.Registerer) {
 	adapterPerformancePromOnce.Do(func() {

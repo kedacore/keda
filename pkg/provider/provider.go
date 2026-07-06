@@ -79,7 +79,7 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 	var scaledObjectName string
 	var err error
 	defer func() {
-		metricscollector.RecordAdapterExternalMetricRequest(time.Since(start).Seconds(), err, namespace, scaledObjectName, info.Metric)
+		metricscollector.RecordExternalMetricRequest(time.Since(start).Seconds(), err, namespace, scaledObjectName, info.Metric)
 	}()
 
 	// Note:
