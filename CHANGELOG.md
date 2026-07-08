@@ -80,6 +80,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **Kafka Scaler**: Add optional `fullMetadata` trigger metadata field to control Sarama's full cluster metadata refresh, reducing operator memory for topic scoped triggers ([#7453](https://github.com/kedacore/keda/issues/7453))
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Metrics API Scaler**: Add `zeroOnMissingEndpoints` option for aggregated endpoint scaling ([#7651](https://github.com/kedacore/keda/issues/7651))
 
 ### Fixes
 
