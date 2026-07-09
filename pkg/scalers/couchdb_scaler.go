@@ -171,6 +171,14 @@ func (s *couchDBScaler) getQueryResult(ctx context.Context) (int64, error) {
 		}
 	}
 
+	// rows.Next() returns false both when iteration completes successfully and
+	// when it stops early because of an error (e.g. a truncated response). rows.Err()
+	// must be consulted to distinguish the two, otherwise a partial result set is
+	// silently reported as a lower count and KEDA scales on an incorrect metric.
+	if err := rows.Err(); err != nil {
+		return 0, fmt.Errorf("error iterating query result: %w", err)
+	}
+
 	return count, nil
 }
 
