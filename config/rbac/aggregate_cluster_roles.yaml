@@ -1,0 +1,45 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: keda:edit
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+rules:
+# Scope a wildcard to KEDA's API groups so that any current or future CRD in
+# these groups is covered automatically, without having to maintain an explicit
+# resource list here as new CRDs are added.
+- apiGroups:
+  - keda.sh
+  - eventing.keda.sh
+  resources:
+  - "*"
+  verbs:
+  - create
+  - delete
+  - deletecollection
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: keda:view
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+rules:
+# Scope a wildcard to KEDA's API groups so that any current or future CRD in
+# these groups is covered automatically, without having to maintain an explicit
+# resource list here as new CRDs are added.
+- apiGroups:
+  - keda.sh
+  - eventing.keda.sh
+  resources:
+  - "*"
+  verbs:
+  - get
+  - list
+  - watch

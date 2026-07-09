@@ -129,7 +129,7 @@ func GetMetricTargetMili(metricType v2.MetricTargetType, metricValue float64) v2
 
 	// Construct the target size as a quantity using string parsing to avoid
 	// int64 overflow when metricValue * 1000 exceeds math.MaxInt64 (~9.2e15 threshold).
-	// Treat NaN and Inf as zero to avoid a panic in resource.MustParse.
+	// NaN, Inf, and negative values are treated as zero to prevent panics and incorrect HPA scaling.
 	targetQty := quantityFromFloat64(metricValue)
 	if metricType == v2.AverageValueMetricType {
 		target.AverageValue = &targetQty
@@ -144,7 +144,7 @@ func GetMetricTargetMili(metricType v2.MetricTargetType, metricValue float64) v2
 func GenerateMetricInMili(metricName string, value float64) external_metrics.ExternalMetricValue {
 	// Use string parsing to avoid int64 overflow when value * 1000 exceeds
 	// math.MaxInt64 (~9.2e15 threshold).
-	// Treat NaN and Inf as zero to avoid a panic in resource.MustParse.
+	// NaN, Inf, and negative values are treated as zero to prevent panics and incorrect HPA scaling.
 	qty := quantityFromFloat64(value)
 	return external_metrics.ExternalMetricValue{
 		MetricName: metricName,
@@ -154,9 +154,9 @@ func GenerateMetricInMili(metricName string, value float64) external_metrics.Ext
 }
 
 // quantityFromFloat64 converts a float64 to a resource.Quantity with milli-precision.
-// NaN and Inf values are treated as zero to prevent panics.
+// NaN, Inf, and negative values are treated as zero to prevent panics and incorrect HPA scaling.
 func quantityFromFloat64(value float64) resource.Quantity {
-	if math.IsNaN(value) || math.IsInf(value, 0) {
+	if math.IsNaN(value) || math.IsInf(value, 0) || value < 0 {
 		return resource.MustParse("0")
 	}
 	return resource.MustParse(fmt.Sprintf("%.3f", value))
