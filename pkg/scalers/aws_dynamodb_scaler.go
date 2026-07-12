@@ -199,14 +199,22 @@ func (s *awsDynamoDBScaler) GetQueryMetrics(ctx context.Context) (float64, error
 		dimensions.IndexName = aws.String(s.metadata.IndexName)
 	}
 
-	res, err := s.dbClient.Query(ctx, &dimensions)
-
-	if err != nil {
-		s.logger.Error(err, "Failed to get output")
-		return 0, err
+	// A DynamoDB Query returns at most 1 MB of data per call, so the result set
+	// can span multiple pages. Follow LastEvaluatedKey and sum the per-page
+	// counts, otherwise the scaler only sees the first page and undercounts the
+	// matching items, leading to under-scaling.
+	var itemCount int32
+	paginator := dynamodb.NewQueryPaginator(s.dbClient, &dimensions)
+	for paginator.HasMorePages() {
+		res, err := paginator.NextPage(ctx)
+		if err != nil {
+			s.logger.Error(err, "Failed to get output")
+			return 0, err
+		}
+		itemCount += res.Count
 	}
 
-	return float64(res.Count), nil
+	return float64(itemCount), nil
 }
 
 // json2Map convert Json to map[string]string
