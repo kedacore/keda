@@ -158,16 +158,7 @@ func isTriggerAuthenticationRemovingFinalizer(om metav1.ObjectMeta, oldOm metav1
 }
 
 func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
-	var warnings admission.Warnings
-
-	if spec.HashiCorpVault != nil && spec.HashiCorpVault.Credential != nil {
-		if spec.HashiCorpVault.Credential.Token != "" {
-			warnings = append(warnings, "spec.hashiCorpVault.credential.token is deprecated; use spec.hashiCorpVault.credential.tokenFrom.secretKeyRef instead")
-		}
-		if spec.HashiCorpVault.Credential.Token != "" && spec.HashiCorpVault.Credential.TokenFrom != nil {
-			warnings = append(warnings, "spec.hashiCorpVault.credential.tokenFrom.secretKeyRef takes precedence over spec.hashiCorpVault.credential.token")
-		}
-	}
+	warnings := validateHashiCorpVaultCredential(spec)
 
 	if spec.PodIdentity != nil {
 		switch spec.PodIdentity.Provider {
@@ -198,25 +189,46 @@ func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 	}
 
 	if spec.OAuth2 != nil {
-		oauth2 := spec.OAuth2
-
-		if oauth2.Type != OAuth2GrantTypeClientCredentials {
-			return nil, fmt.Errorf("oauth2.type must be 'clientCredentials', got '%s'", oauth2.Type)
-		}
-
-		if oauth2.ClientID == "" {
-			return nil, fmt.Errorf("oauth2.clientId is required when oauth2 is configured")
-		}
-
-		if oauth2.TokenURL == "" {
-			return nil, fmt.Errorf("oauth2.tokenUrl is required when oauth2 is configured")
-		}
-
-		parsedURL, err := url.Parse(oauth2.TokenURL)
-		if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
-			return nil, fmt.Errorf("oauth2.tokenUrl must be a valid http or https URL")
+		if err := validateOAuth2(spec.OAuth2); err != nil {
+			return nil, err
 		}
 	}
 
 	return warnings, nil
+}
+
+func validateHashiCorpVaultCredential(spec *TriggerAuthenticationSpec) admission.Warnings {
+	var warnings admission.Warnings
+
+	if spec.HashiCorpVault != nil && spec.HashiCorpVault.Credential != nil {
+		if spec.HashiCorpVault.Credential.Token != "" {
+			warnings = append(warnings, "spec.hashiCorpVault.credential.token is deprecated; use spec.hashiCorpVault.credential.tokenFrom.secretKeyRef instead")
+		}
+		if spec.HashiCorpVault.Credential.Token != "" && spec.HashiCorpVault.Credential.TokenFrom != nil {
+			warnings = append(warnings, "spec.hashiCorpVault.credential.tokenFrom.secretKeyRef takes precedence over spec.hashiCorpVault.credential.token")
+		}
+	}
+
+	return warnings
+}
+
+func validateOAuth2(oauth2 *OAuth2) error {
+	if oauth2.Type != OAuth2GrantTypeClientCredentials {
+		return fmt.Errorf("oauth2.type must be 'clientCredentials', got '%s'", oauth2.Type)
+	}
+
+	if oauth2.ClientID == "" {
+		return fmt.Errorf("oauth2.clientId is required when oauth2 is configured")
+	}
+
+	if oauth2.TokenURL == "" {
+		return fmt.Errorf("oauth2.tokenUrl is required when oauth2 is configured")
+	}
+
+	parsedURL, err := url.Parse(oauth2.TokenURL)
+	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
+		return fmt.Errorf("oauth2.tokenUrl must be a valid http or https URL")
+	}
+
+	return nil
 }
