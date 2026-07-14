@@ -897,6 +897,46 @@ func TestResolveAuthRef(t *testing.T) {
 	}
 }
 
+func TestResolveHashicorpVaultCredential(t *testing.T) {
+	ctx := context.Background()
+	logger := logf.Log.WithName("test")
+
+	vaultSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      vaultTokenSecretName,
+		},
+		Data: map[string][]byte{vaultTokenSecretKey: []byte(vaultTokenValue)},
+	}
+	client := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(vaultSecret).Build()
+
+	vault := &kedav1alpha1.HashiCorpVault{
+		Authentication: kedav1alpha1.VaultAuthenticationToken,
+		Credential: &kedav1alpha1.Credential{
+			TokenFrom: &kedav1alpha1.ValueFromSecret{
+				SecretKeyRef: kedav1alpha1.SecretKeyRef{
+					Name: vaultTokenSecretName,
+					Key:  vaultTokenSecretKey,
+				},
+			},
+		},
+	}
+
+	token, err := resolveHashicorpVaultCredential(ctx, client, logger, vault, namespace, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, vaultTokenValue, token)
+	// The resolved token must be returned to the caller, not written back into the
+	// (potentially cache-backed and shared) TriggerAuthentication spec.
+	assert.Empty(t, vault.Credential.Token, "resolveHashicorpVaultCredential must not mutate the TriggerAuthentication spec")
+
+	// A missing secret must error and still leave the spec untouched.
+	vault.Credential.TokenFrom.SecretKeyRef.Name = "does-not-exist"
+	token, err = resolveHashicorpVaultCredential(ctx, client, logger, vault, namespace, nil)
+	assert.Error(t, err)
+	assert.Empty(t, token)
+	assert.Empty(t, vault.Credential.Token)
+}
+
 func TestResolveDependentEnv(t *testing.T) {
 	tests := []struct {
 		name      string
