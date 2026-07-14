@@ -93,6 +93,17 @@ type scaleHandler struct {
 	subsLock              *sync.RWMutex
 }
 
+// scaleLoopContext identifies one run of a scale loop. Each
+// HandleScalableObject call stores a fresh instance in scaleLoopContexts, and
+// startScaleLoop only clears the scalers cache on shutdown if its own
+// scaleLoopContext is still the stored one. Without this identity check, a
+// superseded loop waking up on its canceled context could clear the cache
+// that the replacement loop had just built (with freshly resolved auth),
+// resurrecting the stale credentials it was restarted to get rid of.
+type scaleLoopContext struct {
+	cancel context.CancelFunc
+}
+
 // NewScaleHandler creates a ScaleHandler object
 func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration, recorder events.EventRecorder, authClientSet *authentication.AuthClientSet) ScaleHandler {
 	return &scaleHandler{
@@ -126,15 +137,25 @@ func (h *scaleHandler) HandleScalableObject(ctx context.Context, scalableObject 
 
 	key := withTriggers.GenerateIdentifier()
 	ctx, cancel := context.WithCancel(ctx)
+	loopContext := &scaleLoopContext{cancel: cancel}
 
 	// cancel the outdated ScaleLoop for the same ScaledObject (if exists)
-	value, loaded := h.scaleLoopContexts.LoadOrStore(key, cancel)
+	value, loaded := h.scaleLoopContexts.LoadOrStore(key, loopContext)
 	if loaded {
-		cancelValue, ok := value.(context.CancelFunc)
+		oldLoopContext, ok := value.(*scaleLoopContext)
 		if ok {
-			cancelValue()
+			oldLoopContext.cancel()
 		}
-		h.scaleLoopContexts.Store(key, cancel)
+		// Clear the cache synchronously here: once the new loopContext is
+		// stored below, the identity check in startScaleLoop stops the old
+		// loop from clearing it on shutdown, so the eviction of the scalers
+		// built with the previous configuration/credentials must happen here.
+		if err := h.ClearScalersCache(ctx, scalableObject); err != nil {
+			cancel()
+			h.scaleLoopContexts.Delete(key)
+			return err
+		}
+		h.scaleLoopContexts.Store(key, loopContext)
 	} else {
 		h.recorder.Eventf(withTriggers, nil, corev1.EventTypeNormal, eventreason.KEDAScalersStarted, "ScalersWatchStarted", "%s", message.ScalerStartMsg)
 	}
@@ -144,7 +165,7 @@ func (h *scaleHandler) HandleScalableObject(ctx context.Context, scalableObject 
 
 	// passing deep copy of ScaledObject/ScaledJob to the scaleLoop go routines, it's a precaution to not have global objects shared between threads
 	go h.startPushScalers(ctx, withTriggers, scalableObject.DeepCopyObject().(kedav1alpha1.ScalableObject), scalingMutex)
-	go h.startScaleLoop(ctx, withTriggers, scalableObject.DeepCopyObject().(kedav1alpha1.ScalableObject), scalingMutex)
+	go h.startScaleLoop(ctx, withTriggers, scalableObject.DeepCopyObject().(kedav1alpha1.ScalableObject), scalingMutex, loopContext)
 	return nil
 }
 
@@ -159,9 +180,9 @@ func (h *scaleHandler) DeleteScalableObject(ctx context.Context, scalableObject 
 	key := withTriggers.GenerateIdentifier()
 	result, ok := h.scaleLoopContexts.Load(key)
 	if ok {
-		cancel, ok := result.(context.CancelFunc)
+		loopContext, ok := result.(*scaleLoopContext)
 		if ok {
-			cancel()
+			loopContext.cancel()
 		}
 		h.scaleLoopContexts.Delete(key)
 		err := h.ClearScalersCache(ctx, scalableObject)
@@ -177,7 +198,7 @@ func (h *scaleHandler) DeleteScalableObject(ctx context.Context, scalableObject 
 }
 
 // startScaleLoop blocks forever and checks the scalableObject based on its pollingInterval
-func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject kedav1alpha1.ScalableObject, scalingMutex sync.Locker) {
+func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject kedav1alpha1.ScalableObject, scalingMutex sync.Locker, loopContext *scaleLoopContext) {
 	logger := log.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
 
 	pollingInterval := withTriggers.GetPollingInterval()
@@ -202,9 +223,14 @@ func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1a
 			tmr.Stop()
 		case <-ctx.Done():
 			logger.V(1).Info("Context canceled")
-			err := h.ClearScalersCache(ctx, scalableObject)
-			if err != nil {
-				logger.Error(err, "error clearing scalers cache")
+			// Only clear the scalers cache if this loop is still the one
+			// registered for the object. If it was superseded by a restart
+			// (see HandleScalableObject), the cache may already hold scalers
+			// rebuilt by the new loop and must not be cleared by this stale one.
+			if current, ok := h.scaleLoopContexts.Load(withTriggers.GenerateIdentifier()); ok && current == loopContext {
+				if err := h.ClearScalersCache(ctx, scalableObject); err != nil {
+					logger.Error(err, "error clearing scalers cache")
+				}
 			}
 			tmr.Stop()
 			return

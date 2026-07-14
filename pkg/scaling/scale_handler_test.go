@@ -1712,3 +1712,182 @@ func TestHandleResult_DeltaDoesNotOverwriteConcurrentChanges(t *testing.T) {
 	assert.True(t, patchedObj.Status.TriggersActivity["trigger-a"].IsActive, "concurrent update to trigger-a must be preserved")
 	assert.True(t, patchedObj.Status.TriggersActivity["trigger-b"].IsActive, "trigger-b updated by push scaler")
 }
+
+// restartTestFixture bundles the mocks and scale handler used by the scale
+// loop restart tests below.
+type restartTestFixture struct {
+	sh           scaleHandler
+	scaledObject kedav1alpha1.ScaledObject
+	scalerCache  *cache.ScalersCache
+	key          string
+	closed       chan struct{}
+}
+
+func newRestartTestFixture(t *testing.T, name string) *restartTestFixture {
+	ctrl := gomock.NewController(t)
+	recorder := events.NewFakeRecorder(10)
+	mockClient := mock_client.NewMockClient(ctrl)
+	mockStatusWriter := mock_client.NewMockStatusWriter(ctrl)
+	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
+
+	metricName := name + "-metric"
+	metricsSpecs := []v2.MetricSpec{createMetricSpec(10, metricName)}
+	metricValue := scalers.GenerateMetricInMili(metricName, float64(10))
+
+	longPollingInterval := int32(300)
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       name,
+			Namespace:  testNamespaceGlobal,
+			Generation: 1,
+		},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+				Name: "test",
+			},
+			PollingInterval: &longPollingInterval,
+		},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			ScaleTargetGVKR: &kedav1alpha1.GroupVersionKindResource{
+				Group: "apps",
+				Kind:  "Deployment",
+			},
+		},
+	}
+
+	scaler := mock_scalers.NewMockScaler(ctrl)
+	scalerConfig := scalersconfig.ScalerConfig{}
+	factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		return scaler, &scalerConfig, nil
+	}
+
+	// the scale loops run asynchronously and may check the scalers a couple of
+	// times before the test finishes, so all expectations are tolerant
+	closed := make(chan struct{})
+	var closeOnce sync.Once
+	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs).AnyTimes()
+	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{metricValue}, true, nil).AnyTimes()
+	scaler.EXPECT().Close(gomock.Any()).DoAndReturn(func(context.Context) error {
+		closeOnce.Do(func() { close(closed) })
+		return nil
+	}).AnyTimes()
+	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	mockClient.EXPECT().Status().Return(mockStatusWriter).AnyTimes()
+	mockStatusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
+	scalerCache := &cache.ScalersCache{
+		ScaledObject: &scaledObject,
+		Scalers: []cache.ScalerBuilder{{
+			Scaler:       scaler,
+			ScalerConfig: scalerConfig,
+			Factory:      factory,
+		}},
+		ScalableObjectGeneration: scaledObject.Generation,
+		Recorder:                 recorder,
+	}
+
+	key := scaledObject.GenerateIdentifier()
+
+	return &restartTestFixture{
+		sh: scaleHandler{
+			client:                   mockClient,
+			scaleLoopContexts:        &sync.Map{},
+			scaleExecutor:            mockExecutor,
+			globalHTTPTimeout:        time.Duration(1000),
+			recorder:                 recorder,
+			scalerCaches:             map[string]*cache.ScalersCache{key: scalerCache},
+			scalerCachesLock:         &sync.RWMutex{},
+			scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+			rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+			metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+			subsLock:                 &sync.RWMutex{},
+		},
+		scaledObject: scaledObject,
+		scalerCache:  scalerCache,
+		key:          key,
+		closed:       closed,
+	}
+}
+
+func (f *restartTestFixture) cachedScalersCache() (*cache.ScalersCache, bool) {
+	f.sh.scalerCachesLock.RLock()
+	defer f.sh.scalerCachesLock.RUnlock()
+	c, ok := f.sh.scalerCaches[f.key]
+	return c, ok
+}
+
+func (f *restartTestFixture) waitForScalerClose(t *testing.T) {
+	select {
+	case <-f.closed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("expected the previously cached scalers to be closed")
+	}
+}
+
+// TestStaleScaleLoopDoesNotClearActiveScalersCache verifies the loop identity
+// guard in startScaleLoop: a superseded scale loop shutting down must not
+// clear the scalers cache that belongs to the currently active loop, while
+// the loop registered as current still clears the cache on shutdown.
+func TestStaleScaleLoopDoesNotClearActiveScalersCache(t *testing.T) {
+	f := newRestartTestFixture(t, "stale-loop-guard")
+
+	withTriggers, err := kedav1alpha1.AsDuckWithTriggers(&f.scaledObject)
+	assert.NoError(t, err)
+
+	activeLoopContext := &scaleLoopContext{cancel: func() {}}
+	f.sh.scaleLoopContexts.Store(f.key, activeLoopContext)
+
+	canceledCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	// a stale loop (superseded by activeLoopContext) shuts down: it must leave
+	// the cache of the active loop alone
+	staleLoopContext := &scaleLoopContext{cancel: func() {}}
+	f.sh.startScaleLoop(canceledCtx, withTriggers, f.scaledObject.DeepCopy(), &sync.Mutex{}, staleLoopContext)
+
+	_, cached := f.cachedScalersCache()
+	assert.True(t, cached, "stale scale loop must not clear the active scalers cache")
+
+	// the currently registered loop shuts down: now the cache must be cleared
+	f.sh.startScaleLoop(canceledCtx, withTriggers, f.scaledObject.DeepCopy(), &sync.Mutex{}, activeLoopContext)
+
+	_, cached = f.cachedScalersCache()
+	assert.False(t, cached, "current scale loop must clear its scalers cache on shutdown")
+
+	// ClearScalersCache closes the evicted cache asynchronously; wait for it so
+	// the mocks are not used after the test finishes
+	f.waitForScalerClose(t)
+}
+
+// TestHandleScalableObjectRestartClosesCachedScalers verifies that handling an
+// already-handled object again (e.g. after an auth dependency changed) swaps
+// the stored loop context and evicts and closes the previously cached scalers,
+// so the next cache access re-resolves authentication from scratch.
+func TestHandleScalableObjectRestartClosesCachedScalers(t *testing.T) {
+	f := newRestartTestFixture(t, "handle-restart")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert.NoError(t, f.sh.HandleScalableObject(ctx, &f.scaledObject))
+	firstLoopContext, ok := f.sh.scaleLoopContexts.Load(f.key)
+	assert.True(t, ok)
+
+	assert.NoError(t, f.sh.HandleScalableObject(ctx, &f.scaledObject))
+	secondLoopContext, ok := f.sh.scaleLoopContexts.Load(f.key)
+	assert.True(t, ok)
+	assert.NotSame(t, firstLoopContext, secondLoopContext, "restart must supersede the stored loop context")
+
+	// the pre-populated cache must have been evicted (any cache present now is
+	// a fresh rebuild by the restarted loop) and its scalers closed
+	if current, cached := f.cachedScalersCache(); cached {
+		assert.NotSame(t, f.scalerCache, current, "restart must evict the previously cached scalers")
+	}
+	f.waitForScalerClose(t)
+
+	// stop the running loops and wait for them to observe the cancellation, so
+	// the mocks are not used after the test finishes
+	assert.NoError(t, f.sh.DeleteScalableObject(ctx, &f.scaledObject))
+	time.Sleep(100 * time.Millisecond)
+}

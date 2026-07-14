@@ -38,8 +38,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -77,6 +79,7 @@ type ScaledObjectReconciler struct {
 
 	restMapper               meta.RESTMapper
 	scaledObjectsGenerations *sync.Map
+	pendingAuthInvalidations sync.Map
 }
 
 type scaledObjectMetricsData struct {
@@ -106,6 +109,10 @@ func init() {
 func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
 	r.restMapper = mgr.GetRESTMapper()
 	r.scaledObjectsGenerations = &sync.Map{}
+
+	if err := registerTriggerAuthIndexes(mgr); err != nil {
+		return err
+	}
 
 	if r.ScaleHandler == nil {
 		return fmt.Errorf("ScaledObjectReconciler.ScaleHandler is not initialized")
@@ -148,6 +155,17 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 				predicate.AnnotationChangedPredicate{},
 				kedacontrollerutil.HPASpecChangedPredicate{},
 			))).
+		Watches(&kedav1alpha1.TriggerAuthentication{},
+			handler.EnqueueRequestsFromMapFunc(r.mapTriggerAuthToScaledObjects),
+			builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Watches(&kedav1alpha1.ClusterTriggerAuthentication{},
+			handler.EnqueueRequestsFromMapFunc(r.mapClusterTriggerAuthToScaledObjects),
+			builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		// No predicate on Secrets: Secret.metadata.generation does not
+		// increment on data changes, so GenerationChangedPredicate would
+		// suppress the very updates we need to detect (credential rotation).
+		WatchesMetadata(&corev1.Secret{},
+			handler.EnqueueRequestsFromMapFunc(r.mapSecretToScaledObjects)).
 		Complete(r)
 }
 
@@ -313,12 +331,27 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		}
 	}
 
+	soKey := client.ObjectKeyFromObject(scaledObject)
+
 	// Notify ScaleHandler if a new HPA was created or if ScaledObject was updated
 	if newHPACreated || scaleObjectSpecChanged {
 		if err := r.requestScaleLoop(ctx, logger, scaledObject); err != nil {
 			return "failed to start a new scale loop with scaling logic", err
 		}
 		logger.Info("Initializing Scaling logic according to ScaledObject Specification")
+		r.pendingAuthInvalidations.Delete(soKey)
+	} else if _, pending := r.pendingAuthInvalidations.LoadAndDelete(soKey); pending {
+		// An auth dependency (Secret, TriggerAuthentication or
+		// ClusterTriggerAuthentication) changed. A full scale loop restart is
+		// required rather than just clearing the scalers cache: push scalers
+		// are started once per loop (startPushScalers), so a cache clear alone
+		// would leave external-push scalers running with the old credentials.
+		logger.V(1).Info("Restarting scaling logic due to auth dependency change")
+		if err := r.requestScaleLoop(ctx, logger, scaledObject); err != nil {
+			// re-mark the invalidation so the requeued reconcile retries the restart
+			r.pendingAuthInvalidations.Store(soKey, true)
+			return "failed to restart scale loop after auth dependency change", err
+		}
 	}
 	return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
 }
@@ -709,4 +742,36 @@ func (r *ScaledObjectReconciler) updateStatusWithTriggersAndAuthsTypes(ctx conte
 	logger.V(1).Info("Updating ScaledObject status with triggers and authentications types", "triggersTypes", triggersTypes, "authenticationsTypes", authsTypes)
 
 	return kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
+}
+
+func (r *ScaledObjectReconciler) markPendingAuthInvalidations(requests []reconcile.Request) {
+	for i := range requests {
+		r.pendingAuthInvalidations.Store(requests[i].NamespacedName, true)
+	}
+}
+
+func (r *ScaledObjectReconciler) mapTriggerAuthToScaledObjects(ctx context.Context, obj client.Object) []reconcile.Request {
+	ta, ok := obj.(*kedav1alpha1.TriggerAuthentication)
+	if !ok {
+		return nil
+	}
+	requests := lookupByTriggerAuth(ctx, r.Client, &kedav1alpha1.ScaledObjectList{}, ta.Name, ta.Namespace)
+	r.markPendingAuthInvalidations(requests)
+	return requests
+}
+
+func (r *ScaledObjectReconciler) mapClusterTriggerAuthToScaledObjects(ctx context.Context, obj client.Object) []reconcile.Request {
+	cta, ok := obj.(*kedav1alpha1.ClusterTriggerAuthentication)
+	if !ok {
+		return nil
+	}
+	requests := lookupByClusterTriggerAuth(ctx, r.Client, &kedav1alpha1.ScaledObjectList{}, cta.Name)
+	r.markPendingAuthInvalidations(requests)
+	return requests
+}
+
+func (r *ScaledObjectReconciler) mapSecretToScaledObjects(ctx context.Context, obj client.Object) []reconcile.Request {
+	requests := mapSecretToScalableObjects(ctx, r.Client, func() client.ObjectList { return &kedav1alpha1.ScaledObjectList{} }, obj.GetName(), obj.GetNamespace())
+	r.markPendingAuthInvalidations(requests)
+	return requests
 }

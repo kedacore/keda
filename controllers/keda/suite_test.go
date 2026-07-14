@@ -24,6 +24,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -46,6 +47,7 @@ import (
 var cfg *rest.Config
 var testEnv *envtest.Environment
 var k8sClient client.Client
+var testScaleHandler scaling.ScaleHandler
 
 var ctx context.Context
 var cancel context.CancelFunc
@@ -85,6 +87,14 @@ var _ = BeforeSuite(func() {
 
 	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
+		// Secret reads bypass the cache, mirroring the operator's production
+		// configuration in cmd/operator/main.go (Secret events are served by
+		// a metadata-only informer, structured Secret reads are live).
+		Client: client.Options{
+			Cache: &client.CacheOptions{
+				DisableFor: []client.Object{&corev1.Secret{}},
+			},
+		},
 	})
 	Expect(err).ToNot(HaveOccurred())
 
@@ -93,10 +103,12 @@ var _ = BeforeSuite(func() {
 
 	authClientSet := &authentication.AuthClientSet{}
 
+	testScaleHandler = scaling.NewScaleHandler(k8sManager.GetClient(), scaleClient, k8sManager.GetScheme(), time.Duration(10), k8sManager.GetEventRecorder("keda-operator"), authClientSet)
+
 	err = (&ScaledObjectReconciler{
 		Client:       k8sManager.GetClient(),
 		Scheme:       k8sManager.GetScheme(),
-		ScaleHandler: scaling.NewScaleHandler(k8sManager.GetClient(), scaleClient, k8sManager.GetScheme(), time.Duration(10), k8sManager.GetEventRecorder("keda-operator"), authClientSet),
+		ScaleHandler: testScaleHandler,
 		ScaleClient:  scaleClient,
 		EventEmitter: eventemitter.NewEventEmitter(k8sManager.GetClient(), k8sManager.GetEventRecorder("keda-operator"), "kubernetes-default", nil),
 	}).SetupWithManager(k8sManager, controller.Options{})

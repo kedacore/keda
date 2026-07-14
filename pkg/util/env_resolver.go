@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"k8s.io/utils/ptr"
@@ -93,6 +94,12 @@ func GetPodNamespace() string {
 // GetRestrictSecretAccess retrieves the value of the environment variable of KEDA_RESTRICT_SECRET_ACCESS
 func GetRestrictSecretAccess() string {
 	return os.Getenv(RestrictSecretAccessEnvVar)
+}
+
+// IsRestrictSecretAccess returns whether secret access is restricted to the
+// KEDA cluster object namespace (KEDA_RESTRICT_SECRET_ACCESS=true).
+func IsRestrictSecretAccess() bool {
+	return strings.EqualFold(GetRestrictSecretAccess(), strconv.FormatBool(true))
 }
 
 // GetBoundServiceAccountTokenExpiry retrieves the value of the environment variable of KEDA_BOUND_SERVICE_ACCOUNT_TOKEN_EXPIRY

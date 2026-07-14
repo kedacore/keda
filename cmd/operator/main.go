@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
+	corev1 "k8s.io/api/core/v1"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	kubeinformers "k8s.io/client-go/informers"
@@ -32,6 +33,7 @@ import (
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -57,6 +59,38 @@ var (
 	scheme   = apimachineryruntime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 )
+
+// buildCacheOptions configures the manager cache, scoping the Secret informer
+// (metadata-only, backing the Secret watches of the controllers) to the
+// namespaces KEDA is actually allowed and expected to read secrets from.
+func buildCacheOptions(namespaces map[string]ctrlcache.Config, kedaNamespace string) ctrlcache.Options {
+	cacheOptions := ctrlcache.Options{
+		DefaultNamespaces: namespaces,
+		DefaultTransform:  kedautil.CacheObjectTransform,
+	}
+	switch {
+	case kedautil.IsRestrictSecretAccess():
+		// With KEDA_RESTRICT_SECRET_ACCESS=true, secrets are only ever read
+		// from the KEDA namespace and RBAC may not permit list/watch on
+		// secrets anywhere else, so the Secret informer must not be
+		// cluster-wide (it would fail cache sync with Forbidden).
+		cacheOptions.ByObject = map[ctrlclient.Object]ctrlcache.ByObject{
+			&corev1.Secret{}: {Namespaces: map[string]ctrlcache.Config{kedaNamespace: {}}},
+		}
+	case len(namespaces) > 0:
+		// ClusterTriggerAuthentication secret refs are resolved from the KEDA
+		// namespace, which may be outside the configured watch namespaces.
+		secretNamespaces := make(map[string]ctrlcache.Config, len(namespaces)+1)
+		for namespace, config := range namespaces {
+			secretNamespaces[namespace] = config
+		}
+		secretNamespaces[kedaNamespace] = ctrlcache.Config{}
+		cacheOptions.ByObject = map[ctrlclient.Object]ctrlcache.ByObject{
+			&corev1.Secret{}: {Namespaces: secretNamespaces},
+		}
+	}
+	return cacheOptions
+}
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
@@ -145,6 +179,11 @@ func main() {
 		setupLog.Error(err, "failed to get watch namespace")
 		os.Exit(1)
 	}
+	objectNamespace, err := kedautil.GetClusterObjectNamespace()
+	if err != nil {
+		setupLog.Error(err, "Unable to get cluster object namespace")
+		os.Exit(1)
+	}
 
 	leaseDuration, err := kedautil.ResolveOsEnvDuration("KEDA_OPERATOR_LEADER_ELECTION_LEASE_DURATION")
 	if err != nil {
@@ -186,9 +225,18 @@ func main() {
 		WebhookServer: webhook.NewServer(webhook.Options{
 			Port: 9443,
 		}),
-		Cache: ctrlcache.Options{
-			DefaultNamespaces: namespaces,
-			DefaultTransform:  kedautil.CacheObjectTransform,
+		Cache: buildCacheOptions(namespaces, objectNamespace),
+		// Secret events are served by a metadata-only informer (see
+		// WatchesMetadata in the controllers), so structured Secret reads must
+		// bypass the cache. This avoids lazily creating a second, full-object
+		// Secret informer that would retain all Secret data in memory, and it
+		// guarantees that scalers rebuilt after a credential rotation read the
+		// new Secret value directly from the API server instead of racing a
+		// possibly stale structured cache.
+		Client: ctrlclient.Options{
+			Cache: &ctrlclient.CacheOptions{
+				DisableFor: []ctrlclient.Object{&corev1.Secret{}},
+			},
 		},
 		HealthProbeBindAddress:  probeAddr,
 		PprofBindAddress:        profilingAddr,
@@ -235,11 +283,6 @@ func main() {
 	kubeClientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		setupLog.Error(err, "Unable to create kube clientset")
-		os.Exit(1)
-	}
-	objectNamespace, err := kedautil.GetClusterObjectNamespace()
-	if err != nil {
-		setupLog.Error(err, "Unable to get cluster object namespace")
 		os.Exit(1)
 	}
 	// the namespaced kubeInformerFactory is used to restrict secret informer to only list/watch secrets in KEDA cluster object namespace,

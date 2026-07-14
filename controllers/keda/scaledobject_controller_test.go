@@ -19,6 +19,7 @@ package keda
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync/atomic"
 	"time"
 
@@ -32,7 +33,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
@@ -2140,3 +2143,410 @@ func generateDeployment(name string) *appsv1.Deployment {
 		},
 	}
 }
+
+var _ = Describe("ScaledObjectController mapping functions", func() {
+	var (
+		soReconciler ScaledObjectReconciler
+		mockCl       *mock_client.MockClient
+		mockCtrl     *gomock.Controller
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(util.GinkgoTestReporter{})
+		mockCl = mock_client.NewMockClient(mockCtrl)
+		soReconciler = ScaledObjectReconciler{
+			Client: mockCl,
+		}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	Describe("mapTriggerAuthToScaledObjects", func() {
+		It("should return requests for ScaledObjects referencing the TriggerAuthentication", func() {
+			ta := &kedav1alpha1.TriggerAuthentication{
+				ObjectMeta: metav1.ObjectMeta{Name: "my-ta", Namespace: "ns1"},
+			}
+
+			mockCl.EXPECT().List(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, list client.ObjectList, _ ...client.ListOption) error {
+					soList := list.(*kedav1alpha1.ScaledObjectList)
+					soList.Items = []kedav1alpha1.ScaledObject{
+						{
+							ObjectMeta: metav1.ObjectMeta{Name: "so-match", Namespace: "ns1"},
+							Spec: kedav1alpha1.ScaledObjectSpec{
+								Triggers: []kedav1alpha1.ScaleTriggers{
+									{Type: "prometheus", AuthenticationRef: &kedav1alpha1.AuthenticationRef{Name: "my-ta"}},
+								},
+							},
+						},
+					}
+					return nil
+				})
+
+			requests := soReconciler.mapTriggerAuthToScaledObjects(context.Background(), ta)
+			Expect(requests).To(HaveLen(1))
+			Expect(requests[0].NamespacedName).To(Equal(types.NamespacedName{Name: "so-match", Namespace: "ns1"}))
+		})
+
+		It("should return empty when no ScaledObjects match", func() {
+			ta := &kedav1alpha1.TriggerAuthentication{
+				ObjectMeta: metav1.ObjectMeta{Name: "unused-ta", Namespace: "ns1"},
+			}
+
+			mockCl.EXPECT().List(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, list client.ObjectList, _ ...client.ListOption) error {
+					soList := list.(*kedav1alpha1.ScaledObjectList)
+					soList.Items = nil
+					return nil
+				})
+
+			requests := soReconciler.mapTriggerAuthToScaledObjects(context.Background(), ta)
+			Expect(requests).To(BeEmpty())
+		})
+	})
+
+	Describe("mapClusterTriggerAuthToScaledObjects", func() {
+		It("should return requests for ScaledObjects referencing the ClusterTriggerAuthentication", func() {
+			cta := &kedav1alpha1.ClusterTriggerAuthentication{
+				ObjectMeta: metav1.ObjectMeta{Name: "my-cta"},
+			}
+
+			mockCl.EXPECT().List(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, list client.ObjectList, _ ...client.ListOption) error {
+					soList := list.(*kedav1alpha1.ScaledObjectList)
+					soList.Items = []kedav1alpha1.ScaledObject{
+						{
+							ObjectMeta: metav1.ObjectMeta{Name: "so-cta-match", Namespace: "ns1"},
+							Spec: kedav1alpha1.ScaledObjectSpec{
+								Triggers: []kedav1alpha1.ScaleTriggers{
+									{Type: "prometheus", AuthenticationRef: &kedav1alpha1.AuthenticationRef{Name: "my-cta", Kind: "ClusterTriggerAuthentication"}},
+								},
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{Name: "so-other-ns", Namespace: "ns2"},
+							Spec: kedav1alpha1.ScaledObjectSpec{
+								Triggers: []kedav1alpha1.ScaleTriggers{
+									{Type: "prometheus", AuthenticationRef: &kedav1alpha1.AuthenticationRef{Name: "my-cta", Kind: "ClusterTriggerAuthentication"}},
+								},
+							},
+						},
+					}
+					return nil
+				})
+
+			requests := soReconciler.mapClusterTriggerAuthToScaledObjects(context.Background(), cta)
+			Expect(requests).To(HaveLen(2))
+			Expect(requests).To(ContainElement(reconcile.Request{NamespacedName: types.NamespacedName{Name: "so-cta-match", Namespace: "ns1"}}))
+			Expect(requests).To(ContainElement(reconcile.Request{NamespacedName: types.NamespacedName{Name: "so-other-ns", Namespace: "ns2"}}))
+		})
+	})
+
+	Describe("mapSecretToScaledObjects", func() {
+		It("should map Secret metadata to ScaledObjects using it via TriggerAuthentication", func() {
+			secret := &metav1.PartialObjectMetadata{
+				ObjectMeta: metav1.ObjectMeta{Name: "my-secret", Namespace: "ns1"},
+			}
+
+			mockCl.EXPECT().List(gomock.Any(), gomock.AssignableToTypeOf(&kedav1alpha1.TriggerAuthenticationList{}), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, list client.ObjectList, _ ...client.ListOption) error {
+					taList := list.(*kedav1alpha1.TriggerAuthenticationList)
+					taList.Items = []kedav1alpha1.TriggerAuthentication{
+						{
+							ObjectMeta: metav1.ObjectMeta{Name: "ta-with-secret", Namespace: "ns1"},
+							Spec: kedav1alpha1.TriggerAuthenticationSpec{
+								SecretTargetRef: []kedav1alpha1.AuthSecretTargetRef{
+									{Parameter: "bearerToken", Name: "my-secret", Key: "token"},
+								},
+							},
+						},
+					}
+					return nil
+				})
+
+			mockCl.EXPECT().List(gomock.Any(), gomock.AssignableToTypeOf(&kedav1alpha1.ScaledObjectList{}), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, list client.ObjectList, _ ...client.ListOption) error {
+					soList := list.(*kedav1alpha1.ScaledObjectList)
+					soList.Items = []kedav1alpha1.ScaledObject{
+						{
+							ObjectMeta: metav1.ObjectMeta{Name: "so-uses-ta", Namespace: "ns1"},
+							Spec: kedav1alpha1.ScaledObjectSpec{
+								Triggers: []kedav1alpha1.ScaleTriggers{
+									{Type: "prometheus", AuthenticationRef: &kedav1alpha1.AuthenticationRef{Name: "ta-with-secret"}},
+								},
+							},
+						},
+					}
+					return nil
+				})
+
+			requests := soReconciler.mapSecretToScaledObjects(context.Background(), secret)
+			Expect(requests).To(HaveLen(1))
+			Expect(requests[0].NamespacedName).To(Equal(types.NamespacedName{Name: "so-uses-ta", Namespace: "ns1"}))
+		})
+
+		It("should return empty when no TriggerAuthentication references the Secret", func() {
+			secret := &metav1.PartialObjectMetadata{
+				ObjectMeta: metav1.ObjectMeta{Name: "unreferenced-secret", Namespace: "ns1"},
+			}
+
+			mockCl.EXPECT().List(gomock.Any(), gomock.AssignableToTypeOf(&kedav1alpha1.TriggerAuthenticationList{}), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, list client.ObjectList, _ ...client.ListOption) error {
+					taList := list.(*kedav1alpha1.TriggerAuthenticationList)
+					taList.Items = nil
+					return nil
+				})
+
+			requests := soReconciler.mapSecretToScaledObjects(context.Background(), secret)
+			Expect(requests).To(BeEmpty())
+		})
+
+		It("should map a KEDA-namespace Secret to TriggerAuthentications cluster-wide when secret access is restricted", func() {
+			os.Setenv("KEDA_CLUSTER_OBJECT_NAMESPACE", "keda")
+			DeferCleanup(os.Unsetenv, "KEDA_CLUSTER_OBJECT_NAMESPACE")
+			os.Setenv(util.RestrictSecretAccessEnvVar, "true")
+			DeferCleanup(os.Unsetenv, util.RestrictSecretAccessEnvVar)
+
+			secret := &metav1.PartialObjectMetadata{
+				ObjectMeta: metav1.ObjectMeta{Name: "restricted-secret", Namespace: "keda"},
+			}
+
+			// TA lookup must not be limited to the Secret's namespace: with
+			// restricted access TAs in any namespace resolve this Secret.
+			mockCl.EXPECT().List(gomock.Any(), gomock.AssignableToTypeOf(&kedav1alpha1.TriggerAuthenticationList{}), gomock.Any()).DoAndReturn(
+				func(_ context.Context, list client.ObjectList, _ ...client.ListOption) error {
+					taList := list.(*kedav1alpha1.TriggerAuthenticationList)
+					taList.Items = []kedav1alpha1.TriggerAuthentication{
+						{
+							ObjectMeta: metav1.ObjectMeta{Name: "ta-other-ns", Namespace: "ns1"},
+							Spec: kedav1alpha1.TriggerAuthenticationSpec{
+								SecretTargetRef: []kedav1alpha1.AuthSecretTargetRef{
+									{Parameter: "bearerToken", Name: "restricted-secret", Key: "token"},
+								},
+							},
+						},
+					}
+					return nil
+				})
+
+			mockCl.EXPECT().List(gomock.Any(), gomock.AssignableToTypeOf(&kedav1alpha1.ClusterTriggerAuthenticationList{}), gomock.Any()).DoAndReturn(
+				func(_ context.Context, list client.ObjectList, _ ...client.ListOption) error {
+					ctaList := list.(*kedav1alpha1.ClusterTriggerAuthenticationList)
+					ctaList.Items = nil
+					return nil
+				})
+
+			mockCl.EXPECT().List(gomock.Any(), gomock.AssignableToTypeOf(&kedav1alpha1.ScaledObjectList{}), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, list client.ObjectList, _ ...client.ListOption) error {
+					soList := list.(*kedav1alpha1.ScaledObjectList)
+					soList.Items = []kedav1alpha1.ScaledObject{
+						{
+							ObjectMeta: metav1.ObjectMeta{Name: "so-restricted", Namespace: "ns1"},
+							Spec: kedav1alpha1.ScaledObjectSpec{
+								Triggers: []kedav1alpha1.ScaleTriggers{
+									{Type: "prometheus", AuthenticationRef: &kedav1alpha1.AuthenticationRef{Name: "ta-other-ns"}},
+								},
+							},
+						},
+					}
+					return nil
+				})
+
+			requests := soReconciler.mapSecretToScaledObjects(context.Background(), secret)
+			Expect(requests).To(HaveLen(1))
+			Expect(requests[0].NamespacedName).To(Equal(types.NamespacedName{Name: "so-restricted", Namespace: "ns1"}))
+		})
+
+		It("should ignore Secrets outside the KEDA namespace when secret access is restricted", func() {
+			os.Setenv("KEDA_CLUSTER_OBJECT_NAMESPACE", "keda")
+			DeferCleanup(os.Unsetenv, "KEDA_CLUSTER_OBJECT_NAMESPACE")
+			os.Setenv(util.RestrictSecretAccessEnvVar, "true")
+			DeferCleanup(os.Unsetenv, util.RestrictSecretAccessEnvVar)
+
+			secret := &metav1.PartialObjectMetadata{
+				ObjectMeta: metav1.ObjectMeta{Name: "app-secret", Namespace: "ns1"},
+			}
+
+			// No List calls expected: secrets outside the KEDA namespace are
+			// never resolved when secret access is restricted.
+			requests := soReconciler.mapSecretToScaledObjects(context.Background(), secret)
+			Expect(requests).To(BeEmpty())
+		})
+
+		It("should return requests for ScaledObjects using a Secret via ClusterTriggerAuthentication", func() {
+			os.Setenv("KEDA_CLUSTER_OBJECT_NAMESPACE", "keda")
+			DeferCleanup(os.Unsetenv, "KEDA_CLUSTER_OBJECT_NAMESPACE")
+
+			secret := &metav1.PartialObjectMetadata{
+				ObjectMeta: metav1.ObjectMeta{Name: "cta-secret", Namespace: "keda"},
+			}
+
+			mockCl.EXPECT().List(gomock.Any(), gomock.AssignableToTypeOf(&kedav1alpha1.TriggerAuthenticationList{}), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, list client.ObjectList, _ ...client.ListOption) error {
+					taList := list.(*kedav1alpha1.TriggerAuthenticationList)
+					taList.Items = nil
+					return nil
+				})
+
+			mockCl.EXPECT().List(gomock.Any(), gomock.AssignableToTypeOf(&kedav1alpha1.ClusterTriggerAuthenticationList{}), gomock.Any()).DoAndReturn(
+				func(_ context.Context, list client.ObjectList, _ ...client.ListOption) error {
+					ctaList := list.(*kedav1alpha1.ClusterTriggerAuthenticationList)
+					ctaList.Items = []kedav1alpha1.ClusterTriggerAuthentication{
+						{
+							ObjectMeta: metav1.ObjectMeta{Name: "my-cta"},
+							Spec: kedav1alpha1.TriggerAuthenticationSpec{
+								SecretTargetRef: []kedav1alpha1.AuthSecretTargetRef{
+									{Parameter: "apiKey", Name: "cta-secret", Key: "key"},
+								},
+							},
+						},
+					}
+					return nil
+				})
+
+			mockCl.EXPECT().List(gomock.Any(), gomock.AssignableToTypeOf(&kedav1alpha1.ScaledObjectList{}), gomock.Any()).DoAndReturn(
+				func(_ context.Context, list client.ObjectList, _ ...client.ListOption) error {
+					soList := list.(*kedav1alpha1.ScaledObjectList)
+					soList.Items = []kedav1alpha1.ScaledObject{
+						{
+							ObjectMeta: metav1.ObjectMeta{Name: "so-via-cta", Namespace: "ns1"},
+							Spec: kedav1alpha1.ScaledObjectSpec{
+								Triggers: []kedav1alpha1.ScaleTriggers{
+									{Type: "prometheus", AuthenticationRef: &kedav1alpha1.AuthenticationRef{Name: "my-cta", Kind: "ClusterTriggerAuthentication"}},
+								},
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{Name: "so-via-cta-ns2", Namespace: "ns2"},
+							Spec: kedav1alpha1.ScaledObjectSpec{
+								Triggers: []kedav1alpha1.ScaleTriggers{
+									{Type: "prometheus", AuthenticationRef: &kedav1alpha1.AuthenticationRef{Name: "my-cta", Kind: "ClusterTriggerAuthentication"}},
+								},
+							},
+						},
+					}
+					return nil
+				})
+
+			requests := soReconciler.mapSecretToScaledObjects(context.Background(), secret)
+			Expect(requests).To(HaveLen(2))
+			Expect(requests).To(ContainElement(reconcile.Request{NamespacedName: types.NamespacedName{Name: "so-via-cta", Namespace: "ns1"}}))
+			Expect(requests).To(ContainElement(reconcile.Request{NamespacedName: types.NamespacedName{Name: "so-via-cta-ns2", Namespace: "ns2"}}))
+		})
+	})
+})
+
+// Regression test for https://github.com/kedacore/keda/issues/7906: rotated
+// credentials must be picked up without recreating the ScaledObject or
+// restarting the operator.
+var _ = Describe("ScaledObjectController auth dependency invalidation", func() {
+	It("rebuilds scalers with fresh credentials when the referenced Secret or TriggerAuthentication changes", func() {
+		const namespace = "default"
+		deploymentName := "auth-rotation"
+		soName := "so-" + deploymentName
+		secretName := "auth-rotation-secret"
+		secondSecretName := "auth-rotation-secret-b"
+		taName := "auth-rotation-ta"
+
+		err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+		Expect(err).ToNot(HaveOccurred())
+
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: secretName, Namespace: namespace},
+			StringData: map[string]string{"token": "token-v1"},
+		}
+		Expect(k8sClient.Create(context.Background(), secret)).To(Succeed())
+
+		ta := &kedav1alpha1.TriggerAuthentication{
+			ObjectMeta: metav1.ObjectMeta{Name: taName, Namespace: namespace},
+			Spec: kedav1alpha1.TriggerAuthenticationSpec{
+				SecretTargetRef: []kedav1alpha1.AuthSecretTargetRef{
+					{Parameter: "bearerToken", Name: secretName, Key: "token"},
+				},
+			},
+		}
+		Expect(k8sClient.Create(context.Background(), ta)).To(Succeed())
+
+		// A long polling interval ensures the scale loop does not refresh
+		// erroring scalers behind the test's back: a stale credential must
+		// only be replaced through cache invalidation, so the test fails
+		// without the Secret/TriggerAuthentication watches.
+		pollingInterval := int32(3600)
+		so := &kedav1alpha1.ScaledObject{
+			ObjectMeta: metav1.ObjectMeta{Name: soName, Namespace: namespace},
+			Spec: kedav1alpha1.ScaledObjectSpec{
+				ScaleTargetRef:  &kedav1alpha1.ScaleTarget{Name: deploymentName},
+				PollingInterval: &pollingInterval,
+				Triggers: []kedav1alpha1.ScaleTriggers{
+					{
+						Type: "prometheus",
+						Metadata: map[string]string{
+							"serverAddress": "http://localhost:9090",
+							"query":         "up",
+							"threshold":     "100",
+							"authModes":     "bearer",
+						},
+						AuthenticationRef: &kedav1alpha1.AuthenticationRef{Name: taName},
+					},
+				},
+			},
+		}
+		Expect(k8sClient.Create(context.Background(), so)).To(Succeed())
+
+		hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+		Eventually(func() error {
+			return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-" + soName, Namespace: namespace}, hpa)
+		}).WithTimeout(30 * time.Second).WithPolling(time.Second).ShouldNot(HaveOccurred())
+
+		cachedBearerToken := func() (string, error) {
+			latestSO := &kedav1alpha1.ScaledObject{}
+			if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: namespace}, latestSO); err != nil {
+				return "", err
+			}
+			scalersCache, err := testScaleHandler.GetScalersCache(context.Background(), latestSO)
+			if err != nil {
+				return "", err
+			}
+			_, configs := scalersCache.GetScalers()
+			if len(configs) != 1 {
+				return "", fmt.Errorf("expected 1 scaler config, got %d", len(configs))
+			}
+			return configs[0].AuthParams["bearerToken"], nil
+		}
+
+		Eventually(cachedBearerToken).WithTimeout(30 * time.Second).WithPolling(time.Second).Should(Equal("token-v1"))
+
+		// Rotate the Secret: the Secret watch must invalidate the cached scalers.
+		Eventually(func() error {
+			existing := &corev1.Secret{}
+			if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: secretName, Namespace: namespace}, existing); err != nil {
+				return err
+			}
+			existing.Data["token"] = []byte("token-v2")
+			return k8sClient.Update(context.Background(), existing)
+		}).WithTimeout(10 * time.Second).WithPolling(time.Second).ShouldNot(HaveOccurred())
+
+		Eventually(cachedBearerToken).WithTimeout(60 * time.Second).WithPolling(time.Second).Should(Equal("token-v2"))
+
+		// Point the TriggerAuthentication at a different Secret: the
+		// TriggerAuthentication watch must invalidate the cached scalers.
+		secretB := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: secondSecretName, Namespace: namespace},
+			StringData: map[string]string{"token": "token-b"},
+		}
+		Expect(k8sClient.Create(context.Background(), secretB)).To(Succeed())
+
+		Eventually(func() error {
+			existing := &kedav1alpha1.TriggerAuthentication{}
+			if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: taName, Namespace: namespace}, existing); err != nil {
+				return err
+			}
+			existing.Spec.SecretTargetRef[0].Name = secondSecretName
+			return k8sClient.Update(context.Background(), existing)
+		}).WithTimeout(10 * time.Second).WithPolling(time.Second).ShouldNot(HaveOccurred())
+
+		Eventually(cachedBearerToken).WithTimeout(60 * time.Second).WithPolling(time.Second).Should(Equal("token-b"))
+	})
+})
