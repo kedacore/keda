@@ -279,6 +279,28 @@ func TestNewTLSConfig_ConcurrentCACertAppend(t *testing.T) {
 	}
 }
 
+func TestNewTLSConfig_PerObjectCAIsolation(t *testing.T) {
+	before := getRootCAs().Clone()
+
+	configA, err := NewTLSConfig(rsaCertPEM, rsaKeyPEM, randomCACert, false)
+	if err != nil {
+		t.Fatalf("configA: %s", err)
+	}
+	configB, err := NewTLSConfig(rsaCertPEM, rsaKeyPEM, rsaCertPEM, false)
+	if err != nil {
+		t.Fatalf("configB: %s", err)
+	}
+
+	if configA.RootCAs.Equal(configB.RootCAs) {
+		t.Error("per-object CA certs leaked across configs: RootCAs pools are equal")
+	}
+
+	after := getRootCAs()
+	if !before.Equal(after) {
+		t.Error("shared root CA pool was mutated by per-object caCert append")
+	}
+}
+
 type minTLSVersionTestData struct {
 	envValue        string
 	expectedVersion uint16
