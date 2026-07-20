@@ -16,6 +16,9 @@ ARG USERNAME=vscode
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 
+# renovate: datasource=github-releases depName=protocolbuffers/protobuf
+ENV PROTOC_VERSION=33.2
+
 # Configure apt, install packages and tools
 RUN apt-get update \
     && apt-get -y install --no-install-recommends apt-utils dialog unzip 2>&1 \
@@ -44,7 +47,6 @@ RUN apt-get update \
     && go install honnef.co/go/tools/cmd/staticcheck@latest \
     && go install golang.org/x/tools/gopls@latest \
     # Protocol Buffer Compiler
-    && PROTOC_VERSION=33.2 \
     && case $(dpkg --print-architecture) in \
         "amd64") PROTOC_ARCH="x86_64" ;; \
         "arm64") PROTOC_ARCH="aarch_64" ;; \
@@ -84,6 +86,7 @@ RUN apt-get update \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 
+# renovate: datasource=github-releases depName=operator-framework/operator-sdk
 ENV OPERATOR_RELEASE_VERSION=v1.26.0
 RUN ARCH=$(case $(uname -m) in x86_64) echo -n amd64 ;; aarch64) echo -n arm64 ;; *) echo -n $(uname -m) ;; esac) \
     && OS=$(uname | awk '{print tolower($0)}') \
