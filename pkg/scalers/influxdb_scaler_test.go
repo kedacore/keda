@@ -2,7 +2,6 @@ package scalers
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -140,7 +139,11 @@ func newInfluxDBTestQueryAPI(t *testing.T, csvBody string) (api.QueryAPI, func()
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/csv")
-		fmt.Fprint(w, csvBody)
+		// Serving a static test CSV body; not user-facing HTML. Matches the
+		// repo convention for suppressing the responsewriter XSS lint on
+		// httptest stub servers (see azure_pipelines_scaler_test.go).
+		// nosemgrep: no-direct-write-to-responsewriter
+		_, _ = w.Write([]byte(csvBody))
 	}))
 	client := influxdb2.NewClient(server.URL, "test-token")
 	return client.QueryAPI("test-org"), server.Close
