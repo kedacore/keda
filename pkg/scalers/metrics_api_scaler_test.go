@@ -201,6 +201,99 @@ func TestMetricAPIScalerAuthParams(t *testing.T) {
 	}
 }
 
+func TestMetricAPIScalerClusterTriggerAuthenticationRequiresAuthControlledURL(t *testing.T) {
+	tests := []struct {
+		name       string
+		metadata   map[string]string
+		authParams map[string]string
+		wantURL    string
+		wantErr    bool
+	}{
+		{
+			name: "cluster auth credentials with trigger metadata url",
+			metadata: map[string]string{
+				"url":           "http://tenant.example/metrics",
+				"valueLocation": "count",
+				"targetValue":   "1",
+				"authMode":      "bearer",
+			},
+			authParams: map[string]string{"token": "cluster-secret"},
+			wantErr:    true,
+		},
+		{
+			name: "cluster auth credentials with auth params url",
+			metadata: map[string]string{
+				"url":           "http://tenant.example/metrics",
+				"valueLocation": "count",
+				"targetValue":   "1",
+				"authMode":      "bearer",
+			},
+			authParams: map[string]string{
+				"token": "cluster-secret",
+				"url":   "https://global-metrics.keda.svc/metrics",
+			},
+			wantURL: "https://global-metrics.keda.svc/metrics",
+		},
+		{
+			name: "cluster auth reference with auth disabled ignores unused credentials",
+			metadata: map[string]string{
+				"url":           "http://tenant.example/metrics",
+				"valueLocation": "count",
+				"targetValue":   "1",
+			},
+			authParams: map[string]string{"token": "unused-cluster-secret"},
+			wantURL:    "http://tenant.example/metrics",
+		},
+		{
+			name: "cluster auth custom mode is not applied by metrics-api requests",
+			metadata: map[string]string{
+				"url":           "http://tenant.example/metrics",
+				"valueLocation": "count",
+				"targetValue":   "1",
+				"authMode":      "custom",
+			},
+			authParams: map[string]string{
+				"customAuthHeader": "X-Secret",
+				"customAuthValue":  "cluster-secret",
+			},
+			wantURL: "http://tenant.example/metrics",
+		},
+		{
+			name: "cluster auth oauth mode is not applied by metrics-api requests",
+			metadata: map[string]string{
+				"url":           "http://tenant.example/metrics",
+				"valueLocation": "count",
+				"targetValue":   "1",
+				"authMode":      "oauth",
+			},
+			authParams: map[string]string{
+				"oauthTokenURI": "https://auth.example/token",
+				"clientID":      "cluster-client",
+				"clientSecret":  "cluster-secret",
+			},
+			wantURL: "http://tenant.example/metrics",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			meta, err := parseMetricsAPIMetadata(&scalersconfig.ScalerConfig{
+				TriggerMetadata:       tt.metadata,
+				AuthParams:            tt.authParams,
+				AuthenticationRefKind: "ClusterTriggerAuthentication",
+			})
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantURL, meta.URL)
+		})
+	}
+}
+
 func TestBearerAuth(t *testing.T) {
 	authentication := map[string]string{
 		"token": "secure-token",
