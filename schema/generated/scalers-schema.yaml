@@ -3953,6 +3953,15 @@ scalers:
           default: "false"
           deprecatedAnnounce: The 'selectUnversioned' setting is DEPRECATED and will be removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Remove it if your workers are unversioned. Or use 'workerDeploymentName' and 'workerDeploymentBuildId' if you're migrating to Worker Deployment Versioning
           metadataVariableReadable: true
+        - name: includeRunningWorkflowCount
+          type: string
+          default: "false"
+          metadataVariableReadable: true
+        - name: workflowTaskQueueForCount
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
         - name: apiKey
           type: string
           optional: true
