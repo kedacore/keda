@@ -75,6 +75,7 @@ type temporalMetadata struct {
 	WorkflowTaskQueueForCount   string `keda:"name=workflowTaskQueueForCount,   order=triggerMetadata;resolvedEnv, optional"`
 	APIKey                      string `keda:"name=apiKey,                    order=authParams;resolvedEnv, optional"`
 	MinConnectTimeout           int    `keda:"name=minConnectTimeout,         order=triggerMetadata, default=5"`
+	EnableTLS                   bool   `keda:"name=enableTLS,                 order=triggerMetadata, default=true"`
 
 	UnsafeSsl     bool   `keda:"name=unsafeSsl,                 order=triggerMetadata, optional"`
 	Cert          string `keda:"name=cert,                      order=authParams, optional"`
@@ -542,23 +543,13 @@ func getTemporalClient(ctx context.Context, meta *temporalMetadata, log logr.Log
 		},
 	))
 
-	var tlsConfig *tls.Config
-
 	if meta.APIKey != "" {
 		options.Credentials = sdk.NewAPIKeyStaticCredentials(meta.APIKey)
-		tlsConfig = kedautil.CreateTLSClientConfig(meta.UnsafeSsl)
 	}
 
-	if meta.Cert != "" && meta.Key != "" {
-		var err error
-		tlsConfig, err = kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.CA, meta.UnsafeSsl)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if tlsConfig != nil && meta.TLSServerName != "" {
-		tlsConfig.ServerName = meta.TLSServerName
+	tlsConfig, err := buildTemporalTLSConfig(meta, log)
+	if err != nil {
+		return nil, err
 	}
 
 	options.ConnectionOptions = sdk.ConnectionOptions{
@@ -567,6 +558,40 @@ func getTemporalClient(ctx context.Context, meta *temporalMetadata, log logr.Log
 	}
 
 	return sdk.DialContext(ctx, options)
+}
+
+func buildTemporalTLSConfig(meta *temporalMetadata, log logr.Logger) (*tls.Config, error) {
+	// cert+key always uses TLS (mTLS); enableTLS only controls apiKey-only connections.
+	// When both apiKey and cert+key are set (e.g. Temporal Cloud), the client certificate
+	// is included - restoring the layered behavior from before this function was extracted.
+	if meta.Cert != "" && meta.Key != "" {
+		if !meta.EnableTLS {
+			log.V(0).Info("enableTLS is ignored when cert/key are provided; mTLS requires TLS")
+		}
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.CA, meta.UnsafeSsl)
+		if err != nil {
+			return nil, err
+		}
+		if meta.TLSServerName != "" {
+			tlsConfig.ServerName = meta.TLSServerName
+		}
+		return tlsConfig, nil
+	}
+
+	// apiKey without cert+key: TLS gated by enableTLS
+	if meta.APIKey != "" {
+		if !meta.EnableTLS {
+			log.V(0).Info("WARNING: enableTLS is false while apiKey is set; API key will be transmitted in cleartext - only use this in trusted network environments")
+			return nil, nil
+		}
+		tlsConfig := kedautil.CreateTLSClientConfig(meta.UnsafeSsl)
+		if meta.TLSServerName != "" {
+			tlsConfig.ServerName = meta.TLSServerName
+		}
+		return tlsConfig, nil
+	}
+
+	return nil, nil
 }
 
 func parseTemporalMetadata(config *scalersconfig.ScalerConfig, _ logr.Logger) (*temporalMetadata, error) {
