@@ -4,15 +4,18 @@
 package forgejo_runner_test
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper" // For helper methods
@@ -290,5 +293,67 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
 
-	assert.True(t, WaitForPodsCompleted(t, kc, "app=forgejo-job", testNamespace, 60, 1), "pods count should be 1 after 1 minute")
+	if !assert.True(t, WaitForPodsCompleted(t, kc, "app=forgejo-job", testNamespace, 60, 1), "pods count should be 1 after 1 minute") {
+		dumpScaleInDiagnostics(t, kc)
+	}
+}
+
+// dumpScaleInDiagnostics prints the state of the runner job and its pods when the scale-in check fails
+func dumpScaleInDiagnostics(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- scale-in failure diagnostics ---")
+	ctx := context.Background()
+
+	jobs, err := kc.BatchV1().Jobs(testNamespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Logf("diagnostics: cannot list jobs: %s", err)
+	}
+	for _, job := range jobs.Items {
+		t.Logf("job %s: active=%d succeeded=%d failed=%d", job.Name, job.Status.Active, job.Status.Succeeded, job.Status.Failed)
+		for _, cond := range job.Status.Conditions {
+			t.Logf("job %s condition: type=%s status=%s reason=%q message=%q", job.Name, cond.Type, cond.Status, cond.Reason, cond.Message)
+		}
+	}
+
+	pods, err := kc.CoreV1().Pods(testNamespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Logf("diagnostics: cannot list pods: %s", err)
+	}
+	for _, pod := range pods.Items {
+		t.Logf("pod %s: phase=%s reason=%q message=%q", pod.Name, pod.Status.Phase, pod.Status.Reason, pod.Status.Message)
+		for _, cs := range pod.Status.ContainerStatuses {
+			state := "unknown"
+			detail := ""
+			switch {
+			case cs.State.Waiting != nil:
+				state = "waiting"
+				detail = fmt.Sprintf("reason=%q message=%q", cs.State.Waiting.Reason, cs.State.Waiting.Message)
+			case cs.State.Running != nil:
+				state = "running"
+				detail = fmt.Sprintf("startedAt=%s", cs.State.Running.StartedAt.Format(time.RFC3339))
+			case cs.State.Terminated != nil:
+				state = "terminated"
+				detail = fmt.Sprintf("exitCode=%d reason=%q message=%q startedAt=%s finishedAt=%s",
+					cs.State.Terminated.ExitCode, cs.State.Terminated.Reason, cs.State.Terminated.Message,
+					cs.State.Terminated.StartedAt.Format(time.RFC3339), cs.State.Terminated.FinishedAt.Format(time.RFC3339))
+			}
+			t.Logf("pod %s container %s: restarts=%d state=%s %s", pod.Name, cs.Name, cs.RestartCount, state, detail)
+		}
+	}
+
+	events, err := kc.CoreV1().Events(testNamespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Logf("diagnostics: cannot list events: %s", err)
+	}
+	for _, ev := range events.Items {
+		t.Logf("event %s/%s: type=%s reason=%s count=%d message=%q", ev.InvolvedObject.Kind, ev.InvolvedObject.Name, ev.Type, ev.Reason, ev.Count, ev.Message)
+	}
+
+	for _, label := range []string{"app=forgejo-job", "app=forgejo"} {
+		logs, err := FindPodLogs(kc, testNamespace, label, true)
+		if err != nil {
+			t.Logf("diagnostics: cannot get logs for %s pods: %s", label, err)
+			continue
+		}
+		t.Logf("--- logs of %s pods ---\n%s", label, strings.Join(logs, ""))
+	}
 }
