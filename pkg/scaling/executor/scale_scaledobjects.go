@@ -53,6 +53,16 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		return result
 	}
 
+	// only manage HpaMinReplicaSinceTime field if the feature strictCooldownBehavior is enabled
+	if e.strictCooldownBehavior {
+		hpaMinReplicas := scaledObject.GetHPAMinReplicas()
+		if currentReplicas <= *hpaMinReplicas && scaledObject.Status.HpaMinReplicaSinceTime == nil {
+			result.HPAMinReplicaSinceTime = &metav1.Time{Time: time.Now()}
+		} else if currentReplicas > *hpaMinReplicas && scaledObject.Status.HpaMinReplicaSinceTime != nil {
+			result.HPAMinReplicaSinceTime = nil
+		}
+	}
+
 	// Return early if paused to skip normal scaling logic
 	if e.handlePaused(scaledObject, &result) {
 		return result
@@ -197,8 +207,9 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 
 	// LastActiveTime can be nil if the ScaleTarget was scaled outside of KEDA.
 	// In this case we will ignore the cooldown period and scale it down
-	if (scaledObject.Status.LastActiveTime == nil && scaledObject.CreationTimestamp.Add(initialCooldownPeriod).Before(time.Now())) || (scaledObject.Status.LastActiveTime != nil &&
-		scaledObject.Status.LastActiveTime.Add(cooldownPeriod).Before(time.Now())) {
+	if (scaledObject.Status.LastActiveTime == nil && scaledObject.CreationTimestamp.Add(initialCooldownPeriod).Before(time.Now())) || (!e.strictCooldownBehavior && scaledObject.Status.LastActiveTime != nil &&
+		scaledObject.Status.LastActiveTime.Add(cooldownPeriod).Before(time.Now())) || (e.strictCooldownBehavior && scaledObject.Status.HpaMinReplicaSinceTime != nil &&
+		scaledObject.Status.HpaMinReplicaSinceTime.Add(cooldownPeriod).Before(time.Now())) {
 		// or last time a trigger was active was > cooldown period, so scale in.
 		idleValue, scaleToReplicas := getIdleOrMinimumReplicaCount(scaledObject)
 

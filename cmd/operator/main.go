@@ -91,6 +91,7 @@ func main() {
 	var enableWebhookPatching bool
 	var enableAPIServicePatching bool
 	var filePathAuthRootPath string
+	var strictCooldownBehavior bool
 	pflag.BoolVar(&enablePrometheusMetrics, "enable-prometheus-metrics", true, "Enable the prometheus metric of keda-operator.")
 	pflag.BoolVar(&enableOpenTelemetryMetrics, "enable-opentelemetry-metrics", false, "Enable the opentelemetry metric of keda-operator.")
 	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the prometheus metric endpoint binds to.")
@@ -117,6 +118,7 @@ func main() {
 	pflag.BoolVar(&enableWebhookPatching, "enable-webhook-patching", true, "Enable patching of webhook resources. Defaults to true.")
 	pflag.BoolVar(&enableAPIServicePatching, "enable-apiservice-patching", true, "Enable patching of APIService resources. Defaults to true.")
 	pflag.StringVar(&filePathAuthRootPath, "filepath-auth-root-path", "", "Allowed filesystem path for KEDA to read auth from.")
+	pflag.BoolVar(&strictCooldownBehavior, "strict-cooldown-behavior", false, "KEDA waits for minimum HPA replicas to start cooldownPeriod before scaling to zero. Defaults to false.")
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 
@@ -258,14 +260,14 @@ func main() {
 		SecretLister:    secretInformer.Lister(),
 	}
 
-	scaledHandler := scaling.NewScaleHandler(mgr.GetClient(), scaleClient, mgr.GetScheme(), globalHTTPTimeout, eventRecorder, authClientSet)
+	scaledHandlerForScaledObject := scaling.NewScaleHandler(mgr.GetClient(), scaleClient, mgr.GetScheme(), globalHTTPTimeout, eventRecorder, authClientSet, strictCooldownBehavior)
 	eventEmitter := eventemitter.NewEventEmitter(mgr.GetClient(), eventRecorder, k8sClusterName, authClientSet)
 
 	if err = (&kedacontrollers.ScaledObjectReconciler{
 		Client:       mgr.GetClient(),
 		Scheme:       mgr.GetScheme(),
 		ScaleClient:  scaleClient,
-		ScaleHandler: scaledHandler,
+		ScaleHandler: scaledHandlerForScaledObject,
 		EventEmitter: eventEmitter,
 	}).SetupWithManager(mgr, controller.Options{
 		MaxConcurrentReconciles: scaledObjectMaxReconciles,
@@ -273,12 +275,15 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ScaledObject")
 		os.Exit(1)
 	}
+
+	scaledHandlerForScaledJob := scaling.NewScaleHandler(mgr.GetClient(), scaleClient, mgr.GetScheme(), globalHTTPTimeout, mgr.GetEventRecorder("scale-handler"), authClientSet, strictCooldownBehavior)
 	if err = (&kedacontrollers.ScaledJobReconciler{
 		Client:            mgr.GetClient(),
 		Scheme:            mgr.GetScheme(),
 		GlobalHTTPTimeout: globalHTTPTimeout,
 		EventEmitter:      eventEmitter,
 		AuthClientSet:     authClientSet,
+		ScaleHandler:      scaledHandlerForScaledJob,
 	}).SetupWithManager(mgr, controller.Options{
 		MaxConcurrentReconciles: scaledJobMaxReconciles,
 	}); err != nil {
@@ -352,7 +357,7 @@ func main() {
 
 	kedautil.SetCACertDirs(caDirs)
 
-	grpcServer := metricsservice.NewGrpcServer(&scaledHandler, metricsServiceAddr, certDir, certReady)
+	grpcServer := metricsservice.NewGrpcServer(&scaledHandlerForScaledObject, metricsServiceAddr, certDir, certReady)
 	if err := mgr.Add(&grpcServer); err != nil {
 		setupLog.Error(err, "unable to set up Metrics Service gRPC server")
 		os.Exit(1)

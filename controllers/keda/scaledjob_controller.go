@@ -59,8 +59,7 @@ type ScaledJobReconciler struct {
 	GlobalHTTPTimeout time.Duration
 	EventEmitter      eventemitter.EventHandler
 	AuthClientSet     *authentication.AuthClientSet
-
-	scaleHandler scaling.ScaleHandler
+	ScaleHandler      scaling.ScaleHandler
 }
 
 type scaledJobMetricsData struct {
@@ -80,7 +79,6 @@ func init() {
 
 // SetupWithManager initializes the ScaledJobReconciler instance and starts a new controller managed by the passed Manager instance.
 func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
-	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), nil, mgr.GetScheme(), r.GlobalHTTPTimeout, mgr.GetEventRecorder("scale-handler"), r.AuthClientSet)
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
 		// Ignore updates to ScaledJob Status (in this case metadata.Generation does not change)
@@ -198,7 +196,7 @@ func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger log
 	}
 
 	// Check ScaledJob is Ready or not
-	_, err = r.scaleHandler.GetScalersCache(ctx, scaledJob)
+	_, err = r.ScaleHandler.GetScalersCache(ctx, scaledJob)
 	if err != nil {
 		logger.Error(err, "Error getting scalers")
 		return "Failed to ensure ScaledJob is correctly created", err
@@ -318,13 +316,13 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context
 // requestScaleLoop request ScaleLoop handler for the respective ScaledJob
 func (r *ScaledJobReconciler) requestScaleLoop(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
 	logger.V(1).Info("Starting a new ScaleLoop")
-	return r.scaleHandler.HandleScalableObject(ctx, scaledJob)
+	return r.ScaleHandler.HandleScalableObject(ctx, scaledJob)
 }
 
 // stopScaleLoop stops ScaleLoop handler for the respective ScaledJob
 func (r *ScaledJobReconciler) stopScaleLoop(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
 	logger.V(1).Info("Stopping a ScaleLoop")
-	return r.scaleHandler.DeleteScalableObject(ctx, scaledJob)
+	return r.ScaleHandler.DeleteScalableObject(ctx, scaledJob)
 }
 
 func (r *ScaledJobReconciler) updatePromMetrics(scaledJob *kedav1alpha1.ScaledJob, namespacedName string) {
