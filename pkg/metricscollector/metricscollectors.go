@@ -89,6 +89,12 @@ type MetricsCollector interface {
 	// namespace, and scaledResource are provided explicitly by the caller; upstream
 	// instrumentation may derive them from context before invoking the collector.
 	RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string)
+
+	// RecordExternalMetricRequest records an HPA external metric request handled by keda-metrics-apiserver.
+	RecordExternalMetricRequest(durationSeconds float64, err error, namespace, scaledObject, metricName string)
+
+	// RecordMetricsServiceGetMetricsRequest records a GetMetrics gRPC request handled by keda-operator.
+	RecordMetricsServiceGetMetricsRequest(durationSeconds float64, err error, namespace, scaledObject, metricName string)
 }
 
 func NewMetricsCollectors(enablePrometheusMetrics bool, enableOpenTelemetryMetrics bool) {
@@ -228,6 +234,18 @@ func RecordEmptyUpstreamResponse(namespace, scaledResource, triggerName, metricN
 func RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string) {
 	for _, element := range collectors {
 		element.RecordHTTPClientRequest(durationSeconds, statusCode, isError, scaler, triggerName, metricName, namespace, scaledResource)
+	}
+}
+
+// RecordExternalMetricRequest records an HPA external metric request handled by keda-metrics-apiserver.
+func RecordExternalMetricRequest(durationSeconds float64, err error, namespace, scaledObject, metricName string) {
+	RecordAdapterExternalMetricRequest(durationSeconds, err, namespace, scaledObject, metricName)
+}
+
+// RecordMetricsServiceGetMetricsRequest records a GetMetrics gRPC request handled by keda-operator.
+func RecordMetricsServiceGetMetricsRequest(durationSeconds float64, err error, namespace, scaledObject, metricName string) {
+	for _, element := range collectors {
+		element.RecordMetricsServiceGetMetricsRequest(durationSeconds, err, namespace, scaledObject, metricName)
 	}
 }
 

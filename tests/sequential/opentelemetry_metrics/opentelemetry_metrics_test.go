@@ -1256,6 +1256,7 @@ func testOperatorMetricValues(t *testing.T, kc *kubernetes.Clientset) {
 	checkTriggerTotalValues(t, families, expectedTriggerTotals)
 	checkCRTotalValues(t, families, expectedCrTotals)
 	checkBuildInfo(t, families)
+	checkMetricsServiceGetMetricsPerformance(t, families)
 }
 
 func checkBuildInfo(t *testing.T, families map[string]*prommodel.MetricFamily) {
@@ -1597,4 +1598,32 @@ func testHTTPClientMetrics(t *testing.T, data templateData) {
 		}
 		assert.True(t, found, "expected keda_scaler_http_request_duration_seconds histogram for prometheus scaler")
 	}
+}
+
+func checkMetricsServiceGetMetricsPerformance(t *testing.T, families map[string]*prommodel.MetricFamily) {
+	t.Log("--- testing metricsservice get metrics performance metrics ---")
+
+	family, ok := families["keda_metricsservice_get_metrics_requests_count_total"]
+	assert.True(t, ok, "keda_metricsservice_get_metrics_requests_count_total not available")
+	if !ok {
+		return
+	}
+
+	metricValue := 0.0
+	for _, metric := range family.GetMetric() {
+		metricValue += *metric.Counter.Value
+	}
+	assert.GreaterOrEqual(t, metricValue, 1.0, "keda_metricsservice_get_metrics_requests_count_total has to be greater than 0")
+
+	family, ok = families["keda_metricsservice_get_metrics_duration_seconds"]
+	assert.True(t, ok, "keda_metricsservice_get_metrics_duration_seconds not available")
+	if !ok {
+		return
+	}
+
+	metricValue = 0.0
+	for _, metric := range family.GetMetric() {
+		metricValue += float64(metric.GetHistogram().GetSampleCount())
+	}
+	assert.Greater(t, metricValue, 0.0, "keda_metricsservice_get_metrics_duration_seconds has to be greater than 0")
 }

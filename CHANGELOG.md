@@ -78,6 +78,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
+- **General**: Add metric server performance metrics for HPA external metric requests and operator GetMetrics gRPC handling ([#3120](https://github.com/kedacore/keda/issues/3120))
 - **Kafka Scaler**: Add optional `fullMetadata` trigger metadata field to control Sarama's full cluster metadata refresh, reducing operator memory for topic scoped triggers ([#7453](https://github.com/kedacore/keda/issues/7453))
 - **Temporal Scaler**: Add opt-in `includeRunningWorkflowCount` (with optional `workflowTaskQueueForCount`) to block premature scale-down when the backlog is momentarily zero but Workflow workers are still busy. Worker Deployment Version scalers short-circuit on Version status (`DRAINING` stays active, `DRAINED`/`INACTIVE` scale down); other modes issue a scoped `CountWorkflow` visibility query — including `TemporalWorkerDeploymentVersion is null` for unversioned workers. ([#7459](https://github.com/kedacore/keda/issues/7459))
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
