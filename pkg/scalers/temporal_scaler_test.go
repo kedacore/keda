@@ -59,6 +59,14 @@ var testTemporalMetadata = []parseTemporalMetadataTestData{
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerDeploymentName": "my-deploy", "workerDeploymentBuildId": "v1"}, false},
 	// valid legacy buildId config
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "buildId": "v1"}, false},
+	// workflowTaskQueueForCount without includeRunningWorkflowCount
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workflowTaskQueueForCount": "wf-queue"}, true},
+	// includeRunningWorkflowCount alone is valid
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "includeRunningWorkflowCount": "true"}, false},
+	// includeRunningWorkflowCount + workflowTaskQueueForCount is valid
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "includeRunningWorkflowCount": "true", "workflowTaskQueueForCount": "wf-queue"}, false},
+	// includeRunningWorkflowCount rejects unsafe characters in taskQueue
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": "bad queue' OR '1'='1", "namespace": temporalNamespace, "includeRunningWorkflowCount": "true"}, true},
 }
 
 var temporalMetricIdentifiers = []temporalMetricIdentifier{
@@ -474,6 +482,86 @@ func TestScalerMode(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert.Equal(t, tc.want, scalerMode(&tc.meta))
+		})
+	}
+}
+
+func TestRunningWorkflowCountQuery(t *testing.T) {
+	cases := []struct {
+		name    string
+		meta    temporalMetadata
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "unversioned scopes with is null",
+			meta: temporalMetadata{TaskQueue: "orders"},
+			want: "ExecutionStatus = 'Running' AND TaskQueue = 'orders' AND TemporalWorkerDeploymentVersion is null",
+		},
+		{
+			name: "deployment version scopes by TemporalWorkerDeploymentVersion using the v1.32+ colon delimiter",
+			meta: temporalMetadata{TaskQueue: "orders", WorkerDeploymentName: "orders-svc", WorkerDeploymentBuildID: "v1"},
+			want: "ExecutionStatus = 'Running' AND TaskQueue = 'orders' AND TemporalWorkerDeploymentVersion = 'orders-svc:v1'",
+		},
+		{
+			name: "workflowTaskQueueForCount overrides taskQueue",
+			meta: temporalMetadata{TaskQueue: "activities", WorkflowTaskQueueForCount: "workflows"},
+			want: "ExecutionStatus = 'Running' AND TaskQueue = 'workflows' AND TemporalWorkerDeploymentVersion is null",
+		},
+		{
+			name: "deprecated buildId omits deployment version predicate",
+			meta: temporalMetadata{TaskQueue: "orders", BuildID: "v1"},
+			want: "ExecutionStatus = 'Running' AND TaskQueue = 'orders'",
+		},
+		{
+			name: "selectUnversioned (deprecated) omits deployment version predicate",
+			meta: temporalMetadata{TaskQueue: "orders", Unversioned: true},
+			want: "ExecutionStatus = 'Running' AND TaskQueue = 'orders'",
+		},
+		{
+			name:    "unsafe task queue is rejected",
+			meta:    temporalMetadata{TaskQueue: "bad' OR '1"},
+			wantErr: true,
+		},
+		{
+			name:    "unsafe deployment name is rejected",
+			meta:    temporalMetadata{TaskQueue: "orders", WorkerDeploymentName: "bad name", WorkerDeploymentBuildID: "v1"},
+			wantErr: true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &temporalScaler{metadata: &tc.meta}
+			got, err := s.runningWorkflowCountQuery()
+			if tc.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestIsActiveWithoutBacklogVersionStatus(t *testing.T) {
+	cases := []struct {
+		name   string
+		status enumspb.WorkerDeploymentVersionStatus
+		want   bool
+	}{
+		{"draining stays active without hitting visibility", enumspb.WORKER_DEPLOYMENT_VERSION_STATUS_DRAINING, true},
+		{"drained scales down", enumspb.WORKER_DEPLOYMENT_VERSION_STATUS_DRAINED, false},
+		{"inactive scales down", enumspb.WORKER_DEPLOYMENT_VERSION_STATUS_INACTIVE, false},
+		{"unspecified scales down", enumspb.WORKER_DEPLOYMENT_VERSION_STATUS_UNSPECIFIED, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &temporalScaler{
+				metadata: &temporalMetadata{TaskQueue: "orders", WorkerDeploymentName: "orders-svc", WorkerDeploymentBuildID: "v1"},
+				logger:   logger,
+			}
+			got := s.isActiveWithoutBacklog(context.Background(), true, tc.status)
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
