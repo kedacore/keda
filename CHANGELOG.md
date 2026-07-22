@@ -70,6 +70,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+- **General**: Introduce new Azure Cosmos DB Change Feed Scaler ([#7556](https://github.com/kedacore/keda/issues/7556))
 - **General**: Introduce new ClickHouse Scaler ([#7418](https://github.com/kedacore/keda/issues/7418))
 
 #### Experimental
