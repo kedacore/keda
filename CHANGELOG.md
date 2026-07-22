@@ -71,6 +71,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### New
 
 - **General**: Introduce new ClickHouse Scaler ([#7418](https://github.com/kedacore/keda/issues/7418))
+- **General**: Introduce new GCP Spanner Scaler ([#7891](https://github.com/kedacore/keda/issues/7891))
 
 #### Experimental
 
