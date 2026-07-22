@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/expr-lang/expr"
+	"github.com/go-logr/logr"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -449,6 +450,152 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 	assert.Equal(t, false, isActive)
 	assert.Equal(t, true, isError)
 	assert.Empty(t, activeTriggers)
+}
+
+func TestGetScalerState_ClearsErrorWhenLaterMetricSucceeds(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	recorder := events.NewFakeRecorder(1)
+
+	metricName1 := "metric-a"
+	metricName2 := "metric-b"
+	metricsSpecs := []v2.MetricSpec{
+		createMetricSpec(1, metricName1),
+		createMetricSpec(1, metricName2),
+	}
+	metricValue2 := scalers.GenerateMetricInMili(metricName2, float64(10))
+
+	metricsAndActivityFn := func(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+		if metricName == metricName1 {
+			return []external_metrics.ExternalMetricValue{}, false, errors.New("transient error")
+		}
+		return []external_metrics.ExternalMetricValue{metricValue2}, true, nil
+	}
+	newMockScaler := func() *mock_scalers.MockScaler {
+		s := mock_scalers.NewMockScaler(ctrl)
+		s.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).DoAndReturn(metricsAndActivityFn).AnyTimes()
+		s.EXPECT().Close(gomock.Any()).AnyTimes()
+		return s
+	}
+
+	scaler := newMockScaler()
+	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
+	factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		return newMockScaler(), &scalersconfig.ScalerConfig{}, nil
+	}
+
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "test",
+		},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+				Name: "test",
+			},
+		},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			ExternalMetricNames: []string{metricName1, metricName2},
+		},
+	}
+
+	scalerCache := cache.ScalersCache{
+		Scalers: []cache.ScalerBuilder{{
+			Scaler:  scaler,
+			Factory: factory,
+		}},
+		Recorder: recorder,
+	}
+
+	sh := scaleHandler{
+		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
+	}
+
+	result := sh.getScalerState(context.Background(), scaler, 0, scalersconfig.ScalerConfig{}, &scalerCache, logr.Discard(), &scaledObject)
+
+	assert.Nil(t, result.Err)
+	assert.True(t, result.IsActive)
+	assert.Len(t, result.Metrics, 1)
+}
+
+func TestGetScaledObjectState_NoCacheClearWhenLaterMetricSucceeds(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	recorder := events.NewFakeRecorder(1)
+
+	metricName1 := "metric-a"
+	metricName2 := "metric-b"
+	metricsSpecs := []v2.MetricSpec{
+		createMetricSpec(1, metricName1),
+		createMetricSpec(1, metricName2),
+	}
+	metricValue2 := scalers.GenerateMetricInMili(metricName2, float64(10))
+
+	metricsAndActivityFn := func(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+		if metricName == metricName1 {
+			return []external_metrics.ExternalMetricValue{}, false, errors.New("transient error")
+		}
+		return []external_metrics.ExternalMetricValue{metricValue2}, true, nil
+	}
+	newMockScaler := func() *mock_scalers.MockScaler {
+		s := mock_scalers.NewMockScaler(ctrl)
+		s.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).DoAndReturn(metricsAndActivityFn).AnyTimes()
+		s.EXPECT().Close(gomock.Any()).AnyTimes()
+		return s
+	}
+
+	scaler := newMockScaler()
+	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
+	factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		return newMockScaler(), &scalersconfig.ScalerConfig{}, nil
+	}
+
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "test",
+		},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+				Name: "test",
+			},
+		},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			ExternalMetricNames: []string{metricName1, metricName2},
+		},
+	}
+
+	scalerCache := cache.ScalersCache{
+		Scalers: []cache.ScalerBuilder{{
+			Scaler:  scaler,
+			Factory: factory,
+		}},
+		Recorder: recorder,
+	}
+
+	caches := map[string]*cache.ScalersCache{}
+	cacheKey := scaledObject.GenerateIdentifier()
+	caches[cacheKey] = &scalerCache
+
+	sh := scaleHandler{
+		scalerCaches:             caches,
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
+	}
+
+	isActive, isError, _, activeTriggers, _, err := sh.getScaledObjectState(context.Background(), &scaledObject)
+	scalerCache.Close(context.Background())
+
+	assert.NoError(t, err)
+	assert.True(t, isActive)
+	assert.False(t, isError)
+	assert.Contains(t, activeTriggers, metricName2)
+	_, cacheStillPresent := sh.scalerCaches[cacheKey]
+	assert.True(t, cacheStillPresent, "scalers cache should not be cleared when a later metric succeeds")
 }
 
 func TestCheckScaledObjectScalersWithTriggerAuthError(t *testing.T) {
