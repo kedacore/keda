@@ -6048,6 +6048,12 @@
                     "metadataVariableReadable": true
                 },
                 {
+                    "name": "enableTLS",
+                    "type": "string",
+                    "default": "true",
+                    "metadataVariableReadable": true
+                },
+                {
                     "name": "unsafeSsl",
                     "type": "string",
                     "optional": true,
