@@ -161,6 +161,7 @@ New deprecation(s):
 - **General**: Honor `stderrthreshold` when `logtostderr` is enabled by updating klog to v2.140.0 ([#7568](https://github.com/kedacore/keda/pull/7568))
 - **General**: Limit projected service account token reads during Vault authentication ([#7783](https://github.com/kedacore/keda/issues/7783))
 - **General**: Reject ScaledObject creation and update when the name exceeds 63 characters ([#6998](https://github.com/kedacore/keda/issues/6998))
+- **General**: Share a single `http.Transport` (per TLS mode) across scalers that use `kedautil.CreateHTTPClient`, so all scalers reuse one connection pool and DNS cache. Eliminates re-dial storms at high ScaledObject counts when connections drop (metric-source pod restart, idle eviction, network hiccup) ([#7789](https://github.com/kedacore/keda/issues/7789))
 - **AWS Scalers**: Fix TCP connection leak by closing HTTP idle connections on scaler `Close()` for SQS, Kinesis, DynamoDB, DynamoDB Streams, and CloudWatch scalers ([#7756](https://github.com/kedacore/keda/issues/7756))
 - **Azure Data Explorer Scaler**: Remove clientSecretFromEnv support ([#7554](https://github.com/kedacore/keda/pull/7554))
 - **Azure Event Hub Scaler**: Reject non-positive `unprocessedEventThreshold` to prevent integer division by zero when computing lag ([#7732](https://github.com/kedacore/keda/issues/7732))
