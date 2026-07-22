@@ -91,6 +91,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Restore gRPC reconnect backoff in the metrics service client; an unset `Backoff` in `WithConnectParams` disabled backoff and caused a zero-delay reconnect loop that flooded logs when keda-operator was unreachable ([#7856](https://github.com/kedacore/keda/issues/7856))
 - **General**: Treat negative external metric values as zero to prevent incorrect HPA scaling ([#7880](https://github.com/kedacore/keda/issues/7880))
 - **Azure Blob Storage Scaler**: Fix `globPattern` never matching when written in path-style with a leading `/`, since blob names never have one ([#6492](https://github.com/kedacore/keda/issues/6492))
+- **CouchDB Scaler**: Return an error when the query result stream is interrupted mid-iteration instead of silently reporting an undercounted result ([#7907](https://github.com/kedacore/keda/pull/7907))
 - **MongoDB Scaler**: Disconnect the client when the initial `Ping` fails so the background topology-monitoring connections opened by `mongo.Connect` are not leaked ([#5612](https://github.com/kedacore/keda/issues/5612))
 
 ### Deprecations
