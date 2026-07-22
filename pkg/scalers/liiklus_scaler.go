@@ -35,6 +35,16 @@ type liiklusMetadata struct {
 	triggerIndex           int
 }
 
+func (m *liiklusMetadata) Validate() error {
+	if m.LagThreshold <= 0 {
+		return fmt.Errorf("%q must be a positive number", "lagThreshold")
+	}
+	if m.ActivationLagThreshold < 0 {
+		return fmt.Errorf("%q must be a non-negative number", "activationLagThreshold")
+	}
+	return nil
+}
+
 const (
 	liiklusMetricType = "External"
 )

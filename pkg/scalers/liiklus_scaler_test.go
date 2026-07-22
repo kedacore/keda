@@ -85,6 +85,38 @@ var parseLiiklusMetadataTestDataset = []parseLiiklusMetadataTestData{
 			triggerIndex:           0,
 		},
 	},
+	{
+		name:             "Zero lagThreshold is rejected to avoid a divide-by-zero",
+		metadata:         map[string]string{"topic": "foo", "address": "using-mock", "group": "mygroup", "lagThreshold": "0"},
+		ExpectedErr:      fmt.Errorf("error parsing liiklus metadata: %q must be a positive number", "lagThreshold"),
+		ExpectedMetadata: nil,
+	},
+	{
+		name:             "Negative lagThreshold is rejected",
+		metadata:         map[string]string{"topic": "foo", "address": "using-mock", "group": "mygroup", "lagThreshold": "-1"},
+		ExpectedErr:      fmt.Errorf("error parsing liiklus metadata: %q must be a positive number", "lagThreshold"),
+		ExpectedMetadata: nil,
+	},
+	{
+		name:             "Negative activationLagThreshold is rejected",
+		metadata:         map[string]string{"topic": "foo", "address": "using-mock", "group": "mygroup", "activationLagThreshold": "-1"},
+		ExpectedErr:      fmt.Errorf("error parsing liiklus metadata: %q must be a non-negative number", "activationLagThreshold"),
+		ExpectedMetadata: nil,
+	},
+	{
+		name:        "Minimum valid thresholds are accepted",
+		metadata:    map[string]string{"topic": "foo", "address": "using-mock", "group": "mygroup", "lagThreshold": "1", "activationLagThreshold": "0"},
+		ExpectedErr: nil,
+		ExpectedMetadata: &liiklusMetadata{
+			LagThreshold:           1,
+			ActivationLagThreshold: 0,
+			Address:                "using-mock",
+			Topic:                  "foo",
+			Group:                  "mygroup",
+			GroupVersion:           0,
+			triggerIndex:           0,
+		},
+	},
 }
 
 var liiklusMetricIdentifiers = []liiklusMetricIdentifier{
