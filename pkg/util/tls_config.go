@@ -80,7 +80,11 @@ func NewTLSConfigWithPassword(clientCert, clientKey, clientKeyPassword, caCert s
 	}
 
 	if caCert != "" {
-		config.RootCAs.AppendCertsFromPEM([]byte(caCert))
+		pool := getRootCAs().Clone()
+		if ok := pool.AppendCertsFromPEM([]byte(caCert)); !ok {
+			return nil, fmt.Errorf("error appending CA certs")
+		}
+		config.RootCAs = pool
 	}
 
 	return config, nil
