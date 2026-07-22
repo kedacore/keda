@@ -33,7 +33,11 @@ func GetEventHubClient(info EventHubInfo, logger logr.Logger) (*azeventhubs.Prod
 
 	switch info.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		hub, err := azeventhubs.NewProducerClientFromConnectionString(info.EventHubConnection, info.EventHubName, opts)
+		eventHubName := info.EventHubName
+		if strings.Contains(info.EventHubConnection, "EntityPath") {
+			eventHubName = ""
+		}
+		hub, err := azeventhubs.NewProducerClientFromConnectionString(info.EventHubConnection, eventHubName, opts)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create hub client: %w", err)
 		}
