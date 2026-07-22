@@ -81,15 +81,26 @@ func init() {
 // SetupWithManager initializes the ScaledJobReconciler instance and starts a new controller managed by the passed Manager instance.
 func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
 	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), nil, mgr.GetScheme(), r.GlobalHTTPTimeout, mgr.GetEventRecorder("scale-handler"), r.AuthClientSet)
+
+	// WATCH_LABEL_SELECTOR scopes this operator to ScaledJobs matching the selector.
+	labelSelectorPredicate, err := util.WatchLabelSelectorPredicate()
+	if err != nil {
+		return err
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
 		// Ignore updates to ScaledJob Status (in this case metadata.Generation does not change)
 		// so reconcile loop is not started on Status updates
 		For(&kedav1alpha1.ScaledJob{}, builder.WithPredicates(
-			predicate.Or(
-				kedacontrollerutil.PausedPredicate{},
-				predicate.GenerationChangedPredicate{},
-			))).
+			predicate.And(
+				labelSelectorPredicate,
+				predicate.Or(
+					kedacontrollerutil.PausedPredicate{},
+					predicate.GenerationChangedPredicate{},
+				),
+			),
+		)).
 		WithEventFilter(util.IgnoreOtherNamespaces()).
 		Complete(r)
 }
