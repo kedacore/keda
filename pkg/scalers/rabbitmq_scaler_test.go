@@ -1304,26 +1304,26 @@ func TestOAuth2HTTPClientCreation(t *testing.T) {
 	}
 
 	// Verify OAuth2 metadata was parsed correctly
-	if !scaler.metadata.hasOAuth2 {
-		t.Error("Expected hasOAuth2 to be true")
+	if !scaler.metadata.Auth.EnabledOAuth() {
+		t.Error("Expected Auth.EnabledOAuth() to be true")
 	}
 
-	if scaler.metadata.OauthTokenURI != "https://oauth.example.com/token" {
-		t.Errorf("Expected OauthTokenURI to be 'https://oauth.example.com/token' but got '%s'", scaler.metadata.OauthTokenURI)
+	if scaler.metadata.Auth.OauthTokenURI != "https://oauth.example.com/token" {
+		t.Errorf("Expected OauthTokenURI to be 'https://oauth.example.com/token' but got '%s'", scaler.metadata.Auth.OauthTokenURI)
 	}
 
-	if scaler.metadata.ClientID != "my-client" {
-		t.Errorf("Expected ClientID to be 'my-client' but got '%s'", scaler.metadata.ClientID)
+	if scaler.metadata.Auth.ClientID != "my-client" {
+		t.Errorf("Expected ClientID to be 'my-client' but got '%s'", scaler.metadata.Auth.ClientID)
 	}
 
-	if scaler.metadata.ClientSecret != "my-secret" {
-		t.Errorf("Expected ClientSecret to be 'my-secret' but got '%s'", scaler.metadata.ClientSecret)
+	if scaler.metadata.Auth.ClientSecret != "my-secret" {
+		t.Errorf("Expected ClientSecret to be 'my-secret' but got '%s'", scaler.metadata.Auth.ClientSecret)
 	}
 
-	assert.Equal(t, []string{"rabbitmq.read", "rabbitmq.write"}, scaler.metadata.Scopes)
+	assert.Equal(t, []string{"rabbitmq.read", "rabbitmq.write"}, scaler.metadata.Auth.Scopes)
 
-	if scaler.metadata.EndpointParams.Get("audience") != "rabbitmq" {
-		t.Errorf("Expected EndpointParams[audience] to be 'rabbitmq' but got '%s'", scaler.metadata.EndpointParams.Get("audience"))
+	if scaler.metadata.Auth.EndpointParams.Get("audience") != "rabbitmq" {
+		t.Errorf("Expected EndpointParams[audience] to be 'rabbitmq' but got '%s'", scaler.metadata.Auth.EndpointParams.Get("audience"))
 	}
 
 	// Clean up
