@@ -860,7 +860,7 @@ func TestGetHPAHealth_ScalingDisabled(t *testing.T) {
 	assert.Empty(t, msg)
 }
 
-func TestGetHPAHealth_WithinGracePeriod(t *testing.T) {
+func TestGetHPAHealth_NoGracePeriod(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockClient := mock_client.NewMockClient(ctrl)
 	exec := newTestExecutor(mockClient)
@@ -880,9 +880,11 @@ func TestGetHPAHealth_WithinGracePeriod(t *testing.T) {
 			return nil
 		})
 
+	// #7914: the anti-flap grace period was removed. HPAActive now absorbs any flapping instead,
+	// so a freshly created but unhealthy HPA must be reported unhealthy immediately.
 	healthy, msg := exec.getHPAHealth(context.TODO(), logger, so)
-	assert.True(t, healthy, "should be healthy within grace period even if ScalingActive=False")
-	assert.Empty(t, msg)
+	assert.False(t, healthy, "grace period was removed; a freshly created but unhealthy HPA must be reported unhealthy immediately")
+	assert.Equal(t, "FailedGetExternalMetric", msg)
 }
 
 // --------------------------------------------------------------------------- //
@@ -1023,10 +1025,16 @@ func TestRequestScale_NoError_HPAUnhealthy(t *testing.T) {
 
 	result := exec.RequestScale(context.TODO(), &so, true, false, ScaleExecutorOptions{})
 
+	// #7914: HPA health no longer affects Ready. The ScaledObject itself is valid, so Ready stays True.
 	readyCond := result.Conditions.GetReadyCondition()
-	assert.True(t, readyCond.IsFalse())
-	assert.Equal(t, v1alpha1.ScaledObjectConditionHPAMetricsUnavailableReason, readyCond.Reason)
-	assert.Contains(t, readyCond.Message, "FailedGetExternalMetric")
+	assert.True(t, readyCond.IsTrue())
+	assert.Equal(t, v1alpha1.ScaledObjectConditionReadySuccessReason, readyCond.Reason)
+
+	// HPA unhealthiness is now surfaced exclusively via the HPAActive condition.
+	hpaActiveCond := result.Conditions.GetHPAActiveCondition()
+	assert.True(t, hpaActiveCond.IsFalse())
+	assert.Equal(t, v1alpha1.ScaledObjectConditionHPAMetricsUnavailableReason, hpaActiveCond.Reason)
+	assert.Contains(t, hpaActiveCond.Message, "FailedGetExternalMetric")
 }
 
 func TestRequestScale_ScalerError_HPAUnhealthy(t *testing.T) {
@@ -1042,13 +1050,90 @@ func TestRequestScale_ScalerError_HPAUnhealthy(t *testing.T) {
 	mockDeploymentGet(mockClient)
 	mockUnhealthyHPA(mockClient)
 
-	// isActive=false, isError=true, no fallback → ScalingDegraded (both broken)
+	// isActive=false, isError=true, no fallback → TriggerError (SO-level reason only, no more combined ScalingDegraded)
 	result := exec.RequestScale(context.TODO(), &so, false, true, ScaleExecutorOptions{})
 
 	readyCond := result.Conditions.GetReadyCondition()
 	assert.True(t, readyCond.IsFalse())
-	assert.Equal(t, v1alpha1.ScaledObjectConditionScalingDegradedReason, readyCond.Reason)
-	assert.Contains(t, readyCond.Message, "FailedGetExternalMetric")
+	assert.Equal(t, "TriggerError", readyCond.Reason)
+	assert.NotEqual(t, v1alpha1.ScaledObjectConditionScalingDegradedReason, readyCond.Reason)
+
+	// HPA unhealthiness is now surfaced exclusively via the HPAActive condition, independent of Ready.
+	hpaActiveCond := result.Conditions.GetHPAActiveCondition()
+	assert.True(t, hpaActiveCond.IsFalse())
+	assert.Equal(t, v1alpha1.ScaledObjectConditionHPAMetricsUnavailableReason, hpaActiveCond.Reason)
+	assert.Contains(t, hpaActiveCond.Message, "FailedGetExternalMetric")
+}
+
+// TestRequestScale_TransientHPAGap_ReadyStaysTrue proves the #7914 fix: a transient HPA metric gap
+// (e.g. during a rolling restart of the metrics adapter) must no longer flip the ScaledObject's Ready
+// condition to False. Only the dedicated HPAActive condition should reflect the HPA's unhealthy state,
+// with the underlying HPA condition reason preserved in the message.
+func TestRequestScale_TransientHPAGap_ReadyStaysTrue(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := events.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+
+	so := newSOWithHPA()
+	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
+	// Ready was already True before this reconcile, as it would be in steady state.
+	so.Status.Conditions.SetReadyCondition(v1.ConditionTrue, v1alpha1.ScaledObjectConditionReadySuccessReason, v1alpha1.ScaledObjectConditionReadySuccessMessage)
+
+	mockDeploymentGet(mockClient)
+	mockUnhealthyHPA(mockClient) // simulates a transient HPAMetricsUnavailable-style gap
+
+	result := exec.RequestScale(context.TODO(), &so, true, false, ScaleExecutorOptions{})
+
+	readyCond := result.Conditions.GetReadyCondition()
+	assert.True(t, readyCond.IsTrue(), "Ready must stay True during a transient HPA metric gap")
+
+	hpaActiveCond := result.Conditions.GetHPAActiveCondition()
+	assert.True(t, hpaActiveCond.IsFalse(), "HPAActive must reflect the transient HPA unhealthiness")
+	assert.Equal(t, v1alpha1.ScaledObjectConditionHPAMetricsUnavailableReason, hpaActiveCond.Reason)
+	assert.Contains(t, hpaActiveCond.Message, "FailedGetExternalMetric", "the underlying HPA condition reason must be preserved in the message")
+}
+
+// TestRequestScale_HPAHealthy_HPAActiveTrue proves HPAActive recovers to True (and does not stay
+// permanently stuck False) once the HPA becomes healthy again.
+func TestRequestScale_HPAHealthy_HPAActiveTrue(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := events.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+
+	so := newSOWithHPA()
+	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
+	// Simulate HPAActive having been False on a prior reconcile.
+	so.Status.Conditions.SetHPAActiveCondition(v1.ConditionFalse, v1alpha1.ScaledObjectConditionHPAMetricsUnavailableReason, "HPA is not healthy: FailedGetExternalMetric")
+
+	mockDeploymentGet(mockClient)
+	mockHealthyHPA(mockClient)
+
+	result := exec.RequestScale(context.TODO(), &so, true, false, ScaleExecutorOptions{})
+
+	hpaActiveCond := result.Conditions.GetHPAActiveCondition()
+	assert.True(t, hpaActiveCond.IsTrue(), "HPAActive must recover to True once the HPA is healthy again")
+	assert.Equal(t, v1alpha1.ScaledObjectConditionHPAActiveReason, hpaActiveCond.Reason)
+}
+
+// TestRequestScale_HPAActive_NotInSharedDefaults proves HPAActive is lazy-set only: it is not part of
+// GetInitializedConditions/AreInitialized, which are shared with ScaledJob (a kind that has no HPA).
+// This is what keeps ScaledJob unaffected by this change - no HPAActive condition is ever initialized
+// on ScaledJob, since ScaledJob never calls checkHPAHealth (only RequestScale for ScaledObject does).
+func TestRequestScale_HPAActive_NotInSharedDefaults(t *testing.T) {
+	initialized := v1alpha1.GetInitializedConditions()
+	assert.Len(t, *initialized, 4, "GetInitializedConditions must remain unchanged so ScaledJob is unaffected")
+	for _, cond := range *initialized {
+		assert.NotEqual(t, v1alpha1.ConditionHPAActive, cond.Type, "HPAActive must not be part of the shared default conditions")
+	}
+
+	// Before checkHPAHealth ever runs (e.g. fresh ScaledJob-style conditions), HPAActive is unset.
+	conditions := *v1alpha1.GetInitializedConditions()
+	hpaActiveCond := conditions.GetHPAActiveCondition()
+	assert.Empty(t, hpaActiveCond.Type, "HPAActive should not appear until explicitly set")
 }
 
 func TestRequestScale_ScalerErrorWithFallback_HPAHealthy(t *testing.T) {

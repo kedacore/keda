@@ -34,6 +34,11 @@ const (
 	ConditionFallback ConditionType = "Fallback"
 	// ConditionPaused specifies that the resource is paused.
 	ConditionPaused ConditionType = "Paused"
+	// ConditionHPAActive mirrors the underlying HPA's ScalingActive condition.
+	// It is ScaledObject-specific (ScaledJob has no HPA), so it is intentionally NOT part of
+	// GetInitializedConditions/AreInitialized. It is set lazily by checkHPAHealth once an HPA
+	// exists for the ScaledObject.
+	ConditionHPAActive ConditionType = "HPAActive"
 )
 
 const (
@@ -46,10 +51,18 @@ const (
 	// ScaledObjectConditionPausedMessage defines the default Message for paused ScaledObject
 	ScaledObjectConditionPausedMessage = "ScaledObject is paused"
 
-	// ScaledObjectConditionHPAMetricsUnavailableReason is the Ready condition reason when the HPA cannot fetch metrics
+	// ScaledObjectConditionHPAMetricsUnavailableReason is the HPAActive condition reason when the HPA cannot fetch metrics
 	ScaledObjectConditionHPAMetricsUnavailableReason = "HPAMetricsUnavailable"
-	// ScaledObjectConditionScalingDegradedReason is the Ready condition reason when both scalers and HPA are unhealthy
+	// ScaledObjectConditionScalingDegradedReason was the Ready condition reason when both scalers and HPA were unhealthy.
+	// Since #7914, HPA health no longer affects Ready, so this reason is no longer emitted.
+	// TODO: possibly removable, maintainer decision (#7914)
 	ScaledObjectConditionScalingDegradedReason = "ScalingDegraded"
+	// ScaledObjectConditionHPAActiveReason is the HPAActive condition reason when the HPA is healthy
+	ScaledObjectConditionHPAActiveReason = "HPAActive"
+	// ScaledObjectConditionHPAScalingDisabledReason is the HPAActive condition reason mirroring the HPA's own
+	// ScalingDisabled reason (KEDA-managed scale-to-zero). getHPAHealth currently treats this state as healthy,
+	// so this reason is reserved for callers that want to distinguish it from a generic healthy state.
+	ScaledObjectConditionHPAScalingDisabledReason = "ScalingDisabled"
 )
 
 const (
@@ -184,6 +197,16 @@ func (c *Conditions) SetPausedCondition(status metav1.ConditionStatus, reason st
 	c.SetCondition(ConditionPaused, status, reason, message)
 }
 
+// SetHPAActiveCondition modifies HPAActive Condition according to input parameters.
+// HPAActive is ScaledObject-specific and is set lazily (see ConditionHPAActive); it is not part of
+// GetInitializedConditions, but SetCondition will append it the first time it is set.
+func (c *Conditions) SetHPAActiveCondition(status metav1.ConditionStatus, reason string, message string) {
+	if *c == nil {
+		*c = *GetInitializedConditions()
+	}
+	c.SetCondition(ConditionHPAActive, status, reason, message)
+}
+
 // GetActiveCondition returns Condition of type Active
 func (c *Conditions) GetActiveCondition() Condition {
 	if *c == nil {
@@ -214,6 +237,16 @@ func (c *Conditions) GetPausedCondition() Condition {
 		*c = *GetInitializedConditions()
 	}
 	return c.getCondition(ConditionPaused)
+}
+
+// GetHPAActiveCondition returns Condition of type HPAActive. If it has not been set yet
+// (e.g. no HPA exists for the ScaledObject yet, or this is a ScaledJob), a zero-value Condition
+// is returned.
+func (c *Conditions) GetHPAActiveCondition() Condition {
+	if *c == nil {
+		*c = *GetInitializedConditions()
+	}
+	return c.getCondition(ConditionHPAActive)
 }
 
 func (c Conditions) getCondition(conditionType ConditionType) Condition {
