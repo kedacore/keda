@@ -18,6 +18,9 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
+	"math"
+	"strconv"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -69,6 +72,9 @@ var _ admission.Validator[*ScaledJob] = &ScaledJobCustomValidator{}
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (s *ScaledJob) ValidateCreate(dryRun *bool) (admission.Warnings, error) {
 	scaledjoblog.Info("validating scaledjob creation", "namespace", s.Namespace, "name", s.Name, "scaledjob", s)
+	if err := verifyScaledJobScalingStrategy(s); err != nil {
+		return nil, err
+	}
 	return nil, verifyTriggers(s, "create", *dryRun)
 }
 
@@ -80,7 +86,22 @@ func (s *ScaledJob) ValidateUpdate(old runtime.Object, dryRun *bool) (admission.
 		scaledjoblog.V(1).Info("finalizer removal, skipping validation", "namespace", s.Namespace, "name", s.Name)
 		return nil, nil
 	}
+	if err := verifyScaledJobScalingStrategy(s); err != nil {
+		return nil, err
+	}
 	return nil, verifyTriggers(s, "update", *dryRun)
+}
+
+func verifyScaledJobScalingStrategy(s *ScaledJob) error {
+	p := s.Spec.ScalingStrategy.CustomScalingRunningJobPercentage
+	if p == "" {
+		return nil
+	}
+	v, err := strconv.ParseFloat(p, 64)
+	if err != nil || math.IsNaN(v) || math.IsInf(v, 0) {
+		return fmt.Errorf("ScaledJob.spec.scalingStrategy.customScalingRunningJobPercentage must be a valid floating-point number, got %q", p)
+	}
+	return nil
 }
 
 func (s *ScaledJob) ValidateDelete(_ *bool) (admission.Warnings, error) {

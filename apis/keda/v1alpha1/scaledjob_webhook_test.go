@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -40,6 +41,44 @@ var _ = It("should validate empty triggers in ScaledJob", func() {
 		return k8sClient.Create(context.Background(), sj)
 	}).Should(HaveOccurred())
 })
+
+func TestVerifyScaledJobScalingStrategy(t *testing.T) {
+	tests := []struct {
+		name       string
+		percentage string
+		wantErr    bool
+	}{
+		{"empty percentage is valid", "", false},
+		{"valid float 0.5", "0.5", false},
+		{"valid float 1.0", "1.0", false},
+		{"valid float 0", "0", false},
+		{"valid float 0.0", "0.0", false},
+		{"not a float", "abc", true},
+		{"partially numeric", "1.5abc", true},
+		{"NaN", "NaN", true},
+		{"positive infinity", "+Inf", true},
+		{"negative infinity", "-Inf", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sj := &ScaledJob{
+				Spec: ScaledJobSpec{
+					ScalingStrategy: ScalingStrategy{
+						CustomScalingRunningJobPercentage: tt.percentage,
+					},
+				},
+			}
+			err := verifyScaledJobScalingStrategy(sj)
+			if tt.wantErr && err == nil {
+				t.Errorf("expected error but got nil")
+			}
+			if !tt.wantErr && err != nil {
+				t.Errorf("expected no error but got: %v", err)
+			}
+		})
+	}
+}
 
 // -------------------------------------------------------------------------- //
 // ----------------------------- HELP FUNCTIONS ----------------------------- //
