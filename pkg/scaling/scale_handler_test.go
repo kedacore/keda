@@ -38,6 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -1711,4 +1712,292 @@ func TestHandleResult_DeltaDoesNotOverwriteConcurrentChanges(t *testing.T) {
 	// applied to fresh current: trigger-a stays true (concurrent update preserved), trigger-b set to true
 	assert.True(t, patchedObj.Status.TriggersActivity["trigger-a"].IsActive, "concurrent update to trigger-a must be preserved")
 	assert.True(t, patchedObj.Status.TriggersActivity["trigger-b"].IsActive, "trigger-b updated by push scaler")
+}
+
+type metricSpecWatcherTestPushScaler struct {
+	specCh chan []v2.MetricSpec
+}
+
+func (s *metricSpecWatcherTestPushScaler) GetMetricsAndActivity(context.Context, string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	return nil, false, nil
+}
+
+func (s *metricSpecWatcherTestPushScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	return nil
+}
+
+func (s *metricSpecWatcherTestPushScaler) Close(context.Context) error {
+	return nil
+}
+
+func (s *metricSpecWatcherTestPushScaler) Run(context.Context, chan<- bool) {}
+
+func (s *metricSpecWatcherTestPushScaler) MetricSpecChan() <-chan []v2.MetricSpec {
+	return s.specCh
+}
+
+func TestWatchMetricSpecUpdates_UsesLatestCacheAfterInvalidation(t *testing.T) {
+	const generation = int64(3)
+	uid := types.UID("so-uid-1")
+	scaledObject := &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       testNameGlobal,
+			Namespace:  testNamespaceGlobal,
+			UID:        uid,
+			Generation: generation,
+		},
+	}
+	key := scaledObject.GenerateIdentifier()
+
+	streamer := &metricSpecWatcherTestPushScaler{specCh: make(chan []v2.MetricSpec, 1)}
+	oldCache := &cache.ScalersCache{
+		ScaledObject:             scaledObject,
+		ScalableObjectGeneration: generation,
+		Scalers: []cache.ScalerBuilder{{
+			Scaler:       streamer,
+			ScalerConfig: scalersconfig.ScalerConfig{TriggerIndex: 0},
+		}},
+		Recorder: events.NewFakeRecorder(10),
+	}
+	// A scaler-error invalidation rebuilds the cache for the same object, so the
+	// replacement keeps the same UID and generation.
+	newCache := &cache.ScalersCache{
+		ScaledObject:             scaledObject,
+		ScalableObjectGeneration: generation,
+		Scalers: []cache.ScalerBuilder{{
+			Scaler:       &metricSpecWatcherTestPushScaler{specCh: make(chan []v2.MetricSpec)},
+			ScalerConfig: scalersconfig.ScalerConfig{TriggerIndex: 0},
+		}},
+		Recorder: events.NewFakeRecorder(10),
+	}
+
+	h := &scaleHandler{
+		scalerCaches:          map[string]*cache.ScalersCache{key: oldCache},
+		scalerCachesLock:      &sync.RWMutex{},
+		metricSpecReconcileCh: make(chan event.GenericEvent, 1),
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go h.watchMetricSpecUpdates(ctx, scaledObject.Name, scaledObject.Namespace, 0, streamer, uid, generation)
+
+	oldCache.Close(context.Background())
+	h.scalerCachesLock.Lock()
+	h.scalerCaches[key] = newCache
+	h.scalerCachesLock.Unlock()
+
+	expectedSpecs := []v2.MetricSpec{createMetricSpec(42, "s0-updated")}
+	streamer.specCh <- expectedSpecs
+
+	assert.Eventually(t, func() bool {
+		specs := newCache.GetMetricSpecForScaling(context.Background())
+		return len(specs) == 1 && specs[0].External != nil && specs[0].External.Metric.Name == "s0-updated"
+	}, time.Second, 10*time.Millisecond)
+
+	select {
+	case evt := <-h.MetricSpecReconcileChan():
+		assert.Equal(t, scaledObject.Name, evt.Object.GetName())
+		assert.Equal(t, scaledObject.Namespace, evt.Object.GetNamespace())
+	case <-time.After(time.Second):
+		t.Fatal("expected a reconcile event for the replacement cache")
+	}
+}
+
+// TestWatchMetricSpecUpdates_IgnoresStaleGeneration verifies that a watcher
+// bound to an old ScaledObject generation cannot overwrite the metric spec of a
+// cache installed for a newer generation, and does not enqueue a reconcile.
+func TestWatchMetricSpecUpdates_IgnoresStaleGeneration(t *testing.T) {
+	uid := types.UID("so-uid-1")
+	scaledObject := &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testNameGlobal,
+			Namespace: testNamespaceGlobal,
+			UID:       uid,
+		},
+	}
+	key := scaledObject.GenerateIdentifier()
+
+	streamer := &metricSpecWatcherTestPushScaler{specCh: make(chan []v2.MetricSpec, 1)}
+	// The cache in the map belongs to generation 2, but the watcher was created
+	// for generation 1.
+	newGenCache := &cache.ScalersCache{
+		ScaledObject:             scaledObject,
+		ScalableObjectGeneration: 2,
+		Scalers: []cache.ScalerBuilder{{
+			Scaler:       &metricSpecWatcherTestPushScaler{specCh: make(chan []v2.MetricSpec)},
+			ScalerConfig: scalersconfig.ScalerConfig{TriggerIndex: 0},
+		}},
+		Recorder: events.NewFakeRecorder(10),
+	}
+
+	h := &scaleHandler{
+		scalerCaches:          map[string]*cache.ScalersCache{key: newGenCache},
+		scalerCachesLock:      &sync.RWMutex{},
+		metricSpecReconcileCh: make(chan event.GenericEvent, 1),
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go h.watchMetricSpecUpdates(ctx, scaledObject.Name, scaledObject.Namespace, 0, streamer, uid, 1)
+
+	streamer.specCh <- []v2.MetricSpec{createMetricSpec(42, "s0-stale")}
+
+	// The generation-2 cache must never receive the generation-1 update, and no
+	// reconcile must be enqueued.
+	assert.Never(t, func() bool {
+		specs := newGenCache.GetMetricSpecForScaling(context.Background())
+		return len(specs) == 1 && specs[0].External != nil && specs[0].External.Metric.Name == "s0-stale"
+	}, 200*time.Millisecond, 10*time.Millisecond)
+
+	select {
+	case evt := <-h.MetricSpecReconcileChan():
+		t.Fatalf("unexpected reconcile event for stale generation update: %s/%s", evt.Object.GetNamespace(), evt.Object.GetName())
+	default:
+	}
+}
+
+// TestWatchMetricSpecUpdates_IgnoresRecreatedObject verifies that a watcher for
+// a deleted object cannot update the cache of a new object created under the
+// same namespace and name but with a different UID.
+func TestWatchMetricSpecUpdates_IgnoresRecreatedObject(t *testing.T) {
+	oldUID := types.UID("so-uid-old")
+	newUID := types.UID("so-uid-new")
+	scaledObject := &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testNameGlobal,
+			Namespace: testNamespaceGlobal,
+			UID:       newUID,
+		},
+	}
+	key := scaledObject.GenerateIdentifier()
+
+	streamer := &metricSpecWatcherTestPushScaler{specCh: make(chan []v2.MetricSpec, 1)}
+	recreatedCache := &cache.ScalersCache{
+		ScaledObject: scaledObject,
+		Scalers: []cache.ScalerBuilder{{
+			Scaler:       &metricSpecWatcherTestPushScaler{specCh: make(chan []v2.MetricSpec)},
+			ScalerConfig: scalersconfig.ScalerConfig{TriggerIndex: 0},
+		}},
+		Recorder: events.NewFakeRecorder(10),
+	}
+
+	h := &scaleHandler{
+		scalerCaches:          map[string]*cache.ScalersCache{key: recreatedCache},
+		scalerCachesLock:      &sync.RWMutex{},
+		metricSpecReconcileCh: make(chan event.GenericEvent, 1),
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Watcher was created for the deleted object (oldUID).
+	go h.watchMetricSpecUpdates(ctx, scaledObject.Name, scaledObject.Namespace, 0, streamer, oldUID, 0)
+
+	streamer.specCh <- []v2.MetricSpec{createMetricSpec(42, "s0-stale")}
+
+	assert.Never(t, func() bool {
+		specs := recreatedCache.GetMetricSpecForScaling(context.Background())
+		return len(specs) == 1 && specs[0].External != nil && specs[0].External.Metric.Name == "s0-stale"
+	}, 200*time.Millisecond, 10*time.Millisecond)
+
+	select {
+	case evt := <-h.MetricSpecReconcileChan():
+		t.Fatalf("unexpected reconcile event for recreated object update: %s/%s", evt.Object.GetNamespace(), evt.Object.GetName())
+	default:
+	}
+}
+
+func TestEnqueueMetricSpecReconcile(t *testing.T) {
+	h := &scaleHandler{metricSpecReconcileCh: make(chan event.GenericEvent, 1)}
+
+	h.enqueueMetricSpecReconcile(context.Background(), "test-so", "test-ns")
+
+	select {
+	case evt := <-h.MetricSpecReconcileChan():
+		assert.Equal(t, "test-so", evt.Object.GetName())
+		assert.Equal(t, "test-ns", evt.Object.GetNamespace())
+	default:
+		t.Fatal("expected a reconcile event to be enqueued")
+	}
+}
+
+func TestEnqueueMetricSpecReconcile_WaitsForRoomWhenFull(t *testing.T) {
+	h := &scaleHandler{metricSpecReconcileCh: make(chan event.GenericEvent, 1)}
+	h.metricSpecReconcileCh <- event.GenericEvent{Object: &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "other-so", Namespace: "other-ns"},
+	}}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	done := make(chan struct{})
+	go func() {
+		h.enqueueMetricSpecReconcile(ctx, "test-so", "test-ns")
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		t.Fatal("enqueueMetricSpecReconcile returned before channel space was available")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	select {
+	case evt := <-h.MetricSpecReconcileChan():
+		assert.Equal(t, "other-so", evt.Object.GetName())
+		assert.Equal(t, "other-ns", evt.Object.GetNamespace())
+	case <-time.After(time.Second):
+		t.Fatal("expected the preloaded event to be drained")
+	}
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("enqueueMetricSpecReconcile did not complete after channel space became available")
+	}
+
+	select {
+	case evt := <-h.MetricSpecReconcileChan():
+		assert.Equal(t, "test-so", evt.Object.GetName())
+		assert.Equal(t, "test-ns", evt.Object.GetNamespace())
+	case <-time.After(time.Second):
+		t.Fatal("expected the waiting reconcile event to be enqueued")
+	}
+}
+
+func TestEnqueueMetricSpecReconcile_RespectsContextCancellation(t *testing.T) {
+	h := &scaleHandler{metricSpecReconcileCh: make(chan event.GenericEvent, 1)}
+	h.metricSpecReconcileCh <- event.GenericEvent{Object: &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "other-so", Namespace: "other-ns"},
+	}}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		h.enqueueMetricSpecReconcile(ctx, "test-so", "test-ns")
+		close(done)
+	}()
+
+	cancel()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("enqueueMetricSpecReconcile did not return after context cancellation")
+	}
+
+	select {
+	case evt := <-h.MetricSpecReconcileChan():
+		assert.Equal(t, "other-so", evt.Object.GetName())
+	case <-time.After(time.Second):
+		t.Fatal("expected only the preloaded event to remain in the channel")
+	}
+
+	select {
+	case evt := <-h.MetricSpecReconcileChan():
+		t.Fatalf("unexpected reconcile event after cancellation: %s/%s", evt.Object.GetNamespace(), evt.Object.GetName())
+	default:
+	}
 }

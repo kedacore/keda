@@ -70,6 +70,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+- **General**: Add optional `StreamMetricSpec` server-streaming RPC to external scaler gRPC proto, allowing external-push scalers to dynamically update HPA target values without modifying the ScaledObject ([#7793](https://github.com/kedacore/keda/issues/7793))
 - **General**: Introduce new ClickHouse Scaler ([#7418](https://github.com/kedacore/keda/issues/7418))
 
 #### Experimental

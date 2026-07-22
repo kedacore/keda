@@ -38,8 +38,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -148,6 +150,9 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 				predicate.AnnotationChangedPredicate{},
 				kedacontrollerutil.HPASpecChangedPredicate{},
 			))).
+		// Reconcile when an external-push scaler streams updated metric specs
+		// (StreamMetricSpec), so the HPA is rebuilt from the freshly cached specs.
+		WatchesRawSource(source.Channel(r.ScaleHandler.MetricSpecReconcileChan(), &handler.EnqueueRequestForObject{})).
 		Complete(r)
 }
 
