@@ -2,11 +2,15 @@ package scalers
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/InfluxCommunity/influxdb3-go/v2/influxdb3"
 	"github.com/go-logr/logr"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
+	api "github.com/influxdata/influxdb-client-go/v2/api"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -126,5 +130,68 @@ func TestInfluxDBV3GetMetricSpecForScaling(t *testing.T) {
 		if metricName != testData.name {
 			t.Errorf("Wrong External metric source name: %s, expected: %s", metricName, testData.name)
 		}
+	}
+}
+
+// newInfluxDBTestQueryAPI returns a QueryAPI backed by an httptest server that
+// serves the given InfluxDB CSV response body for the flux query endpoint.
+func newInfluxDBTestQueryAPI(t *testing.T, csvBody string) (api.QueryAPI, func()) {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/csv")
+		// Serving a static test CSV body; not user-facing HTML. Matches the
+		// repo convention for suppressing the responsewriter XSS lint on
+		// httptest stub servers (see azure_pipelines_scaler_test.go).
+		// nosemgrep: no-direct-write-to-responsewriter
+		_, _ = w.Write([]byte(csvBody))
+	}))
+	client := influxdb2.NewClient(server.URL, "test-token")
+	return client.QueryAPI("test-org"), server.Close
+}
+
+func TestQueryInfluxDBReturnsValue(t *testing.T) {
+	csvBody := "#datatype,string,long,double\r\n" +
+		",result,table,_value\r\n" +
+		",_result,0,42.5\r\n\r\n"
+	queryAPI, closeServer := newInfluxDBTestQueryAPI(t, csvBody)
+	defer closeServer()
+
+	value, err := queryInfluxDB(context.Background(), queryAPI, "from(bucket:\"test\")")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if value != 42.5 {
+		t.Errorf("expected value 42.5, got: %v", value)
+	}
+}
+
+// TestQueryInfluxDBReturnsErrorOnParseFailure guards against silently masking a
+// query error as "no results found": the InfluxDB client surfaces server-side
+// errors through Err() after Next() returns false, so queryInfluxDB must check
+// it instead of assuming the result set is simply empty.
+func TestQueryInfluxDBReturnsErrorOnParseFailure(t *testing.T) {
+	// InfluxDB returns query errors as an error-annotated CSV table.
+	csvBody := "#datatype,string,string\r\n" +
+		",error,reference\r\n" +
+		"invalid query syntax,897\r\n\r\n"
+	queryAPI, closeServer := newInfluxDBTestQueryAPI(t, csvBody)
+	defer closeServer()
+
+	_, err := queryInfluxDB(context.Background(), queryAPI, "invalid")
+	if err == nil {
+		t.Fatal("expected an error when the query response cannot be parsed, got nil")
+	}
+	if strings.Contains(err.Error(), "no results found") {
+		t.Errorf("query error was masked as an empty result: %v", err)
+	}
+}
+
+func TestQueryInfluxDBReturnsErrorOnEmptyResult(t *testing.T) {
+	queryAPI, closeServer := newInfluxDBTestQueryAPI(t, "\r\n")
+	defer closeServer()
+
+	_, err := queryInfluxDB(context.Background(), queryAPI, "empty")
+	if err == nil || !strings.Contains(err.Error(), "no results found") {
+		t.Errorf("expected \"no results found\" error for an empty result, got: %v", err)
 	}
 }

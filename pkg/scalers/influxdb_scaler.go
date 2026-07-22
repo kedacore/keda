@@ -163,6 +163,12 @@ func queryInfluxDB(ctx context.Context, queryAPI api.QueryAPI, query string) (fl
 
 	valueExists := result.Next()
 	if !valueExists {
+		// Next() returns false both when the result set is empty and when the
+		// query response could not be parsed (e.g. an error surfaced by the
+		// server). Surface the latter instead of masking it as "no results".
+		if err := result.Err(); err != nil {
+			return 0, fmt.Errorf("error parsing influxdb query result: %w", err)
+		}
 		return 0, fmt.Errorf("no results found from query")
 	}
 
@@ -212,6 +218,11 @@ func queryInfluxDBV3(ctx context.Context, client *influxdb3.Client, metadata inf
 		default:
 			return 0, fmt.Errorf("value of type %T could not be converted into a float", valRaw)
 		}
+	}
+	// Next() returns false on end of stream as well as on a streaming error;
+	// check Err() so a mid-stream failure is not silently reported as success.
+	if err := result.Err(); err != nil {
+		return 0, fmt.Errorf("error reading influxdb query result: %w", err)
 	}
 	return parsedVal, nil
 }
