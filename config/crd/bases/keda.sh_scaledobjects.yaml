@@ -470,6 +470,9 @@ spec:
                 type: object
               triggersTypes:
                 type: string
+              hpaMinReplicaSinceTime:
+                format: date-time
+                type: string
             type: object
         required:
         - spec

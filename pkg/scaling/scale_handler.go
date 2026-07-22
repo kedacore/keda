@@ -94,12 +94,13 @@ type scaleHandler struct {
 }
 
 // NewScaleHandler creates a ScaleHandler object
-func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration, recorder events.EventRecorder, authClientSet *authentication.AuthClientSet) ScaleHandler {
+func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration, recorder events.EventRecorder, authClientSet *authentication.AuthClientSet,
+	strictCooldownBehavior bool) ScaleHandler {
 	return &scaleHandler{
 		client:                   client,
 		scaleClient:              scaleClient,
 		scaleLoopContexts:        &sync.Map{},
-		scaleExecutor:            executor.NewScaleExecutor(client, scaleClient, reconcilerScheme, recorder),
+		scaleExecutor:            executor.NewScaleExecutor(client, scaleClient, reconcilerScheme, recorder, strictCooldownBehavior),
 		globalHTTPTimeout:        globalHTTPTimeout,
 		recorder:                 recorder,
 		scalerCaches:             map[string]*cache.ScalersCache{},
@@ -331,6 +332,9 @@ func (h *scaleHandler) handleResult(ctx context.Context, obj kedav1alpha1.Scalab
 		if result.PauseReplicas != nil {
 			current.SetStatusPausedReplicaCount(result.PauseReplicas)
 		}
+
+		// Apply HPA min replica since time
+		current.SetStatusHPAMinReplicaSinceTime(result.HPAMinReplicaSinceTime)
 
 		// apply triggers activity delta
 		if activityUpdates != nil || activityRemovals != nil {
