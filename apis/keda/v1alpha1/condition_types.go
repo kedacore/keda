@@ -60,8 +60,9 @@ const (
 	// ScaledObjectConditionHPAActiveReason is the HPAActive condition reason when the HPA is healthy
 	ScaledObjectConditionHPAActiveReason = "HPAActive"
 	// ScaledObjectConditionHPAScalingDisabledReason is the HPAActive condition reason mirroring the HPA's own
-	// ScalingDisabled reason (KEDA-managed scale-to-zero). getHPAHealth currently treats this state as healthy,
-	// so this reason is reserved for callers that want to distinguish it from a generic healthy state.
+	// ScalingDisabled reason. The HPA sets this when KEDA has scaled the target to zero; HPAActive stays
+	// True (the HPA is not unhealthy, just intentionally idle) but this reason distinguishes it from a
+	// normally-scaling HPA.
 	ScaledObjectConditionHPAScalingDisabledReason = "ScalingDisabled"
 )
 

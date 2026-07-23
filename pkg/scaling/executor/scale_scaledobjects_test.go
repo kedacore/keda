@@ -762,8 +762,9 @@ func TestGetHPAHealth_NoHPAName(t *testing.T) {
 	so := &v1alpha1.ScaledObject{}
 	so.Status.HpaName = ""
 
-	healthy, msg := exec.getHPAHealth(context.TODO(), logger, so)
-	assert.True(t, healthy)
+	status, reason, msg := exec.getHPAHealth(context.TODO(), logger, so)
+	assert.Empty(t, status, "no HPA name yet means the HPA cannot be observed, not that it is healthy")
+	assert.Empty(t, reason)
 	assert.Empty(t, msg)
 }
 
@@ -781,8 +782,9 @@ func TestGetHPAHealth_HPAReadError(t *testing.T) {
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "my-hpa", Namespace: "test-ns"}, gomock.Any()).
 		Return(errors.New("api unavailable"))
 
-	healthy, msg := exec.getHPAHealth(context.TODO(), logger, so)
-	assert.True(t, healthy, "should treat HPA read error as healthy to avoid flapping")
+	status, reason, msg := exec.getHPAHealth(context.TODO(), logger, so)
+	assert.Empty(t, status, "a read error means the HPA cannot be observed, not that it is healthy")
+	assert.Empty(t, reason)
 	assert.Empty(t, msg)
 }
 
@@ -805,8 +807,9 @@ func TestGetHPAHealth_ScalingActiveTrue(t *testing.T) {
 			return nil
 		})
 
-	healthy, msg := exec.getHPAHealth(context.TODO(), logger, so)
-	assert.True(t, healthy)
+	status, reason, msg := exec.getHPAHealth(context.TODO(), logger, so)
+	assert.Equal(t, v1.ConditionTrue, status)
+	assert.Equal(t, v1alpha1.ScaledObjectConditionHPAActiveReason, reason)
 	assert.Empty(t, msg)
 }
 
@@ -829,9 +832,10 @@ func TestGetHPAHealth_ScalingActiveFalse(t *testing.T) {
 			return nil
 		})
 
-	healthy, msg := exec.getHPAHealth(context.TODO(), logger, so)
-	assert.False(t, healthy)
-	assert.Equal(t, "FailedGetExternalMetric", msg)
+	status, reason, msg := exec.getHPAHealth(context.TODO(), logger, so)
+	assert.Equal(t, v1.ConditionFalse, status)
+	assert.Equal(t, v1alpha1.ScaledObjectConditionHPAMetricsUnavailableReason, reason)
+	assert.Equal(t, "FailedGetExternalMetric: unable to get metrics", msg, "both the HPA's reason and its own message must be preserved")
 }
 
 func TestGetHPAHealth_ScalingDisabled(t *testing.T) {
@@ -855,9 +859,10 @@ func TestGetHPAHealth_ScalingDisabled(t *testing.T) {
 			return nil
 		})
 
-	healthy, msg := exec.getHPAHealth(context.TODO(), logger, so)
-	assert.True(t, healthy, "ScalingDisabled should be treated as healthy since KEDA manages scale-to-zero")
-	assert.Empty(t, msg)
+	status, reason, msg := exec.getHPAHealth(context.TODO(), logger, so)
+	assert.Equal(t, v1.ConditionTrue, status, "ScalingDisabled should be treated as healthy since KEDA manages scale-to-zero")
+	assert.Equal(t, v1alpha1.ScaledObjectConditionHPAScalingDisabledReason, reason, "ScalingDisabled must be distinguishable from a normally-scaling HPA")
+	assert.Equal(t, "scaling is disabled since the replica count of the target is zero", msg)
 }
 
 func TestGetHPAHealth_NoGracePeriod(t *testing.T) {
@@ -882,9 +887,38 @@ func TestGetHPAHealth_NoGracePeriod(t *testing.T) {
 
 	// #7914: the anti-flap grace period was removed. HPAActive now absorbs any flapping instead,
 	// so a freshly created but unhealthy HPA must be reported unhealthy immediately.
-	healthy, msg := exec.getHPAHealth(context.TODO(), logger, so)
-	assert.False(t, healthy, "grace period was removed; a freshly created but unhealthy HPA must be reported unhealthy immediately")
-	assert.Equal(t, "FailedGetExternalMetric", msg)
+	status, reason, msg := exec.getHPAHealth(context.TODO(), logger, so)
+	assert.Equal(t, v1.ConditionFalse, status, "grace period was removed; a freshly created but unhealthy HPA must be reported unhealthy immediately")
+	assert.Equal(t, v1alpha1.ScaledObjectConditionHPAMetricsUnavailableReason, reason)
+	assert.Equal(t, "FailedGetExternalMetric", msg, "cond.Message was empty, so the message falls back to the HPA's own reason alone")
+}
+
+// TestGetHPAHealth_NoScalingActiveConditionYet covers the third "cannot observe" path: the HPA
+// exists and was read successfully, but hasn't reported a ScalingActive condition yet (e.g. right
+// after creation, before the HPA controller's first sync). This must not be treated as healthy.
+func TestGetHPAHealth_NoScalingActiveConditionYet(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	exec := newTestExecutor(mockClient)
+	logger := logf.Log.WithName("test")
+
+	so := &v1alpha1.ScaledObject{}
+	so.Name = "test-so"
+	so.Namespace = "test-ns"
+	so.Status.HpaName = "my-hpa"
+
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "my-hpa", Namespace: "test-ns"}, gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...interface{}) error {
+			obj.Status.Conditions = []autoscalingv2.HorizontalPodAutoscalerCondition{
+				{Type: autoscalingv2.AbleToScale, Status: corev1.ConditionTrue},
+			}
+			return nil
+		})
+
+	status, reason, msg := exec.getHPAHealth(context.TODO(), logger, so)
+	assert.Empty(t, status, "an HPA that hasn't reported ScalingActive yet cannot be observed, not treated as healthy")
+	assert.Empty(t, reason)
+	assert.Empty(t, msg)
 }
 
 // --------------------------------------------------------------------------- //
@@ -1030,11 +1064,12 @@ func TestRequestScale_NoError_HPAUnhealthy(t *testing.T) {
 	assert.True(t, readyCond.IsTrue())
 	assert.Equal(t, v1alpha1.ScaledObjectConditionReadySuccessReason, readyCond.Reason)
 
-	// HPA unhealthiness is now surfaced exclusively via the HPAActive condition.
+	// HPA unhealthiness is now surfaced exclusively via the HPAActive condition, with both the
+	// HPA's reason (normalized into HPAMetricsUnavailable) and its own message preserved.
 	hpaActiveCond := result.Conditions.GetHPAActiveCondition()
 	assert.True(t, hpaActiveCond.IsFalse())
 	assert.Equal(t, v1alpha1.ScaledObjectConditionHPAMetricsUnavailableReason, hpaActiveCond.Reason)
-	assert.Contains(t, hpaActiveCond.Message, "FailedGetExternalMetric")
+	assert.Equal(t, "FailedGetExternalMetric: metrics not available", hpaActiveCond.Message)
 }
 
 func TestRequestScale_ScalerError_HPAUnhealthy(t *testing.T) {
@@ -1062,7 +1097,7 @@ func TestRequestScale_ScalerError_HPAUnhealthy(t *testing.T) {
 	hpaActiveCond := result.Conditions.GetHPAActiveCondition()
 	assert.True(t, hpaActiveCond.IsFalse())
 	assert.Equal(t, v1alpha1.ScaledObjectConditionHPAMetricsUnavailableReason, hpaActiveCond.Reason)
-	assert.Contains(t, hpaActiveCond.Message, "FailedGetExternalMetric")
+	assert.Equal(t, "FailedGetExternalMetric: metrics not available", hpaActiveCond.Message)
 }
 
 // TestRequestScale_TransientHPAGap_ReadyStaysTrue proves the #7914 fix: a transient HPA metric gap
@@ -1092,11 +1127,11 @@ func TestRequestScale_TransientHPAGap_ReadyStaysTrue(t *testing.T) {
 	hpaActiveCond := result.Conditions.GetHPAActiveCondition()
 	assert.True(t, hpaActiveCond.IsFalse(), "HPAActive must reflect the transient HPA unhealthiness")
 	assert.Equal(t, v1alpha1.ScaledObjectConditionHPAMetricsUnavailableReason, hpaActiveCond.Reason)
-	assert.Contains(t, hpaActiveCond.Message, "FailedGetExternalMetric", "the underlying HPA condition reason must be preserved in the message")
+	assert.Equal(t, "FailedGetExternalMetric: metrics not available", hpaActiveCond.Message, "both the underlying HPA reason and its own message must be preserved")
 }
 
-// TestRequestScale_HPAHealthy_HPAActiveTrue proves HPAActive recovers to True (and does not stay
-// permanently stuck False) once the HPA becomes healthy again.
+// TestRequestScale_HPAHealthy_HPAActiveTrue proves a healthy, actively-scaling HPA produces
+// HPAActive=True with the active reason, passing through the HPA's own (here empty) message.
 func TestRequestScale_HPAHealthy_HPAActiveTrue(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockClient := mock_client.NewMockClient(ctrl)
@@ -1106,8 +1141,6 @@ func TestRequestScale_HPAHealthy_HPAActiveTrue(t *testing.T) {
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
-	// Simulate HPAActive having been False on a prior reconcile.
-	so.Status.Conditions.SetHPAActiveCondition(v1.ConditionFalse, v1alpha1.ScaledObjectConditionHPAMetricsUnavailableReason, "HPA is not healthy: FailedGetExternalMetric")
 
 	mockDeploymentGet(mockClient)
 	mockHealthyHPA(mockClient)
@@ -1115,8 +1148,70 @@ func TestRequestScale_HPAHealthy_HPAActiveTrue(t *testing.T) {
 	result := exec.RequestScale(context.TODO(), &so, true, false, ScaleExecutorOptions{})
 
 	hpaActiveCond := result.Conditions.GetHPAActiveCondition()
-	assert.True(t, hpaActiveCond.IsTrue(), "HPAActive must recover to True once the HPA is healthy again")
+	assert.True(t, hpaActiveCond.IsTrue(), "HPAActive must be True when the HPA is actively scaling")
 	assert.Equal(t, v1alpha1.ScaledObjectConditionHPAActiveReason, hpaActiveCond.Reason)
+	assert.Empty(t, hpaActiveCond.Message, "the mocked HPA's ScalingActive condition has no message, so HPAActive.Message passes that through")
+}
+
+// TestRequestScale_HPAScalingDisabled_HPAActiveTrueWithDistinctReason proves the ScalingDisabled
+// case (KEDA-managed scale-to-zero) is surfaced as HPAActive=True but with a reason distinct from a
+// normally-scaling HPA, so consumers can tell "actively scaling" apart from "intentionally idle".
+func TestRequestScale_HPAScalingDisabled_HPAActiveTrueWithDistinctReason(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := events.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+
+	so := newSOWithHPA()
+	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
+
+	mockDeploymentGet(mockClient)
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "my-hpa", Namespace: "test-ns"}, gomock.AssignableToTypeOf(&autoscalingv2.HorizontalPodAutoscaler{})).
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...interface{}) error {
+			obj.Status.Conditions = []autoscalingv2.HorizontalPodAutoscalerCondition{
+				{Type: autoscalingv2.ScalingActive, Status: corev1.ConditionFalse, Reason: "ScalingDisabled", Message: "scaling is disabled since the replica count of the target is zero"},
+			}
+			return nil
+		})
+
+	result := exec.RequestScale(context.TODO(), &so, true, false, ScaleExecutorOptions{})
+
+	hpaActiveCond := result.Conditions.GetHPAActiveCondition()
+	assert.True(t, hpaActiveCond.IsTrue(), "ScalingDisabled must still be reported as HPAActive=True, not unhealthy")
+	assert.Equal(t, v1alpha1.ScaledObjectConditionHPAScalingDisabledReason, hpaActiveCond.Reason, "the reason must distinguish this from a normally-scaling HPA")
+	assert.Equal(t, "scaling is disabled since the replica count of the target is zero", hpaActiveCond.Message)
+}
+
+// TestCheckHPAHealth_CannotObserve_HPAActiveUnchanged proves the tri-state contract of getHPAHealth:
+// when the HPA cannot currently be observed (e.g. a transient read error), checkHPAHealth must leave
+// a previously-observed HPAActive condition exactly as it was, instead of optimistically flipping it
+// to True or otherwise touching it.
+func TestCheckHPAHealth_CannotObserve_HPAActiveUnchanged(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	exec := newTestExecutor(mockClient)
+	logger := logf.Log.WithName("test")
+
+	so := &v1alpha1.ScaledObject{}
+	so.Name = "test-so"
+	so.Namespace = "test-ns"
+	so.Status.HpaName = "my-hpa"
+
+	// HPA read fails (e.g. a transient API server hiccup): getHPAHealth cannot observe the HPA.
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "my-hpa", Namespace: "test-ns"}, gomock.Any()).
+		Return(errors.New("api unavailable"))
+
+	result := &ScaleResult{Conditions: v1alpha1.Conditions{}}
+	// Simulate a previously-observed HPAActive=False from an earlier, successful reconcile.
+	result.Conditions.SetHPAActiveCondition(v1.ConditionFalse, v1alpha1.ScaledObjectConditionHPAMetricsUnavailableReason, "FailedGetExternalMetric: metrics not available")
+
+	exec.checkHPAHealth(context.TODO(), logger, so, result)
+
+	hpaActiveCond := result.Conditions.GetHPAActiveCondition()
+	assert.True(t, hpaActiveCond.IsFalse(), "a transient read error must not flip HPAActive away from its last observed state")
+	assert.Equal(t, v1alpha1.ScaledObjectConditionHPAMetricsUnavailableReason, hpaActiveCond.Reason)
+	assert.Equal(t, "FailedGetExternalMetric: metrics not available", hpaActiveCond.Message, "the last genuinely observed HPAActive state must persist untouched")
 }
 
 // TestRequestScale_HPAActive_NotInSharedDefaults proves HPAActive is lazy-set only: it is not part of
