@@ -107,6 +107,9 @@ type TriggerAuthenticationSpec struct {
 
 	// +optional
 	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
+
+	// +optional
+	AzureServicePrincipal *AzureServicePrincipal `json:"azureServicePrincipal,omitempty"`
 }
 
 // TriggerAuthenticationStatus defines the observed state of TriggerAuthentication
@@ -436,6 +439,37 @@ const (
 )
 
 type OAuth2ClientSecret struct {
+	ValueFrom ValueFromSecret `json:"valueFrom"`
+}
+
+// AzureServicePrincipal defines Microsoft Entra service principal credentials
+// that can be shared by Azure scalers.
+type AzureServicePrincipal struct {
+	TenantID string `json:"tenantId"`
+
+	ClientID string `json:"clientId"`
+
+	// Cloud specifies the Azure cloud environment. Defaults to AzurePublicCloud.
+	// +optional
+	Cloud string `json:"cloud,omitempty"`
+
+	// ActiveDirectoryEndpoint is required when cloud is set to Private.
+	// +optional
+	ActiveDirectoryEndpoint string `json:"activeDirectoryEndpoint,omitempty"`
+
+	// +optional
+	ClientSecret *AzureServicePrincipalCredential `json:"clientSecret,omitempty"`
+
+	// +optional
+	ClientCertificate *AzureServicePrincipalCredential `json:"clientCertificate,omitempty"`
+
+	// +optional
+	ClientCertificatePassword *AzureServicePrincipalCredential `json:"clientCertificatePassword,omitempty"`
+}
+
+// AzureServicePrincipalCredential references credential data stored in a
+// Kubernetes Secret.
+type AzureServicePrincipalCredential struct {
 	ValueFrom ValueFromSecret `json:"valueFrom"`
 }
 
