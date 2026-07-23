@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -207,5 +208,37 @@ func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 		}
 	}
 
+	if spec.AzureServicePrincipal != nil {
+		if err := validateAzureServicePrincipal(spec.AzureServicePrincipal); err != nil {
+			return nil, err
+		}
+	}
+
 	return nil, nil
+}
+
+func validateAzureServicePrincipal(servicePrincipal *AzureServicePrincipal) error {
+	if servicePrincipal.TenantID == "" {
+		return fmt.Errorf("azureServicePrincipal.tenantId is required when azureServicePrincipal is configured")
+	}
+	if servicePrincipal.ClientID == "" {
+		return fmt.Errorf("azureServicePrincipal.clientId is required when azureServicePrincipal is configured")
+	}
+	if servicePrincipal.ClientSecret != nil && servicePrincipal.ClientCertificate != nil {
+		return fmt.Errorf("azureServicePrincipal.clientSecret and azureServicePrincipal.clientCertificate are mutually exclusive")
+	}
+	if servicePrincipal.ClientSecret == nil && servicePrincipal.ClientCertificate == nil {
+		return fmt.Errorf("azureServicePrincipal requires either clientSecret or clientCertificate")
+	}
+	if servicePrincipal.ClientCertificatePassword != nil && servicePrincipal.ClientCertificate == nil {
+		return fmt.Errorf("azureServicePrincipal.clientCertificatePassword requires clientCertificate")
+	}
+	isPrivateCloud := strings.EqualFold(servicePrincipal.Cloud, "Private")
+	if isPrivateCloud && servicePrincipal.ActiveDirectoryEndpoint == "" {
+		return fmt.Errorf("azureServicePrincipal.activeDirectoryEndpoint is required when cloud is Private")
+	}
+	if !isPrivateCloud && servicePrincipal.ActiveDirectoryEndpoint != "" {
+		return fmt.Errorf("azureServicePrincipal.activeDirectoryEndpoint can only be set when cloud is Private")
+	}
+	return nil
 }
