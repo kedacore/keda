@@ -138,9 +138,10 @@ func (e *scaleExecutor) checkHPAHealth(ctx context.Context, logger logr.Logger, 
 //   - metav1.ConditionTrue: the HPA is healthy - either actively scaling (reason
 //     ScaledObjectConditionHPAActiveReason) or intentionally idle because KEDA has scaled the
 //     target to zero (reason ScaledObjectConditionHPAScalingDisabledReason).
-//   - metav1.ConditionFalse: the HPA is unhealthy. The reason is normalized to
-//     ScaledObjectConditionHPAMetricsUnavailableReason; the underlying HPA condition's own reason
-//     and message are preserved in message.
+//   - metav1.ConditionFalse: the HPA is unhealthy. The HPA's own cond.Reason is passed through as-is
+//     so downstream tooling can filter on the specific reason (e.g. FailedGetExternalMetric);
+//     ScaledObjectConditionHPAMetricsUnavailableReason is used as a fallback only when the HPA
+//     reports an empty reason.
 //   - "" (empty status): the HPA could not be observed on this reconcile (no HPA yet, a transient
 //     read error, or the HPA hasn't reported a ScalingActive condition yet). This is distinct from
 //     "healthy" - callers must not treat it as such.
@@ -163,28 +164,24 @@ func (e *scaleExecutor) getHPAHealth(ctx context.Context, logger logr.Logger, sc
 		if cond.Type != autoscalingv2.ScalingActive {
 			continue
 		}
-		if cond.Reason == "ScalingDisabled" {
-			// KEDA-managed scale-to-zero: the HPA is intentionally idle, not unhealthy.
+		switch {
+		case cond.Status == corev1.ConditionTrue:
+			return metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionHPAActiveReason, "HPA is actively scaling"
+		case cond.Reason == "ScalingDisabled":
+			// KEDA manages scale-to-zero; HPA disables itself at 0 replicas.
 			return metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionHPAScalingDisabledReason, cond.Message
+		default:
+			hpaReason := cond.Reason
+			if hpaReason == "" {
+				hpaReason = kedav1alpha1.ScaledObjectConditionHPAMetricsUnavailableReason
+			}
+			msg := fmt.Sprintf("HPA is not actively scaling: %s", cond.Message)
+			return metav1.ConditionFalse, hpaReason, msg
 		}
-		if cond.Status == corev1.ConditionTrue {
-			return metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionHPAActiveReason, cond.Message
-		}
-		return metav1.ConditionFalse, kedav1alpha1.ScaledObjectConditionHPAMetricsUnavailableReason, hpaUnhealthyMessage(cond)
 	}
 
 	logger.V(1).Info("HPA has not yet reported a ScalingActive condition, skipping health check")
 	return "", "", ""
-}
-
-// hpaUnhealthyMessage builds the HPAActive message for an unhealthy HPA. Since the Reason field is
-// normalized to ScaledObjectConditionHPAMetricsUnavailableReason, the specific underlying HPA reason
-// is folded into the message alongside the HPA's own message so neither is lost.
-func hpaUnhealthyMessage(cond autoscalingv2.HorizontalPodAutoscalerCondition) string {
-	if cond.Message == "" {
-		return cond.Reason
-	}
-	return fmt.Sprintf("%s: %s", cond.Reason, cond.Message)
 }
 
 // An object will be scaled down to 0 only if it's passed its cooldown period
