@@ -448,6 +448,7 @@ func TestExternalPushScaler_StreamMetricSpec(t *testing.T) {
 	metricSpecsCh := make(chan *pb.GetMetricSpecResponse, 1)
 	activeCh := make(chan bool, 1)
 
+	// nosemgrep: go.grpc.security.grpc-server-insecure-connection.grpc-server-insecure-connection
 	grpcServer := grpc.NewServer()
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -516,6 +517,7 @@ func TestExternalPushScaler_StreamMetricSpec(t *testing.T) {
 func TestExternalPushScaler_StreamMetricSpecUnimplemented(t *testing.T) {
 	activeCh := make(chan bool, 1)
 
+	// nosemgrep: go.grpc.security.grpc-server-insecure-connection.grpc-server-insecure-connection
 	grpcServer := grpc.NewServer()
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
