@@ -128,7 +128,7 @@ func TestGetPkiRequest(t *testing.T) {
 		SecretLister:    mockSecretLister,
 	}
 
-	vault := NewHashicorpVaultHandler(nil, authClientSet, "default")
+	vault := NewHashicorpVaultHandler(nil, authClientSet, "default", "")
 
 	for _, testData := range pkiRequestTestDataset {
 		var secret kedav1alpha1.VaultSecret
@@ -222,7 +222,7 @@ func TestHashicorpVaultHandler_getSecretValue_specify_secret_type(t *testing.T) 
 			Token: vaultTestToken,
 		},
 	}
-	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default", "")
 	err := vaultHandler.Initialize(logf.Log.WithName("test"))
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
@@ -369,7 +369,7 @@ func TestHashicorpVaultHandler_ResolveSecret(t *testing.T) {
 			Token: vaultTestToken,
 		},
 	}
-	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default", "")
 	err := vaultHandler.Initialize(logf.Log.WithName("test"))
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
@@ -413,7 +413,7 @@ func TestHashicorpVaultHandler_ResolveSecret_UsingRootToken(t *testing.T) {
 		SecretLister:    mockSecretLister,
 	}
 
-	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default", "")
 	err := vaultHandler.Initialize(logf.Log.WithName("test"))
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
@@ -457,7 +457,7 @@ func TestHashicorpVaultHandler_DefaultKubernetesVaultRole(t *testing.T) {
 		Role:           "my-role",
 	}
 
-	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default", "")
 	err := vaultHandler.Initialize(logf.Log.WithName("test"))
 	defer vaultHandler.Stop()
 	assert.Errorf(t, err, "open %s : no such file or directory", defaultServiceAccountPath)
@@ -482,7 +482,7 @@ func TestHashicorpVaultHandler_ResolveSecrets_SameCertAndKey(t *testing.T) {
 			Token: vaultTestToken,
 		},
 	}
-	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default", "")
 	err := vaultHandler.Initialize(logf.Log.WithName("test"))
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
@@ -559,7 +559,7 @@ func TestHashicorpVaultHandler_fetchSecret(t *testing.T) {
 		},
 	}
 
-	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default", "")
 	err := vaultHandler.Initialize(logf.Log.WithName("test"))
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
@@ -623,7 +623,7 @@ func TestHashicorpVaultHandler_Initialize(t *testing.T) {
 				},
 				Namespace: testData.namespace,
 			}
-			vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, testData.namespace)
+			vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, testData.namespace, "")
 			err := vaultHandler.Initialize(logf.Log.WithName("test"))
 			defer vaultHandler.Stop()
 			assert.Nil(t, err)
@@ -705,7 +705,7 @@ func TestHashicorpVaultHandler_Token_VaultTokenAuth(t *testing.T) {
 				Role:           testData.role,
 				Mount:          testData.mount,
 			}
-			vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+			vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default", "")
 			defer vaultHandler.Stop()
 
 			config := vaultapi.DefaultConfig()
@@ -755,7 +755,7 @@ func TestHashicorpVaultHandler_Token_ServiceAccountAuth(t *testing.T) {
 		},
 	}
 
-	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default", "")
 	defer vaultHandler.Stop()
 
 	config := vaultapi.DefaultConfig()
@@ -766,4 +766,27 @@ func TestHashicorpVaultHandler_Token_ServiceAccountAuth(t *testing.T) {
 	token, err := vaultHandler.token(client)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
+}
+
+func TestHashicorpVaultHandler_Token_VaultTokenAuth_NoCredential(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
+	mockSecretLister := mock_secretlister.NewMockSecretLister(ctrl)
+	authClientSet := &authentication.AuthClientSet{
+		CoreV1Interface: mockCoreV1Interface,
+		SecretLister:    mockSecretLister,
+	}
+
+	vault := kedav1alpha1.HashiCorpVault{
+		Authentication: kedav1alpha1.VaultAuthenticationToken,
+	}
+
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default", "")
+	config := vaultapi.DefaultConfig()
+	client, err := vaultapi.NewClient(config)
+	assert.NoError(t, err)
+
+	token, err := vaultHandler.token(client)
+	assert.Empty(t, token)
+	assert.EqualError(t, err, "could not get Vault token from VAULT_TOKEN env variable, credential.tokenFrom.secretKeyRef, or credential.token")
 }

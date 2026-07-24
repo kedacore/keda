@@ -483,7 +483,24 @@ spec:
                       serviceAccountName:
                         type: string
                       token:
+                        description: 'Deprecated: use TokenFrom instead. Setting the
+                          token inline will be removed in KEDA v3.'
                         type: string
+                      tokenFrom:
+                        properties:
+                          secretKeyRef:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                        required:
+                        - secretKeyRef
+                        type: object
                     type: object
                   mount:
                     type: string

@@ -283,6 +283,28 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 	return resolveAuthRef(ctx, client, logger, triggerAuthRef, nil, namespace, authClientSet)
 }
 
+// resolveHashicorpVaultCredential resolves the Vault token from
+// credential.tokenFrom.secretKeyRef when configured and returns it. It never
+// writes back into the TriggerAuthentication spec, since that object may be a
+// shared/cached copy returned by the client and mutating it would leak the
+// resolved token across reconciles. Returns an empty token when tokenFrom is
+// not configured.
+func resolveHashicorpVaultCredential(ctx context.Context, client client.Client, logger logr.Logger,
+	vault *kedav1alpha1.HashiCorpVault, namespace string, secretsLister corev1listers.SecretLister,
+) (string, error) {
+	if vault == nil || vault.Authentication != kedav1alpha1.VaultAuthenticationToken || vault.Credential == nil || vault.Credential.TokenFrom == nil {
+		return "", nil
+	}
+
+	secretKeyRef := vault.Credential.TokenFrom.SecretKeyRef
+	token := resolveAuthSecret(ctx, client, logger, secretKeyRef.Name, namespace, secretKeyRef.Key, secretsLister)
+	if token == "" {
+		return "", fmt.Errorf("error reading hashiCorpVault token from secret %s/%s key %s", namespace, secretKeyRef.Name, secretKeyRef.Key)
+	}
+
+	return token, nil
+}
+
 // resolveAuthRef provides authentication parameters needed authenticate scaler with the environment.
 // based on authentication method defined in TriggerAuthentication, authParams and podIdentity is returned
 func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logger,
@@ -339,8 +361,13 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 				}
 			}
 			if triggerAuthSpec.HashiCorpVault != nil && len(triggerAuthSpec.HashiCorpVault.Secrets) > 0 {
-				vault := NewHashicorpVaultHandler(triggerAuthSpec.HashiCorpVault, authClientSet, namespace)
-				err := vault.Initialize(logger)
+				vaultToken, err := resolveHashicorpVaultCredential(ctx, client, logger, triggerAuthSpec.HashiCorpVault, triggerNamespace, authClientSet.SecretLister)
+				if err != nil {
+					return result, podIdentity, err
+				}
+
+				vault := NewHashicorpVaultHandler(triggerAuthSpec.HashiCorpVault, authClientSet, namespace, vaultToken)
+				err = vault.Initialize(logger)
 				defer vault.Stop()
 				if err != nil {
 					logger.Error(err, "error authenticating to Vault", "triggerAuthRef.Name", triggerAuthRef.Name)

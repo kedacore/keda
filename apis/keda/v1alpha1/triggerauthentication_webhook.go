@@ -158,23 +158,25 @@ func isTriggerAuthenticationRemovingFinalizer(om metav1.ObjectMeta, oldOm metav1
 }
 
 func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
+	warnings := validateHashiCorpVaultCredential(spec)
+
 	if spec.PodIdentity != nil {
 		switch spec.PodIdentity.Provider {
 		case PodIdentityProviderAzureWorkload:
 			if spec.PodIdentity.IdentityID != nil && *spec.PodIdentity.IdentityID == "" {
-				return nil, fmt.Errorf("identityId of PodIdentity should not be empty. If it's set, identityId has to be different than \"\"")
+				return warnings, fmt.Errorf("identityId of PodIdentity should not be empty. If it's set, identityId has to be different than \"\"")
 			}
 
 			if spec.PodIdentity.IdentityAuthorityHost != nil && *spec.PodIdentity.IdentityAuthorityHost != "" {
 				if spec.PodIdentity.IdentityTenantID == nil || *spec.PodIdentity.IdentityTenantID == "" {
-					return nil, fmt.Errorf("identityTenantID of PodIdentity should not be nil or empty when identityAuthorityHost of PodIdentity is set")
+					return warnings, fmt.Errorf("identityTenantID of PodIdentity should not be nil or empty when identityAuthorityHost of PodIdentity is set")
 				}
 			} else if spec.PodIdentity.IdentityTenantID != nil && *spec.PodIdentity.IdentityTenantID == "" {
-				return nil, fmt.Errorf("identityTenantId of PodIdentity should not be empty. If it's set, identityTenantId has to be different than \"\"")
+				return warnings, fmt.Errorf("identityTenantId of PodIdentity should not be empty. If it's set, identityTenantId has to be different than \"\"")
 			}
 		case PodIdentityProviderAws:
 			if spec.PodIdentity.RoleArn != nil && *spec.PodIdentity.RoleArn != "" && spec.PodIdentity.IsWorkloadIdentityOwner() {
-				return nil, fmt.Errorf("roleArn of PodIdentity can't be set if KEDA isn't identityOwner")
+				return warnings, fmt.Errorf("roleArn of PodIdentity can't be set if KEDA isn't identityOwner")
 			}
 			if spec.PodIdentity.ExternalID != nil && *spec.PodIdentity.ExternalID != "" {
 				if spec.PodIdentity.RoleArn == nil || *spec.PodIdentity.RoleArn == "" {
@@ -182,30 +184,51 @@ func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 				}
 			}
 		default:
-			return nil, nil
+			return warnings, nil
 		}
 	}
 
 	if spec.OAuth2 != nil {
-		oauth2 := spec.OAuth2
-
-		if oauth2.Type != OAuth2GrantTypeClientCredentials {
-			return nil, fmt.Errorf("oauth2.type must be 'clientCredentials', got '%s'", oauth2.Type)
-		}
-
-		if oauth2.ClientID == "" {
-			return nil, fmt.Errorf("oauth2.clientId is required when oauth2 is configured")
-		}
-
-		if oauth2.TokenURL == "" {
-			return nil, fmt.Errorf("oauth2.tokenUrl is required when oauth2 is configured")
-		}
-
-		parsedURL, err := url.Parse(oauth2.TokenURL)
-		if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
-			return nil, fmt.Errorf("oauth2.tokenUrl must be a valid http or https URL")
+		if err := validateOAuth2(spec.OAuth2); err != nil {
+			return nil, err
 		}
 	}
 
-	return nil, nil
+	return warnings, nil
+}
+
+func validateHashiCorpVaultCredential(spec *TriggerAuthenticationSpec) admission.Warnings {
+	var warnings admission.Warnings
+
+	if spec.HashiCorpVault != nil && spec.HashiCorpVault.Credential != nil {
+		if spec.HashiCorpVault.Credential.Token != "" {
+			warnings = append(warnings, "spec.hashiCorpVault.credential.token is deprecated; use spec.hashiCorpVault.credential.tokenFrom.secretKeyRef instead")
+		}
+		if spec.HashiCorpVault.Credential.Token != "" && spec.HashiCorpVault.Credential.TokenFrom != nil {
+			warnings = append(warnings, "spec.hashiCorpVault.credential.tokenFrom.secretKeyRef takes precedence over spec.hashiCorpVault.credential.token")
+		}
+	}
+
+	return warnings
+}
+
+func validateOAuth2(oauth2 *OAuth2) error {
+	if oauth2.Type != OAuth2GrantTypeClientCredentials {
+		return fmt.Errorf("oauth2.type must be 'clientCredentials', got '%s'", oauth2.Type)
+	}
+
+	if oauth2.ClientID == "" {
+		return fmt.Errorf("oauth2.clientId is required when oauth2 is configured")
+	}
+
+	if oauth2.TokenURL == "" {
+		return fmt.Errorf("oauth2.tokenUrl is required when oauth2 is configured")
+	}
+
+	parsedURL, err := url.Parse(oauth2.TokenURL)
+	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
+		return fmt.Errorf("oauth2.tokenUrl must be a valid http or https URL")
+	}
+
+	return nil
 }

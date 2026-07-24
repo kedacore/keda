@@ -50,6 +50,9 @@ var (
 	secretName                = "supersecret"
 	secretKey                 = "mysecretkey"
 	secretData                = "secretDataHere"
+	vaultTokenSecretName      = "vault-token"
+	vaultTokenSecretKey       = "token"
+	vaultTokenValue           = "vault-token-value"
 	cmName                    = "supercm"
 	cmKey                     = "mycmkey"
 	cmData                    = "cmDataHere"
@@ -265,6 +268,7 @@ func TestResolveAuthRef(t *testing.T) {
 		expected            map[string]string
 		expectedPodIdentity kedav1alpha1.AuthPodIdentity
 		isError             bool
+		errorContains       string
 		comment             string
 	}{
 		{
@@ -378,6 +382,133 @@ func TestResolveAuthRef(t *testing.T) {
 			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName},
 			expected:            map[string]string{},
 			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+		},
+		{
+			name: "triggerauth resolves hashicorp vault token from secret",
+			existing: []runtime.Object{
+				&kedav1alpha1.TriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      triggerAuthenticationName,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						HashiCorpVault: &kedav1alpha1.HashiCorpVault{
+							Address:        "invalid-vault-address",
+							Authentication: kedav1alpha1.VaultAuthenticationToken,
+							Credential: &kedav1alpha1.Credential{
+								TokenFrom: &kedav1alpha1.ValueFromSecret{
+									SecretKeyRef: kedav1alpha1.SecretKeyRef{
+										Name: vaultTokenSecretName,
+										Key:  vaultTokenSecretKey,
+									},
+								},
+							},
+							Secrets: []kedav1alpha1.VaultSecret{
+								{
+									Key:       "password",
+									Parameter: "password",
+									Path:      "secret_v2/data/my-password-path",
+								},
+							},
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      vaultTokenSecretName,
+					},
+					Data: map[string][]byte{vaultTokenSecretKey: []byte(vaultTokenValue)},
+				},
+			},
+			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName},
+			expected:            map[string]string{},
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+			isError:             true,
+			errorContains:       "\"invalid-vault-address/v1/auth/token/lookup-self\": unsupported protocol scheme \"\"",
+			comment:             "hashicorp vault tokenFrom secret should resolve before initialization",
+		},
+		{
+			name: "clustertriggerauth resolves hashicorp vault token from cluster secret namespace",
+			existing: []runtime.Object{
+				&kedav1alpha1.ClusterTriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: triggerAuthenticationName,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						HashiCorpVault: &kedav1alpha1.HashiCorpVault{
+							Address:        "invalid-vault-address",
+							Authentication: kedav1alpha1.VaultAuthenticationToken,
+							Credential: &kedav1alpha1.Credential{
+								TokenFrom: &kedav1alpha1.ValueFromSecret{
+									SecretKeyRef: kedav1alpha1.SecretKeyRef{
+										Name: vaultTokenSecretName,
+										Key:  vaultTokenSecretKey,
+									},
+								},
+							},
+							Secrets: []kedav1alpha1.VaultSecret{
+								{
+									Key:       "password",
+									Parameter: "password",
+									Path:      "secret_v2/data/my-password-path",
+								},
+							},
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: clusterNamespace,
+						Name:      vaultTokenSecretName,
+					},
+					Data: map[string][]byte{vaultTokenSecretKey: []byte(vaultTokenValue)},
+				},
+			},
+			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName, Kind: "ClusterTriggerAuthentication"},
+			expected:            map[string]string{},
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+			isError:             true,
+			errorContains:       "\"invalid-vault-address/v1/auth/token/lookup-self\": unsupported protocol scheme \"\"",
+			comment:             "cluster triggerauthentication should resolve hashiCorpVault tokenFrom from the cluster object namespace",
+		},
+		{
+			name: "triggerauth fails when hashicorp vault token secret is missing",
+			existing: []runtime.Object{
+				&kedav1alpha1.TriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      triggerAuthenticationName,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						HashiCorpVault: &kedav1alpha1.HashiCorpVault{
+							Address:        "invalid-vault-address",
+							Authentication: kedav1alpha1.VaultAuthenticationToken,
+							Credential: &kedav1alpha1.Credential{
+								TokenFrom: &kedav1alpha1.ValueFromSecret{
+									SecretKeyRef: kedav1alpha1.SecretKeyRef{
+										Name: vaultTokenSecretName,
+										Key:  vaultTokenSecretKey,
+									},
+								},
+							},
+							Secrets: []kedav1alpha1.VaultSecret{
+								{
+									Key:       "password",
+									Parameter: "password",
+									Path:      "secret_v2/data/my-password-path",
+								},
+							},
+						},
+					},
+				},
+			},
+			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName},
+			expected:            map[string]string{},
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+			isError:             true,
+			errorContains:       "error reading hashiCorpVault token from secret test-namespace/vault-token key token",
+			comment:             "missing hashiCorpVault token secret should fail fast",
 		},
 		{
 			name: "triggerauth exists and config map",
@@ -748,6 +879,13 @@ func TestResolveAuthRef(t *testing.T) {
 			if test.isError && err == nil {
 				t.Errorf("Expected error because %s but got success, %#v", test.comment, test)
 			}
+			if test.errorContains != "" {
+				if err == nil {
+					t.Errorf("Expected error containing %q because %s but got success", test.errorContains, test.comment)
+				} else if !assert.Contains(t, err.Error(), test.errorContains) {
+					t.Errorf("Unexpected error because %s, expected to contain %q but got %q", test.comment, test.errorContains, err.Error())
+				}
+			}
 
 			if diff := cmp.Diff(gotMap, test.expected); diff != "" {
 				t.Errorf("Returned authParams are different: %s", diff)
@@ -757,6 +895,46 @@ func TestResolveAuthRef(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestResolveHashicorpVaultCredential(t *testing.T) {
+	ctx := context.Background()
+	logger := logf.Log.WithName("test")
+
+	vaultSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      vaultTokenSecretName,
+		},
+		Data: map[string][]byte{vaultTokenSecretKey: []byte(vaultTokenValue)},
+	}
+	client := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(vaultSecret).Build()
+
+	vault := &kedav1alpha1.HashiCorpVault{
+		Authentication: kedav1alpha1.VaultAuthenticationToken,
+		Credential: &kedav1alpha1.Credential{
+			TokenFrom: &kedav1alpha1.ValueFromSecret{
+				SecretKeyRef: kedav1alpha1.SecretKeyRef{
+					Name: vaultTokenSecretName,
+					Key:  vaultTokenSecretKey,
+				},
+			},
+		},
+	}
+
+	token, err := resolveHashicorpVaultCredential(ctx, client, logger, vault, namespace, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, vaultTokenValue, token)
+	// The resolved token must be returned to the caller, not written back into the
+	// (potentially cache-backed and shared) TriggerAuthentication spec.
+	assert.Empty(t, vault.Credential.Token, "resolveHashicorpVaultCredential must not mutate the TriggerAuthentication spec")
+
+	// A missing secret must error and still leave the spec untouched.
+	vault.Credential.TokenFrom.SecretKeyRef.Name = "does-not-exist"
+	token, err = resolveHashicorpVaultCredential(ctx, client, logger, vault, namespace, nil)
+	assert.Error(t, err)
+	assert.Empty(t, token)
+	assert.Empty(t, vault.Credential.Token)
 }
 
 func TestResolveDependentEnv(t *testing.T) {

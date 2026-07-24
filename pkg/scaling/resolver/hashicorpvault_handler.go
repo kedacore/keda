@@ -39,15 +39,20 @@ type HashicorpVaultHandler struct {
 	client    *vaultapi.Client
 	acs       *authentication.AuthClientSet
 	namespace string
-	stopCh    chan struct{}
+	// resolvedToken holds a token resolved from credential.tokenFrom.secretKeyRef.
+	// It is kept separate from vault.Credential.Token so the (possibly cached)
+	// TriggerAuthentication spec is never mutated while resolving the token.
+	resolvedToken string
+	stopCh        chan struct{}
 }
 
 // NewHashicorpVaultHandler creates a HashicorpVaultHandler object
-func NewHashicorpVaultHandler(v *kedav1alpha1.HashiCorpVault, acs *authentication.AuthClientSet, namespace string) *HashicorpVaultHandler {
+func NewHashicorpVaultHandler(v *kedav1alpha1.HashiCorpVault, acs *authentication.AuthClientSet, namespace string, resolvedToken string) *HashicorpVaultHandler {
 	return &HashicorpVaultHandler{
-		vault:     v,
-		acs:       acs,
-		namespace: namespace,
+		vault:         v,
+		acs:           acs,
+		namespace:     namespace,
+		resolvedToken: resolvedToken,
 	}
 }
 
@@ -105,10 +110,12 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 		switch {
 		case len(client.Token()) > 0:
 			break
-		case len(vh.vault.Credential.Token) > 0:
+		case len(vh.resolvedToken) > 0:
+			token = vh.resolvedToken
+		case vh.vault.Credential != nil && len(vh.vault.Credential.Token) > 0:
 			token = vh.vault.Credential.Token
 		default:
-			return token, errors.New("could not get Vault token")
+			return token, errors.New("could not get Vault token from VAULT_TOKEN env variable, credential.tokenFrom.secretKeyRef, or credential.token")
 		}
 	case kedav1alpha1.VaultAuthenticationKubernetes:
 		if len(vh.vault.Mount) == 0 {
