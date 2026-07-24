@@ -927,14 +927,14 @@ func TestResolveHashicorpVaultCredential(t *testing.T) {
 	assert.Equal(t, vaultTokenValue, token)
 	// The resolved token must be returned to the caller, not written back into the
 	// (potentially cache-backed and shared) TriggerAuthentication spec.
-	assert.Empty(t, vault.Credential.Token, "resolveHashicorpVaultCredential must not mutate the TriggerAuthentication spec")
+	assert.Empty(t, vault.Credential.Token, "resolveHashicorpVaultCredential must not mutate the TriggerAuthentication spec") //nolint:staticcheck // asserting the deprecated field is left untouched
 
 	// A missing secret must error and still leave the spec untouched.
 	vault.Credential.TokenFrom.SecretKeyRef.Name = "does-not-exist"
 	token, err = resolveHashicorpVaultCredential(ctx, client, logger, vault, namespace, nil)
 	assert.Error(t, err)
 	assert.Empty(t, token)
-	assert.Empty(t, vault.Credential.Token)
+	assert.Empty(t, vault.Credential.Token) //nolint:staticcheck // asserting the deprecated field is left untouched
 }
 
 func TestResolveDependentEnv(t *testing.T) {

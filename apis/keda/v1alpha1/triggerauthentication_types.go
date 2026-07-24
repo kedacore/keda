@@ -248,6 +248,7 @@ type HashiCorpVault struct {
 
 // Credential defines the Hashicorp Vault credentials depending on the authentication method
 type Credential struct {
+	// Deprecated: use TokenFrom instead. Setting the token inline will be removed in KEDA v3.
 	// +optional
 	Token string `json:"token,omitempty"`
 

@@ -112,8 +112,8 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 			break
 		case len(vh.resolvedToken) > 0:
 			token = vh.resolvedToken
-		case vh.vault.Credential != nil && len(vh.vault.Credential.Token) > 0:
-			token = vh.vault.Credential.Token
+		case vh.vault.Credential != nil && len(vh.vault.Credential.Token) > 0: //nolint:staticcheck // deprecated inline token, still supported for backward compatibility
+			token = vh.vault.Credential.Token //nolint:staticcheck // deprecated inline token, still supported for backward compatibility
 		default:
 			return token, errors.New("could not get Vault token from VAULT_TOKEN env variable, credential.tokenFrom.secretKeyRef, or credential.token")
 		}

@@ -366,12 +366,6 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 					return result, podIdentity, err
 				}
 
-				if triggerAuthSpec.HashiCorpVault.Credential != nil &&
-					triggerAuthSpec.HashiCorpVault.Credential.Token != "" &&
-					triggerAuthSpec.HashiCorpVault.Credential.TokenFrom == nil {
-					logger.Info("WARNING: spec.hashiCorpVault.credential.token is deprecated and will be removed in KEDA v3. Use spec.hashiCorpVault.credential.tokenFrom.secretKeyRef instead")
-				}
-
 				vault := NewHashicorpVaultHandler(triggerAuthSpec.HashiCorpVault, authClientSet, namespace, vaultToken)
 				err = vault.Initialize(logger)
 				defer vault.Stop()
