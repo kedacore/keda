@@ -37,3 +37,37 @@ func TestTriggerAuthenticationSpec_WithFilePath(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "/mnt/auth/creds.json", unmarshaled.FilePath)
 }
+
+func TestTriggerAuthenticationSpec_WithHashiCorpVaultTokenFrom(t *testing.T) {
+	spec := TriggerAuthenticationSpec{
+		HashiCorpVault: &HashiCorpVault{
+			Address:        "http://vault.example.com",
+			Authentication: VaultAuthenticationToken,
+			Credential: &Credential{
+				TokenFrom: &ValueFromSecret{
+					SecretKeyRef: SecretKeyRef{
+						Name: "vault-token",
+						Key:  "token",
+					},
+				},
+			},
+			Secrets: []VaultSecret{{
+				Parameter: "connection",
+				Path:      "secret/data/app",
+				Key:       "connectionString",
+			}},
+		},
+	}
+
+	data, err := json.Marshal(spec)
+	assert.NoError(t, err)
+	assert.Contains(t, string(data), `"tokenFrom":{"secretKeyRef":{"name":"vault-token","key":"token"}}`)
+
+	var unmarshaled TriggerAuthenticationSpec
+	err = json.Unmarshal(data, &unmarshaled)
+	assert.NoError(t, err)
+	if assert.NotNil(t, unmarshaled.HashiCorpVault) && assert.NotNil(t, unmarshaled.HashiCorpVault.Credential) && assert.NotNil(t, unmarshaled.HashiCorpVault.Credential.TokenFrom) {
+		assert.Equal(t, "vault-token", unmarshaled.HashiCorpVault.Credential.TokenFrom.SecretKeyRef.Name)
+		assert.Equal(t, "token", unmarshaled.HashiCorpVault.Credential.TokenFrom.SecretKeyRef.Key)
+	}
+}

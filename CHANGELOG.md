@@ -78,6 +78,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
+- **General**: Allow Hashicorp Vault token authentication to read `credential.tokenFrom.secretKeyRef` from Kubernetes Secrets ([#6026](https://github.com/kedacore/keda/issues/6026))
 - **Kafka Scaler**: Add optional `fullMetadata` trigger metadata field to control Sarama's full cluster metadata refresh, reducing operator memory for topic scoped triggers ([#7453](https://github.com/kedacore/keda/issues/7453))
 - **Temporal Scaler**: Add opt-in `includeRunningWorkflowCount` (with optional `workflowTaskQueueForCount`) to block premature scale-down when the backlog is momentarily zero but Workflow workers are still busy. Worker Deployment Version scalers short-circuit on Version status (`DRAINING` stays active, `DRAINED`/`INACTIVE` scale down); other modes issue a scoped `CountWorkflow` visibility query — including `TemporalWorkerDeploymentVersion is null` for unversioned workers. ([#7459](https://github.com/kedacore/keda/issues/7459))
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
@@ -87,6 +88,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Fix concurrent map writes panic in the shared root CA `CertPool` ([#7910](https://github.com/kedacore/keda/issues/7910))
 - **General**: Fix CVE-2026-42151, CVE-2026-42154, CVE-2026-40179 ([#7868](https://github.com/kedacore/keda/issues/7868))
 - **General**: Fix nil pointer dereference in `customScalingStrategy.GetEffectiveMaxScale` when `customScalingQueueLengthDeduction` is omitted; the optional field is now treated as zero deduction instead of panicking ([#7798](https://github.com/kedacore/keda/issues/7798))
+- **General**: Fix nil reference panic in Hashicorp Vault token authentication when no credentials are configured ([#6026](https://github.com/kedacore/keda/issues/6026))
 - **General**: Fix `ScaledJob` CRD validation to include "default" as a valid value for `scalingStrategy.strategy` ([#7855](https://github.com/kedacore/keda/issues/7855))
 - **General**: Restore gRPC reconnect backoff in the metrics service client; an unset `Backoff` in `WithConnectParams` disabled backoff and caused a zero-delay reconnect loop that flooded logs when keda-operator was unreachable ([#7856](https://github.com/kedacore/keda/issues/7856))
 - **General**: Treat negative external metric values as zero to prevent incorrect HPA scaling ([#7880](https://github.com/kedacore/keda/issues/7880))
@@ -99,7 +101,7 @@ You can find all deprecations in [this overview](https://github.com/kedacore/ked
 
 New deprecation(s):
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Deprecate plain-text `spec.hashiCorpVault.credential.token` in favor of `spec.hashiCorpVault.credential.tokenFrom.secretKeyRef` ([#6026](https://github.com/kedacore/keda/issues/6026))
 
 ### Breaking Changes
 
