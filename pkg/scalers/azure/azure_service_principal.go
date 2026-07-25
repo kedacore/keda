@@ -47,12 +47,23 @@ func IsServicePrincipalAuthConfigured(authParams map[string]string) bool {
 
 // NewServicePrincipalCredential creates an Azure SDK token credential from
 // authentication parameters resolved by the Azure service principal provider.
+//
+// The validation below mirrors the admission-time checks in
+// (apis/keda/v1alpha1).validateAzureServicePrincipal so it also protects
+// deployments where the validating webhook is disabled; keep the two rule sets
+// in sync. The resolver sets an authParams key whenever the corresponding spec
+// field is present, so the comma-ok "configured" flags here are the runtime
+// analog of the webhook's pointer-nil checks. Structural rules are enforced on
+// field presence (matching the webhook); resolved values are only checked for
+// emptiness afterwards.
 func NewServicePrincipalCredential(authParams map[string]string) (azcore.TokenCredential, error) {
 	tenantID := authParams[ServicePrincipalTenantIDKey]
 	clientID := authParams[ServicePrincipalClientIDKey]
-	clientSecret := authParams[ServicePrincipalClientSecretKey]
-	clientCertificate := authParams[ServicePrincipalClientCertificateKey]
-	clientCertificatePassword := authParams[ServicePrincipalClientCertificatePasswordKey]
+	cloudName := authParams[ServicePrincipalCloudKey]
+	clientSecret, clientSecretConfigured := authParams[ServicePrincipalClientSecretKey]
+	clientCertificate, clientCertificateConfigured := authParams[ServicePrincipalClientCertificateKey]
+	clientCertificatePassword, clientCertificatePasswordConfigured := authParams[ServicePrincipalClientCertificatePasswordKey]
+	activeDirectoryEndpoint := authParams[ServicePrincipalActiveDirectoryEndpointKey]
 
 	if tenantID == "" {
 		return nil, fmt.Errorf("azure service principal tenantId is required")
@@ -60,14 +71,30 @@ func NewServicePrincipalCredential(authParams map[string]string) (azcore.TokenCr
 	if clientID == "" {
 		return nil, fmt.Errorf("azure service principal clientId is required")
 	}
-	if clientSecret != "" && clientCertificate != "" {
+
+	// Structural rules, enforced on field presence to mirror the webhook.
+	if clientSecretConfigured && clientCertificateConfigured {
 		return nil, fmt.Errorf("azure service principal clientSecret and clientCertificate are mutually exclusive")
 	}
-	if clientSecret == "" && clientCertificate == "" {
+	if !clientSecretConfigured && !clientCertificateConfigured {
 		return nil, fmt.Errorf("azure service principal requires either clientSecret or clientCertificate")
 	}
-	if clientCertificatePassword != "" && clientCertificate == "" {
+	if clientCertificatePasswordConfigured && !clientCertificateConfigured {
 		return nil, fmt.Errorf("azure service principal clientCertificatePassword requires clientCertificate")
+	}
+	if activeDirectoryEndpoint != "" && !strings.EqualFold(cloudName, PrivateCloud) {
+		return nil, fmt.Errorf("azure service principal activeDirectoryEndpoint can only be set when cloud is Private")
+	}
+
+	// Resolved-value rules: a configured credential/password must not be empty.
+	if clientSecretConfigured && clientSecret == "" {
+		return nil, fmt.Errorf("azure service principal clientSecret is configured but resolved to an empty value; check the referenced secret name and key")
+	}
+	if clientCertificateConfigured && clientCertificate == "" {
+		return nil, fmt.Errorf("azure service principal clientCertificate is configured but resolved to an empty value; check the referenced secret name and key")
+	}
+	if clientCertificatePasswordConfigured && clientCertificatePassword == "" {
+		return nil, fmt.Errorf("azure service principal clientCertificatePassword is configured but resolved to an empty value; check the referenced secret name and key")
 	}
 
 	clientOptions, disableInstanceDiscovery, err := getServicePrincipalCredentialOptions(authParams)

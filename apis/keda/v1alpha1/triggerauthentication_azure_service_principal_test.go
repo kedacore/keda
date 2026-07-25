@@ -136,3 +136,28 @@ func TestValidateAzureServicePrincipal(t *testing.T) {
 		})
 	}
 }
+
+// TestValidateAzureServicePrincipalWithPodIdentityNone ensures azureServicePrincipal
+// is still validated when podIdentity.provider is "none", which falls into the
+// pod-identity switch default and would otherwise short-circuit validation.
+func TestValidateAzureServicePrincipalWithPodIdentityNone(t *testing.T) {
+	invalidServicePrincipal := &AzureServicePrincipal{
+		TenantID: "tenant-id",
+		ClientID: "client-id",
+		// Mutually exclusive credentials: validation must reject this.
+		ClientSecret: &AzureServicePrincipalCredential{
+			ValueFrom: ValueFromSecret{SecretKeyRef: SecretKeyRef{Name: "azure-credentials", Key: "secret"}},
+		},
+		ClientCertificate: &AzureServicePrincipalCredential{
+			ValueFrom: ValueFromSecret{SecretKeyRef: SecretKeyRef{Name: "azure-credentials", Key: "cert"}},
+		},
+	}
+
+	_, err := validateSpec(&TriggerAuthenticationSpec{
+		PodIdentity:           &AuthPodIdentity{Provider: PodIdentityProviderNone},
+		AzureServicePrincipal: invalidServicePrincipal,
+	})
+	if err == nil {
+		t.Fatal("expected validation to fail when podIdentity.provider is none")
+	}
+}
