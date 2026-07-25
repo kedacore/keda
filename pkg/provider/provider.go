@@ -19,6 +19,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/labels"
@@ -28,6 +29,7 @@ import (
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider/defaults"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
 )
 
@@ -73,6 +75,13 @@ func NewProvider(ctx context.Context, adapterLogger logr.Logger, client client.C
 // implementation how to translate metricSelector to a filter for metric values.
 // Namespace can be used by the implementation for metric identification, access control or ignored.
 func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, metricSelector labels.Selector, info provider.ExternalMetricInfo) (*external_metrics.ExternalMetricValueList, error) {
+	start := time.Now()
+	var scaledObjectName string
+	var err error
+	defer func() {
+		metricscollector.RecordExternalMetricRequest(time.Since(start).Seconds(), err, namespace, scaledObjectName, info.Metric)
+	}()
+
 	// Note:
 	//		metric name and namespace is used to lookup for the CRD which contains configuration
 	// 		if not found then ignored and label selector is parsed for all the metrics
@@ -86,7 +95,7 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 	// Get Metrics from Metrics Service gRPC Server
 	if !p.grpcClient.WaitForConnectionReady(ctx, logger) {
 		grpcClientConnected = false
-		err := fmt.Errorf("timeout while waiting to establish gRPC connection to KEDA Metrics Service server")
+		err = fmt.Errorf("timeout while waiting to establish gRPC connection to KEDA Metrics Service server")
 		logger.Error(err, "timeout", "server", p.grpcClient.GetServerURL())
 		return nil, err
 	}
@@ -96,15 +105,16 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 	}
 
 	// selector is in form: `scaledobject.keda.sh/name: scaledobject-name`
-	scaledObjectName := selector.Get(kedav1alpha1.ScaledObjectOwnerAnnotation)
+	scaledObjectName = selector.Get(kedav1alpha1.ScaledObjectOwnerAnnotation)
 	if scaledObjectName == "" {
-		err := fmt.Errorf("scaledObject name is not specified")
+		err = fmt.Errorf("scaledObject name is not specified")
 		logger.Error(err, fmt.Sprintf("please specify scaledObject name, it needs to be set as value of label selector %q on the query", kedav1alpha1.ScaledObjectOwnerAnnotation))
 
 		return &external_metrics.ExternalMetricValueList{}, err
 	}
 
-	metrics, err := p.grpcClient.GetMetrics(ctx, scaledObjectName, namespace, info.Metric)
+	var metrics *external_metrics.ExternalMetricValueList
+	metrics, err = p.grpcClient.GetMetrics(ctx, scaledObjectName, namespace, info.Metric)
 	logger.V(1).WithValues("scaledObjectName", scaledObjectName, "scaledObjectNamespace", namespace, "metrics", metrics).Info("Receiving metrics")
 
 	return metrics, err

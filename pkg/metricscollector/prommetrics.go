@@ -182,6 +182,27 @@ var (
 		},
 		[]string{"scaler", "status_code"},
 	)
+
+	metricsServiceGetMetricsRequestsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "metricsservice",
+			Name:      "get_metrics_requests_total",
+			Help:      "Total number of GetMetrics gRPC requests handled by keda-operator for the metrics server, labeled by outcome.",
+		},
+		[]string{"namespace", "scaled_object", "metric", "result"},
+	)
+
+	metricsServiceGetMetricsDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "metricsservice",
+			Name:      "get_metrics_duration_seconds",
+			Help:      "Duration in seconds of GetMetrics gRPC requests handled by keda-operator for the metrics server.",
+			Buckets:   []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
+		},
+		[]string{"result"},
+	)
 )
 
 type PromMetrics struct {
@@ -207,6 +228,9 @@ func NewPromMetrics() *PromMetrics {
 
 	metrics.Registry.MustRegister(httpClientRequestsTotal)
 	metrics.Registry.MustRegister(httpClientRequestDuration)
+
+	metrics.Registry.MustRegister(metricsServiceGetMetricsRequestsTotal)
+	metrics.Registry.MustRegister(metricsServiceGetMetricsDuration)
 
 	RecordBuildInfo()
 	return &PromMetrics{}
@@ -379,6 +403,16 @@ func (p *PromMetrics) RecordHTTPClientRequest(durationSeconds float64, statusCod
 	code := httpStatusCodeLabel(statusCode, isError)
 	httpClientRequestsTotal.WithLabelValues(namespace, scaledResource, scaler, triggerName, metricName, code).Inc()
 	httpClientRequestDuration.WithLabelValues(scaler, code).Observe(durationSeconds)
+}
+
+// RecordExternalMetricRequest is a no-op on the operator Prometheus collector.
+func (p *PromMetrics) RecordExternalMetricRequest(float64, error, string, string, string) {}
+
+// RecordMetricsServiceGetMetricsRequest records a GetMetrics gRPC request handled by keda-operator.
+func (p *PromMetrics) RecordMetricsServiceGetMetricsRequest(durationSeconds float64, err error, namespace, scaledObject, metricName string) {
+	result := requestResult(err)
+	metricsServiceGetMetricsRequestsTotal.WithLabelValues(namespace, scaledObject, metricName, result).Inc()
+	metricsServiceGetMetricsDuration.WithLabelValues(result).Observe(durationSeconds)
 }
 
 // Returns a grpcprom server Metrics object and registers the metrics. The object contains

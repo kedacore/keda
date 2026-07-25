@@ -51,6 +51,9 @@ var (
 
 	otHTTPClientRequestsCounter api.Int64Counter
 	otHTTPClientRequestDuration api.Float64Histogram
+
+	otMetricsServiceGetMetricsRequests api.Int64Counter
+	otMetricsServiceGetMetricsDuration api.Float64Histogram
 )
 
 type OtelMetrics struct {
@@ -241,6 +244,23 @@ func initMeters() {
 	otHTTPClientRequestDuration, err = meter.Float64Histogram(
 		"keda.scaler.http.request.duration.seconds",
 		api.WithDescription("Duration in seconds of outbound HTTP requests issued during scaler metric collection."),
+		api.WithUnit("s"),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
+	otMetricsServiceGetMetricsRequests, err = meter.Int64Counter(
+		"keda.metricsservice.get_metrics.requests.count",
+		api.WithDescription("Total number of GetMetrics gRPC requests handled by keda-operator for the metrics server"),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
+	otMetricsServiceGetMetricsDuration, err = meter.Float64Histogram(
+		"keda.metricsservice.get_metrics.duration.seconds",
+		api.WithDescription("Duration in seconds of GetMetrics gRPC requests handled by keda-operator for the metrics server"),
 		api.WithUnit("s"),
 	)
 	if err != nil {
@@ -538,6 +558,24 @@ func (o *OtelMetrics) RecordHTTPClientRequest(durationSeconds float64, statusCod
 	)
 	otHTTPClientRequestsCounter.Add(context.Background(), 1, counterOpt)
 	otHTTPClientRequestDuration.Record(context.Background(), durationSeconds, histOpt)
+}
+
+// RecordExternalMetricRequest is a no-op on the operator OpenTelemetry collector.
+func (o *OtelMetrics) RecordExternalMetricRequest(float64, error, string, string, string) {}
+
+// RecordMetricsServiceGetMetricsRequest records a GetMetrics gRPC request handled by keda-operator.
+func (o *OtelMetrics) RecordMetricsServiceGetMetricsRequest(durationSeconds float64, err error, namespace, scaledObject, metricName string) {
+	result := requestResult(err)
+	counterOpt := api.WithAttributes(
+		attribute.Key("namespace").String(namespace),
+		attribute.Key("scaled_object").String(scaledObject),
+		attribute.Key("metric").String(metricName),
+		attribute.Key("result").String(result),
+	)
+	histOpt := api.WithAttributes(attribute.Key("result").String(result))
+
+	otMetricsServiceGetMetricsRequests.Add(context.Background(), 1, counterOpt)
+	otMetricsServiceGetMetricsDuration.Record(context.Background(), durationSeconds, histOpt)
 }
 
 // RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting

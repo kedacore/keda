@@ -2,6 +2,7 @@ package metricscollector
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -154,6 +155,40 @@ func TestRecordHTTPClientRequest(t *testing.T) {
 			assert.Equal(t, "s", requestDuration.Unit)
 		})
 	}
+}
+
+func TestRecordMetricsServiceGetMetricsRequest(t *testing.T) {
+	namespace := t.Name() + "-ns"
+	scaledObject := t.Name() + "-so"
+	metricName := t.Name() + "-metric"
+
+	testOtel.RecordMetricsServiceGetMetricsRequest(0.05, nil, namespace, scaledObject, metricName)
+	testOtel.RecordMetricsServiceGetMetricsRequest(0.1, errors.New("failed"), namespace, scaledObject, metricName)
+
+	got := metricdata.ResourceMetrics{}
+	err := testReader.Collect(context.Background(), &got)
+	assert.Nil(t, err)
+
+	scopeMetrics := got.ScopeMetrics[0]
+	requestCount := retrieveMetric(scopeMetrics.Metrics, "keda.metricsservice.get_metrics.requests.count")
+	assert.NotNil(t, requestCount)
+
+	var successCount, errorCount int64
+	for _, dp := range requestCount.Data.(metricdata.Sum[int64]).DataPoints {
+		result, _ := dp.Attributes.Value("result")
+		switch result.AsString() {
+		case requestResultSuccess:
+			successCount = dp.Value
+		case requestResultError:
+			errorCount = dp.Value
+		}
+	}
+	assert.Equal(t, int64(1), successCount)
+	assert.Equal(t, int64(1), errorCount)
+
+	requestDuration := retrieveMetric(scopeMetrics.Metrics, "keda.metricsservice.get_metrics.duration.seconds")
+	assert.NotNil(t, requestDuration)
+	assert.Equal(t, "s", requestDuration.Unit)
 }
 
 func TestContinuousMetrics(t *testing.T) {

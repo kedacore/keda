@@ -42,6 +42,7 @@ import (
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
 	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -65,6 +66,7 @@ var (
 	metricsServiceAddr          string
 	profilingAddr               string
 	metricsServiceGRPCAuthority string
+	enableOpenTelemetryMetrics  bool
 	logToSTDerr                 bool
 	verbosityLevel              int
 	stdErrThreshold             string
@@ -243,6 +245,7 @@ func main() {
 	cmd.Flags().Float32Var(&adapterClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
 	cmd.Flags().IntVar(&adapterClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
 	cmd.Flags().BoolVar(&disableCompression, "disable-compression", true, "Disable response compression for k8s restAPI in client-go. ")
+	cmd.Flags().BoolVar(&enableOpenTelemetryMetrics, "enable-opentelemetry-metrics", false, "Enable OpenTelemetry export of keda-metrics-apiserver performance metrics.")
 
 	// legacy klogr flags handled for backwards compatibility. Default set to -1 so it doesn't override values set via zap options
 	cmd.Flags().IntVar(&verbosityLevel, "v", -1, "Logging level for Metrics Server. (DEPRECATED)")
@@ -313,6 +316,11 @@ func main() {
 	cmd.WithExternalMetrics(kedaProvider)
 
 	setupLog.Info(cmd.Message)
+
+	metricscollector.RegisterAdapterPerformancePromMetrics(legacyregistry.Registerer())
+	if enableOpenTelemetryMetrics {
+		metricscollector.InitAdapterOtelPerformanceMetrics()
+	}
 
 	RunMetricsServer(ctx)
 

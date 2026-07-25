@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -47,6 +48,12 @@ type GrpcServer struct {
 
 // GetMetrics returns metrics values in form of ExternalMetricValueList for specified ScaledObject reference
 func (s *GrpcServer) GetMetrics(ctx context.Context, in *api.ScaledObjectRef) (*api.ExternalMetricValueList, error) {
+	start := time.Now()
+	var err error
+	defer func() {
+		metricscollector.RecordMetricsServiceGetMetricsRequest(time.Since(start).Seconds(), err, in.GetNamespace(), in.GetName(), in.GetMetricName())
+	}()
+
 	extMetrics, err := (*s.scalerHandler).GetScaledObjectMetrics(ctx, in.Name, in.Namespace, in.MetricName)
 	if err != nil {
 		return &api.ExternalMetricValueList{}, fmt.Errorf("error when getting metric values %w", err)
