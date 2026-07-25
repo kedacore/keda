@@ -23,6 +23,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
+	"strings"
 	"testing"
 	"time"
 
@@ -148,8 +149,9 @@ func TestGetServicePrincipalCredentialOptions(t *testing.T) {
 
 func TestNewServicePrincipalCredentialValidation(t *testing.T) {
 	tests := []struct {
-		name       string
-		authParams map[string]string
+		name        string
+		authParams  map[string]string
+		errContains string
 	}{
 		{
 			name: "missing tenant ID",
@@ -157,6 +159,7 @@ func TestNewServicePrincipalCredentialValidation(t *testing.T) {
 				ServicePrincipalClientIDKey:     "client-id",
 				ServicePrincipalClientSecretKey: "client-secret",
 			},
+			errContains: "tenantId is required",
 		},
 		{
 			name: "missing client ID",
@@ -164,6 +167,7 @@ func TestNewServicePrincipalCredentialValidation(t *testing.T) {
 				ServicePrincipalTenantIDKey:     "tenant-id",
 				ServicePrincipalClientSecretKey: "client-secret",
 			},
+			errContains: "clientId is required",
 		},
 		{
 			name: "missing credential",
@@ -171,6 +175,25 @@ func TestNewServicePrincipalCredentialValidation(t *testing.T) {
 				ServicePrincipalTenantIDKey: "tenant-id",
 				ServicePrincipalClientIDKey: "client-id",
 			},
+			errContains: "requires either clientSecret or clientCertificate",
+		},
+		{
+			name: "client secret configured but empty",
+			authParams: map[string]string{
+				ServicePrincipalTenantIDKey:     "tenant-id",
+				ServicePrincipalClientIDKey:     "client-id",
+				ServicePrincipalClientSecretKey: "",
+			},
+			errContains: "clientSecret is configured but resolved to an empty value",
+		},
+		{
+			name: "client certificate configured but empty",
+			authParams: map[string]string{
+				ServicePrincipalTenantIDKey:          "tenant-id",
+				ServicePrincipalClientIDKey:          "client-id",
+				ServicePrincipalClientCertificateKey: "",
+			},
+			errContains: "clientCertificate is configured but resolved to an empty value",
 		},
 		{
 			name: "secret and certificate configured",
@@ -180,14 +203,52 @@ func TestNewServicePrincipalCredentialValidation(t *testing.T) {
 				ServicePrincipalClientSecretKey:      "client-secret",
 				ServicePrincipalClientCertificateKey: "client-certificate",
 			},
+			errContains: "mutually exclusive",
 		},
 		{
-			name: "certificate password without certificate",
+			// A password-only input (no secret, no certificate) is rejected by the
+			// "requires either" rule first, matching the webhook's rule ordering.
+			name: "certificate password without any credential",
 			authParams: map[string]string{
 				ServicePrincipalTenantIDKey:                  "tenant-id",
 				ServicePrincipalClientIDKey:                  "client-id",
 				ServicePrincipalClientCertificatePasswordKey: "password",
 			},
+			errContains: "requires either clientSecret or clientCertificate",
+		},
+		{
+			// A credential is present but it is a secret, so the password (which
+			// only applies to certificates) must be rejected.
+			name: "certificate password with secret but no certificate",
+			authParams: map[string]string{
+				ServicePrincipalTenantIDKey:                  "tenant-id",
+				ServicePrincipalClientIDKey:                  "client-id",
+				ServicePrincipalClientSecretKey:              "client-secret",
+				ServicePrincipalClientCertificatePasswordKey: "password",
+			},
+			errContains: "clientCertificatePassword requires clientCertificate",
+		},
+		{
+			// Certificate is valid but the configured password resolved to empty
+			// (e.g. a missing Secret key), which must be surfaced explicitly.
+			name: "certificate with empty password",
+			authParams: map[string]string{
+				ServicePrincipalTenantIDKey:                  "tenant-id",
+				ServicePrincipalClientIDKey:                  "client-id",
+				ServicePrincipalClientCertificateKey:         createTestClientCertificate(t),
+				ServicePrincipalClientCertificatePasswordKey: "",
+			},
+			errContains: "clientCertificatePassword is configured but resolved to an empty value",
+		},
+		{
+			name: "active directory endpoint without private cloud",
+			authParams: map[string]string{
+				ServicePrincipalTenantIDKey:                "tenant-id",
+				ServicePrincipalClientIDKey:                "client-id",
+				ServicePrincipalClientSecretKey:            "client-secret",
+				ServicePrincipalActiveDirectoryEndpointKey: "https://login.private.example",
+			},
+			errContains: "activeDirectoryEndpoint can only be set when cloud is Private",
 		},
 		{
 			name: "invalid certificate",
@@ -196,13 +257,18 @@ func TestNewServicePrincipalCredentialValidation(t *testing.T) {
 				ServicePrincipalClientIDKey:          "client-id",
 				ServicePrincipalClientCertificateKey: "not-a-certificate",
 			},
+			errContains: "failed to parse azure service principal clientCertificate",
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if _, err := NewServicePrincipalCredential(test.authParams); err == nil {
+			_, err := NewServicePrincipalCredential(test.authParams)
+			if err == nil {
 				t.Fatal("expected credential creation to fail")
+			}
+			if test.errContains != "" && !strings.Contains(err.Error(), test.errContains) {
+				t.Fatalf("expected error to contain %q, got %q", test.errContains, err.Error())
 			}
 		})
 	}

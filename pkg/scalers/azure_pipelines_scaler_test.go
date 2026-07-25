@@ -106,7 +106,7 @@ func TestParseAzurePipelinesMetadata(t *testing.T) {
 
 			logger := logr.Discard()
 
-			_, err := parseAzurePipelinesMetadata(context.TODO(), logger, &scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams}, http.DefaultClient)
+			_, err := parseAzurePipelinesMetadata(t.Context(), logger, &scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams}, http.DefaultClient)
 			if err != nil && !testData.isError {
 				t.Error("Expected success but got error", err)
 			}
@@ -233,7 +233,7 @@ func TestValidateAzurePipelinesPool(t *testing.T) {
 				"personalAccessToken": "PAT",
 			}
 			logger := logr.Discard()
-			_, err := parseAzurePipelinesMetadata(context.TODO(), logger, &scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: nil, AuthParams: authParams}, http.DefaultClient)
+			_, err := parseAzurePipelinesMetadata(t.Context(), logger, &scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: nil, AuthParams: authParams}, http.DefaultClient)
 			if err != nil && !testData.isError {
 				t.Error("Expected success but got error", err)
 			}
@@ -273,7 +273,7 @@ func TestAzurePipelinesGetMetricSpecForScaling(t *testing.T) {
 
 		logger := logr.Discard()
 
-		meta, err := parseAzurePipelinesMetadata(context.TODO(), logger, &scalersconfig.ScalerConfig{TriggerMetadata: metadata, ResolvedEnv: nil, AuthParams: authParams, TriggerIndex: testData.triggerIndex}, http.DefaultClient)
+		meta, err := parseAzurePipelinesMetadata(t.Context(), logger, &scalersconfig.ScalerConfig{TriggerMetadata: metadata, ResolvedEnv: nil, AuthParams: authParams, TriggerIndex: testData.triggerIndex}, http.DefaultClient)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
