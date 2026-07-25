@@ -159,6 +159,15 @@ func isTriggerAuthenticationRemovingFinalizer(om metav1.ObjectMeta, oldOm metav1
 }
 
 func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
+	// Validate authentication providers that are independent of pod identity up
+	// front, so they are not skipped by the pod-identity switch below (whose
+	// default arm returns early).
+	if spec.AzureServicePrincipal != nil {
+		if err := validateAzureServicePrincipal(spec.AzureServicePrincipal); err != nil {
+			return nil, err
+		}
+	}
+
 	if spec.PodIdentity != nil {
 		switch spec.PodIdentity.Provider {
 		case PodIdentityProviderAzureWorkload:
@@ -208,15 +217,18 @@ func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 		}
 	}
 
-	if spec.AzureServicePrincipal != nil {
-		if err := validateAzureServicePrincipal(spec.AzureServicePrincipal); err != nil {
-			return nil, err
-		}
-	}
-
 	return nil, nil
 }
 
+// validateAzureServicePrincipal admission-validates the azureServicePrincipal
+// spec. The equivalent runtime checks live in
+// (pkg/scalers/azure).NewServicePrincipalCredential, which operates on the
+// resolved credential values; keep the two rule sets in sync.
+//
+// Note: the "cloud" value is intentionally not validated against a fixed set of
+// names here. Besides the built-in clouds, custom environments can be supplied
+// via AZURE_ENVIRONMENT_FILEPATH, so an unknown name is only rejected at scaler
+// runtime by ParseActiveDirectoryEndpoint rather than at admission time.
 func validateAzureServicePrincipal(servicePrincipal *AzureServicePrincipal) error {
 	if servicePrincipal.TenantID == "" {
 		return fmt.Errorf("azureServicePrincipal.tenantId is required when azureServicePrincipal is configured")
