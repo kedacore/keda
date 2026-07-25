@@ -36,6 +36,11 @@ const (
 var (
 	collectors        []MetricsCollector
 	promServerMetrics *grpcprom.ServerMetrics
+
+	// highCardinalityMetricLabels determines whether the duration histogram metrics
+	// are emitted with their full (high-cardinality) label sets or with reduced ones
+	// that keep the number of time series bounded in large clusters.
+	highCardinalityMetricLabels bool
 )
 
 type MetricsCollector interface {
@@ -43,8 +48,11 @@ type MetricsCollector interface {
 
 	DeleteScalerMetrics(namespace string, scaledResource string, isScaledObject bool)
 
-	// RecordScalerLatency create a measurement of the latency to external metric
-	RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value time.Duration)
+	// RecordScalerLatency create a measurement of the latency to external metric.
+	// scaler is the user-defined trigger name when set (otherwise the scaler type) and
+	// feeds the gauge labels; triggerType is always the scaler type from the trigger spec
+	// (a bounded set, e.g. "prometheus") and feeds the default histogram label.
+	RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerType string, triggerIndex int, metric string, isScaledObject bool, value time.Duration)
 
 	// RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
 	RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value time.Duration)
@@ -91,7 +99,9 @@ type MetricsCollector interface {
 	RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string)
 }
 
-func NewMetricsCollectors(enablePrometheusMetrics bool, enableOpenTelemetryMetrics bool) {
+func NewMetricsCollectors(enablePrometheusMetrics bool, enableOpenTelemetryMetrics bool, enableHighCardinalityMetricLabels bool) {
+	highCardinalityMetricLabels = enableHighCardinalityMetricLabels
+
 	if enablePrometheusMetrics {
 		promometrics := NewPromMetrics()
 		collectors = append(collectors, promometrics)
@@ -122,9 +132,9 @@ func DeleteScalerMetrics(namespace string, scaledObject string, isScaledObject b
 }
 
 // RecordScalerLatency create a measurement of the latency to external metric
-func RecordScalerLatency(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, isScaledObject bool, value time.Duration) {
+func RecordScalerLatency(namespace string, scaledObject string, scaler string, triggerType string, triggerIndex int, metric string, isScaledObject bool, value time.Duration) {
 	for _, element := range collectors {
-		element.RecordScalerLatency(namespace, scaledObject, scaler, triggerIndex, metric, isScaledObject, value)
+		element.RecordScalerLatency(namespace, scaledObject, scaler, triggerType, triggerIndex, metric, isScaledObject, value)
 	}
 }
 

@@ -59,7 +59,9 @@ var (
 		},
 		metricLabels,
 	)
-	scalerActive = prometheus.NewGaugeVec(
+	scalerMetricsDuration = newScalerMetricsDurationHistogram(false)
+	internalLoopDuration  = newInternalLoopDurationHistogram(false)
+	scalerActive          = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
@@ -184,13 +186,61 @@ var (
 	)
 )
 
+// newScalerMetricsDurationHistogram builds the histogram mirror of the
+// keda_scaler_metrics_latency_seconds gauge. By default it is only labeled by
+// scaler type (the trigger type from the trigger spec, a bounded set) to keep
+// the number of time series bounded; the full label set can be enabled with
+// the --enable-high-cardinality-metric-labels flag.
+func newScalerMetricsDurationHistogram(highCardinality bool) *prometheus.HistogramVec {
+	labelNames := []string{"scaler"}
+	if highCardinality {
+		labelNames = metricLabels
+	}
+	return prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaler",
+			Name:      "metrics_duration_seconds",
+			Help:      "The latency of retrieving current metric from each scaler, in seconds, as a histogram.",
+			Buckets:   prometheus.DefBuckets,
+		},
+		labelNames,
+	)
+}
+
+// newInternalLoopDurationHistogram builds the histogram mirror of the
+// keda_internal_scale_loop_latency_seconds gauge. By default it is only labeled
+// by resource type to keep the number of time series bounded; the full label set
+// can be enabled with the --enable-high-cardinality-metric-labels flag.
+func newInternalLoopDurationHistogram(highCardinality bool) *prometheus.HistogramVec {
+	labelNames := []string{"type"}
+	if highCardinality {
+		labelNames = []string{"namespace", "type", "resource"}
+	}
+	return prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "internal_scale_loop",
+			Name:      "duration_seconds",
+			Help:      "Total deviation (in seconds) between the expected execution time and the actual execution time for the scaling loop, as a histogram.",
+			Buckets:   prometheus.DefBuckets,
+		},
+		labelNames,
+	)
+}
+
 type PromMetrics struct {
 }
 
 func NewPromMetrics() *PromMetrics {
+	scalerMetricsDuration = newScalerMetricsDurationHistogram(highCardinalityMetricLabels)
+	internalLoopDuration = newInternalLoopDurationHistogram(highCardinalityMetricLabels)
+
 	metrics.Registry.MustRegister(scalerMetricsValue)
 	metrics.Registry.MustRegister(scalerMetricsLatency)
+	metrics.Registry.MustRegister(scalerMetricsDuration)
 	metrics.Registry.MustRegister(internalLoopLatency)
+	metrics.Registry.MustRegister(internalLoopDuration)
 	metrics.Registry.MustRegister(scalerActive)
 	metrics.Registry.MustRegister(scalerErrors)
 	metrics.Registry.MustRegister(scaledObjectErrors)
@@ -228,16 +278,23 @@ func (p *PromMetrics) DeleteScalerMetrics(namespace string, scaledResource strin
 	scalerActive.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
 	scalerErrors.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
 	scalerMetricsLatency.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
+	if highCardinalityMetricLabels {
+		// with the reduced label set the histogram series are shared across scaled resources,
+		// so there is nothing to delete when a single resource is gone
+		scalerMetricsDuration.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
+	}
 }
 
 // RecordScalerLatency create a measurement of the latency to external metric
-func (p *PromMetrics) RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value time.Duration) {
+func (p *PromMetrics) RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerType string, triggerIndex int, metric string, isScaledObject bool, value time.Duration) {
 	scalerMetricsLatency.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Set(value.Seconds())
+	scalerMetricsDuration.With(getScalerDurationLabels(namespace, scaledResource, scaler, triggerType, triggerIndex, metric, isScaledObject)).Observe(value.Seconds())
 }
 
 // RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
 func (p *PromMetrics) RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value time.Duration) {
 	internalLoopLatency.WithLabelValues(namespace, getResourceType(isScaledObject), name).Set(value.Seconds())
+	internalLoopDuration.With(getLoopDurationLabels(namespace, name, isScaledObject)).Observe(value.Seconds())
 }
 
 // RecordScalerActive create a measurement of the activity of the scaler
@@ -308,6 +365,27 @@ func (p *PromMetrics) RecordScaledJobError(namespace string, scaledJob string, e
 
 func getLabels(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, isScaledObject bool) prometheus.Labels {
 	return prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject, "scaler": scaler, "triggerIndex": strconv.Itoa(triggerIndex), "metric": metric, "type": getResourceType(isScaledObject)}
+}
+
+// getScalerDurationLabels returns the labels of the scaler metrics duration histogram,
+// matching the label names the histogram was created with in newScalerMetricsDurationHistogram.
+// In default mode the single scaler label carries triggerType (the scaler type from the
+// trigger spec, a bounded set) rather than the user-defined trigger name the gauge uses,
+// so that cardinality stays bounded regardless of how triggers are named.
+func getScalerDurationLabels(namespace string, scaledObject string, scaler string, triggerType string, triggerIndex int, metric string, isScaledObject bool) prometheus.Labels {
+	if highCardinalityMetricLabels {
+		return getLabels(namespace, scaledObject, scaler, triggerIndex, metric, isScaledObject)
+	}
+	return prometheus.Labels{"scaler": triggerType}
+}
+
+// getLoopDurationLabels returns the labels of the internal scale loop duration histogram,
+// matching the label names the histogram was created with in newInternalLoopDurationHistogram
+func getLoopDurationLabels(namespace string, resource string, isScaledObject bool) prometheus.Labels {
+	if highCardinalityMetricLabels {
+		return prometheus.Labels{"namespace": namespace, "type": getResourceType(isScaledObject), "resource": resource}
+	}
+	return prometheus.Labels{"type": getResourceType(isScaledObject)}
 }
 
 func getResourceType(isScaledObject bool) string {
