@@ -693,7 +693,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 						var latency time.Duration
 						rawMetrics, isMetricActive, latency, rawErr = scalersCache.GetMetricsAndActivityForScaler(ctx, triggerIndex, metricName)
 						if latency != -1 {
-							metricscollector.RecordScalerLatency(scaledObjectNamespace, scaledObject.Name, triggerName, triggerIndex, metricName, true, latency)
+							metricscollector.RecordScalerLatency(scaledObjectNamespace, scaledObject.Name, triggerName, scalerConfig.TriggerType, triggerIndex, metricName, true, latency)
 						}
 						logger.V(1).Info("Getting metrics from trigger", "trigger", triggerName, "metricName", metricName, "metrics", rawMetrics, "scalerError", rawErr)
 					}
@@ -976,7 +976,7 @@ func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler
 			continue
 		}
 		if latency != -1 {
-			metricscollector.RecordScalerLatency(scaledObject.Namespace, scaledObject.Name, result.TriggerName, triggerIndex, metricName, true, latency)
+			metricscollector.RecordScalerLatency(scaledObject.Namespace, scaledObject.Name, result.TriggerName, scalerConfig.TriggerType, triggerIndex, metricName, true, latency)
 		}
 
 		logger.V(1).Info("Getting metrics and activity from scaler", "scaler", result.TriggerName, "metricName", metricName, "metrics", rawMetrics, "activity", isMetricActive, "scalerError", rawErr)
@@ -1091,7 +1091,7 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 			}
 			metricscollector.RecordScaledJobError(scaledJob.Namespace, scaledJob.Name, err)
 			if latency != -1 {
-				metricscollector.RecordScalerLatency(scaledJob.Namespace, scaledJob.Name, scalerName, scalerIndex, metricName, false, latency)
+				metricscollector.RecordScalerLatency(scaledJob.Namespace, scaledJob.Name, scalerName, scalerConfigs[scalerIndex].TriggerType, scalerIndex, metricName, false, latency)
 			}
 			if err != nil {
 				scalerLogger.Error(err, "Error getting scaler metrics and activity, but continue")

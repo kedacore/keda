@@ -101,6 +101,101 @@ func TestLoopLatency(t *testing.T) {
 	assert.Equal(t, latencySeconds.Unit, "s")
 	data = latencySeconds.Data.(metricdata.Gauge[float64]).DataPoints[0]
 	assert.Equal(t, data.Value, float64(0.5))
+
+	duration := retrieveMetric(scopeMetrics.Metrics, "keda.internal.scale.loop.duration.seconds")
+	assert.NotNil(t, duration)
+	assert.Equal(t, duration.Unit, "s")
+	histogram := duration.Data.(metricdata.Histogram[float64]).DataPoints[0]
+	assert.Equal(t, histogram.Count, uint64(1))
+	assert.Equal(t, histogram.Sum, float64(0.5))
+	// by default the histogram is only labeled by resource type
+	typeAttribute, ok := histogram.Attributes.Value("type")
+	assert.True(t, ok)
+	assert.Equal(t, typeAttribute.AsString(), "scaledobject")
+	assert.False(t, histogram.Attributes.HasValue("namespace"))
+	assert.False(t, histogram.Attributes.HasValue("name"))
+}
+
+func TestScalerMetricsLatency(t *testing.T) {
+	// scaler carries the user-defined trigger name, triggerType the bounded scaler type
+	testOtel.RecordScalerLatency("namespace", "name", "my-trigger", "cron", 0, "metric", true, 500*time.Millisecond)
+	got := metricdata.ResourceMetrics{}
+	err := testReader.Collect(context.Background(), &got)
+
+	assert.Nil(t, err)
+	scopeMetrics := got.ScopeMetrics[0]
+	assert.NotEqual(t, len(scopeMetrics.Metrics), 0)
+
+	latencySeconds := retrieveMetric(scopeMetrics.Metrics, "keda.scaler.metrics.latency.seconds")
+	assert.NotNil(t, latencySeconds)
+	assert.Equal(t, latencySeconds.Unit, "s")
+	data := latencySeconds.Data.(metricdata.Gauge[float64]).DataPoints[0]
+	assert.Equal(t, data.Value, float64(0.5))
+
+	duration := retrieveMetric(scopeMetrics.Metrics, "keda.scaler.metrics.duration.seconds")
+	assert.NotNil(t, duration)
+	assert.Equal(t, duration.Unit, "s")
+	histogram := duration.Data.(metricdata.Histogram[float64]).DataPoints[0]
+	assert.Equal(t, histogram.Count, uint64(1))
+	assert.Equal(t, histogram.Sum, float64(0.5))
+	// by default the histogram is only labeled by the bounded trigger type,
+	// not by the user-defined trigger name the gauge uses
+	scalerAttribute, ok := histogram.Attributes.Value("scaler")
+	assert.True(t, ok)
+	assert.Equal(t, scalerAttribute.AsString(), "cron")
+	assert.False(t, histogram.Attributes.HasValue("namespace"))
+	assert.False(t, histogram.Attributes.HasValue("scaledObject"))
+	assert.False(t, histogram.Attributes.HasValue("metric"))
+}
+
+func TestDurationHistogramsHighCardinalityLabels(t *testing.T) {
+	prevMode := highCardinalityMetricLabels
+	t.Cleanup(func() {
+		highCardinalityMetricLabels = prevMode
+	})
+	highCardinalityMetricLabels = true
+
+	testOtel.RecordScalerLatency("hc-namespace", "hc-name", "hc-scaler", "hc-trigger-type", 1, "hc-metric", true, 250*time.Millisecond)
+	testOtel.RecordScalableObjectLatency("hc-namespace", "hc-name", true, 250*time.Millisecond)
+	got := metricdata.ResourceMetrics{}
+	err := testReader.Collect(context.Background(), &got)
+
+	assert.Nil(t, err)
+	scopeMetrics := got.ScopeMetrics[0]
+
+	duration := retrieveMetric(scopeMetrics.Metrics, "keda.scaler.metrics.duration.seconds")
+	assert.NotNil(t, duration)
+	var scalerDataPoint *metricdata.HistogramDataPoint[float64]
+	for _, dp := range duration.Data.(metricdata.Histogram[float64]).DataPoints {
+		if attr, ok := dp.Attributes.Value("scaler"); ok && attr.AsString() == "hc-scaler" {
+			scalerDataPoint = &dp
+			break
+		}
+	}
+	assert.NotNil(t, scalerDataPoint)
+	assert.Equal(t, scalerDataPoint.Count, uint64(1))
+	assert.Equal(t, scalerDataPoint.Sum, float64(0.25))
+	namespaceAttribute, ok := scalerDataPoint.Attributes.Value("namespace")
+	assert.True(t, ok)
+	assert.Equal(t, namespaceAttribute.AsString(), "hc-namespace")
+	assert.True(t, scalerDataPoint.Attributes.HasValue("scaledObject"))
+	assert.True(t, scalerDataPoint.Attributes.HasValue("metric"))
+
+	loopDuration := retrieveMetric(scopeMetrics.Metrics, "keda.internal.scale.loop.duration.seconds")
+	assert.NotNil(t, loopDuration)
+	var loopDataPoint *metricdata.HistogramDataPoint[float64]
+	for _, dp := range loopDuration.Data.(metricdata.Histogram[float64]).DataPoints {
+		if attr, ok := dp.Attributes.Value("namespace"); ok && attr.AsString() == "hc-namespace" {
+			loopDataPoint = &dp
+			break
+		}
+	}
+	assert.NotNil(t, loopDataPoint)
+	assert.Equal(t, loopDataPoint.Count, uint64(1))
+	assert.Equal(t, loopDataPoint.Sum, float64(0.25))
+	nameAttribute, ok := loopDataPoint.Attributes.Value("name")
+	assert.True(t, ok)
+	assert.Equal(t, nameAttribute.AsString(), "hc-name")
 }
 
 func TestRecordHTTPClientRequest(t *testing.T) {
