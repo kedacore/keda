@@ -9150,6 +9150,9 @@ spec:
                 items:
                   type: string
                 type: array
+              hpaMinReplicaSinceTime:
+                format: date-time
+                type: string
               lastActiveTime:
                 format: date-time
                 type: string
