@@ -70,6 +70,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+- **General**: Add optional `StreamMetricSpec` server-streaming RPC to external scaler gRPC proto, allowing external-push scalers to dynamically update HPA target values without modifying the ScaledObject ([#7793](https://github.com/kedacore/keda/issues/7793))
 - **General**: Introduce new ClickHouse Scaler ([#7418](https://github.com/kedacore/keda/issues/7418))
 
 #### Experimental
@@ -84,6 +85,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
+- **General**: Fix concurrent map writes panic in the shared root CA `CertPool` ([#7910](https://github.com/kedacore/keda/issues/7910))
 - **General**: Fix CVE-2026-42151, CVE-2026-42154, CVE-2026-40179 ([#7868](https://github.com/kedacore/keda/issues/7868))
 - **General**: Fix nil pointer dereference in `customScalingStrategy.GetEffectiveMaxScale` when `customScalingQueueLengthDeduction` is omitted; the optional field is now treated as zero deduction instead of panicking ([#7798](https://github.com/kedacore/keda/issues/7798))
 - **General**: Fix `ScaledJob` CRD validation to include "default" as a valid value for `scalingStrategy.strategy` ([#7855](https://github.com/kedacore/keda/issues/7855))
@@ -127,6 +129,7 @@ New deprecation(s):
 
 - **General**: Add cooldownPeriod and pollingInterval checks for ScaledObject ([#7271](https://github.com/kedacore/keda/pull/7271))
 - **General**: Add CRD-level validation markers (Minimum, MinLength, MinItems, Enum) for ScaledObject, ScaledJob, ScaleTriggers, and TriggerAuthentication API types ([#7533](https://github.com/kedacore/keda/pull/7533))
+- **General**: Add `--enable-high-cardinality-metrics-labels` to let users enable high-cardinality labels on scaler HTTP request duration metrics ([#7731](https://github.com/kedacore/keda/issues/7731))
 - **General**: Add `--leader-election-id` flag to allow configuring the leader election Lease name ([#7564](https://github.com/kedacore/keda/issues/7564))
 - **General**: Add scaler HTTP request metrics (`keda_scaler_http_requests_total`, `keda_scaler_http_request_duration_seconds`) for outbound HTTP requests made during scaler metric collection ([#6600](https://github.com/kedacore/keda/issues/6600))
 - **General**: Allow more control of TLS versions & ciphers via `KEDA_HTTP_TLS_CIPHER_LIST`, `KEDA_SERVICE_TLS_CIPHER_LIST` and `KEDA_SERVICE_MIN_TLS_VERSION` env vars ([#7617](https://github.com/kedacore/keda/pull/7617))
