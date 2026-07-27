@@ -334,6 +334,17 @@ func WaitForAllJobsSuccess(t *testing.T, kc *kubernetes.Clientset, namespace str
 	return false
 }
 
+// DeleteAllJobsInNamespace removes all Jobs (and their pods, via background propagation) in the
+// namespace, so a phase can reset the Job count for the next phase's assertions.
+func DeleteAllJobsInNamespace(t *testing.T, kc *kubernetes.Clientset, namespace string) {
+	policy := metav1.DeletePropagationBackground
+	err := kc.BatchV1().Jobs(namespace).DeleteCollection(context.Background(),
+		metav1.DeleteOptions{PropagationPolicy: &policy}, metav1.ListOptions{})
+	if err != nil {
+		t.Logf("cannot delete jobs in namespace %s - %s", namespace, err)
+	}
+}
+
 func WaitForNamespaceDeletion(t *testing.T, nsName string) bool {
 	for i := 0; i < 120; i++ {
 		t.Logf("waiting for namespace %s deletion", nsName)

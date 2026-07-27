@@ -155,7 +155,7 @@ func NewPulsarScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		msg := "OAuth is configured without clientSecret and without mTLS (RFC 8705). Add a clientSecret or enable mTLS to ensure secure authentication."
 		logger.Info(msg)
 		if config.Recorder != nil {
-			config.Recorder.Event(config.ScaledObject, corev1.EventTypeWarning, eventreason.KEDAScalersInfo, msg)
+			config.Recorder.Eventf(config.ScaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", msg)
 		}
 	}
 

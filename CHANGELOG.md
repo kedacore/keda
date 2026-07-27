@@ -16,6 +16,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.20.1](#v2201)
+- [v2.20.0](#v2200)
 - [v2.19.0](#v2190)
 - [v2.18.3](#v2183)
 - [v2.18.2](#v2182)
@@ -68,8 +70,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **General**: Introduce Elastic Forecast Scaler ([#7494](https://github.com/kedacore/keda/issues/7494))
-- **General**: Introduce new OpenSearch Scaler ([#7456](https://github.com/kedacore/keda/issues/7456))
+- **General**: Add optional `StreamMetricSpec` server-streaming RPC to external scaler gRPC proto, allowing external-push scalers to dynamically update HPA target values without modifying the ScaledObject ([#7793](https://github.com/kedacore/keda/issues/7793))
+- **General**: Introduce new ClickHouse Scaler ([#7418](https://github.com/kedacore/keda/issues/7418))
 
 #### Experimental
 
@@ -77,10 +79,60 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
+- **Kafka Scaler**: Add optional `fullMetadata` trigger metadata field to control Sarama's full cluster metadata refresh, reducing operator memory for topic scoped triggers ([#7453](https://github.com/kedacore/keda/issues/7453))
+- **Temporal Scaler**: Add opt-in `includeRunningWorkflowCount` (with optional `workflowTaskQueueForCount`) to block premature scale-down when the backlog is momentarily zero but Workflow workers are still busy. Worker Deployment Version scalers short-circuit on Version status (`DRAINING` stays active, `DRAINED`/`INACTIVE` scale down); other modes issue a scoped `CountWorkflow` visibility query — including `TemporalWorkerDeploymentVersion is null` for unversioned workers. ([#7459](https://github.com/kedacore/keda/issues/7459))
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Fixes
+
+- **General**: Fix concurrent map writes panic in the shared root CA `CertPool` ([#7910](https://github.com/kedacore/keda/issues/7910))
+- **General**: Fix CVE-2026-42151, CVE-2026-42154, CVE-2026-40179 ([#7868](https://github.com/kedacore/keda/issues/7868))
+- **General**: Fix nil pointer dereference in `customScalingStrategy.GetEffectiveMaxScale` when `customScalingQueueLengthDeduction` is omitted; the optional field is now treated as zero deduction instead of panicking ([#7798](https://github.com/kedacore/keda/issues/7798))
+- **General**: Fix `ScaledJob` CRD validation to include "default" as a valid value for `scalingStrategy.strategy` ([#7855](https://github.com/kedacore/keda/issues/7855))
+- **General**: Restore gRPC reconnect backoff in the metrics service client; an unset `Backoff` in `WithConnectParams` disabled backoff and caused a zero-delay reconnect loop that flooded logs when keda-operator was unreachable ([#7856](https://github.com/kedacore/keda/issues/7856))
+- **General**: Treat negative external metric values as zero to prevent incorrect HPA scaling ([#7880](https://github.com/kedacore/keda/issues/7880))
+- **Azure Blob Storage Scaler**: Fix `globPattern` never matching when written in path-style with a leading `/`, since blob names never have one ([#6492](https://github.com/kedacore/keda/issues/6492))
+- **MongoDB Scaler**: Disconnect the client when the initial `Ping` fails so the background topology-monitoring connections opened by `mongo.Connect` are not leaked ([#5612](https://github.com/kedacore/keda/issues/5612))
+
+### Deprecations
+
+You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
+
+New deprecation(s):
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Breaking Changes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Other
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+## v2.20.1
+
+### Fixes
+
+- **General**: Fix concurrent map read/write data race in fallback `updateStatus` that caused panics when multiple triggers were scaling simultaneously ([#7838](https://github.com/kedacore/keda/issues/7838))
+- **General**: Fix `KEDAScalersStarted` "Started scalers watch" event not being emitted for ScaledJobs because it shared an events.k8s.io aggregation key with the per-scaler "scaler is built" event ([#7820](https://github.com/kedacore/keda/pull/7820))
+
+## v2.20.0
+
+### New
+
+- **General**: Add `scalingModifiers` fallback behavior ([#7366](https://github.com/kedacore/keda/discussions/7366))
+- **General**: Introduce Elastic Forecast Scaler ([#7494](https://github.com/kedacore/keda/issues/7494))
+- **General**: Introduce new OpenSearch Scaler ([#7456](https://github.com/kedacore/keda/issues/7456))
+
+### Improvements
+
+- **General**: Add cooldownPeriod and pollingInterval checks for ScaledObject ([#7271](https://github.com/kedacore/keda/pull/7271))
 - **General**: Add CRD-level validation markers (Minimum, MinLength, MinItems, Enum) for ScaledObject, ScaledJob, ScaleTriggers, and TriggerAuthentication API types ([#7533](https://github.com/kedacore/keda/pull/7533))
 - **General**: Add `--leader-election-id` flag to allow configuring the leader election Lease name ([#7564](https://github.com/kedacore/keda/issues/7564))
 - **General**: Add scaler HTTP request metrics (`keda_scaler_http_requests_total`, `keda_scaler_http_request_duration_seconds`) for outbound HTTP requests made during scaler metric collection ([#6600](https://github.com/kedacore/keda/issues/6600))
 - **General**: Allow more control of TLS versions & ciphers via `KEDA_HTTP_TLS_CIPHER_LIST`, `KEDA_SERVICE_TLS_CIPHER_LIST` and `KEDA_SERVICE_MIN_TLS_VERSION` env vars ([#7617](https://github.com/kedacore/keda/pull/7617))
+- **General**: Cap each scalers-cache reader at a per-reader budget derived from `globalHTTPTimeout` so `ScalersCache.Close` cannot block indefinitely ([#7574](https://github.com/kedacore/keda/issues/7574))
 - **General**: Make APIService cert injections optional ([#7559](https://github.com/kedacore/keda/pull/7559))
 - **General**: Remove unconditional `json.MarshalIndent` calls from admission webhook validation hot paths; replace spec-comparison `MarshalIndent`-and-string-compare in `isRemovingFinalizer` variants with `reflect.DeepEqual`. Prevents webhook OOM under sustained admission load at large scale (observed at ~60k ScaledObjects) ([#7670](https://github.com/kedacore/keda/pull/7670))
 - **AWS Scalers**: Add support for AWS External ID in TriggerAuthentication podIdentity for all AWS scalers (SQS, Kinesis, DynamoDB, CloudWatch, etc.) to enable cross-account access scenarios ([#6921](https://github.com/kedacore/keda/issues/6921))
@@ -95,13 +147,17 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
+- **General**: Add controller-runtime cache field indexes for ScaledObject admission validation so `verifyScaledObjects` and `verifyHpas` look up duplicate scaleTargetRef and HPA-name conflicts via indexed Lists rather than full-namespace scans, eliminating the webhook OOM under high-scale creation bursts ([#7681](https://github.com/kedacore/keda/pull/7681))
 - **General**: Check updated status for Fallback condition instead of ScaledObject ([#7488](https://github.com/kedacore/keda/issues/7488))
 - **General**: Fail fast in `GetMetrics` when the gRPC connection is in Shutdown state instead of waiting for context timeout ([#7251](https://github.com/kedacore/keda/issues/7251))
 - **General**: Fix int64 overflow in milli-quantity conversion for very large metric values ([#7441](https://github.com/kedacore/keda/issues/7441))
+- **General**: Fix `keda_scaler_active` not being emitted for CPU and memory triggers ([#4945](https://github.com/kedacore/keda/issues/4945))
 - **General**: Fix misleading namespace in error log when secret access is restricted ([#7739](https://github.com/kedacore/keda/issues/7739))
 - **General**: Fix race in scalers cache rebuild that caused transient scaler errors ([#7574](https://github.com/kedacore/keda/issues/7574))
+- **General**: Fix ScaledJob emitting wrong CloudEvent type (`ScaledObjectReadyType` instead of `ScaledJobReadyType`) when transitioning to ready state ([#7792](https://github.com/kedacore/keda/issues/7792))
 - **General**: Fix ScaledObject admission webhook to return validation error from `verifyReplicaCount`, preventing invalid ScaledObjects from being created ([#5954](https://github.com/kedacore/keda/issues/5954))
 - **General**: Fix ScaledObject Ready condition not reflecting HPA status ([#7649](https://github.com/kedacore/keda/issues/7649))
+- **General**: Guard `GetCurrentReplicas` against nil `Status.ScaleTargetGVKR` to prevent operator panics under the cache race documented in ([#4389](https://github.com/kedacore/keda/issues/4389)) / ([#4955](https://github.com/kedacore/keda/issues/4955))
 - **General**: Handle paused scaling directly in reconciler ([#7663](https://github.com/kedacore/keda/issues/7663))
 - **General**: Honor `stderrthreshold` when `logtostderr` is enabled by updating klog to v2.140.0 ([#7568](https://github.com/kedacore/keda/pull/7568))
 - **General**: Limit projected service account token reads during Vault authentication ([#7783](https://github.com/kedacore/keda/issues/7783))
@@ -139,28 +195,27 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Redis Scaler**: Use literal command names in Lua script to fix compatibility with Alibaba Cloud Redis Cluster ([#7758](https://github.com/kedacore/keda/issues/7758))
 - **Solace Scaler**: Fix URL escaping for Message VPN and Queue names ([#7481](https://github.com/kedacore/keda/pull/7481))
 - **Solr Scaler**: Use net/url to safely encode query parameters ([#7467](https://github.com/kedacore/keda/pull/7467))
+- **Splunk Observability Scaler**: Add MTS stream handling with context timeout ([#7799](https://github.com/kedacore/keda/pull/7799))
 
 ### Deprecations
 
 You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
 
-New deprecation(s):
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
 ### Breaking Changes
 
-- **GCP PubSub Scaler**: The 'subscriptionSize' setting is DEPRECATED and is removed in v2.20 - Use 'mode' and 'value' instead ([#7720](https://github.com/kedacore/keda/issues/7720))
+- **GCP PubSub Scaler**: The `subscriptionSize` setting is DEPRECATED and is removed in v2.20 - Use `mode` and `value` instead ([#7720](https://github.com/kedacore/keda/issues/7720))
 - **Huawei Cloudeye Scaler**: The `minMetricValue` setting is DEPRECATED and is removed - Use `activationTargetMetricValue` instead ([#7436](https://github.com/kedacore/keda/issues/7436))
-- **IBM MQ scaler**: The `tls` setting code is removed ([#6094](https://github.com/kedacore/keda/issues/6094))
-- **InfluxDB scaler**: The 'authToken' setting from triggerMetadata is DEPRECATED and is removed in v2.20 - Use 'authToken' from resolvedEnv or authParams instead ([#7722](https://github.com/kedacore/keda/issues/7722))
+- **IBM MQ Scaler**: The `tls` setting code is removed ([#6094](https://github.com/kedacore/keda/issues/6094))
+- **InfluxDB Scaler**: The `authToken` setting from `triggerMetadata` is DEPRECATED and is removed in v2.20 - Use `authToken` from `resolvedEnv` or `authParams` instead ([#7722](https://github.com/kedacore/keda/issues/7722))
 
 ### Other
 
+- **General**: Migrate event recording RBAC from core `events` to `events.k8s.io` ([#7781](https://github.com/kedacore/keda/pull/7781))
+- **General**: Migrate metrics service gRPC response away from Kubernetes API protobuf types for Kubernetes 0.35 ([#7781](https://github.com/kedacore/keda/pull/7781))
 - **General**: Remove dead code from authentication package and drop unused `authModes` field from ArangoDB, Loki, Prometheus and PredictKube scalers ([#7726](https://github.com/kedacore/keda/pull/7726))
 - **General**: Use informer cache for ReplicaSet lookups in GetCurrentReplicas to reduce API server load ([#7466](https://github.com/kedacore/keda/pull/7466))
 - **External Scaler**: Fix race condition in `TestWaitForState` causing flaky test under `-race` detector ([#7542](https://github.com/kedacore/keda/issues/7542))
-- **GCP scaler**: Replaced credentialsFromJSON to credentialsFromJSONWithType ([#7523](https://github.com/kedacore/keda/pull/7523))
+- **GCP Scaler**: Replace `credentialsFromJSON` with `credentialsFromJSONWithType` ([#7523](https://github.com/kedacore/keda/pull/7523))
 - **Kafka Scaler**: Refactor Kafka Scaler ([#7528](https://github.com/kedacore/keda/pull/7528))
 
 ## v2.19.0

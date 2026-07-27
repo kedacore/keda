@@ -38,8 +38,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -58,7 +60,7 @@ import (
 // +kubebuilder:rbac:groups=autoscaling,resources=horizontalpodautoscalers,verbs=get;list;watch;update;patch;create;delete
 // +kubebuilder:rbac:groups="",resources=configmaps;configmaps/status,verbs=get;list;watch
 // +kubebuilder:rbac:groups="discovery.k8s.io",resources=endpointslices,verbs=get;list;watch
-// +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
+// +kubebuilder:rbac:groups="events.k8s.io",resources=events,verbs=create;patch
 // +kubebuilder:rbac:groups="",resources=pods;services;services;secrets;external,verbs=get;list;watch
 // +kubebuilder:rbac:groups="*",resources="*/scale",verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups="",resources="serviceaccounts",verbs=list;watch
@@ -148,6 +150,9 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 				predicate.AnnotationChangedPredicate{},
 				kedacontrollerutil.HPASpecChangedPredicate{},
 			))).
+		// Reconcile when an external-push scaler streams updated metric specs
+		// (StreamMetricSpec), so the HPA is rebuilt from the freshly cached specs.
+		WatchesRawSource(source.Channel(r.ScaleHandler.MetricSpecReconcileChan(), &handler.EnqueueRequestForObject{})).
 		Complete(r)
 }
 

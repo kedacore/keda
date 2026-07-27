@@ -26,8 +26,8 @@ import (
 )
 
 const (
-	minSupportedVersion = 32
-	maxSupportedVersion = 34
+	minSupportedVersion = 33
+	maxSupportedVersion = 35
 )
 
 func PrintWelcome(logger logr.Logger, kubeVersion K8sVersion, component string) {

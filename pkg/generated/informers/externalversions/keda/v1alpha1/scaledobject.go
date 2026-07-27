@@ -57,7 +57,7 @@ func NewScaledObjectInformer(client versioned.Interface, namespace string, resyn
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredScaledObjectInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
@@ -82,7 +82,7 @@ func NewFilteredScaledObjectInformer(client versioned.Interface, namespace strin
 				}
 				return client.KedaV1alpha1().ScaledObjects(namespace).Watch(ctx, options)
 			},
-		},
+		}, client),
 		&apiskedav1alpha1.ScaledObject{},
 		resyncPeriod,
 		indexers,

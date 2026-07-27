@@ -20,10 +20,9 @@ package api;
 option go_package = ".;api";
 
 import "google/protobuf/timestamp.proto";
-import "k8s.io/metrics/pkg/apis/external_metrics/v1beta1/generated.proto";
 
 service MetricsService {
-    rpc GetMetrics (ScaledObjectRef) returns (k8s.io.metrics.pkg.apis.external_metrics.v1beta1.ExternalMetricValueList) {};
+    rpc GetMetrics (ScaledObjectRef) returns (ExternalMetricValueList) {};
 }
 
 service RawMetricsService {
@@ -61,4 +60,38 @@ message RawMetric {
     google.protobuf.Timestamp timestamp = 2;
     ScaledObjectRef metadata = 3;
     bool isActive = 4;
+}
+
+// These messages mirror the wire shape of
+// k8s.io.metrics.pkg.apis.external_metrics.v1beta1.ExternalMetricValueList
+// without importing Kubernetes API structs as gRPC response types.
+message ExternalMetricValueList {
+    ListMeta metadata = 1;
+    repeated ExternalMetricValue items = 2;
+}
+
+message ExternalMetricValue {
+    string metricName = 1;
+    map<string, string> metricLabels = 2;
+    Time timestamp = 3;
+    optional int64 window = 4;
+    Quantity value = 5;
+}
+
+message ListMeta {
+    string selfLink = 1;
+    string resourceVersion = 2;
+    string continue = 3;
+    optional int64 remainingItemCount = 4;
+}
+
+// Time mirrors k8s.io/apimachinery/pkg/apis/meta/v1.Time on the wire.
+message Time {
+    int64 seconds = 1;
+    int32 nanos = 2;
+}
+
+// Quantity mirrors k8s.io/apimachinery/pkg/api/resource.Quantity on the wire.
+message Quantity {
+    string string = 1;
 }

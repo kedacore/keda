@@ -35,10 +35,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/scale"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -74,6 +75,12 @@ type ScaleHandler interface {
 	SubscribeMetric(ctx context.Context, subscriber string, metricMetadata *api.ScaledObjectRef) bool
 	UnsubscribeMetric(ctx context.Context, subscriber string, metadata *api.ScaledObjectRef) bool
 	GetRawMetricsChan(subscriber string) (rawMetrics chan RawMetrics, done chan bool)
+
+	// MetricSpecReconcileChan returns a channel of events that request a
+	// ScaledObject reconcile. It is fed when an external-push scaler streams
+	// updated metric specs (StreamMetricSpec) so the ScaledObject reconciler
+	// can rebuild the HPA from the freshly cached specs.
+	MetricSpecReconcileChan() <-chan event.GenericEvent
 }
 
 type scaleHandler struct {
@@ -82,7 +89,7 @@ type scaleHandler struct {
 	scaleLoopContexts        *sync.Map
 	scaleExecutor            executor.ScaleExecutor
 	globalHTTPTimeout        time.Duration
-	recorder                 record.EventRecorder
+	recorder                 events.EventRecorder
 	scalerCaches             map[string]*cache.ScalersCache
 	scalerCachesLock         *sync.RWMutex
 	scaledObjectsMetricCache metricscache.MetricsCache
@@ -91,10 +98,13 @@ type scaleHandler struct {
 	// redundant, but it will speed up the lookups
 	metricToSubscriptions map[metricMeta][]*RawMetricSubscriptions
 	subsLock              *sync.RWMutex
+	// metricSpecReconcileCh delivers reconcile requests for ScaledObjects whose
+	// external-push scalers have streamed updated metric specs.
+	metricSpecReconcileCh chan event.GenericEvent
 }
 
 // NewScaleHandler creates a ScaleHandler object
-func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration, recorder record.EventRecorder, authClientSet *authentication.AuthClientSet) ScaleHandler {
+func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration, recorder events.EventRecorder, authClientSet *authentication.AuthClientSet) ScaleHandler {
 	return &scaleHandler{
 		client:                   client,
 		scaleClient:              scaleClient,
@@ -109,6 +119,82 @@ func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, recon
 		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
 		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
 		subsLock:                 &sync.RWMutex{},
+		metricSpecReconcileCh:    make(chan event.GenericEvent, 1024),
+	}
+}
+
+// MetricSpecReconcileChan returns the channel of reconcile requests triggered
+// by streamed metric spec updates. See the ScaleHandler interface for details.
+func (h *scaleHandler) MetricSpecReconcileChan() <-chan event.GenericEvent {
+	return h.metricSpecReconcileCh
+}
+
+// enqueueMetricSpecReconcile asks the ScaledObject reconciler to reconcile the
+// named ScaledObject. Updates are never dropped because the shared reconcile
+// channel is full; instead this call waits for channel capacity or returns
+// when ctx is cancelled.
+func (h *scaleHandler) enqueueMetricSpecReconcile(ctx context.Context, name, namespace string) {
+	evt := event.GenericEvent{Object: &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+	}}
+	select {
+	case <-ctx.Done():
+	case h.metricSpecReconcileCh <- evt:
+	}
+}
+
+// watchMetricSpecUpdates forwards streamed metric spec updates into the latest
+// ScalersCache for the ScaledObject. This keeps StreamMetricSpec working across
+// cache invalidations caused by scaler errors, where the original cache
+// instance is closed and replaced but the existing push-scaler stream is still
+// alive.
+//
+// The watcher is bound to the identity (uid and generation) of the ScaledObject
+// that created it. Because cancelling the scale-loop context does not guarantee
+// the watcher stops before it processes a buffered stream response (Go may pick
+// the stream case over ctx.Done() when both are ready), the resolved cache is
+// verified against that identity before applying the update. This prevents a
+// stale watcher from writing an old generation's metric spec into a newer
+// generation's cache, or into a cache belonging to a different object that was
+// recreated under the same namespace and name. Same-identity cache
+// replacements (e.g. after a scaler error) keep the same uid and generation, so
+// legitimate updates still flow.
+func (h *scaleHandler) watchMetricSpecUpdates(ctx context.Context, scaledObjectName, scaledObjectNamespace string, triggerIndex int, streamer scalers.MetricSpecStreamer, uid types.UID, generation int64) {
+	logger := log.WithValues("namespace", scaledObjectNamespace, "name", scaledObjectName, "triggerIndex", triggerIndex)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case specs, ok := <-streamer.MetricSpecChan():
+			if !ok {
+				return
+			}
+
+			// Fast-path: bail out if the scale loop was cancelled while this
+			// response was buffered. This is only an optimization; the identity
+			// check below is the actual guard against applying stale updates.
+			if ctx.Err() != nil {
+				return
+			}
+
+			scalersCache, err := h.getScalersCacheForScaledObject(ctx, scaledObjectName, scaledObjectNamespace)
+			if err != nil {
+				if ctx.Err() != nil {
+					return
+				}
+				logger.Error(err, "error getting scalers cache for metric spec update")
+				continue
+			}
+
+			// UpdateMetricSpecForScaler validates the cache identity (uid and
+			// generation) and applies the update atomically under the cache
+			// lock, so the cache cannot become stale between the check and the
+			// write.
+			if scalersCache.UpdateMetricSpecForScaler(triggerIndex, specs, uid, generation) {
+				h.enqueueMetricSpecReconcile(ctx, scaledObjectName, scaledObjectNamespace)
+			}
+		}
 	}
 }
 
@@ -136,7 +222,7 @@ func (h *scaleHandler) HandleScalableObject(ctx context.Context, scalableObject 
 		}
 		h.scaleLoopContexts.Store(key, cancel)
 	} else {
-		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.KEDAScalersStarted, message.ScalerStartMsg)
+		h.recorder.Eventf(withTriggers, nil, corev1.EventTypeNormal, eventreason.KEDAScalersStarted, "ScalersWatchStarted", "%s", message.ScalerStartMsg)
 	}
 
 	// a mutex is used to synchronize scale requests per scalableObject
@@ -168,7 +254,7 @@ func (h *scaleHandler) DeleteScalableObject(ctx context.Context, scalableObject 
 		if err != nil {
 			log.Error(err, "error clearing scalers cache", "scalableObject", scalableObject, "key", key)
 		}
-		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.KEDAScalersStopped, "Stopped scalers watch")
+		h.recorder.Eventf(withTriggers, nil, corev1.EventTypeNormal, eventreason.KEDAScalersStopped, eventreason.KEDAScalersStopped, "%s", "Stopped scalers watch")
 	} else {
 		log.V(1).Info("ScalableObject was not found in controller cache", "key", key)
 	}
@@ -222,7 +308,13 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 	}
 
 	for i, ps := range scalersCache.GetPushScalers() {
-		go func(s scalers.PushScaler, triggerIndex int) {
+		// Only ScaledObjects own an HPA that can be re-targeted via StreamMetricSpec.
+		if so, isScaledObject := scalableObject.(*kedav1alpha1.ScaledObject); isScaledObject {
+			if streamer, ok := ps.Scaler.(scalers.MetricSpecStreamer); ok {
+				go h.watchMetricSpecUpdates(ctx, so.Name, so.Namespace, ps.TriggerIndex, streamer, so.UID, so.Generation)
+			}
+		}
+		go func(s scalers.PushScaler, triggerIndex, pushScalerIndex int) {
 			activeCh := make(chan bool)
 			go s.Run(ctx, activeCh)
 			for {
@@ -231,12 +323,12 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 					return
 				case active, channelOpen := <-activeCh:
 					if !channelOpen {
-						logger.V(1).Info("Push scaler channel closed", "scalableObject", scalableObject, "pushScalerIndex", i)
+						logger.V(1).Info("Push scaler channel closed", "scalableObject", scalableObject, "pushScalerIndex", pushScalerIndex)
 						return
 					}
 					if !active {
 						// inactivation events are ignored and inactivation happens through the standard metric scaling logic
-						logger.V(4).Info("Push scaler inactivation event received", "scalableObject", scalableObject, "pushScalerIndex", i)
+						logger.V(4).Info("Push scaler inactivation event received", "scalableObject", scalableObject, "pushScalerIndex", pushScalerIndex)
 						continue
 					}
 					switch scalableObject.(type) {
@@ -265,7 +357,7 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 					}
 				}
 			}
-		}(ps.Scaler, ps.TriggerIndex)
+		}(ps.Scaler, ps.TriggerIndex, i)
 	}
 }
 
@@ -376,9 +468,9 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject kedav1al
 		}
 
 		if isFallbackActive && fallbackStatus != metav1.ConditionTrue {
-			h.recorder.Event(obj, corev1.EventTypeNormal, eventreason.ScaledObjectFallbackActivated, message.ScaledObjectFallbackActivatedMsg)
+			h.recorder.Eventf(obj, nil, corev1.EventTypeNormal, eventreason.ScaledObjectFallbackActivated, eventreason.ScaledObjectFallbackActivated, "%s", message.ScaledObjectFallbackActivatedMsg)
 		} else if !isFallbackActive && fallbackStatus == metav1.ConditionTrue {
-			h.recorder.Event(obj, corev1.EventTypeNormal, eventreason.ScaledObjectFallbackDeactivated, message.ScaledObjectFallbackDeactivatedMsg)
+			h.recorder.Eventf(obj, nil, corev1.EventTypeNormal, eventreason.ScaledObjectFallbackDeactivated, eventreason.ScaledObjectFallbackDeactivated, "%s", message.ScaledObjectFallbackDeactivatedMsg)
 		}
 
 		result := h.scaleExecutor.RequestScale(ctx, obj, isActive, isError, executor.ScaleExecutorOptions{ActiveTriggers: activeTriggers})
@@ -498,6 +590,7 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 		Scalers:                  scalers,
 		ScalableObjectGeneration: withTriggers.Generation,
 		Recorder:                 h.recorder,
+		ReaderDrainBudget:        max(5*time.Second, 2*h.globalHTTPTimeout),
 	}
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
@@ -543,9 +636,9 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject ked
 	h.scalerCachesLock.Lock()
 	defer h.scalerCachesLock.Unlock()
 	if cache, ok := h.scalerCaches[key]; ok {
-		log.V(1).WithValues("key", key).Info("Removing entry from ScalersCache")
-		cache.Close(ctx)
+		log.V(1).WithValues("key", key).Info("Removing entry from ScalersCache; scaler close runs asynchronously")
 		delete(h.scalerCaches, key)
+		go cache.Close(ctx)
 	}
 
 	return nil
@@ -556,9 +649,10 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject ked
 /// --------------------------------------------------------------------------- ///
 
 // processMetricsWithFallback processes metrics with fallback support and handles metric recording
-func (h *scaleHandler) processMetricsWithFallback(ctx context.Context, rawMetrics []external_metrics.ExternalMetricValue, rawErr error, metricName string, triggerName string, triggerIndex int, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, sendRawMetricsCondition bool, isMetricActive bool, logger logr.Logger) ([]external_metrics.ExternalMetricValue, bool, error) {
+func (h *scaleHandler) processMetricsWithFallback(soh fallback.ScaledObjectHandler, rawMetrics []external_metrics.ExternalMetricValue, rawErr error, metricName string, triggerName string, triggerIndex int, metricSpec v2.MetricSpec, sendRawMetricsCondition bool, isMetricActive bool, logger logr.Logger) ([]external_metrics.ExternalMetricValue, bool, error) {
 	// check if we need to set a fallback
-	metrics, fallbackActive, err := fallback.GetMetricsWithFallback(ctx, h.client, h.scaleClient, rawMetrics, rawErr, metricName, scaledObject, metricSpec)
+	metrics, fallbackActive, err := fallback.GetMetricsWithFallback(soh, rawMetrics, rawErr, metricName, metricSpec)
+	so := soh.ScaledObject
 
 	if err != nil {
 		logger.Error(err, "error getting metric for trigger", "trigger", triggerName)
@@ -566,12 +660,12 @@ func (h *scaleHandler) processMetricsWithFallback(ctx context.Context, rawMetric
 		// Record metrics
 		for _, metric := range metrics {
 			metricValue := metric.Value.AsApproximateFloat64()
-			metricscollector.RecordScalerMetric(scaledObject.Namespace, scaledObject.Name, triggerName, triggerIndex, metric.MetricName, true, metricValue)
+			metricscollector.RecordScalerMetric(so.Namespace, so.Name, triggerName, triggerIndex, metric.MetricName, true, metricValue)
 		}
 
 		// Send raw metrics if conditions are met
 		if sendRawMetricsCondition {
-			go h.sendWhenSubscribed(scaledObject.Name, scaledObject.Namespace, triggerName, isMetricActive, metrics)
+			go h.sendWhenSubscribed(so.Name, so.Namespace, triggerName, isMetricActive, metrics)
 		}
 	}
 
@@ -643,13 +737,13 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 		if err != nil {
 			isScalerError = true
 			logger.Error(err, "error getting metric spec for the scaler", "scaler", triggerName)
-			scalersCache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
+			scalersCache.Recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, eventreason.KEDAScalerFailed, "%s", err.Error())
 		}
 
 		if len(metricsArray) == 0 {
 			err = fmt.Errorf("no metrics found getting metricsArray array %s", metricsName)
 			logger.Error(err, "error metricsArray is empty")
-			scalersCache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
+			scalersCache.Recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, eventreason.KEDAScalerFailed, "%s", err.Error())
 		}
 		for _, spec := range metricSpecs {
 			// skip cpu/memory resource scaler
@@ -707,7 +801,14 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 					}
 
 					// Use the helper function to process metrics with fallback
-					metrics, fallbackActive, err := h.processMetricsWithFallback(ctx, rawMetrics, rawErr, metricName, triggerName, triggerIndex, scaledObject, spec, shouldSendRawMetrics(RawMetricsHPA), isMetricActive, logger)
+					soh := fallback.ScaledObjectHandler{
+						Ctx:          ctx,
+						KubeClient:   h.client,
+						ScaleClient:  h.scaleClient,
+						UpdateLock:   &scalersCache.ScaledObjectUpdateLock,
+						ScaledObject: scaledObject,
+					}
+					metrics, fallbackActive, err := h.processMetricsWithFallback(soh, rawMetrics, rawErr, metricName, triggerName, triggerIndex, spec, shouldSendRawMetrics(RawMetricsHPA), isMetricActive, logger)
 
 					result.metricName = metricName
 					result.triggerName = triggerName
@@ -943,11 +1044,19 @@ func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler
 		}
 		result.Err = err
 		logger.Error(err, "error getting metric spec for the scaler", "scaler", result.TriggerName)
-		scalersCache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
+		scalersCache.Recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, eventreason.KEDAScalerFailed, "%s", err.Error())
 	}
 
 	for _, spec := range metricSpecs {
 		if spec.External == nil {
+			if !scaledObject.IsUsingModifiers() {
+				if spec.Resource != nil {
+					metricscollector.RecordScalerActive(scaledObject.Namespace, scaledObject.Name, result.TriggerName, triggerIndex, string(spec.Resource.Name), true, true)
+				}
+				if spec.ContainerResource != nil {
+					metricscollector.RecordScalerActive(scaledObject.Namespace, scaledObject.Name, result.TriggerName, triggerIndex, string(spec.ContainerResource.Name), true, true)
+				}
+			}
 			continue
 		}
 
@@ -965,7 +1074,14 @@ func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler
 		logger.V(1).Info("Getting metrics and activity from scaler", "scaler", result.TriggerName, "metricName", metricName, "metrics", rawMetrics, "activity", isMetricActive, "scalerError", rawErr)
 
 		// Use the helper function to process metrics with fallback
-		metrics, fallbackActive, err := h.processMetricsWithFallback(ctx, rawMetrics, rawErr, metricName, result.TriggerName, triggerIndex, scaledObject, spec, shouldSendRawMetrics(RawMetricsPollingInterval), isMetricActive, logger)
+		soh := fallback.ScaledObjectHandler{
+			Ctx:          ctx,
+			KubeClient:   h.client,
+			ScaleClient:  h.scaleClient,
+			UpdateLock:   &scalersCache.ScaledObjectUpdateLock,
+			ScaledObject: scaledObject,
+		}
+		metrics, fallbackActive, err := h.processMetricsWithFallback(soh, rawMetrics, rawErr, metricName, result.TriggerName, triggerIndex, spec, shouldSendRawMetrics(RawMetricsPollingInterval), isMetricActive, logger)
 
 		// Store fallback information
 		if fallbackActive {
@@ -990,10 +1106,10 @@ func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler
 			result.Err = err
 			if scaledObject.IsUsingModifiers() {
 				logger.Error(err, "error getting metric source", "source", result.TriggerName)
-				scalersCache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAMetricSourceFailed, err.Error())
+				scalersCache.Recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAMetricSourceFailed, eventreason.KEDAMetricSourceFailed, "%s", err.Error())
 			} else {
 				logger.Error(err, "error getting scale decision", "scaler", result.TriggerName)
-				scalersCache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
+				scalersCache.Recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, eventreason.KEDAScalerFailed, "%s", err.Error())
 			}
 		} else {
 			result.IsActive = isActiveOrFallback
@@ -1071,7 +1187,7 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 			}
 			if err != nil {
 				scalerLogger.Error(err, "Error getting scaler metrics and activity, but continue")
-				scalersCache.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
+				scalersCache.Recorder.Eventf(scaledJob, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, eventreason.KEDAScalerFailed, "%s", err.Error())
 				isError = true
 				continue
 			}

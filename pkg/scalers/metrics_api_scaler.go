@@ -16,6 +16,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/tidwall/gjson"
 	"golang.org/x/sync/semaphore"
@@ -81,6 +82,10 @@ const (
 	SumAggregationType     AggregationType = "sum"
 	MaxAggregationType     AggregationType = "max"
 	MinAggregationType     AggregationType = "min"
+)
+
+var (
+	promQLParser parser.Parser = parser.NewParser(parser.Options{})
 )
 
 // NewMetricsAPIScaler creates a new HTTP scaler
@@ -155,7 +160,7 @@ func GetValueFromResponse(body []byte, valueLocation string, format APIFormat) (
 
 // getValueFromPrometheusResponse uses provided valueLocation to access the numeric value in provided body
 func getValueFromPrometheusResponse(body []byte, valueLocation string) (float64, error) {
-	matchers, err := parser.ParseMetricSelector(valueLocation)
+	matchers, err := promQLParser.ParseMetricSelector(valueLocation)
 	if err != nil {
 		return 0, err
 	}
@@ -175,7 +180,7 @@ func getValueFromPrometheusResponse(body []byte, valueLocation string) (float64,
 	}
 
 	reader := strings.NewReader(bodyStr)
-	familiesParser := expfmt.TextParser{}
+	familiesParser := expfmt.NewTextParser(model.UTF8Validation)
 	families, err := familiesParser.TextToMetricFamilies(reader)
 	if err != nil {
 		return 0, fmt.Errorf("prometheus format parsing error: %w", err)

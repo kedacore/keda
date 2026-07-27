@@ -81,6 +81,7 @@ func main() {
 		fmt.Print(installation.Attempts[0])
 		if !installation.Passed {
 			printKedaLogs()
+			dumpSetupTeardownFailure("setup", installation)
 			uninstallKeda(ctx)
 			os.Exit(1)
 		}
@@ -102,8 +103,9 @@ func main() {
 	if helper.KEDATestConfig.KEDA.SkipCleanup {
 		fmt.Println("Skipping KEDA cleanup")
 	} else {
-		passed := uninstallKeda(ctx)
-		if !passed {
+		removal := uninstallKeda(ctx)
+		if !removal.Passed {
+			dumpSetupTeardownFailure("teardown", removal)
 			os.Exit(1)
 		}
 	}
@@ -305,10 +307,10 @@ func executeSequentialTests(ctx context.Context, testCases []string) []TestResul
 	return testResults
 }
 
-func uninstallKeda(ctx context.Context) bool {
+func uninstallKeda(ctx context.Context) TestResult {
 	removal := executeTest(ctx, "tests/utils/cleanup_test.go", "15m", 1)
 	fmt.Print(removal.Attempts[0])
-	return removal.Passed
+	return removal
 }
 
 func evaluateExecution(testResults []TestResult) int {
@@ -384,6 +386,50 @@ func dumpLogsToFile(summary []string, fileName string, e2eDir string) {
 	if err := os.WriteFile(filePath, []byte(tests), 0o644); err != nil {
 		fmt.Printf("WARN: cannot write %s: %v\n", filePath, err)
 	}
+}
+
+// dumpSetupTeardownFailure records a setup or teardown failure to setup_and_teardown.txt in E2E_RESULTS_DIR.
+func dumpSetupTeardownFailure(step string, result TestResult) {
+	e2eDir := os.Getenv("E2E_RESULTS_DIR")
+	if e2eDir == "" {
+		return
+	}
+	if err := os.MkdirAll(e2eDir, 0o755); err != nil {
+		fmt.Printf("WARN: cannot create results dir %s: %v\n", e2eDir, err)
+		return
+	}
+
+	line := fmt.Sprintf("%s failed (%s)", step, result.TestCase)
+	if subtests := failedSubtests(result.Attempts); len(subtests) > 0 {
+		line += ": " + strings.Join(subtests, ", ")
+	}
+
+	filePath := filepath.Join(e2eDir, "setup_and_teardown.txt")
+	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		fmt.Printf("WARN: cannot write %s: %v\n", filePath, err)
+		return
+	}
+	defer f.Close()
+	if _, err := fmt.Fprintln(f, line); err != nil {
+		fmt.Printf("WARN: cannot write %s: %v\n", filePath, err)
+	}
+}
+
+// failedSubtests extracts failed sub-test names ("--- FAIL: Name") from the test
+func failedSubtests(attempts []string) []string {
+	re := regexp.MustCompile(`(?m)^\s*--- FAIL: (\S+)`)
+	seen := map[string]bool{}
+	var names []string
+	for _, attempt := range attempts {
+		for _, m := range re.FindAllStringSubmatch(attempt, -1) {
+			if name := m[1]; !seen[name] {
+				seen[name] = true
+				names = append(names, name)
+			}
+		}
+	}
+	return names
 }
 
 // numberToWord converts input integer (0-20) to corresponding word (zero-twenty)

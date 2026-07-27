@@ -219,8 +219,8 @@ func TestSplunkObservabilityScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	// Ensure nginx deployment is ready
-	assert.True(t, WaitForAllPodRunningInNamespace(t, kc, testNamespace, minReplicaCount, 180),
-		"replica count should be greater than %d after 3 minutes", minReplicaCount)
+	assert.True(t, WaitForAllPodRunningInNamespace(t, kc, testNamespace, 18, 10),
+		"pods should be running after 3 minutes")
 
 	// test scaling
 	testScaleOut(t, kc)

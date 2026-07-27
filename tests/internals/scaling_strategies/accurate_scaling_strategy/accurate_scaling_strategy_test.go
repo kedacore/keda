@@ -57,12 +57,57 @@ spec:
   jobTargetRef:
     template:
       spec:
+        initContainers:
+          - name: drainer
+            image: python:3.12-alpine
+            imagePullPolicy: IfNotPresent
+            env:
+            - name: QUEUE_NAME
+              value: {{.QueueName}}
+            - name: AZURE_STORAGE_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: {{.SecretName}}
+                  key: AzureWebJobsStorage
+            command:
+            - python3
+            - -c
+            - |
+              import base64, hashlib, hmac, os, time, urllib.request, urllib.parse
+              import xml.etree.ElementTree as ET
+              from datetime import datetime, timezone
+              V = "2021-08-06"
+              d = dict(p.split("=", 1) for p in os.environ["AZURE_STORAGE_CONNECTION_STRING"].split(";") if "=" in p)
+              acct, key, sfx = d["AccountName"], base64.b64decode(d["AccountKey"]), d.get("EndpointSuffix", "core.windows.net")
+              q = os.environ["QUEUE_NAME"]
+              def call(method, path, query):
+                  now = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT")
+                  h = {"x-ms-date": now, "x-ms-version": V}
+                  ch = "".join("%s:%s\n" % (k, h[k]) for k in sorted(h))
+                  cr = "/%s%s" % (acct, path) + "".join("\n%s:%s" % (k, query[k]) for k in sorted(query))
+                  sts = "\n".join([method, "", "", "", "", "", "", "", "", "", "", ""]) + "\n" + ch + cr
+                  h["Authorization"] = "SharedKey %s:%s" % (acct, base64.b64encode(hmac.new(key, sts.encode(), hashlib.sha256).digest()).decode())
+                  url = "https://%s.queue.%s%s" % (acct, sfx, path)
+                  if query:
+                      url += "?" + urllib.parse.urlencode(query)
+                  with urllib.request.urlopen(urllib.request.Request(url, method=method, headers=h)) as r:
+                      return r.read()
+              for i in range(60):
+                  m = ET.fromstring(call("GET", "/%s/messages" % q, {"numofmessages": "1", "visibilitytimeout": "60"})).find("QueueMessage")
+                  if m is not None:
+                      call("DELETE", "/%s/messages/%s" % (q, m.findtext("MessageId")), {"popreceipt": m.findtext("PopReceipt")})
+                      print("drained", m.findtext("MessageId"), flush=True)
+                      break
+                  print("no message yet, retry", i, flush=True)
+                  time.sleep(2)
+              else:
+                  print("no message drained, proceeding", flush=True)
         containers:
           - name: sleeper
-            image: docker.io/library/busybox
+            image: python:3.12-alpine
             command:
             - sleep
-            - "120"
+            - "900"
             imagePullPolicy: IfNotPresent
             envFrom:
             - secretRef:
@@ -130,47 +175,38 @@ func getTemplateData() (templateData, []Template) {
 }
 
 func testAccurateScaling(ctx context.Context, t *testing.T, kc *kubernetes.Clientset, client *azqueue.QueueClient) {
-	iterationCount := 60
+	// job count appears within a couple of operator polls (pollingInterval 5s)
+	jobCountIterations := 60
+	// running-pod waits must take into account image pull + drain on a cold node
+	runningPodIterations := 240
 
-	// Base case (number of scale = maxScale since pendingJobs = 0). Enqueue up 4 messages
+	// Phase 1 - non-cap branch, no in-flight consumers.
+	// Enqueue 4 (< maxReplicaCount). maxScale=4, running=0, pending=0 -> create maxScale-pending = 4 jobs.
+	// Each job drains one message; the queue empties and the 4 pods become Running. No overshoot:
+	// while draining the pods are Pending, so pending=4 holds maxScale-pending at 0.
 	enqueueMessages(ctx, t, client, 4)
+	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 4, jobCountIterations, 1),
+		"job count should be %d after %d iterations", 4, jobCountIterations)
+	assert.True(t, WaitForRunningPodCount(t, kc, scaledJobName, testNamespace, 4, runningPodIterations, 1),
+		"running pod count should be %d after %d iterations", 4, runningPodIterations)
 
-	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 4, iterationCount, 1),
-		"job count should be %d after %d iterations", 4, iterationCount)
-
-	// Clear the messages to simulate message consumption and wait for the job pods to be Running
-	_, err := client.ClearMessages(ctx, nil)
-	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
-	assert.True(t, WaitForRunningPodCount(t, kc, scaledJobName, testNamespace, 4, iterationCount, 1),
-		"running pod count should be %d after %d iterations", 4, iterationCount)
-
-	// Wait for job completion
-	WaitForAllJobsSuccess(t, kc, testNamespace, 120, 1)
-
-	// Test the cap condition (maxScale + runningJobs > maxReplicaCount). Enqueue 4 messages
+	// Phase 2 - still non-cap, now with 4 running (unfinished, sleeping) jobs.
+	// Enqueue 4. maxScale=4, running=4, pending=0 -> 4+4 <= maxReplicaCount, so create maxScale-pending = 4.
 	enqueueMessages(ctx, t, client, 4)
-	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 8, iterationCount, 1),
-		"job count should be %d after %d iterations", 8, iterationCount)
+	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 8, jobCountIterations, 1),
+		"job count should be %d after %d iterations", 8, jobCountIterations)
+	assert.True(t, WaitForRunningPodCount(t, kc, scaledJobName, testNamespace, 8, runningPodIterations, 1),
+		"running pod count should be %d after %d iterations", 8, runningPodIterations)
 
-	// Clear the messages to simulate message consumption and wait for the job pods to be Running
-	_, err = client.ClearMessages(ctx, nil)
-	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
-	assert.True(t, WaitForRunningPodCount(t, kc, scaledJobName, testNamespace, 4, iterationCount, 1),
-		"running pod count should be %d after %d iterations", 4, iterationCount)
-
-	// Enqueue 8 more messages to trigger the cap condition
-	enqueueMessages(ctx, t, client, 8)
-	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 14, iterationCount, 1),
-		"job count should be %d after %d iterations", 14, iterationCount)
-
-	// Clear the messages to simulate message consumption and wait for the job pods to be Running
-	_, err = client.ClearMessages(ctx, nil)
-	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
-	assert.True(t, WaitForRunningPodCount(t, kc, scaledJobName, testNamespace, 10, iterationCount, 1),
-		"running pod count should be %d after %d iterations", 10, iterationCount)
-
-	// Message cleanup and wait for jobs to complete
-	WaitForAllJobsSuccess(t, kc, testNamespace, 120, 1)
+	// Phase 3 - cap branch. Enqueue 4 with 8 running.
+	// maxScale=4, running=8 -> maxScale+running=12 > maxReplicaCount(10), so the cap branch creates
+	// maxReplicaCount-running = 2 jobs, pinning the total at 10. The 2 new jobs drain 2 messages
+	// (2 remain queued, cleaned up on teardown) and the running count never exceeds maxReplicaCount.
+	enqueueMessages(ctx, t, client, 4)
+	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 10, jobCountIterations, 1),
+		"job count should be capped at %d after %d iterations", 10, jobCountIterations)
+	assert.True(t, WaitForRunningPodCount(t, kc, scaledJobName, testNamespace, 10, runningPodIterations, 1),
+		"running pod count should be %d after %d iterations", 10, runningPodIterations)
 }
 
 func enqueueMessages(ctx context.Context, t *testing.T, client *azqueue.QueueClient, count int) {

@@ -187,7 +187,7 @@ Test are split in different folders based on what it's testing:
 >
 > - Even though the cleaning of resources is expected inside each e2e test file, all test namespaces
 > (namespaces with label type=e2e) are  cleaned up to ensure not having dangling resources after global e2e
-> execution finishes. To not break this behaviour, it's mandatory to use the `CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string)` function from [`helper.go`](helper.go), instead of creating them manually.
+> execution finishes. To not break this behaviour, it's mandatory to use the `CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string)` function from [`helper.go`](helper/helper.go), instead of creating them manually.
 
 #### ⚠⚠ Important: ⚠⚠
 > - `Go` code can panic when performing forbidden operations such as accessing a nil pointer, or from code that
@@ -317,7 +317,7 @@ func cleanupTest(t *testing.T) {
 
 - You can see [`azure_queue_test.go`](scalers/azure/azure_queue/azure_queue_test.go) for a full example.
 - All tests must have the `// +build e2e` build tag.
-- Refer [`helper.go`](helper.go) for various helper methods available to use in your tests.
+- Refer [`helper.go`](helper/helper.go) for various helper methods available to use in your tests.
 - Prefer using helper methods or `k8s` libraries in `Go` over manually executing `shell` commands. Only if the task
 you're trying to achieve is too complicated or tedious using above, use `ParseCommand` or `ExecuteCommand` from `helper.go`
 for executing shell commands.

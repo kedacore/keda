@@ -8,12 +8,19 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/signalfx/signalflow-client-go/v2/signalflow"
+	"github.com/signalfx/signalflow-client-go/v2/signalflow/messages"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
+
+// splunkO11yStreamMargin bounds the stream read beyond the configured Duration.
+const splunkO11yStreamMargin = 10 * time.Second
+
+// splunkO11yDrainTimeout is a short best-effort budget for draining after Stop.
+const splunkO11yDrainTimeout = 2 * time.Second
 
 type splunkObservabilityMetadata struct {
 	TriggerIndex int
@@ -78,6 +85,45 @@ func NewSplunkObservabilityScaler(config *scalersconfig.ScalerConfig) (Scaler, e
 	}, nil
 }
 
+// stopAndDrain stops the computation and keeps reading Data() until it closes or a
+// short grace period elapses, so the SignalFlow client's goroutines are not left
+// blocked on sends to an unconsumed channel. If process is non-nil, drained messages
+// are passed to it; a process error ends the drain and is returned.
+func (s *splunkObservabilityScaler) stopAndDrain(comp *signalflow.Computation, process func(*messages.DataMessage) error) error {
+	stopCtx, cancel := context.WithTimeout(context.Background(), splunkO11yDrainTimeout)
+	defer cancel()
+
+	if err := comp.Stop(stopCtx); err != nil {
+		s.logger.V(1).Info("Failed to stop SignalFlow computation", "error", err)
+	}
+
+	dataCh := comp.Data()
+	for {
+		// Give the deadline priority so a backend that keeps sending cannot extend the grace budget.
+		select {
+		case <-stopCtx.Done():
+			s.logger.V(1).Info("Gave up draining SignalFlow data channel after stop")
+			return nil
+		default:
+		}
+
+		select {
+		case msg, ok := <-dataCh:
+			if !ok {
+				return nil
+			}
+			if process != nil {
+				if err := process(msg); err != nil {
+					return err
+				}
+			}
+		case <-stopCtx.Done():
+			s.logger.V(1).Info("Gave up draining SignalFlow data channel after stop")
+			return nil
+		}
+	}
+}
+
 func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64, error) {
 	comp, err := s.apiClient.Execute(ctx, &signalflow.ExecuteRequest{
 		Program: s.metadata.Query,
@@ -88,35 +134,77 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 
 	s.logger.V(1).Info("Started MTS stream.")
 
-	stopTimer := time.After(time.Duration(s.metadata.Duration) * time.Second)
-	go func() {
-		<-stopTimer
-		s.logger.V(1).Info("Stopping MTS stream after duration.")
-		if err := comp.Stop(ctx); err != nil {
-			s.logger.Error(err, "Failed to stop SignalFlow computation")
-		}
-	}()
+	streamDuration := time.Duration(s.metadata.Duration) * time.Second
+	// Hard deadline beyond the Duration window so a non-responsive backend cannot block forever.
+	streamCtx, cancel := context.WithTimeout(ctx, streamDuration+splunkO11yStreamMargin)
+	defer cancel()
+
+	stopTimer := time.NewTimer(streamDuration)
+	defer stopTimer.Stop()
 
 	maxValue := math.Inf(-1)
 	minValue := math.Inf(1)
 	valueSum := 0.0
 	valueCount := 0
-	s.logger.V(1).Info("Now iterating over results.")
-	for msg := range comp.Data() {
+
+	process := func(msg *messages.DataMessage) error {
 		if len(msg.Payloads) == 0 {
 			s.logger.V(1).Info("No data retrieved.")
-			continue
+			return nil
 		}
 		for _, pl := range msg.Payloads {
 			value, ok := pl.Value().(float64)
 			if !ok {
-				return -1, fmt.Errorf("could not convert Splunk Observability metric value to float64")
+				return fmt.Errorf("could not convert Splunk Observability metric value to float64")
 			}
 			s.logger.V(1).Info(fmt.Sprintf("Encountering value %.4f\n", value))
 			maxValue = math.Max(maxValue, value)
 			minValue = math.Min(minValue, value)
 			valueSum += value
 			valueCount++
+		}
+		return nil
+	}
+
+	s.logger.V(1).Info("Now iterating over results.")
+
+	dataCh := comp.Data()
+
+	// timedOut handles the hard-deadline path: stop, drain, and return the timeout error.
+	timedOut := func() (float64, error) {
+		s.logger.V(1).Info("Context done before stream completed; stopping computation.")
+		go func() { _ = s.stopAndDrain(comp, nil) }()
+		return -1, fmt.Errorf("splunk observability query ended before stream completed: %w", streamCtx.Err())
+	}
+
+loop:
+	for {
+		// Give the hard deadline priority: select has no fairness, so a continuously
+		// ready dataCh could otherwise starve the streamCtx.Done() case.
+		select {
+		case <-streamCtx.Done():
+			return timedOut()
+		default:
+		}
+
+		select {
+		case <-streamCtx.Done():
+			return timedOut()
+		case <-stopTimer.C:
+			s.logger.V(1).Info("Stopping MTS stream after duration.")
+			// Stop, but keep processing any remaining buffered messages for this window.
+			if err := s.stopAndDrain(comp, process); err != nil {
+				return -1, err
+			}
+			break loop
+		case msg, ok := <-dataCh:
+			if !ok {
+				break loop
+			}
+			if err := process(msg); err != nil {
+				_ = s.stopAndDrain(comp, nil)
+				return -1, err
+			}
 		}
 	}
 

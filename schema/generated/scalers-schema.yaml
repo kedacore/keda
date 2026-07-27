@@ -949,6 +949,88 @@ scalers:
           type: string
           default: "0"
           metadataVariableReadable: true
+    - type: clickhouse
+      parameters:
+        - name: connectionString
+          type: string
+          optional: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: host
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: port
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: username
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: password
+          type: string
+          optional: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: database
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: query
+          type: string
+          metadataVariableReadable: true
+        - name: targetQueryValue
+          type: string
+          metadataVariableReadable: true
+        - name: activationTargetQueryValue
+          type: string
+          default: "0"
+          metadataVariableReadable: true
+        - name: maxIdleConns
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: maxOpenConns
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: connMaxLifetime
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: tls
+          type: string
+          default: "false"
+          triggerAuthenticationVariableReadable: true
+        - name: cert
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: key
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: keyPassword
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: ca
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: unsafeSsl
+          type: string
+          default: "false"
+          triggerAuthenticationVariableReadable: true
     - type: couchdb
       parameters:
         - name: connectionString
@@ -1785,6 +1867,10 @@ scalers:
         - name: ensureEvenDistributionOfPartitions
           type: string
           default: "false"
+          metadataVariableReadable: true
+        - name: fullMetadata
+          type: string
+          default: "true"
           metadataVariableReadable: true
         - name: version
           type: string
@@ -3867,6 +3953,15 @@ scalers:
           default: "false"
           deprecatedAnnounce: The 'selectUnversioned' setting is DEPRECATED and will be removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Remove it if your workers are unversioned. Or use 'workerDeploymentName' and 'workerDeploymentBuildId' if you're migrating to Worker Deployment Versioning
           metadataVariableReadable: true
+        - name: includeRunningWorkflowCount
+          type: string
+          default: "false"
+          metadataVariableReadable: true
+        - name: workflowTaskQueueForCount
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
         - name: apiKey
           type: string
           optional: true
