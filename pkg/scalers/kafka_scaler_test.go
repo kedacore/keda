@@ -1018,7 +1018,7 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 	tests := []struct {
 		name                       string
 		consumerOffset             int64
-		topicPartitionOffsets      map[string]map[int32]int64
+		topicPartitionOffsets      map[string]map[int32]partitionOffsets
 		offsetResetPolicy          offsetResetPolicy
 		scaleToZeroOnInvalidOffset bool
 		expectedLag                int64
@@ -1029,7 +1029,7 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 		{
 			name:           "Scenario 1: scaleToZeroOnInvalidOffset true, invalid consumer offset, missing partition",
 			consumerOffset: invalidOffset,
-			topicPartitionOffsets: map[string]map[int32]int64{
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
 				"test-topic": {
 					// Partition 0 is missing - simulates Azure Event Hub not returning it
 				},
@@ -1044,7 +1044,7 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 		{
 			name:           "Scenario 2: scaleToZeroOnInvalidOffset false, invalid consumer offset, missing partition",
 			consumerOffset: invalidOffset,
-			topicPartitionOffsets: map[string]map[int32]int64{
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
 				"test-topic": {
 					// Partition 0 is missing
 				},
@@ -1059,7 +1059,7 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 		{
 			name:           "Scenario 3: Valid consumer offset, missing partition in topicPartitionOffsets",
 			consumerOffset: 100,
-			topicPartitionOffsets: map[string]map[int32]int64{
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
 				"test-topic": {
 					// Partition 0 is missing - consumer has offset 100 but we can't get latestOffset
 				},
@@ -1074,9 +1074,9 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 		{
 			name:           "Control: Valid offsets, no missing partition",
 			consumerOffset: 100,
-			topicPartitionOffsets: map[string]map[int32]int64{
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
 				"test-topic": {
-					0: 150, // Latest offset exists
+					0: {latestOffset: 150}, // Latest offset exists
 				},
 			},
 			offsetResetPolicy:          earliest,
@@ -1087,11 +1087,41 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 			description:                "Normal case: both offsets exist, lag calculated correctly",
 		},
 		{
+			name:           "Control: Invalid consumer offset with earliest policy uses retained log window",
+			consumerOffset: invalidOffset,
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
+				"test-topic": {
+					0: {earliestOffset: 100, earliestOffsetFound: true, latestOffset: 150},
+				},
+			},
+			offsetResetPolicy:          earliest,
+			scaleToZeroOnInvalidOffset: false,
+			expectedLag:                50,
+			expectedLagWithPersistent:  50,
+			expectedError:              false,
+			description:                "Invalid offset with earliest policy should return retained lag from log start to log end",
+		},
+		{
+			name:           "Control: Invalid consumer offset with earliest policy falls back to latest offset when earliest offset is unavailable",
+			consumerOffset: invalidOffset,
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
+				"test-topic": {
+					0: {latestOffset: 150},
+				},
+			},
+			offsetResetPolicy:          earliest,
+			scaleToZeroOnInvalidOffset: false,
+			expectedLag:                150,
+			expectedLagWithPersistent:  150,
+			expectedError:              false,
+			description:                "Invalid offset with earliest policy and no earliest offset should fall back to latest offset",
+		},
+		{
 			name:           "Control: Invalid consumer offset with latest policy and scaleToZeroOnInvalidOffset true",
 			consumerOffset: invalidOffset,
-			topicPartitionOffsets: map[string]map[int32]int64{
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
 				"test-topic": {
-					0: 150,
+					0: {latestOffset: 150},
 				},
 			},
 			offsetResetPolicy:          latest,

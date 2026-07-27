@@ -633,7 +633,7 @@ func (s *kafkaScaler) getConsumerOffsets(topicPartitions map[string][]int32) (*s
 // When excludePersistentLag is set to `false` (default), lag will always be equal to lagWithPersistent
 // When excludePersistentLag is set to `true`, if partition is deemed to have persistent lag, lag will be set to 0 and lagWithPersistent will be latestOffset - consumerOffset
 // These return values will allow proper scaling from 0 -> 1 replicas by the IsActive func.
-func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offsets *sarama.OffsetFetchResponse, topicPartitionOffsets map[string]map[int32]int64) (int64, int64, error) {
+func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offsets *sarama.OffsetFetchResponse, topicPartitionOffsets map[string]map[int32]partitionOffsets) (int64, int64, error) {
 	block := offsets.GetBlock(topic, partitionID)
 	if block == nil {
 		errMsg := fmt.Errorf("error finding offset block for topic %s and partition %d from offset block: %v", topic, partitionID, offsets.Blocks)
@@ -664,8 +664,8 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 			return retVal, retVal, nil
 		}
 		// offsetResetPolicy == earliest
-		// For earliest policy, we need latestOffset to return the full lag when scaleToZeroOnInvalidOffset is false
-		// But if we can't get latestOffset, we should still respect scaleToZeroOnInvalidOffset
+		// For earliest policy, we need partition offsets to return the retained lag when scaleToZeroOnInvalidOffset is false
+		// But if we can't get partition offsets, we should still respect scaleToZeroOnInvalidOffset
 		if s.metadata.ScaleToZeroOnInvalidOffset {
 			return 0, 0, nil
 		}
@@ -676,18 +676,24 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 		s.logger.V(1).Info(fmt.Sprintf("Topic %s not found in latest offset response, treating partition %d as 0 lag", topic, partitionID))
 		return 0, 0, nil
 	}
-	latestOffset, partitionFound := topicOffsets[partitionID]
+	offsetsForPartition, partitionFound := topicOffsets[partitionID]
 	if !partitionFound {
 		// Partition missing from latest offset response - treat as 0 lag and continue
 		// This can happen with Azure Event Hub when partitions are intermittently not returned
 		s.logger.V(1).Info(fmt.Sprintf("Partition %d in topic %s not found in latest offset response, treating as 0 lag", partitionID, topic))
 		return 0, 0, nil
 	}
+	latestOffset := offsetsForPartition.latestOffset
 
 	// If we got here with invalidOffset and earliest policy, scaleToZeroOnInvalidOffset must be false
-	// Return the full lag (latestOffset) as per earliest policy behavior
+	// Return the retained lag from log start to log end
 	if consumerOffset == invalidOffset && s.metadata.OffsetResetPolicy == earliest {
-		return latestOffset, latestOffset, nil
+		if !offsetsForPartition.earliestOffsetFound {
+			s.logger.V(1).Info(fmt.Sprintf("Partition %d in topic %s has no earliest offset, falling back to latest offset as lag", partitionID, topic))
+			return latestOffset, latestOffset, nil
+		}
+		lag := latestOffset - offsetsForPartition.earliestOffset
+		return lag, lag, nil
 	}
 
 	// This code block tries to prevent KEDA Kafka trigger from scaling the scale target based on erroneous events
@@ -758,12 +764,18 @@ type consumerOffsetResult struct {
 	err             error
 }
 
+type partitionOffsets struct {
+	earliestOffset      int64
+	earliestOffsetFound bool
+	latestOffset        int64
+}
+
 type producerOffsetResult struct {
 	producerOffsets map[string]map[int32]int64
 	err             error
 }
 
-func (s *kafkaScaler) getConsumerAndProducerOffsets(topicPartitions map[string][]int32) (*sarama.OffsetFetchResponse, map[string]map[int32]int64, error) {
+func (s *kafkaScaler) getConsumerAndProducerOffsets(topicPartitions map[string][]int32) (*sarama.OffsetFetchResponse, map[string]map[int32]partitionOffsets, error) {
 	consumerChan := make(chan consumerOffsetResult, 1)
 	go func() {
 		consumerOffsets, err := s.getConsumerOffsets(topicPartitions)
@@ -772,7 +784,7 @@ func (s *kafkaScaler) getConsumerAndProducerOffsets(topicPartitions map[string][
 
 	producerChan := make(chan producerOffsetResult, 1)
 	go func() {
-		producerOffsets, err := s.getProducerOffsets(topicPartitions)
+		producerOffsets, err := s.getProducerOffsets(topicPartitions, sarama.OffsetNewest)
 		producerChan <- producerOffsetResult{producerOffsets, err}
 	}()
 
@@ -786,7 +798,44 @@ func (s *kafkaScaler) getConsumerAndProducerOffsets(topicPartitions map[string][
 		return nil, nil, producerRes.err
 	}
 
-	return consumerRes.consumerOffsets, producerRes.producerOffsets, nil
+	topicPartitionOffsets := make(map[string]map[int32]partitionOffsets, len(producerRes.producerOffsets))
+	for topic, partitionLatestOffsets := range producerRes.producerOffsets {
+		topicPartitionOffsets[topic] = make(map[int32]partitionOffsets, len(partitionLatestOffsets))
+		for partition, latestOffset := range partitionLatestOffsets {
+			topicPartitionOffsets[topic][partition] = partitionOffsets{latestOffset: latestOffset}
+		}
+	}
+
+	if s.metadata.OffsetResetPolicy == earliest && !s.metadata.ScaleToZeroOnInvalidOffset {
+		partitionsWithInvalidOffsets := make(map[string][]int32)
+		for topic, partitionOffsetsForTopic := range topicPartitionOffsets {
+			for partition := range partitionOffsetsForTopic {
+				consumerOffsetBlock := consumerRes.consumerOffsets.GetBlock(topic, partition)
+				if consumerOffsetBlock != nil && consumerOffsetBlock.Err == sarama.ErrNoError && consumerOffsetBlock.Offset == invalidOffset {
+					partitionsWithInvalidOffsets[topic] = append(partitionsWithInvalidOffsets[topic], partition)
+				}
+			}
+		}
+
+		if len(partitionsWithInvalidOffsets) > 0 {
+			// Fetch earliest offsets only for partitions without a committed consumer offset.
+			// This avoids unnecessary broker requests when latest offsets are sufficient.
+			earliestOffsets, err := s.getProducerOffsets(partitionsWithInvalidOffsets, sarama.OffsetOldest)
+			if err != nil {
+				s.logger.Error(err, "error getting earliest offsets, falling back to latest offsets for lag calculation")
+			}
+			for topic, partitionEarliestOffsets := range earliestOffsets {
+				for partition, earliestOffset := range partitionEarliestOffsets {
+					offsetsForPartition := topicPartitionOffsets[topic][partition]
+					offsetsForPartition.earliestOffset = earliestOffset
+					offsetsForPartition.earliestOffsetFound = true
+					topicPartitionOffsets[topic][partition] = offsetsForPartition
+				}
+			}
+		}
+	}
+
+	return consumerRes.consumerOffsets, topicPartitionOffsets, nil
 }
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
@@ -871,7 +920,7 @@ type brokerOffsetResult struct {
 	err        error
 }
 
-func (s *kafkaScaler) getProducerOffsets(topicPartitions map[string][]int32) (map[string]map[int32]int64, error) {
+func (s *kafkaScaler) getProducerOffsets(topicPartitions map[string][]int32, offsetPosition int64) (map[string]map[int32]int64, error) {
 	version := int16(0)
 	if s.client.Config().Version.IsAtLeast(sarama.V0_10_1_0) {
 		version = 1
@@ -891,7 +940,7 @@ func (s *kafkaScaler) getProducerOffsets(topicPartitions map[string][]int32) (ma
 				request = &sarama.OffsetRequest{Version: version}
 				requests[broker] = request
 			}
-			request.AddBlock(topic, partitionID, sarama.OffsetNewest, 1)
+			request.AddBlock(topic, partitionID, offsetPosition, 1)
 		}
 	}
 
