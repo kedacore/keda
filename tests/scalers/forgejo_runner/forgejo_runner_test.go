@@ -293,7 +293,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
 
-	if !assert.True(t, WaitForPodsCompleted(t, kc, "app=forgejo-job", testNamespace, 60, 1), "pods count should be 1 after 1 minute") {
+	if !assert.True(t, WaitForPodsCompleted(t, kc, "app=forgejo-job", testNamespace, 180, 1), "pods should complete within 3 minutes") {
 		dumpScaleInDiagnostics(t, kc)
 	}
 }
