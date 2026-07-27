@@ -86,7 +86,7 @@ func (s *liiklusScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 		return nil, false, err
 	}
 
-	if totalLag/uint64(s.metadata.LagThreshold) > uint64(len(lags)) {
+	if totalLag/uint64(s.metadata.LagThreshold) >= uint64(len(lags)) {
 		totalLag = uint64(s.metadata.LagThreshold) * uint64(len(lags))
 	}
 

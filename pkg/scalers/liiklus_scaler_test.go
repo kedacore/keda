@@ -240,3 +240,47 @@ func TestLiiklusGetMetricSpecForScaling(t *testing.T) {
 		})
 	}
 }
+
+func TestLiiklusReplicaCapBoundary(t *testing.T) {
+	// Regression test for off-by-one in replica cap (issue #7930).
+	// With lagThreshold=10 and 2 partitions, any totalLag in [21,29]
+	// previously escaped the cap and reported 3 replicas instead of 2.
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	lm, _ := parseLiiklusMetadata(&scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"topic":        "foo",
+			"address":      "using-mock",
+			"group":        "mygroup",
+			"lagThreshold": "10",
+		},
+	})
+	mockClient := mock_liiklus.NewMockLiiklusServiceClient(ctrl)
+	scaler := &liiklusScaler{
+		metadata: lm,
+		client:   mockClient,
+	}
+
+	// totalLag = 21 (partition 0 lag=11, partition 1 lag=10)
+	// Before fix: 21/10=2, 2>2 is false → cap skipped → metric=21 → ceil(21/10)=3 replicas
+	// After fix:  21/10=2, 2>=2 is true → totalLag capped to 20 → metric=20 → ceil(20/10)=2 replicas
+	mockClient.EXPECT().
+		GetOffsets(gomock.Any(), gomock.Any()).
+		Return(&liiklus.GetOffsetsReply{Offsets: map[uint32]uint64{0: 0, 1: 0}}, nil)
+	mockClient.EXPECT().
+		GetEndOffsets(gomock.Any(), gomock.Any()).
+		Return(&liiklus.GetEndOffsetsReply{Offsets: map[uint32]uint64{0: 11, 1: 10}}, nil)
+
+	values, _, err := scaler.GetMetricsAndActivity(context.Background(), "m")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Metric must be capped at lagThreshold * partitions = 10 * 2 = 20
+	wantMilli := int64(20 * 1000)
+	if values[0].Value.MilliValue() != wantMilli {
+		t.Errorf("expected metric %d milli (capped at T*P=20), got %d milli (off-by-one cap escape)",
+			wantMilli, values[0].Value.MilliValue())
+	}
+}
