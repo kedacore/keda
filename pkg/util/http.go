@@ -18,13 +18,72 @@ package util
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 )
 
-var disableKeepAlives bool
+const (
+	defaultHTTPMaxIdleConns        = 0
+	defaultHTTPMaxIdleConnsPerHost = 1000
+	defaultHTTPIdleConnTimeout     = 90 * time.Second
+)
+
+// HTTPTransportConfig configures the shared HTTP transports.
+type HTTPTransportConfig struct {
+	MaxIdleConns        int
+	MaxIdleConnsPerHost int
+	IdleConnTimeout     time.Duration
+}
+
+type httpTransportConfigState struct {
+	mu     sync.Mutex
+	config HTTPTransportConfig
+	frozen bool
+}
+
+func newHTTPTransportConfigState(config HTTPTransportConfig) *httpTransportConfigState {
+	return &httpTransportConfigState{config: config}
+}
+
+func (s *httpTransportConfigState) configure(config HTTPTransportConfig) error {
+	if err := validateHTTPTransportConfig(config); err != nil {
+		return err
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.frozen {
+		return fmt.Errorf("http transport configuration cannot be changed after a shared transport has been created")
+	}
+	s.config = config
+	return nil
+}
+
+func (s *httpTransportConfigState) snapshot() HTTPTransportConfig {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.frozen = true
+	return s.config
+}
+
+func defaultHTTPTransportConfig() HTTPTransportConfig {
+	return HTTPTransportConfig{
+		MaxIdleConns:        defaultHTTPMaxIdleConns,
+		MaxIdleConnsPerHost: defaultHTTPMaxIdleConnsPerHost,
+		IdleConnTimeout:     defaultHTTPIdleConnTimeout,
+	}
+}
+
+var (
+	disableKeepAlives   bool
+	httpTransportConfig = newHTTPTransportConfigState(defaultHTTPTransportConfig())
+	sharedSecureRT      = sync.OnceValue(func() http.RoundTripper { return createSharedRT(false) })
+	sharedInsecureRT    = sync.OnceValue(func() http.RoundTripper { return createSharedRT(true) })
+)
 
 func init() {
 	disableKeepAlives = getKeepAliveValue()
@@ -37,6 +96,24 @@ func getKeepAliveValue() bool {
 	return false
 }
 
+func validateHTTPTransportConfig(config HTTPTransportConfig) error {
+	if config.MaxIdleConns < 0 {
+		return fmt.Errorf("http max idle connections must be non-negative")
+	}
+	if config.MaxIdleConnsPerHost < 0 {
+		return fmt.Errorf("http max idle connections per host must be non-negative")
+	}
+	if config.IdleConnTimeout < 0 {
+		return fmt.Errorf("http idle connection timeout must be non-negative")
+	}
+	return nil
+}
+
+// ConfigureHTTPTransport configures shared HTTP transports before their first use.
+func ConfigureHTTPTransport(config HTTPTransportConfig) error {
+	return httpTransportConfig.configure(config)
+}
+
 // HTTPDoer is an interface that matches the Do method on
 // (net/http).Client. It should be used in function signatures
 // instead of raw *http.Clients wherever possible
@@ -44,20 +121,39 @@ type HTTPDoer interface {
 	Do(*http.Request) (*http.Response, error)
 }
 
-// CreateHTTPClient returns a new HTTP client with the timeout set to
-// timeoutMS milliseconds, or 300 milliseconds if timeoutMS <= 0.
-// unsafeSsl parameter allows to avoid tls cert validation if it's required
+// CreateHTTPClient returns an HTTP client with the timeout set to timeout,
+// or 300 milliseconds if timeout <= 0. Clients with the same unsafeSsl value
+// share an instrumented transport and connection pool.
 func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
-	// default the timeout to 300ms
 	if timeout <= 0 {
 		timeout = 300 * time.Millisecond
 	}
-	rt := CreateRT(unsafeSsl)
-	httpClient := &http.Client{
+
+	var rt http.RoundTripper
+	if unsafeSsl {
+		rt = sharedInsecureRT()
+	} else {
+		rt = sharedSecureRT()
+	}
+	return &http.Client{
 		Timeout:   timeout,
 		Transport: rt,
 	}
-	return httpClient
+}
+
+func createSharedRT(unsafeSsl bool) http.RoundTripper {
+	config := httpTransportConfig.snapshot()
+	return metricscollector.NewInstrumentedRoundTripper(createSharedHTTPTransport(unsafeSsl, config))
+}
+
+func createSharedHTTPTransport(unsafeSsl bool, config HTTPTransportConfig) *http.Transport {
+	transport := createHTTPTransport(CreateTLSClientConfig(unsafeSsl))
+	transport.MaxIdleConns = config.MaxIdleConns
+	transport.MaxIdleConnsPerHost = config.MaxIdleConnsPerHost
+	if !disableKeepAlives {
+		transport.IdleConnTimeout = config.IdleConnTimeout
+	}
+	return transport
 }
 
 // CreateRT returns a new instrumented HTTP RoundTripper with Proxy and Keep-alive settings.
@@ -69,14 +165,17 @@ func CreateRT(unsafeSsl bool) http.RoundTripper {
 // CreateRTWithTLSConfig returns a new instrumented HTTP RoundTripper with Proxy and
 // Keep-alive settings using the given tls.Config.
 func CreateRTWithTLSConfig(config *tls.Config) http.RoundTripper {
+	return metricscollector.NewInstrumentedRoundTripper(createHTTPTransport(config))
+}
+
+func createHTTPTransport(tlsConfig *tls.Config) *http.Transport {
 	transport := &http.Transport{
-		TLSClientConfig: config,
+		TLSClientConfig: tlsConfig,
 		Proxy:           http.ProxyFromEnvironment,
 	}
 	if disableKeepAlives {
-		// disable keep http connection alive
 		transport.DisableKeepAlives = true
 		transport.IdleConnTimeout = 100 * time.Second
 	}
-	return metricscollector.NewInstrumentedRoundTripper(transport)
+	return transport
 }
