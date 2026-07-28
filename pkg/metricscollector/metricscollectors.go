@@ -73,6 +73,9 @@ type MetricsCollector interface {
 	// RecordScaledJobError counts the number of errors with the scaled job
 	RecordScaledJobError(namespace string, scaledJob string, err error)
 
+	// RecordScaledJobReady marks whether the current ScaledJob is ready.
+	RecordScaledJobReady(namespace string, scaledJob string, ready bool)
+
 	IncrementTriggerTotal(triggerType string)
 
 	DecrementTriggerTotal(triggerType string)
@@ -183,6 +186,13 @@ func RecordScaledObjectError(namespace string, scaledObject string, err error) {
 func RecordScaledJobError(namespace string, scaledJob string, err error) {
 	for _, element := range collectors {
 		element.RecordScaledJobError(namespace, scaledJob, err)
+	}
+}
+
+// RecordScaledJobReady marks whether the current ScaledJob is ready.
+func RecordScaledJobReady(namespace string, scaledJob string, ready bool) {
+	for _, element := range collectors {
+		element.RecordScaledJobReady(namespace, scaledJob, ready)
 	}
 }
 
