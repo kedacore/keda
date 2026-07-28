@@ -53,9 +53,12 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	// only manage HpaMinReplicaSinceTime field if the feature strictCooldownBehavior is enabled
 	if e.strictCooldownBehavior {
 		hpaMinReplicas := scaledObject.GetHPAMinReplicas()
-		if currentReplicas <= *hpaMinReplicas && scaledObject.Status.HpaMinReplicaSinceTime == nil {
+		switch {
+		case currentReplicas <= *hpaMinReplicas && scaledObject.Status.HpaMinReplicaSinceTime == nil:
 			result.HPAMinReplicaSinceTime = &metav1.Time{Time: time.Now()}
-		} else if currentReplicas > *hpaMinReplicas && scaledObject.Status.HpaMinReplicaSinceTime != nil {
+		case currentReplicas <= *hpaMinReplicas && scaledObject.Status.HpaMinReplicaSinceTime != nil:
+			result.HPAMinReplicaSinceTime = scaledObject.Status.HpaMinReplicaSinceTime
+		case currentReplicas > *hpaMinReplicas && scaledObject.Status.HpaMinReplicaSinceTime != nil:
 			result.HPAMinReplicaSinceTime = nil
 		}
 	}
