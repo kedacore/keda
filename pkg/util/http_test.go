@@ -85,19 +85,6 @@ func TestCreateRTRemainsPrivate(t *testing.T) {
 	assert.NotSame(t, first, second)
 }
 
-func TestHTTPTransportConfigState(t *testing.T) {
-	state := newHTTPTransportConfigState(defaultHTTPTransportConfig())
-	config := HTTPTransportConfig{
-		MaxIdleConns:        25,
-		MaxIdleConnsPerHost: 10,
-		IdleConnTimeout:     time.Minute,
-	}
-
-	assert.NoError(t, state.configure(config))
-	assert.Equal(t, config, state.snapshot())
-	assert.Error(t, state.configure(config))
-}
-
 func TestHTTPTransportConfigValidation(t *testing.T) {
 	testCases := []struct {
 		name   string
@@ -145,7 +132,7 @@ func TestCreateSharedHTTPTransportDisablesKeepAlive(t *testing.T) {
 	disableKeepAlives = true
 	t.Cleanup(func() { disableKeepAlives = previousValue })
 
-	transport := createSharedHTTPTransport(false, defaultHTTPTransportConfig())
+	transport := createSharedHTTPTransport(false, HTTPTransportConfig{})
 
 	assert.True(t, transport.DisableKeepAlives)
 	assert.Equal(t, 100*time.Second, transport.IdleConnTimeout)

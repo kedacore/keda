@@ -26,12 +26,6 @@ import (
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 )
 
-const (
-	defaultHTTPMaxIdleConns        = 0
-	defaultHTTPMaxIdleConnsPerHost = 1000
-	defaultHTTPIdleConnTimeout     = 90 * time.Second
-)
-
 // HTTPTransportConfig configures the shared HTTP transports.
 type HTTPTransportConfig struct {
 	MaxIdleConns        int
@@ -39,48 +33,9 @@ type HTTPTransportConfig struct {
 	IdleConnTimeout     time.Duration
 }
 
-type httpTransportConfigState struct {
-	mu     sync.Mutex
-	config HTTPTransportConfig
-	frozen bool
-}
-
-func newHTTPTransportConfigState(config HTTPTransportConfig) *httpTransportConfigState {
-	return &httpTransportConfigState{config: config}
-}
-
-func (s *httpTransportConfigState) configure(config HTTPTransportConfig) error {
-	if err := validateHTTPTransportConfig(config); err != nil {
-		return err
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.frozen {
-		return fmt.Errorf("http transport configuration cannot be changed after a shared transport has been created")
-	}
-	s.config = config
-	return nil
-}
-
-func (s *httpTransportConfigState) snapshot() HTTPTransportConfig {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.frozen = true
-	return s.config
-}
-
-func defaultHTTPTransportConfig() HTTPTransportConfig {
-	return HTTPTransportConfig{
-		MaxIdleConns:        defaultHTTPMaxIdleConns,
-		MaxIdleConnsPerHost: defaultHTTPMaxIdleConnsPerHost,
-		IdleConnTimeout:     defaultHTTPIdleConnTimeout,
-	}
-}
-
 var (
 	disableKeepAlives   bool
-	httpTransportConfig = newHTTPTransportConfigState(defaultHTTPTransportConfig())
+	httpTransportConfig HTTPTransportConfig
 	sharedSecureRT      = sync.OnceValue(func() http.RoundTripper { return createSharedRT(false) })
 	sharedInsecureRT    = sync.OnceValue(func() http.RoundTripper { return createSharedRT(true) })
 )
@@ -109,9 +64,13 @@ func validateHTTPTransportConfig(config HTTPTransportConfig) error {
 	return nil
 }
 
-// ConfigureHTTPTransport configures shared HTTP transports before their first use.
+// ConfigureHTTPTransport configures shared HTTP transports. It must be called before creating an HTTP client.
 func ConfigureHTTPTransport(config HTTPTransportConfig) error {
-	return httpTransportConfig.configure(config)
+	if err := validateHTTPTransportConfig(config); err != nil {
+		return err
+	}
+	httpTransportConfig = config
+	return nil
 }
 
 // HTTPDoer is an interface that matches the Do method on
@@ -142,8 +101,7 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 }
 
 func createSharedRT(unsafeSsl bool) http.RoundTripper {
-	config := httpTransportConfig.snapshot()
-	return metricscollector.NewInstrumentedRoundTripper(createSharedHTTPTransport(unsafeSsl, config))
+	return metricscollector.NewInstrumentedRoundTripper(createSharedHTTPTransport(unsafeSsl, httpTransportConfig))
 }
 
 func createSharedHTTPTransport(unsafeSsl bool, config HTTPTransportConfig) *http.Transport {
