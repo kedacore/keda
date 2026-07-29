@@ -66,13 +66,14 @@ const (
 )
 
 type rabbitMQScaler struct {
-	metricType v2.MetricTargetType
-	metadata   *rabbitMQMetadata
-	connection *amqp.Connection
-	channel    *amqp.Channel
-	httpClient *http.Client
-	azureOAuth *azure.ADWorkloadIdentityTokenProvider
-	logger     logr.Logger
+	metricType    v2.MetricTargetType
+	metadata      *rabbitMQMetadata
+	connection    *amqp.Connection
+	channel       *amqp.Channel
+	httpClient    *http.Client
+	httpTransport http.RoundTripper
+	azureOAuth    *azure.ADWorkloadIdentityTokenProvider
+	logger        logr.Logger
 }
 
 type rabbitMQMetadata struct {
@@ -467,6 +468,13 @@ func buildAMQPConfig(meta *rabbitMQMetadata) (amqp.Config, error) {
 
 // Close disposes of RabbitMQ connections
 func (s *rabbitMQScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
+	if transport, ok := s.httpTransport.(interface{ CloseIdleConnections() }); ok {
+		transport.CloseIdleConnections()
+		s.httpTransport = nil
+	}
 	if s.channel != nil {
 		if err := s.channel.Close(); err != nil {
 			s.logger.V(1).Info("Error closing RabbitMQ channel, may already be closed", "error", err)
@@ -479,9 +487,6 @@ func (s *rabbitMQScaler) Close(context.Context) error {
 			return err
 		}
 		s.connection = nil
-	}
-	if s.httpClient != nil {
-		s.httpClient.CloseIdleConnections()
 	}
 	return nil
 }
@@ -515,6 +520,7 @@ func (s *rabbitMQScaler) createOAuth2HTTPClient(timeout time.Duration, meta *rab
 	} else {
 		baseTransport = kedautil.CreateRTWithTLSConfig(nil)
 	}
+	s.httpTransport = baseTransport
 
 	// Pass the base client via context so the oauth2 library uses it for token
 	// endpoint requests too (applying the same timeout and transport settings).

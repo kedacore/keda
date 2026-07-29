@@ -118,7 +118,7 @@ func CreateRT(unsafeSsl bool) http.RoundTripper {
 // CreateRTWithTLSConfig returns a new instrumented HTTP RoundTripper with Proxy and
 // Keep-alive settings using the given tls.Config.
 func CreateRTWithTLSConfig(config *tls.Config) http.RoundTripper {
-	return metricscollector.NewInstrumentedRoundTripper(createHTTPTransport(config))
+	return metricscollector.NewInstrumentedRoundTripperWithCloseIdleConnections(createHTTPTransport(config))
 }
 
 func createHTTPTransport(tlsConfig *tls.Config) *http.Transport {
