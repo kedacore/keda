@@ -21,6 +21,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -71,7 +72,7 @@ type rabbitMQScaler struct {
 	connection    *amqp.Connection
 	channel       *amqp.Channel
 	httpClient    *http.Client
-	httpTransport kedautil.CloseableRoundTripper
+	httpTransport metricscollector.CloseableRoundTripper
 	azureOAuth    *azure.ADWorkloadIdentityTokenProvider
 	logger        logr.Logger
 }
@@ -510,7 +511,7 @@ func (s *rabbitMQScaler) createOAuth2HTTPClient(timeout time.Duration, meta *rab
 
 	// Build a base transport using kedautil so that ProxyFromEnvironment and
 	// keep-alive behaviour stay consistent with the non-OAuth2 HTTP path.
-	var baseTransport kedautil.CloseableRoundTripper
+	var baseTransport metricscollector.CloseableRoundTripper
 	if meta.EnableTLS == rmqTLSEnable {
 		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.Ca, meta.UnsafeSsl)
 		if err != nil {

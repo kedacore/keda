@@ -16,6 +16,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
@@ -24,7 +25,7 @@ type opensearchScaler struct {
 	metricType    v2.MetricTargetType
 	metadata      opensearchMetadata
 	osAPIClient   *opensearchapi.Client
-	httpTransport util.CloseableRoundTripper
+	httpTransport metricscollector.CloseableRoundTripper
 	logger        logr.Logger
 }
 
@@ -94,14 +95,14 @@ func NewOpensearchScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func newOpensearchAPIClient(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, util.CloseableRoundTripper, error) {
+func newOpensearchAPIClient(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, metricscollector.CloseableRoundTripper, error) {
 	if meta.EnableTLS {
 		return newOpensearchAPIClientWithTLS(meta, logger)
 	}
 	return newOpensearchAPIClientWithBasicAuth(meta, logger)
 }
 
-func newOpensearchAPIClientWithTLS(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, util.CloseableRoundTripper, error) {
+func newOpensearchAPIClientWithTLS(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, metricscollector.CloseableRoundTripper, error) {
 	tlsConfig, err := util.NewTLSConfig(meta.ClientCert, meta.ClientKey, meta.CACert, meta.UnsafeSsl)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create TLS config: %w", err)
@@ -119,7 +120,7 @@ func newOpensearchAPIClientWithTLS(meta opensearchMetadata, logger logr.Logger) 
 	return client, transport, nil
 }
 
-func newOpensearchAPIClientWithBasicAuth(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, util.CloseableRoundTripper, error) {
+func newOpensearchAPIClientWithBasicAuth(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, metricscollector.CloseableRoundTripper, error) {
 	tlsConfig, err := util.NewTLSConfig("", "", meta.CACert, meta.UnsafeSsl)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create TLS config: %w", err)

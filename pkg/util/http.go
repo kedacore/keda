@@ -80,12 +80,6 @@ type HTTPDoer interface {
 	Do(*http.Request) (*http.Response, error)
 }
 
-// CloseableRoundTripper is an HTTP transport that can close its idle connections.
-type CloseableRoundTripper interface {
-	http.RoundTripper
-	CloseIdleConnections()
-}
-
 // CreateHTTPClient returns an HTTP client with the timeout set to timeout,
 // or 300 milliseconds if timeout <= 0. Clients with the same unsafeSsl value
 // share an instrumented transport and connection pool.
@@ -115,7 +109,7 @@ func CreateRT(unsafeSsl bool) http.RoundTripper {
 
 // CreateRTWithTLSConfig returns a new instrumented HTTP RoundTripper with Proxy and
 // Keep-alive settings using the given tls.Config.
-func CreateRTWithTLSConfig(config *tls.Config) CloseableRoundTripper {
+func CreateRTWithTLSConfig(config *tls.Config) metricscollector.CloseableRoundTripper {
 	return metricscollector.NewInstrumentedRoundTripperWithCloseIdleConnections(createHTTPTransport(config, httpTransportConfig))
 }
 

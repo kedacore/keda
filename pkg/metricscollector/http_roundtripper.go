@@ -51,6 +51,12 @@ const (
 	ScaledResourceContextKey contextKey = "scaled_resource"
 )
 
+// CloseableRoundTripper is an HTTP transport that can close its idle connections.
+type CloseableRoundTripper interface {
+	http.RoundTripper
+	CloseIdleConnections()
+}
+
 // InstrumentedRoundTripper wraps an http.RoundTripper and records outbound
 // HTTP request metrics after every completed round-trip. It reads known
 // context keys from the request context to populate metric dimensions. It
@@ -69,7 +75,7 @@ func NewInstrumentedRoundTripper(next http.RoundTripper) http.RoundTripper {
 
 // NewInstrumentedRoundTripperWithCloseIdleConnections wraps next and forwards
 // CloseIdleConnections calls to it when supported.
-func NewInstrumentedRoundTripperWithCloseIdleConnections(next http.RoundTripper) *InstrumentedRoundTripper {
+func NewInstrumentedRoundTripperWithCloseIdleConnections(next http.RoundTripper) CloseableRoundTripper {
 	return newInstrumentedRoundTripper(next, true)
 }
 
