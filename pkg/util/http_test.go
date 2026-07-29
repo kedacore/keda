@@ -108,7 +108,11 @@ func TestHTTPTransportConfigValidation(t *testing.T) {
 		},
 		{
 			name:   "negative idle connection timeout",
-			config: HTTPTransportConfig{IdleConnTimeout: -time.Second},
+			config: HTTPTransportConfig{MaxIdleConnsPerHost: 1, IdleConnTimeout: -time.Second},
+		},
+		{
+			name:   "zero idle connection timeout",
+			config: HTTPTransportConfig{MaxIdleConnsPerHost: 1},
 		},
 	}
 
@@ -117,7 +121,7 @@ func TestHTTPTransportConfigValidation(t *testing.T) {
 			assert.Error(t, validateHTTPTransportConfig(testCase.config))
 		})
 	}
-	assert.NoError(t, validateHTTPTransportConfig(HTTPTransportConfig{MaxIdleConnsPerHost: 1}))
+	assert.NoError(t, validateHTTPTransportConfig(HTTPTransportConfig{MaxIdleConnsPerHost: 1, IdleConnTimeout: time.Second}))
 }
 
 func TestCreateSharedHTTPTransport(t *testing.T) {

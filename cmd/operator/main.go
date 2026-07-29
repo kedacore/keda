@@ -124,7 +124,7 @@ func main() {
 	pflag.StringVar(&filePathAuthRootPath, "filepath-auth-root-path", "", "Allowed filesystem path for KEDA to read auth from.")
 	pflag.IntVar(&httpMaxIdleConns, "http-max-idle-conns", 0, "Maximum number of idle HTTP connections across all hosts. Zero means no limit.")
 	pflag.IntVar(&httpMaxIdleConnsPerHost, "http-max-idle-conns-per-host", 1000, "Maximum number of idle HTTP connections to keep per host.")
-	pflag.DurationVar(&httpIdleConnTimeout, "http-idle-conn-timeout", 90*time.Second, "Maximum time an idle HTTP connection remains in the pool. Zero disables the timeout.")
+	pflag.DurationVar(&httpIdleConnTimeout, "http-idle-conn-timeout", 90*time.Second, "Maximum time an idle HTTP connection remains in the pool. Must be greater than zero.")
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 
