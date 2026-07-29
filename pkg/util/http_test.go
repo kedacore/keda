@@ -124,14 +124,14 @@ func TestHTTPTransportConfigValidation(t *testing.T) {
 	assert.NoError(t, validateHTTPTransportConfig(HTTPTransportConfig{MaxIdleConnsPerHost: 1, IdleConnTimeout: time.Second}))
 }
 
-func TestCreateSharedHTTPTransport(t *testing.T) {
+func TestCreateHTTPTransport(t *testing.T) {
 	config := HTTPTransportConfig{
 		MaxIdleConns:        25,
 		MaxIdleConnsPerHost: 10,
 		IdleConnTimeout:     time.Minute,
 	}
-	secure := createSharedHTTPTransport(false, config)
-	insecure := createSharedHTTPTransport(true, config)
+	secure := createHTTPTransport(CreateTLSClientConfig(false), config)
+	insecure := createHTTPTransport(CreateTLSClientConfig(true), config)
 	assert.Equal(t, config.MaxIdleConns, secure.MaxIdleConns)
 	assert.Equal(t, config.MaxIdleConnsPerHost, secure.MaxIdleConnsPerHost)
 	assert.Equal(t, config.IdleConnTimeout, secure.IdleConnTimeout)
@@ -152,13 +152,13 @@ func TestCreateHTTPTransportAppliesPoolConfig(t *testing.T) {
 	assert.Equal(t, config.IdleConnTimeout, transport.IdleConnTimeout)
 }
 
-func TestCreateSharedHTTPTransportDisablesKeepAlive(t *testing.T) {
+func TestCreateHTTPTransportDisablesKeepAlive(t *testing.T) {
 	previousValue := disableKeepAlives
 	disableKeepAlives = true
 	t.Cleanup(func() { disableKeepAlives = previousValue })
 
 	config := HTTPTransportConfig{IdleConnTimeout: time.Minute}
-	transport := createSharedHTTPTransport(false, config)
+	transport := createHTTPTransport(CreateTLSClientConfig(false), config)
 
 	assert.True(t, transport.DisableKeepAlives)
 	assert.Equal(t, config.IdleConnTimeout, transport.IdleConnTimeout)

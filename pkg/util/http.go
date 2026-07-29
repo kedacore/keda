@@ -95,11 +95,7 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 }
 
 func createSharedRT(unsafeSsl bool) http.RoundTripper {
-	return metricscollector.NewInstrumentedRoundTripper(createSharedHTTPTransport(unsafeSsl, httpTransportConfig))
-}
-
-func createSharedHTTPTransport(unsafeSsl bool, config HTTPTransportConfig) *http.Transport {
-	return createHTTPTransport(CreateTLSClientConfig(unsafeSsl), config)
+	return metricscollector.NewInstrumentedRoundTripper(createHTTPTransport(CreateTLSClientConfig(unsafeSsl), httpTransportConfig))
 }
 
 // CreateRT returns a shared instrumented HTTP RoundTripper with Proxy and Keep-alive settings.
