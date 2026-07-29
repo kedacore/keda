@@ -55,8 +55,8 @@ func validateHTTPTransportConfig(config HTTPTransportConfig) error {
 	if config.MaxIdleConns < 0 {
 		return fmt.Errorf("http max idle connections must be non-negative")
 	}
-	if config.MaxIdleConnsPerHost < 0 {
-		return fmt.Errorf("http max idle connections per host must be non-negative")
+	if config.MaxIdleConnsPerHost <= 0 {
+		return fmt.Errorf("http max idle connections per host must be larger than zero")
 	}
 	if config.IdleConnTimeout < 0 {
 		return fmt.Errorf("http idle connection timeout must be non-negative")
