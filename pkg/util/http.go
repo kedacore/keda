@@ -108,9 +108,7 @@ func createSharedHTTPTransport(unsafeSsl bool, config HTTPTransportConfig) *http
 	transport := createHTTPTransport(CreateTLSClientConfig(unsafeSsl))
 	transport.MaxIdleConns = config.MaxIdleConns
 	transport.MaxIdleConnsPerHost = config.MaxIdleConnsPerHost
-	if !disableKeepAlives {
-		transport.IdleConnTimeout = config.IdleConnTimeout
-	}
+	transport.IdleConnTimeout = config.IdleConnTimeout
 	return transport
 }
 
@@ -133,7 +131,6 @@ func createHTTPTransport(tlsConfig *tls.Config) *http.Transport {
 	}
 	if disableKeepAlives {
 		transport.DisableKeepAlives = true
-		transport.IdleConnTimeout = 100 * time.Second
 	}
 	return transport
 }

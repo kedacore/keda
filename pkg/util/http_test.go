@@ -132,8 +132,9 @@ func TestCreateSharedHTTPTransportDisablesKeepAlive(t *testing.T) {
 	disableKeepAlives = true
 	t.Cleanup(func() { disableKeepAlives = previousValue })
 
-	transport := createSharedHTTPTransport(false, HTTPTransportConfig{})
+	config := HTTPTransportConfig{IdleConnTimeout: time.Minute}
+	transport := createSharedHTTPTransport(false, config)
 
 	assert.True(t, transport.DisableKeepAlives)
-	assert.Equal(t, 100*time.Second, transport.IdleConnTimeout)
+	assert.Equal(t, config.IdleConnTimeout, transport.IdleConnTimeout)
 }
