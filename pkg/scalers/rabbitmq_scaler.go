@@ -71,7 +71,7 @@ type rabbitMQScaler struct {
 	connection    *amqp.Connection
 	channel       *amqp.Channel
 	httpClient    *http.Client
-	httpTransport http.RoundTripper
+	httpTransport kedautil.CloseableRoundTripper
 	azureOAuth    *azure.ADWorkloadIdentityTokenProvider
 	logger        logr.Logger
 }
@@ -471,8 +471,8 @@ func (s *rabbitMQScaler) Close(context.Context) error {
 	if s.httpClient != nil {
 		s.httpClient.CloseIdleConnections()
 	}
-	if transport, ok := s.httpTransport.(interface{ CloseIdleConnections() }); ok {
-		transport.CloseIdleConnections()
+	if s.httpTransport != nil {
+		s.httpTransport.CloseIdleConnections()
 		s.httpTransport = nil
 	}
 	if s.channel != nil {
@@ -510,7 +510,7 @@ func (s *rabbitMQScaler) createOAuth2HTTPClient(timeout time.Duration, meta *rab
 
 	// Build a base transport using kedautil so that ProxyFromEnvironment and
 	// keep-alive behaviour stay consistent with the non-OAuth2 HTTP path.
-	var baseTransport http.RoundTripper
+	var baseTransport kedautil.CloseableRoundTripper
 	if meta.EnableTLS == rmqTLSEnable {
 		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.Ca, meta.UnsafeSsl)
 		if err != nil {

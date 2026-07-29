@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"strconv"
 	"strings"
 
@@ -25,7 +24,7 @@ type opensearchScaler struct {
 	metricType    v2.MetricTargetType
 	metadata      opensearchMetadata
 	osAPIClient   *opensearchapi.Client
-	httpTransport http.RoundTripper
+	httpTransport util.CloseableRoundTripper
 	logger        logr.Logger
 }
 
@@ -95,14 +94,14 @@ func NewOpensearchScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func newOpensearchAPIClient(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, http.RoundTripper, error) {
+func newOpensearchAPIClient(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, util.CloseableRoundTripper, error) {
 	if meta.EnableTLS {
 		return newOpensearchAPIClientWithTLS(meta, logger)
 	}
 	return newOpensearchAPIClientWithBasicAuth(meta, logger)
 }
 
-func newOpensearchAPIClientWithTLS(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, http.RoundTripper, error) {
+func newOpensearchAPIClientWithTLS(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, util.CloseableRoundTripper, error) {
 	tlsConfig, err := util.NewTLSConfig(meta.ClientCert, meta.ClientKey, meta.CACert, meta.UnsafeSsl)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create TLS config: %w", err)
@@ -114,15 +113,13 @@ func newOpensearchAPIClientWithTLS(meta opensearchMetadata, logger logr.Logger) 
 		Transport: transport,
 	}, logger)
 	if err != nil {
-		if closer, ok := transport.(interface{ CloseIdleConnections() }); ok {
-			closer.CloseIdleConnections()
-		}
+		transport.CloseIdleConnections()
 		return nil, nil, err
 	}
 	return client, transport, nil
 }
 
-func newOpensearchAPIClientWithBasicAuth(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, http.RoundTripper, error) {
+func newOpensearchAPIClientWithBasicAuth(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, util.CloseableRoundTripper, error) {
 	tlsConfig, err := util.NewTLSConfig("", "", meta.CACert, meta.UnsafeSsl)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create TLS config: %w", err)
@@ -136,9 +133,7 @@ func newOpensearchAPIClientWithBasicAuth(meta opensearchMetadata, logger logr.Lo
 		Transport: transport,
 	}, logger)
 	if err != nil {
-		if closer, ok := transport.(interface{ CloseIdleConnections() }); ok {
-			closer.CloseIdleConnections()
-		}
+		transport.CloseIdleConnections()
 		return nil, nil, err
 	}
 	return client, transport, nil
@@ -180,8 +175,8 @@ func parseOpensearchMetadata(config *scalersconfig.ScalerConfig) (opensearchMeta
 }
 
 func (s *opensearchScaler) Close(_ context.Context) error {
-	if transport, ok := s.httpTransport.(interface{ CloseIdleConnections() }); ok {
-		transport.CloseIdleConnections()
+	if s.httpTransport != nil {
+		s.httpTransport.CloseIdleConnections()
 		s.httpTransport = nil
 	}
 	return nil

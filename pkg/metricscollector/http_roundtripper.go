@@ -69,11 +69,11 @@ func NewInstrumentedRoundTripper(next http.RoundTripper) http.RoundTripper {
 
 // NewInstrumentedRoundTripperWithCloseIdleConnections wraps next and forwards
 // CloseIdleConnections calls to it when supported.
-func NewInstrumentedRoundTripperWithCloseIdleConnections(next http.RoundTripper) http.RoundTripper {
+func NewInstrumentedRoundTripperWithCloseIdleConnections(next http.RoundTripper) *InstrumentedRoundTripper {
 	return newInstrumentedRoundTripper(next, true)
 }
 
-func newInstrumentedRoundTripper(next http.RoundTripper, closeIdleConnections bool) http.RoundTripper {
+func newInstrumentedRoundTripper(next http.RoundTripper, closeIdleConnections bool) *InstrumentedRoundTripper {
 	if next == nil {
 		next = http.DefaultTransport
 	}
