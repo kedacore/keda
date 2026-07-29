@@ -17,6 +17,7 @@ limitations under the License.
 package util
 
 import (
+	"crypto/tls"
 	"net/http"
 	"sync"
 	"testing"
@@ -132,6 +133,19 @@ func TestCreateSharedHTTPTransport(t *testing.T) {
 	assert.Equal(t, config.IdleConnTimeout, secure.IdleConnTimeout)
 	assert.False(t, secure.TLSClientConfig.InsecureSkipVerify)
 	assert.True(t, insecure.TLSClientConfig.InsecureSkipVerify)
+}
+
+func TestCreateHTTPTransportAppliesPoolConfig(t *testing.T) {
+	config := HTTPTransportConfig{
+		MaxIdleConns:        25,
+		MaxIdleConnsPerHost: 10,
+		IdleConnTimeout:     time.Minute,
+	}
+	transport := createHTTPTransport(&tls.Config{MinVersion: tls.VersionTLS12}, config)
+
+	assert.Equal(t, config.MaxIdleConns, transport.MaxIdleConns)
+	assert.Equal(t, config.MaxIdleConnsPerHost, transport.MaxIdleConnsPerHost)
+	assert.Equal(t, config.IdleConnTimeout, transport.IdleConnTimeout)
 }
 
 func TestCreateSharedHTTPTransportDisablesKeepAlive(t *testing.T) {

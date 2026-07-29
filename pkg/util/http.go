@@ -99,11 +99,7 @@ func createSharedRT(unsafeSsl bool) http.RoundTripper {
 }
 
 func createSharedHTTPTransport(unsafeSsl bool, config HTTPTransportConfig) *http.Transport {
-	transport := createHTTPTransport(CreateTLSClientConfig(unsafeSsl))
-	transport.MaxIdleConns = config.MaxIdleConns
-	transport.MaxIdleConnsPerHost = config.MaxIdleConnsPerHost
-	transport.IdleConnTimeout = config.IdleConnTimeout
-	return transport
+	return createHTTPTransport(CreateTLSClientConfig(unsafeSsl), config)
 }
 
 // CreateRT returns a shared instrumented HTTP RoundTripper with Proxy and Keep-alive settings.
@@ -118,14 +114,16 @@ func CreateRT(unsafeSsl bool) http.RoundTripper {
 // CreateRTWithTLSConfig returns a new instrumented HTTP RoundTripper with Proxy and
 // Keep-alive settings using the given tls.Config.
 func CreateRTWithTLSConfig(config *tls.Config) http.RoundTripper {
-	return metricscollector.NewInstrumentedRoundTripperWithCloseIdleConnections(createHTTPTransport(config))
+	return metricscollector.NewInstrumentedRoundTripperWithCloseIdleConnections(createHTTPTransport(config, httpTransportConfig))
 }
 
-func createHTTPTransport(tlsConfig *tls.Config) *http.Transport {
-	transport := &http.Transport{
-		TLSClientConfig:   tlsConfig,
-		Proxy:             http.ProxyFromEnvironment,
-		DisableKeepAlives: disableKeepAlives,
+func createHTTPTransport(tlsConfig *tls.Config, config HTTPTransportConfig) *http.Transport {
+	return &http.Transport{
+		TLSClientConfig:     tlsConfig,
+		Proxy:               http.ProxyFromEnvironment,
+		DisableKeepAlives:   disableKeepAlives,
+		MaxIdleConns:        config.MaxIdleConns,
+		MaxIdleConnsPerHost: config.MaxIdleConnsPerHost,
+		IdleConnTimeout:     config.IdleConnTimeout,
 	}
-	return transport
 }
