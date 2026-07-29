@@ -1138,7 +1138,7 @@ func TestRequestScale_TransientHPAGap_ReadyStaysTrue(t *testing.T) {
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder, false)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
@@ -1166,7 +1166,7 @@ func TestRequestScale_HPAHealthy_HPAActiveTrue(t *testing.T) {
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder, false)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
@@ -1190,7 +1190,7 @@ func TestRequestScale_HPAScalingDisabled_HPAActiveTrueWithDistinctReason(t *test
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder, false)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
