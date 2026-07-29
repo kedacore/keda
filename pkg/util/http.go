@@ -126,9 +126,9 @@ func CreateRTWithTLSConfig(config *tls.Config) http.RoundTripper {
 
 func createHTTPTransport(tlsConfig *tls.Config) *http.Transport {
 	transport := &http.Transport{
-		TLSClientConfig: tlsConfig,
-		Proxy:           http.ProxyFromEnvironment,
+		TLSClientConfig:   tlsConfig,
+		Proxy:             http.ProxyFromEnvironment,
+		DisableKeepAlives: disableKeepAlives,
 	}
-	transport.DisableKeepAlives = disableKeepAlives
 	return transport
 }
