@@ -129,8 +129,6 @@ func createHTTPTransport(tlsConfig *tls.Config) *http.Transport {
 		TLSClientConfig: tlsConfig,
 		Proxy:           http.ProxyFromEnvironment,
 	}
-	if disableKeepAlives {
-		transport.DisableKeepAlives = true
-	}
+	transport.DisableKeepAlives = disableKeepAlives
 	return transport
 }
