@@ -109,7 +109,7 @@ func TestHTTPTransportConfigValidation(t *testing.T) {
 			assert.Error(t, validateHTTPTransportConfig(testCase.config))
 		})
 	}
-	assert.NoError(t, validateHTTPTransportConfig(HTTPTransportConfig{}))
+	assert.NoError(t, validateHTTPTransportConfig(HTTPTransportConfig{MaxIdleConnsPerHost: 1}))
 }
 
 func TestCreateSharedHTTPTransport(t *testing.T) {
