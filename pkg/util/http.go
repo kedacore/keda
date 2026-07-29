@@ -88,15 +88,9 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 		timeout = 300 * time.Millisecond
 	}
 
-	var rt http.RoundTripper
-	if unsafeSsl {
-		rt = sharedInsecureRT()
-	} else {
-		rt = sharedSecureRT()
-	}
 	return &http.Client{
 		Timeout:   timeout,
-		Transport: rt,
+		Transport: CreateRT(unsafeSsl),
 	}
 }
 
@@ -112,10 +106,13 @@ func createSharedHTTPTransport(unsafeSsl bool, config HTTPTransportConfig) *http
 	return transport
 }
 
-// CreateRT returns a new instrumented HTTP RoundTripper with Proxy and Keep-alive settings.
+// CreateRT returns a shared instrumented HTTP RoundTripper with Proxy and Keep-alive settings.
 // unsafeSsl parameter allows to avoid tls cert validation if it's required.
 func CreateRT(unsafeSsl bool) http.RoundTripper {
-	return CreateRTWithTLSConfig(CreateTLSClientConfig(unsafeSsl))
+	if unsafeSsl {
+		return sharedInsecureRT()
+	}
+	return sharedSecureRT()
 }
 
 // CreateRTWithTLSConfig returns a new instrumented HTTP RoundTripper with Proxy and

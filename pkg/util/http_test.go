@@ -78,9 +78,16 @@ func TestCreateHTTPClientSharesTransportConcurrently(t *testing.T) {
 	}
 }
 
-func TestCreateRTRemainsPrivate(t *testing.T) {
+func TestCreateRTSharesTransport(t *testing.T) {
 	first := CreateRT(false)
 	second := CreateRT(false)
+
+	assert.Same(t, first, second)
+}
+
+func TestCreateRTWithTLSConfigRemainsPrivate(t *testing.T) {
+	first := CreateRTWithTLSConfig(nil)
+	second := CreateRTWithTLSConfig(nil)
 
 	assert.NotSame(t, first, second)
 }
