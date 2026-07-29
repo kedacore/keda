@@ -61,6 +61,9 @@ import (
 // +kubebuilder:rbac:groups="",resources=configmaps;configmaps/status,verbs=get;list;watch
 // +kubebuilder:rbac:groups="discovery.k8s.io",resources=endpointslices,verbs=get;list;watch
 // +kubebuilder:rbac:groups="events.k8s.io",resources=events,verbs=create;patch
+// client-go's event broadcaster also writes to the legacy core API group, so both
+// groups must be granted or every event record is rejected.
+// +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 // +kubebuilder:rbac:groups="",resources=pods;services;services;secrets;external,verbs=get;list;watch
 // +kubebuilder:rbac:groups="*",resources="*/scale",verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups="",resources="serviceaccounts",verbs=list;watch
