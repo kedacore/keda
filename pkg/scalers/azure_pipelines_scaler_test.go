@@ -595,3 +595,164 @@ func TestAzurePipelinesQueueURLTest(t *testing.T) {
 		})
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Tests for the EnableLicenseCheck feature (issue #5573)
+// ---------------------------------------------------------------------------
+
+// threeQueuedJobsResponse is a minimal response containing 3 distinct queued
+// (not yet assigned) jobs, with no demands/parent so they are all counted.
+func threeQueuedJobsResponse() []byte {
+	job := func(id int) string {
+		return fmt.Sprintf(`{"requestId":%d,"queueTime":"2022-09-28T11:19:49.89Z","serviceOwner":"xxx","hostId":"xxx","scopeId":"xxx","planType":"Build","planId":"xxx","jobId":"xxx","poolId":44,"orchestrationId":"x","priority":0}`, id)
+	}
+	response := fmt.Sprintf(`{"count":3,"value":[%s,%s,%s]}`, job(1), job(2), job(3))
+	return []byte(response)
+}
+
+// newAzurePipelinesStubWithLicense returns an httptest server that serves both
+// the jobrequests endpoint (queued jobs) and the resourceusage endpoint
+// (license usage), routed by path. If licenseHandlerCalled is non-nil, it is
+// set to true whenever the resourceusage endpoint is hit — used to assert the
+// endpoint is (or isn't) called depending on EnableLicenseCheck.
+func newAzurePipelinesStubWithLicense(t *testing.T, licenseStatusCode int, licenseBody string, licenseHandlerCalled *bool) *httptest.Server {
+	t.Helper()
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/_apis/distributedtask/resourceusage", func(w http.ResponseWriter, r *http.Request) {
+		if licenseHandlerCalled != nil {
+			*licenseHandlerCalled = true
+		}
+		w.WriteHeader(licenseStatusCode)
+		// nosemgrep: no-direct-write-to-responsewriter
+		_, _ = w.Write([]byte(licenseBody))
+	})
+
+	// Anything else (pool lookup, jobrequests) is served the standard queued-jobs stub.
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		// nosemgrep: no-direct-write-to-responsewriter
+		_, _ = w.Write(threeQueuedJobsResponse())
+	})
+
+	return httptest.NewServer(mux)
+}
+
+// TestAzurePipelinesLicenseCheckDisabledByDefault verifies that when
+// EnableLicenseCheck is false (the default), the queue length is NOT capped
+// and the license usage endpoint is never called — preserving existing
+// behavior for users who don't opt in to the new feature.
+func TestAzurePipelinesLicenseCheckDisabledByDefault(t *testing.T) {
+	licenseCalled := false
+	apiStub := newAzurePipelinesStubWithLicense(t, http.StatusOK, `{"usedCount":0,"resourceLimit":{"totalCount":1}}`, &licenseCalled)
+	defer apiStub.Close()
+
+	meta := getMatchedAgentMetaData(apiStub.URL)
+	meta.Parent = ""
+	// EnableLicenseCheck left at zero value (false) intentionally.
+
+	mockAzurePipelinesScaler := azurePipelinesScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+		logger:     logr.Discard(),
+	}
+
+	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if queueLen != 3 {
+		t.Fatalf("expected queue length to be 3 (uncapped), got %d", queueLen)
+	}
+
+	if licenseCalled {
+		t.Fatalf("expected license usage endpoint NOT to be called when EnableLicenseCheck is false")
+	}
+}
+
+// TestAzurePipelinesLicenseCheckCapsQueueLength verifies that when
+// EnableLicenseCheck is true and available licenses are fewer than the queued
+// job count, the reported queue length is capped to the available license
+// count.
+func TestAzurePipelinesLicenseCheckCapsQueueLength(t *testing.T) {
+	// 3 queued jobs, but only 5 total licenses with 3 already in use -> 2 available.
+	apiStub := newAzurePipelinesStubWithLicense(t, http.StatusOK, `{"usedCount":3,"resourceLimit":{"totalCount":5}}`, nil)
+	defer apiStub.Close()
+
+	meta := getMatchedAgentMetaData(apiStub.URL)
+	meta.Parent = ""
+	meta.EnableLicenseCheck = true
+
+	mockAzurePipelinesScaler := azurePipelinesScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+		logger:     logr.Discard(),
+	}
+
+	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if queueLen != 2 {
+		t.Fatalf("expected queue length to be capped to 2 (available licenses), got %d", queueLen)
+	}
+}
+
+// TestAzurePipelinesLicenseCheckDoesNotIncreaseQueueLength verifies that when
+// there are MORE available licenses than queued jobs, the queue length is left
+// as-is (i.e. we never scale up beyond actual demand just because licenses are
+// available).
+func TestAzurePipelinesLicenseCheckDoesNotIncreaseQueueLength(t *testing.T) {
+	// 3 queued jobs, 10 total licenses, none used -> 10 available (more than queued).
+	apiStub := newAzurePipelinesStubWithLicense(t, http.StatusOK, `{"usedCount":0,"resourceLimit":{"totalCount":10}}`, nil)
+	defer apiStub.Close()
+
+	meta := getMatchedAgentMetaData(apiStub.URL)
+	meta.Parent = ""
+	meta.EnableLicenseCheck = true
+
+	mockAzurePipelinesScaler := azurePipelinesScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+		logger:     logr.Discard(),
+	}
+
+	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if queueLen != 3 {
+		t.Fatalf("expected queue length to remain 3 (not inflated by available licenses), got %d", queueLen)
+	}
+}
+
+// TestAzurePipelinesLicenseCheckFallsBackOnError verifies that if the license
+// usage API call fails, the scaler does NOT fail entirely — it falls back to
+// the uncapped queue length so a transient license-endpoint issue doesn't
+// break autoscaling altogether.
+func TestAzurePipelinesLicenseCheckFallsBackOnError(t *testing.T) {
+	apiStub := newAzurePipelinesStubWithLicense(t, http.StatusInternalServerError, `{}`, nil)
+	defer apiStub.Close()
+
+	meta := getMatchedAgentMetaData(apiStub.URL)
+	meta.Parent = ""
+	meta.EnableLicenseCheck = true
+
+	mockAzurePipelinesScaler := azurePipelinesScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+		logger:     logr.Discard(),
+	}
+
+	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.Background())
+	if err != nil {
+		t.Fatalf("expected scaler to fall back gracefully on license API error, got error: %v", err)
+	}
+
+	if queueLen != 3 {
+		t.Fatalf("expected queue length to fall back to uncapped value 3, got %d", queueLen)
+	}
+}
