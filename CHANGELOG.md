@@ -106,7 +106,7 @@ You can find all deprecations in [this overview](https://github.com/kedacore/ked
 
 New deprecation(s):
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Liiklus Scaler**: Deprecate scaler support in v2.21 due to the upstream Liiklus project being unmaintained; scaler code is planned for removal in a later release ([#7929](https://github.com/kedacore/keda/issues/7929))
 
 ### Breaking Changes
 
