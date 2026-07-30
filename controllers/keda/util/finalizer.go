@@ -3,9 +3,11 @@ package util
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
@@ -17,6 +19,52 @@ import (
 const (
 	authenticationFinalizer = "finalizer.keda.sh"
 )
+
+// mutateFinalizerWithRetry fetches a fresh copy of obj, applies mutate to its
+// finalizer list, and commits the change with a conflict-safe Patch. Unlike a
+// plain Update, this retries on resourceVersion conflicts within the same
+// call instead of failing the caller's entire reconcile, and syncs the
+// caller's obj with the patched state on success.
+func mutateFinalizerWithRetry(ctx context.Context, c client.Client, obj client.Object, mutate func(client.Object)) error {
+	key := client.ObjectKeyFromObject(obj)
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		fresh := obj.DeepCopyObject().(client.Object)
+		if err := c.Get(ctx, key, fresh); err != nil {
+			return err
+		}
+
+		original := fresh.DeepCopyObject().(client.Object)
+		mutate(fresh)
+
+		if reflect.DeepEqual(original.GetFinalizers(), fresh.GetFinalizers()) {
+			return nil
+		}
+
+		if err := c.Patch(ctx, fresh, client.MergeFrom(original)); err != nil {
+			return err
+		}
+
+		obj.SetFinalizers(fresh.GetFinalizers())
+		obj.SetResourceVersion(fresh.GetResourceVersion())
+		return nil
+	})
+}
+
+// AddFinalizer ensures finalizer is present on obj, retrying on conflict.
+func AddFinalizer(ctx context.Context, c client.Client, obj client.Object, finalizer string) error {
+	return mutateFinalizerWithRetry(ctx, c, obj, func(o client.Object) {
+		if !Contains(o.GetFinalizers(), finalizer) {
+			o.SetFinalizers(append(o.GetFinalizers(), finalizer))
+		}
+	})
+}
+
+// RemoveFinalizer ensures finalizer is absent from obj, retrying on conflict.
+func RemoveFinalizer(ctx context.Context, c client.Client, obj client.Object, finalizer string) error {
+	return mutateFinalizerWithRetry(ctx, c, obj, func(o client.Object) {
+		o.SetFinalizers(Remove(o.GetFinalizers(), finalizer))
+	})
+}
 
 type authenticationReconciler interface {
 	client.Client
