@@ -3111,6 +3111,7 @@
                 {
                     "name": "address",
                     "type": "string",
+                    "deprecatedAnnounce": "This scaler is DEPRECATED and will be removed in v2.24 due to the upstream Liiklus project no longer being maintained",
                     "metadataVariableReadable": true
                 },
                 {
