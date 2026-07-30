@@ -30,8 +30,13 @@ import (
 )
 
 type mockRoundTripper struct {
-	resp *http.Response
-	err  error
+	resp                  *http.Response
+	err                   error
+	idleConnectionsClosed bool
+}
+
+func (m *mockRoundTripper) CloseIdleConnections() {
+	m.idleConnectionsClosed = true
 }
 
 func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -185,6 +190,26 @@ func TestInstrumentedRoundTripper_NilNextUsesDefault(t *testing.T) {
 
 	rt := NewInstrumentedRoundTripper(nil)
 	Expect(fmt.Sprintf("%T", rt)).To(Equal("*metricscollector.InstrumentedRoundTripper"))
+}
+
+func TestInstrumentedRoundTripper_ClosesIdleConnections(t *testing.T) {
+	RegisterTestingT(t)
+
+	next := &mockRoundTripper{}
+	client := &http.Client{Transport: NewInstrumentedRoundTripperWithCloseIdleConnections(next)}
+	client.CloseIdleConnections()
+
+	Expect(next.idleConnectionsClosed).To(BeTrue())
+}
+
+func TestInstrumentedRoundTripper_DoesNotCloseIdleConnectionsByDefault(t *testing.T) {
+	RegisterTestingT(t)
+
+	next := &mockRoundTripper{}
+	client := &http.Client{Transport: NewInstrumentedRoundTripper(next)}
+	client.CloseIdleConnections()
+
+	Expect(next.idleConnectionsClosed).To(BeFalse())
 }
 
 func TestInstrumentedRoundTripper_ScalerContextKey_Missing(t *testing.T) {
