@@ -25,6 +25,27 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
+type closeTrackingRabbitMQTransport struct {
+	closed bool
+}
+
+func (t *closeTrackingRabbitMQTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, nil
+}
+
+func (t *closeTrackingRabbitMQTransport) CloseIdleConnections() {
+	t.closed = true
+}
+
+func TestRabbitMQScalerCloseClosesWrappedHTTPTransport(t *testing.T) {
+	transport := &closeTrackingRabbitMQTransport{}
+	scaler := &rabbitMQScaler{httpTransport: transport}
+
+	assert.NoError(t, scaler.Close(context.Background()))
+	assert.True(t, transport.closed)
+	assert.Nil(t, scaler.httpTransport)
+}
+
 const (
 	host             = "myHostSecret"
 	rabbitMQUsername = "myUsernameSecret"
