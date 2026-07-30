@@ -28,7 +28,7 @@ type liiklusScaler struct {
 type liiklusMetadata struct {
 	LagThreshold           int64  `keda:"name=lagThreshold,order=triggerMetadata,default=10"`
 	ActivationLagThreshold int64  `keda:"name=activationLagThreshold,order=triggerMetadata,default=0"`
-	Address                string `keda:"name=address,order=triggerMetadata"`
+	Address                string `keda:"name=address,order=triggerMetadata,deprecatedAnnounce=This scaler is DEPRECATED and will be removed in v2.24 due to the upstream Liiklus project no longer being maintained"`
 	Topic                  string `keda:"name=topic,order=triggerMetadata"`
 	Group                  string `keda:"name=group,order=triggerMetadata"`
 	GroupVersion           uint32 `keda:"name=groupVersion,order=triggerMetadata,default=0"`
