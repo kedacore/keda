@@ -83,11 +83,7 @@ func EnsureAuthenticationResourceFinalizer(ctx context.Context, logger logr.Logg
 
 	if !Contains(authResource.GetFinalizers(), authenticationFinalizer) {
 		logger.Info(fmt.Sprintf("Adding Finalizer for the %s", authResourceType))
-		authResource.SetFinalizers(append(authResource.GetFinalizers(), authenticationFinalizer))
-
-		// Update CR
-		err := reconciler.Update(ctx, authResource)
-		if err != nil {
+		if err := AddFinalizer(ctx, reconciler, authResource, authenticationFinalizer); err != nil {
 			logger.Error(err, fmt.Sprintf("Failed to update %s with a finalizer", authResourceType), "finalizer", authenticationFinalizer)
 			return err
 		}
@@ -110,8 +106,7 @@ func FinalizeAuthenticationResource(ctx context.Context, logger logr.Logger, rec
 	}
 
 	if Contains(authResource.GetFinalizers(), authenticationFinalizer) {
-		authResource.SetFinalizers(Remove(authResource.GetFinalizers(), authenticationFinalizer))
-		if err := reconciler.Update(ctx, authResource); err != nil {
+		if err := RemoveFinalizer(ctx, reconciler, authResource, authenticationFinalizer); err != nil {
 			logger.Error(err, fmt.Sprintf("Failed to update %s after removing a finalizer", authResourceType), "finalizer", authenticationFinalizer)
 			return err
 		}
