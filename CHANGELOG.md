@@ -90,6 +90,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Add controller-runtime cache field indexes for ScaledObject admission validation so `verifyScaledObjects` and `verifyHpas` look up duplicate scaleTargetRef and HPA-name conflicts via indexed Lists rather than full-namespace scans, eliminating the webhook OOM under high-scale creation bursts ([#7681](https://github.com/kedacore/keda/pull/7681))
 - **General**: Fix CVE-2026-42151, CVE-2026-42154, CVE-2026-40179 ([#7868](https://github.com/kedacore/keda/issues/7868))
+- **Github Runner Scaler**: Fix per-repository ETag job cache returning another concurrent workflow run's jobs, inflating the computed queue length when a repository has multiple simultaneous queued/in_progress runs ([#7949](https://github.com/kedacore/keda/issues/7949))
 
 ### Deprecations
 

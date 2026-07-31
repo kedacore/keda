@@ -32,24 +32,28 @@ const (
 	// githubScalerMaxCacheEntries caps the etags, previousJobs, and
 	// previousWfrs maps. Without it the etags map grows once per workflow run
 	// for the lifetime of the operator pod (the URL contains the run ID), and
-	// previousJobs and previousWfrs grow once per distinct repository name
-	// returned by the API.
+	// previousWfrs grows once per distinct repository name returned by the
+	// API. previousJobs is keyed by (repository, workflow run ID) and is
+	// bounded by total (repo, runID) pairs across all repositories.
 	githubScalerMaxCacheEntries = 5000
 )
 
 var reservedLabels = []string{"self-hosted", "linux", "x64"}
 
 type githubRunnerScaler struct {
-	metricType              v2.MetricTargetType
-	metadata                *githubRunnerMetadata
-	httpClient              *http.Client
-	logger                  logr.Logger
-	recorder                events.EventRecorder
-	scaledObject            runtime.Object
-	etags                   map[string]string
-	previousRepos           []string
-	previousWfrs            map[string]map[string]*WorkflowRuns
-	previousJobs            map[string][]Job
+	metricType    v2.MetricTargetType
+	metadata      *githubRunnerMetadata
+	httpClient    *http.Client
+	logger        logr.Logger
+	recorder      events.EventRecorder
+	scaledObject  runtime.Object
+	etags         map[string]string
+	previousRepos []string
+	previousWfrs  map[string]map[string]*WorkflowRuns
+	// previousJobs is keyed by repository name, then by workflow run ID —
+	// a single repository can have several runs queued/in_progress at once,
+	// and each run's job list must not be conflated with another's.
+	previousJobs            map[string]map[int64][]Job
 	rateLimit               RateLimit
 	previousQueueLength     int64
 	previousQueueLengthTime time.Time
@@ -380,7 +384,7 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	etags := make(map[string]string)
 	previousRepos := []string{}
-	previousJobs := make(map[string][]Job)
+	previousJobs := make(map[string]map[int64][]Job)
 	previousWfrs := make(map[string]map[string]*WorkflowRuns)
 	rateLimit := RateLimit{}
 	previousQueueLength := int64(0)
@@ -633,8 +637,8 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 		return nil, err
 	}
 	if statusCode == 304 && s.metadata.EnableEtags {
-		if s.previousJobs[repoName] != nil {
-			return s.previousJobs[repoName], nil
+		if jobs, ok := s.previousJobs[repoName][workflowRunID]; ok {
+			return jobs, nil
 		}
 		// Stale etag without a paired previousJobs entry, e.g. after pruneCaches
 		// evicted the previous entry. Drop the etag and retry as a cache miss.
@@ -655,7 +659,11 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 	}
 
 	if s.metadata.EnableEtags {
-		s.previousJobs[repoName] = jobs.Jobs
+		if _, repoFound := s.previousJobs[repoName]; !repoFound {
+			s.previousJobs[repoName] = map[int64][]Job{workflowRunID: jobs.Jobs}
+		} else {
+			s.previousJobs[repoName][workflowRunID] = jobs.Jobs
+		}
 	}
 
 	return jobs.Jobs, nil
@@ -767,8 +775,14 @@ func (s *githubRunnerScaler) getCachedQueueLength() (int64, error) {
 	return -1, fmt.Errorf("GitHub API rate limit exceeded. No cached queue length available")
 }
 
-// pruneCaches removes previousWfrs entries for repos missing from currentRepos
-// and caps all three caches to githubScalerMaxCacheEntries.
+// pruneCaches removes previousWfrs entries for repos missing from
+// currentRepos, and caps all three caches to githubScalerMaxCacheEntries.
+//
+// previousJobs is intentionally not pruned by currentRepos: it is keyed by
+// each workflow run's own repository name (wfr.Repository.Name), which is
+// not guaranteed to be an element of currentRepos (the list used to query
+// workflow runs) — e.g. a run triggered from a fork. It is still bounded by
+// evictExcessJobs below.
 func (s *githubRunnerScaler) pruneCaches(currentRepos []string) {
 	repoSet := make(map[string]struct{}, len(currentRepos))
 	for _, r := range currentRepos {
@@ -780,7 +794,7 @@ func (s *githubRunnerScaler) pruneCaches(currentRepos []string) {
 		}
 	}
 	evictExcess(s.previousWfrs, githubScalerMaxCacheEntries)
-	evictExcess(s.previousJobs, githubScalerMaxCacheEntries)
+	evictExcessJobs(s.previousJobs, githubScalerMaxCacheEntries)
 	evictExcess(s.etags, githubScalerMaxCacheEntries)
 }
 
@@ -794,6 +808,32 @@ func evictExcess[K comparable, V any](m map[K]V, limit int) {
 		}
 		delete(m, k)
 		over--
+	}
+}
+
+// evictExcessJobs removes arbitrary (repo, workflow run ID) entries from m
+// until the total number of cached job lists is <= limit. Map iteration is
+// randomized in Go, so this is a simple bound rather than LRU.
+func evictExcessJobs(m map[string]map[int64][]Job, limit int) {
+	total := 0
+	for _, runs := range m {
+		total += len(runs)
+	}
+	over := total - limit
+	for repo, runs := range m {
+		if over <= 0 {
+			break
+		}
+		for runID := range runs {
+			if over <= 0 {
+				break
+			}
+			delete(runs, runID)
+			over--
+		}
+		if len(runs) == 0 {
+			delete(m, repo)
+		}
 	}
 }
 
