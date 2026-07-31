@@ -19,6 +19,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
@@ -68,7 +69,11 @@ func (m *azureBlobMetadata) Validate() error {
 
 	// Compile glob pattern if provided
 	if m.GlobPattern != "" {
-		compiled, err := glob.Compile(m.GlobPattern)
+		// Blob names returned by the Azure Storage API never have a leading
+		// "/", so a pattern written in path-style (e.g. "/folder/*.json")
+		// would otherwise never match any blob.
+		pattern := strings.TrimPrefix(m.GlobPattern, "/")
+		compiled, err := glob.Compile(pattern)
 		if err != nil {
 			return fmt.Errorf("invalid glob pattern %q: %w", m.GlobPattern, err)
 		}

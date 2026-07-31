@@ -113,6 +113,14 @@ func TestGetMetricTargetMili(t *testing.T) {
 			name:        "positive Inf treated as zero",
 			metricValue: math.Inf(1),
 		},
+		{
+			name:        "negative value treated as zero",
+			metricValue: -1,
+		},
+		{
+			name:        "large negative value treated as zero",
+			metricValue: -9.3e15,
+		},
 	}
 
 	for _, testCase := range cases {
@@ -121,8 +129,8 @@ func TestGetMetricTargetMili(t *testing.T) {
 			target := GetMetricTargetMili(v2.AverageValueMetricType, c.metricValue)
 			assert.NotNil(t, target.AverageValue)
 
-			if math.IsNaN(c.metricValue) || math.IsInf(c.metricValue, 0) {
-				assert.True(t, target.AverageValue.IsZero(), "expected zero quantity for NaN/Inf, got %v", target.AverageValue)
+			if math.IsNaN(c.metricValue) || math.IsInf(c.metricValue, 0) || c.metricValue < 0 {
+				assert.True(t, target.AverageValue.IsZero(), "expected zero quantity, got %v", target.AverageValue)
 			} else {
 				assert.True(t, target.AverageValue.AsApproximateFloat64() > 0, "expected positive quantity, got %v", target.AverageValue)
 			}
@@ -155,6 +163,14 @@ func TestGenerateMetricInMili(t *testing.T) {
 			name:  "positive Inf treated as zero",
 			value: math.Inf(1),
 		},
+		{
+			name:  "negative value treated as zero",
+			value: -1,
+		},
+		{
+			name:  "large negative value treated as zero",
+			value: -9.3e15,
+		},
 	}
 
 	for _, testCase := range cases {
@@ -163,8 +179,8 @@ func TestGenerateMetricInMili(t *testing.T) {
 			metric := GenerateMetricInMili("test-metric", c.value)
 			assert.Equal(t, "test-metric", metric.MetricName)
 
-			if math.IsNaN(c.value) || math.IsInf(c.value, 0) {
-				assert.True(t, metric.Value.IsZero(), "expected zero quantity for NaN/Inf, got %v", &metric.Value)
+			if math.IsNaN(c.value) || math.IsInf(c.value, 0) || c.value < 0 {
+				assert.True(t, metric.Value.IsZero(), "expected zero quantity, got %v", &metric.Value)
 			} else {
 				assert.True(t, metric.Value.AsApproximateFloat64() > 0, "expected positive quantity, got %v", &metric.Value)
 			}

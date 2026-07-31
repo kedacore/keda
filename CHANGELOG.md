@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.20.2](#v2202)
 - [v2.20.1](#v2201)
 - [v2.20.0](#v2200)
 - [v2.19.0](#v2190)
@@ -99,6 +100,27 @@ New deprecation(s):
 ### Other
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+## v2.20.2
+
+### Improvements
+
+- **General**: Introduce a dedicated `HPAActive` condition on `ScaledObject` mirroring the HPA's own `ScalingActive` status, so transient HPA metric gaps no longer flip the `Ready` condition to `False` ([#7914](https://github.com/kedacore/keda/issues/7914))
+
+### Fixes
+
+- **General**: Fix concurrent map writes panic in the shared root CA `CertPool` ([#7910](https://github.com/kedacore/keda/issues/7910))
+- **General**: Fix nil pointer dereference in AWS Secret Manager `TriggerAuthentication` when `awsSecretManager.credentials` is omitted and no `awsSecretManager.podIdentity` is set ([#7927](https://github.com/kedacore/keda/issues/7927))
+- **General**: Fix nil pointer dereference in `customScalingStrategy.GetEffectiveMaxScale` when `customScalingQueueLengthDeduction` is omitted; the optional field is now treated as zero deduction instead of panicking ([#7798](https://github.com/kedacore/keda/issues/7798))
+- **General**: Fix nil pointer dereference in `GetCurrentReplicas` when a Deployment/StatefulSet/ReplicaSet is returned from the informer cache with an undefaulted `spec.replicas`; a nil value is now treated as the Kubernetes default of 1 instead of panicking ([#7863](https://github.com/kedacore/keda/issues/7863))
+- **General**: Fix `ScaledJob` CRD validation to include "default" as a valid value for `scalingStrategy.strategy` ([#7855](https://github.com/kedacore/keda/issues/7855))
+- **General**: Guard `GetCurrentReplicas` against nil `Status.ScaleTargetGVKR` to prevent operator panics under the cache race documented in ([#4389](https://github.com/kedacore/keda/issues/4389)) / ([#4955](https://github.com/kedacore/keda/issues/4955))
+- **General**: Restore core `""` API group in events RBAC so that client-go's event broadcaster can write legacy events ([#7922](https://github.com/kedacore/keda/issues/7922))
+- **General**: Restore gRPC reconnect backoff in the metrics service client; an unset `Backoff` in `WithConnectParams` disabled backoff and caused a zero-delay reconnect loop that flooded logs when keda-operator was unreachable ([#7856](https://github.com/kedacore/keda/issues/7856))
+- **General**: Share HTTP transports across scalers to reuse connection pools and avoid re-dial storms at high ScaledObject counts ([#7789](https://github.com/kedacore/keda/issues/7789))
+- **General**: Treat negative external metric values as zero to prevent incorrect HPA scaling ([#7880](https://github.com/kedacore/keda/issues/7880))
+- **Azure Blob Storage Scaler**: Fix `globPattern` never matching when written in path-style with a leading `/`, since blob names never have one ([#6492](https://github.com/kedacore/keda/issues/6492))
+- **MongoDB Scaler**: Disconnect the client when the initial `Ping` fails so the background topology-monitoring connections opened by `mongo.Connect` are not leaked ([#5612](https://github.com/kedacore/keda/issues/5612))
 
 ## v2.20.1
 
