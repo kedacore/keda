@@ -75,8 +75,7 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logge
 
 		// Remove scaledObjectFinalizer. Once all finalizers have been
 		// removed, the object will be deleted.
-		scaledObject.SetFinalizers(util.Remove(scaledObject.GetFinalizers(), scaledObjectFinalizer))
-		if err := r.Client.Update(ctx, scaledObject); err != nil {
+		if err := util.RemoveFinalizer(ctx, r.Client, scaledObject, scaledObjectFinalizer); err != nil {
 			logger.Error(err, "Failed to update ScaledObject after removing a finalizer", "finalizer", scaledObjectFinalizer)
 			return err
 		}
@@ -96,11 +95,7 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logge
 func (r *ScaledObjectReconciler) ensureFinalizer(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
 	if !util.Contains(scaledObject.GetFinalizers(), scaledObjectFinalizer) {
 		logger.Info("Adding Finalizer for the ScaledObject")
-		scaledObject.SetFinalizers(append(scaledObject.GetFinalizers(), scaledObjectFinalizer))
-
-		// Update CR
-		err := r.Client.Update(ctx, scaledObject)
-		if err != nil {
+		if err := util.AddFinalizer(ctx, r.Client, scaledObject, scaledObjectFinalizer); err != nil {
 			logger.Error(err, "Failed to update ScaledObject with a finalizer", "finalizer", scaledObjectFinalizer)
 			return err
 		}
