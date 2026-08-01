@@ -504,8 +504,8 @@ func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_WithNotModified(t *testing
 	if err := json.Unmarshal([]byte(testGhWFJobResponse), &jobs); err != nil {
 		t.Fail()
 	}
-	previousJobs := map[string]map[int64][]Job{
-		"Hello-World": {30433642: jobs.Jobs},
+	previousJobs := map[jobCacheKey][]Job{
+		{repo: "Hello-World", runID: 30433642}: jobs.Jobs,
 	}
 
 	mockGitHubRunnerScaler := githubRunnerScaler{
@@ -867,7 +867,7 @@ var githubRunnerMetricIdentifiers = []githubRunnerMetricIdentifier{
 func TestGithubRunnerPruneCachesDropsAbsentWfrRepos(t *testing.T) {
 	s := githubRunnerScaler{
 		metadata:     &githubRunnerMetadata{},
-		previousJobs: map[string]map[int64][]Job{},
+		previousJobs: map[jobCacheKey][]Job{},
 		previousWfrs: map[string]map[string]*WorkflowRuns{
 			"keep-1": {"queued": &WorkflowRuns{}},
 			"drop-2": {"queued": &WorkflowRuns{}},
@@ -891,7 +891,7 @@ func TestGithubRunnerPruneCachesBoundsMaps(t *testing.T) {
 
 	s := githubRunnerScaler{
 		metadata:     &githubRunnerMetadata{},
-		previousJobs: make(map[string]map[int64][]Job, overflow),
+		previousJobs: make(map[jobCacheKey][]Job, overflow),
 		previousWfrs: make(map[string]map[string]*WorkflowRuns, overflow),
 		etags:        make(map[string]string, overflow),
 	}
@@ -901,7 +901,8 @@ func TestGithubRunnerPruneCachesBoundsMaps(t *testing.T) {
 		s.etags[fmt.Sprintf("https://api.github.com/run/%d", i)] = "etag"
 		// Two runs per repo, so the (repo, runID) pair count exceeds the repo
 		// count and genuinely tests the total-entries bound, not just len(map).
-		s.previousJobs[repo] = map[int64][]Job{int64(i): nil, int64(i + overflow): nil}
+		s.previousJobs[jobCacheKey{repo: repo, runID: int64(i)}] = nil
+		s.previousJobs[jobCacheKey{repo: repo, runID: int64(i + overflow)}] = nil
 		s.previousWfrs[repo] = map[string]*WorkflowRuns{"queued": {}}
 	}
 
@@ -910,12 +911,8 @@ func TestGithubRunnerPruneCachesBoundsMaps(t *testing.T) {
 	if got := len(s.etags); got > githubScalerMaxCacheEntries {
 		t.Errorf("etags map size %d exceeds cap %d after prune", got, githubScalerMaxCacheEntries)
 	}
-	jobEntries := 0
-	for _, runs := range s.previousJobs {
-		jobEntries += len(runs)
-	}
-	if jobEntries > githubScalerMaxCacheEntries {
-		t.Errorf("previousJobs total (repo, runID) entries %d exceeds cap %d after prune", jobEntries, githubScalerMaxCacheEntries)
+	if got := len(s.previousJobs); got > githubScalerMaxCacheEntries {
+		t.Errorf("previousJobs map size %d exceeds cap %d after prune", got, githubScalerMaxCacheEntries)
 	}
 	if got := len(s.previousWfrs); got > githubScalerMaxCacheEntries {
 		t.Errorf("previousWfrs map size %d exceeds cap %d after prune", got, githubScalerMaxCacheEntries)
@@ -950,7 +947,7 @@ func TestGetWorkflowRunJobs_StaleEtagWithoutPreviousRetries(t *testing.T) {
 		metadata:     meta,
 		httpClient:   http.DefaultClient,
 		etags:        map[string]string{apiURL: `"stale-etag"`},
-		previousJobs: map[string]map[int64][]Job{},
+		previousJobs: map[jobCacheKey][]Job{},
 		previousWfrs: map[string]map[string]*WorkflowRuns{},
 	}
 
@@ -1006,11 +1003,9 @@ func TestGetWorkflowRunJobs_PerRunCacheDoesNotConflateConcurrentRuns(t *testing.
 			urlA: `"etag-a"`,
 			urlB: `"etag-b"`,
 		},
-		previousJobs: map[string]map[int64][]Job{
-			repo: {
-				runA: jobsA,
-				runB: jobsB,
-			},
+		previousJobs: map[jobCacheKey][]Job{
+			{repo: repo, runID: runA}: jobsA,
+			{repo: repo, runID: runB}: jobsB,
 		},
 	}
 
@@ -1059,7 +1054,7 @@ func TestGetWorkflowRuns_StaleEtagWithoutPreviousRetries(t *testing.T) {
 		metadata:     meta,
 		httpClient:   http.DefaultClient,
 		etags:        map[string]string{apiURL: `"stale-etag"`},
-		previousJobs: map[string]map[int64][]Job{},
+		previousJobs: map[jobCacheKey][]Job{},
 		previousWfrs: map[string]map[string]*WorkflowRuns{},
 	}
 
