@@ -780,11 +780,13 @@ func (s *githubRunnerScaler) getCachedQueueLength() (int64, error) {
 // pruneCaches removes previousWfrs entries for repos missing from
 // currentRepos, and caps all three caches to githubScalerMaxCacheEntries.
 //
-// previousJobs is intentionally not pruned by currentRepos: it is keyed by
-// each workflow run's own repository name (wfr.Repository.Name), which is
+// previousJobs is intentionally not pruned by currentRepos here: it is keyed
+// by each workflow run's own repository name (wfr.Repository.Name), which is
 // not guaranteed to be an element of currentRepos (the list used to query
-// workflow runs) — e.g. a run triggered from a fork. It is still bounded by
-// evictExcess below.
+// workflow runs) — e.g. a run triggered from a fork. Its entries for runs
+// that have left queued/in_progress are removed by pruneCompletedJobs once
+// the current run list is known (see GetWorkflowQueueLength); the
+// evictExcess cap below is a size-based backstop for both.
 func (s *githubRunnerScaler) pruneCaches(currentRepos []string) {
 	repoSet := make(map[string]struct{}, len(currentRepos))
 	for _, r := range currentRepos {
@@ -798,6 +800,21 @@ func (s *githubRunnerScaler) pruneCaches(currentRepos []string) {
 	evictExcess(s.previousWfrs, githubScalerMaxCacheEntries)
 	evictExcess(s.previousJobs, githubScalerMaxCacheEntries)
 	evictExcess(s.etags, githubScalerMaxCacheEntries)
+}
+
+// pruneCompletedJobs removes previousJobs entries for runs that are no
+// longer queued/in_progress, so a completed run's cached job list is not
+// held indefinitely waiting for size-based eviction in pruneCaches.
+func (s *githubRunnerScaler) pruneCompletedJobs(activeWfrs []WorkflowRun) {
+	active := make(map[jobCacheKey]struct{}, len(activeWfrs))
+	for _, wfr := range activeWfrs {
+		active[jobCacheKey{repo: wfr.Repository.Name, runID: wfr.ID}] = struct{}{}
+	}
+	for key := range s.previousJobs {
+		if _, ok := active[key]; !ok {
+			delete(s.previousJobs, key)
+		}
+	}
 }
 
 // evictExcess removes arbitrary entries from m until len(m) <= limit. Map
@@ -862,6 +879,11 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 	var queueCount int64
 
 	wfrs := stripDeadRuns(allWfrs)
+
+	if s.metadata.EnableEtags {
+		s.pruneCompletedJobs(wfrs)
+	}
+
 	for _, wfr := range wfrs {
 		jobs, err := s.getWorkflowRunJobs(ctx, wfr.ID, wfr.Repository.Name)
 		if err != nil {

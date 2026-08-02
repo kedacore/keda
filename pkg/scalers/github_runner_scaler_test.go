@@ -885,6 +885,26 @@ func TestGithubRunnerPruneCachesDropsAbsentWfrRepos(t *testing.T) {
 	}
 }
 
+func TestGithubRunnerPruneCompletedJobsDropsFinishedRuns(t *testing.T) {
+	s := githubRunnerScaler{
+		previousJobs: map[jobCacheKey][]Job{
+			{repo: "repo", runID: 100}: nil, // still active, kept
+			{repo: "repo", runID: 200}: nil, // completed, dropped
+		},
+	}
+
+	s.pruneCompletedJobs([]WorkflowRun{
+		{ID: 100, Repository: Repo{Name: "repo"}},
+	})
+
+	if _, ok := s.previousJobs[jobCacheKey{repo: "repo", runID: 200}]; ok {
+		t.Errorf("previousJobs still contains completed run 200 after pruneCompletedJobs")
+	}
+	if _, ok := s.previousJobs[jobCacheKey{repo: "repo", runID: 100}]; !ok {
+		t.Errorf("previousJobs lost still-active run 100 after pruneCompletedJobs")
+	}
+}
+
 func TestGithubRunnerPruneCachesBoundsMaps(t *testing.T) {
 	overflow := githubScalerMaxCacheEntries + 100
 	currentRepos := make([]string, overflow)
