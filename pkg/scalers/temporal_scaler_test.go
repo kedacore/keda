@@ -2,10 +2,19 @@ package scalers
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
+	"math/big"
 	"testing"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	enumspb "go.temporal.io/api/enums/v1"
 	taskqueuepb "go.temporal.io/api/taskqueue/v1"
 	"go.temporal.io/api/workflowservice/v1"
@@ -138,6 +147,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				AllActive:                 false,
 				Unversioned:               false,
 				MinConnectTimeout:         5,
+				EnableTLS:                 true,
 			},
 			wantErr: true,
 		},
@@ -156,6 +166,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				AllActive:                 false,
 				Unversioned:               false,
 				MinConnectTimeout:         5,
+				EnableTLS:                 true,
 			},
 			wantErr: false,
 		},
@@ -176,6 +187,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				AllActive:                 false,
 				Unversioned:               false,
 				MinConnectTimeout:         5,
+				EnableTLS:                 true,
 			},
 			wantErr: false,
 		},
@@ -196,6 +208,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				Unversioned:               false,
 				APIKey:                    "test01",
 				MinConnectTimeout:         5,
+				EnableTLS:                 true,
 			},
 			authParams: map[string]string{
 				"apiKey": "test01",
@@ -220,6 +233,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				Unversioned:               false,
 				QueueTypes:                []string{"workflow", "activity"},
 				MinConnectTimeout:         5,
+				EnableTLS:                 true,
 			},
 			wantErr: false,
 		},
@@ -245,6 +259,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				Unversioned:               false,
 				APIKey:                    "test01",
 				MinConnectTimeout:         5,
+				EnableTLS:                 true,
 			},
 			authParams: map[string]string{
 				"apiKey": "test01",
@@ -269,9 +284,35 @@ func TestParseTemporalMetadata(t *testing.T) {
 				Unversioned:               false,
 				APIKey:                    "test-api-key",
 				MinConnectTimeout:         5,
+				EnableTLS:                 true,
 			},
 			authParams: map[string]string{
 				"apiKey": "test-api-key",
+			},
+			wantErr: false,
+		},
+		{
+			name: "apiKey with enableTLS false (plaintext gRPC)",
+			metadata: map[string]string{
+				"endpoint":  "test:7233",
+				"namespace": "default",
+				"taskQueue": "testxx",
+				"enableTLS": "false",
+			},
+			authParams: map[string]string{
+				"apiKey": "test-api-key",
+			},
+			wantMeta: &temporalMetadata{
+				Endpoint:                  "test:7233",
+				Namespace:                 "default",
+				TaskQueue:                 "testxx",
+				TargetQueueSize:           5,
+				ActivationTargetQueueSize: 0,
+				AllActive:                 false,
+				Unversioned:               false,
+				APIKey:                    "test-api-key",
+				MinConnectTimeout:         5,
+				EnableTLS:                 false,
 			},
 			wantErr: false,
 		},
@@ -292,6 +333,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				AllActive:                 false,
 				Unversioned:               false,
 				MinConnectTimeout:         5,
+				EnableTLS:                 true,
 				TLSServerName:             "my-namespace.tmpr.cloud",
 			},
 			wantErr: false,
@@ -317,6 +359,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				Unversioned:               false,
 				APIKey:                    "test01",
 				MinConnectTimeout:         5,
+				EnableTLS:                 true,
 				TLSServerName:             "my-namespace.tmpr.cloud",
 			},
 			wantErr: false,
@@ -348,6 +391,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				KeyPassword:               "password",
 				CA:                        "ca-data",
 				MinConnectTimeout:         5,
+				EnableTLS:                 true,
 				TLSServerName:             "my-namespace.tmpr.cloud",
 			},
 			wantErr: false,
@@ -564,6 +608,55 @@ func TestIsActiveWithoutBacklogVersionStatus(t *testing.T) {
 			assert.Equal(t, tc.want, got)
 		})
 	}
+}
+
+func generateTemporalTestCertAndKey(t *testing.T) (string, string) {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{CommonName: "test"},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(time.Hour),
+	}
+	certDER, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	require.NoError(t, err)
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+	keyDER, err := x509.MarshalECPrivateKey(key)
+	require.NoError(t, err)
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
+	return string(certPEM), string(keyPEM)
+}
+
+func TestBuildTemporalTLSConfig(t *testing.T) {
+	t.Run("apiKey + enableTLS=true produces non-nil TLS config", func(t *testing.T) {
+		meta := &temporalMetadata{APIKey: "secret", EnableTLS: true}
+		tlsCfg, err := buildTemporalTLSConfig(meta, logger)
+		assert.NoError(t, err)
+		assert.NotNil(t, tlsCfg)
+	})
+	t.Run("apiKey + enableTLS=false produces nil TLS config (plaintext)", func(t *testing.T) {
+		meta := &temporalMetadata{APIKey: "secret", EnableTLS: false}
+		tlsCfg, err := buildTemporalTLSConfig(meta, logger)
+		assert.NoError(t, err)
+		assert.Nil(t, tlsCfg)
+	})
+	t.Run("cert+key without apiKey always produces non-nil TLS config", func(t *testing.T) {
+		certPEM, keyPEM := generateTemporalTestCertAndKey(t)
+		meta := &temporalMetadata{Cert: certPEM, Key: keyPEM}
+		tlsCfg, err := buildTemporalTLSConfig(meta, logger)
+		assert.NoError(t, err)
+		assert.NotNil(t, tlsCfg)
+	})
+	t.Run("apiKey + cert+key produces non-nil TLS config with client cert (mTLS + apiKey)", func(t *testing.T) {
+		certPEM, keyPEM := generateTemporalTestCertAndKey(t)
+		meta := &temporalMetadata{APIKey: "secret", EnableTLS: true, Cert: certPEM, Key: keyPEM}
+		tlsCfg, err := buildTemporalTLSConfig(meta, logger)
+		assert.NoError(t, err)
+		assert.NotNil(t, tlsCfg)
+		assert.NotEmpty(t, tlsCfg.Certificates, "client certificate must be present in TLS config")
+	})
 }
 
 func TestAuthType(t *testing.T) {

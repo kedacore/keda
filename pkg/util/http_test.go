@@ -17,6 +17,9 @@ limitations under the License.
 package util
 
 import (
+	"crypto/tls"
+	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -33,4 +36,130 @@ func TestCreateHTTPClientWhenValidTimeout(t *testing.T) {
 	client := CreateHTTPClient(1*time.Minute, false)
 
 	assert.Equal(t, 1*time.Minute, client.Timeout)
+}
+
+func TestCreateHTTPClientSharesTransport(t *testing.T) {
+	first := CreateHTTPClient(time.Second, false)
+	second := CreateHTTPClient(time.Minute, false)
+
+	assert.NotSame(t, first, second)
+	assert.Same(t, first.Transport, second.Transport)
+	assert.Equal(t, time.Second, first.Timeout)
+	assert.Equal(t, time.Minute, second.Timeout)
+}
+
+func TestCreateHTTPClientSeparatesTLSModes(t *testing.T) {
+	secure := CreateHTTPClient(time.Second, false)
+	insecure := CreateHTTPClient(time.Second, true)
+
+	assert.NotSame(t, secure.Transport, insecure.Transport)
+}
+
+func TestCreateHTTPClientSharesTransportConcurrently(t *testing.T) {
+	const goroutines = 100
+	transports := make(chan http.RoundTripper, goroutines)
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+			transports <- CreateHTTPClient(time.Second, false).Transport
+		}()
+	}
+	wg.Wait()
+	close(transports)
+
+	var first http.RoundTripper
+	for transport := range transports {
+		if first == nil {
+			first = transport
+			continue
+		}
+		assert.Same(t, first, transport)
+	}
+}
+
+func TestCreateRTSharesTransport(t *testing.T) {
+	first := CreateRT(false)
+	second := CreateRT(false)
+
+	assert.Same(t, first, second)
+}
+
+func TestCreateRTWithTLSConfigRemainsPrivate(t *testing.T) {
+	first := CreateRTWithTLSConfig(nil)
+	second := CreateRTWithTLSConfig(nil)
+
+	assert.NotSame(t, first, second)
+}
+
+func TestHTTPTransportConfigValidation(t *testing.T) {
+	testCases := []struct {
+		name   string
+		config HTTPTransportConfig
+	}{
+		{
+			name:   "negative max idle connections",
+			config: HTTPTransportConfig{MaxIdleConns: -1},
+		},
+		{
+			name:   "negative max idle connections per host",
+			config: HTTPTransportConfig{MaxIdleConnsPerHost: -1},
+		},
+		{
+			name:   "negative idle connection timeout",
+			config: HTTPTransportConfig{MaxIdleConnsPerHost: 1, IdleConnTimeout: -time.Second},
+		},
+		{
+			name:   "zero idle connection timeout",
+			config: HTTPTransportConfig{MaxIdleConnsPerHost: 1},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			assert.Error(t, validateHTTPTransportConfig(testCase.config))
+		})
+	}
+	assert.NoError(t, validateHTTPTransportConfig(HTTPTransportConfig{MaxIdleConnsPerHost: 1, IdleConnTimeout: time.Second}))
+}
+
+func TestCreateHTTPTransport(t *testing.T) {
+	config := HTTPTransportConfig{
+		MaxIdleConns:        25,
+		MaxIdleConnsPerHost: 10,
+		IdleConnTimeout:     time.Minute,
+	}
+	secure := createHTTPTransport(CreateTLSClientConfig(false), config)
+	insecure := createHTTPTransport(CreateTLSClientConfig(true), config)
+	assert.Equal(t, config.MaxIdleConns, secure.MaxIdleConns)
+	assert.Equal(t, config.MaxIdleConnsPerHost, secure.MaxIdleConnsPerHost)
+	assert.Equal(t, config.IdleConnTimeout, secure.IdleConnTimeout)
+	assert.False(t, secure.TLSClientConfig.InsecureSkipVerify)
+	assert.True(t, insecure.TLSClientConfig.InsecureSkipVerify)
+}
+
+func TestCreateHTTPTransportAppliesPoolConfig(t *testing.T) {
+	config := HTTPTransportConfig{
+		MaxIdleConns:        25,
+		MaxIdleConnsPerHost: 10,
+		IdleConnTimeout:     time.Minute,
+	}
+	transport := createHTTPTransport(&tls.Config{MinVersion: tls.VersionTLS12}, config)
+
+	assert.Equal(t, config.MaxIdleConns, transport.MaxIdleConns)
+	assert.Equal(t, config.MaxIdleConnsPerHost, transport.MaxIdleConnsPerHost)
+	assert.Equal(t, config.IdleConnTimeout, transport.IdleConnTimeout)
+}
+
+func TestCreateHTTPTransportDisablesKeepAlive(t *testing.T) {
+	previousValue := disableKeepAlives
+	disableKeepAlives = true
+	t.Cleanup(func() { disableKeepAlives = previousValue })
+
+	config := HTTPTransportConfig{IdleConnTimeout: time.Minute}
+	transport := createHTTPTransport(CreateTLSClientConfig(false), config)
+
+	assert.True(t, transport.DisableKeepAlives)
+	assert.Equal(t, config.IdleConnTimeout, transport.IdleConnTimeout)
 }

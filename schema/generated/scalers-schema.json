@@ -3111,6 +3111,7 @@
                 {
                     "name": "address",
                     "type": "string",
+                    "deprecatedAnnounce": "This scaler is DEPRECATED and will be removed in v2.24 due to the upstream Liiklus project no longer being maintained",
                     "metadataVariableReadable": true
                 },
                 {
@@ -6045,6 +6046,12 @@
                     "name": "minConnectTimeout",
                     "type": "string",
                     "default": "5",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "enableTLS",
+                    "type": "string",
+                    "default": "true",
                     "metadataVariableReadable": true
                 },
                 {
