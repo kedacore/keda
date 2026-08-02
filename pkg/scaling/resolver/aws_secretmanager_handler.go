@@ -103,6 +103,11 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 
 	switch podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
+		if ash.secretManager.Credentials == nil ||
+			ash.secretManager.Credentials.AccessKey == nil ||
+			ash.secretManager.Credentials.AccessSecretKey == nil {
+			return fmt.Errorf("AccessKeyID and AccessSecretKey are expected when not using a pod identity provider")
+		}
 		ash.awsMetadata.AwsAccessKeyID = resolveAuthSecret(ctx, client, logger, ash.secretManager.Credentials.AccessKey.ValueFrom.SecretKeyRef.Name, triggerNamespace, ash.secretManager.Credentials.AccessKey.ValueFrom.SecretKeyRef.Key, secretsLister)
 		ash.awsMetadata.AwsSecretAccessKey = resolveAuthSecret(ctx, client, logger, ash.secretManager.Credentials.AccessSecretKey.ValueFrom.SecretKeyRef.Name, triggerNamespace, ash.secretManager.Credentials.AccessSecretKey.ValueFrom.SecretKeyRef.Key, secretsLister)
 		if ash.awsMetadata.AwsAccessKeyID == "" || ash.awsMetadata.AwsSecretAccessKey == "" {

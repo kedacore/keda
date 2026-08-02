@@ -2095,6 +2095,7 @@ scalers:
           metadataVariableReadable: true
         - name: address
           type: string
+          deprecatedAnnounce: This scaler is DEPRECATED and will be removed in v2.24 due to the upstream Liiklus project no longer being maintained
           metadataVariableReadable: true
         - name: topic
           type: string
@@ -4010,6 +4011,15 @@ scalers:
           default: "false"
           deprecatedAnnounce: The 'selectUnversioned' setting is DEPRECATED and will be removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Remove it if your workers are unversioned. Or use 'workerDeploymentName' and 'workerDeploymentBuildId' if you're migrating to Worker Deployment Versioning
           metadataVariableReadable: true
+        - name: includeRunningWorkflowCount
+          type: string
+          default: "false"
+          metadataVariableReadable: true
+        - name: workflowTaskQueueForCount
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
         - name: apiKey
           type: string
           optional: true
@@ -4018,6 +4028,10 @@ scalers:
         - name: minConnectTimeout
           type: string
           default: "5"
+          metadataVariableReadable: true
+        - name: enableTLS
+          type: string
+          default: "true"
           metadataVariableReadable: true
         - name: unsafeSsl
           type: string

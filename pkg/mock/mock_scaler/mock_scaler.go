@@ -165,3 +165,41 @@ func (mr *MockPushScalerMockRecorder) Run(ctx, active any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockPushScaler)(nil).Run), ctx, active)
 }
+
+// MockMetricSpecStreamer is a mock of MetricSpecStreamer interface.
+type MockMetricSpecStreamer struct {
+	ctrl     *gomock.Controller
+	recorder *MockMetricSpecStreamerMockRecorder
+	isgomock struct{}
+}
+
+// MockMetricSpecStreamerMockRecorder is the mock recorder for MockMetricSpecStreamer.
+type MockMetricSpecStreamerMockRecorder struct {
+	mock *MockMetricSpecStreamer
+}
+
+// NewMockMetricSpecStreamer creates a new mock instance.
+func NewMockMetricSpecStreamer(ctrl *gomock.Controller) *MockMetricSpecStreamer {
+	mock := &MockMetricSpecStreamer{ctrl: ctrl}
+	mock.recorder = &MockMetricSpecStreamerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockMetricSpecStreamer) EXPECT() *MockMetricSpecStreamerMockRecorder {
+	return m.recorder
+}
+
+// MetricSpecChan mocks base method.
+func (m *MockMetricSpecStreamer) MetricSpecChan() <-chan []v2.MetricSpec {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MetricSpecChan")
+	ret0, _ := ret[0].(<-chan []v2.MetricSpec)
+	return ret0
+}
+
+// MetricSpecChan indicates an expected call of MetricSpecChan.
+func (mr *MockMetricSpecStreamerMockRecorder) MetricSpecChan() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MetricSpecChan", reflect.TypeOf((*MockMetricSpecStreamer)(nil).MetricSpecChan))
+}
