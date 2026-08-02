@@ -172,22 +172,16 @@ var (
 		[]string{"namespace", "scaled_resource", "scaler", "trigger_name", "metric_name", "status_code"},
 	)
 
-	httpClientRequestDuration = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Namespace: DefaultPromMetricsNamespace,
-			Subsystem: "scaler_http",
-			Name:      "request_duration_seconds",
-			Help:      "Duration in seconds of outbound HTTP requests issued during scaler metric collection.",
-			Buckets:   []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
-		},
-		[]string{"scaler", "status_code"},
-	)
+	httpClientRequestDurationLabels                = []string{"scaler", "status_code"}
+	httpClientRequestDurationHighCardinalityLabels = []string{"namespace", "scaled_resource", "scaler", "trigger_name", "metric_name", "status_code"}
 )
 
 type PromMetrics struct {
+	enableHighCardinalityLabels bool
+	httpClientRequestDuration   *prometheus.HistogramVec
 }
 
-func NewPromMetrics() *PromMetrics {
+func NewPromMetrics(enableHighCardinalityLabels bool) *PromMetrics {
 	metrics.Registry.MustRegister(scalerMetricsValue)
 	metrics.Registry.MustRegister(scalerMetricsLatency)
 	metrics.Registry.MustRegister(internalLoopLatency)
@@ -206,10 +200,32 @@ func NewPromMetrics() *PromMetrics {
 	metrics.Registry.MustRegister(cloudeventQueueStatus)
 
 	metrics.Registry.MustRegister(httpClientRequestsTotal)
+	httpClientRequestDuration := newHTTPClientRequestDuration(enableHighCardinalityLabels)
 	metrics.Registry.MustRegister(httpClientRequestDuration)
 
 	RecordBuildInfo()
-	return &PromMetrics{}
+	return &PromMetrics{
+		enableHighCardinalityLabels: enableHighCardinalityLabels,
+		httpClientRequestDuration:   httpClientRequestDuration,
+	}
+}
+
+func newHTTPClientRequestDuration(enableHighCardinalityLabels bool) *prometheus.HistogramVec {
+	labels := httpClientRequestDurationLabels
+	if enableHighCardinalityLabels {
+		labels = httpClientRequestDurationHighCardinalityLabels
+	}
+
+	return prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaler_http",
+			Name:      "request_duration_seconds",
+			Help:      "Duration in seconds of outbound HTTP requests issued during scaler metric collection.",
+			Buckets:   []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
+		},
+		labels,
+	)
 }
 
 // RecordBuildInfo publishes information about KEDA version and runtime info through an info metric (gauge).
@@ -378,7 +394,11 @@ func (p *PromMetrics) RecordEmptyUpstreamResponse(namespace, scaledResource, tri
 func (p *PromMetrics) RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string) {
 	code := httpStatusCodeLabel(statusCode, isError)
 	httpClientRequestsTotal.WithLabelValues(namespace, scaledResource, scaler, triggerName, metricName, code).Inc()
-	httpClientRequestDuration.WithLabelValues(scaler, code).Observe(durationSeconds)
+	if p.enableHighCardinalityLabels {
+		p.httpClientRequestDuration.WithLabelValues(namespace, scaledResource, scaler, triggerName, metricName, code).Observe(durationSeconds)
+	} else {
+		p.httpClientRequestDuration.WithLabelValues(scaler, code).Observe(durationSeconds)
+	}
 }
 
 // Returns a grpcprom server Metrics object and registers the metrics. The object contains
