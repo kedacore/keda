@@ -18,7 +18,10 @@ package scalers
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-logr/logr"
 
@@ -115,54 +118,54 @@ func TestAzMonitorParseMetadata(t *testing.T) {
 	}
 }
 
-func TestToISO8601Duration(t *testing.T) {
+func TestFormatTimeSpan(t *testing.T) {
 	tests := []struct {
-		hours    int
-		minutes  int
-		seconds  int
-		expected string
+		name     string
+		timeSpan string
+		expected time.Duration
 	}{
-		{0, 15, 0, "PT15M"},
-		{1, 0, 0, "PT1H"},
-		{0, 0, 30, "PT30S"},
-		{1, 30, 0, "PT1H30M"},
-		{2, 15, 30, "PT2H15M30S"},
-		{0, 0, 0, defaultAggregationInterval},
+		{"default is 5 minutes", "", 5 * time.Minute},
+		{"custom minutes", "0:15:0", 15 * time.Minute},
+		{"custom hours and minutes", "1:30:0", 90 * time.Minute},
+		{"unsupported timegrain is still honoured as a window", "0:3:0", 3 * time.Minute},
 	}
 
 	for _, tt := range tests {
-		result := toISO8601Duration(tt.hours, tt.minutes, tt.seconds)
-		if result != tt.expected {
-			t.Errorf("toISO8601Duration(%d, %d, %d) = %s, expected %s",
-				tt.hours, tt.minutes, tt.seconds, result, tt.expected)
-		}
+		t.Run(tt.name, func(t *testing.T) {
+			timespan, err := formatTimeSpan(tt.timeSpan)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			start, end, err := parseTimeInterval(string(*timespan))
+			if err != nil {
+				t.Fatalf("parsing timespan %q: %v", string(*timespan), err)
+			}
+			// the window is built from time.Now() twice, so allow a small skew
+			if got := end.Sub(start); (got - tt.expected).Abs() > time.Second {
+				t.Errorf("timespan window = %v, expected %v", got, tt.expected)
+			}
+		})
+	}
+
+	if _, err := formatTimeSpan("a:b:c"); err == nil {
+		t.Error("expected error for invalid timespan values")
 	}
 }
 
-func TestFormatTimeSpan(t *testing.T) {
-	// default (empty) should return PT5M interval
-	_, interval, err := formatTimeSpan("")
+func parseTimeInterval(interval string) (time.Time, time.Time, error) {
+	parts := strings.Split(interval, "/")
+	if len(parts) != 2 {
+		return time.Time{}, time.Time{}, fmt.Errorf("expected start/end, got %q", interval)
+	}
+	start, err := time.Parse(time.RFC3339, parts[0])
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		return time.Time{}, time.Time{}, err
 	}
-	if *interval != defaultAggregationInterval {
-		t.Errorf("expected default interval PT5M, got %s", *interval)
-	}
-
-	// custom interval 0:15:0 should return PT15M
-	_, interval, err = formatTimeSpan("0:15:0")
+	end, err := time.Parse(time.RFC3339, parts[1])
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		return time.Time{}, time.Time{}, err
 	}
-	if *interval != "PT15M" {
-		t.Errorf("expected interval PT15M, got %s", *interval)
-	}
-
-	// invalid values should return error
-	_, _, err = formatTimeSpan("a:b:c")
-	if err == nil {
-		t.Error("expected error for invalid timespan values")
-	}
+	return start, end, nil
 }
 
 func TestAzMonitorGetMetricSpecForScaling(t *testing.T) {

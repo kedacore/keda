@@ -40,7 +40,8 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
-const defaultAggregationInterval = "PT5M"
+// fullInterval asks Azure Monitor for a single datapoint covering the whole timespan
+const fullInterval = "FULL"
 
 // monitorInfo to create metric request
 type azureMonitorMetadata struct {
@@ -262,15 +263,16 @@ func (s *azureMonitorScaler) GetMetricsAndActivity(ctx context.Context, metricNa
 	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.ActivationTargetValue, nil
 }
 func (s *azureMonitorScaler) requestMetric(ctx context.Context) (float64, error) {
-	timespan, interval, err := formatTimeSpan(s.metadata.AggregationInterval)
+	timespan, err := formatTimeSpan(s.metadata.AggregationInterval)
 	if err != nil {
 		return -1, err
 	}
+	interval := fullInterval
 	opts := &azquery.MetricsClientQueryResourceOptions{
 		MetricNames:     &s.metadata.Name,
 		MetricNamespace: s.metadata.NamespaceRef,
 		Filter:          s.metadata.FilterRef,
-		Interval:        interval,
+		Interval:        &interval,
 		Top:             nil,
 		ResultType:      nil,
 		OrderBy:         nil,
@@ -309,12 +311,9 @@ func (s *azureMonitorScaler) requestMetric(ctx context.Context) (float64, error)
 }
 
 // formatTimeSpan defaults to a 5 minute timespan if the user does not provide one.
-// It returns both the timespan and the ISO 8601 duration interval (granularity)
-// to ensure Azure returns a single aggregated data point over the entire window.
-func formatTimeSpan(timeSpan string) (*azquery.TimeInterval, *string, error) {
+func formatTimeSpan(timeSpan string) (*azquery.TimeInterval, error) {
 	endtime := time.Now().UTC()
 	starttime := time.Now().Add(-(5 * time.Minute)).UTC()
-	interval := defaultAggregationInterval
 	if timeSpan != "" {
 		aggregationInterval := strings.Split(timeSpan, ":")
 		hours, herr := strconv.Atoi(aggregationInterval[0])
@@ -322,36 +321,13 @@ func formatTimeSpan(timeSpan string) (*azquery.TimeInterval, *string, error) {
 		seconds, serr := strconv.Atoi(aggregationInterval[2])
 
 		if herr != nil || merr != nil || serr != nil {
-			return nil, nil, fmt.Errorf("errors parsing metricAggregationInterval: %w", errors.Join(herr, merr, serr))
+			return nil, fmt.Errorf("errors parsing metricAggregationInterval: %w", errors.Join(herr, merr, serr))
 		}
 
 		starttime = time.Now().Add(-(time.Duration(hours)*time.Hour + time.Duration(minutes)*time.Minute + time.Duration(seconds)*time.Second)).UTC()
-		interval = toISO8601Duration(hours, minutes, seconds)
 	}
 	timeInterval := azquery.NewTimeInterval(starttime, endtime)
-	return &timeInterval, &interval, nil
-}
-
-// toISO8601Duration converts hours, minutes, and seconds to an ISO 8601 duration string.
-func toISO8601Duration(hours, minutes, seconds int) string {
-	if hours == 0 && minutes == 0 && seconds == 0 {
-		return defaultAggregationInterval
-	}
-
-	d := "P"
-	if hours > 0 || minutes > 0 || seconds > 0 {
-		d += "T"
-		if hours > 0 {
-			d += fmt.Sprintf("%dH", hours)
-		}
-		if minutes > 0 {
-			d += fmt.Sprintf("%dM", minutes)
-		}
-		if seconds > 0 {
-			d += fmt.Sprintf("%dS", seconds)
-		}
-	}
-	return d
+	return &timeInterval, nil
 }
 
 func verifyAggregationTypeIsSupported(aggregationType azquery.AggregationType, data []*azquery.MetricValue) (float64, error) {
