@@ -21,6 +21,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -66,13 +67,14 @@ const (
 )
 
 type rabbitMQScaler struct {
-	metricType v2.MetricTargetType
-	metadata   *rabbitMQMetadata
-	connection *amqp.Connection
-	channel    *amqp.Channel
-	httpClient *http.Client
-	azureOAuth *azure.ADWorkloadIdentityTokenProvider
-	logger     logr.Logger
+	metricType    v2.MetricTargetType
+	metadata      *rabbitMQMetadata
+	connection    *amqp.Connection
+	channel       *amqp.Channel
+	httpClient    *http.Client
+	httpTransport metricscollector.CloseableRoundTripper
+	azureOAuth    *azure.ADWorkloadIdentityTokenProvider
+	logger        logr.Logger
 }
 
 type rabbitMQMetadata struct {
@@ -467,6 +469,13 @@ func buildAMQPConfig(meta *rabbitMQMetadata) (amqp.Config, error) {
 
 // Close disposes of RabbitMQ connections
 func (s *rabbitMQScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
+	if s.httpTransport != nil {
+		s.httpTransport.CloseIdleConnections()
+		s.httpTransport = nil
+	}
 	if s.channel != nil {
 		if err := s.channel.Close(); err != nil {
 			s.logger.V(1).Info("Error closing RabbitMQ channel, may already be closed", "error", err)
@@ -479,9 +488,6 @@ func (s *rabbitMQScaler) Close(context.Context) error {
 			return err
 		}
 		s.connection = nil
-	}
-	if s.httpClient != nil {
-		s.httpClient.CloseIdleConnections()
 	}
 	return nil
 }
@@ -505,7 +511,7 @@ func (s *rabbitMQScaler) createOAuth2HTTPClient(timeout time.Duration, meta *rab
 
 	// Build a base transport using kedautil so that ProxyFromEnvironment and
 	// keep-alive behaviour stay consistent with the non-OAuth2 HTTP path.
-	var baseTransport http.RoundTripper
+	var baseTransport metricscollector.CloseableRoundTripper
 	if meta.EnableTLS == rmqTLSEnable {
 		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.Ca, meta.UnsafeSsl)
 		if err != nil {
@@ -515,6 +521,7 @@ func (s *rabbitMQScaler) createOAuth2HTTPClient(timeout time.Duration, meta *rab
 	} else {
 		baseTransport = kedautil.CreateRTWithTLSConfig(nil)
 	}
+	s.httpTransport = baseTransport
 
 	// Pass the base client via context so the oauth2 library uses it for token
 	// endpoint requests too (applying the same timeout and transport settings).

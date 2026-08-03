@@ -80,6 +80,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Improvements
 
 - **General**: Add `keda_scaled_object_ready` and `keda_scaled_job_ready` metrics exposing whether a ScaledObject's / ScaledJob's `Ready` condition is `True` ([#5663](https://github.com/kedacore/keda/issues/5663))
+- **General**: Introduce a dedicated `HPAActive` condition on `ScaledObject` mirroring the HPA's own `ScalingActive` status, so transient HPA metric gaps no longer flip the `Ready` condition to `False` ([#7914](https://github.com/kedacore/keda/issues/7914))
 - **Kafka Scaler**: Add optional `fullMetadata` trigger metadata field to control Sarama's full cluster metadata refresh, reducing operator memory for topic scoped triggers ([#7453](https://github.com/kedacore/keda/issues/7453))
 - **Temporal Scaler**: Add `enableTLS` parameter to allow disabling TLS when using API key authentication (e.g. plaintext gRPC endpoints) ([#7854](https://github.com/kedacore/keda/pull/7854))
 - **Temporal Scaler**: Add opt-in `includeRunningWorkflowCount` (with optional `workflowTaskQueueForCount`) to block premature scale-down when the backlog is momentarily zero but Workflow workers are still busy. Worker Deployment Version scalers short-circuit on Version status (`DRAINING` stays active, `DRAINED`/`INACTIVE` scale down); other modes issue a scoped `CountWorkflow` visibility query — including `TemporalWorkerDeploymentVersion is null` for unversioned workers. ([#7459](https://github.com/kedacore/keda/issues/7459))
@@ -88,10 +89,13 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Fix concurrent map writes panic in the shared root CA `CertPool` ([#7910](https://github.com/kedacore/keda/issues/7910))
 - **General**: Fix CVE-2026-42151, CVE-2026-42154, CVE-2026-40179 ([#7868](https://github.com/kedacore/keda/issues/7868))
+- **General**: Fix nil pointer dereference in AWS Secret Manager `TriggerAuthentication` when `awsSecretManager.credentials` is omitted and no `awsSecretManager.podIdentity` is set ([#7927](https://github.com/kedacore/keda/issues/7927))
 - **General**: Fix nil pointer dereference in `customScalingStrategy.GetEffectiveMaxScale` when `customScalingQueueLengthDeduction` is omitted; the optional field is now treated as zero deduction instead of panicking ([#7798](https://github.com/kedacore/keda/issues/7798))
 - **General**: Fix nil pointer dereference in `GetCurrentReplicas` when a Deployment/StatefulSet/ReplicaSet is returned from the informer cache with an undefaulted `spec.replicas`; a nil value is now treated as the Kubernetes default of 1 instead of panicking ([#7863](https://github.com/kedacore/keda/issues/7863))
 - **General**: Fix `ScaledJob` CRD validation to include "default" as a valid value for `scalingStrategy.strategy` ([#7855](https://github.com/kedacore/keda/issues/7855))
+- **General**: Restore core `""` API group in events RBAC so that client-go's event broadcaster can write legacy events ([#7922](https://github.com/kedacore/keda/issues/7922))
 - **General**: Restore gRPC reconnect backoff in the metrics service client; an unset `Backoff` in `WithConnectParams` disabled backoff and caused a zero-delay reconnect loop that flooded logs when keda-operator was unreachable ([#7856](https://github.com/kedacore/keda/issues/7856))
+- **General**: Share HTTP transports across scalers to reuse connection pools and avoid re-dial storms at high ScaledObject counts ([#7789](https://github.com/kedacore/keda/issues/7789))
 - **General**: Treat negative external metric values as zero to prevent incorrect HPA scaling ([#7880](https://github.com/kedacore/keda/issues/7880))
 - **Azure Blob Storage Scaler**: Fix `globPattern` never matching when written in path-style with a leading `/`, since blob names never have one ([#6492](https://github.com/kedacore/keda/issues/6492))
 - **MongoDB Scaler**: Disconnect the client when the initial `Ping` fails so the background topology-monitoring connections opened by `mongo.Connect` are not leaked ([#5612](https://github.com/kedacore/keda/issues/5612))
@@ -102,7 +106,7 @@ You can find all deprecations in [this overview](https://github.com/kedacore/ked
 
 New deprecation(s):
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Liiklus Scaler**: Deprecate scaler support in v2.21 due to the upstream Liiklus project being unmaintained; scaler code is planned for removal in a later release ([#7929](https://github.com/kedacore/keda/issues/7929))
 
 ### Breaking Changes
 
