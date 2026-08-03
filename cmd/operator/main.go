@@ -94,6 +94,9 @@ func main() {
 	var enableWebhookPatching bool
 	var enableAPIServicePatching bool
 	var filePathAuthRootPath string
+	var httpMaxIdleConns int
+	var httpMaxIdleConnsPerHost int
+	var httpIdleConnTimeout time.Duration
 	pflag.BoolVar(&enablePrometheusMetrics, "enable-prometheus-metrics", true, "Enable the prometheus metric of keda-operator.")
 	pflag.BoolVar(&enableOpenTelemetryMetrics, "enable-opentelemetry-metrics", false, "Enable the opentelemetry metric of keda-operator.")
 	pflag.BoolVar(&enableHighCardinalityLabels, "enable-high-cardinality-metrics-labels", false, "Enable high-cardinality labels for scaler HTTP request duration metrics.")
@@ -121,6 +124,9 @@ func main() {
 	pflag.BoolVar(&enableWebhookPatching, "enable-webhook-patching", true, "Enable patching of webhook resources. Defaults to true.")
 	pflag.BoolVar(&enableAPIServicePatching, "enable-apiservice-patching", true, "Enable patching of APIService resources. Defaults to true.")
 	pflag.StringVar(&filePathAuthRootPath, "filepath-auth-root-path", "", "Allowed filesystem path for KEDA to read auth from.")
+	pflag.IntVar(&httpMaxIdleConns, "http-max-idle-conns", 0, "Maximum number of idle HTTP connections across all hosts. Zero means no limit.")
+	pflag.IntVar(&httpMaxIdleConnsPerHost, "http-max-idle-conns-per-host", 1000, "Maximum number of idle HTTP connections to keep per host.")
+	pflag.DurationVar(&httpIdleConnTimeout, "http-idle-conn-timeout", 90*time.Second, "Maximum time an idle HTTP connection remains in the pool. Must be greater than zero.")
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 
@@ -142,6 +148,15 @@ func main() {
 	pflag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	if err := kedautil.ConfigureHTTPTransport(kedautil.HTTPTransportConfig{
+		MaxIdleConns:        httpMaxIdleConns,
+		MaxIdleConnsPerHost: httpMaxIdleConnsPerHost,
+		IdleConnTimeout:     httpIdleConnTimeout,
+	}); err != nil {
+		setupLog.Error(err, "invalid HTTP transport configuration")
+		os.Exit(1)
+	}
+
 	ctx := ctrl.SetupSignalHandler()
 
 	namespaces, err := kedautil.GetWatchNamespaces()
