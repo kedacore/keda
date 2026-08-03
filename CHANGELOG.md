@@ -138,7 +138,7 @@ New deprecation(s):
 - **General**: Add `--enable-high-cardinality-metrics-labels` to let users enable high-cardinality labels on scaler HTTP request duration metrics ([#7731](https://github.com/kedacore/keda/issues/7731))
 - **General**: Add `--leader-election-id` flag to allow configuring the leader election Lease name ([#7564](https://github.com/kedacore/keda/issues/7564))
 - **General**: Add scaler HTTP request metrics (`keda_scaler_http_requests_total`, `keda_scaler_http_request_duration_seconds`) for outbound HTTP requests made during scaler metric collection ([#6600](https://github.com/kedacore/keda/issues/6600))
-- **General**: Add `WATCH_LABEL_SELECTOR` env var to scope which ScaledObjects and ScaledJobs an operator instance reconciles based on labels (mirrors `WATCH_NAMESPACE`), and `WATCH_LABEL_SELECTOR_FOR_TRIGGERAUTH` to scope (Cluster)TriggerAuthentications independently so cluster-scoped CTAs can still be shared across operators ([#7738](https://github.com/kedacore/keda/issues/7738))
+- **General**: Controller sharding by label selectors ([#7738](https://github.com/kedacore/keda/issues/7738))
 - **General**: Allow more control of TLS versions & ciphers via `KEDA_HTTP_TLS_CIPHER_LIST`, `KEDA_SERVICE_TLS_CIPHER_LIST` and `KEDA_SERVICE_MIN_TLS_VERSION` env vars ([#7617](https://github.com/kedacore/keda/pull/7617))
 - **General**: Cap each scalers-cache reader at a per-reader budget derived from `globalHTTPTimeout` so `ScalersCache.Close` cannot block indefinitely ([#7574](https://github.com/kedacore/keda/issues/7574))
 - **General**: Make APIService cert injections optional ([#7559](https://github.com/kedacore/keda/pull/7559))
