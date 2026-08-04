@@ -99,6 +99,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Share HTTP transports across scalers to reuse connection pools and avoid re-dial storms at high ScaledObject counts ([#7789](https://github.com/kedacore/keda/issues/7789))
 - **General**: Treat negative external metric values as zero to prevent incorrect HPA scaling ([#7880](https://github.com/kedacore/keda/issues/7880))
 - **Azure Blob Storage Scaler**: Fix `globPattern` never matching when written in path-style with a leading `/`, since blob names never have one ([#6492](https://github.com/kedacore/keda/issues/6492))
+- **Kafka Scaler**: Fix overestimated lag for consumer groups without a committed offset when `offsetResetPolicy` is `earliest`; messages already deleted by retention are no longer counted ([#7936](https://github.com/kedacore/keda/issues/7936))
 - **MongoDB Scaler**: Disconnect the client when the initial `Ping` fails so the background topology-monitoring connections opened by `mongo.Connect` are not leaked ([#5612](https://github.com/kedacore/keda/issues/5612))
 
 ### Deprecations
