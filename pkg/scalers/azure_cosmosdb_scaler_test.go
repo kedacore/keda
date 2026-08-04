@@ -1559,8 +1559,11 @@ func TestCosmosDBUnrelatedGoneResponseIsError(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	_, _, _, err := client.estimateLag(context.Background())
+	totalLag, activePartitionCount, splitRecoveryRequired, err := client.estimateLag(context.Background())
 	assert.ErrorContains(t, err, `status 410 and substatus "1008"`)
+	assert.Zero(t, totalLag)
+	assert.Zero(t, activePartitionCount)
+	assert.False(t, splitRecoveryRequired)
 	assert.Equal(t, 1, leaseQueryCount)
 }
 
@@ -1598,8 +1601,11 @@ func TestCosmosDBLagEstimationPartitionError(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	_, _, _, err := client.estimateLag(context.Background())
+	totalLag, activePartitionCount, splitRecoveryRequired, err := client.estimateLag(context.Background())
 	assert.ErrorContains(t, err, "error estimating lag: error reading change feed for partition 1")
+	assert.Zero(t, totalLag)
+	assert.Zero(t, activePartitionCount)
+	assert.False(t, splitRecoveryRequired)
 }
 
 func TestCosmosDBGetMetricsAndActivityCapsLagByActivePartitions(t *testing.T) {
