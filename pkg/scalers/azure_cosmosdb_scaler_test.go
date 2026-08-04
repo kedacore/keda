@@ -715,14 +715,18 @@ func TestCosmosDBPrivateCloudServicePrincipalTokenAcquisition(t *testing.T) {
 		requests <- r.Method + " " + r.URL.Path
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, ".well-known/openid-configuration") {
-			_, _ = w.Write([]byte(`{
-				"authorization_endpoint":"` + authorityServer.URL + `/tenant-id/oauth2/v2.0/authorize",
-				"token_endpoint":"` + authorityServer.URL + `/tenant-id/oauth2/v2.0/token",
-				"issuer":"` + authorityServer.URL + `/tenant-id/v2.0"
-			}`))
+			_ = json.NewEncoder(w).Encode(map[string]string{
+				"authorization_endpoint": authorityServer.URL + "/tenant-id/oauth2/v2.0/authorize",
+				"token_endpoint":         authorityServer.URL + "/tenant-id/oauth2/v2.0/token",
+				"issuer":                 authorityServer.URL + "/tenant-id/v2.0",
+			})
 			return
 		}
-		_, _ = w.Write([]byte(`{"token_type":"Bearer","expires_in":3600,"access_token":"private-token"}`))
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"token_type":   "Bearer",
+			"expires_in":   3600,
+			"access_token": "private-token",
+		})
 	}))
 	defer authorityServer.Close()
 
@@ -751,6 +755,8 @@ func TestCosmosDBPrivateCloudServicePrincipalTokenAcquisition(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "private-token", token.Token)
 
+	timer := time.NewTimer(time.Second)
+	defer timer.Stop()
 	for {
 		select {
 		case request := <-requests:
@@ -758,7 +764,7 @@ func TestCosmosDBPrivateCloudServicePrincipalTokenAcquisition(t *testing.T) {
 			if request == "POST /tenant-id/oauth2/v2.0/token" {
 				return
 			}
-		case <-time.After(time.Second):
+		case <-timer.C:
 			t.Fatal("service-principal credential did not request a token")
 		}
 	}
