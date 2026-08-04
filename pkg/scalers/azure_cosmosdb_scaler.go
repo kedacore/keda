@@ -16,7 +16,9 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	azcloud "github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -28,8 +30,10 @@ import (
 )
 
 const (
-	cosmosDBMetricType     = "External"
-	cosmosDBRestAPIVersion = "2018-12-31"
+	cosmosDBMetricType                     = "External"
+	cosmosDBRestAPIVersion                 = "2018-12-31"
+	cosmosDBSubStatusHeader                = "x-ms-substatus"
+	cosmosDBPartitionKeyRangeGoneSubStatus = "1002"
 )
 
 type azureCosmosDBScaler struct {
@@ -51,21 +55,32 @@ type azureCosmosDBMetadata struct {
 	LeaseConnection     string `keda:"name=leaseConnection,         order=authParams;resolvedEnv;triggerMetadata, optional"`
 	CosmosDBKey         string `keda:"name=cosmosDBKey,             order=authParams;resolvedEnv, optional"`
 	LeaseCosmosDBKey    string `keda:"name=leaseCosmosDBKey,        order=authParams;resolvedEnv, optional"`
+	TenantID            string `keda:"name=tenantId,                order=authParams, optional"`
+	ClientID            string `keda:"name=clientId,                order=authParams, optional"`
+	ClientSecret        string `keda:"name=clientSecret,            order=authParams, optional"`
 	Threshold           int64  `keda:"name=changeFeedLagThreshold,            order=triggerMetadata, default=100"`
 	ActivationThreshold int64  `keda:"name=activationChangeFeedLagThreshold,  order=triggerMetadata, default=0"`
 	TriggerIndex        int
 }
 
 func (m *azureCosmosDBMetadata) Validate() error {
-	// Default lease settings to data settings if not specified
-	if m.LeaseConnection == "" {
-		m.LeaseConnection = m.Connection
+	if m.Threshold <= 0 {
+		return fmt.Errorf("changeFeedLagThreshold must be greater than zero")
 	}
-	if m.LeaseEndpoint == "" {
-		m.LeaseEndpoint = m.Endpoint
+	if m.ActivationThreshold < 0 {
+		return fmt.Errorf("activationChangeFeedLagThreshold must be greater than or equal to zero")
 	}
-	if m.LeaseCosmosDBKey == "" {
-		m.LeaseCosmosDBKey = m.CosmosDBKey
+	if m.ActivationThreshold >= m.Threshold {
+		return fmt.Errorf("activationChangeFeedLagThreshold must be less than changeFeedLagThreshold")
+	}
+
+	if m.LeaseConnection == "" && m.LeaseEndpoint == "" {
+		if m.Connection != "" {
+			m.LeaseConnection = m.Connection
+		} else {
+			m.LeaseEndpoint = m.Endpoint
+			m.LeaseCosmosDBKey = m.CosmosDBKey
+		}
 	}
 	return nil
 }
@@ -96,9 +111,10 @@ type leaseDocument struct {
 }
 
 type changeFeedResponse struct {
-	StatusCode   int
-	Items        []json.RawMessage
-	SessionToken string
+	StatusCode    int
+	SubStatusCode string
+	Items         []json.RawMessage
+	SessionToken  string
 }
 
 // NewAzureCosmosDBScaler creates a new Azure Cosmos DB change feed scaler.
@@ -134,15 +150,32 @@ func parseAzureCosmosDBMetadata(config *scalersconfig.ScalerConfig) (*azureCosmo
 		return nil, fmt.Errorf("error parsing metadata: %w", err)
 	}
 
+	if meta.Endpoint == "" && meta.Connection == "" {
+		return nil, fmt.Errorf("connection string or endpoint is required for the data account")
+	}
+	if meta.LeaseEndpoint == "" && meta.LeaseConnection == "" {
+		return nil, fmt.Errorf("connection string or endpoint is required for the lease account")
+	}
+
 	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		if meta.Connection == "" && (meta.Endpoint == "" || meta.CosmosDBKey == "") {
-			return nil, fmt.Errorf("connection string or endpoint+cosmosDBKey is required when not using pod identity")
+		servicePrincipalParameterCount := 0
+		for _, parameter := range []string{meta.TenantID, meta.ClientID, meta.ClientSecret} {
+			if parameter != "" {
+				servicePrincipalParameterCount++
+			}
+		}
+		dataHasKey := meta.Connection != "" || meta.CosmosDBKey != ""
+		leaseHasKey := meta.LeaseConnection != "" || meta.LeaseCosmosDBKey != ""
+		if !dataHasKey || !leaseHasKey {
+			if servicePrincipalParameterCount != 0 && servicePrincipalParameterCount != 3 {
+				return nil, fmt.Errorf("tenantId, clientId and clientSecret must all be provided for service-principal authentication")
+			}
+			if servicePrincipalParameterCount != 3 {
+				return nil, fmt.Errorf("a connection string, account key, or complete service-principal credentials are required for both data and lease accounts")
+			}
 		}
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		if meta.Endpoint == "" && meta.Connection == "" {
-			return nil, fmt.Errorf("endpoint or connection string is required when using workload identity")
-		}
 	default:
 		return nil, fmt.Errorf("pod identity %s not supported for azure cosmos db", config.PodIdentity.Provider)
 	}
@@ -196,25 +229,70 @@ func newCosmosDBClient(meta *azureCosmosDBMetadata, triggerMetadata map[string]s
 		return nil, fmt.Errorf("failed to determine cosmos db endpoints")
 	}
 
-	// Set up workload identity credential for bearer token auth
-	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload && client.dataKey == "" {
-		cosmosDBResourceURLProvider := func(env azure.AzEnvironment) (string, error) {
-			return env.ResourceIdentifiers.CosmosDB, nil
-		}
-		cosmosDBResourceURL, err := azure.ParseEnvironmentProperty(triggerMetadata, "cosmosDBResourceURL", cosmosDBResourceURLProvider)
+	if client.dataKey == "" || client.leaseKey == "" {
+		credential, resourceURL, err := newCosmosDBTokenCredential(meta, triggerMetadata, podIdentity, logger, client.httpClient)
 		if err != nil {
-			return nil, fmt.Errorf("error resolving cosmos db resource URL: %w", err)
+			return nil, err
 		}
-		client.cosmosDBResourceURL = cosmosDBResourceURL
-
-		cred, err := azure.NewChainedCredential(logger, podIdentity)
-		if err != nil {
-			return nil, fmt.Errorf("error creating azure credential for workload identity: %w", err)
-		}
-		client.credential = cred
+		client.credential = credential
+		client.cosmosDBResourceURL = resourceURL
 	}
 
 	return client, nil
+}
+
+func newCosmosDBTokenCredential(meta *azureCosmosDBMetadata, triggerMetadata map[string]string, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger, transport policy.Transporter) (azcore.TokenCredential, string, error) {
+	switch podIdentity.Provider {
+	case "", kedav1alpha1.PodIdentityProviderNone:
+		cosmosDBResourceURL, credentialCloud, disableInstanceDiscovery, err := resolveCosmosDBServicePrincipalCloud(triggerMetadata)
+		if err != nil {
+			return nil, "", err
+		}
+		credential, err := azidentity.NewClientSecretCredential(meta.TenantID, meta.ClientID, meta.ClientSecret, &azidentity.ClientSecretCredentialOptions{
+			ClientOptions: azcore.ClientOptions{
+				Cloud:     credentialCloud,
+				Transport: transport,
+			},
+			DisableInstanceDiscovery: disableInstanceDiscovery,
+		})
+		if err != nil {
+			return nil, "", fmt.Errorf("error creating service-principal credential: %w", err)
+		}
+		return credential, cosmosDBResourceURL, nil
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		cosmosDBResourceURL, err := resolveCosmosDBResourceURL(triggerMetadata)
+		if err != nil {
+			return nil, "", fmt.Errorf("error resolving cosmos db resource URL: %w", err)
+		}
+		credential, err := azure.NewChainedCredential(logger, podIdentity)
+		if err != nil {
+			return nil, "", fmt.Errorf("error creating azure credential for workload identity: %w", err)
+		}
+		return credential, cosmosDBResourceURL, nil
+	default:
+		return nil, "", fmt.Errorf("pod identity %s not supported for azure cosmos db", podIdentity.Provider)
+	}
+}
+
+func resolveCosmosDBServicePrincipalCloud(triggerMetadata map[string]string) (string, azcloud.Configuration, bool, error) {
+	cosmosDBResourceURL, err := resolveCosmosDBResourceURL(triggerMetadata)
+	if err != nil {
+		return "", azcloud.Configuration{}, false, fmt.Errorf("error resolving cosmos db resource URL: %w", err)
+	}
+	activeDirectoryEndpoint, err := azure.ParseActiveDirectoryEndpoint(triggerMetadata)
+	if err != nil {
+		return "", azcloud.Configuration{}, false, fmt.Errorf("error resolving active directory endpoint: %w", err)
+	}
+	return cosmosDBResourceURL,
+		azcloud.Configuration{ActiveDirectoryAuthorityHost: activeDirectoryEndpoint},
+		strings.EqualFold(triggerMetadata["cloud"], azure.PrivateCloud),
+		nil
+}
+
+func resolveCosmosDBResourceURL(triggerMetadata map[string]string) (string, error) {
+	return azure.ParseEnvironmentProperty(triggerMetadata, "cosmosDBResourceURL", func(env azure.AzEnvironment) (string, error) {
+		return env.ResourceIdentifiers.CosmosDB, nil
+	})
 }
 
 func parseCosmosDBConnectionString(connectionString string) (string, string, error) {
@@ -250,7 +328,7 @@ func (c *cosmosDBClient) setAuthHeader(req *http.Request, verb, resourceType, re
 
 	if c.credential != nil {
 		tk, err := c.credential.GetToken(req.Context(), policy.TokenRequestOptions{
-			Scopes: []string{c.cosmosDBResourceURL + "/.default"},
+			Scopes: []string{strings.TrimSuffix(c.cosmosDBResourceURL, "/") + "/.default"},
 		})
 		if err != nil {
 			return fmt.Errorf("error acquiring bearer token: %w", err)
@@ -259,7 +337,7 @@ func (c *cosmosDBClient) setAuthHeader(req *http.Request, verb, resourceType, re
 		return nil
 	}
 
-	return fmt.Errorf("no authentication method available: provide a key or configure workload identity")
+	return fmt.Errorf("no authentication method available: provide a key, service-principal credentials, or workload identity")
 }
 
 // generateCosmosDBAuthToken generates an HMAC-SHA256 auth token for Cosmos DB REST API.
@@ -374,8 +452,9 @@ func (c *cosmosDBClient) readChangeFeed(ctx context.Context, partitionKeyRangeID
 	defer resp.Body.Close()
 
 	cfResp := &changeFeedResponse{
-		StatusCode:   resp.StatusCode,
-		SessionToken: resp.Header.Get("x-ms-session-token"),
+		StatusCode:    resp.StatusCode,
+		SubStatusCode: resp.Header.Get(cosmosDBSubStatusHeader),
+		SessionToken:  resp.Header.Get("x-ms-session-token"),
 	}
 
 	if resp.StatusCode == http.StatusNotModified || resp.StatusCode == http.StatusGone {
@@ -399,21 +478,25 @@ func (c *cosmosDBClient) readChangeFeed(ctx context.Context, partitionKeyRangeID
 }
 
 // estimateLag estimates the total change feed lag across all partitions and
-// returns both the total lag and partition count.
+// returns the lag, number of partitions with lag, and whether a processor must
+// wake to reconcile a stale parent lease.
 // If a partition split (410 Gone) is detected, it retries once to get fresh lease data.
-func (c *cosmosDBClient) estimateLag(ctx context.Context) (totalLag int64, partitionCount int64, err error) {
-	totalLag, partitionCount, splitDetected, err := c.estimateOnce(ctx)
+func (c *cosmosDBClient) estimateLag(ctx context.Context) (totalLag int64, activePartitionCount int64, splitRecoveryRequired bool, err error) {
+	totalLag, activePartitionCount, splitDetected, err := c.estimateOnce(ctx)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, false, err
 	}
 	if splitDetected {
 		c.logger.Info("Warning: partition split detected, re-reading leases")
-		totalLag, partitionCount, _, err = c.estimateOnce(ctx)
+		totalLag, activePartitionCount, splitDetected, err = c.estimateOnce(ctx)
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, false, err
+		}
+		if splitDetected {
+			return totalLag, activePartitionCount, true, nil
 		}
 	}
-	return totalLag, partitionCount, nil
+	return totalLag, activePartitionCount, false, nil
 }
 
 func (c *cosmosDBClient) estimateOnce(ctx context.Context) (int64, int64, bool, error) {
@@ -430,13 +513,13 @@ func (c *cosmosDBClient) estimateOnce(ctx context.Context) (int64, int64, bool, 
 	c.logger.V(1).Info(fmt.Sprintf("found %d lease documents", len(leases)))
 
 	totalLag := int64(0)
+	activePartitionCount := int64(0)
 	splitDetected := false
 
 	for _, lease := range leases {
 		lag, isSplit, err := c.estimatePartitionLag(ctx, lease)
 		if err != nil {
-			c.logger.Error(err, fmt.Sprintf("error estimating lag for partition %s, skipping", lease.LeaseToken))
-			continue
+			return 0, 0, false, fmt.Errorf("error estimating lag: %w", err)
 		}
 		if isSplit {
 			c.logger.Info(fmt.Sprintf("Warning: partition %s returned 410 Gone (split/merge detected)", lease.LeaseToken))
@@ -446,6 +529,7 @@ func (c *cosmosDBClient) estimateOnce(ctx context.Context) (int64, int64, bool, 
 		c.logger.V(1).Info(fmt.Sprintf("partition %s: estimated lag = %d, owner = %s", lease.LeaseToken, lag, lease.Owner))
 		if lag > 0 {
 			totalLag += lag
+			activePartitionCount++
 		}
 	}
 
@@ -454,7 +538,7 @@ func (c *cosmosDBClient) estimateOnce(ctx context.Context) (int64, int64, bool, 
 		totalLag = math.MaxInt64
 	}
 
-	return totalLag, int64(len(leases)), splitDetected, nil
+	return totalLag, activePartitionCount, splitDetected, nil
 }
 
 // estimatePartitionLag calculates the lag for a single partition.
@@ -463,16 +547,18 @@ func (c *cosmosDBClient) estimateOnce(ctx context.Context) (int64, int64, bool, 
 //  2. Extract latest LSN from session token
 //  3. If items present: lag = sessionLSN - firstItem._lsn + 1
 //  4. If no items (304): lag = 0 (caught up)
-//  5. If 410 Gone: report lag = 0 (split/merge)
+//  5. If 410/1002: flag a stale parent lease so the lease store can be refreshed
 func (c *cosmosDBClient) estimatePartitionLag(ctx context.Context, lease leaseDocument) (int64, bool, error) {
 	cfResp, err := c.readChangeFeed(ctx, lease.LeaseToken, lease.ContinuationToken)
 	if err != nil {
 		return 0, false, fmt.Errorf("error reading change feed for partition %s: %w", lease.LeaseToken, err)
 	}
 
-	// 410 Gone indicates partition split or merge
 	if cfResp.StatusCode == http.StatusGone {
-		return 0, true, nil
+		if cfResp.SubStatusCode == cosmosDBPartitionKeyRangeGoneSubStatus {
+			return 0, true, nil
+		}
+		return 0, false, fmt.Errorf("partition %s: read change feed failed with status %d and substatus %q", lease.LeaseToken, cfResp.StatusCode, cfResp.SubStatusCode)
 	}
 
 	// 304 Not Modified or empty results means processor is caught up
@@ -482,21 +568,18 @@ func (c *cosmosDBClient) estimatePartitionLag(ctx context.Context, lease leaseDo
 
 	// Calculate lag: sessionLSN - firstItemLSN + 1
 	sessionLSN, err := parseLSNFromSessionToken(cfResp.SessionToken)
-	if err != nil || sessionLSN < 0 {
-		c.logger.V(1).Info(fmt.Sprintf("partition %s: could not parse session token LSN (token: %s), assuming no lag", lease.LeaseToken, cfResp.SessionToken))
-		return 0, false, nil
+	if err != nil {
+		return 0, false, fmt.Errorf("partition %s: could not parse session token LSN %q: %w", lease.LeaseToken, cfResp.SessionToken, err)
 	}
 
 	firstItemLSN, err := extractItemLSN(cfResp.Items[0])
-	if err != nil || firstItemLSN < 0 {
-		c.logger.V(1).Info(fmt.Sprintf("partition %s: could not extract _lsn from first item, assuming no lag", lease.LeaseToken))
-		return 0, false, nil
+	if err != nil {
+		return 0, false, fmt.Errorf("partition %s: could not extract _lsn from first item: %w", lease.LeaseToken, err)
 	}
 
 	lag := sessionLSN - firstItemLSN + 1
 	if lag < 0 {
-		c.logger.V(1).Info(fmt.Sprintf("partition %s: negative lag (sessionLSN=%d, firstItemLSN=%d), assuming no lag", lease.LeaseToken, sessionLSN, firstItemLSN))
-		return 0, false, nil
+		return 0, false, fmt.Errorf("partition %s: negative lag from session LSN %d and first item LSN %d", lease.LeaseToken, sessionLSN, firstItemLSN)
 	}
 
 	return lag, false, nil
@@ -561,29 +644,45 @@ func (s *azureCosmosDBScaler) GetMetricSpecForScaling(context.Context) []v2.Metr
 }
 
 // getChangeFeedTotalLagRelatedToPartitionAmount caps the total lag to prevent scaling beyond
-// the number of partitions. This matches the EventHub scaler's approach.
-func getChangeFeedTotalLagRelatedToPartitionAmount(totalLag int64, partitionCount int64, threshold int64) int64 {
-	if threshold > 0 && (totalLag/threshold) > partitionCount {
-		return partitionCount * threshold
+// the number of partitions that have lag.
+func getChangeFeedTotalLagRelatedToPartitionAmount(totalLag int64, activePartitionCount int64, threshold int64) int64 {
+	if threshold <= 0 || activePartitionCount <= 0 || activePartitionCount > math.MaxInt64/threshold {
+		return totalLag
+	}
+
+	maxLag := activePartitionCount * threshold
+	if totalLag > maxLag {
+		return maxLag
 	}
 	return totalLag
 }
 
 // GetMetricsAndActivity returns the metric value and activity status.
 func (s *azureCosmosDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	totalLag, partitionCount, err := s.cosmosClient.estimateLag(ctx)
+	totalLag, activePartitionCount, splitRecoveryRequired, err := s.cosmosClient.estimateLag(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting cosmos db change feed lag: %w", err)
 	}
 
-	// Don't scale out beyond the number of partitions
-	lagRelatedToPartitionCount := getChangeFeedTotalLagRelatedToPartitionAmount(totalLag, partitionCount, s.metadata.Threshold)
+	lagForScaling := totalLag
+	effectiveActivePartitionCount := activePartitionCount
+	if splitRecoveryRequired {
+		if lagForScaling <= s.metadata.ActivationThreshold {
+			lagForScaling = s.metadata.ActivationThreshold + 1
+		}
+		if effectiveActivePartitionCount == 0 {
+			effectiveActivePartitionCount = 1
+		}
+	}
 
-	s.logger.V(1).Info(fmt.Sprintf("Cosmos DB change feed total lag: %d, scaling for a lag of %d related to %d partitions",
-		totalLag, lagRelatedToPartitionCount, partitionCount))
+	// Don't scale out beyond the number of partitions that have lag.
+	lagRelatedToPartitionCount := getChangeFeedTotalLagRelatedToPartitionAmount(lagForScaling, effectiveActivePartitionCount, s.metadata.Threshold)
+
+	s.logger.V(1).Info(fmt.Sprintf("Cosmos DB change feed total lag: %d, scaling for a lag of %d related to %d active partitions, split recovery required: %t",
+		totalLag, lagRelatedToPartitionCount, effectiveActivePartitionCount, splitRecoveryRequired))
 
 	metric := GenerateMetricInMili(metricName, float64(lagRelatedToPartitionCount))
-	return []external_metrics.ExternalMetricValue{metric}, totalLag > s.metadata.ActivationThreshold, nil
+	return []external_metrics.ExternalMetricValue{metric}, lagForScaling > s.metadata.ActivationThreshold, nil
 }
 
 // Close cleans up the scaler resources.

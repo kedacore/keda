@@ -6,10 +6,17 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v2 "k8s.io/api/autoscaling/v2"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -18,6 +25,19 @@ import (
 
 var testCosmosDBResolvedEnv = map[string]string{
 	"COSMOS_CONNECTION": "AccountEndpoint=https://test.documents.azure.com:443/;AccountKey=dGVzdGtleQ==",
+}
+
+type recordingTokenCredential struct {
+	scopes []string
+	token  string
+}
+
+func (c *recordingTokenCredential) GetToken(_ context.Context, options policy.TokenRequestOptions) (azcore.AccessToken, error) {
+	c.scopes = append(c.scopes, options.Scopes...)
+	return azcore.AccessToken{
+		Token:     c.token,
+		ExpiresOn: time.Now().Add(time.Hour),
+	}, nil
 }
 
 type parseCosmosDBMetadataTestData struct {
@@ -256,6 +276,95 @@ var testCosmosDBMetadata = []parseCosmosDBMetadataTestData{
 		authParams:  map[string]string{},
 		podIdentity: "",
 	},
+	{
+		name: "endpoint with service principal",
+		metadata: map[string]string{
+			"endpoint":         "https://data.documents.azure.com:443/",
+			"leaseEndpoint":    "https://lease.documents.azure.com:443/",
+			"databaseId":       "testdb",
+			"containerId":      "testcontainer",
+			"leaseDatabaseId":  "leasedb",
+			"leaseContainerId": "leases",
+			"processorName":    "testprocessor",
+		},
+		isError:     false,
+		resolvedEnv: map[string]string{},
+		authParams: map[string]string{
+			"tenantId":     "tenant-id",
+			"clientId":     "client-id",
+			"clientSecret": "client-secret",
+		},
+		podIdentity: kedav1alpha1.PodIdentityProviderNone,
+	},
+	{
+		name: "partial service principal",
+		metadata: map[string]string{
+			"endpoint":         "https://test.documents.azure.com:443/",
+			"databaseId":       "testdb",
+			"containerId":      "testcontainer",
+			"leaseDatabaseId":  "testdb",
+			"leaseContainerId": "leases",
+			"processorName":    "testprocessor",
+		},
+		isError:     true,
+		resolvedEnv: map[string]string{},
+		authParams: map[string]string{
+			"tenantId": "tenant-id",
+			"clientId": "client-id",
+		},
+		podIdentity: kedav1alpha1.PodIdentityProviderNone,
+	},
+	{
+		name: "separate lease endpoint requires authentication",
+		metadata: map[string]string{
+			"connectionFromEnv": "COSMOS_CONNECTION",
+			"leaseEndpoint":     "https://lease.documents.azure.com:443/",
+			"databaseId":        "testdb",
+			"containerId":       "testcontainer",
+			"leaseDatabaseId":   "leasedb",
+			"leaseContainerId":  "leases",
+			"processorName":     "testprocessor",
+		},
+		isError:     true,
+		resolvedEnv: testCosmosDBResolvedEnv,
+		authParams:  map[string]string{},
+		podIdentity: kedav1alpha1.PodIdentityProviderNone,
+	},
+	{
+		name: "account key ignores partial service principal",
+		metadata: map[string]string{
+			"endpoint":         "https://test.documents.azure.com:443/",
+			"databaseId":       "testdb",
+			"containerId":      "testcontainer",
+			"leaseDatabaseId":  "testdb",
+			"leaseContainerId": "leases",
+			"processorName":    "testprocessor",
+		},
+		isError:     false,
+		resolvedEnv: map[string]string{},
+		authParams: map[string]string{
+			"cosmosDBKey": "dGVzdGtleQ==",
+			"tenantId":    "tenant-id",
+		},
+		podIdentity: kedav1alpha1.PodIdentityProviderNone,
+	},
+	{
+		name: "workload identity takes precedence over partial service principal",
+		metadata: map[string]string{
+			"endpoint":         "https://test.documents.azure.com:443/",
+			"databaseId":       "testdb",
+			"containerId":      "testcontainer",
+			"leaseDatabaseId":  "testdb",
+			"leaseContainerId": "leases",
+			"processorName":    "testprocessor",
+		},
+		isError:     false,
+		resolvedEnv: map[string]string{},
+		authParams: map[string]string{
+			"tenantId": "ignored-tenant-id",
+		},
+		podIdentity: kedav1alpha1.PodIdentityProviderAzureWorkload,
+	},
 }
 
 var cosmosDBMetricIdentifiers = []cosmosDBMetricIdentifier{
@@ -291,6 +400,367 @@ func TestCosmosDBParseMetadata(t *testing.T) {
 				t.Errorf("Expected error but got success. testData: %v", testData)
 			}
 		})
+	}
+}
+
+func TestNewAzureCosmosDBScalerAllowsValueMetricType(t *testing.T) {
+	scaler, err := NewAzureCosmosDBScaler(&scalersconfig.ScalerConfig{
+		MetricType: v2.ValueMetricType,
+		TriggerMetadata: map[string]string{
+			"connection":       testCosmosDBResolvedEnv["COSMOS_CONNECTION"],
+			"databaseId":       "testdb",
+			"containerId":      "testcontainer",
+			"leaseDatabaseId":  "testdb",
+			"leaseContainerId": "leases",
+			"processorName":    "testprocessor",
+		},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, v2.ValueMetricType, scaler.(*azureCosmosDBScaler).metricType)
+}
+
+func TestCosmosDBServicePrincipalMetadataValidation(t *testing.T) {
+	baseMetadata := map[string]string{
+		"endpoint":         "https://test.documents.azure.com:443/",
+		"databaseId":       "testdb",
+		"containerId":      "testcontainer",
+		"leaseDatabaseId":  "testdb",
+		"leaseContainerId": "leases",
+		"processorName":    "testprocessor",
+	}
+	tests := []struct {
+		name       string
+		authParams map[string]string
+		wantError  string
+	}{
+		{
+			name: "complete credentials",
+			authParams: map[string]string{
+				"tenantId":     "tenant-id",
+				"clientId":     "client-id",
+				"clientSecret": "client-secret",
+			},
+		},
+		{
+			name: "missing tenant id",
+			authParams: map[string]string{
+				"clientId":     "client-id",
+				"clientSecret": "client-secret",
+			},
+			wantError: "tenantId, clientId and clientSecret must all be provided",
+		},
+		{
+			name: "missing client id",
+			authParams: map[string]string{
+				"tenantId":     "tenant-id",
+				"clientSecret": "client-secret",
+			},
+			wantError: "tenantId, clientId and clientSecret must all be provided",
+		},
+		{
+			name: "missing client secret",
+			authParams: map[string]string{
+				"tenantId": "tenant-id",
+				"clientId": "client-id",
+			},
+			wantError: "tenantId, clientId and clientSecret must all be provided",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := &scalersconfig.ScalerConfig{
+				TriggerMetadata: baseMetadata,
+				AuthParams:      tt.authParams,
+				PodIdentity:     kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+			}
+
+			meta, err := parseAzureCosmosDBMetadata(config)
+			if tt.wantError != "" {
+				assert.ErrorContains(t, err, tt.wantError)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, "tenant-id", meta.TenantID)
+			assert.Equal(t, "client-id", meta.ClientID)
+			assert.Equal(t, "client-secret", meta.ClientSecret)
+		})
+	}
+}
+
+func TestCosmosDBThresholdValidation(t *testing.T) {
+	tests := []struct {
+		name                string
+		threshold           string
+		activationThreshold string
+		wantError           string
+	}{
+		{
+			name:      "threshold must be positive",
+			threshold: "0",
+			wantError: "changeFeedLagThreshold must be greater than zero",
+		},
+		{
+			name:                "activation threshold must not be negative",
+			threshold:           "100",
+			activationThreshold: "-1",
+			wantError:           "activationChangeFeedLagThreshold must be greater than or equal to zero",
+		},
+		{
+			name:                "activation threshold must remain below scaling threshold",
+			threshold:           "100",
+			activationThreshold: "100",
+			wantError:           "activationChangeFeedLagThreshold must be less than changeFeedLagThreshold",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			triggerMetadata := map[string]string{
+				"connection":             testCosmosDBResolvedEnv["COSMOS_CONNECTION"],
+				"databaseId":             "testdb",
+				"containerId":            "testcontainer",
+				"leaseDatabaseId":        "testdb",
+				"leaseContainerId":       "leases",
+				"processorName":          "testprocessor",
+				"changeFeedLagThreshold": tt.threshold,
+			}
+			if tt.activationThreshold != "" {
+				triggerMetadata["activationChangeFeedLagThreshold"] = tt.activationThreshold
+			}
+			config := &scalersconfig.ScalerConfig{
+				TriggerMetadata: triggerMetadata,
+			}
+
+			_, err := parseAzureCosmosDBMetadata(config)
+			assert.ErrorContains(t, err, tt.wantError)
+		})
+	}
+}
+
+func TestCosmosDBCredentialSelection(t *testing.T) {
+	t.Run("service principal authenticates separate data and lease endpoints", func(t *testing.T) {
+		meta := &azureCosmosDBMetadata{
+			Endpoint:         "https://data.documents.azure.com:443/",
+			LeaseEndpoint:    "https://lease.documents.azure.com:443/",
+			DatabaseID:       "testdb",
+			ContainerID:      "data",
+			LeaseDatabaseID:  "leasedb",
+			LeaseContainerID: "leases",
+			ProcessorName:    "processor",
+			TenantID:         "tenant-id",
+			ClientID:         "client-id",
+			ClientSecret:     "client-secret",
+		}
+
+		client, err := newCosmosDBClient(meta, map[string]string{}, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, logr.Discard(), time.Second)
+		require.NoError(t, err)
+		assert.IsType(t, &azidentity.ClientSecretCredential{}, client.credential)
+		assert.Empty(t, client.dataKey)
+		assert.Empty(t, client.leaseKey)
+		assert.Equal(t, "https://cosmos.azure.com", client.cosmosDBResourceURL)
+	})
+
+	t.Run("service principal fills only lease authentication when data uses a connection string", func(t *testing.T) {
+		meta := &azureCosmosDBMetadata{
+			Connection:       testCosmosDBResolvedEnv["COSMOS_CONNECTION"],
+			LeaseEndpoint:    "https://lease.documents.azure.com:443/",
+			DatabaseID:       "testdb",
+			ContainerID:      "data",
+			LeaseDatabaseID:  "leasedb",
+			LeaseContainerID: "leases",
+			ProcessorName:    "processor",
+			TenantID:         "tenant-id",
+			ClientID:         "client-id",
+			ClientSecret:     "client-secret",
+		}
+
+		client, err := newCosmosDBClient(meta, map[string]string{}, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, logr.Discard(), time.Second)
+		require.NoError(t, err)
+		assert.NotEmpty(t, client.dataKey)
+		assert.Empty(t, client.leaseKey)
+		assert.IsType(t, &azidentity.ClientSecretCredential{}, client.credential)
+	})
+
+	t.Run("account keys take precedence and avoid creating an unused credential", func(t *testing.T) {
+		meta := &azureCosmosDBMetadata{
+			Endpoint:         "https://data.documents.azure.com:443/",
+			LeaseEndpoint:    "https://lease.documents.azure.com:443/",
+			CosmosDBKey:      "ZGF0YS1rZXk=",
+			LeaseCosmosDBKey: "bGVhc2Uta2V5",
+			DatabaseID:       "testdb",
+			ContainerID:      "data",
+			LeaseDatabaseID:  "leasedb",
+			LeaseContainerID: "leases",
+			ProcessorName:    "processor",
+			TenantID:         "tenant-id",
+			ClientID:         "client-id",
+			ClientSecret:     "client-secret",
+		}
+
+		client, err := newCosmosDBClient(meta, map[string]string{}, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, logr.Discard(), time.Second)
+		require.NoError(t, err)
+		assert.Nil(t, client.credential)
+	})
+}
+
+func TestCosmosDBBearerAuthentication(t *testing.T) {
+	credential := &recordingTokenCredential{token: "test-token"}
+	client := &cosmosDBClient{
+		credential:          credential,
+		cosmosDBResourceURL: "https://cosmos.example/",
+	}
+
+	for _, endpoint := range []string{
+		"https://data.documents.example/dbs/testdb/colls/data/docs",
+		"https://lease.documents.example/dbs/leasedb/colls/leases/docs",
+	} {
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, nil)
+		require.NoError(t, err)
+		err = client.setAuthHeader(req, http.MethodGet, "docs", "resource", "date", "")
+		require.NoError(t, err)
+		assert.Contains(t, req.Header.Get("Authorization"), "test-token")
+	}
+
+	assert.Equal(t, []string{"https://cosmos.example/.default", "https://cosmos.example/.default"}, credential.scopes)
+}
+
+func TestCosmosDBAccountKeyPrecedesBearerCredential(t *testing.T) {
+	credential := &recordingTokenCredential{token: "test-token"}
+	client := &cosmosDBClient{
+		credential:          credential,
+		cosmosDBResourceURL: "https://cosmos.azure.com",
+	}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "https://test.documents.azure.com/dbs/testdb", nil)
+	require.NoError(t, err)
+
+	err = client.setAuthHeader(req, http.MethodGet, "dbs", "dbs/testdb", "thu, 01 jan 2024 00:00:00 gmt", "dGVzdGtleQ==")
+	require.NoError(t, err)
+	assert.Contains(t, req.Header.Get("Authorization"), "type%3Dmaster")
+	assert.Empty(t, credential.scopes)
+}
+
+func TestResolveCosmosDBServicePrincipalCloud(t *testing.T) {
+	tests := []struct {
+		name                         string
+		triggerMetadata              map[string]string
+		wantResourceURL              string
+		wantAuthorityHost            string
+		wantDisableInstanceDiscovery bool
+		wantError                    string
+	}{
+		{
+			name:              "public cloud defaults",
+			triggerMetadata:   map[string]string{},
+			wantResourceURL:   "https://cosmos.azure.com",
+			wantAuthorityHost: "https://login.microsoftonline.com/",
+		},
+		{
+			name: "government cloud",
+			triggerMetadata: map[string]string{
+				"cloud": "AzureUSGovernmentCloud",
+			},
+			wantResourceURL:   "https://cosmos.azure.com",
+			wantAuthorityHost: "https://login.microsoftonline.us/",
+		},
+		{
+			name: "private cloud overrides",
+			triggerMetadata: map[string]string{
+				"cloud":                   "Private",
+				"cosmosDBResourceURL":     "https://cosmos.private.example",
+				"activeDirectoryEndpoint": "https://login.private.example/",
+			},
+			wantResourceURL:              "https://cosmos.private.example",
+			wantAuthorityHost:            "https://login.private.example/",
+			wantDisableInstanceDiscovery: true,
+		},
+		{
+			name: "private cloud requires cosmos resource",
+			triggerMetadata: map[string]string{
+				"cloud":                   "Private",
+				"activeDirectoryEndpoint": "https://login.private.example/",
+			},
+			wantError: "cosmosDBResourceURL must be provided",
+		},
+		{
+			name: "private cloud requires authority endpoint",
+			triggerMetadata: map[string]string{
+				"cloud":               "Private",
+				"cosmosDBResourceURL": "https://cosmos.private.example",
+			},
+			wantError: "activeDirectoryEndpoint must be provided",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resourceURL, credentialCloud, disableInstanceDiscovery, err := resolveCosmosDBServicePrincipalCloud(tt.triggerMetadata)
+			if tt.wantError != "" {
+				assert.ErrorContains(t, err, tt.wantError)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantResourceURL, resourceURL)
+			assert.Equal(t, tt.wantAuthorityHost, credentialCloud.ActiveDirectoryAuthorityHost)
+			assert.Equal(t, tt.wantDisableInstanceDiscovery, disableInstanceDiscovery)
+		})
+	}
+}
+
+func TestCosmosDBPrivateCloudServicePrincipalTokenAcquisition(t *testing.T) {
+	requests := make(chan string, 4)
+	var authorityServer *httptest.Server
+	authorityServer = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests <- r.Method + " " + r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		if strings.Contains(r.URL.Path, ".well-known/openid-configuration") {
+			_, _ = w.Write([]byte(`{
+				"authorization_endpoint":"` + authorityServer.URL + `/tenant-id/oauth2/v2.0/authorize",
+				"token_endpoint":"` + authorityServer.URL + `/tenant-id/oauth2/v2.0/token",
+				"issuer":"` + authorityServer.URL + `/tenant-id/v2.0"
+			}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"token_type":"Bearer","expires_in":3600,"access_token":"private-token"}`))
+	}))
+	defer authorityServer.Close()
+
+	meta := &azureCosmosDBMetadata{
+		TenantID:     "tenant-id",
+		ClientID:     "client-id",
+		ClientSecret: "client-secret",
+	}
+	triggerMetadata := map[string]string{
+		"cloud":                   "Private",
+		"cosmosDBResourceURL":     "https://cosmos.private.example",
+		"activeDirectoryEndpoint": authorityServer.URL + "/",
+	}
+
+	credential, resourceURL, err := newCosmosDBTokenCredential(
+		meta,
+		triggerMetadata,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+		logr.Discard(),
+		authorityServer.Client(),
+	)
+	require.NoError(t, err)
+	token, err := credential.GetToken(context.Background(), policy.TokenRequestOptions{
+		Scopes: []string{resourceURL + "/.default"},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "private-token", token.Token)
+
+	for {
+		select {
+		case request := <-requests:
+			assert.NotContains(t, request, "discovery/instance")
+			if request == "POST /tenant-id/oauth2/v2.0/token" {
+				return
+			}
+		case <-time.After(time.Second):
+			t.Fatal("service-principal credential did not request a token")
+		}
 	}
 }
 
@@ -534,10 +1004,11 @@ func TestCosmosDBLeaseParsingDotNetFormat(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	totalLag, _, err := client.estimateLag(context.Background())
+	totalLag, activePartitionCount, _, err := client.estimateLag(context.Background())
 	assert.NoError(t, err)
 	// Only partition 6 has lag; partition 3 is caught up; metadata doc is filtered
 	assert.Equal(t, int64(89), totalLag)
+	assert.Equal(t, int64(1), activePartitionCount)
 }
 
 func TestCosmosDBLeaseParsingJavaFormat(t *testing.T) {
@@ -601,10 +1072,11 @@ func TestCosmosDBLeaseParsingJavaFormat(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	totalLag, _, err := client.estimateLag(context.Background())
+	totalLag, activePartitionCount, _, err := client.estimateLag(context.Background())
 	assert.NoError(t, err)
 	// Both partitions 2 and 5 have lag; lock doc is filtered out
 	assert.Equal(t, int64(252), totalLag)
+	assert.Equal(t, int64(2), activePartitionCount)
 }
 
 func TestCosmosDBLeaseParsingMixedFormats(t *testing.T) {
@@ -653,7 +1125,7 @@ func TestCosmosDBLeaseParsingMixedFormats(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	totalLag, _, err := client.estimateLag(context.Background())
+	totalLag, _, _, err := client.estimateLag(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, int64(302), totalLag)
 }
@@ -713,7 +1185,7 @@ func TestCosmosDBLeaseParsingEPKBasedDotNet(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	totalLag, _, err := client.estimateLag(context.Background())
+	totalLag, _, _, err := client.estimateLag(context.Background())
 	assert.NoError(t, err)
 	// Partition 0 has lag (900-751+1=150), partition 1 is caught up
 	assert.Equal(t, int64(150), totalLag)
@@ -767,7 +1239,7 @@ func TestCosmosDBLeaseParsingEPKBasedJava(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	totalLag, _, err := client.estimateLag(context.Background())
+	totalLag, _, _, err := client.estimateLag(context.Background())
 	assert.NoError(t, err)
 	// Both partitions have lag; Base64 tokens are passed through to the server
 	assert.Equal(t, int64(200), totalLag)
@@ -836,7 +1308,7 @@ func TestCosmosDBLagEstimation(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	totalLag, _, err := client.estimateLag(context.Background())
+	totalLag, _, _, err := client.estimateLag(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, int64(51), totalLag)
 }
@@ -860,9 +1332,10 @@ func TestCosmosDBLagEstimationEmptyLeases(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	totalLag, _, err := client.estimateLag(context.Background())
+	totalLag, activePartitionCount, _, err := client.estimateLag(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, int64(0), totalLag)
+	assert.Equal(t, int64(0), activePartitionCount)
 }
 
 func TestCosmosDBLagEstimationAllPartitionsLagging(t *testing.T) {
@@ -904,31 +1377,42 @@ func TestCosmosDBLagEstimationAllPartitionsLagging(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	totalLag, _, err := client.estimateLag(context.Background())
+	totalLag, activePartitionCount, _, err := client.estimateLag(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, int64(202), totalLag)
+	assert.Equal(t, int64(2), activePartitionCount)
 }
 
-func TestCosmosDBLagEstimationPartitionSplit(t *testing.T) {
-	changeFeedCallCount := 0
+func TestCosmosDBLagEstimationRecoversPartitionSplit(t *testing.T) {
+	leaseQueryCount := 0
+	changeFeedCalls := map[string]int{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/dbs/testdb/colls/leases/docs":
-			response := map[string]interface{}{
-				"Documents": []map[string]interface{}{
-					{"id": "lease1", "LeaseToken": "0", "ContinuationToken": `"100"`, "Owner": "owner1"},
-				},
+			leaseQueryCount++
+			leases := []map[string]interface{}{
+				{"id": "parent", "LeaseToken": "0", "ContinuationToken": `"100"`, "Owner": "owner1"},
+			}
+			if leaseQueryCount > 1 {
+				leases = []map[string]interface{}{
+					{"id": "child1", "LeaseToken": "1", "ContinuationToken": `"100"`, "Owner": "owner1"},
+					{"id": "child2", "LeaseToken": "2", "ContinuationToken": `"100"`, "Owner": "owner2"},
+				}
 			}
 			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(response)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"Documents": leases})
 		case "/dbs/testdb/colls/testcontainer/docs":
-			changeFeedCallCount++
-			if changeFeedCallCount <= 1 {
-				// First call returns 410 Gone (partition split)
+			partitionID := r.Header.Get("x-ms-documentdb-partitionkeyrangeid")
+			changeFeedCalls[partitionID]++
+			switch partitionID {
+			case "0":
+				w.Header().Set(cosmosDBSubStatusHeader, cosmosDBPartitionKeyRangeGoneSubStatus)
 				w.WriteHeader(http.StatusGone)
-			} else {
-				// Retry returns caught up
-				w.Header().Set("x-ms-session-token", "0:0#100")
+			case "1":
+				w.Header().Set("x-ms-session-token", "1:0#150")
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"Documents":[{"id":"item1","_lsn":100}]}`))
+			case "2":
 				w.WriteHeader(http.StatusNotModified)
 			}
 		}
@@ -948,11 +1432,263 @@ func TestCosmosDBLagEstimationPartitionSplit(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	totalLag, _, err := client.estimateLag(context.Background())
+	totalLag, activePartitionCount, splitRecoveryRequired, err := client.estimateLag(context.Background())
 	assert.NoError(t, err)
-	assert.Equal(t, int64(0), totalLag)
-	// Should have retried: lease query + change feed (410) + lease query (retry) + change feed (304)
-	assert.GreaterOrEqual(t, changeFeedCallCount, 2)
+	assert.Equal(t, int64(51), totalLag)
+	assert.Equal(t, int64(1), activePartitionCount)
+	assert.False(t, splitRecoveryRequired)
+	assert.Equal(t, 2, leaseQueryCount)
+	assert.Equal(t, map[string]int{"0": 1, "1": 1, "2": 1}, changeFeedCalls)
+}
+
+func TestCosmosDBPersistentPartitionSplitRecoverySignal(t *testing.T) {
+	tests := []struct {
+		name                string
+		activationThreshold int64
+		includeLaggingLease bool
+		expectedMetric      int64
+	}{
+		{
+			name:           "default activation threshold",
+			expectedMetric: 1,
+		},
+		{
+			name:                "nonzero activation threshold",
+			activationThreshold: 10,
+			expectedMetric:      11,
+		},
+		{
+			name:                "split does not broaden active partition cap",
+			includeLaggingLease: true,
+			expectedMetric:      100,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			leaseQueryCount := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/dbs/testdb/colls/leases/docs":
+					leaseQueryCount++
+					leases := []map[string]string{
+						{"id": "parent", "LeaseToken": "0", "ContinuationToken": `"100"`, "Owner": "owner1"},
+					}
+					if tt.includeLaggingLease {
+						leases = append(leases, map[string]string{
+							"id": "sibling", "LeaseToken": "1", "ContinuationToken": `"100"`, "Owner": "owner2",
+						})
+					}
+					w.Header().Set("Content-Type", "application/json")
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{"Documents": leases})
+				case "/dbs/testdb/colls/testcontainer/docs":
+					if r.Header.Get("x-ms-documentdb-partitionkeyrangeid") == "0" {
+						w.Header().Set(cosmosDBSubStatusHeader, cosmosDBPartitionKeyRangeGoneSubStatus)
+						w.WriteHeader(http.StatusGone)
+						return
+					}
+					w.Header().Set("x-ms-session-token", "1:0#1000")
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{"Documents":[{"id":"item1","_lsn":1}]}`))
+				}
+			}))
+			defer server.Close()
+
+			scaler := &azureCosmosDBScaler{
+				metricType: v2.AverageValueMetricType,
+				metadata: &azureCosmosDBMetadata{
+					Threshold:           100,
+					ActivationThreshold: tt.activationThreshold,
+				},
+				cosmosClient: &cosmosDBClient{
+					httpClient:       &http.Client{},
+					dataEndpoint:     server.URL,
+					dataKey:          "dGVzdGtleQ==",
+					leaseEndpoint:    server.URL,
+					leaseKey:         "dGVzdGtleQ==",
+					databaseID:       "testdb",
+					containerID:      "testcontainer",
+					leaseDatabaseID:  "testdb",
+					leaseContainerID: "leases",
+					processorName:    "testprocessor",
+				},
+				logger: logr.Discard(),
+			}
+
+			metrics, isActive, err := scaler.GetMetricsAndActivity(context.Background(), "test-metric")
+			require.NoError(t, err)
+			assert.True(t, isActive)
+			require.Len(t, metrics, 1)
+			assert.Equal(t, tt.expectedMetric, metrics[0].Value.Value())
+			assert.Equal(t, 2, leaseQueryCount)
+		})
+	}
+}
+
+func TestCosmosDBUnrelatedGoneResponseIsError(t *testing.T) {
+	leaseQueryCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/dbs/testdb/colls/leases/docs":
+			leaseQueryCount++
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"Documents":[{"id":"lease1","LeaseToken":"0","ContinuationToken":"\"100\"","Owner":"owner1"}]}`))
+		case "/dbs/testdb/colls/testcontainer/docs":
+			w.Header().Set(cosmosDBSubStatusHeader, "1008")
+			w.WriteHeader(http.StatusGone)
+		}
+	}))
+	defer server.Close()
+
+	client := &cosmosDBClient{
+		httpClient:       &http.Client{},
+		dataEndpoint:     server.URL,
+		dataKey:          "dGVzdGtleQ==",
+		leaseEndpoint:    server.URL,
+		leaseKey:         "dGVzdGtleQ==",
+		databaseID:       "testdb",
+		containerID:      "testcontainer",
+		leaseDatabaseID:  "testdb",
+		leaseContainerID: "leases",
+		processorName:    "testprocessor",
+	}
+
+	_, _, _, err := client.estimateLag(context.Background())
+	assert.ErrorContains(t, err, `status 410 and substatus "1008"`)
+	assert.Equal(t, 1, leaseQueryCount)
+}
+
+func TestCosmosDBLagEstimationPartitionError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/dbs/testdb/colls/leases/docs":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"Documents":[
+				{"id":"lease1","LeaseToken":"0","ContinuationToken":"\"100\"","Owner":"owner1"},
+				{"id":"lease2","LeaseToken":"1","ContinuationToken":"\"200\"","Owner":"owner2"}
+			]}`))
+		case "/dbs/testdb/colls/testcontainer/docs":
+			if r.Header.Get("x-ms-documentdb-partitionkeyrangeid") == "0" {
+				w.Header().Set("x-ms-session-token", "0:0#200")
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"Documents":[{"id":"item1","_lsn":101}]}`))
+				return
+			}
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
+	defer server.Close()
+
+	client := &cosmosDBClient{
+		httpClient:       &http.Client{},
+		dataEndpoint:     server.URL,
+		dataKey:          "dGVzdGtleQ==",
+		leaseEndpoint:    server.URL,
+		leaseKey:         "dGVzdGtleQ==",
+		databaseID:       "testdb",
+		containerID:      "testcontainer",
+		leaseDatabaseID:  "testdb",
+		leaseContainerID: "leases",
+		processorName:    "testprocessor",
+	}
+
+	_, _, _, err := client.estimateLag(context.Background())
+	assert.ErrorContains(t, err, "error estimating lag: error reading change feed for partition 1")
+}
+
+func TestCosmosDBGetMetricsAndActivityCapsLagByActivePartitions(t *testing.T) {
+	tests := []struct {
+		name           string
+		partitionLags  []int64
+		expectedMetric int64
+		expectedActive bool
+	}{
+		{
+			name:           "one active partition among several",
+			partitionLags:  []int64{1000, 0, 0},
+			expectedMetric: 100,
+			expectedActive: true,
+		},
+		{
+			name:           "multiple active partitions",
+			partitionLags:  []int64{101, 100, 0},
+			expectedMetric: 200,
+			expectedActive: true,
+		},
+		{
+			name:           "no active partitions",
+			partitionLags:  []int64{0, 0, 0},
+			expectedMetric: 0,
+			expectedActive: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/dbs/testdb/colls/leases/docs":
+					leases := make([]map[string]string, 0, len(tt.partitionLags))
+					for i := range tt.partitionLags {
+						partitionID := strconv.Itoa(i)
+						leases = append(leases, map[string]string{
+							"id":                "lease" + partitionID,
+							"LeaseToken":        partitionID,
+							"ContinuationToken": `"100"`,
+							"Owner":             "owner" + partitionID,
+						})
+					}
+					w.Header().Set("Content-Type", "application/json")
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{"Documents": leases})
+				case "/dbs/testdb/colls/testcontainer/docs":
+					partitionID, err := strconv.Atoi(r.Header.Get("x-ms-documentdb-partitionkeyrangeid"))
+					assert.NoError(t, err)
+					lag := tt.partitionLags[partitionID]
+					if lag == 0 {
+						w.WriteHeader(http.StatusNotModified)
+						return
+					}
+					w.Header().Set("x-ms-session-token", strconv.Itoa(partitionID)+":0#"+strconv.FormatInt(lag, 10))
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{"Documents":[{"id":"item1","_lsn":1}]}`))
+				}
+			}))
+			defer server.Close()
+
+			scaler := &azureCosmosDBScaler{
+				metricType: v2.AverageValueMetricType,
+				metadata: &azureCosmosDBMetadata{
+					DatabaseID:          "testdb",
+					ContainerID:         "testcontainer",
+					LeaseDatabaseID:     "testdb",
+					LeaseContainerID:    "leases",
+					ProcessorName:       "testprocessor",
+					Threshold:           100,
+					ActivationThreshold: 0,
+				},
+				cosmosClient: &cosmosDBClient{
+					httpClient:       &http.Client{},
+					dataEndpoint:     server.URL,
+					dataKey:          "dGVzdGtleQ==",
+					leaseEndpoint:    server.URL,
+					leaseKey:         "dGVzdGtleQ==",
+					databaseID:       "testdb",
+					containerID:      "testcontainer",
+					leaseDatabaseID:  "testdb",
+					leaseContainerID: "leases",
+					processorName:    "testprocessor",
+				},
+				logger: logr.Discard(),
+			}
+
+			metrics, isActive, err := scaler.GetMetricsAndActivity(context.Background(), "test-metric")
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedActive, isActive)
+			if assert.Len(t, metrics, 1) {
+				assert.Equal(t, tt.expectedMetric, metrics[0].Value.Value())
+			}
+		})
+	}
 }
 
 func TestCosmosDBGetMetricsAndActivity(t *testing.T) {
