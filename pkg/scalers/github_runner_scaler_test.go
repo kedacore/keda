@@ -886,11 +886,18 @@ func TestGithubRunnerPruneCachesDropsAbsentWfrRepos(t *testing.T) {
 }
 
 func TestGithubRunnerPruneCompletedJobsDropsFinishedRuns(t *testing.T) {
+	meta := &githubRunnerMetadata{GithubAPIURL: "https://api.github.com", Owner: "owner"}
+
 	s := githubRunnerScaler{
+		metadata: meta,
 		previousJobs: map[jobCacheKey][]Job{
 			{repo: "repo", runID: 100}: nil, // still active, kept
 			{repo: "repo", runID: 200}: nil, // completed, dropped
 		},
+	}
+	s.etags = map[string]string{
+		s.jobsAPIURL("repo", 100): "etag-100", // still active, kept
+		s.jobsAPIURL("repo", 200): "etag-200", // completed, dropped
 	}
 
 	s.pruneCompletedJobs([]WorkflowRun{
@@ -902,6 +909,12 @@ func TestGithubRunnerPruneCompletedJobsDropsFinishedRuns(t *testing.T) {
 	}
 	if _, ok := s.previousJobs[jobCacheKey{repo: "repo", runID: 100}]; !ok {
 		t.Errorf("previousJobs lost still-active run 100 after pruneCompletedJobs")
+	}
+	if _, ok := s.etags[s.jobsAPIURL("repo", 200)]; ok {
+		t.Errorf("etags still contains completed run 200's jobs URL after pruneCompletedJobs")
+	}
+	if _, ok := s.etags[s.jobsAPIURL("repo", 100)]; !ok {
+		t.Errorf("etags lost still-active run 100's jobs URL after pruneCompletedJobs")
 	}
 }
 

@@ -629,13 +629,19 @@ func stripDeadRuns(allWfrs []WorkflowRuns) []WorkflowRun {
 	return filtered
 }
 
-// getWorkflowRunJobs returns a list of jobs for a given workflow run
-func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRunID int64, repoName string) ([]Job, error) {
-	apiURL := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=100",
+// jobsAPIURL returns the GitHub API URL for a workflow run's jobs, used both
+// to fetch the jobs and as the etags cache key for that same request.
+func (s *githubRunnerScaler) jobsAPIURL(repoName string, workflowRunID int64) string {
+	return fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=100",
 		s.metadata.GithubAPIURL,
 		url.PathEscape(s.metadata.Owner),
 		url.PathEscape(repoName),
 		workflowRunID)
+}
+
+// getWorkflowRunJobs returns a list of jobs for a given workflow run
+func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRunID int64, repoName string) ([]Job, error) {
+	apiURL := s.jobsAPIURL(repoName, workflowRunID)
 
 	body, statusCode, err := s.getGithubRequest(ctx, apiURL, s.metadata, s.httpClient)
 	if err != nil {
@@ -813,6 +819,7 @@ func (s *githubRunnerScaler) pruneCompletedJobs(activeWfrs []WorkflowRun) {
 	for key := range s.previousJobs {
 		if _, ok := active[key]; !ok {
 			delete(s.previousJobs, key)
+			delete(s.etags, s.jobsAPIURL(key.repo, key.runID))
 		}
 	}
 }
