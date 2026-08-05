@@ -29,11 +29,27 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"google.golang.org/grpc/credentials"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 var log = logf.Log.WithName("grpc_server_certificates")
+
+// buildCertPool creates a fresh x509.CertPool seeded from the system pool
+// and appends the PEM-encoded CA bundle at caPath.
+// A new pool is returned on every call so that stale entries never accumulate.
+func buildCertPool(caPath string) (*x509.CertPool, error) {
+	pemClientCA, err := os.ReadFile(caPath)
+	if err != nil {
+		return nil, err
+	}
+	pool, _ := x509.SystemCertPool()
+	if pool == nil {
+		pool = x509.NewCertPool()
+	}
+	if !pool.AppendCertsFromPEM(pemClientCA) {
+		return nil, fmt.Errorf("failed to add client CA's certificate")
+	}
+	return pool, nil
+}
 
 // LoadGrpcTLSCredentials reads the certificate from the given path and returns TLS transport credentials
 func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (credentials.TransportCredentials, error) {
@@ -41,19 +57,10 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 	certPath := path.Join(certDir, "tls.crt")
 	keyPath := path.Join(certDir, "tls.key")
 
-	// Load certificate of the CA who signed client's certificate
-	pemClientCA, err := os.ReadFile(caPath)
+	// Build the initial cert pool
+	initialPool, err := buildCertPool(caPath)
 	if err != nil {
 		return nil, err
-	}
-
-	// Get the SystemCertPool, continue with an empty pool on error
-	certPool, _ := x509.SystemCertPool()
-	if certPool == nil {
-		certPool = x509.NewCertPool()
-	}
-	if !certPool.AppendCertsFromPEM(pemClientCA) {
-		return nil, fmt.Errorf("failed to add client CA's certificate")
 	}
 
 	// Load initial certificate and private key
@@ -73,6 +80,9 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 	}
 
 	certMutex := sync.RWMutex{}
+	// certPool is guarded by certMutex and replaced (never mutated) on rotation
+	certPool := initialPool
+
 	go func() {
 		log.V(1).Info("starting mTLS certificates monitoring")
 		for {
@@ -92,27 +102,24 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 				}
 				log.V(1).Info("detected change on certificates, reloading")
 
-				pemClientCA, err := os.ReadFile(caPath)
+				// Rebuild the CA pool from scratch on every rotation so that
+				// the pool never grows monotonically with duplicate entries.
+				newPool, err := buildCertPool(caPath)
 				if err != nil {
-					log.Error(err, "error reading grpc ca certificate")
+					log.Error(err, "error rebuilding grpc ca certificate pool")
 					continue
 				}
-				if !certPool.AppendCertsFromPEM(pemClientCA) {
-					log.Error(err, "failed to add client CA's certificate")
-					continue
-				}
-				log.V(1).Info("grpc ca certificate has been updated")
 
-				// Load certificate of the CA who signed client's certificate
 				cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 				if err != nil {
 					log.Error(err, "error reading grpc certificate")
 					continue
 				}
 				certMutex.Lock()
+				certPool = newPool
 				mTLSCertificate = cert
 				certMutex.Unlock()
-				log.V(1).Info("grpc mTLS certificate has been updated")
+				log.V(1).Info("grpc mTLS certificate and CA pool have been updated")
 
 			case err, ok := <-watcher.Errors:
 				if !ok { // Channel was closed (i.e. Watcher.Close() was called).
@@ -127,10 +134,12 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 		}
 	}()
 
-	// Create the credentials and return it
+	// GetConfigForClient is invoked on every TLS handshake, ensuring each
+	// handshake uses the current certPool rather than the one captured at
+	// startup. This prevents the CA pool from growing monotonically across
+	// certificate rotations (fixes #7691).
 	config := &tls.Config{
-		MinVersion:   kedautil.GetServiceMinTLSVersion(),
-		CipherSuites: kedautil.GetServiceTLSCipherList(),
+		MinVersion: tls.VersionTLS13,
 		GetCertificate: func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
 			certMutex.RLock()
 			defer certMutex.RUnlock()
@@ -141,12 +150,29 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 			defer certMutex.RUnlock()
 			return &mTLSCertificate, nil
 		},
+		GetConfigForClient: func(_ *tls.ClientHelloInfo) (*tls.Config, error) {
+			certMutex.RLock()
+			pool := certPool
+			cert := mTLSCertificate
+			certMutex.RUnlock()
+			cfg := &tls.Config{
+				MinVersion:   tls.VersionTLS13,
+				Certificates: []tls.Certificate{cert},
+			}
+			if server {
+				cfg.ClientAuth = tls.RequireAndVerifyClientCert
+				cfg.ClientCAs = pool
+			} else {
+				cfg.RootCAs = pool
+			}
+			return cfg, nil
+		},
 	}
 	if server {
 		config.ClientAuth = tls.RequireAndVerifyClientCert
-		config.ClientCAs = certPool
+		config.ClientCAs = initialPool
 	} else {
-		config.RootCAs = certPool
+		config.RootCAs = initialPool
 	}
 
 	return credentials.NewTLS(config), nil
