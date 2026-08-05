@@ -161,7 +161,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.ARM_SMOKE_CHECK_NAME }}
-          status: failure
+          conclusion: failure
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
           output: |
             {"summary": "❌ Tests Failed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
@@ -173,7 +173,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.S390X_SMOKE_CHECK_NAME }}
-          status: failure
+          conclusion: failure
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
           output: |
             {"summary": "❌ Tests Failed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
@@ -200,6 +200,42 @@ jobs:
         env:
           VERSION: ${{ needs.triage.outputs.image_tag }}
           SUFFIX: "-test"
+
+      - name: Set status cancelled or failure
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
+        if: always() && (failure() || cancelled()) && steps.regex-validation.outcome != 'failure'
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ needs.triage.outputs.commit_sha }}
+          name: ${{ env.E2E_CHECK_NAME }}
+          conclusion: ${{ job.status == 'cancelled' && 'cancelled' || 'failure' }}
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
+          output: |
+            {"summary": "${{ job.status == 'cancelled' && '🚫 Image build was cancelled.' || '❌ Image build failed.' }} [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
+
+      - name: Set status cancelled or failure
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
+        if: always() && (failure() || cancelled()) && steps.regex-validation.outcome != 'failure'
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ needs.triage.outputs.commit_sha }}
+          name: ${{ env.ARM_SMOKE_CHECK_NAME }}
+          conclusion: ${{ job.status == 'cancelled' && 'cancelled' || 'failure' }}
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
+          output: |
+            {"summary": "${{ job.status == 'cancelled' && '🚫 Image build was cancelled.' || '❌ Image build failed.' }} [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
+
+      - name: Set status cancelled or failure
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
+        if: always() && (failure() || cancelled()) && steps.regex-validation.outcome != 'failure'
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ needs.triage.outputs.commit_sha }}
+          name: ${{ env.S390X_SMOKE_CHECK_NAME }}
+          conclusion: ${{ job.status == 'cancelled' && 'cancelled' || 'failure' }}
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
+          output: |
+            {"summary": "${{ job.status == 'cancelled' && '🚫 Image build was cancelled.' || '❌ Image build failed.' }} [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
   run-e2e-test:
     needs: [triage, build-test-images]
@@ -351,7 +387,7 @@ jobs:
 
       - name: Set status success
         uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
-        if: steps.test.outcome == 'success'
+        if: always() && steps.test.outcome == 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
@@ -363,15 +399,15 @@ jobs:
 
       - name: Set status failure
         uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
-        if: steps.test.outcome != 'success'
+        if: always() && steps.test.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.E2E_CHECK_NAME }}
-          conclusion: failure
+          conclusion: ${{ job.status == 'cancelled' && 'cancelled' || 'failure' }}
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
           output: |
-            {"summary": "❌ Tests Failed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
+            {"summary": "${{ job.status == 'cancelled' && '🚫 Tests were cancelled.' || '❌ Tests Failed.' }} [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Upload test logs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -432,7 +468,7 @@ jobs:
 
       - name: Set status success
         uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
-        if: steps.test.outcome == 'success'
+        if: always() && steps.test.outcome == 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
@@ -444,15 +480,15 @@ jobs:
 
       - name: Set status failure
         uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
-        if: steps.test.outcome != 'success'
+        if: always() && steps.test.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.ARM_SMOKE_CHECK_NAME }}
-          conclusion: failure
+          conclusion: ${{ job.status == 'cancelled' && 'cancelled' || 'failure' }}
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
           output: |
-            {"summary": "❌ Tests Failed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
+            {"summary": "${{ job.status == 'cancelled' && '🚫 Tests were cancelled.' || '❌ Tests Failed.' }} [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Upload test logs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -520,7 +556,7 @@ jobs:
 
       - name: Set status success
         uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
-        if: steps.test.outcome == 'success'
+        if: always() && steps.test.outcome == 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
@@ -532,15 +568,15 @@ jobs:
 
       - name: Set status failure
         uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
-        if: steps.test.outcome != 'success'
+        if: always() && steps.test.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.S390X_SMOKE_CHECK_NAME }}
-          conclusion: failure
+          conclusion: ${{ job.status == 'cancelled' && 'cancelled' || 'failure' }}
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
           output: |
-            {"summary": "❌ Tests Failed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
+            {"summary": "${{ job.status == 'cancelled' && '🚫 Tests were cancelled.' || '❌ Tests Failed.' }} [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Remove Kubernetes
         run: |

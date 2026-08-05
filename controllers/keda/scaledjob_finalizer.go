@@ -59,7 +59,7 @@ func (r *ScaledJobReconciler) finalizeScaledJob(ctx context.Context, logger logr
 	}
 
 	logger.Info("Successfully finalized ScaledJob")
-	r.EventEmitter.Emit(scaledJob, namespacedName, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobRemovedType, eventreason.ScaledJobDeleted, message.ScaledJobRemoved)
+	r.EventEmitter.Emit(scaledJob, scaledJob.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobRemovedType, eventreason.ScaledJobDeleted, message.ScaledJobRemoved)
 	return nil
 }
 
