@@ -5,6 +5,9 @@ on:
       - labeled
       - unlabeled
 
+permissions:
+  checks: write
+
 env:
   SKIP_E2E_TAG: skip-e2e
   E2E_CHECK_NAME: e2e tests
@@ -22,62 +25,50 @@ jobs:
     runs-on: ubuntu-slim
     if: github.event.label.name == 'skip-e2e'
     steps:
-      - uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
-        name: Enqueue e2e
-        id: create
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        name: Update e2e checks
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          sha: ${{ github.event.pull_request.head.sha }}
-          name: ${{ env.E2E_CHECK_NAME }}
-          status: queued
+          script: |
+            const sha = context.payload.pull_request.head.sha;
+            const skip = context.payload.pull_request.labels.some((label) => label.name === process.env.SKIP_E2E_TAG);
+            const checkNames = [
+              process.env.E2E_CHECK_NAME,
+              process.env.ARM_SMOKE_CHECK_NAME,
+              process.env.S390X_SMOKE_CHECK_NAME,
+            ];
 
-      - uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
-        name: Skip e2e
-        if: ${{ contains(github.event.pull_request.labels.*.name, env.SKIP_E2E_TAG )}}
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          sha: ${{ github.event.pull_request.head.sha }}
-          check_id: ${{ steps.create.outputs.check_id }}
-          conclusion: success
-          output: |
-            {"summary": "skipped by maintainer"}
+            for (const name of checkNames) {
+              const skipPayload = {
+                status: 'completed',
+                conclusion: 'success',
+                output: { title: name, summary: 'skipped by maintainer' },
+              };
+              const queuedPayload = { status: 'queued' };
 
-      - uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
-        name: Enqueue e2e
-        id: create-arm
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          sha: ${{ github.event.pull_request.head.sha }}
-          name: ${{ env.ARM_SMOKE_CHECK_NAME }}
-          status: queued
+              // Update every existing check run with this name
+              const runs = await github.paginate(github.rest.checks.listForRef, {
+                ...context.repo,
+                ref: sha,
+                check_name: name,
+                filter: 'all',
+                per_page: 100,
+              });
 
-      - uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
-        name: Skip e2e
-        if: ${{ contains(github.event.pull_request.labels.*.name, env.SKIP_E2E_TAG )}}
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          sha: ${{ github.event.pull_request.head.sha }}
-          check_id: ${{ steps.create-arm.outputs.check_id }}
-          conclusion: success
-          output: |
-            {"summary": "skipped by maintainer"}
+              const payload = skip ? skipPayload : queuedPayload;
+              for (const run of runs) {
+                await github.rest.checks.update({
+                  ...context.repo,
+                  check_run_id: run.id,
+                  ...payload,
+                });
+              }
 
-      - uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
-        name: Enqueue e2e
-        id: create-s390x
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          sha: ${{ github.event.pull_request.head.sha }}
-          name: ${{ env.S390X_SMOKE_CHECK_NAME }}
-          status: queued
-
-      - uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
-        name: Skip e2e
-        if: ${{ contains(github.event.pull_request.labels.*.name, env.SKIP_E2E_TAG )}}
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          sha: ${{ github.event.pull_request.head.sha }}
-          check_id: ${{ steps.create-s390x.outputs.check_id }}
-          conclusion: success
-          output: |
-            {"summary": "skipped by maintainer"}
+              if (runs.length === 0) {
+                await github.rest.checks.create({
+                  ...context.repo,
+                  head_sha: sha,
+                  name,
+                  ...payload,
+                });
+              }
+            }
