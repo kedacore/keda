@@ -29,6 +29,7 @@ const (
 	ENT                  = "ent"
 	REPO                 = "repo"
 	githubDefaultPerPage = 30
+	githubJobsPerPage    = 100
 	// githubScalerMaxCacheEntries caps the etags, previousJobs, and
 	// previousWfrs maps. Without it the etags map grows once per workflow run
 	// for the lifetime of the operator pod (the URL contains the run ID), and
@@ -620,45 +621,79 @@ func stripDeadRuns(allWfrs []WorkflowRuns) []WorkflowRun {
 	return filtered
 }
 
-// getWorkflowRunJobs returns a list of jobs for a given workflow run
-func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRunID int64, repoName string) ([]Job, error) {
+// fetchWorkflowRunJobsPage fetches a single page of jobs for a workflow run.
+// If the page's ETag is still valid (statusCode 304) and page 1 has a fully
+// cached previous job list, that cached list is returned with cached=true so
+// the caller can use it directly instead of continuing to paginate.
+func (s *githubRunnerScaler) fetchWorkflowRunJobsPage(ctx context.Context, workflowRunID int64, repoName string, page int) (jobs []Job, cached bool, err error) {
 	apiURL := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=100",
 		s.metadata.GithubAPIURL,
 		url.PathEscape(s.metadata.Owner),
 		url.PathEscape(repoName),
 		workflowRunID)
+	if page > 1 {
+		apiURL = fmt.Sprintf("%s&page=%d", apiURL, page)
+	}
 
 	body, statusCode, err := s.getGithubRequest(ctx, apiURL, s.metadata, s.httpClient)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if statusCode == 304 && s.metadata.EnableEtags {
-		if s.previousJobs[repoName] != nil {
-			return s.previousJobs[repoName], nil
+		if page == 1 && s.previousJobs[repoName] != nil {
+			return s.previousJobs[repoName], true, nil
 		}
 		// Stale etag without a paired previousJobs entry, e.g. after pruneCaches
-		// evicted the previous entry. Drop the etag and retry as a cache miss.
+		// evicted the previous entry, or a page beyond the first one for which
+		// there is no cached data. Drop the etag and retry as a cache miss.
 		delete(s.etags, apiURL)
 		body, statusCode, err = s.getGithubRequest(ctx, apiURL, s.metadata, s.httpClient)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		if statusCode == 304 {
-			return nil, fmt.Errorf("request for jobs returned status: %d %s but previous jobs is not set", statusCode, http.StatusText(statusCode))
+			return nil, false, fmt.Errorf("request for jobs returned status: %d %s but previous jobs is not set", statusCode, http.StatusText(statusCode))
 		}
 	}
 
-	var jobs Jobs
-	err = json.Unmarshal(body, &jobs)
-	if err != nil {
-		return nil, err
+	var parsed Jobs
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return nil, false, err
+	}
+
+	return parsed.Jobs, false, nil
+}
+
+// getWorkflowRunJobs returns a list of jobs for a given workflow run. A workflow
+// run can have more jobs than fit on a single page, so all pages are fetched
+// and combined until GitHub returns a page with fewer than githubJobsPerPage jobs.
+func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRunID int64, repoName string) ([]Job, error) {
+	var allJobs []Job
+	page := 1
+
+	for {
+		jobs, cached, err := s.fetchWorkflowRunJobsPage(ctx, workflowRunID, repoName, page)
+		if err != nil {
+			return nil, err
+		}
+		if cached {
+			return jobs, nil
+		}
+
+		allJobs = append(allJobs, jobs...)
+
+		// GitHub returned fewer than a full page, so there are no more jobs left to fetch
+		if len(jobs) < githubJobsPerPage {
+			break
+		}
+		page++
 	}
 
 	if s.metadata.EnableEtags {
-		s.previousJobs[repoName] = jobs.Jobs
+		s.previousJobs[repoName] = allJobs
 	}
 
-	return jobs.Jobs, nil
+	return allJobs, nil
 }
 
 // getWorkflowRuns returns a list of workflow runs for a given repository
