@@ -1522,6 +1522,38 @@ scalers:
           optional: true
           metadataVariableReadable: true
           envVariableReadable: true
+    - type: gcp-spanner
+      parameters:
+        - name: projectId
+          type: string
+          metadataVariableReadable: true
+        - name: instanceId
+          type: string
+          metadataVariableReadable: true
+        - name: databaseId
+          type: string
+          metadataVariableReadable: true
+        - name: query
+          type: string
+          metadataVariableReadable: true
+        - name: targetValue
+          type: string
+          default: "5"
+          metadataVariableReadable: true
+        - name: activationValue
+          type: string
+          default: "0"
+          metadataVariableReadable: true
+        - name: credentials
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
+        - name: credentialsFromEnvFile
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
     - type: gcp-storage
       parameters:
         - name: bucketName
@@ -2038,6 +2070,7 @@ scalers:
           metadataVariableReadable: true
         - name: address
           type: string
+          deprecatedAnnounce: This scaler is DEPRECATED and will be removed in v2.24 due to the upstream Liiklus project no longer being maintained
           metadataVariableReadable: true
         - name: topic
           type: string
@@ -3970,6 +4003,10 @@ scalers:
         - name: minConnectTimeout
           type: string
           default: "5"
+          metadataVariableReadable: true
+        - name: enableTLS
+          type: string
+          default: "true"
           metadataVariableReadable: true
         - name: unsafeSsl
           type: string

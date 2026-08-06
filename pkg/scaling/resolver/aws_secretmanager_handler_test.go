@@ -99,3 +99,45 @@ func TestAwsSecretManagerHandler_InitializeUsingPodIdentity(t *testing.T) {
 		}
 	}
 }
+
+func TestAwsSecretManagerHandler_InitializeMissingCredentials(t *testing.T) {
+	tests := []struct {
+		name          string
+		secretManager *kedav1alpha1.AwsSecretManager
+	}{
+		{
+			name: "nil credentials and nil pod identity",
+			secretManager: &kedav1alpha1.AwsSecretManager{
+				Region: "mocked-region",
+			},
+		},
+		{
+			name: "nil credentials with explicit none pod identity",
+			secretManager: &kedav1alpha1.AwsSecretManager{
+				Region: "mocked-region",
+				PodIdentity: &kedav1alpha1.AuthPodIdentity{
+					Provider: kedav1alpha1.PodIdentityProviderNone,
+				},
+			},
+		},
+		{
+			name: "credentials without an access key",
+			secretManager: &kedav1alpha1.AwsSecretManager{
+				Region:      "mocked-region",
+				Credentials: &kedav1alpha1.AwsSecretManagerCredentials{},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			awsSecretManagerHandler := &AwsSecretManagerHandler{
+				secretManager: tc.secretManager,
+			}
+
+			err := awsSecretManagerHandler.Initialize(context.Background(), nil, logr.Discard(), "mocked-trigger-namespace", nil, &corev1.PodSpec{})
+
+			assert.ErrorContains(t, err, "AccessKeyID and AccessSecretKey are expected")
+		})
+	}
+}
