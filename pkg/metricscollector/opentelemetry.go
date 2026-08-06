@@ -36,6 +36,12 @@ var (
 	otCrdRegisteredTotalsCounter     api.Int64UpDownCounter
 	otEmptyUpstreamResponses         api.Int64Counter
 
+	// Synchronous histograms mirroring the latency gauges below. Recorded
+	// directly at observation time rather than drained by a callback, because a
+	// histogram accumulates every observation instead of holding only the last.
+	otScalerMetricsDuration api.Float64Histogram
+	otInternalLoopDuration  api.Float64Histogram
+
 	otelScalerMetricVals                  []OtelMetricFloat64Val
 	otelScalerMetricsLatencyVals          []OtelMetricFloat64Val
 	otelScalerMetricsLatencyValDeprecated []OtelMetricFloat64Val
@@ -172,6 +178,15 @@ func initMeters() {
 		otLog.Error(err, msg)
 	}
 
+	otScalerMetricsDuration, err = meter.Float64Histogram(
+		"keda.scaler.metrics.duration.seconds",
+		api.WithDescription("The duration of retrieving current metric from each scaler"),
+		api.WithUnit("s"),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
 	_, err = meter.Float64ObservableGauge(
 		"keda.internal.scale.loop.latency",
 		api.WithDescription("DEPRECATED - use `keda.internal.scale.loop.latency.seconds` instead"),
@@ -185,6 +200,15 @@ func initMeters() {
 		api.WithDescription("Internal latency of ScaledObject/ScaledJob loop execution"),
 		api.WithUnit("s"),
 		api.WithFloat64Callback(ScalableObjectLatencyCallback),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
+	otInternalLoopDuration, err = meter.Float64Histogram(
+		"keda.internal.scale.loop.duration.seconds",
+		api.WithDescription("Internal duration of ScaledObject/ScaledJob loop execution"),
+		api.WithUnit("s"),
 	)
 	if err != nil {
 		otLog.Error(err, msg)
@@ -316,6 +340,13 @@ func (o *OtelMetrics) RecordScalerLatency(namespace string, scaledResource strin
 	otelScalerMetricsLatencyValD.val = float64(value.Milliseconds())
 	otelScalerMetricsLatencyValD.measurementOption = getScalerMeasurementOption(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)
 	otelScalerMetricsLatencyValDeprecated = append(otelScalerMetricsLatencyValDeprecated, otelScalerMetricsLatencyValD)
+
+	// nil when the meter failed to initialise; the gauges above degrade to
+	// no-ops in that case, so this should not be the one thing that panics.
+	if otScalerMetricsDuration != nil {
+		otScalerMetricsDuration.Record(context.Background(), value.Seconds(),
+			getScalerMeasurementOption(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject))
+	}
 }
 
 func ScalableObjectLatencyCallback(_ context.Context, obsrv api.Float64Observer) error {
@@ -355,6 +386,11 @@ func (o *OtelMetrics) RecordScalableObjectLatency(namespace string, name string,
 	otelInternalLoopLatencyD.val = float64(value.Milliseconds())
 	otelInternalLoopLatencyD.measurementOption = opt
 	otelInternalLoopLatencyValDeprecated = append(otelInternalLoopLatencyValDeprecated, otelInternalLoopLatencyD)
+
+	// See the nil note in RecordScalerLatency.
+	if otInternalLoopDuration != nil {
+		otInternalLoopDuration.Record(context.Background(), value.Seconds(), opt)
+	}
 }
 
 func ScalerActiveCallback(_ context.Context, obsrv api.Float64Observer) error {

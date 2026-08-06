@@ -59,6 +59,21 @@ var (
 		},
 		metricLabels,
 	)
+	// scalerMetricsDuration mirrors scalerMetricsLatency as a histogram. A gauge
+	// only retains the most recent observation, so it cannot answer the
+	// questions latency is actually measured for -- p95, p99, or how often a
+	// scaler is slow. The gauge is kept for backwards compatibility and both are
+	// written on every observation.
+	scalerMetricsDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaler",
+			Name:      "metrics_duration_seconds",
+			Help:      "The duration of retrieving current metric from each scaler, in seconds.",
+			Buckets:   prometheus.DefBuckets,
+		},
+		metricLabels,
+	)
 	scalerActive = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
@@ -140,6 +155,18 @@ var (
 		},
 		[]string{"namespace", "type", "resource"},
 	)
+	// internalLoopDuration mirrors internalLoopLatency as a histogram, for the
+	// same reason as scalerMetricsDuration above.
+	internalLoopDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "internal_scale_loop",
+			Name:      "duration_seconds",
+			Help:      "Total deviation (in seconds) between the expected execution time and the actual execution time for the scaling loop.",
+			Buckets:   prometheus.DefBuckets,
+		},
+		[]string{"namespace", "type", "resource"},
+	)
 
 	// Total emitted cloudevents.
 	cloudeventEmitted = prometheus.NewCounterVec(
@@ -184,7 +211,9 @@ type PromMetrics struct {
 func NewPromMetrics(enableHighCardinalityLabels bool) *PromMetrics {
 	metrics.Registry.MustRegister(scalerMetricsValue)
 	metrics.Registry.MustRegister(scalerMetricsLatency)
+	metrics.Registry.MustRegister(scalerMetricsDuration)
 	metrics.Registry.MustRegister(internalLoopLatency)
+	metrics.Registry.MustRegister(internalLoopDuration)
 	metrics.Registry.MustRegister(scalerActive)
 	metrics.Registry.MustRegister(scalerErrors)
 	metrics.Registry.MustRegister(scaledObjectErrors)
@@ -244,16 +273,20 @@ func (p *PromMetrics) DeleteScalerMetrics(namespace string, scaledResource strin
 	scalerActive.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
 	scalerErrors.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
 	scalerMetricsLatency.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
+	scalerMetricsDuration.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
 }
 
 // RecordScalerLatency create a measurement of the latency to external metric
 func (p *PromMetrics) RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value time.Duration) {
-	scalerMetricsLatency.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Set(value.Seconds())
+	labels := getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)
+	scalerMetricsLatency.With(labels).Set(value.Seconds())
+	scalerMetricsDuration.With(labels).Observe(value.Seconds())
 }
 
 // RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
 func (p *PromMetrics) RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value time.Duration) {
 	internalLoopLatency.WithLabelValues(namespace, getResourceType(isScaledObject), name).Set(value.Seconds())
+	internalLoopDuration.WithLabelValues(namespace, getResourceType(isScaledObject), name).Observe(value.Seconds())
 }
 
 // RecordScalerActive create a measurement of the activity of the scaler
