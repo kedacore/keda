@@ -92,6 +92,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Fix CVE-2026-42151, CVE-2026-42154, CVE-2026-40179 ([#7868](https://github.com/kedacore/keda/issues/7868))
 - **General**: Fix `ScaledJob` removal event using `namespace/name` in place of the namespace, which malformed the emitted CloudEvent's subject and the `namespace` label on the CloudEventSource metrics ([#7967](https://github.com/kedacore/keda/issues/7967))
 - **Azure Event Hub Scaler**: Fix authentication failures caused by appending a duplicate `EntityPath` when `eventHubName` is provided ([#7926](https://github.com/kedacore/keda/issues/7926))
+- **GitHub Scaler**: Fix '100 Jobs'-Hardlimit on GitHub Actions queue length by fetching additional pages. ([#7969](https://github.com/kedacore/keda/issues/7969))
 
 ### Deprecations
 

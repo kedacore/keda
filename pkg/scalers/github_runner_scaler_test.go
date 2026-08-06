@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -475,6 +476,107 @@ func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_WithScalerLabels_WithoutJo
 
 	if queueLen != 0 {
 		t.Fail()
+	}
+}
+
+// buildJobs generates `total` jobs, the first `completedCount` of which are
+// marked "completed" (and therefore not counted towards the queue length),
+// with the remainder left "queued".
+func buildJobs(total, completedCount int) []Job {
+	jobs := make([]Job, total)
+	for i := 0; i < total; i++ {
+		status := "queued"
+		conclusion := ""
+		if i < completedCount {
+			status = "completed"
+			conclusion = "success"
+		}
+		jobs[i] = Job{
+			ID:         i + 1,
+			RunID:      29679449,
+			Status:     status,
+			Conclusion: conclusion,
+			Labels:     []string{"foo", "bar"},
+		}
+	}
+	return jobs
+}
+
+// apiStubHandlerPaginatedJobs mimics GitHub's real jobs API: it honours the
+// "per_page" (defaulted to 100) and "page" (defaulted to 1) query parameters
+// and only returns the slice of allJobs that falls on the requested page,
+// exactly like the real GitHub REST API does.
+func apiStubHandlerPaginatedJobs(allJobs []Job) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		futureReset := time.Now().Add(time.Minute * 30)
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(futureReset.Unix()))
+		w.Header().Set("X-RateLimit-Remaining", "50")
+
+		switch {
+		case strings.Contains(r.URL.String(), "/actions/runs?status="):
+			if strings.Contains(r.URL.String(), "in_progress") {
+				// nosemgrep: no-direct-write-to-responsewriter
+				_, _ = w.Write([]byte(testGhWorkflowResponseInProgress))
+				return
+			}
+			// nosemgrep: no-direct-write-to-responsewriter
+			_, _ = w.Write([]byte(testGhWorkflowResponse))
+		case strings.Contains(r.URL.String(), "/jobs"):
+			page := 1
+			if p := r.URL.Query().Get("page"); p != "" {
+				page, _ = strconv.Atoi(p)
+			}
+			perPage := 100
+			if pp := r.URL.Query().Get("per_page"); pp != "" {
+				perPage, _ = strconv.Atoi(pp)
+			}
+
+			start := (page - 1) * perPage
+			end := start + perPage
+			if start > len(allJobs) {
+				start = len(allJobs)
+			}
+			if end > len(allJobs) {
+				end = len(allJobs)
+			}
+
+			body, _ := json.Marshal(Jobs{TotalCount: len(allJobs), Jobs: allJobs[start:end]})
+			// nosemgrep: no-direct-write-to-responsewriter
+			_, _ = w.Write(body)
+		}
+	}))
+}
+
+// TestNewGitHubRunnerScaler_QueueLength_SingleRepo_150Jobs_100Completed covers
+// a workflow run with 150 jobs, the first 100 (page 1) of which are already
+// completed and the remaining 50 (page 2) of which are still queued.
+//
+// getWorkflowRunJobs only ever requests page 1 of the jobs endpoint
+// (per_page=100) and never follows subsequent pages, so it currently misses
+// the 50 still-queued jobs living on page 2. This test documents that gap and
+// is expected to fail until pagination is implemented for the jobs endpoint.
+func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_150Jobs_100Completed(t *testing.T) {
+	allJobs := buildJobs(150, 100)
+	var apiStub = apiStubHandlerPaginatedJobs(allJobs)
+
+	meta := getGitHubTestMetaData(apiStub.URL)
+
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	mockGitHubRunnerScaler.metadata.Repos = []string{"test"}
+	mockGitHubRunnerScaler.metadata.Labels = []string{"foo", "bar"}
+
+	queueLen, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.Background())
+
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	if queueLen != 50 {
+		t.Errorf("expected queue length of 50 (jobs 101-150 still queued on page 2), got %d", queueLen)
 	}
 }
 
