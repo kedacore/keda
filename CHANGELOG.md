@@ -90,14 +90,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Add controller-runtime cache field indexes for ScaledObject admission validation so `verifyScaledObjects` and `verifyHpas` look up duplicate scaleTargetRef and HPA-name conflicts via indexed Lists rather than full-namespace scans, eliminating the webhook OOM under high-scale creation bursts ([#7681](https://github.com/kedacore/keda/pull/7681))
 - **General**: Fix CVE-2026-42151, CVE-2026-42154, CVE-2026-40179 ([#7868](https://github.com/kedacore/keda/issues/7868))
-- **General**: Fix nil pointer dereference in `customScalingStrategy.GetEffectiveMaxScale` when `customScalingQueueLengthDeduction` is omitted; the optional field is now treated as zero deduction instead of panicking ([#7798](https://github.com/kedacore/keda/issues/7798))
-- **General**: Fix `ScaledJob` CRD validation to include "default" as a valid value for `scalingStrategy.strategy` ([#7855](https://github.com/kedacore/keda/issues/7855))
 - **General**: Fix `ScaledJob` removal event using `namespace/name` in place of the namespace, which malformed the emitted CloudEvent's subject and the `namespace` label on the CloudEventSource metrics ([#7967](https://github.com/kedacore/keda/issues/7967))
-- **General**: Restore gRPC reconnect backoff in the metrics service client; an unset `Backoff` in `WithConnectParams` disabled backoff and caused a zero-delay reconnect loop that flooded logs when keda-operator was unreachable ([#7856](https://github.com/kedacore/keda/issues/7856))
-- **General**: Treat negative external metric values as zero to prevent incorrect HPA scaling ([#7880](https://github.com/kedacore/keda/issues/7880))
-- **Azure Blob Storage Scaler**: Fix `globPattern` never matching when written in path-style with a leading `/`, since blob names never have one ([#6492](https://github.com/kedacore/keda/issues/6492))
-- **Azure Event Hub Scaler**: Fix authentication failures caused by appending a duplicate `EntityPath` when `eventHubName` is provided ([#6908](https://github.com/kedacore/keda/issues/6908))
-- **MongoDB Scaler**: Disconnect the client when the initial `Ping` fails so the background topology-monitoring connections opened by `mongo.Connect` are not leaked ([#5612](https://github.com/kedacore/keda/issues/5612))
+- **Azure Event Hub Scaler**: Fix authentication failures caused by appending a duplicate `EntityPath` when `eventHubName` is provided ([#7926](https://github.com/kedacore/keda/issues/7926))
 
 ### Deprecations
 
