@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
@@ -152,7 +151,7 @@ func parseAzureEventHubAuthenticationMetadata(logger logr.Logger, config *scaler
 			return fmt.Errorf("no event hub connection string given")
 		}
 
-		if !strings.Contains(connection, "EntityPath") {
+		if !azure.HasEventHubEntityPath(connection) {
 			eventHubName := meta.EventHubInfo.EventHubName
 
 			if eventHubName == "" {
