@@ -84,6 +84,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Kafka Scaler**: Add optional `fullMetadata` trigger metadata field to control Sarama's full cluster metadata refresh, reducing operator memory for topic scoped triggers ([#7453](https://github.com/kedacore/keda/issues/7453))
 - **Temporal Scaler**: Add `enableTLS` parameter to allow disabling TLS when using API key authentication (e.g. plaintext gRPC endpoints) ([#7854](https://github.com/kedacore/keda/pull/7854))
 - **Temporal Scaler**: Add opt-in `includeRunningWorkflowCount` (with optional `workflowTaskQueueForCount`) to block premature scale-down when the backlog is momentarily zero but Workflow workers are still busy. Worker Deployment Version scalers short-circuit on Version status (`DRAINING` stays active, `DRAINED`/`INACTIVE` scale down); other modes issue a scoped `CountWorkflow` visibility query — including `TemporalWorkerDeploymentVersion is null` for unversioned workers. ([#7459](https://github.com/kedacore/keda/issues/7459))
+- **General**: Report scaler and scale-loop latency as histograms via the new `keda_scaler_metrics_duration_seconds` and `keda_internal_scale_loop_duration_seconds` metrics, so percentiles are computable; the existing `_latency_seconds` gauges keep being written unchanged ([#7675](https://github.com/kedacore/keda/issues/7675))
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Fixes

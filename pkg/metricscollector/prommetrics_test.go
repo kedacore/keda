@@ -18,8 +18,10 @@ package metricscollector
 
 import (
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -126,4 +128,83 @@ func TestNewPromMetrics_DisablesHighCardinalityLabels(t *testing.T) {
 
 	_, err = p.httpClientRequestDuration.GetMetricWithLabelValues("default", "my-so", "prometheus", "my-trigger", "my-metric", "200")
 	assert.Error(t, err, "high-cardinality labels should not be accepted when disabled")
+}
+
+// TestPromMetrics_LatencyDualWrite pins the dual-write of the latency gauges
+// and their new histogram mirrors. A gauge keeps only the most recent
+// observation, so it cannot answer what latency metrics exist to answer (p95,
+// p99, how often a scaler is slow); the histogram accumulates every one. The
+// gauges stay for backwards compatibility, so both must be written.
+func TestPromMetrics_LatencyDualWrite(t *testing.T) {
+	p := &PromMetrics{}
+
+	const (
+		namespace      = "default"
+		scaledResource = "myScaledObject"
+		scaler         = "cpuScaler"
+		triggerIndex   = 0
+		metric         = "cpu"
+	)
+
+	p.RecordScalerLatency(namespace, scaledResource, scaler, triggerIndex, metric, true, 250*time.Millisecond)
+	p.RecordScalerLatency(namespace, scaledResource, scaler, triggerIndex, metric, true, 750*time.Millisecond)
+
+	labels := getLabels(namespace, scaledResource, scaler, triggerIndex, metric, true)
+
+	// Gauge: last observation only — the pre-existing behaviour.
+	gauge := &dto.Metric{}
+	require.NoError(t, scalerMetricsLatency.With(labels).Write(gauge))
+	assert.InDelta(t, 0.75, gauge.GetGauge().GetValue(), 1e-9)
+
+	// Histogram: both observations, so quantiles are computable.
+	hist := &dto.Metric{}
+	require.NoError(t, scalerMetricsDuration.With(labels).(prometheus.Metric).Write(hist))
+	assert.Equal(t, uint64(2), hist.GetHistogram().GetSampleCount())
+	assert.InDelta(t, 1.0, hist.GetHistogram().GetSampleSum(), 1e-9)
+}
+
+func TestPromMetrics_ScalableObjectLatencyDualWrite(t *testing.T) {
+	p := &PromMetrics{}
+
+	const (
+		namespace = "default"
+		name      = "myScaledObject2"
+	)
+
+	p.RecordScalableObjectLatency(namespace, name, true, 100*time.Millisecond)
+	p.RecordScalableObjectLatency(namespace, name, true, 300*time.Millisecond)
+
+	gauge := &dto.Metric{}
+	require.NoError(t, internalLoopLatency.WithLabelValues(namespace, "scaledobject", name).Write(gauge))
+	assert.InDelta(t, 0.3, gauge.GetGauge().GetValue(), 1e-9)
+
+	hist := &dto.Metric{}
+	require.NoError(t, internalLoopDuration.WithLabelValues(namespace, "scaledobject", name).(prometheus.Metric).Write(hist))
+	assert.Equal(t, uint64(2), hist.GetHistogram().GetSampleCount())
+	assert.InDelta(t, 0.4, hist.GetHistogram().GetSampleSum(), 1e-9)
+}
+
+// TestPromMetrics_DeleteScalerMetricsClearsHistogram guards against the new
+// histogram outliving a deleted trigger and reporting stale series, which is
+// exactly what DeleteScalerMetrics exists to prevent for the other scaler
+// metrics.
+func TestPromMetrics_DeleteScalerMetricsClearsHistogram(t *testing.T) {
+	p := &PromMetrics{}
+
+	const (
+		namespace      = "delete-ns"
+		scaledResource = "goingAway"
+	)
+
+	// scalerMetricsDuration is package-level and shared with the other tests in
+	// this file, so assert on the delta rather than an absolute series count.
+	before := testutil.CollectAndCount(scalerMetricsDuration)
+
+	p.RecordScalerLatency(namespace, scaledResource, "cpuScaler", 0, "cpu", true, time.Second)
+	require.Equal(t, before+1, testutil.CollectAndCount(scalerMetricsDuration),
+		"recording should add exactly one series")
+
+	p.DeleteScalerMetrics(namespace, scaledResource, true)
+	assert.Equal(t, before, testutil.CollectAndCount(scalerMetricsDuration),
+		"a deleted trigger must not leave a stale histogram series behind")
 }
