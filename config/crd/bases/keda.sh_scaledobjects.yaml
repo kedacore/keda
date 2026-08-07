@@ -424,6 +424,9 @@ spec:
                       type: string
                   type: object
                 type: object
+              hpaMinReplicaSinceTime:
+                format: date-time
+                type: string
               hpaName:
                 type: string
               lastActiveTime:

@@ -214,6 +214,8 @@ type ScaledObjectStatus struct {
 	TriggersTypes *string `json:"triggersTypes,omitempty"`
 	// +optional
 	AuthenticationsTypes *string `json:"authenticationsTypes,omitempty"`
+	// +optional
+	HpaMinReplicaSinceTime *metav1.Time `json:"hpaMinReplicaSinceTime,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -321,6 +323,11 @@ func (so *ScaledObject) GetStatusConditions() *Conditions { return &so.Status.Co
 
 // SetStatusLastActiveTime sets the LastActiveTime in the status.
 func (so *ScaledObject) SetStatusLastActiveTime(t *metav1.Time) { so.Status.LastActiveTime = t }
+
+// SetStatusHPAMinReplicaSinceTime sets the HPA min replica since time in the status.
+func (so *ScaledObject) SetStatusHPAMinReplicaSinceTime(t *metav1.Time) {
+	so.Status.HpaMinReplicaSinceTime = t
+}
 
 // SetStatusPausedReplicaCount sets the PausedReplicaCount in the status.
 func (so *ScaledObject) SetStatusPausedReplicaCount(v *int32) { so.Status.PausedReplicaCount = v }
