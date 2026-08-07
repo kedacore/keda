@@ -121,6 +121,11 @@ func testScaling(t *testing.T, kc *kubernetes.Clientset) {
 		"replica count should be 4 after 3 minute")
 
 	RMQStopPublishingMessages(rmqNamespace, queueName)
+	// The publisher pushes 3 msg/s while each consumer only drains 1 msg/s, so by
+	// now the queue holds a backlog whose size depends on how fast the scale-out
+	// ramped up. Purge it so the scale-in assertion measures the scaler reacting
+	// to an empty queue instead of the consumers' drain throughput.
+	RMQPurgeQueue(t, rmqNamespace, queueName, vhost)
 	t.Log("--- testing scale in ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
