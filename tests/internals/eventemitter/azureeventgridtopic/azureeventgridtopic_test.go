@@ -11,6 +11,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/messaging"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
@@ -193,10 +194,10 @@ func testEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templa
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go func(t *testing.T, count int, client *azservicebus.Client) {
-		checkMessage(t, count, client)
+	go func(t *testing.T, client *azservicebus.Client) {
+		checkMessage(t, client)
 		wg.Done()
-	}(t, 1, client)
+	}(t, client)
 
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	wg.Wait()
@@ -253,7 +254,7 @@ func cleanupServiceBusSubscription(t *testing.T, adminClient *admin.Client) {
 	assert.NoErrorf(t, err, "cannot delete service bus topic - %s", err)
 }
 
-func checkMessage(t *testing.T, count int, client *azservicebus.Client) {
+func checkMessage(t *testing.T, client *azservicebus.Client) {
 	t.Log("--- waiting getMessage ---")
 	receiver, err := client.NewReceiverForSubscription(
 		topicName,
@@ -262,39 +263,44 @@ func checkMessage(t *testing.T, count int, client *azservicebus.Client) {
 			ReceiveMode: azservicebus.ReceiveModePeekLock,
 		},
 	)
-	if err != nil {
-		assert.NoErrorf(t, err, "cannot create receiver - %s", err)
-	}
+	require.NoErrorf(t, err, "cannot create receiver - %s", err)
 	defer receiver.Close(context.Background())
 
-	// We try to read the messages 3 times with a second of delay
-	tries := 3
+	// The event grid topic receives CloudEvents about KEDA resources in every
+	// namespace, so while other e2e tests run in parallel the subscription fills
+	// with their events too. Drain the subscription in batches until the expected
+	// event arrives instead of inspecting only the first few messages.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
 	found := false
-	for i := 0; i < tries && !found; i++ {
-		messages, err := receiver.ReceiveMessages(context.Background(), count, nil)
-		assert.NoErrorf(t, err, "cannot receive messages - %s", err)
-		assert.NotEmpty(t, messages)
+	for !found {
+		messages, err := receiver.ReceiveMessages(ctx, 20, nil)
+		if err != nil {
+			t.Logf("cannot receive messages - %s", err)
+			break
+		}
 
 		for _, message := range messages {
 			event := messaging.CloudEvent{}
-			t.Log(message.Body)
-			err = json.Unmarshal(message.Body, &event)
-
-			assert.NoErrorf(t, err, "cannot retrieve message - %s", err)
-			t.Logf("expected subject %s", expectedSubject)
-			t.Logf("expected source %s", expectedSource)
-			t.Logf("expected type %s", expectedType)
-			t.Logf("event subject %s", *event.Subject)
-			t.Logf("event source %s", event.Source)
-			t.Logf("event type %s", event.Type)
+			if err := json.Unmarshal(message.Body, &event); err != nil {
+				t.Logf("cannot parse message - %s - %s", err, message.Body)
+				continue
+			}
+			if event.Subject == nil {
+				continue
+			}
+			t.Logf("event subject %s, source %s, type %s", *event.Subject, event.Source, event.Type)
 
 			if expectedSubject == *event.Subject &&
 				expectedSource == event.Source &&
 				expectedType == event.Type {
 				found = true
 			}
+			if err := receiver.CompleteMessage(ctx, message, nil); err != nil {
+				t.Logf("cannot complete message - %s", err)
+			}
 		}
 	}
 
-	assert.True(t, found)
+	assert.True(t, found, "expected CloudEvent with subject %s, source %s, type %s", expectedSubject, expectedSource, expectedType)
 }
