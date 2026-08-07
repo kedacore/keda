@@ -135,6 +135,16 @@ spec:
       annotations:
         checksum/event-bus-configmap: 0e5e9d25a669359a37dd0d684c485f4c05729da5a26a841ad9a2743d99460f73
     spec:
+      # prefer the hub's node so the image pre-pulled during setup stays local
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: selenium-hub
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: selenium-chrome-node
         image: selenium/node-chrome:nightly
@@ -258,6 +268,16 @@ spec:
       annotations:
         checksum/event-bus-configmap: 0e5e9d25a669359a37dd0d684c485f4c05729da5a26a841ad9a2743d99460f73
     spec:
+      # prefer the hub's node so the image pre-pulled during setup stays local
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: selenium-hub
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: selenium-firefox-node
         image: selenium/node-firefox:nightly
@@ -354,6 +374,16 @@ spec:
       annotations:
         checksum/event-bus-configmap: 0e5e9d25a669359a37dd0d684c485f4c05729da5a26a841ad9a2743d99460f73
     spec:
+      # prefer the hub's node so the image pre-pulled during setup stays local
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: selenium-hub
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: selenium-edge-node
         image: selenium/node-edge:nightly
