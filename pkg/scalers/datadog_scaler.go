@@ -42,10 +42,8 @@ type datadogMetadata struct {
 	DatadogMetricsServicePort int    `keda:"name=datadogMetricsServicePort, order=authParams, default=8443"`
 	UnsafeSsl                 bool   `keda:"name=unsafeSsl,                 order=authParams, default=false"`
 
-	// bearer auth Cluster Agent Proxy
-	AuthMode         string `keda:"name=authMode,  order=authParams, optional"`
-	EnableBearerAuth bool
-	BearerToken      string `keda:"name=token,     order=authParams,      optional"`
+	// auth for Cluster Agent Proxy
+	AuthConfig *authentication.Config `keda:"optional"`
 
 	// TriggerMetadata Cluster Agent Proxy
 	DatadogMetricServiceURL string
@@ -479,8 +477,8 @@ func (s *datadogScaler) getDatadogClusterAgentHTTPRequest(ctx context.Context, u
 		return nil, err
 	}
 
-	if s.metadata.EnableBearerAuth {
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.metadata.BearerToken))
+	if s.metadata.AuthConfig.EnabledBearerAuth() {
+		req.Header.Add("Authorization", s.metadata.AuthConfig.GetBearerToken())
 	}
 
 	return req, nil
@@ -557,17 +555,8 @@ func (s *datadogMetadata) Validate() error {
 			return fmt.Errorf("error in query: %w", err)
 		}
 	}
-	if s.AuthMode != "" {
-		authType := authentication.Type(strings.TrimSpace(s.AuthMode))
-		switch authType {
-		case authentication.BearerAuthType:
-			if s.BearerToken == "" {
-				return fmt.Errorf("BearerToken is required")
-			}
-			s.EnableBearerAuth = true
-		default:
-			return fmt.Errorf("err incorrect value for authMode is given: %s", s.AuthMode)
-		}
+	if err := s.AuthConfig.ValidateAllowed(authentication.BearerAuthType); err != nil {
+		return err
 	}
 	return nil
 }

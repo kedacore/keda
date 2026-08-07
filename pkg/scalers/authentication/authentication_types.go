@@ -142,6 +142,23 @@ func (c *Config) Validate() error {
 	return nil
 }
 
+// ValidateAllowed runs Validate and additionally enforces that the configured auth modes are limited to the set of modes a scaler explicitly supports.
+func (c *Config) ValidateAllowed(allowed ...Type) error {
+	if c.Disabled() {
+		return nil
+	}
+	allowedSet := make(map[Type]struct{}, len(allowed))
+	for _, m := range allowed {
+		allowedSet[m] = struct{}{}
+	}
+	for _, m := range c.Modes {
+		if _, ok := allowedSet[m]; !ok {
+			return fmt.Errorf("auth mode %q is not supported by this scaler; supported modes: %v", m, allowed)
+		}
+	}
+	return c.Validate()
+}
+
 // Normalize removes whitespace-only entries from Scopes.
 func (c *Config) Normalize() {
 	var scopes []string

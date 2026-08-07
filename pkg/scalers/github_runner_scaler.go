@@ -20,6 +20,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/eventreason"
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -70,6 +71,8 @@ type githubRunnerMetadata struct {
 	ApplicationID                          int64  `keda:"name=applicationID, order=triggerMetadata;resolvedEnv, optional"`
 	InstallationID                         int64  `keda:"name=installationID, order=triggerMetadata;resolvedEnv, optional"`
 	ApplicationKey                         string `keda:"name=appKey, order=authParams, optional"`
+
+	Auth *authentication.Config `keda:"optional"`
 }
 
 type WorkflowRuns struct {
@@ -404,15 +407,23 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 }
 
 func (meta *githubRunnerMetadata) Validate() error {
-	if meta.ApplicationKey == "" && meta.PersonalAccessToken == "" {
-		return fmt.Errorf("no personalAccessToken or appKey given")
+	if meta.Auth == nil {
+		meta.Auth = &authentication.Config{}
+	}
+	if meta.ApplicationKey == "" && meta.PersonalAccessToken == "" && !meta.Auth.EnabledBearerAuth() {
+		return fmt.Errorf("no personalAccessToken/bearerToken or appKey given")
 	}
 	if meta.ApplicationID != 0 || meta.InstallationID != 0 || meta.ApplicationKey != "" {
 		if err := validateGitHubApp(meta); err != nil {
 			return err
 		}
 	}
-	return nil
+	// Legacy bridge: only map personalAccessToken if no GitHub App is in use and Auth has no mode yet.
+	if meta.Auth.Disabled() && meta.ApplicationID == 0 && meta.PersonalAccessToken != "" {
+		meta.Auth.Modes = []authentication.Type{authentication.BearerAuthType}
+		meta.Auth.BearerToken = meta.PersonalAccessToken
+	}
+	return meta.Auth.ValidateAllowed(authentication.BearerAuthType)
 }
 
 func parseGitHubRunnerMetadata(config *scalersconfig.ScalerConfig) (*githubRunnerMetadata, error) {
@@ -550,8 +561,8 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, apiURL string
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
-	if metadata.ApplicationID == 0 && metadata.PersonalAccessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+metadata.PersonalAccessToken)
+	if metadata.Auth.EnabledBearerAuth() {
+		req.Header.Set("Authorization", metadata.Auth.GetBearerToken())
 	}
 
 	if s.metadata.EnableEtags {
