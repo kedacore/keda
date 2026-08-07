@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -28,8 +29,15 @@ import (
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider/defaults"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/metricsservice"
 )
+
+// metricsServiceClient is the subset of *metricsservice.GrpcClient that the provider relies on.
+// It is defined as an interface so the metric retrieval paths can be exercised in unit tests.
+type metricsServiceClient interface {
+	GetMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error)
+	WaitForConnectionReady(ctx context.Context, logger logr.Logger) bool
+	GetServerURL() string
+}
 
 // KedaProvider implements External Metrics Provider
 type KedaProvider struct {
@@ -37,7 +45,7 @@ type KedaProvider struct {
 
 	client client.Client
 
-	grpcClient metricsservice.GrpcClient
+	grpcClient metricsServiceClient
 }
 
 var (
@@ -47,7 +55,7 @@ var (
 )
 
 // NewProvider returns an instance of KedaProvider
-func NewProvider(ctx context.Context, adapterLogger logr.Logger, client client.Client, grpcClient metricsservice.GrpcClient) provider.ExternalMetricsProvider {
+func NewProvider(ctx context.Context, adapterLogger logr.Logger, client client.Client, grpcClient metricsServiceClient) provider.ExternalMetricsProvider {
 	provider := &KedaProvider{
 		client:     client,
 		grpcClient: grpcClient,
@@ -80,7 +88,7 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 	selector, err := labels.ConvertSelectorToLabelsMap(metricSelector.String())
 	if err != nil {
 		logger.Error(err, "error converting Selector to Labels Map")
-		return nil, err
+		return nil, apierrors.NewBadRequest(err.Error())
 	}
 
 	// Get Metrics from Metrics Service gRPC Server
@@ -88,7 +96,7 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 		grpcClientConnected = false
 		err := fmt.Errorf("timeout while waiting to establish gRPC connection to KEDA Metrics Service server")
 		logger.Error(err, "timeout", "server", p.grpcClient.GetServerURL())
-		return nil, err
+		return nil, apierrors.NewServiceUnavailable(err.Error())
 	}
 	if !grpcClientConnected {
 		grpcClientConnected = true
@@ -101,11 +109,15 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 		err := fmt.Errorf("scaledObject name is not specified")
 		logger.Error(err, fmt.Sprintf("please specify scaledObject name, it needs to be set as value of label selector %q on the query", kedav1alpha1.ScaledObjectOwnerAnnotation))
 
-		return &external_metrics.ExternalMetricValueList{}, err
+		return &external_metrics.ExternalMetricValueList{}, apierrors.NewBadRequest(err.Error())
 	}
 
 	metrics, err := p.grpcClient.GetMetrics(ctx, scaledObjectName, namespace, info.Metric)
+	if err != nil {
+		logger.Error(err, "error getting metrics from KEDA Metrics Service gRPC server", "scaledObjectName", scaledObjectName, "scaledObjectNamespace", namespace)
+		return nil, apierrors.NewInternalError(err)
+	}
 	logger.V(1).WithValues("scaledObjectName", scaledObjectName, "scaledObjectNamespace", namespace, "metrics", metrics).Info("Receiving metrics")
 
-	return metrics, err
+	return metrics, nil
 }

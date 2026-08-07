@@ -123,7 +123,7 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 			os.Exit(1)
 		}
 	}()
-	return kedaprovider.NewProvider(ctx, setupLog, mgr.GetClient(), *grpcClient), nil
+	return kedaprovider.NewProvider(ctx, setupLog, mgr.GetClient(), grpcClient), nil
 }
 
 // getMetricHandler returns a http handler that exposes metrics from controller-runtime and apiserver
