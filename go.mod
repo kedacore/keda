@@ -70,7 +70,7 @@ require (
 	github.com/go-kivik/couchdb/v3 v3.4.1
 	github.com/go-kivik/kivik/v3 v3.2.4
 	github.com/go-logr/logr v1.4.3
-	github.com/go-playground/validator/v10 v10.30.2
+	github.com/go-playground/validator/v10 v10.30.3
 	github.com/go-sql-driver/mysql v1.10.0
 	github.com/gobwas/glob v0.2.3
 	github.com/gocql/gocql v1.7.0
