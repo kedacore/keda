@@ -125,7 +125,7 @@ metadata:
     app.kubernetes.io/component: latest
     helm.sh/chart: latest
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: selenium-chrome-node
@@ -248,7 +248,7 @@ metadata:
     app.kubernetes.io/component: latest
     helm.sh/chart: latest
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: selenium-firefox-node
@@ -344,7 +344,7 @@ metadata:
     app.kubernetes.io/component: latest
     helm.sh/chart: latest
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: selenium-edge-node
@@ -532,14 +532,28 @@ spec:
 func TestSeleniumScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
+	soTemplates := []Template{
+		{Name: "chromeScaledObjectTemplate", Config: chromeScaledObjectTemplate},
+		{Name: "firefoxScaledObjectTemplate", Config: firefoxScaledObjectTemplate},
+		{Name: "edgeScaledObjectTemplate", Config: edgeScaledObjectTemplate},
+	}
 	t.Cleanup(func() {
-		DeleteKubernetesResources(t, testNamespace, data, templates)
+		DeleteKubernetesResources(t, testNamespace, data, append(templates, soTemplates...))
 	})
 
 	// Create kubernetes resources
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, hubDeploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
+
+	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, chromeDeploymentName, testNamespace, 1, 60, 3),
+		"replica count should be 1 after 3 minutes")
+	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, firefoxDeploymentName, testNamespace, 1, 60, 3),
+		"replica count should be 1 after 3 minutes")
+	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, edgeDeploymentName, testNamespace, 1, 60, 3),
+		"replica count should be 1 after 3 minutes")
+
+	KubectlApplyMultipleWithTemplate(t, data, soTemplates)
 	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, chromeDeploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be 0 after 1 minute")
 	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, firefoxDeploymentName, testNamespace, minReplicaCount, 60, 1),
@@ -619,12 +633,9 @@ func getTemplateData() (templateData, []Template) {
 			{Name: "hubServiceTemplate", Config: hubServiceTemplate},
 			{Name: "chromeNodeServiceTemplate", Config: chromeNodeServiceTemplate},
 			{Name: "chromeNodeDeploymentTemplate", Config: chromeNodeDeploymentTemplate},
-			{Name: "chromeScaledObjectTemplate", Config: chromeScaledObjectTemplate},
 			{Name: "firefoxNodeServiceTemplate", Config: firefoxNodeServiceTemplate},
 			{Name: "firefoxNodeDeploymentTemplate", Config: firefoxNodeDeploymentTemplate},
-			{Name: "firefoxScaledObjectTemplate", Config: firefoxScaledObjectTemplate},
 			{Name: "edgeNodeServiceTemplate", Config: edgeNodeServiceTemplate},
 			{Name: "edgeNodeDeploymentTemplate", Config: edgeNodeDeploymentTemplate},
-			{Name: "edgeScaledObjectTemplate", Config: edgeScaledObjectTemplate},
 		}
 }
