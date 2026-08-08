@@ -37,6 +37,20 @@ const (
 	eventsinkValue        = "opentelemetry-metrics-test-ce"
 	eventsinkType         = "eventsinktype"
 	eventsinkTypeValue    = "http"
+
+	// The operator pushes metrics to the collector on an interval rather than on change, so a
+	// value only becomes observable some time after the cluster state changed. The e2e setup
+	// exports every 3s (OTEL_METRIC_EXPORT_INTERVAL) and the scaled objects here poll every
+	// 2-5s, so a minute is more than ten of those cycles and is only reached when something is
+	// genuinely broken. Do not raise it much further: the collector's prometheus exporter
+	// drops a series 5 minutes after its last push, so beyond that a value stops being
+	// observable at all and waiting longer cannot help.
+	metricWaitTimeout = time.Minute
+
+	// Each poll of the operator totals lists every ScaledObject, ScaledJob and
+	// TriggerAuthentication in the cluster, so it runs less aggressively than a plain
+	// metric read.
+	operatorMetricsInterval = 5 * time.Second
 )
 
 var (
@@ -634,6 +648,11 @@ func TestOpenTelemetryMetrics(t *testing.T) {
 	data, templates := getTemplateData()
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+	// A metric that never converges fails the test from inside a helper, which ends the whole
+	// function, so teardown has to be deferred rather than run at the end. Otherwise a single
+	// timeout leaks this namespace and the operator's OTLP configuration into the sequential
+	// tests that run after this one.
+	defer DeleteKubernetesResources(t, testNamespace, data, templates)
 
 	// restart KEDA operator to ensure that all the metrics are sent to the collector
 	DeletePodsInNamespaceBySelector(t, kc, operatorLabelSelector, kedaNamespace)
@@ -662,10 +681,8 @@ func TestOpenTelemetryMetrics(t *testing.T) {
 	testHTTPClientMetrics(t, kc, data)
 
 	changeOtlpProtocolInOperator(t, kc, "keda-operator", "keda")
+	defer fallbackHTTPProtocolInOperator(t, kc, "keda-operator", "keda")
 	testScalerGrpcMetricValue(t, kc, data)
-	fallbackHTTPProtocolInOperator(t, kc, "keda-operator", "keda")
-	// cleanup
-	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func getTemplateData() (templateData, []Template) {
@@ -759,29 +776,33 @@ func testScalerGrpcMetricValue(t *testing.T, kc *kubernetes.Clientset, data temp
 	KubectlApplyWithTemplate(t, data, "scaledObjectGrpcTemplate", scaledObjectGrpcTemplate)
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)
 	WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 2)
-	time.Sleep(time.Duration(60) * time.Second)
 
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
-	val, ok := family["keda_scaler_metrics_value"]
-	assert.True(t, ok, "keda_scaler_metrics_value not available")
-	if ok {
-		var found bool
-		metrics := val.GetMetric()
-		for _, metric := range metrics {
-			t.Log("--- testScalerGrpcMetricValue ---", "metric", metric)
-			labels := metric.GetLabel()
-			for _, label := range labels {
-				if *label.Name == labelScaledObject && *label.Value == scaledObjectGrpcName {
-					assert.Equal(t, float64(0), *metric.Gauge.Value)
-					found = true
-				}
-			}
-		}
-		assert.Equal(t, true, found)
-	}
+	// The deployment reaching zero does not mean the metric has caught up: the value only
+	// changes once the scaler re-polls and the operator's next push reaches the collector.
+	families := waitForCollectorMetric(t, "keda_scaler_metrics_value", func(family *prommodel.MetricFamily) bool {
+		value, found := scaledObjectGaugeValue(family, scaledObjectGrpcName)
+		return found && value == 0
+	})
+
+	value, found := scaledObjectGaugeValue(families["keda_scaler_metrics_value"], scaledObjectGrpcName)
+	assert.Truef(t, found, "no keda_scaler_metrics_value reported for %s", scaledObjectGrpcName)
+	assert.Equal(t, float64(0), value)
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectGrpcTemplate", scaledObjectGrpcTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+}
+
+// scaledObjectGaugeValue returns the gauge value labelled with the given ScaledObject name,
+// and whether such a metric was present at all.
+func scaledObjectGaugeValue(family *prommodel.MetricFamily, soName string) (float64, bool) {
+	for _, metric := range family.GetMetric() {
+		for _, label := range metric.GetLabel() {
+			if *label.Name == labelScaledObject && *label.Value == soName {
+				return metric.GetGauge().GetValue(), true
+			}
+		}
+	}
+	return 0, false
 }
 
 func fetchAndParsePrometheusMetrics(t *testing.T, cmd string) map[string]*prommodel.MetricFamily {
@@ -797,32 +818,17 @@ func fetchAndParsePrometheusMetrics(t *testing.T, cmd string) map[string]*prommo
 	return families
 }
 
-func waitForOpenTelemetryMetric(t *testing.T, metricToWaitFor string, familyValidator func(family *prommodel.MetricFamily) bool) map[string]*prommodel.MetricFamily {
-	contextWithTimeout, cancel := context.WithTimeout(context.Background(), WaitShort)
-	defer cancel()
-	var family map[string]*prommodel.MetricFamily
-	err := KedaEventually(contextWithTimeout, func(ctx context.Context) (bool, error) {
-		t.Logf("Waiting for metric %s", metricToWaitFor)
-		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
-
-		if _, ok := family[metricToWaitFor]; ok {
-			if familyValidator(family[metricToWaitFor]) {
-				return true, nil
-			}
-			return false, nil
-		}
-		return false, nil
-	}, IntervalShort)
-
-	if err != nil {
-		t.Errorf("error waiting for metric %s: %v", metricToWaitFor, err)
-	}
-
-	return family
-}
-
+// waitForCollectorMetric polls the collector's Prometheus export endpoint until the named
+// metric exists and familyValidator accepts it, then returns the parsed families.
+//
+// Waiting for the value itself is what keeps these tests independent of how fast the cluster
+// is. The alternative is sleeping for long enough to cover the slowest plausible export
+// cycle, which is both slower in the common case and still not long enough under load.
+//
+// A metric that never arrives ends the test on the spot, so anything that has to be undone
+// afterwards belongs in a defer.
 func waitForCollectorMetric(t *testing.T, metricToWaitFor string, familyValidator func(family *prommodel.MetricFamily) bool) map[string]*prommodel.MetricFamily {
-	contextWithTimeout, cancel := context.WithTimeout(context.Background(), WaitShort)
+	contextWithTimeout, cancel := context.WithTimeout(context.Background(), metricWaitTimeout)
 	defer cancel()
 
 	var families map[string]*prommodel.MetricFamily
@@ -837,6 +843,10 @@ func waitForCollectorMetric(t *testing.T, metricToWaitFor string, familyValidato
 
 		return familyValidator(family), nil
 	}, IntervalShort)
+	if err != nil {
+		// The timeout alone does not say how far off the metric was, and the test ends here.
+		t.Logf("last observed %s: %v", metricToWaitFor, families[metricToWaitFor])
+	}
 	require.NoErrorf(t, err, "error waiting for metric %s", metricToWaitFor)
 
 	return families
@@ -869,114 +879,79 @@ func testScaledObjectErrors(t *testing.T, data templateData) {
 	t.Log("--- testing scaled object errors ---")
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
-	time.Sleep(20 * time.Second)
+	// The broken ScaledObject has to be reconciled and polled once before the counter is
+	// non-zero, and then polled again for the comparison below to mean anything. Wait for
+	// each of those steps rather than guessing how long they take.
+	families := waitForCollectorMetric(t, "keda_scaledobject_errors_total", func(family *prommodel.MetricFamily) bool {
+		return getErrorMetricsValue(family) > 0
+	})
+	errCounterVal1 := getErrorMetricsValue(families["keda_scaledobject_errors_total"])
 
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
-	val, ok := family["keda_scaledobject_errors_total"]
-	assert.True(t, ok, "keda_scaledobject_errors_total not available")
-	if ok {
-		errCounterVal1 := getErrorMetricsValue(val)
+	families = waitForCollectorMetric(t, "keda_scaledobject_errors_total", func(family *prommodel.MetricFamily) bool {
+		return getErrorMetricsValue(family) > errCounterVal1
+	})
+	errCounterVal2 := getErrorMetricsValue(families["keda_scaledobject_errors_total"])
 
-		// wait for 2 seconds as pollinginterval is 2
-		time.Sleep(5 * time.Second)
-
-		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
-		val, ok := family["keda_scaledobject_errors_total"]
-		assert.True(t, ok, "keda_scaledobject_errors_total not available")
-		if ok {
-			errCounterVal2 := getErrorMetricsValue(val)
-			assert.NotEqual(t, errCounterVal2, float64(0))
-			assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
-		}
-	}
+	assert.NotEqual(t, errCounterVal2, float64(0))
+	assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
-	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	// wait for 10 seconds to correctly fetch metrics.
-	time.Sleep(10 * time.Second)
 }
 
 func testScaledJobErrors(t *testing.T, data templateData) {
 	t.Log("--- testing scaled job errors ---")
 
 	KubectlDeleteWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
-	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "wrongScaledJobTemplate", wrongScaledJobTemplate)
 
-	time.Sleep(20 * time.Second)
+	families := waitForCollectorMetric(t, "keda_scaledjob_errors_total", func(family *prommodel.MetricFamily) bool {
+		return getErrorMetricsValue(family) > 0
+	})
+	errCounterVal1 := getErrorMetricsValue(families["keda_scaledjob_errors_total"])
 
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
-	val, ok := family["keda_scaledjob_errors_total"]
-	assert.True(t, ok, "keda_scaledjob_errors_total not available")
-	if ok {
-		errCounterVal1 := getErrorMetricsValue(val)
+	families = waitForCollectorMetric(t, "keda_scaledjob_errors_total", func(family *prommodel.MetricFamily) bool {
+		return getErrorMetricsValue(family) > errCounterVal1
+	})
+	errCounterVal2 := getErrorMetricsValue(families["keda_scaledjob_errors_total"])
 
-		// wait for 2 seconds as pollinginterval is 2
-		time.Sleep(5 * time.Second)
-
-		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
-		val, ok := family["keda_scaledjob_errors_total"]
-		assert.True(t, ok, "keda_scaledjob_errors_total not available")
-		if ok {
-			errCounterVal2 := getErrorMetricsValue(val)
-			assert.NotEqual(t, errCounterVal2, float64(0))
-			assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
-		}
-	}
+	assert.NotEqual(t, errCounterVal2, float64(0))
+	assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledJobTemplate", wrongScaledJobTemplate)
-	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
-	// wait for 10 seconds to correctly fetch metrics.
-	time.Sleep(10 * time.Second)
 }
 
 func testScalerErrors(t *testing.T, data templateData) {
 	t.Log("--- testing scaler errors ---")
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
 	KubectlDeleteWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
-	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "wrongScaledJobTemplate", wrongScaledJobTemplate)
-
-	time.Sleep(15 * time.Second)
 
 	families := waitForCollectorMetric(t, "keda_scaler_errors_total", func(family *prommodel.MetricFamily) bool {
 		return getErrorMetricsValue(family) > 0
 	})
-	val, ok := families["keda_scaler_errors_total"]
-	assert.True(t, ok, "keda_scaler_errors_total not available")
-	if ok {
-		errCounterVal1 := getErrorMetricsValue(val)
+	errCounterVal1 := getErrorMetricsValue(families["keda_scaler_errors_total"])
 
-		// wait for 10 seconds to correctly fetch metrics.
-		time.Sleep(5 * time.Second)
+	// Waiting for the counter to be strictly greater is what makes this check meaningful:
+	// waiting for >= would be satisfied by the value we already read.
+	families = waitForCollectorMetric(t, "keda_scaler_errors_total", func(family *prommodel.MetricFamily) bool {
+		return getErrorMetricsValue(family) > errCounterVal1
+	})
+	errCounterVal2 := getErrorMetricsValue(families["keda_scaler_errors_total"])
 
-		families = waitForCollectorMetric(t, "keda_scaler_errors_total", func(family *prommodel.MetricFamily) bool {
-			return getErrorMetricsValue(family) >= errCounterVal1
-		})
-		val, ok = families["keda_scaler_errors_total"]
-		assert.True(t, ok, "keda_scaler_errors_total not available")
-		if ok {
-			errCounterVal2 := getErrorMetricsValue(val)
-			assert.NotEqual(t, errCounterVal2, float64(0))
-			assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
-		}
-	}
+	assert.NotEqual(t, errCounterVal2, float64(0))
+	assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledJobTemplate", wrongScaledJobTemplate)
-	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
-	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 }
 
@@ -1148,7 +1123,7 @@ func testScalerActiveMetric(t *testing.T, kc *kubernetes.Clientset) {
 		"metric":       "cpu",
 	}
 
-	families := waitForOpenTelemetryMetric(t, "keda_scaler_active", func(family *prommodel.MetricFamily) bool {
+	families := waitForCollectorMetric(t, "keda_scaler_active", func(family *prommodel.MetricFamily) bool {
 		return hasMetricWithLabelsAndGauge(family, resourceScalerLabels, 1)
 	})
 	assertScaledObjectFlagMetric(t, families, scaledObjectName, "keda_scaler_active", true)
@@ -1158,8 +1133,10 @@ func testScalerActiveMetric(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scaler active metric scaled down ---")
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)
 	WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 2)
-	time.Sleep(10 * time.Second)
-	families = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
+	families = waitForCollectorMetric(t, "keda_scaler_active", func(family *prommodel.MetricFamily) bool {
+		value, found := scaledObjectGaugeValue(family, scaledObjectName)
+		return found && value == 0
+	})
 
 	assertScaledObjectFlagMetric(t, families, scaledObjectName, "keda_scaler_active", false)
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 4, testNamespace)
@@ -1189,17 +1166,21 @@ func testScaledObjectPausedMetric(t *testing.T, data templateData) {
 	// Pause the ScaledObject
 	KubectlApplyWithTemplate(t, data, "scaledObjectPausedTemplate", scaledObjectPausedTemplate)
 
-	time.Sleep(20 * time.Second)
 	// Check that the paused metric is now true
-	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
+	families := waitForCollectorMetric(t, "keda_scaled_object_paused", func(family *prommodel.MetricFamily) bool {
+		value, found := scaledObjectGaugeValue(family, scaledObjectName)
+		return found && value == 1
+	})
 	assertScaledObjectFlagMetric(t, families, scaledObjectName, "keda_scaled_object_paused", true)
 
 	// Unpause the ScaledObject
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	time.Sleep(20 * time.Second)
 	// Check that the paused metric is back to false
-	families = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
+	families = waitForCollectorMetric(t, "keda_scaled_object_paused", func(family *prommodel.MetricFamily) bool {
+		value, found := scaledObjectGaugeValue(family, scaledObjectName)
+		return found && value == 0
+	})
 	assertScaledObjectFlagMetric(t, families, scaledObjectName, "keda_scaled_object_paused", false)
 }
 
@@ -1274,15 +1255,50 @@ func getOperatorMetricsManually(t *testing.T, kc *kubernetes.Clientset) (map[str
 	return triggerTotals, crTotals
 }
 
+// failureCollector satisfies assert.TestingT by recording failures instead of failing the
+// test, so that assertions can be retried. testify's EventuallyWithT does the same thing, but
+// it runs its condition in a separate goroutine, which does not mix with the helpers here
+// taking *testing.T.
+type failureCollector struct {
+	failures []string
+}
+
+func (f *failureCollector) Errorf(format string, args ...interface{}) {
+	f.failures = append(f.failures, fmt.Sprintf(format, args...))
+}
+
 func testOperatorMetricValues(t *testing.T, kc *kubernetes.Clientset) {
-	// wait for 5 seconds to correctly fetch metrics.
-	time.Sleep(5 * time.Second)
+	t.Log("--- testing trigger and resource total metrics ---")
 
-	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
-	expectedTriggerTotals, expectedCrTotals := getOperatorMetricsManually(t, kc)
+	ctx, cancel := context.WithTimeout(context.Background(), metricWaitTimeout)
+	defer cancel()
 
-	checkTriggerTotalValues(t, families, expectedTriggerTotals)
-	checkCRTotalValues(t, families, expectedCrTotals)
+	var (
+		families map[string]*prommodel.MetricFamily
+		attempt  failureCollector
+	)
+
+	// A created or deleted CR takes an unpredictable amount of time to reach the totals, since
+	// the operator has to reconcile it and then push the new value. Retrying the assertions
+	// themselves, rather than a predicate that has to be kept in step with them, means a
+	// timeout still reports which total diverged.
+	err := KedaEventually(ctx, func(_ context.Context) (bool, error) {
+		families = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
+		expectedTriggerTotals, expectedCrTotals := getOperatorMetricsManually(t, kc)
+
+		attempt = failureCollector{}
+		checkTriggerTotalValues(&attempt, families, expectedTriggerTotals)
+		checkCRTotalValues(&attempt, families, expectedCrTotals)
+
+		return len(attempt.failures) == 0, nil
+	}, operatorMetricsInterval)
+
+	// Empty unless the last attempt failed, which only happens once the wait has given up.
+	for _, failure := range attempt.failures {
+		t.Error(failure)
+	}
+	require.NoError(t, err, "exported totals never agreed with the cluster")
+
 	checkBuildInfo(t, families)
 }
 
@@ -1323,8 +1339,9 @@ func getLatestCommit(t *testing.T) string {
 	return strings.Trim(out.String(), "\n")
 }
 
-func checkTriggerTotalValues(t *testing.T, families map[string]*prommodel.MetricFamily, expectedValues map[string]int) {
-	t.Log("--- testing trigger total metrics ---")
+// checkTriggerTotalValues takes assert.TestingT rather than *testing.T so that the caller can
+// retry it against a failureCollector until the totals converge.
+func checkTriggerTotalValues(t assert.TestingT, families map[string]*prommodel.MetricFamily, expectedValues map[string]int) {
 	expected := map[string]int{}
 
 	family, ok := families["keda_trigger_totals"]
@@ -1378,9 +1395,7 @@ func checkTriggerTotalValues(t *testing.T, families map[string]*prommodel.Metric
 	assert.Equal(t, 0, len(expected))
 }
 
-func checkCRTotalValues(t *testing.T, families map[string]*prommodel.MetricFamily, expected map[string]map[string]int) {
-	t.Log("--- testing resource total metrics ---")
-
+func checkCRTotalValues(t assert.TestingT, families map[string]*prommodel.MetricFamily, expected map[string]map[string]int) {
 	family, ok := families["keda_resource_totals"]
 	assert.True(t, ok, "keda_resource_totals not available")
 	if !ok {
@@ -1441,22 +1456,17 @@ func assertScaledObjectFlagMetric(t *testing.T, families map[string]*prommodel.M
 		return
 	}
 
-	metricValue := 0.0
-	metrics := family.GetMetric()
-	for _, metric := range metrics {
-		t.Log("scaledobject flag metric detail info ---", "metric", metric, "scaledObjectName", scaledObjectName, "metricName", metricName)
-		labels := metric.GetLabel()
-		for _, label := range labels {
-			if *label.Name == labelScaledObject && *label.Value == scaledObjectName {
-				metricValue = *metric.Gauge.Value
-			}
-		}
-	}
-	expectedMetricValue := 0
+	// Read the series the waits above match on, so that a wait which observed the expected
+	// value cannot be followed by an assertion reading a different series of the same family.
+	metricValue, found := scaledObjectGaugeValue(family, scaledObjectName)
+	t.Log("scaledobject flag metric detail info ---", "metricName", metricName,
+		"scaledObjectName", scaledObjectName, "value", metricValue, "found", found)
+
+	expectedMetricValue := 0.0
 	if expected {
 		expectedMetricValue = 1
 	}
-	assert.Equal(t, float64(expectedMetricValue), metricValue)
+	assert.Equal(t, expectedMetricValue, metricValue)
 }
 
 func testCloudEventEmitted(t *testing.T, data templateData) {
@@ -1466,27 +1476,34 @@ func testCloudEventEmitted(t *testing.T, data templateData) {
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	time.Sleep(10 * time.Second)
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
+	emitted := func(metric *prommodel.Metric) bool {
+		labels := metric.GetLabel()
+		return len(labels) >= 5 &&
+			ExtractPrometheusLabelValue("cloudEventSource", labels) == "opentelemetry-metrics-test-ce" &&
+			ExtractPrometheusLabelValue("eventsink", labels) == "http" &&
+			ExtractPrometheusLabelValue("namespace", labels) == "opentelemetry-metrics-test-ns" &&
+			ExtractPrometheusLabelValue("state", labels) == "emitted"
+	}
 
-	if val, ok := family["keda_cloudeventsource_events_emitted_count_total"]; ok {
-		var found bool
-		metrics := val.GetMetric()
-		for _, metric := range metrics {
-			labels := metric.GetLabel()
-			if len(labels) >= 5 &&
-				ExtractPrometheusLabelValue("cloudEventSource", labels) == "opentelemetry-metrics-test-ce" &&
-				ExtractPrometheusLabelValue("eventsink", labels) == "http" &&
-				ExtractPrometheusLabelValue("namespace", labels) == "opentelemetry-metrics-test-ns" &&
-				ExtractPrometheusLabelValue("state", labels) == "emitted" {
-				assert.GreaterOrEqual(t, *metric.Counter.Value, float64(1))
-				found = true
+	// The event is emitted asynchronously once the ScaledObject is reconciled, so wait for
+	// the counter to show up instead of assuming it has by now.
+	families := waitForCollectorMetric(t, "keda_cloudeventsource_events_emitted_count_total", func(family *prommodel.MetricFamily) bool {
+		for _, metric := range family.GetMetric() {
+			if emitted(metric) && metric.GetCounter().GetValue() >= 1 {
+				return true
 			}
 		}
-		assert.Equal(t, true, found)
-	} else {
-		t.Errorf("metric not available")
+		return false
+	})
+
+	var found bool
+	for _, metric := range families["keda_cloudeventsource_events_emitted_count_total"].GetMetric() {
+		if emitted(metric) {
+			assert.GreaterOrEqual(t, *metric.Counter.Value, float64(1))
+			found = true
+		}
 	}
+	assert.True(t, found, "no emitted cloudevent metric found")
 }
 
 func testCloudEventEmittedError(t *testing.T, data templateData) {
@@ -1495,30 +1512,36 @@ func testCloudEventEmittedError(t *testing.T, data templateData) {
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	KubectlDeleteWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
 	KubectlApplyWithTemplate(t, data, "wrongCloudEventSourceTemplate", wrongCloudEventSourceTemplate)
-	time.Sleep(1 * time.Second)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	time.Sleep(10 * time.Second)
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
+	failed := func(metric *prommodel.Metric) bool {
+		labels := metric.GetLabel()
+		return len(labels) >= 5 &&
+			ExtractPrometheusLabelValue("cloudEventSource", labels) == "opentelemetry-metrics-test-ce-w" &&
+			ExtractPrometheusLabelValue("eventsink", labels) == "http" &&
+			ExtractPrometheusLabelValue("namespace", labels) == "opentelemetry-metrics-test-ns" &&
+			ExtractPrometheusLabelValue("state", labels) == "failed"
+	}
 
-	if val, ok := family["keda_cloudeventsource_events_emitted_count_total"]; ok {
-		var found bool
-		metrics := val.GetMetric()
-		for _, metric := range metrics {
-			labels := metric.GetLabel()
-			if len(labels) >= 5 &&
-				ExtractPrometheusLabelValue("cloudEventSource", labels) == "opentelemetry-metrics-test-ce-w" &&
-				ExtractPrometheusLabelValue("eventsink", labels) == "http" &&
-				ExtractPrometheusLabelValue("namespace", labels) == "opentelemetry-metrics-test-ns" &&
-				ExtractPrometheusLabelValue("state", labels) == "failed" {
-				assert.GreaterOrEqual(t, *metric.Counter.Value, float64(5))
-				found = true
+	// The emitter retries before giving up, so the counter only reaches 5 after several
+	// attempts have been made and pushed to the collector.
+	families := waitForCollectorMetric(t, "keda_cloudeventsource_events_emitted_count_total", func(family *prommodel.MetricFamily) bool {
+		for _, metric := range family.GetMetric() {
+			if failed(metric) && metric.GetCounter().GetValue() >= 5 {
+				return true
 			}
 		}
-		assert.Equal(t, true, found)
-	} else {
-		t.Errorf("metric not available")
+		return false
+	})
+
+	var found bool
+	for _, metric := range families["keda_cloudeventsource_events_emitted_count_total"].GetMetric() {
+		if failed(metric) {
+			assert.GreaterOrEqual(t, *metric.Counter.Value, float64(5))
+			found = true
+		}
 	}
+	assert.True(t, found, "no failed cloudevent metric found")
 
 	KubectlDeleteWithTemplate(t, data, "wrongCloudEventSourceTemplate", wrongCloudEventSourceTemplate)
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
@@ -1546,27 +1569,24 @@ func testEmptyUpstreamResponse(t *testing.T, data templateData) {
 		KubectlDeleteWithTemplate(t, data, "emptyUpstreamPrometheusConfigMapTemplate", emptyUpstreamPrometheusConfigMapTemplate)
 	}()
 
-	time.Sleep(15 * time.Second)
-
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
-	val, ok := family["keda_scaler_empty_upstream_responses_total"]
-	assert.True(t, ok, "keda_scaler_empty_upstream_responses_total not available")
-	if ok {
-		var found bool
-		for _, metric := range val.GetMetric() {
-			labels := metric.GetLabel()
-			if ExtractPrometheusLabelValue("namespace", labels) == testNamespace &&
-				ExtractPrometheusLabelValue("scaledResource", labels) == emptyUpstreamScaledObjectName &&
-				ExtractPrometheusLabelValue("triggerName", labels) == "empty-upstream-trigger" &&
-				ExtractPrometheusLabelValue("metricName", labels) == "s0-prometheus" &&
-				ExtractPrometheusLabelValue("isScaledObject", labels) == "true" &&
-				ExtractPrometheusLabelValue("ignoreNullValues", labels) == "false" &&
-				metric.GetCounter().GetValue() >= 1 {
-				found = true
-			}
-		}
-		assert.True(t, found, "keda_scaler_empty_upstream_responses_total not found with expected labels")
+	matchesEmptyUpstream := func(metric *prommodel.Metric) bool {
+		labels := metric.GetLabel()
+		return ExtractPrometheusLabelValue("namespace", labels) == testNamespace &&
+			ExtractPrometheusLabelValue("scaledResource", labels) == emptyUpstreamScaledObjectName &&
+			ExtractPrometheusLabelValue("triggerName", labels) == "empty-upstream-trigger" &&
+			ExtractPrometheusLabelValue("metricName", labels) == "s0-prometheus" &&
+			ExtractPrometheusLabelValue("isScaledObject", labels) == "true" &&
+			ExtractPrometheusLabelValue("ignoreNullValues", labels) == "false" &&
+			metric.GetCounter().GetValue() >= 1
 	}
+
+	// The counter only moves once the scaler has polled the empty upstream at least once.
+	families := waitForCollectorMetric(t, "keda_scaler_empty_upstream_responses_total", func(family *prommodel.MetricFamily) bool {
+		return slices.ContainsFunc(family.GetMetric(), matchesEmptyUpstream)
+	})
+
+	assert.True(t, slices.ContainsFunc(families["keda_scaler_empty_upstream_responses_total"].GetMetric(), matchesEmptyUpstream),
+		"keda_scaler_empty_upstream_responses_total not found with expected labels")
 }
 
 func testHTTPClientMetrics(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -1584,10 +1604,6 @@ func testHTTPClientMetrics(t *testing.T, kc *kubernetes.Clientset, data template
 		KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	}()
 
-	time.Sleep(20 * time.Second)
-
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
-
 	matchLabels := func(labels []*prommodel.LabelPair) bool {
 		return ExtractPrometheusLabelValue("namespace", labels) == data.TestNamespace &&
 			ExtractPrometheusLabelValue("scaled_resource", labels) == data.HTTPClientScaledObjectName &&
@@ -1596,7 +1612,19 @@ func testHTTPClientMetrics(t *testing.T, kc *kubernetes.Clientset, data template
 			ExtractPrometheusLabelValue("metric_name", labels) == "s0-prometheus"
 	}
 
-	val, ok := family["keda_scaler_http_requests_count_total"]
+	// The requests counter carries these labels whether or not high-cardinality labels are
+	// enabled, and the collector keeps a series for 5 minutes after its last push, so waiting
+	// on the counter can be satisfied by the series testHighCardinalityLabelsDisabled left
+	// behind, before this scenario's operator has recorded anything. Wait for the duration
+	// histogram carrying the labels instead: only an operator running with the flag enabled
+	// can produce that.
+	families := waitForCollectorMetric(t, "keda_scaler_http_request_duration_seconds", func(f *prommodel.MetricFamily) bool {
+		return slices.ContainsFunc(f.GetMetric(), func(metric *prommodel.Metric) bool {
+			return matchLabels(metric.GetLabel()) && metric.GetHistogram().GetSampleCount() > 0
+		})
+	})
+
+	val, ok := families["keda_scaler_http_requests_count_total"]
 	assert.True(t, ok, "keda_scaler_http_requests_count_total not available")
 	if ok {
 		var found bool
@@ -1612,13 +1640,12 @@ func testHTTPClientMetrics(t *testing.T, kc *kubernetes.Clientset, data template
 			data.TestNamespace, data.HTTPClientScaledObjectName, data.HTTPClientScalerName)
 	}
 
-	matchHistogramLabels := func(labels []*prommodel.LabelPair) bool {
-		return matchLabels(labels)
-	}
-	if val, ok := family["keda_scaler_http_request_duration_seconds"]; ok {
+	val, ok = families["keda_scaler_http_request_duration_seconds"]
+	assert.True(t, ok, "keda_scaler_http_request_duration_seconds not available")
+	if ok {
 		var found bool
 		for _, metric := range val.GetMetric() {
-			if matchHistogramLabels(metric.GetLabel()) {
+			if matchLabels(metric.GetLabel()) {
 				assert.Greater(t, metric.GetHistogram().GetSampleCount(), uint64(0),
 					"keda_scaler_http_request_duration_seconds sample count should be > 0")
 				found = true
@@ -1640,8 +1667,6 @@ func testHighCardinalityLabelsDisabled(t *testing.T, kc *kubernetes.Clientset, d
 		KubectlDeleteWithTemplate(t, data, "httpClientScaledObjectTemplate", httpClientScaledObjectTemplate)
 		KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	}()
-
-	time.Sleep(20 * time.Second)
 
 	matchLabels := func(labels []*prommodel.LabelPair) bool {
 		return ExtractPrometheusLabelValue("namespace", labels) == data.TestNamespace &&
