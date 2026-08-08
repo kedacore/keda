@@ -2197,6 +2197,10 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
+        - name: zeroOnMissingEndpoints
+          type: string
+          default: "false"
+          metadataVariableReadable: true
     - type: mongodb
       parameters:
         - name: connectionString
