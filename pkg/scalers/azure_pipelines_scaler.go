@@ -125,6 +125,16 @@ type azurePipelinesPoolIDResponse struct {
 	ID int `json:"id"`
 }
 
+// azureDevOpsLicenseUsageResponse represents the response from the Azure DevOps
+// resourceusage API, used to determine how many parallel job licenses are
+// currently available at the organization level.
+type azureDevOpsLicenseUsageResponse struct {
+	UsedCount     int `json:"usedCount"`
+	ResourceLimit struct {
+		TotalCount int `json:"totalCount"`
+	} `json:"resourceLimit"`
+}
+
 type azurePipelinesScaler struct {
 	metricType  v2.MetricTargetType
 	metadata    *azurePipelinesMetadata
@@ -150,6 +160,14 @@ type azurePipelinesMetadata struct {
 	RequireAllDemands                    bool `keda:"name=requireAllDemands, order=triggerMetadata, default=false"`
 	RequireAllDemandsAndIgnoreOthers     bool `keda:"name=requireAllDemandsAndIgnoreOthers, order=triggerMetadata, default=false"`
 	CaseInsensitiveDemandsProcessing     bool `keda:"name=caseInsensitiveDemandsProcessing, order=triggerMetadata, default=false"`
+	// EnableLicenseCheck, when set to true, makes the scaler additionally query the
+	// Azure DevOps organization's parallel job license usage and caps the reported
+	// queue length to the number of currently available licenses. This avoids KEDA
+	// over-committing resources (e.g. reserving IPs) for jobs that Azure DevOps
+	// cannot actually schedule due to license limits. Disabled by default to preserve
+	// existing behavior and to avoid the extra API call (and associated rate-limit
+	// consumption) for users who don't need it.
+	EnableLicenseCheck bool `keda:"name=enableLicenseCheck, order=triggerMetadata, default=false"`
 }
 
 type authContext struct {
@@ -367,6 +385,33 @@ func getAzurePipelineRequest(ctx context.Context, logger logr.Logger, urlString 
 	return b, nil
 }
 
+// getAzureDevOpsAvailableLicenseCount queries the Azure DevOps organization-level
+// resourceusage API and returns the number of parallel job licenses that are
+// currently free (total licenses minus licenses currently in use). This is used
+// to avoid over-committing agent pods when the organization does not have enough
+// licenses to actually run all queued jobs.
+func getAzureDevOpsAvailableLicenseCount(ctx context.Context, logger logr.Logger, metadata *azurePipelinesMetadata, podIdentity kedav1alpha1.AuthPodIdentity, httpClient *http.Client) (int64, error) {
+	urlString := fmt.Sprintf("%s/_apis/distributedtask/resourceusage?parallelismTag=Private&poolIsHosted=false&includeRunningRequests=true", metadata.OrganizationURL)
+
+	body, err := getAzurePipelineRequest(ctx, logger, urlString, metadata, podIdentity, httpClient)
+	if err != nil {
+		return -1, fmt.Errorf("error fetching Azure DevOps license usage: %w", err)
+	}
+
+	var result azureDevOpsLicenseUsageResponse
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return -1, fmt.Errorf("error unmarshalling Azure DevOps license usage response: %w", err)
+	}
+
+	available := int64(result.ResourceLimit.TotalCount - result.UsedCount)
+	if available < 0 {
+		available = 0
+	}
+
+	return available, nil
+}
+
 func (s *azurePipelinesScaler) GetAzurePipelinesQueueURL() (string, error) {
 	var urlString string
 	if s.metadata.FetchUnfinishedJobsOnly {
@@ -420,6 +465,25 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 					count++
 				}
 			}
+		}
+	}
+
+	// If enabled, cap the queue length to the number of currently available
+	// Azure DevOps parallel job licenses. This prevents KEDA from scaling out
+	// (and reserving resources such as IPs) for jobs that Azure DevOps cannot
+	// actually run due to license limits.
+	//
+	// This performs an additional API call, so it's opt-in via EnableLicenseCheck
+	// to avoid extra rate-limit consumption for users who don't need it. If the
+	// license usage lookup fails, we log the error and fall back to the
+	// unrestricted queue length rather than failing the scaler entirely.
+	if s.metadata.EnableLicenseCheck {
+		availableLicenses, licenseErr := getAzureDevOpsAvailableLicenseCount(ctx, s.logger, s.metadata, s.podIdentity, s.httpClient)
+		if licenseErr != nil {
+			s.logger.Error(licenseErr, "error fetching Azure DevOps license usage, falling back to queue length without license check")
+		} else if count > availableLicenses {
+			s.logger.V(1).Info(fmt.Sprintf("capping queue length from %d to %d based on available Azure DevOps licenses", count, availableLicenses))
+			count = availableLicenses
 		}
 	}
 
