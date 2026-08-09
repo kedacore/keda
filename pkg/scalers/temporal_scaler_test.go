@@ -66,8 +66,8 @@ var testTemporalMetadata = []parseTemporalMetadataTestData{
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerDeploymentName": "my-deploy", "workerDeploymentBuildId": "v1", "selectAllActive": "true"}, true},
 	// valid deployment config
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerDeploymentName": "my-deploy", "workerDeploymentBuildId": "v1"}, false},
-	// valid legacy buildId config
-	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "buildId": "v1"}, false},
+	// legacy buildId is rejected as of v2.21
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "buildId": "v1"}, true},
 	// workflowTaskQueueForCount without includeRunningWorkflowCount
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workflowTaskQueueForCount": "wf-queue"}, true},
 	// includeRunningWorkflowCount alone is valid
@@ -76,6 +76,10 @@ var testTemporalMetadata = []parseTemporalMetadataTestData{
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "includeRunningWorkflowCount": "true", "workflowTaskQueueForCount": "wf-queue"}, false},
 	// includeRunningWorkflowCount rejects unsafe characters in taskQueue
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": "bad queue' OR '1'='1", "namespace": temporalNamespace, "includeRunningWorkflowCount": "true"}, true},
+	// selectAllActive is rejected as of v2.21
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "selectAllActive": "true"}, true},
+	// selectUnversioned is rejected as of v2.21
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "selectUnversioned": "true"}, true},
 }
 
 var temporalMetricIdentifiers = []temporalMetricIdentifier{
@@ -83,8 +87,6 @@ var temporalMetricIdentifiers = []temporalMetricIdentifier{
 	{&testTemporalMetadata[5], 1, "s1-temporal-v2-default"},
 	// deployment version: metric name includes workerDeploymentName + workerDeploymentBuildId
 	{&testTemporalMetadata[11], 0, "s0-temporal-v2-default-my-deploy-v1"},
-	// legacy buildId: metric name is unchanged from unversioned (backward compat)
-	{&testTemporalMetadata[12], 0, "s0-temporal-v2-default"},
 }
 
 func TestTemporalParseMetadata(t *testing.T) {
