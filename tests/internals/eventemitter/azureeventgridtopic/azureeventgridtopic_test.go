@@ -266,7 +266,12 @@ func checkMessage(t *testing.T, client *azservicebus.Client) {
 			ReceiveMode: azservicebus.ReceiveModePeekLock,
 		},
 	)
-	require.NoErrorf(t, err, "cannot create receiver - %s", err)
+	// checkMessage runs in a goroutine, so it must not call FailNow - it would
+	// skip wg.Done() and hang the test until the global timeout.
+	if err != nil {
+		t.Errorf("cannot create receiver - %s", err)
+		return
+	}
 	defer receiver.Close(context.Background())
 
 	// The event grid topic receives CloudEvents about KEDA resources in every
@@ -284,6 +289,12 @@ func checkMessage(t *testing.T, client *azservicebus.Client) {
 		}
 
 		for _, message := range messages {
+			// complete every received message, including unparseable ones,
+			// so they don't get redelivered after the peek lock expires
+			if err := receiver.CompleteMessage(ctx, message, nil); err != nil {
+				t.Logf("cannot complete message - %s", err)
+			}
+
 			event := messaging.CloudEvent{}
 			if err := json.Unmarshal(message.Body, &event); err != nil {
 				t.Logf("cannot parse message - %s - %s", err, message.Body)
@@ -298,9 +309,6 @@ func checkMessage(t *testing.T, client *azservicebus.Client) {
 				expectedSource == event.Source &&
 				expectedType == event.Type {
 				found = true
-			}
-			if err := receiver.CompleteMessage(ctx, message, nil); err != nil {
-				t.Logf("cannot complete message - %s", err)
 			}
 		}
 	}
