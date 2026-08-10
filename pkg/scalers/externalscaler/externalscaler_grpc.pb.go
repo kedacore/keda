@@ -19,10 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ExternalScaler_IsActive_FullMethodName       = "/externalscaler.ExternalScaler/IsActive"
-	ExternalScaler_StreamIsActive_FullMethodName = "/externalscaler.ExternalScaler/StreamIsActive"
-	ExternalScaler_GetMetricSpec_FullMethodName  = "/externalscaler.ExternalScaler/GetMetricSpec"
-	ExternalScaler_GetMetrics_FullMethodName     = "/externalscaler.ExternalScaler/GetMetrics"
+	ExternalScaler_IsActive_FullMethodName         = "/externalscaler.ExternalScaler/IsActive"
+	ExternalScaler_StreamIsActive_FullMethodName   = "/externalscaler.ExternalScaler/StreamIsActive"
+	ExternalScaler_GetMetricSpec_FullMethodName    = "/externalscaler.ExternalScaler/GetMetricSpec"
+	ExternalScaler_GetMetrics_FullMethodName       = "/externalscaler.ExternalScaler/GetMetrics"
+	ExternalScaler_StreamMetricSpec_FullMethodName = "/externalscaler.ExternalScaler/StreamMetricSpec"
 )
 
 // ExternalScalerClient is the client API for ExternalScaler service.
@@ -33,6 +34,20 @@ type ExternalScalerClient interface {
 	StreamIsActive(ctx context.Context, in *ScaledObjectRef, opts ...grpc.CallOption) (grpc.ServerStreamingClient[IsActiveResponse], error)
 	GetMetricSpec(ctx context.Context, in *ScaledObjectRef, opts ...grpc.CallOption) (*GetMetricSpecResponse, error)
 	GetMetrics(ctx context.Context, in *GetMetricsRequest, opts ...grpc.CallOption) (*GetMetricsResponse, error)
+	// Optional. When implemented, the scaler pushes updated metric specs
+	// whenever HPA target values change. KEDA updates the cached specs and
+	// syncs the HPA accordingly. If unimplemented (returns Unimplemented),
+	// KEDA silently falls back to the existing pull-based behavior.
+	//
+	// Servers implementing this RPC must follow two rules:
+	//  1. Send the current metric specs immediately when the stream is
+	//     opened (like StreamIsActive), not only when values change.
+	//  2. Keep GetMetricSpec returning the same current values as the
+	//     latest streamed update. KEDA may rebuild its internal scaler
+	//     state (e.g. after a scaler error) and falls back to
+	//     GetMetricSpec until the next streamed update; if the two
+	//     diverge, HPA targets can temporarily revert to stale values.
+	StreamMetricSpec(ctx context.Context, in *ScaledObjectRef, opts ...grpc.CallOption) (grpc.ServerStreamingClient[GetMetricSpecResponse], error)
 }
 
 type externalScalerClient struct {
@@ -92,6 +107,25 @@ func (c *externalScalerClient) GetMetrics(ctx context.Context, in *GetMetricsReq
 	return out, nil
 }
 
+func (c *externalScalerClient) StreamMetricSpec(ctx context.Context, in *ScaledObjectRef, opts ...grpc.CallOption) (grpc.ServerStreamingClient[GetMetricSpecResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &ExternalScaler_ServiceDesc.Streams[1], ExternalScaler_StreamMetricSpec_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[ScaledObjectRef, GetMetricSpecResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ExternalScaler_StreamMetricSpecClient = grpc.ServerStreamingClient[GetMetricSpecResponse]
+
 // ExternalScalerServer is the server API for ExternalScaler service.
 // All implementations must embed UnimplementedExternalScalerServer
 // for forward compatibility.
@@ -100,6 +134,20 @@ type ExternalScalerServer interface {
 	StreamIsActive(*ScaledObjectRef, grpc.ServerStreamingServer[IsActiveResponse]) error
 	GetMetricSpec(context.Context, *ScaledObjectRef) (*GetMetricSpecResponse, error)
 	GetMetrics(context.Context, *GetMetricsRequest) (*GetMetricsResponse, error)
+	// Optional. When implemented, the scaler pushes updated metric specs
+	// whenever HPA target values change. KEDA updates the cached specs and
+	// syncs the HPA accordingly. If unimplemented (returns Unimplemented),
+	// KEDA silently falls back to the existing pull-based behavior.
+	//
+	// Servers implementing this RPC must follow two rules:
+	//  1. Send the current metric specs immediately when the stream is
+	//     opened (like StreamIsActive), not only when values change.
+	//  2. Keep GetMetricSpec returning the same current values as the
+	//     latest streamed update. KEDA may rebuild its internal scaler
+	//     state (e.g. after a scaler error) and falls back to
+	//     GetMetricSpec until the next streamed update; if the two
+	//     diverge, HPA targets can temporarily revert to stale values.
+	StreamMetricSpec(*ScaledObjectRef, grpc.ServerStreamingServer[GetMetricSpecResponse]) error
 	mustEmbedUnimplementedExternalScalerServer()
 }
 
@@ -121,6 +169,9 @@ func (UnimplementedExternalScalerServer) GetMetricSpec(context.Context, *ScaledO
 }
 func (UnimplementedExternalScalerServer) GetMetrics(context.Context, *GetMetricsRequest) (*GetMetricsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMetrics not implemented")
+}
+func (UnimplementedExternalScalerServer) StreamMetricSpec(*ScaledObjectRef, grpc.ServerStreamingServer[GetMetricSpecResponse]) error {
+	return status.Error(codes.Unimplemented, "method StreamMetricSpec not implemented")
 }
 func (UnimplementedExternalScalerServer) mustEmbedUnimplementedExternalScalerServer() {}
 func (UnimplementedExternalScalerServer) testEmbeddedByValue()                        {}
@@ -208,6 +259,17 @@ func _ExternalScaler_GetMetrics_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ExternalScaler_StreamMetricSpec_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ScaledObjectRef)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ExternalScalerServer).StreamMetricSpec(m, &grpc.GenericServerStream[ScaledObjectRef, GetMetricSpecResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ExternalScaler_StreamMetricSpecServer = grpc.ServerStreamingServer[GetMetricSpecResponse]
+
 // ExternalScaler_ServiceDesc is the grpc.ServiceDesc for ExternalScaler service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -232,6 +294,11 @@ var ExternalScaler_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "StreamIsActive",
 			Handler:       _ExternalScaler_StreamIsActive_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "StreamMetricSpec",
+			Handler:       _ExternalScaler_StreamMetricSpec_Handler,
 			ServerStreams: true,
 		},
 	},

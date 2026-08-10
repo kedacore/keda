@@ -814,21 +814,21 @@ func GetCurrentReplicas(ctx context.Context, client client.Client, scaleClient s
 			logger.Error(err, "target deployment doesn't exist")
 			return 0, err
 		}
-		return *deployment.Spec.Replicas, nil
+		return ptr.Deref(deployment.Spec.Replicas, 1), nil
 	case targetGVKR.Group == appsGroup && targetGVKR.Kind == statefulSetKind:
 		statefulSet := &appsv1.StatefulSet{}
 		if err := client.Get(ctx, types.NamespacedName{Name: targetName, Namespace: scaledObject.Namespace}, statefulSet); err != nil {
 			logger.Error(err, "target statefulset doesn't exist")
 			return 0, err
 		}
-		return *statefulSet.Spec.Replicas, nil
+		return ptr.Deref(statefulSet.Spec.Replicas, 1), nil
 	case targetGVKR.Group == appsGroup && targetGVKR.Kind == replicaSetKind:
 		replicaSet := &appsv1.ReplicaSet{}
 		if err := client.Get(ctx, types.NamespacedName{Name: targetName, Namespace: scaledObject.Namespace}, replicaSet); err != nil {
 			logger.Error(err, "target replicaset doesn't exist")
 			return 0, err
 		}
-		return *replicaSet.Spec.Replicas, nil
+		return ptr.Deref(replicaSet.Spec.Replicas, 1), nil
 	default:
 		// Try reading from the informer cache via Unstructured to avoid an API call.
 		unstruct := &unstructured.Unstructured{}
