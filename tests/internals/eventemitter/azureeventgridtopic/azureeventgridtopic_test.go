@@ -82,6 +82,9 @@ const (
     destination:
       azureEventGridTopic:
         endpoint: {{.EventGridEndpoint}}
+    eventSubscription:
+      includedEventTypes:
+      - keda.scaledobject.ready.v1
   `
 	monitoredDeploymentTemplate = `apiVersion: apps/v1
 kind: Deployment
