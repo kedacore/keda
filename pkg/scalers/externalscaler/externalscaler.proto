@@ -8,6 +8,21 @@ service ExternalScaler {
     rpc StreamIsActive(ScaledObjectRef) returns (stream IsActiveResponse) {}
     rpc GetMetricSpec(ScaledObjectRef) returns (GetMetricSpecResponse) {}
     rpc GetMetrics(GetMetricsRequest) returns (GetMetricsResponse) {}
+
+    // Optional. When implemented, the scaler pushes updated metric specs
+    // whenever HPA target values change. KEDA updates the cached specs and
+    // syncs the HPA accordingly. If unimplemented (returns Unimplemented),
+    // KEDA silently falls back to the existing pull-based behavior.
+    //
+    // Servers implementing this RPC must follow two rules:
+    //   1. Send the current metric specs immediately when the stream is
+    //      opened (like StreamIsActive), not only when values change.
+    //   2. Keep GetMetricSpec returning the same current values as the
+    //      latest streamed update. KEDA may rebuild its internal scaler
+    //      state (e.g. after a scaler error) and falls back to
+    //      GetMetricSpec until the next streamed update; if the two
+    //      diverge, HPA targets can temporarily revert to stale values.
+    rpc StreamMetricSpec(ScaledObjectRef) returns (stream GetMetricSpecResponse) {}
 }
 
 message ScaledObjectRef {
