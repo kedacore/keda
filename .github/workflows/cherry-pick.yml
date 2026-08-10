@@ -7,9 +7,6 @@ on:
 permissions:
   contents: read
 
-env:
-  STEP_SECURITY_HARDEN_RUNNER: ${{ vars.disable_harden_runner }}
-
 jobs:
   cherry-pick:
     name: Cherry Pick
