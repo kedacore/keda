@@ -13,6 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     name: Comment evaluate
     container: ghcr.io/kedacore/keda-tools:1.26.5
+    if: |
+      github.event.issue.pull_request != null &&
+      (
+        startsWith(github.event.comment.body, '/run-e2e') ||
+        startsWith(github.event.comment.body, '/skip-e2e')
+      )
     outputs:
       run-e2e: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.checkUserMember.outputs.isTeamMember == 'true' }}
       pr_num: ${{ steps.parser.outputs.pr_num }}
