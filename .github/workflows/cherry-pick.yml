@@ -20,12 +20,6 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - name: Harden the runner (Audit all outbound calls)
-        if: ${{ vars.disable_harden_runner != 'true' }}
-        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
-        with:
-          egress-policy: audit
-
       - name: Generate GitHub App token
         id: app-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
