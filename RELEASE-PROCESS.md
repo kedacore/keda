@@ -48,7 +48,7 @@ Each branch has an independent draft release:
 | Branch | Draft tracks | Version bump |
 | --- | --- | --- |
 | `main` | Next minor release | `vX.(Y+1).0` |
-| `release/vX.Y` | Next patch release for that minor | `vX.Y.(Z+1)` |
+| `release/vX.Y` | Subsequent patch releases for that minor | `vX.Y.(Z+1)` |
 
 Before publishing a release, review and edit the draft body in GitHub to add highlights, upgrade notes, and any extra context for users.
 
@@ -57,8 +57,9 @@ Before publishing a release, review and edit the draft body in GitHub to add hig
 Minor release flow (`vX.Y.0`):
 
 1. Merge all release-bound PRs into `main`.
-1. Create the release branch from `main` (for example `release/v2.21`) and push it.
-1. Open the generated draft release targeting that release branch.
+1. Open the generated draft release for the next minor release and publish `vX.Y.0` from `main`.
+1. During the `vX.Y.0` release workflow, KEDA automatically creates `release/vX.Y` from the release tag commit when it does not exist yet.
+1. Use that `release/vX.Y` branch for subsequent patch releases (`vX.Y.1`, `vX.Y.2`, and so on).
 1. Review and edit the draft notes, then publish.
 
 Hotfix flow (`vX.Y.Z`):
@@ -167,7 +168,7 @@ We need to make sure that the current sprint's items are changed from status `Re
 
 Lastly, the `Upcoming Release Cycles` overview in `ROADMAP.md` should be updated with the new cycle.
 
-In case of minor releases, we need to create the version branch (`release/v2.x`) from the release tag which will be used to include any required hotfix in the future.
+In case of minor releases, the version branch (`release/v2.x`) is created automatically from the `v2.x.0` release tag by the release workflow and is then used to include required hotfixes.
 
 ## 10. Tweet! 🐦
 
