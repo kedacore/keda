@@ -1,23 +1,63 @@
 name: Cherry Pick
 
 on:
-  issue_comment:
-    types: [created]
+  pull_request_target:
+    types: [labeled, closed]
 
 permissions:
   contents: read
 
 jobs:
+  find-labels:
+    name: Find Cherry Pick Labels
+    if: |
+      github.event.pull_request.merged == true && (
+        (github.event.action == 'labeled' && startsWith(github.event.label.name, 'cherry-pick/')) ||
+        (github.event.action == 'closed' && contains(toJSON(github.event.pull_request.labels.*.name), 'cherry-pick/'))
+      )
+    runs-on: ubuntu-latest
+    outputs:
+      labels: ${{ steps.extract.outputs.labels }}
+    steps:
+      - name: Extract cherry-pick labels
+        id: extract
+        env:
+          EVENT_ACTION: ${{ github.event.action }}
+          EVENT_LABEL: ${{ github.event.label.name }}
+          PR_LABELS_JSON: ${{ toJSON(github.event.pull_request.labels) }}
+        run: |
+          if [[ "$EVENT_ACTION" == "labeled" ]]; then
+            version="${EVENT_LABEL#cherry-pick/}"
+            if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::Invalid cherry-pick label '$EVENT_LABEL'. Use format cherry-pick/vX.Y (example: cherry-pick/v2.20)."
+              exit 1
+            fi
+
+            labels_json=$(jq -nc --arg label "$EVENT_LABEL" --arg version "$version" --arg target "release/$version" '[{label:$label,version:$version,target:$target}]')
+          else
+            labels_json=$(echo "$PR_LABELS_JSON" | jq -c '[
+              .[]
+              | select(.name | startswith("cherry-pick/"))
+              | .name as $label
+              | ($label | sub("^cherry-pick/"; "")) as $version
+              | select($version | test("^v[0-9]+\\.[0-9]+$"))
+              | {label:$label,version:$version,target:("release/" + $version)}
+            ]')
+          fi
+
+          echo "labels=$labels_json" >> "$GITHUB_OUTPUT"
+
   cherry-pick:
     name: Cherry Pick
-    # Only run on PR comments (not issue comments) that start with /cherry-pick
-    if: |
-      github.event.issue.pull_request != null &&
-      startsWith(github.event.comment.body, '/cherry-pick ')
+    needs: find-labels
+    if: needs.find-labels.outputs.labels != '[]'
+    strategy:
+      matrix:
+        include: ${{ fromJSON(needs.find-labels.outputs.labels) }}
+      fail-fast: false
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      issues: write
       pull-requests: write
     steps:
       - name: Generate GitHub App token
@@ -27,62 +67,6 @@ jobs:
           client-id: ${{ secrets.GH_CHERRY_PICK_BOT_ID }}
           private-key: ${{ secrets.GH_CHERRY_PICK_BOT_PRIVATE_KEY }}
 
-      - name: Verify commenter is in keda-core-contributors
-        id: checkCoreContributors
-        uses: tspascoal/get-user-teams-membership@b2546c5affc730fd8e3d8483ae9ad3621938c2f9 # v4.0.2
-        with:
-          username: ${{ github.actor }}
-          team: "keda-core-contributors"
-          GITHUB_TOKEN: ${{ secrets.GH_CHECKING_USER_AUTH }}
-
-      - name: Verify commenter is in keda-core-maintainers
-        id: checkCoreMaintainers
-        uses: tspascoal/get-user-teams-membership@b2546c5affc730fd8e3d8483ae9ad3621938c2f9 # v4.0.2
-        with:
-          username: ${{ github.actor }}
-          team: "keda-core-maintainers"
-          GITHUB_TOKEN: ${{ secrets.GH_CHECKING_USER_AUTH }}
-
-      - name: Fail if commenter is not in allowed teams
-        if: steps.checkCoreContributors.outputs.isTeamMember == 'false' && steps.checkCoreMaintainers.outputs.isTeamMember == 'false'
-        run: |
-          echo "::error::@${{ github.actor }} is not a member of keda-core-contributors or keda-core-maintainers."
-          exit 1
-
-      - name: Parse target branch
-        id: parse
-        run: |
-          target=$(echo "${{ github.event.comment.body }}" | sed 's|/cherry-pick[[:space:]]*||' | tr -d '[:space:]')
-          if [[ -z "$target" ]]; then
-            echo "::error::No target branch specified. Usage: /cherry-pick release/vX"
-            exit 1
-          fi
-          echo "target=$target" >> "$GITHUB_OUTPUT"
-
-      - name: Get merge commit SHA
-        id: pr
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        with:
-          github-token: ${{ steps.app-token.outputs.token }}
-          result-encoding: string
-          script: |
-            const pr = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-            });
-            if (!pr.data.merged) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: 'Cannot cherry-pick: PR is not merged yet.',
-              });
-              core.setFailed('PR is not merged');
-            }
-            core.setOutput('title', pr.data.title);
-            return pr.data.merge_commit_sha;
-
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -91,9 +75,9 @@ jobs:
       - name: Cherry-pick commit onto target branch
         id: cp
         env:
-          TARGET: ${{ steps.parse.outputs.target }}
-          COMMIT: ${{ steps.pr.outputs.result }}
-          PR_NUMBER: ${{ github.event.issue.number }}
+          TARGET: ${{ matrix.target }}
+          COMMIT: ${{ github.event.pull_request.merge_commit_sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -116,20 +100,23 @@ jobs:
       - name: Create PR or report failure
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         env:
-          TARGET: ${{ steps.parse.outputs.target }}
+          TARGET: ${{ matrix.target }}
+          TRIGGER_LABEL: ${{ matrix.label }}
           BRANCH: ${{ steps.cp.outputs.branch }}
           SUCCESS: ${{ steps.cp.outputs.success }}
-          COMMIT: ${{ steps.pr.outputs.result }}
-          PR_NUMBER: ${{ github.event.issue.number }}
-          PR_TITLE: ${{ steps.pr.outputs.title }}
+          COMMIT: ${{ github.event.pull_request.merge_commit_sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
             const target = process.env.TARGET;
+            const triggerLabel = process.env.TRIGGER_LABEL;
             const success = process.env.SUCCESS === 'true';
             const branch = process.env.BRANCH;
             const commit = process.env.COMMIT;
             const prNumber = parseInt(process.env.PR_NUMBER);
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
 
             if (!success) {
               const manualSteps = [
@@ -146,67 +133,38 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: prNumber,
-                body: `Cherry-pick to \`${target}\` failed due to conflicts. Manual steps:\n\n${manualSteps}`,
+                body: `❌ Cherry-pick to \`${target}\` failed due to conflicts.\n\nWorkflow run: ${runUrl}\n\nManual steps:\n\n${manualSteps}`,
               });
               core.setFailed('Cherry-pick had conflicts');
               return;
             }
 
             const prTitle = process.env.PR_TITLE;
-            const prBody = `Cherry-pick of #${prNumber} to \`${target}\`.\n\nRequested by @${context.actor} via \`/cherry-pick\` command.`;
+            const prBody = `Cherry-pick of #${prNumber} to \`${target}\`.\n\nTriggered by label \`${triggerLabel}\` by @${context.actor}.`;
 
-            // Upsert PR: update open, or create new (closed PRs cannot be reopened after force-push).
+            // Upsert PR: update open, or create new (closed PRs can't be reopened after force-push).
             let pr;
             const existingOpen = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              head: `${context.repo.owner}:${branch}`,
-              base: target,
-              state: 'open',
+              owner: context.repo.owner, repo: context.repo.repo,
+              head: `${context.repo.owner}:${branch}`, base: target, state: 'open',
             });
             if (existingOpen.data.length > 0) {
               pr = (await github.rest.pulls.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner: context.repo.owner, repo: context.repo.repo,
                 pull_number: existingOpen.data[0].number,
-                title: prTitle,
-                body: prBody,
+                title: prTitle, body: prBody,
               })).data;
             } else {
               pr = (await github.rest.pulls.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: prTitle,
-                head: branch,
-                base: target,
-                body: prBody,
+                owner: context.repo.owner, repo: context.repo.repo,
+                title: prTitle, head: branch, base: target, body: prBody,
               })).data;
             }
 
             // Carry over kind/* labels to the cherry-pick PR.
-            const originalLabels = context.payload.issue.labels
-              .map((label) => label.name)
-              .filter((labelName) => labelName.startsWith('kind/'));
-            // e.g. release/v2.20 -> cherry-pick:v2.20
-            const version = target.replace(/^release\//, '');
-            const branchLabel = `cherry-pick:${version}`;
-
-            // Create the cherry-pick label if it does not exist yet.
-            try {
-              await github.rest.issues.getLabel({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                name: branchLabel,
-              });
-            } catch {
-              await github.rest.issues.createLabel({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                name: branchLabel,
-                color: 'e4e669',
-              });
-            }
-
+            const originalLabels = context.payload.pull_request.labels
+              .map(l => l.name)
+              .filter(l => l.startsWith('kind/'));
             // Apply kind/* labels to the cherry-pick PR.
             if (originalLabels.length > 0) {
               await github.rest.issues.addLabels({
@@ -217,17 +175,46 @@ jobs:
               });
             }
 
-            // Apply cherry-pick:vX label to the original PR to track which branches were targeted.
+            // Mark original PR as completed for this branch and remove trigger label.
+            const version = target.replace(/^release\//, '');
+            const doneLabel = `cherry-picked/${version}`;
+
+            try {
+              await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: doneLabel,
+              });
+            } catch {
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: doneLabel,
+                color: '0e8a16',
+              });
+            }
+
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: prNumber,
-              labels: [branchLabel],
+              labels: [doneLabel],
             });
+
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                name: triggerLabel,
+              });
+            } catch {
+              // Ignore if trigger label was already removed.
+            }
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: prNumber,
-              body: `Cherry-pick PR created: #${pr.number}`,
+              body: `✅ Cherry-pick PR for \`${target}\` created: #${pr.number}\n\nWorkflow run: ${runUrl}`,
             });
