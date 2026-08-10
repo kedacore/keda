@@ -6,6 +6,12 @@ jobs:
   assign_reviewer:
     runs-on: ubuntu-slim
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        if: ${{ vars.disable_harden_runner != 'true' }}
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
       - uses: shufo/auto-assign-reviewer-by-files@0a7fae44d02e841755d0caaac2ef05ad12a3bbc9 # v1.2.1
         with:
           config: ".github/reviewers.yml"
