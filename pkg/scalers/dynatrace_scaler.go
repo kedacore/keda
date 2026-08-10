@@ -23,6 +23,7 @@ import (
 const (
 	dynatraceMetricDataPointsAPI = "api/v2/metrics/query"
 	dynatraceDQLAPI              = "platform/storage/query/v1/query"
+	dynatraceNotStartedState     = "NOT_STARTED"
 	dynatraceRunningState        = "RUNNING"
 	dynatraceSucceededState      = "SUCCEEDED"
 )
@@ -286,7 +287,7 @@ func (s *dynatraceScaler) executeDQL(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error starting DQL query: %w", err)
 	}
-	if dynatraceResponse.State == dynatraceRunningState || dynatraceResponse.State == dynatraceSucceededState {
+	if dynatraceResponse.State == dynatraceRunningState || dynatraceResponse.State == dynatraceSucceededState || dynatraceResponse.State == dynatraceNotStartedState {
 		return dynatraceResponse.RequestToken, nil
 	}
 	return "", fmt.Errorf("error starting DQL query: unknown state %s", dynatraceResponse.State)
