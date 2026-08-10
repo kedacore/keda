@@ -88,15 +88,16 @@ When adding log messages to the project, it's crucial to set the appropriate log
 
 Some of the metrics and log messages in the project don't follow the above practices, but are there for historical reasons. When refactoring pieces of code, please try to apply the best practices to any log message or metric which is impacted.
 
-## Changelog
+## Release Notes
 
-Every change should be added to our changelog under `Unreleased` which is located in `CHANGELOG.md`. This helps us keep track of all changes in a given release.
+Release notes are generated automatically from merged PR metadata rather than being maintained manually in `CHANGELOG.md`.
 
-Here are some guidelines to follow:
-- Always use `General: ` or `<Scaler Name>: ` as a prefix and sort them alphabetically
-  - General changes, however, should always be at the top
-- Entries should always follow the `<Scaler Name / General>: <Description> (#<ID>)` where `<ID>` is preferably the ID of an issue, otherwise a PR is OK.
-- New scalers should use `General:` and use this template: `**General:** Introduce new XXXXXX Scaler ([#ISSUE](https://github.com/kedacore/keda/issues/ISSUE))`
+To ensure your change appears correctly in the generated notes:
+- PR titles must follow `**Component**: Description` (for example: `**General**: Fix nil pointer dereference`).
+- PRs must include exactly one valid release-notes label (`kind/feature`, `kind/new-scaler`, `kind/improvement`, `kind/enhancement`, `kind/bug`, `kind/deprecation`, `kind/breaking-change`, `kind/chore`, `kind/documentation`, `kind/dependencies`, or `kind/ci`) unless `skip-changelog` is explicitly used.
+- Use `skip-changelog` only when the change should be excluded from generated release notes.
+
+These rules are validated automatically by [pr-changelog-check workflow](.github/workflows/pr-changelog-check.yml).
 
 ## Including Documentation Changes
 
