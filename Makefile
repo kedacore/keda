@@ -411,7 +411,3 @@ help: ## Display this help.
 .PHONY: docker-build-dev-containers
 docker-build-dev-containers: ## Build dev-containers image
 	docker build -f .devcontainer/Dockerfile .
-
-.PHONY: validate-changelog
-validate-changelog: ## Validate changelog
-	./hack/validate-changelog.sh
