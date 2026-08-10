@@ -131,6 +131,28 @@ Lastly, the `Upcoming Release Cycles` overview in `ROADMAP.md` should be updated
 
 In case of minor releases, we need to create the version branch (`release/v2.x`) from the release tag which will be used to include any required hotfix in the future.
 
+### Cherry-picking merged PRs to release branches
+
+When a merged PR needs to be backported to a release branch, use a PR comment in the original merged PR:
+
+```text
+/cherry-pick release/vX.Y
+```
+
+For example:
+
+```text
+/cherry-pick release/v2.20
+```
+
+Behavior:
+
+- The command only works on pull requests that are already merged.
+- The command can only be executed by members of `keda-core-contributors` or `keda-core-maintainers`.
+- KEDA will create (or update) a cherry-pick branch and open a cherry-pick PR targeting the requested release branch.
+- KEDA will copy `kind/*` labels to the cherry-pick PR and add a `cherry-pick:vX.Y` label to the original PR.
+- If the cherry-pick fails because of conflicts, KEDA comments with the manual recovery steps.
+
 ## 10. Tweet! 🐦
 
 Prepare a tweet with some highlights and send it out on [@kedaorg](https://twitter.com/kedaorg)!
