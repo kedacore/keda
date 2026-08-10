@@ -18,7 +18,7 @@ There are many areas we can use contributions - ranging from code, documentation
   - [Metrics](#metrics)
   - [Logging and Log Messages](#logging-and-log-messages)
   - [Legacy](#legacy)
-- [Changelog](#changelog)
+- [Release Notes](#release-notes)
 - [Including Documentation Changes](#including-documentation-changes)
 - [Creating and building a local environment](#creating-and-building-a-local-environment)
 - [Developer Certificate of Origin: Signing your work](#developer-certificate-of-origin-signing-your-work)
