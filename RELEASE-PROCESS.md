@@ -57,10 +57,10 @@ Before publishing a release, review and edit the draft body in GitHub to add hig
 Minor release flow (`vX.Y.0`):
 
 1. Merge all release-bound PRs into `main`.
-1. Open the generated draft release for the next minor release and publish `vX.Y.0` from `main`.
+1. Open the generated draft release for the next minor release.
 1. During the `vX.Y.0` release workflow, KEDA automatically creates `release/vX.Y` from the release tag commit when it does not exist yet.
 1. Use that `release/vX.Y` branch for subsequent patch releases (`vX.Y.1`, `vX.Y.2`, and so on).
-1. Review and edit the draft notes, then publish.
+1. Review and edit the draft notes, then publish `vX.Y.0` from `main`.
 
 Hotfix flow (`vX.Y.Z`):
 
