@@ -249,9 +249,17 @@ func clearAllBuilds(t *testing.T, connection *azuredevops.Connection) {
 	if err != nil {
 		t.Error(fmt.Sprintf("unable to create build client: %s", err.Error()), err)
 	}
+	definitionID, err := strconv.Atoi(buildID)
+	if err != nil {
+		t.Errorf("unable to parse buildID")
+	}
 	var top = 20
+	// Scope the cleanup to this test's build definition - the azure_pipelines
+	// e2e variants share one project and run in parallel, so cancelling every
+	// build in the project kills the sibling tests' queued builds mid-flight.
 	args := build.GetBuildsArgs{
 		Project:      &project,
+		Definitions:  &[]int{definitionID},
 		StatusFilter: &build.BuildStatusValues.All,
 		QueryOrder:   &build.BuildQueryOrderValues.QueueTimeDescending,
 		Top:          &top,

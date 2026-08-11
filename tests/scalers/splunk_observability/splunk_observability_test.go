@@ -198,6 +198,7 @@ func sendTestMetrics(ctx context.Context, token string, realm string) {
 }
 
 func TestSplunkObservabilityScaler(t *testing.T) {
+	t.Skip("Skipping Splunk Observability scaler test, see https://github.com/kedacore/keda/issues/7994")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
