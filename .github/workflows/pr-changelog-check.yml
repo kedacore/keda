@@ -27,12 +27,12 @@ jobs:
           script: |
             const title = context.payload.pull_request.title || '';
 
-            // KEDA changelog style: **Component**: Description
-            const titleMatch = title.match(/^\*\*([^*]+)\*\*:\s+(.+)$/);
+            // KEDA changelog style: Component: Description
+            const titleMatch = title.match(/^([^:]+):\s+(.+)$/);
 
             if (!titleMatch) {
               core.setFailed(
-                "PR title must follow KEDA format: **Component**: Description (example: **General**: Fix nil pointer dereference)."
+                "PR title must follow KEDA format: Component: Description (example: General: Fix nil pointer dereference)."
               );
               return;
             }

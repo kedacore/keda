@@ -53,7 +53,7 @@ Release notes are generated automatically from merged PR metadata via the releas
 
 Rules (from [`CONTRIBUTING.md#release-notes`](CONTRIBUTING.md#release-notes)):
 
-- PR titles must follow `**Component**: Description`.
+- PR titles must follow `Component: Description`. The release notes renderer bolds the component automatically.
 - PRs must include exactly one valid release-notes label unless `skip-changelog` is explicitly used.
 - Use `skip-changelog` only for changes that should be excluded from generated release notes.
 

@@ -9,8 +9,11 @@ body = """
 {% for group, commits in commits | group_by(attribute="group") -%}
 ## {{ group | striptags | trim }}
 {% for commit in commits -%}
-{% set title = commit.remote.pr_title | default(value=commit.message | split(pat="\n") | first) -%}
-- [`{{ commit.id | truncate(length=7, end="") }}`](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/commit/{{ commit.id }}) : {{ title | trim }}{% if commit.remote.pr_number %} ([#{{ commit.remote.pr_number }}](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/pull/{{ commit.remote.pr_number }})){% endif %}{% if commit.remote.username %} (@{{ commit.remote.username }}){% endif %}
+{% set title = commit.remote.pr_title | default(value=commit.message | split(pat="\n") | first) | trim -%}
+{% set title_parts = title | split(pat=":") -%}
+{% set component = title_parts | first | trim -%}
+{% set description = title_parts | slice(start=1) | join(sep=":") | trim -%}
+- [`{{ commit.id | truncate(length=7, end="") }}`](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/commit/{{ commit.id }}) : **{{ component }}**{% if description %}: {{ description }}{% endif %}{% if commit.remote.pr_number %} ([#{{ commit.remote.pr_number }}](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/pull/{{ commit.remote.pr_number }})){% endif %}{% if commit.remote.username %} (@{{ commit.remote.username }}){% endif %}
 {% endfor %}
 {% endfor -%}
 """
