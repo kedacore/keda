@@ -55,6 +55,9 @@ jobs:
       matrix:
         include: ${{ fromJSON(needs.find-labels.outputs.labels) }}
       fail-fast: false
+    concurrency:
+      group: cherry-pick-${{ github.event.pull_request.number }}-${{ matrix.target }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     permissions:
       contents: write
