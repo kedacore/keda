@@ -11,6 +11,7 @@
     ":prHourlyLimitNone",
   ],
   commitBodyTable: true,
+  commitMessagePrefix: "Dependencies:",
   labels: ["dependencies", "kind/dependencies"],
   osvVulnerabilityAlerts: true,
   packageRules: [
