@@ -26,6 +26,9 @@ const (
 	dynatraceNotStartedState     = "NOT_STARTED"
 	dynatraceRunningState        = "RUNNING"
 	dynatraceSucceededState      = "SUCCEEDED"
+	dynatraceFailedState         = "FAILED"
+	dynatraceCancelledState      = "CANCELLED"
+	dynatraceResultGoneState     = "RESULT_GONE"
 )
 
 type dynatraceScaler struct {
@@ -320,7 +323,7 @@ func (s *dynatraceScaler) pollDQLResult(ctx context.Context, url string) (float6
 	if err != nil {
 		return -1, false, fmt.Errorf("error parsing DQL response: %w", err)
 	}
-	if dynatraceResponse.State == dynatraceRunningState {
+	if dynatraceResponse.State == dynatraceRunningState || dynatraceResponse.State == dynatraceNotStartedState {
 		return -1, true, nil
 	}
 	if dynatraceResponse.State == dynatraceSucceededState {
@@ -328,6 +331,15 @@ func (s *dynatraceScaler) pollDQLResult(ctx context.Context, url string) (float6
 			return dynatraceResponse.Result.Records[0].R, false, nil
 		}
 		return -1, false, errors.New("error executing DQL query: empty result")
+	}
+	if dynatraceResponse.State == dynatraceFailedState {
+		return -1, false, errors.New("error executing DQL query: query failed")
+	}
+	if dynatraceResponse.State == dynatraceCancelledState {
+		return -1, false, errors.New("error executing DQL query: query was cancelled")
+	}
+	if dynatraceResponse.State == dynatraceResultGoneState {
+		return -1, false, errors.New("error executing DQL query: result expired (RESULT_GONE)")
 	}
 	return -1, false, fmt.Errorf("error executing DQL query: unknown state: %s", dynatraceResponse.State)
 }
