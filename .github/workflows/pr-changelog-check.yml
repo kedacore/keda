@@ -68,7 +68,7 @@ jobs:
             const invalidLabels = kindLabels.filter((label) => !validLabels.has(label));
 
             if (kindLabels.length === 0) {
-              core.setNeutral(
+              core.setFailed(
                 `Waiting for a maintainer to add one changelog label. Valid labels: ${[...validLabels].join(', ')}`
               );
             } else if (invalidLabels.length > 0) {
