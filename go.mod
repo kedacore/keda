@@ -4,7 +4,7 @@ go 1.26.0
 
 replace (
 	// pin k8s.io to v0.35.5 & sigs.k8s.io/controller-runtime to v0.23.3
-	github.com/google/cel-go => github.com/google/cel-go v0.26.0
+	github.com/google/cel-go => github.com/google/cel-go v0.29.0
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model => github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common => github.com/prometheus/common v0.66.1
@@ -254,7 +254,7 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/btree v1.1.3 // indirect
-	github.com/google/cel-go v0.27.0 // indirect
+	github.com/google/cel-go v0.29.0 // indirect
 	github.com/google/flatbuffers v25.12.19+incompatible // indirect
 	github.com/google/gnostic-models v0.7.1 // indirect
 	github.com/google/go-github/v84 v84.0.0 // indirect
@@ -332,7 +332,6 @@ require (
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.6.0 // indirect
 	github.com/spyzhov/ajson v0.9.6 // indirect
-	github.com/stoewer/go-strcase v1.3.1 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect
 	github.com/tidwall/match v1.2.0 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
