@@ -1,0 +1,82 @@
+name: Lint PR
+
+on:
+  pull_request_target:
+    types: [opened, reopened, edited, synchronize, labeled, unlabeled]
+
+permissions: {}
+
+# PR updates can happen in quick succession leading to this
+# workflow being triggered several times. This limits it
+# to one run per PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    permissions:
+      contents: read
+      pull-requests: read
+    name: Validate PR Metadata
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check PR title format
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const title = context.payload.pull_request.title || '';
+
+            // KEDA changelog style: Component: Description
+            const titleMatch = title.match(/^([^:]+):\s+(.+)$/);
+
+            if (!titleMatch) {
+              core.setFailed(
+                "PR title must follow KEDA format: Component: Description (example: General: Fix nil pointer dereference)."
+              );
+              return;
+            }
+
+            const component = titleMatch[1].trim();
+            const componentPattern = /^[A-Z][A-Za-z0-9/,&+ .-]*$/;
+
+            if (!componentPattern.test(component)) {
+              core.setFailed(
+                `PR title component '${component}' is invalid. Use a KEDA-style component such as 'General', 'Kafka Scaler', 'CI', or 'ScaledObject/ScaledJob'.`
+              );
+            }
+
+      - name: Check changelog label
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const validLabels = new Set([
+              'kind/feature', 'kind/new-scaler',
+              'kind/improvement', 'kind/enhancement',
+              'kind/bug',
+              'kind/deprecation',
+              'kind/breaking-change',
+              'kind/chore', 'kind/documentation', 'kind/dependencies', 'kind/ci',
+              'skip-changelog',
+            ]);
+
+            const labels = context.payload.pull_request.labels.map((label) => label.name);
+
+            if (labels.includes('skip-changelog')) return;
+
+            const kindLabels = labels.filter((label) => label.startsWith('kind/'));
+            const invalidLabels = kindLabels.filter((label) => !validLabels.has(label));
+
+            if (kindLabels.length === 0) {
+              core.setFailed(
+                `PR must have exactly one valid changelog label. Valid labels: ${[...validLabels].join(', ')}`
+              );
+            } else if (invalidLabels.length > 0) {
+              core.setFailed(
+                `Unknown label(s): ${invalidLabels.join(', ')}. Valid labels: ${[...validLabels].filter((label) => label !== 'skip-changelog').join(', ')}`
+              );
+            } else if (kindLabels.length > 1) {
+              core.setFailed(
+                `PR has ${kindLabels.length} kind/ labels (${kindLabels.join(', ')}). Use exactly one.`
+              );
+            }
