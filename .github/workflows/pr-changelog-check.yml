@@ -68,8 +68,8 @@ jobs:
             const invalidLabels = kindLabels.filter((label) => !validLabels.has(label));
 
             if (kindLabels.length === 0) {
-              core.setFailed(
-                `PR must have exactly one valid changelog label. Valid labels: ${[...validLabels].join(', ')}`
+              core.setNeutral(
+                `Waiting for a maintainer to add one changelog label. Valid labels: ${[...validLabels].join(', ')}`
               );
             } else if (invalidLabels.length > 0) {
               core.setFailed(
