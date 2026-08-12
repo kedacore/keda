@@ -11,7 +11,7 @@
     ":prHourlyLimitNone",
   ],
   commitBodyTable: true,
-  labels: ["dependencies"],
+  labels: ["dependencies", "kind/dependencies"],
   osvVulnerabilityAlerts: true,
   packageRules: [
     // --- GitHub Actions ---
@@ -24,7 +24,7 @@
     // --- Go modules ---
     {
       matchManagers: ["gomod"],
-      matchUpdateTypes: ["minor", "patch"],
+      matchUpdateTypes: ["minor", "patch", "digest"],
       groupName: "Go Dependencies (non-major)",
     },
     // Split minor and patch for k8s packages so patch fixes
@@ -52,13 +52,27 @@
     },
     {
       matchManagers: ["gomod"],
+      matchPackageNames: [
+        "k8s.io/**",
+        "sigs.k8s.io/controller-runtime",
+        "sigs.k8s.io/controller-tools",
+        "sigs.k8s.io/custom-metrics-apiserver",
+      ],
+      matchUpdateTypes: ["patch", "digest"],
+      groupName: "Kubernetes Dependencies (patch)",
+    },
+    {
+      matchManagers: ["gomod"],
       matchPackageNames: ["github.com/prometheus/**"],
       matchUpdateTypes: ["minor", "patch"],
       groupName: "Prometheus Dependencies",
     },
     {
       matchManagers: ["gomod"],
-      matchPackageNames: ["github.com/aws/aws-sdk-go-v2/**"],
+      matchPackageNames: [
+        "github.com/aws/aws-sdk-go-v2",
+        "github.com/aws/aws-sdk-go-v2/**",
+      ],
       matchUpdateTypes: ["minor", "patch"],
       groupName: "AWS SDK",
     },
@@ -89,6 +103,16 @@
       matchUpdateTypes: ["minor", "major"],
       enabled: false,
     },
+    {
+      matchManagers: ["custom.regex"],
+      matchPackageNames: ["kubernetes-sigs/kind", "kindest/node"],
+      groupName: "kind Test Infrastructure",
+    },
+    {
+      matchManagers: ["custom.regex"],
+      matchPackageNames: ["vishnubijukumar/**"],
+      groupName: "s390x Test Infrastructure",
+    },
 
     // --- Pre-commit ---
     {
@@ -100,6 +124,7 @@
     {
       matchFileNames: [".devcontainer/**"],
       pinDigests: false,
+      groupName: "DevContainer",
     },
   ],
   customManagers: [
