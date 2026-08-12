@@ -13,8 +13,11 @@ jobs:
           - AMD64
           - ARM64
         kindVersion:
+          # renovate: datasource=docker depName=kindest/node
           - v1.34.3
+          # renovate: datasource=docker depName=kindest/node@only-patch packageName=kindest/node
           - v1.33.7
+          # renovate: datasource=docker depName=kindest/node@only-patch packageName=kindest/node
           - v1.32.11
         include:
           - arch: AMD64
