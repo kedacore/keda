@@ -59,7 +59,7 @@
         "sigs.k8s.io/custom-metrics-apiserver",
       ],
       matchUpdateTypes: ["patch", "digest"],
-      groupName: "Kubernetes Dependencies (patch)",
+      groupName: "Kubernetes Dependencies",
     },
     {
       matchManagers: ["gomod"],
