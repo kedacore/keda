@@ -724,8 +724,8 @@ github.com/neelance/astrewrite v0.0.0-20160511093645-99348263ae86/go.mod h1:kHJE
 github.com/neelance/sourcemap v0.0.0-20200213170602-2833bce08e4c/go.mod h1:Qr6/a/Q4r9LP1IltGz7tA7iOK1WonHEYhu1HRBA7ZiM=
 github.com/newrelic/newrelic-client-go/v2 v2.93.1 h1:CaIc3K9wFg57dwKCpAo1PaydnXePB069wGTbS5z7Hec=
 github.com/newrelic/newrelic-client-go/v2 v2.93.1/go.mod h1:kROngr/zeNyxbdOI3zPK4Al+ze32XjLEVUDzjxsKW9g=
-github.com/nexus-rpc/nexus-proto-annotations v0.1.0 h1:2fELd+9sqUtNu6Fg//pw8YFsxOvp8vZ8hfP0nHhNI80=
-github.com/nexus-rpc/nexus-proto-annotations v0.1.0/go.mod h1:n3UjF1bPCW8llR8tHvbxJ+27yPWrhpo8w/Yg1IOuY0Y=
+github.com/nexus-rpc/nexus-proto-annotations v0.1.1-0.20260629224316-835bd8d49cb4 h1:wAa/+xHX86PvLA6srCRhGm5Mzqvla7wxCJs++3rVzb8=
+github.com/nexus-rpc/nexus-proto-annotations v0.1.1-0.20260629224316-835bd8d49cb4/go.mod h1:n3UjF1bPCW8llR8tHvbxJ+27yPWrhpo8w/Yg1IOuY0Y=
 github.com/nexus-rpc/sdk-go v0.6.0 h1:QRgnP2zTbxEbiyWG/aXH8uSC5LV/Mg1fqb19jb4DBlo=
 github.com/nexus-rpc/sdk-go v0.6.0/go.mod h1:FHdPfVQwRuJFZFTF0Y2GOAxCrbIBNrcPna9slkGKPYk=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=

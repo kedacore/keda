@@ -22,6 +22,10 @@ replace (
 	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.23.3
 )
 
+// Needed replaces
+// temporal.io/api and temporal.io/sdk use this package but it doesn't have license yet in 0.1.0 -> https://github.com/nexus-rpc/nexus-proto-annotations/issues/5
+replace github.com/nexus-rpc/nexus-proto-annotations v0.1.0 => github.com/nexus-rpc/nexus-proto-annotations v0.1.1-0.20260629224316-835bd8d49cb4
+
 require (
 	cloud.google.com/go/compute/metadata v0.9.0
 	cloud.google.com/go/monitoring v1.30.0
@@ -148,30 +152,20 @@ require (
 )
 
 require (
-	cloud.google.com/go/longrunning v1.2.0 // indirect
-	github.com/ClickHouse/ch-go v0.74.0 // indirect
-	github.com/GoogleCloudPlatform/grpc-gcp-go/grpcgcp v1.6.0 // indirect
-	github.com/go-faster/city v1.0.1 // indirect
-	github.com/go-faster/errors v0.7.1 // indirect
-	github.com/google/go-github/v88 v88.0.0 // indirect
-	github.com/nexus-rpc/nexus-proto-annotations v0.1.0 // indirect
-	github.com/paulmach/orb v0.13.0 // indirect
-	github.com/segmentio/asm v1.2.1 // indirect
-	go.opencensus.io v0.24.0 // indirect
-)
-
-require (
 	cel.dev/expr v0.25.2 // indirect
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.23.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/iam v1.11.0 // indirect
+	cloud.google.com/go/longrunning v1.2.0 // indirect
 	code.cloudfoundry.org/clock v1.59.0 // indirect
 	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.12.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.2.0 // indirect
 	github.com/Azure/go-amqp v1.5.1 // indirect
+	github.com/ClickHouse/ch-go v0.74.0 // indirect
 	github.com/DataDog/zstd v1.5.7 // indirect
+	github.com/GoogleCloudPlatform/grpc-gcp-go/grpcgcp v1.6.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.33.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.57.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.57.0 // indirect
@@ -223,6 +217,8 @@ require (
 	github.com/fxamacker/cbor/v2 v2.9.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/go-errors/errors v1.5.1 // indirect
+	github.com/go-faster/city v1.0.1 // indirect
+	github.com/go-faster/errors v0.7.1 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-logr/zapr v1.3.0 // indirect
@@ -258,6 +254,7 @@ require (
 	github.com/google/cel-go v0.29.0 // indirect
 	github.com/google/flatbuffers v25.12.19+incompatible // indirect
 	github.com/google/gnostic-models v0.7.1 // indirect
+	github.com/google/go-github/v88 v88.0.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20260507013755-92041b743c96 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
@@ -311,9 +308,11 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
+	github.com/nexus-rpc/nexus-proto-annotations v0.1.0 // indirect
 	github.com/nexus-rpc/sdk-go v0.6.0 // indirect
 	github.com/oapi-codegen/runtime v1.1.2 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
+	github.com/paulmach/orb v0.13.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.27 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -324,6 +323,7 @@ require (
 	github.com/robfig/cron v1.2.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/samber/lo v1.52.0 // indirect
+	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/signalfx/signalfx-go v1.63.0
@@ -348,6 +348,7 @@ require (
 	github.com/zeebo/xxh3 v1.1.0 // indirect
 	go.etcd.io/etcd/api/v3 v3.7.1 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.7.1 // indirect
+	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/detectors/gcp v1.44.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.68.0 // indirect
