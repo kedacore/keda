@@ -73,7 +73,7 @@ Hotfix flow (`vX.Y.Z`):
 
 The generated release notes depend on PR metadata. Keep these requirements in every PR:
 
-- Use exactly one changelog label from `kind/feature`, `kind/new-scaler`, `kind/improvement`, `kind/enhancement`, `kind/bug`, `kind/deprecation`, `kind/breaking-change`, `kind/chore`, `kind/documentation`, `kind/dependencies`, or `kind/ci`.
+- Use exactly one changelog label from `kind/feature`, `kind/new-scaler`, `kind/improvement`, `kind/bug`, `kind/deprecation`, `kind/breaking-change`, `kind/chore`, `kind/documentation`, `kind/dependencies`, or `kind/ci`.
 - Use `skip-changelog` only when the PR should not appear in release notes.
 - Use a PR title in format `Component: Description`. The release notes renderer bolds the component automatically.
 
