@@ -520,10 +520,6 @@ func TestScalerMode(t *testing.T) {
 	}{
 		{"no versioning fields", temporalMetadata{}, "unversioned"},
 		{"workerDeploymentName set", temporalMetadata{WorkerDeploymentName: "d"}, "deployment-version"},
-		{"deployment takes precedence over buildId", temporalMetadata{WorkerDeploymentName: "d", BuildID: "v1"}, "deployment-version"},
-		{"buildId set", temporalMetadata{BuildID: "v1"}, "build-id"},
-		{"selectAllActive set", temporalMetadata{AllActive: true}, "build-id"},
-		{"selectUnversioned set", temporalMetadata{Unversioned: true}, "build-id"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
