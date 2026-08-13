@@ -492,27 +492,39 @@ func WaitForPodsCompleted(t *testing.T, kc *kubernetes.Clientset, selector, name
 	return false
 }
 
-// Waits until all the pods in the namespace have a running status.
+// isPodReady reports whether the pod's Ready condition is true. The Running phase only means the
+// pod's containers have been created, so it is reached before a readiness probe first succeeds and
+// before the pod is reachable through a Service.
+func isPodReady(pod corev1.Pod) bool {
+	for _, cond := range pod.Status.Conditions {
+		if cond.Type == corev1.PodReady {
+			return cond.Status == corev1.ConditionTrue
+		}
+	}
+	return false
+}
+
+// Waits until all the pods in the namespace are ready.
 func WaitForAllPodRunningInNamespace(t *testing.T, kc *kubernetes.Clientset, namespace string, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
 		pods, err := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
 		if err != nil {
 			t.Logf("cannot list pods in namespace %s - %s", namespace, err)
 		} else {
-			runningCount := 0
+			readyCount := 0
 			for _, pod := range pods.Items {
-				if pod.Status.Phase != corev1.PodRunning {
+				if !isPodReady(pod) {
 					break
 				}
-				runningCount++
+				readyCount++
 			}
 
-			t.Logf("Waiting for pods in namespace to be in 'Running' status. Namespace - %s, Current - %d, Target - %d",
-				namespace, runningCount, len(pods.Items))
+			t.Logf("Waiting for pods in namespace to be ready. Namespace - %s, Current - %d, Target - %d",
+				namespace, readyCount, len(pods.Items))
 
-			// Both callers create the pods they are waiting on, so an empty namespace means the
-			// list arrived before they were scheduled rather than that everything is running.
-			if len(pods.Items) > 0 && runningCount == len(pods.Items) {
+			// Every caller creates the pods it is waiting on, so an empty namespace means the
+			// list arrived before they were scheduled rather than that everything is ready.
+			if len(pods.Items) > 0 && readyCount == len(pods.Items) {
 				return true
 			}
 		}
@@ -531,6 +543,8 @@ func WaitForRunningPodCount(t *testing.T, kc *kubernetes.Clientset, scaledJobNam
 		if err != nil {
 			t.Logf("cannot list pods - %s", err)
 		} else {
+			// Phase rather than readiness on purpose: these are ScaledJob pods, and the callers are
+			// counting how many the executor started, not whether each one is serving traffic.
 			runningPodCount := 0
 			for _, pod := range pods.Items {
 				if pod.Status.Phase == corev1.PodRunning {
@@ -612,12 +626,8 @@ func WaitForPodReady(t *testing.T, kc *kubernetes.Clientset, podName, namespace 
 		} else {
 			t.Logf("Waiting for pod to be in ready state. Pod - %s, Current Phase - %s", podName, pod.Status.Phase)
 
-			// A pod can be in the Running phase without all containers being ready.
-			// Check the Ready condition to ensure the pod is actually ready.
-			for _, cond := range pod.Status.Conditions {
-				if cond.Type == corev1.PodReady && cond.Status == corev1.ConditionTrue {
-					return true
-				}
+			if isPodReady(*pod) {
+				return true
 			}
 		}
 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
