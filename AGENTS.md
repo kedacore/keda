@@ -47,20 +47,15 @@ Optionally install [pre-commit](https://pre-commit.com) and run `pre-commit run 
 - Do not delete existing tests to make a build green. If a test is genuinely wrong, explain why in the PR description.
 - Do not weaken assertions (e.g. replacing exact checks with `assert.NotNil`) just to make a flaky test pass.
 
-## Changelog
+## Release notes metadata
 
-Every user-visible change must be added to [`CHANGELOG.md`](CHANGELOG.md) under the `## Unreleased` section. The pre-commit hook [`hack/validate-changelog.sh`](hack/validate-changelog.sh) verifies this.
+Release notes are generated automatically from merged PR metadata via the release-notes workflows.
 
-Rules (from [`CONTRIBUTING.md#Changelog`](CONTRIBUTING.md#changelog)):
+Rules (from [`CONTRIBUTING.md#release-notes`](CONTRIBUTING.md#release-notes)):
 
-- Place the entry under the correct subsection: `### New`, `### Improvements`, `### Fixes`, `### Deprecations`, `### Breaking Changes`, or `### Other`.
-- Format: `- **<Scaler Name>**: <Description> ([#<ID>](https://github.com/kedacore/keda/issues/<ID>))`.
-  - Use `**General**:` for cross-cutting changes; these go at the top of the subsection.
-  - Otherwise use the scaler name (e.g. `**Kafka Scaler**:`).
-- Entries are sorted **alphabetically** within each subsection, with `General` always first.
-- `<ID>` should preferably link to an issue; if none exists, link the PR.
-- New scaler template: `**General**: Introduce new XXXXXX Scaler ([#ISSUE](https://github.com/kedacore/keda/issues/ISSUE))`.
-- Internal-only changes (refactors, test-only changes, CI tweaks) do **not** require a changelog entry.
+- PR titles must follow `Component: Description`. The release notes renderer bolds the component automatically.
+- PRs must include exactly one valid release-notes label unless `skip-changelog` is explicitly used.
+- Use `skip-changelog` only for changes that should be excluded from generated release notes.
 
 ## Commit hygiene
 
