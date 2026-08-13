@@ -38,11 +38,12 @@ const (
 
 // ScaleResult contains the result of ScaleExecutor actions
 type ScaleResult struct {
-	Conditions       kedav1alpha1.Conditions
-	PauseReplicas    *int32
-	Error            error
-	LastActiveTime   *metav1.Time
-	TriggersActivity map[string]kedav1alpha1.TriggerActivityStatus
+	Conditions             kedav1alpha1.Conditions
+	PauseReplicas          *int32
+	Error                  error
+	LastActiveTime         *metav1.Time
+	HPAMinReplicaSinceTime *metav1.Time
+	TriggersActivity       map[string]kedav1alpha1.TriggerActivityStatus
 }
 
 // ScaleExecutor contains methods RequestJobScale and RequestScale
@@ -58,21 +59,23 @@ type ScaleExecutorOptions struct {
 }
 
 type scaleExecutor struct {
-	client           runtimeclient.Client
-	scaleClient      scale.ScalesGetter
-	reconcilerScheme *runtime.Scheme
-	logger           logr.Logger
-	recorder         events.EventRecorder
+	client                 runtimeclient.Client
+	scaleClient            scale.ScalesGetter
+	reconcilerScheme       *runtime.Scheme
+	logger                 logr.Logger
+	recorder               events.EventRecorder
+	strictCooldownBehavior bool
 }
 
 // NewScaleExecutor creates a ScaleExecutor object
-func NewScaleExecutor(client runtimeclient.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, recorder events.EventRecorder) ScaleExecutor {
+func NewScaleExecutor(client runtimeclient.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, recorder events.EventRecorder, strictCooldownBehavior bool) ScaleExecutor {
 	return &scaleExecutor{
-		client:           client,
-		scaleClient:      scaleClient,
-		reconcilerScheme: reconcilerScheme,
-		logger:           logf.Log.WithName("scaleexecutor"),
-		recorder:         recorder,
+		client:                 client,
+		scaleClient:            scaleClient,
+		reconcilerScheme:       reconcilerScheme,
+		logger:                 logf.Log.WithName("scaleexecutor"),
+		recorder:               recorder,
+		strictCooldownBehavior: strictCooldownBehavior,
 	}
 }
 
