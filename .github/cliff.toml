@@ -41,7 +41,6 @@ commit_parsers = [
   { field = "remote.pr_labels", pattern = "kind/feature",         group = "<!-- 2 -->New" },
   { field = "remote.pr_labels", pattern = "kind/new-scaler",      group = "<!-- 2 -->New" },
   { field = "remote.pr_labels", pattern = "kind/improvement",     group = "<!-- 3 -->Improvements" },
-  { field = "remote.pr_labels", pattern = "kind/enhancement",     group = "<!-- 3 -->Improvements" },
   { field = "remote.pr_labels", pattern = "kind/bug",             group = "<!-- 4 -->Fixes" },
   { field = "remote.pr_labels", pattern = "kind/chore",           group = "<!-- 5 -->Other" },
   { field = "remote.pr_labels", pattern = "kind/documentation",   group = "<!-- 5 -->Other" },
