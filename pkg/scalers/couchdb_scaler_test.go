@@ -149,10 +149,15 @@ func TestCouchDBGetQueryResultIterationError(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
+				// Serving a static test JSON body; not user-facing HTML. Matches the
+				// repo convention for suppressing the responsewriter XSS lint on
+				// httptest stub servers (see azure_pipelines_scaler_test.go).
 				if strings.HasSuffix(r.URL.Path, "/_find") {
+					// nosemgrep: no-direct-write-to-responsewriter
 					_, _ = w.Write([]byte(tc.body))
 					return
 				}
+				// nosemgrep: no-direct-write-to-responsewriter
 				_, _ = w.Write([]byte(`{}`))
 			}))
 			defer server.Close()
