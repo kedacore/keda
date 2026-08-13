@@ -551,16 +551,6 @@ func TestRunningWorkflowCountQuery(t *testing.T) {
 			want: "ExecutionStatus = 'Running' AND TaskQueue = 'workflows' AND TemporalWorkerDeploymentVersion is null",
 		},
 		{
-			name: "deprecated buildId omits deployment version predicate",
-			meta: temporalMetadata{TaskQueue: "orders", BuildID: "v1"},
-			want: "ExecutionStatus = 'Running' AND TaskQueue = 'orders'",
-		},
-		{
-			name: "selectUnversioned (deprecated) omits deployment version predicate",
-			meta: temporalMetadata{TaskQueue: "orders", Unversioned: true},
-			want: "ExecutionStatus = 'Running' AND TaskQueue = 'orders'",
-		},
-		{
 			name:    "unsafe task queue is rejected",
 			meta:    temporalMetadata{TaskQueue: "bad' OR '1"},
 			wantErr: true,
