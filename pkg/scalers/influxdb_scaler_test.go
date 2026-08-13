@@ -146,7 +146,10 @@ func newInfluxDBTestQueryAPI(t *testing.T, csvBody string) (api.QueryAPI, func()
 		_, _ = w.Write([]byte(csvBody))
 	}))
 	client := influxdb2.NewClient(server.URL, "test-token")
-	return client.QueryAPI("test-org"), server.Close
+	return client.QueryAPI("test-org"), func() {
+		client.Close()
+		server.Close()
+	}
 }
 
 func TestQueryInfluxDBReturnsValue(t *testing.T) {
@@ -180,6 +183,11 @@ func TestQueryInfluxDBReturnsErrorOnParseFailure(t *testing.T) {
 	_, err := queryInfluxDB(context.Background(), queryAPI, "invalid")
 	if err == nil {
 		t.Fatal("expected an error when the query response cannot be parsed, got nil")
+	}
+	// Assert the error comes from the Err() check rather than a later value
+	// conversion, so the test fails without the fix.
+	if !strings.Contains(err.Error(), "error parsing influxdb query result") {
+		t.Errorf("expected the error to be surfaced by the Err() check, got: %v", err)
 	}
 	if strings.Contains(err.Error(), "no results found") {
 		t.Errorf("query error was masked as an empty result: %v", err)
