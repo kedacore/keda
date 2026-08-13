@@ -161,6 +161,9 @@ func (s *couchDBScaler) getQueryResult(ctx context.Context) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("error executing query: %w", err)
 	}
+	// Close releases the underlying HTTP response body. Exhausting the iterator
+	// closes it implicitly, but an early return below would otherwise leak it.
+	defer rows.Close()
 
 	var count int64
 	for rows.Next() {

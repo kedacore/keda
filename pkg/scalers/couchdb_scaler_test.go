@@ -134,36 +134,56 @@ func TestCouchDBGetMetricSpecForScaling(t *testing.T) {
 // silently returning an undercounted result. The kivik Rows iterator reports
 // such failures through Err(), which must be checked after the Next() loop.
 func TestCouchDBGetQueryResultIterationError(t *testing.T) {
-	// Return a valid first document followed by a malformed second element so the
-	// streaming JSON decoder fails part-way through the docs array, emulating a
-	// truncated or interrupted response from CouchDB.
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if strings.HasSuffix(r.URL.Path, "/_find") {
-			_, _ = w.Write([]byte(`{"docs":[{"_id":"a"}, {bad`))
-			return
-		}
-		_, _ = w.Write([]byte(`{}`))
-	}))
-	defer server.Close()
-
-	client, err := kivik.New("couch", server.URL)
-	if err != nil {
-		t.Fatalf("failed to create couchdb client: %v", err)
+	tests := []struct {
+		name string
+		body string
+	}{
+		// The stream ends while further documents are still expected.
+		{name: "truncated stream", body: `{"docs":[{"_id":"a"},`},
+		// The decoder fails part-way through the docs array.
+		{name: "malformed document", body: `{"docs":[{"_id":"a"}, {bad`},
 	}
 
-	scaler := couchDBScaler{
-		metricType: v2.AverageValueMetricType,
-		metadata: couchDBMetadata{
-			DBName: "animals",
-			Query:  `{"selector":{"feet":{"$gt":0}}}`,
-		},
-		client: client,
-		logger: logr.Discard(),
-	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				if strings.HasSuffix(r.URL.Path, "/_find") {
+					_, _ = w.Write([]byte(tc.body))
+					return
+				}
+				_, _ = w.Write([]byte(`{}`))
+			}))
+			defer server.Close()
 
-	if _, err := scaler.getQueryResult(context.Background()); err == nil {
-		t.Error("expected an error when the query result stream is interrupted, got nil")
+			client, err := kivik.New("couch", server.URL)
+			if err != nil {
+				t.Fatalf("failed to create couchdb client: %v", err)
+			}
+
+			scaler := couchDBScaler{
+				metricType: v2.AverageValueMetricType,
+				metadata: couchDBMetadata{
+					DBName: "animals",
+					Query:  `{"selector":{"feet":{"$gt":0}}}`,
+				},
+				client: client,
+				logger: logr.Discard(),
+			}
+
+			count, err := scaler.getQueryResult(context.Background())
+			if err == nil {
+				t.Fatal("expected an error when the query result stream is interrupted, got nil")
+			}
+			// Assert the error comes from the post-loop Err() check rather than from
+			// ScanDoc or the request itself, so the test fails without the fix.
+			if !strings.Contains(err.Error(), "error iterating query result") {
+				t.Errorf("expected an iteration error, got: %v", err)
+			}
+			if count != 0 {
+				t.Errorf("expected a count of 0 alongside the error, got %d", count)
+			}
+		})
 	}
 }
