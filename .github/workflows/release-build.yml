@@ -17,7 +17,7 @@ jobs:
       id-token: write # needed for signing the images with GitHub OIDC Token **not production ready**
 
     # keda-tools is built from github.com/test-tools/tools/Dockerfile
-    container: ghcr.io/kedacore/keda-tools:1.26.2
+    container: ghcr.io/kedacore/keda-tools:1.26.5
     steps:
       - name: Check out code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -98,3 +98,29 @@ jobs:
             keda-${{ steps.get_version.outputs.VERSION }}-core.yaml
             keda-${{ steps.get_version.outputs.VERSION }}-crds.yaml
             scalers-schema-${{ steps.get_version.outputs.VERSION }}.*
+
+      - name: Create release branch (when needed)
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: |
+          IFS='.' read -r major minor patch <<< "$VERSION"
+
+          if [[ -z "$major" || -z "$minor" || -z "$patch" ]]; then
+            echo "Invalid tag format: v${VERSION}"
+            exit 1
+          fi
+
+          branch="release/v${major}.${minor}"
+
+          if [[ "$patch" != "0" ]]; then
+            echo "Skipping branch creation for non-minor tag v${VERSION}."
+            exit 0
+          fi
+
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "Branch ${branch} already exists."
+            exit 0
+          fi
+
+          git push origin "${GITHUB_SHA}:refs/heads/${branch}"
+          echo "Created branch ${branch} from ${GITHUB_SHA}."
