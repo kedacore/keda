@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -199,7 +200,7 @@ func apiStubHandlerCustomJob(hasRateLeft bool, exceeds30Repos bool, jobResponse 
 			w.Header().Set("X-RateLimit-Remaining", "0")
 			w.WriteHeader(http.StatusForbidden)
 		}
-		if strings.HasSuffix(r.URL.String(), "jobs?per_page=100") {
+		if strings.HasSuffix(r.URL.String(), fmt.Sprintf("jobs?per_page=%d", githubJobsPerPage)) {
 			// nosemgrep: no-direct-write-to-responsewriter
 			_, _ = w.Write([]byte(jobResponse))
 			w.WriteHeader(http.StatusOK)
@@ -478,6 +479,106 @@ func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_WithScalerLabels_WithoutJo
 	}
 }
 
+// buildJobs generates `total` jobs, the first `completedCount` of which are
+// marked "completed" (and therefore not counted towards the queue length),
+// with the remainder left "queued".
+func buildJobs(total, completedCount int) []Job {
+	jobs := make([]Job, total)
+	for i := 0; i < total; i++ {
+		status := "queued"
+		conclusion := ""
+		if i < completedCount {
+			status = "completed"
+			conclusion = "success"
+		}
+		jobs[i] = Job{
+			ID:         i + 1,
+			RunID:      29679449,
+			Status:     status,
+			Conclusion: conclusion,
+			Labels:     []string{"foo", "bar"},
+		}
+	}
+	return jobs
+}
+
+// apiStubHandlerPaginatedJobs mimics GitHub's real jobs API: it honours the
+// "per_page" (defaulted to 100) and "page" (defaulted to 1) query parameters
+// and only returns the slice of allJobs that falls on the requested page,
+// exactly like the real GitHub REST API does.
+func apiStubHandlerPaginatedJobs(allJobs []Job) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		futureReset := time.Now().Add(time.Minute * 30)
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(futureReset.Unix()))
+		w.Header().Set("X-RateLimit-Remaining", "50")
+
+		switch {
+		case strings.Contains(r.URL.String(), "/actions/runs?status="):
+			if strings.Contains(r.URL.String(), "in_progress") {
+				// nosemgrep: no-direct-write-to-responsewriter
+				_, _ = w.Write([]byte(testGhWorkflowResponseInProgress))
+				return
+			}
+			// nosemgrep: no-direct-write-to-responsewriter
+			_, _ = w.Write([]byte(testGhWorkflowResponse))
+		case strings.Contains(r.URL.String(), "/jobs"):
+			page := 1
+			if p := r.URL.Query().Get("page"); p != "" {
+				page, _ = strconv.Atoi(p)
+			}
+			perPage := 100
+			if pp := r.URL.Query().Get("per_page"); pp != "" {
+				perPage, _ = strconv.Atoi(pp)
+			}
+
+			start := (page - 1) * perPage
+			end := start + perPage
+			if start > len(allJobs) {
+				start = len(allJobs)
+			}
+			if end > len(allJobs) {
+				end = len(allJobs)
+			}
+
+			body, _ := json.Marshal(Jobs{TotalCount: len(allJobs), Jobs: allJobs[start:end]})
+			// nosemgrep: no-direct-write-to-responsewriter
+			_, _ = w.Write(body)
+		}
+	}))
+}
+
+// TestNewGitHubRunnerScaler_QueueLength_SingleRepo_150Jobs_100Completed covers
+// a workflow run with 150 jobs, the first 100 (page 1) of which are already
+// completed and the remaining 50 (page 2) of which are still queued.
+//
+// getWorkflowRunJobs only ever requests page 1 of the jobs endpoint
+// (per_page=100) and never follows subsequent pages, so it currently misses
+// the 50 still-queued jobs living on page 2.
+func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_150Jobs_100Completed(t *testing.T) {
+	allJobs := buildJobs(150, 100)
+	var apiStub = apiStubHandlerPaginatedJobs(allJobs)
+
+	meta := getGitHubTestMetaData(apiStub.URL)
+
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	mockGitHubRunnerScaler.metadata.Repos = []string{"test"}
+	mockGitHubRunnerScaler.metadata.Labels = []string{"foo", "bar"}
+
+	queueLen, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.Background())
+
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	if queueLen != 50 {
+		t.Errorf("expected queue length of 50 (jobs 101-150 still queued on page 2), got %d", queueLen)
+	}
+}
+
 func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_WithNotModified(t *testing.T) {
 	var apiStub = apiStubHandler304()
 
@@ -504,8 +605,10 @@ func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_WithNotModified(t *testing
 	if err := json.Unmarshal([]byte(testGhWFJobResponse), &jobs); err != nil {
 		t.Fail()
 	}
-	previousJobs := map[string][]Job{
-		"Hello-World": jobs.Jobs,
+	jobsPageURL := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=%d",
+		meta.GithubAPIURL, meta.Owner, "Hello-World", int64(30433642), githubJobsPerPage)
+	previousJobPages := map[string][]Job{
+		jobsPageURL: jobs.Jobs,
 	}
 
 	mockGitHubRunnerScaler := githubRunnerScaler{
@@ -516,7 +619,7 @@ func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_WithNotModified(t *testing
 	mockGitHubRunnerScaler.metadata.EnableEtags = true
 	mockGitHubRunnerScaler.metadata.Repos = []string{"test"}
 	mockGitHubRunnerScaler.metadata.Labels = []string{"foo", "bar"}
-	mockGitHubRunnerScaler.previousJobs = previousJobs
+	mockGitHubRunnerScaler.previousJobPages = previousJobPages
 	mockGitHubRunnerScaler.previousWfrs = previousWfrs
 
 	queueLen, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.Background())
@@ -866,8 +969,8 @@ var githubRunnerMetricIdentifiers = []githubRunnerMetricIdentifier{
 
 func TestGithubRunnerPruneCachesDropsAbsentWfrRepos(t *testing.T) {
 	s := githubRunnerScaler{
-		metadata:     &githubRunnerMetadata{},
-		previousJobs: map[string][]Job{},
+		metadata:         &githubRunnerMetadata{},
+		previousJobPages: map[string][]Job{},
 		previousWfrs: map[string]map[string]*WorkflowRuns{
 			"keep-1": {"queued": &WorkflowRuns{}},
 			"drop-2": {"queued": &WorkflowRuns{}},
@@ -890,16 +993,16 @@ func TestGithubRunnerPruneCachesBoundsMaps(t *testing.T) {
 	currentRepos := make([]string, overflow)
 
 	s := githubRunnerScaler{
-		metadata:     &githubRunnerMetadata{},
-		previousJobs: make(map[string][]Job, overflow),
-		previousWfrs: make(map[string]map[string]*WorkflowRuns, overflow),
-		etags:        make(map[string]string, overflow),
+		metadata:         &githubRunnerMetadata{},
+		previousJobPages: make(map[string][]Job, overflow),
+		previousWfrs:     make(map[string]map[string]*WorkflowRuns, overflow),
+		etags:            make(map[string]string, overflow),
 	}
 	for i := 0; i < overflow; i++ {
 		repo := fmt.Sprintf("repo-%d", i)
 		currentRepos[i] = repo
 		s.etags[fmt.Sprintf("https://api.github.com/run/%d", i)] = "etag"
-		s.previousJobs[repo] = nil
+		s.previousJobPages[fmt.Sprintf("https://api.github.com/run/%d/jobs", i)] = nil
 		s.previousWfrs[repo] = map[string]*WorkflowRuns{"queued": {}}
 	}
 
@@ -908,8 +1011,8 @@ func TestGithubRunnerPruneCachesBoundsMaps(t *testing.T) {
 	if got := len(s.etags); got > githubScalerMaxCacheEntries {
 		t.Errorf("etags map size %d exceeds cap %d after prune", got, githubScalerMaxCacheEntries)
 	}
-	if got := len(s.previousJobs); got > githubScalerMaxCacheEntries {
-		t.Errorf("previousJobs map size %d exceeds cap %d after prune", got, githubScalerMaxCacheEntries)
+	if got := len(s.previousJobPages); got > githubScalerMaxCacheEntries {
+		t.Errorf("previousJobPages map size %d exceeds cap %d after prune", got, githubScalerMaxCacheEntries)
 	}
 	if got := len(s.previousWfrs); got > githubScalerMaxCacheEntries {
 		t.Errorf("previousWfrs map size %d exceeds cap %d after prune", got, githubScalerMaxCacheEntries)
@@ -937,15 +1040,15 @@ func TestGetWorkflowRunJobs_StaleEtagWithoutPreviousRetries(t *testing.T) {
 
 	meta := getGitHubTestMetaData(srv.URL)
 	meta.EnableEtags = true
-	apiURL := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=100",
-		meta.GithubAPIURL, meta.Owner, "Hello-World", int64(30433642))
+	apiURL := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=%d",
+		meta.GithubAPIURL, meta.Owner, "Hello-World", int64(30433642), githubJobsPerPage)
 
 	s := githubRunnerScaler{
-		metadata:     meta,
-		httpClient:   http.DefaultClient,
-		etags:        map[string]string{apiURL: `"stale-etag"`},
-		previousJobs: map[string][]Job{},
-		previousWfrs: map[string]map[string]*WorkflowRuns{},
+		metadata:         meta,
+		httpClient:       http.DefaultClient,
+		etags:            map[string]string{apiURL: `"stale-etag"`},
+		previousJobPages: map[string][]Job{},
+		previousWfrs:     map[string]map[string]*WorkflowRuns{},
 	}
 
 	jobs, err := s.getWorkflowRunJobs(context.Background(), 30433642, "Hello-World")
@@ -963,6 +1066,86 @@ func TestGetWorkflowRunJobs_StaleEtagWithoutPreviousRetries(t *testing.T) {
 	}
 	if got := s.etags[apiURL]; got != `"fresh-etag"` {
 		t.Fatalf("expected etag to be refreshed to %q, got %q", `"fresh-etag"`, got)
+	}
+}
+
+// TestGetWorkflowRunJobs_SecondPageChangedWhileFirstPageNotModified guards
+// against relying on page 1's ETag alone to decide that the whole cached job
+// list is still valid. Page 1 is unmodified (304) but page 2 has genuinely
+// changed on GitHub's side, so every page must still be independently
+// requested and verified; the stale, cached page 2 must not be reused.
+func TestGetWorkflowRunJobs_SecondPageChangedWhileFirstPageNotModified(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		page := 1
+		if p := r.URL.Query().Get("page"); p != "" {
+			page, _ = strconv.Atoi(p)
+		}
+		if page == 1 {
+			// Page 1 is unchanged since the last fetch.
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+		// Page 2 has changed since the last fetch: new jobs are now queued.
+		w.Header().Set("ETag", `"page2-fresh-etag"`)
+		body, _ := json.Marshal(Jobs{Jobs: buildJobs(50, 0)})
+		// nosemgrep: no-direct-write-to-responsewriter
+		_, _ = w.Write(body)
+	}))
+	defer srv.Close()
+
+	meta := getGitHubTestMetaData(srv.URL)
+	meta.EnableEtags = true
+
+	page1URL := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=%d",
+		meta.GithubAPIURL, meta.Owner, "Hello-World", int64(30433642), githubJobsPerPage)
+	page2URL := fmt.Sprintf("%s&page=2", page1URL)
+
+	// Simulate a previous fetch where page 1 was a full page of 100 completed
+	// jobs and page 2 was believed to hold 20 stale, also completed, jobs.
+	stalePage1Jobs := buildJobs(100, 100)
+	stalePage2Jobs := buildJobs(20, 20)
+
+	s := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+		etags: map[string]string{
+			page1URL: `"page1-etag"`,
+			page2URL: `"page2-stale-etag"`,
+		},
+		previousJobPages: map[string][]Job{
+			page1URL: stalePage1Jobs,
+			page2URL: stalePage2Jobs,
+		},
+		previousWfrs: map[string]map[string]*WorkflowRuns{},
+	}
+
+	jobs, err := s.getWorkflowRunJobs(context.Background(), 30433642, "Hello-World")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	if len(jobs) != 150 {
+		t.Fatalf("expected 100 cached page-1 jobs + 50 fresh page-2 jobs = 150, got %d", len(jobs))
+	}
+
+	var queued int
+	for _, job := range jobs {
+		if job.Status == "queued" {
+			queued++
+		}
+	}
+	// The stale cached page 2 had 0 queued jobs; the real, freshly-fetched
+	// page 2 has 50 queued jobs. If the scaler incorrectly trusted the cache
+	// solely because page 1 was unmodified, it would report 0 queued jobs.
+	if queued != 50 {
+		t.Fatalf("expected 50 queued jobs from the freshly-fetched page 2, got %d: stale page-2 cache was used instead of being independently verified", queued)
+	}
+
+	if got := s.etags[page2URL]; got != `"page2-fresh-etag"` {
+		t.Fatalf("expected page 2 etag to be refreshed to %q, got %q", `"page2-fresh-etag"`, got)
+	}
+	if got := s.previousJobPages[page2URL]; len(got) != 50 {
+		t.Fatalf("expected previousJobPages for page 2 to be updated with 50 fresh jobs, got %d entries", len(got))
 	}
 }
 
@@ -991,11 +1174,11 @@ func TestGetWorkflowRuns_StaleEtagWithoutPreviousRetries(t *testing.T) {
 		meta.GithubAPIURL, meta.Owner, "Hello-World", "queued")
 
 	s := githubRunnerScaler{
-		metadata:     meta,
-		httpClient:   http.DefaultClient,
-		etags:        map[string]string{apiURL: `"stale-etag"`},
-		previousJobs: map[string][]Job{},
-		previousWfrs: map[string]map[string]*WorkflowRuns{},
+		metadata:         meta,
+		httpClient:       http.DefaultClient,
+		etags:            map[string]string{apiURL: `"stale-etag"`},
+		previousJobPages: map[string][]Job{},
+		previousWfrs:     map[string]map[string]*WorkflowRuns{},
 	}
 
 	wfrs, err := s.getWorkflowRuns(context.Background(), "Hello-World", "queued")

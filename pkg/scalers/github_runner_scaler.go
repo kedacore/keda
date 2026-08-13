@@ -29,11 +29,12 @@ const (
 	ENT                  = "ent"
 	REPO                 = "repo"
 	githubDefaultPerPage = 30
-	// githubScalerMaxCacheEntries caps the etags, previousJobs, and
-	// previousWfrs maps. Without it the etags map grows once per workflow run
-	// for the lifetime of the operator pod (the URL contains the run ID), and
-	// previousJobs and previousWfrs grow once per distinct repository name
-	// returned by the API.
+	githubJobsPerPage    = 100
+	// githubScalerMaxCacheEntries caps the etags, previousJobPages, and
+	// previousWfrs maps. Without it the etags and previousJobPages maps grow
+	// once per workflow run page for the lifetime of the operator pod (the
+	// URL contains the run ID and page number), and previousWfrs grows once
+	// per distinct repository name returned by the API.
 	githubScalerMaxCacheEntries = 5000
 )
 
@@ -49,7 +50,7 @@ type githubRunnerScaler struct {
 	etags                   map[string]string
 	previousRepos           []string
 	previousWfrs            map[string]map[string]*WorkflowRuns
-	previousJobs            map[string][]Job
+	previousJobPages        map[string][]Job
 	rateLimit               RateLimit
 	previousQueueLength     int64
 	previousQueueLengthTime time.Time
@@ -380,7 +381,7 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	etags := make(map[string]string)
 	previousRepos := []string{}
-	previousJobs := make(map[string][]Job)
+	previousJobPages := make(map[string][]Job)
 	previousWfrs := make(map[string]map[string]*WorkflowRuns)
 	rateLimit := RateLimit{}
 	previousQueueLength := int64(0)
@@ -395,7 +396,7 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		scaledObject:            config.ScaledObject,
 		etags:                   etags,
 		previousRepos:           previousRepos,
-		previousJobs:            previousJobs,
+		previousJobPages:        previousJobPages,
 		previousWfrs:            previousWfrs,
 		rateLimit:               rateLimit,
 		previousQueueLength:     previousQueueLength,
@@ -620,24 +621,34 @@ func stripDeadRuns(allWfrs []WorkflowRuns) []WorkflowRun {
 	return filtered
 }
 
-// getWorkflowRunJobs returns a list of jobs for a given workflow run
-func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRunID int64, repoName string) ([]Job, error) {
-	apiURL := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=100",
+// fetchWorkflowRunJobsPage fetches a single page of jobs for a workflow run.
+// Each page is cached and validated against GitHub independently, keyed by
+// its own URL (which encodes both the workflow run and the page number). A
+// 304 on one page therefore never assumes that other pages of the same
+// workflow run are also unchanged: every page is still requested and its own
+// ETag verified before its cached contents are reused.
+func (s *githubRunnerScaler) fetchWorkflowRunJobsPage(ctx context.Context, workflowRunID int64, repoName string, page int) ([]Job, error) {
+	apiURL := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=%d",
 		s.metadata.GithubAPIURL,
 		url.PathEscape(s.metadata.Owner),
 		url.PathEscape(repoName),
-		workflowRunID)
+		workflowRunID,
+		githubJobsPerPage)
+	if page > 1 {
+		apiURL = fmt.Sprintf("%s&page=%d", apiURL, page)
+	}
 
 	body, statusCode, err := s.getGithubRequest(ctx, apiURL, s.metadata, s.httpClient)
 	if err != nil {
 		return nil, err
 	}
 	if statusCode == 304 && s.metadata.EnableEtags {
-		if s.previousJobs[repoName] != nil {
-			return s.previousJobs[repoName], nil
+		if cachedJobs, found := s.previousJobPages[apiURL]; found {
+			return cachedJobs, nil
 		}
-		// Stale etag without a paired previousJobs entry, e.g. after pruneCaches
-		// evicted the previous entry. Drop the etag and retry as a cache miss.
+		// Stale etag without a paired previousJobPages entry, e.g. after
+		// pruneCaches evicted the previous entry. Drop the etag and retry as
+		// a cache miss.
 		delete(s.etags, apiURL)
 		body, statusCode, err = s.getGithubRequest(ctx, apiURL, s.metadata, s.httpClient)
 		if err != nil {
@@ -648,17 +659,43 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 		}
 	}
 
-	var jobs Jobs
-	err = json.Unmarshal(body, &jobs)
-	if err != nil {
+	var parsed Jobs
+	if err := json.Unmarshal(body, &parsed); err != nil {
 		return nil, err
 	}
 
 	if s.metadata.EnableEtags {
-		s.previousJobs[repoName] = jobs.Jobs
+		s.previousJobPages[apiURL] = parsed.Jobs
 	}
 
-	return jobs.Jobs, nil
+	return parsed.Jobs, nil
+}
+
+// getWorkflowRunJobs returns a list of jobs for a given workflow run. A workflow
+// run can have more jobs than fit on a single page, so all pages are fetched
+// and combined until GitHub returns a page with fewer than githubJobsPerPage jobs.
+// When ETags are enabled, every page is independently fetched and validated,
+// so a 304 on an earlier page never short-circuits the fetch of later pages.
+func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRunID int64, repoName string) ([]Job, error) {
+	var allJobs []Job
+	page := 1
+
+	for {
+		jobs, err := s.fetchWorkflowRunJobsPage(ctx, workflowRunID, repoName, page)
+		if err != nil {
+			return nil, err
+		}
+
+		allJobs = append(allJobs, jobs...)
+
+		// GitHub returned fewer than a full page, so there are no more jobs left to fetch
+		if len(jobs) < githubJobsPerPage {
+			break
+		}
+		page++
+	}
+
+	return allJobs, nil
 }
 
 // getWorkflowRuns returns a list of workflow runs for a given repository
@@ -780,7 +817,7 @@ func (s *githubRunnerScaler) pruneCaches(currentRepos []string) {
 		}
 	}
 	evictExcess(s.previousWfrs, githubScalerMaxCacheEntries)
-	evictExcess(s.previousJobs, githubScalerMaxCacheEntries)
+	evictExcess(s.previousJobPages, githubScalerMaxCacheEntries)
 	evictExcess(s.etags, githubScalerMaxCacheEntries)
 }
 
