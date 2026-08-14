@@ -515,6 +515,73 @@ func TestGetQueueInfo(t *testing.T) {
 	}
 }
 
+var testExpectedQueueConsumptionTimeTestData = []struct {
+	name          string
+	response      string
+	expectedMilli int64
+	isActive      bool
+}{
+	// empty idle queue: nothing to consume and nobody consuming - must be
+	// inactive with a zero metric so the workload can scale to zero
+	{name: "empty idle queue", response: `{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}, "deliver_get_details": {"rate": 0}}, "name": "evaluate_trials"}`, expectedMilli: 0, isActive: false},
+	// queue just drained, delivery rate still decaying: empty queue wins
+	{name: "empty queue with decaying delivery rate", response: `{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}, "deliver_get_details": {"rate": 2}}, "name": "evaluate_trials"}`, expectedMilli: 0, isActive: false},
+	// backlog with no consumers: consumption time cannot be estimated, report
+	// the activation value and activate so consumers get scaled up
+	{name: "backlog without consumers", response: `{"messages": 10, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 3}, "deliver_get_details": {"rate": 0}}, "name": "evaluate_trials"}`, expectedMilli: 1000, isActive: true},
+	// steady state: eta = (publish-deliver)/deliver + messages/deliver = (3-2)/2 + 10/2 = 5.5
+	{name: "backlog with consumers", response: `{"messages": 10, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 3}, "deliver_get_details": {"rate": 2}}, "name": "evaluate_trials"}`, expectedMilli: 5500, isActive: true},
+	// draining after publish stopped: eta = (0-2)/2 + 4/2 = 1, not above activation
+	{name: "draining backlog", response: `{"messages": 4, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}, "deliver_get_details": {"rate": 2}}, "name": "evaluate_trials"}`, expectedMilli: 1000, isActive: false},
+}
+
+func TestExpectedQueueConsumptionTime(t *testing.T) {
+	for _, testData := range testExpectedQueueConsumptionTimeTestData {
+		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			// nosemgrep: no-direct-write-to-responsewriter
+			_, _ = w.Write([]byte(testData.response))
+		}))
+
+		resolvedEnv := map[string]string{host: apiStub.URL}
+
+		metadata := map[string]string{
+			"queueName":       "evaluate_trials",
+			"hostFromEnv":     host,
+			"protocol":        "http",
+			"mode":            "ExpectedQueueConsumptionTime",
+			"value":           "1",
+			"activationValue": "1",
+		}
+
+		s, err := NewRabbitMQScaler(
+			&scalersconfig.ScalerConfig{
+				ResolvedEnv:       resolvedEnv,
+				TriggerMetadata:   metadata,
+				AuthParams:        map[string]string{},
+				GlobalHTTPTimeout: 1000 * time.Millisecond,
+			},
+		)
+		if err != nil {
+			t.Fatal("Expect success", err)
+		}
+
+		metrics, active, err := s.GetMetricsAndActivity(context.TODO(), "Metric")
+		if err != nil {
+			t.Fatal("Expect success", err)
+		}
+
+		if got := metrics[0].Value.MilliValue(); got != testData.expectedMilli {
+			t.Error(testData.name, ": expect metric =", testData.expectedMilli, "milli but got", got)
+		}
+		if active != testData.isActive {
+			t.Error(testData.name, ": expect isActive =", testData.isActive, "but got", active)
+		}
+
+		apiStub.Close()
+	}
+}
+
 var testRegexQueueInfoTestData = []getQueueInfoTestData{
 	// sum queue length
 	{response: `{"items":[{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}, "deliver_get_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}, "deliver_get_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, responseStatus: http.StatusOK, isActive: true, extraMetadata: map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum"}},
