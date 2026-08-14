@@ -1267,8 +1267,8 @@ var _ = It("should emit warning when PollingInterval is set with minReplicaCount
 	Expect(warnings).To(ContainElement(ContainSubstring("PollingInterval is configured but is not relevant")))
 })
 
-var _ = It("should emit warning when PollingInterval is set with minReplicaCount > 0 and idleReplicaCount > 0", func() {
-	namespaceName := "polling-interval-warning-idle-greater-zero"
+var _ = It("should NOT emit warning when PollingInterval is set with minReplicaCount > 0 and idleReplicaCount > 0", func() {
+	namespaceName := "polling-interval-no-warning-idle-greater-zero"
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, true, true)
 	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
@@ -1285,7 +1285,7 @@ var _ = It("should emit warning when PollingInterval is set with minReplicaCount
 
 	warnings, err := so.ValidateCreate(ptr.To(false))
 	Expect(err).ToNot(HaveOccurred())
-	Expect(warnings).To(ContainElement(ContainSubstring("PollingInterval is configured but is not relevant")))
+	Expect(warnings).ToNot(ContainElement(ContainSubstring("PollingInterval is configured but is not relevant")))
 })
 
 var _ = It("should NOT emit warning when PollingInterval is set with idleReplicaCount = 0", func() {
@@ -1386,8 +1386,8 @@ var _ = It("should emit warning when CooldownPeriod is set with minReplicaCount 
 	Expect(warnings).To(ContainElement(ContainSubstring("CooldownPeriod is configured but is not relevant")))
 })
 
-var _ = It("should emit warning when CooldownPeriod is set with minReplicaCount > 0 and idleReplicaCount > 0", func() {
-	namespaceName := "cooldown-warning-idle-greater-zero"
+var _ = It("should NOT emit warning when CooldownPeriod is set with minReplicaCount > 0 and idleReplicaCount > 0", func() {
+	namespaceName := "cooldown-no-warning-idle-greater-zero"
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, true, true)
 	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
@@ -1404,7 +1404,7 @@ var _ = It("should emit warning when CooldownPeriod is set with minReplicaCount 
 
 	warnings, err := so.ValidateCreate(ptr.To(false))
 	Expect(err).ToNot(HaveOccurred())
-	Expect(warnings).To(ContainElement(ContainSubstring("CooldownPeriod is configured but is not relevant")))
+	Expect(warnings).ToNot(ContainElement(ContainSubstring("CooldownPeriod is configured but is not relevant")))
 })
 
 var _ = It("should NOT emit warning when CooldownPeriod is set with idleReplicaCount = 0", func() {
@@ -1458,7 +1458,7 @@ var _ = It("should emit both warnings when both PollingInterval and CooldownPeri
 	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
 
 	so.Spec.MinReplicaCount = ptr.To[int32](2)
-	so.Spec.IdleReplicaCount = ptr.To[int32](1)
+	so.Spec.IdleReplicaCount = nil
 	so.Spec.PollingInterval = ptr.To[int32](30)
 	so.Spec.CooldownPeriod = ptr.To[int32](300)
 
