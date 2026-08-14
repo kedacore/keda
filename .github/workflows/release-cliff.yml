@@ -37,8 +37,8 @@ jobs:
         run: |
           git fetch --tags
 
-          if [[ "$GITHUB_REF_NAME" == release/* ]]; then
-            minor_prefix="$GITHUB_REF_NAME"
+          if [[ "${{ github.ref_name }}" == release/* ]]; then
+            minor_prefix="${{ github.ref_name }}"
             minor_prefix="${minor_prefix#release/}"
             latest=$(git tag --list "${minor_prefix}.*" | sort -V | tail -1)
             latest="${latest:-${minor_prefix}.0}"
@@ -59,7 +59,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh api /repos/${{ github.repository }}/releases \
-            | jq -r --arg b "$GITHUB_REF_NAME" \
+            | jq -r --arg b "${{ github.ref_name }}" \
                 '.[] | select(.draft == true and .target_commitish == $b) | .tag_name' \
             | xargs -r -I{} gh release delete {} --yes --cleanup-tag 2>/dev/null || true
 
