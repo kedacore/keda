@@ -17,7 +17,7 @@ ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 
 # renovate: datasource=github-releases depName=protocolbuffers/protobuf
-ENV PROTOC_VERSION=v33.2
+ENV PROTOC_VERSION=v33.6
 
 # Configure apt, install packages and tools
 RUN apt-get update \
@@ -87,7 +87,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # renovate: datasource=github-releases depName=operator-framework/operator-sdk
-ENV OPERATOR_RELEASE_VERSION=v1.26.0
+ENV OPERATOR_RELEASE_VERSION=v1.42.3
 RUN ARCH=$(case $(uname -m) in x86_64) echo -n amd64 ;; aarch64) echo -n arm64 ;; *) echo -n $(uname -m) ;; esac) \
     && OS=$(uname | awk '{print tolower($0)}') \
     && OPERATOR_SDK_DL_URL=https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_RELEASE_VERSION} \

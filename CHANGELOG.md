@@ -90,8 +90,11 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Add controller-runtime cache field indexes for ScaledObject admission validation so `verifyScaledObjects` and `verifyHpas` look up duplicate scaleTargetRef and HPA-name conflicts via indexed Lists rather than full-namespace scans, eliminating the webhook OOM under high-scale creation bursts ([#7681](https://github.com/kedacore/keda/pull/7681))
 - **General**: Fix CVE-2026-42151, CVE-2026-42154, CVE-2026-40179 ([#7868](https://github.com/kedacore/keda/issues/7868))
+- **General**: Fix `pollingInterval` and `cooldownPeriod` relevance warnings incorrectly firing when `idleReplicaCount` is set to a value greater than 0, since idle mode keeps both settings relevant ([#7984](https://github.com/kedacore/keda/pull/7984))
 - **General**: Fix `ScaledJob` removal event using `namespace/name` in place of the namespace, which malformed the emitted CloudEvent's subject and the `namespace` label on the CloudEventSource metrics ([#7967](https://github.com/kedacore/keda/issues/7967))
 - **Azure Event Hub Scaler**: Fix authentication failures caused by appending a duplicate `EntityPath` when `eventHubName` is provided ([#7926](https://github.com/kedacore/keda/issues/7926))
+- **Dynatrace Scaler**: Handle all documented DQL query states (`NOT_STARTED`, `FAILED`, `CANCELLED`, `RESULT_GONE`) in both the execute and poll paths; `NOT_STARTED` on either path now triggers a poll retry instead of an immediate error, and terminal error states produce descriptive messages instead of `unknown state: X` ([#7986](https://github.com/kedacore/keda/pull/7986))
+- **Github Runner Scaler**: Fix per-repository ETag job cache returning another concurrent workflow run's jobs, inflating the computed queue length when a repository has multiple simultaneous queued/in_progress runs ([#7949](https://github.com/kedacore/keda/issues/7949))
 
 ### Deprecations
 
@@ -154,6 +157,7 @@ New deprecation(s):
 - **General**: Add scaler HTTP request metrics (`keda_scaler_http_requests_total`, `keda_scaler_http_request_duration_seconds`) for outbound HTTP requests made during scaler metric collection ([#6600](https://github.com/kedacore/keda/issues/6600))
 - **General**: Allow more control of TLS versions & ciphers via `KEDA_HTTP_TLS_CIPHER_LIST`, `KEDA_SERVICE_TLS_CIPHER_LIST` and `KEDA_SERVICE_MIN_TLS_VERSION` env vars ([#7617](https://github.com/kedacore/keda/pull/7617))
 - **General**: Cap each scalers-cache reader at a per-reader budget derived from `globalHTTPTimeout` so `ScalersCache.Close` cannot block indefinitely ([#7574](https://github.com/kedacore/keda/issues/7574))
+- **General**: Controller sharding by label selectors ([#7738](https://github.com/kedacore/keda/issues/7738))
 - **General**: Make APIService cert injections optional ([#7559](https://github.com/kedacore/keda/pull/7559))
 - **General**: Remove unconditional `json.MarshalIndent` calls from admission webhook validation hot paths; replace spec-comparison `MarshalIndent`-and-string-compare in `isRemovingFinalizer` variants with `reflect.DeepEqual`. Prevents webhook OOM under sustained admission load at large scale (observed at ~60k ScaledObjects) ([#7670](https://github.com/kedacore/keda/pull/7670))
 - **AWS Scalers**: Add support for AWS External ID in TriggerAuthentication podIdentity for all AWS scalers (SQS, Kinesis, DynamoDB, CloudWatch, etc.) to enable cross-account access scenarios ([#6921](https://github.com/kedacore/keda/issues/6921))
