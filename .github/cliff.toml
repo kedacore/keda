@@ -1,0 +1,42 @@
+[remote.github]
+owner = "" # populated via GITHUB_REPO env var
+repo  = ""
+token = "" # populated via GITHUB_TOKEN env var
+
+[changelog]
+header = ""
+body = """
+{% for group, commits in commits | group_by(attribute="group") -%}
+## {{ group | striptags | trim }}
+{% for commit in commits -%}
+{% set title = commit.remote.pr_title | default(value=commit.message | split(pat="\n") | first) | trim -%}
+{% set title_parts = title | split(pat=":") -%}
+{% set component = title_parts | first | trim -%}
+{% set description = title_parts | slice(start=1) | join(sep=":") | trim -%}
+- [`{{ commit.id | truncate(length=7, end="") }}`](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/commit/{{ commit.id }}) : **{{ component }}**{% if description %}: {{ description }}{% endif %}{% if commit.remote.pr_number %} ([#{{ commit.remote.pr_number }}](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/pull/{{ commit.remote.pr_number }})){% endif %}{% if commit.remote.username %} (@{{ commit.remote.username }}){% endif %}
+{% endfor %}
+{% endfor -%}
+"""
+trim = true
+footer = ""
+
+[git]
+conventional_commits = false
+filter_unconventional = false
+filter_commits = true
+commit_parsers = [
+  { field = "remote.pr_labels", pattern = "skip-changelog",      skip = true },
+  { field = "remote.pr_labels", pattern = "kind/breaking-change", group = "<!-- 0 -->Breaking Changes" },
+  { field = "remote.pr_labels", pattern = "kind/feature",         group = "<!-- 1 -->New" },
+  { field = "remote.pr_labels", pattern = "kind/new-scaler",      group = "<!-- 1 -->New" },
+  { field = "remote.pr_labels", pattern = "kind/improvement",     group = "<!-- 2 -->Improvements" },
+  { field = "remote.pr_labels", pattern = "kind/enhancement",     group = "<!-- 2 -->Improvements" },
+  { field = "remote.pr_labels", pattern = "kind/bug",             group = "<!-- 3 -->Fixes" },
+  { field = "remote.pr_labels", pattern = "kind/deprecation",     group = "<!-- 4 -->Deprecations" },
+  { field = "remote.pr_labels", pattern = "kind/chore",           group = "<!-- 5 -->Other" },
+  { field = "remote.pr_labels", pattern = "kind/documentation",   group = "<!-- 5 -->Other" },
+  { field = "remote.pr_labels", pattern = "kind/dependencies",    group = "<!-- 5 -->Other" },
+  { field = "remote.pr_labels", pattern = "kind/ci",              group = "<!-- 5 -->Other" },
+  # fallback for cherry-picks and commits where GitHub PR label lookup fails
+  { message = ".*", group = "<!-- 6 -->Unlabeled" },
+]
