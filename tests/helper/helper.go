@@ -1299,16 +1299,35 @@ func generateCA(t *testing.T) {
 	}
 }
 
-// CheckKubectlGetResult runs `kubectl get` with parameters and compares output with expected value
+// The fields this reads are written by the operator as it reconciles the resource that references
+// the authentication, so they lag the apply or delete that triggered the change. A minute is many
+// times a reconcile and is only reached when the operator has genuinely stopped updating them.
+const kubectlGetResultTimeout = time.Minute
+
+// CheckKubectlGetResult runs `kubectl get` with parameters and waits for the output to match the
+// expected value.
 func CheckKubectlGetResult(t *testing.T, kind string, name string, namespace string, otherparameter string, expected string) {
-	time.Sleep(1 * time.Second) // wait a second for recource deployment finished
 	kctlGetCmd := fmt.Sprintf(`kubectl get %s/%s -n %s %s"`, kind, name, namespace, otherparameter)
 	t.Log("Running kubectl cmd:", kctlGetCmd)
-	output, err := ExecuteCommand(kctlGetCmd)
-	assert.NoErrorf(t, err, "cannot get rollout info - %s", err)
 
-	unqoutedOutput := strings.ReplaceAll(string(output), "\"", "")
-	assert.Equal(t, expected, unqoutedOutput)
+	ctx, cancel := context.WithTimeout(context.Background(), kubectlGetResultTimeout)
+	defer cancel()
+
+	lastRead := "<nothing read>"
+	err := KedaEventually(ctx, func(_ context.Context) (bool, error) {
+		output, cmdErr := ExecuteCommand(kctlGetCmd)
+		if cmdErr != nil {
+			// Retried rather than reported, so that a command that fails while the resource is
+			// still being created does not end the wait.
+			lastRead = fmt.Sprintf("<command failed: %s>", cmdErr)
+			return false, nil
+		}
+
+		lastRead = strings.ReplaceAll(string(output), "\"", "")
+		return lastRead == expected, nil
+	}, IntervalShort)
+
+	assert.NoErrorf(t, err, "%s/%s %s: expected %q, last read %q", kind, name, otherparameter, expected, lastRead)
 }
 
 // KedaEventually checks if the provided conditionFunc eventually returns true
