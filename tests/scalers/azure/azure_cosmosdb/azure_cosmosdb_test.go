@@ -8,6 +8,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -38,9 +39,9 @@ var (
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	databaseID       = "keda-test-db"
+	databaseID       = fmt.Sprintf("keda-test-db-%d-%d", time.Now().UnixNano(), GetRandomNumber())
 	containerID      = "keda-test-container"
-	leaseDatabaseID  = "keda-test-db"
+	leaseDatabaseID  = databaseID
 	leaseContainerID = "keda-test-leases"
 	processorName    = "keda-test-processor"
 )
@@ -49,6 +50,7 @@ type templateData struct {
 	TestNamespace    string
 	SecretName       string
 	Connection       string
+	Endpoint         string
 	DeploymentName   string
 	ScaledObjectName string
 	DatabaseID       string
@@ -76,10 +78,8 @@ metadata:
   name: {{.SecretName}}-trigger-auth
   namespace: {{.TestNamespace}}
 spec:
-  secretTargetRef:
-    - parameter: connection
-      name: {{.SecretName}}
-      key: connection
+  podIdentity:
+    provider: azure-workload
 `
 
 	deploymentTemplate = `
@@ -91,7 +91,7 @@ metadata:
   labels:
     app: {{.DeploymentName}}
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: {{.DeploymentName}}
@@ -109,6 +109,36 @@ spec:
                 secretKeyRef:
                   name: {{.SecretName}}
                   key: connection
+            - name: COSMOS_DATABASE_ID
+              value: {{.DatabaseID}}
+            - name: COSMOS_CONTAINER_ID
+              value: {{.ContainerID}}
+            - name: COSMOS_LEASE_DATABASE_ID
+              value: {{.LeaseDatabaseID}}
+            - name: COSMOS_LEASE_CONTAINER_ID
+              value: {{.LeaseContainerID}}
+            - name: COSMOS_PROCESSOR_NAME
+              value: {{.ProcessorName}}
+            - name: CosmosDbConfig__Connection
+              valueFrom:
+                secretKeyRef:
+                  name: {{.SecretName}}
+                  key: connection
+            - name: CosmosDbConfig__DatabaseId
+              value: {{.DatabaseID}}
+            - name: CosmosDbConfig__ContainerId
+              value: {{.ContainerID}}
+            - name: CosmosDbConfig__LeaseConnection
+              valueFrom:
+                secretKeyRef:
+                  name: {{.SecretName}}
+                  key: connection
+            - name: CosmosDbConfig__LeaseDatabaseId
+              value: {{.LeaseDatabaseID}}
+            - name: CosmosDbConfig__LeaseContainerId
+              value: {{.LeaseContainerID}}
+            - name: CosmosDbConfig__ProcessorName
+              value: {{.ProcessorName}}
 `
 
 	scaledObjectTemplate = `
@@ -132,7 +162,7 @@ spec:
         leaseDatabaseId: {{.LeaseDatabaseID}}
         leaseContainerId: {{.LeaseContainerID}}
         processorName: {{.ProcessorName}}
-        connectionFromEnv: COSMOS_CONNECTION
+        endpoint: {{.Endpoint}}
         activationChangeFeedLagThreshold: "0"
       authenticationRef:
         name: {{.SecretName}}-trigger-auth
@@ -144,15 +174,25 @@ func TestScaler(t *testing.T) {
 	ctx := context.Background()
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, connectionString, "TF_AZURE_COSMOSDB_CONNECTION_STRING env variable is required for azure cosmosdb test")
+	endpoint, _, err := parseConnString(connectionString)
+	require.NoErrorf(t, err, "cannot parse connection string - %s", err)
 
 	// Create Cosmos DB resources (database + containers)
 	setupCosmosDB(ctx, t)
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
-	data, templates := getTemplateData()
+	data, templates := getTemplateData(endpoint)
 
-	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+	CreateKubernetesResources(t, kc, testNamespace, data, templates[:3])
+	t.Cleanup(func() {
+		DeleteNamespace(t, testNamespace)
+		assert.Truef(t, WaitForNamespaceDeletion(t, testNamespace), "%s namespace not deleted", testNamespace)
+	})
+	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
+		"bootstrap processor pod should be ready after 1 minute")
+	waitForLeaseDocuments(ctx, t, time.Minute)
+	KubectlApplyWithTemplate(t, data, templates[3].Name, templates[3].Config)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
@@ -163,16 +203,17 @@ func TestScaler(t *testing.T) {
 	testScaleIn(t, kc)
 
 	// cleanup
-	DeleteKubernetesResources(t, testNamespace, data, templates)
+	KubectlDeleteMultipleWithTemplate(t, data, templates)
 }
 
-func getTemplateData() (templateData, []Template) {
+func getTemplateData(endpoint string) (templateData, []Template) {
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
 
 	return templateData{
 			TestNamespace:    testNamespace,
 			SecretName:       secretName,
 			Connection:       base64ConnectionString,
+			Endpoint:         endpoint,
 			DeploymentName:   deploymentName,
 			ScaledObjectName: scaledObjectName,
 			DatabaseID:       databaseID,
@@ -205,6 +246,91 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
+}
+
+func waitForLeaseDocuments(ctx context.Context, t *testing.T, timeout time.Duration) {
+	t.Helper()
+
+	endpoint, key, err := parseConnString(connectionString)
+	require.NoErrorf(t, err, "cannot parse connection string - %s", err)
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	var lastErr error
+	for {
+		leaseCount, err := getProcessorLeaseCount(timeoutCtx, endpoint, key)
+		if err == nil && leaseCount > 0 {
+			t.Logf("Processor initialized %d lease documents", leaseCount)
+			return
+		}
+		lastErr = err
+
+		select {
+		case <-timeoutCtx.Done():
+			require.NoError(t, lastErr, "failed to query processor lease documents")
+			t.Fatal("processor did not initialize lease documents within the timeout")
+		case <-ticker.C:
+		}
+	}
+}
+
+func getProcessorLeaseCount(ctx context.Context, endpoint, key string) (int, error) {
+	resourceLink := fmt.Sprintf("dbs/%s/colls/%s", leaseDatabaseID, leaseContainerID)
+	reqURL := fmt.Sprintf("%s/%s/docs", strings.TrimRight(endpoint, "/"), resourceLink)
+	prefix, err := json.Marshal(processorName + ".")
+	if err != nil {
+		return 0, fmt.Errorf("cannot marshal processor name prefix: %w", err)
+	}
+	body := fmt.Sprintf(`{"query":"SELECT * FROM c WHERE STARTSWITH(c.id, @prefix)","parameters":[{"name":"@prefix","value":%s}]}`, prefix)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqURL, strings.NewReader(body))
+	if err != nil {
+		return 0, fmt.Errorf("cannot create lease query request: %w", err)
+	}
+
+	now := time.Now().UTC().Format(http.TimeFormat)
+	req.Header.Set("Authorization", cosmosAuthToken(http.MethodPost, "docs", resourceLink, now, key))
+	req.Header.Set("x-ms-date", now)
+	req.Header.Set("x-ms-version", "2018-12-31")
+	req.Header.Set("Content-Type", "application/query+json")
+	req.Header.Set("x-ms-documentdb-isquery", "true")
+	req.Header.Set("x-ms-documentdb-query-enablecrosspartition", "true")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("cannot query processor leases: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, fmt.Errorf("cannot read processor lease query response: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("unexpected status %d querying processor leases: %s", resp.StatusCode, string(respBody))
+	}
+
+	var result struct {
+		Documents []struct {
+			LeaseToken        string `json:"LeaseToken"`
+			ContinuationToken string `json:"ContinuationToken"`
+		} `json:"Documents"`
+	}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return 0, fmt.Errorf("cannot decode processor lease query response: %w", err)
+	}
+
+	leaseCount := 0
+	for _, document := range result.Documents {
+		if document.LeaseToken != "" && document.ContinuationToken != "" {
+			leaseCount++
+		}
+	}
+	return leaseCount, nil
 }
 
 // addDocuments inserts documents into the Cosmos DB data container via the REST API
@@ -287,6 +413,9 @@ func setupCosmosDB(ctx context.Context, t *testing.T) {
 
 	// Create database
 	cosmosCreateResource(ctx, t, endpoint, key, "", "dbs", fmt.Sprintf(`{"id":"%s"}`, databaseID))
+	t.Cleanup(func() {
+		deleteCosmosDatabase(context.Background(), t, endpoint, key)
+	})
 
 	// Create data container with /id as partition key
 	dbLink := fmt.Sprintf("dbs/%s", databaseID)
@@ -296,6 +425,29 @@ func setupCosmosDB(ctx context.Context, t *testing.T) {
 	// Create lease container with /id as partition key
 	cosmosCreateResource(ctx, t, endpoint, key, dbLink, "colls",
 		fmt.Sprintf(`{"id":"%s","partitionKey":{"paths":["/id"],"kind":"Hash"}}`, leaseContainerID))
+}
+
+func deleteCosmosDatabase(ctx context.Context, t *testing.T, endpoint, key string) {
+	t.Helper()
+
+	resourceLink := fmt.Sprintf("dbs/%s", databaseID)
+	reqURL := fmt.Sprintf("%s/%s", strings.TrimRight(endpoint, "/"), resourceLink)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, reqURL, nil)
+	require.NoErrorf(t, err, "cannot create database deletion request - %s", err)
+
+	now := time.Now().UTC().Format(http.TimeFormat)
+	req.Header.Set("Authorization", cosmosAuthToken(http.MethodDelete, "dbs", resourceLink, now, key))
+	req.Header.Set("x-ms-date", now)
+	req.Header.Set("x-ms-version", "2018-12-31")
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoErrorf(t, err, "cannot delete Cosmos DB test database - %s", err)
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	require.NoErrorf(t, err, "cannot read database deletion response - %s", err)
+	require.Truef(t, resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusNotFound,
+		"unexpected status %d deleting database: %s", resp.StatusCode, string(respBody))
 }
 
 // cosmosCreateResource creates a Cosmos DB resource via REST API, ignoring 409 Conflict (already exists).
