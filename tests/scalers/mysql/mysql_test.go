@@ -200,10 +200,8 @@ spec:
             protocol: TCP
             containerPort: 3600
         readinessProbe:
-          # -h 127.0.0.1 forces TCP, and the database is the one the entrypoint creates from
-          # MYSQL_DATABASE. During first-time initialisation the entrypoint runs a temporary server
-          # with networking disabled, so a probe over the local socket reports ready before the
-          # database exists and before port 3306 accepts connections.
+          # don't use mysqladmin ping over unix socket as this can report premature readiness
+          # instead use mysql over TCP with real query to cover (1) network socket availability and (2) database initialization
           exec:
             command:
             - sh
