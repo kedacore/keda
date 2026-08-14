@@ -2,26 +2,6 @@ module github.com/kedacore/keda/v2
 
 go 1.26.0
 
-replace (
-	// pin k8s.io to v0.35.5 & sigs.k8s.io/controller-runtime to v0.23.3
-	github.com/google/cel-go => github.com/google/cel-go v0.31.0
-	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.23.2
-	github.com/prometheus/client_model => github.com/prometheus/client_model v0.6.2
-	github.com/prometheus/common => github.com/prometheus/common v0.66.1
-	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.312.0
-	k8s.io/api => k8s.io/api v0.35.5
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.35.5
-	k8s.io/apimachinery => k8s.io/apimachinery v0.35.5
-	k8s.io/apiserver => k8s.io/apiserver v0.35.5
-	k8s.io/client-go => k8s.io/client-go v0.35.5
-	k8s.io/code-generator => k8s.io/code-generator v0.35.5
-	k8s.io/component-base => k8s.io/component-base v0.35.5
-	k8s.io/gengo/v2 => k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b
-	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20250910181357-589584f1c912
-	k8s.io/metrics => k8s.io/metrics v0.35.5
-	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.23.3
-)
-
 // Needed replaces
 // temporal.io/api and temporal.io/sdk use this package but it doesn't have license yet in 0.1.0 -> https://github.com/nexus-rpc/nexus-proto-annotations/issues/5
 replace github.com/nexus-rpc/nexus-proto-annotations v0.1.0 => github.com/nexus-rpc/nexus-proto-annotations v0.1.1-0.20260629224316-835bd8d49cb4
@@ -101,7 +81,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common v0.67.5
-	github.com/prometheus/prometheus v0.311.3
+	github.com/prometheus/prometheus v0.312.0
 	github.com/rabbitmq/amqp091-go v1.13.0
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9
 	github.com/redis/go-redis/v9 v9.22.0
@@ -134,19 +114,19 @@ require (
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/gotestsum v1.13.0
-	k8s.io/api v0.36.0
-	k8s.io/apimachinery v0.36.0
-	k8s.io/apiserver v0.36.0
-	k8s.io/client-go v0.36.0
-	k8s.io/code-generator v0.36.0
-	k8s.io/component-base v0.36.0
+	k8s.io/api v0.35.5
+	k8s.io/apimachinery v0.35.5
+	k8s.io/apiserver v0.35.5
+	k8s.io/client-go v0.35.5
+	k8s.io/code-generator v0.35.5
+	k8s.io/component-base v0.35.5
 	k8s.io/klog/v2 v2.140.0
 	k8s.io/kube-openapi v0.0.0-20260427204847-8949caaa1199
-	k8s.io/metrics v0.35.0
+	k8s.io/metrics v0.35.5
 	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5
 	sigs.k8s.io/controller-runtime v0.23.3
-	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.24.1
-	sigs.k8s.io/controller-tools v0.21.0
+	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20251120014536-56f7b6493b03
+	sigs.k8s.io/controller-tools v0.20.1
 	sigs.k8s.io/custom-metrics-apiserver v1.35.0
 	sigs.k8s.io/kustomize/kustomize/v5 v5.8.1
 )
@@ -365,13 +345,13 @@ require (
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/exp v0.0.0-20260527015227-08cc5374adb3 // indirect
-	golang.org/x/mod v0.38.0 // indirect
-	golang.org/x/net v0.57.0 // indirect
+	golang.org/x/mod v0.40.0 // indirect
+	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/term v0.45.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
-	golang.org/x/tools v0.48.0 // indirect
+	golang.org/x/tools v0.49.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	gomodules.xyz/jsonpatch/v2 v2.5.0 // indirect
 	google.golang.org/genproto v0.0.0-20260519071638-aa98bba5eb94 // indirect
@@ -382,7 +362,7 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/sourcemap.v1 v1.0.5 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/apiextensions-apiserver v0.36.0 // indirect
+	k8s.io/apiextensions-apiserver v0.35.5 // indirect
 	k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b // indirect
 	k8s.io/kms v0.35.5 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.34.0 // indirect

@@ -492,27 +492,39 @@ func WaitForPodsCompleted(t *testing.T, kc *kubernetes.Clientset, selector, name
 	return false
 }
 
-// Waits until all the pods in the namespace have a running status.
+// isPodReady reports whether the pod's Ready condition is true. The Running phase only means the
+// pod's containers have been created, so it is reached before a readiness probe first succeeds and
+// before the pod is reachable through a Service.
+func isPodReady(pod corev1.Pod) bool {
+	for _, cond := range pod.Status.Conditions {
+		if cond.Type == corev1.PodReady {
+			return cond.Status == corev1.ConditionTrue
+		}
+	}
+	return false
+}
+
+// Waits until all the pods in the namespace are ready.
 func WaitForAllPodRunningInNamespace(t *testing.T, kc *kubernetes.Clientset, namespace string, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
 		pods, err := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
 		if err != nil {
 			t.Logf("cannot list pods in namespace %s - %s", namespace, err)
 		} else {
-			runningCount := 0
+			readyCount := 0
 			for _, pod := range pods.Items {
-				if pod.Status.Phase != corev1.PodRunning {
+				if !isPodReady(pod) {
 					break
 				}
-				runningCount++
+				readyCount++
 			}
 
-			t.Logf("Waiting for pods in namespace to be in 'Running' status. Namespace - %s, Current - %d, Target - %d",
-				namespace, runningCount, len(pods.Items))
+			t.Logf("Waiting for pods in namespace to be ready. Namespace - %s, Current - %d, Target - %d",
+				namespace, readyCount, len(pods.Items))
 
-			// Both callers create the pods they are waiting on, so an empty namespace means the
-			// list arrived before they were scheduled rather than that everything is running.
-			if len(pods.Items) > 0 && runningCount == len(pods.Items) {
+			// Every caller creates the pods it is waiting on, so an empty namespace means the
+			// list arrived before they were scheduled rather than that everything is ready.
+			if len(pods.Items) > 0 && readyCount == len(pods.Items) {
 				return true
 			}
 		}
@@ -531,6 +543,8 @@ func WaitForRunningPodCount(t *testing.T, kc *kubernetes.Clientset, scaledJobNam
 		if err != nil {
 			t.Logf("cannot list pods - %s", err)
 		} else {
+			// Phase rather than readiness on purpose: these are ScaledJob pods, and the callers are
+			// counting how many the executor started, not whether each one is serving traffic.
 			runningPodCount := 0
 			for _, pod := range pods.Items {
 				if pod.Status.Phase == corev1.PodRunning {
@@ -612,12 +626,8 @@ func WaitForPodReady(t *testing.T, kc *kubernetes.Clientset, podName, namespace 
 		} else {
 			t.Logf("Waiting for pod to be in ready state. Pod - %s, Current Phase - %s", podName, pod.Status.Phase)
 
-			// A pod can be in the Running phase without all containers being ready.
-			// Check the Ready condition to ensure the pod is actually ready.
-			for _, cond := range pod.Status.Conditions {
-				if cond.Type == corev1.PodReady && cond.Status == corev1.ConditionTrue {
-					return true
-				}
+			if isPodReady(*pod) {
+				return true
 			}
 		}
 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
@@ -1289,31 +1299,61 @@ func generateCA(t *testing.T) {
 	}
 }
 
-// CheckKubectlGetResult runs `kubectl get` with parameters and compares output with expected value
+// The fields this reads are written by the operator as it reconciles the resource that references
+// the authentication, so they lag the apply or delete that triggered the change. A minute is many
+// times a reconcile and is only reached when the operator has genuinely stopped updating them.
+const kubectlGetResultTimeout = time.Minute
+
+// CheckKubectlGetResult runs `kubectl get` with parameters and waits for the output to match the
+// expected value.
 func CheckKubectlGetResult(t *testing.T, kind string, name string, namespace string, otherparameter string, expected string) {
-	time.Sleep(1 * time.Second) // wait a second for recource deployment finished
 	kctlGetCmd := fmt.Sprintf(`kubectl get %s/%s -n %s %s"`, kind, name, namespace, otherparameter)
 	t.Log("Running kubectl cmd:", kctlGetCmd)
-	output, err := ExecuteCommand(kctlGetCmd)
-	assert.NoErrorf(t, err, "cannot get rollout info - %s", err)
 
-	unqoutedOutput := strings.ReplaceAll(string(output), "\"", "")
-	assert.Equal(t, expected, unqoutedOutput)
+	ctx, cancel := context.WithTimeout(context.Background(), kubectlGetResultTimeout)
+	defer cancel()
+
+	lastRead := "<nothing read>"
+	err := KedaEventually(ctx, func(_ context.Context) (bool, error) {
+		output, cmdErr := ExecuteCommand(kctlGetCmd)
+		if cmdErr != nil {
+			// Retried rather than reported, so that a command that fails while the resource is
+			// still being created does not end the wait.
+			lastRead = fmt.Sprintf("<command failed: %s>", cmdErr)
+			return false, nil
+		}
+
+		lastRead = strings.ReplaceAll(string(output), "\"", "")
+		return lastRead == expected, nil
+	}, IntervalShort)
+
+	assert.NoErrorf(t, err, "%s/%s %s: expected %q, last read %q", kind, name, otherparameter, expected, lastRead)
 }
 
 // KedaEventually checks if the provided conditionFunc eventually returns true
 // (and no error) within the context's deadline. It polls the conditionFunc
 // at the given interval until the condition is met or the context times out.
+// An error from conditionFunc is treated as an attempt that could not observe
+// the condition, so polling continues; the error is only reported if the
+// deadline arrives while the most recent attempt is still failing. Callers may
+// therefore return errors directly instead of hiding them behind a false.
 func KedaEventually(ctx context.Context, conditionFunc wait.ConditionWithContextFunc, interval time.Duration) error {
 	if interval <= 0 {
 		return fmt.Errorf("polling interval must be positive, got %v", interval)
 	}
 
+	// A condition that returns an error has not been shown to be false, only that it could not be
+	// observed this time, so the error is remembered and the wait carries on. It is reported if the
+	// deadline arrives while the most recent attempt is still failing, which is when it becomes the
+	// likely explanation. A later attempt that observes the condition clears it, so a transient
+	// failure early in a long wait does not end up blamed for a condition that simply stayed false.
+	var lastErr error
+
 	ok, err := conditionFunc(ctx)
-	if err != nil {
-		return fmt.Errorf("eventually check failed on initial check: %w", err)
-	}
-	if ok {
+	switch {
+	case err != nil:
+		lastErr = err
+	case ok:
 		return nil
 	}
 
@@ -1323,14 +1363,15 @@ func KedaEventually(ctx context.Context, conditionFunc wait.ConditionWithContext
 	for {
 		select {
 		case <-ctx.Done():
+			if lastErr != nil {
+				return fmt.Errorf("eventually check failed: context deadline exceeded, last attempt errored: %w", lastErr)
+			}
 			return fmt.Errorf("eventually check failed: context deadline exceeded before condition was met")
 
 		case <-ticker.C:
 			ok, err := conditionFunc(ctx)
-			if err != nil {
-				return fmt.Errorf("eventually check failed during polling: %w", err)
-			}
-			if ok {
+			lastErr = err
+			if err == nil && ok {
 				return nil
 			}
 		}
