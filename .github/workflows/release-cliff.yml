@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - 'release/v*'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -23,13 +24,21 @@ jobs:
         with:
           fetch-depth: 0 # git-cliff needs full history to resolve commits
 
+      - name: Validate target branch
+        run: |
+          if [[ "$GITHUB_REF_NAME" != "main" && ! "$GITHUB_REF_NAME" =~ ^release/v[0-9]+\.[0-9]+$ ]]; then
+            echo "Unsupported target branch: $GITHUB_REF_NAME"
+            echo "Use main or release/vX.Y."
+            exit 1
+          fi
+
       - name: Compute next version and baseline tag
         id: version
         run: |
           git fetch --tags
 
-          if [[ "${{ github.ref_name }}" == release/* ]]; then
-            minor_prefix="${{ github.ref_name }}"
+          if [[ "$GITHUB_REF_NAME" == release/* ]]; then
+            minor_prefix="$GITHUB_REF_NAME"
             minor_prefix="${minor_prefix#release/}"
             latest=$(git tag --list "${minor_prefix}.*" | sort -V | tail -1)
             latest="${latest:-${minor_prefix}.0}"
@@ -50,7 +59,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh api /repos/${{ github.repository }}/releases \
-            | jq -r --arg b "${{ github.ref_name }}" \
+            | jq -r --arg b "$GITHUB_REF_NAME" \
                 '.[] | select(.draft == true and .target_commitish == $b) | .tag_name' \
             | xargs -r -I{} gh release delete {} --yes --cleanup-tag 2>/dev/null || true
 

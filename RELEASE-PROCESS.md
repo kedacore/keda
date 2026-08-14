@@ -37,7 +37,7 @@ Release draft notes are generated automatically by [release-cliff workflow](.git
 
 How it works:
 
-- The workflow runs on push to `main` and `release/v*` branches.
+- The workflow runs on push to `main` and `release/v*` branches, and can also be started manually with a target branch.
 - It computes the next version and the baseline tag for the current branch.
 - It removes any existing draft release targeting the same branch.
 - It generates the changelog with `git-cliff` using PR labels (`kind/*`) to group entries.
@@ -68,6 +68,10 @@ Hotfix flow (`vX.Y.Z`):
 2. Backport it to the corresponding `release/vX.Y` branch (cherry-pick bot or manual cherry-pick).
 3. Push the backport branch update and open the regenerated draft targeting `release/vX.Y`.
 4. Review, confirm the next patch version, and publish.
+
+### Regenerating draft notes
+
+If draft notes are not categorized correctly, update the source PR with the appropriate `kind/*` label. Then open **Actions > Release Notes (git-cliff) > Run workflow**, select `main` or the relevant `release/vX.Y` branch in GitHub's branch selector, and run it. The existing draft for that branch is replaced.
 
 ### PR requirements for generated notes
 
