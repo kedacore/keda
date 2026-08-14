@@ -26,8 +26,8 @@ jobs:
 
       - name: Validate target branch
         run: |
-          if [[ "$GITHUB_REF_NAME" != "main" && ! "$GITHUB_REF_NAME" =~ ^release/v[0-9]+\.[0-9]+$ ]]; then
-            echo "Unsupported target branch: $GITHUB_REF_NAME"
+          if [[ "${{ github.ref_name }}" != "main" && ! "${{ github.ref_name }}" =~ ^release/v[0-9]+\.[0-9]+$ ]]; then
+            echo "Unsupported target branch: ${{ github.ref_name }}"
             echo "Use main or release/vX.Y."
             exit 1
           fi
