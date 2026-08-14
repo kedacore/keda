@@ -539,6 +539,7 @@ func TestExpectedQueueConsumptionTime(t *testing.T) {
 	for _, testData := range testExpectedQueueConsumptionTimeTestData {
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusOK)
+			// nosemgrep: no-direct-write-to-responsewriter
 			_, _ = w.Write([]byte(testData.response))
 		}))
 
