@@ -1333,16 +1333,27 @@ func CheckKubectlGetResult(t *testing.T, kind string, name string, namespace str
 // KedaEventually checks if the provided conditionFunc eventually returns true
 // (and no error) within the context's deadline. It polls the conditionFunc
 // at the given interval until the condition is met or the context times out.
+// An error from conditionFunc is treated as an attempt that could not observe
+// the condition, so polling continues; the error is only reported if the
+// deadline arrives while the most recent attempt is still failing. Callers may
+// therefore return errors directly instead of hiding them behind a false.
 func KedaEventually(ctx context.Context, conditionFunc wait.ConditionWithContextFunc, interval time.Duration) error {
 	if interval <= 0 {
 		return fmt.Errorf("polling interval must be positive, got %v", interval)
 	}
 
+	// A condition that returns an error has not been shown to be false, only that it could not be
+	// observed this time, so the error is remembered and the wait carries on. It is reported if the
+	// deadline arrives while the most recent attempt is still failing, which is when it becomes the
+	// likely explanation. A later attempt that observes the condition clears it, so a transient
+	// failure early in a long wait does not end up blamed for a condition that simply stayed false.
+	var lastErr error
+
 	ok, err := conditionFunc(ctx)
-	if err != nil {
-		return fmt.Errorf("eventually check failed on initial check: %w", err)
-	}
-	if ok {
+	switch {
+	case err != nil:
+		lastErr = err
+	case ok:
 		return nil
 	}
 
@@ -1352,14 +1363,15 @@ func KedaEventually(ctx context.Context, conditionFunc wait.ConditionWithContext
 	for {
 		select {
 		case <-ctx.Done():
+			if lastErr != nil {
+				return fmt.Errorf("eventually check failed: context deadline exceeded, last attempt errored: %w", lastErr)
+			}
 			return fmt.Errorf("eventually check failed: context deadline exceeded before condition was met")
 
 		case <-ticker.C:
 			ok, err := conditionFunc(ctx)
-			if err != nil {
-				return fmt.Errorf("eventually check failed during polling: %w", err)
-			}
-			if ok {
+			lastErr = err
+			if err == nil && ok {
 				return nil
 			}
 		}
