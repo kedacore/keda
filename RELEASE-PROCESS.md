@@ -57,17 +57,17 @@ Before publishing a release, review and edit the draft body in GitHub to add hig
 Minor release flow (`vX.Y.0`):
 
 1. Merge all release-bound PRs into `main`.
-1. Open the generated draft release for the next minor release.
-1. During the `vX.Y.0` release workflow, KEDA automatically creates `release/vX.Y` from the release tag commit when it does not exist yet.
-1. Use that `release/vX.Y` branch for subsequent patch releases (`vX.Y.1`, `vX.Y.2`, and so on).
-1. Review and edit the draft notes, then publish `vX.Y.0` from `main`.
+2. Open the generated draft release for the next minor release.
+3. During the `vX.Y.0` release workflow, KEDA automatically creates `release/vX.Y` from the release tag commit when it does not exist yet.
+4. Use that `release/vX.Y` branch for subsequent patch releases (`vX.Y.1`, `vX.Y.2`, and so on).
+5. Review and edit the draft notes, then publish `vX.Y.0` from `main`.
 
 Hotfix flow (`vX.Y.Z`):
 
 1. Merge the fix PR into `main`.
-1. Backport it to the corresponding `release/vX.Y` branch (cherry-pick bot or manual cherry-pick).
-1. Push the backport branch update and open the regenerated draft targeting `release/vX.Y`.
-1. Review, confirm the next patch version, and publish.
+2. Backport it to the corresponding `release/vX.Y` branch (cherry-pick bot or manual cherry-pick).
+3. Push the backport branch update and open the regenerated draft targeting `release/vX.Y`.
+4. Review, confirm the next patch version, and publish.
 
 ### PR requirements for generated notes
 
