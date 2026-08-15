@@ -2,7 +2,7 @@ name: Lint PR
 
 on:
   pull_request_target:
-    types: [opened, reopened, edited, synchronize, labeled, unlabeled]
+    types: [opened, reopened, edited, synchronize]
 
 permissions: {}
 
@@ -19,7 +19,7 @@ jobs:
       contents: read
       pull-requests: read
     name: Validate PR Metadata
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-slim
     steps:
       - name: Check PR title format
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -43,40 +43,5 @@ jobs:
             if (!componentPattern.test(component)) {
               core.setFailed(
                 `PR title component '${component}' is invalid. Use a KEDA-style component such as 'General', 'Kafka Scaler', 'CI', or 'ScaledObject/ScaledJob'.`
-              );
-            }
-
-      - name: Check changelog label
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          script: |
-            const validLabels = new Set([
-              'kind/feature', 'kind/new-scaler',
-              'kind/improvement', 'kind/enhancement',
-              'kind/bug',
-              'kind/deprecation',
-              'kind/breaking-change',
-              'kind/chore', 'kind/documentation', 'kind/dependencies', 'kind/ci',
-              'skip-changelog',
-            ]);
-
-            const labels = context.payload.pull_request.labels.map((label) => label.name);
-
-            if (labels.includes('skip-changelog')) return;
-
-            const kindLabels = labels.filter((label) => label.startsWith('kind/'));
-            const invalidLabels = kindLabels.filter((label) => !validLabels.has(label));
-
-            if (kindLabels.length === 0) {
-              core.setFailed(
-                `PR must have exactly one valid changelog label. Valid labels: ${[...validLabels].join(', ')}`
-              );
-            } else if (invalidLabels.length > 0) {
-              core.setFailed(
-                `Unknown label(s): ${invalidLabels.join(', ')}. Valid labels: ${[...validLabels].filter((label) => label !== 'skip-changelog').join(', ')}`
-              );
-            } else if (kindLabels.length > 1) {
-              core.setFailed(
-                `PR has ${kindLabels.length} kind/ labels (${kindLabels.join(', ')}). Use exactly one.`
               );
             }

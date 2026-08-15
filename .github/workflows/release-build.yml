@@ -15,6 +15,7 @@ jobs:
       contents: write
       packages: write
       id-token: write # needed for signing the images with GitHub OIDC Token **not production ready**
+      issues: write
 
     # keda-tools is built from github.com/test-tools/tools/Dockerfile
     container: ghcr.io/kedacore/keda-tools:1.26.5
@@ -102,6 +103,7 @@ jobs:
       - name: Create release branch (when needed)
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           IFS='.' read -r major minor patch <<< "$VERSION"
 
@@ -124,3 +126,10 @@ jobs:
 
           git push origin "${GITHUB_SHA}:refs/heads/${branch}"
           echo "Created branch ${branch} from ${GITHUB_SHA}."
+
+          label="cherry-pick/v${major}.${minor}"
+          gh label create "$label" \
+            --description "Backport merged pull requests to ${branch}" \
+            --color "1D76DB" \
+            --force
+          echo "Created label ${label} for backports to ${branch}."
