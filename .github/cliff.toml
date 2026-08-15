@@ -23,7 +23,7 @@ body = """
 - [`{{ commit.id | truncate(length=7, end="") }}`](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/commit/{{ commit.id }}) : **{{ display_component }}**{% if description %}: {{ description }}{% endif %}{% if commit.remote.pr_number %} ([#{{ commit.remote.pr_number }}](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/pull/{{ commit.remote.pr_number }})){% endif %}{% if commit.remote.username %} (@{{ commit.remote.username }}){% endif %}
 {% endfor %}
 {% if group_name == "Dependencies" -%}
-</details>
+</details>{{ "\n" }}
 {% endif -%}
 {% endfor -%}
 """
