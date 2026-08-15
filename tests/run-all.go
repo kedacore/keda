@@ -45,6 +45,12 @@ func main() {
 
 	setAbsoluteConfigPath()
 
+	// deps-check is a standalone lint (no cluster needed) that verifies every test which
+	// uses an optional component also declares it with a "// +e2e-deps:" marker.
+	if len(os.Args) > 1 && os.Args[1] == "deps-check" {
+		os.Exit(runDepsCheck())
+	}
+
 	//
 	// Detect test cases
 	//
@@ -70,6 +76,11 @@ func main() {
 		showDryRunOutput(regularTestFiles, sequentialTestFiles, e2eRegex)
 		return
 	}
+
+	//
+	// Only install the optional components that a selected test declares it needs
+	//
+	resolveOptionalDependencies(append(append([]string{}, regularTestFiles...), sequentialTestFiles...))
 
 	//
 	// Install KEDA
@@ -145,6 +156,126 @@ func executeTest(ctx context.Context, file string, timeout string, tries int) Te
 		fmt.Printf("Execution of %s, attempt %q has failed: %s \n", file, numberToWord(i), err)
 	}
 	return result
+}
+
+// optionalDependency describes an optional setup component that a test opts into via a
+// "// +e2e-deps:<name>" marker. env is the variable that setup_test.go reads to decide
+// whether to install the component; signature detects usage of the component so the
+// deps-check lint can flag a test that uses it without declaring the marker.
+type optionalDependency struct {
+	env       string
+	signature *regexp.Regexp
+}
+
+// optionalDependencies maps a marker name to the setup component it controls. Only
+// components that are fully annotated (every consuming test carries the marker, enforced
+// by deps-check) belong here. Others (e.g. identity webhooks) stay driven by their env
+// var in CI until they are migrated too.
+var optionalDependencies = map[string]optionalDependency{
+	"argo-rollouts": {env: "E2E_INSTALL_ARGO_ROLLOUTS", signature: regexp.MustCompile(`(?i)argoproj\.io`)},
+	"kafka":         {env: "E2E_INSTALL_KAFKA", signature: regexp.MustCompile(`(?i)strimzi|kind: Kafka\b`)},
+	"opentelemetry": {env: "ENABLE_OPENTELEMETRY", signature: regexp.MustCompile(`(?i)opentelemetry|otlp`)},
+}
+
+var dependencyMarker = regexp.MustCompile(`(?m)^//\s*\+e2e-deps:\s*(.+)$`)
+
+// declaredDependencies returns the dependency names declared in the given file content.
+func declaredDependencies(content []byte) map[string]bool {
+	declared := map[string]bool{}
+	for _, match := range dependencyMarker.FindAllStringSubmatch(string(content), -1) {
+		for _, name := range strings.Split(match[1], ",") {
+			if name = strings.TrimSpace(name); name != "" {
+				declared[name] = true
+			}
+		}
+	}
+	return declared
+}
+
+// neededDependencies returns the set of optional components declared across the given test
+// files. installAll is true when a file could not be read, in which case every optional
+// component should be installed to stay on the safe side.
+func neededDependencies(testFiles []string) (needed map[string]bool, installAll bool) {
+	needed = map[string]bool{}
+	for _, file := range testFiles {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			fmt.Printf("Cannot read %s to resolve dependencies, installing all optional components: %v\n", file, err)
+			installAll = true
+			continue
+		}
+		for name := range declaredDependencies(content) {
+			needed[name] = true
+		}
+	}
+	return needed, installAll
+}
+
+// resolveOptionalDependencies exports the env var for each optional component based on
+// whether any selected test declared it, so setup only installs what is actually needed.
+// An explicitly set env var always wins, and an unreadable file falls back to installing
+// everything to stay on the safe side.
+func resolveOptionalDependencies(testFiles []string) {
+	needed, installAll := neededDependencies(testFiles)
+
+	for name, dep := range optionalDependencies {
+		if os.Getenv(dep.env) != "" {
+			continue // explicit override wins
+		}
+		if installAll || needed[name] {
+			os.Setenv(dep.env, helper.StringTrue)
+		} else {
+			fmt.Printf("No selected test needs %q, skipping its installation\n", name)
+			os.Setenv(dep.env, helper.StringFalse)
+		}
+	}
+}
+
+// runDepsCheck verifies that every test file using an optional component declares it with a
+// "// +e2e-deps:" marker. It returns a non-zero exit code when a marker is missing.
+func runDepsCheck() int {
+	var violations []string
+	err := filepath.Walk("tests", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		// utils holds the setup/cleanup installers themselves, not consuming tests.
+		if info.IsDir() {
+			if info.Name() == "utils" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(info.Name(), "_test.go") {
+			return nil
+		}
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		declared := declaredDependencies(content)
+		for name, dep := range optionalDependencies {
+			if dep.signature.Match(content) && !declared[name] {
+				violations = append(violations, fmt.Sprintf("%s uses %q but does not declare it; add \"// +e2e-deps:%s\"", path, name, name))
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		fmt.Printf("deps-check failed to walk tests: %v\n", err)
+		return 1
+	}
+
+	if len(violations) > 0 {
+		slices.Sort(violations)
+		fmt.Println("Missing e2e dependency markers:")
+		for _, v := range violations {
+			fmt.Printf("  %s\n", v)
+		}
+		return 1
+	}
+	fmt.Println("All e2e dependency markers are present")
+	return 0
 }
 
 func getRegularTestFiles(e2eRegex string) []string {
@@ -688,6 +819,23 @@ func showDryRunOutput(regularTestFiles, sequentialTestFiles []string, e2eRegex s
 				fmt.Println()
 			}
 		}
+	}
+
+	// Show which optional components would be installed based on the selected tests
+	needed, installAll := neededDependencies(append(append([]string{}, regularTestFiles...), sequentialTestFiles...))
+	names := make([]string, 0, len(optionalDependencies))
+	for name := range optionalDependencies {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	fmt.Println("\nOptional components:")
+	for _, name := range names {
+		install := installAll || needed[name]
+		if override := os.Getenv(optionalDependencies[name].env); override != "" {
+			fmt.Printf("├── %s: %s (forced by %s)\n", name, override, optionalDependencies[name].env)
+			continue
+		}
+		fmt.Printf("├── %s: install=%t\n", name, install)
 	}
 
 	fmt.Println("\nThis was a dry-run. No actual tests were executed.")

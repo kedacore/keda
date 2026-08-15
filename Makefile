@@ -110,6 +110,10 @@ scale-node-pool: az-login ## Scale nodepool.
 e2e-regex-check:
 	go run -tags e2e ./tests/run-all.go regex-check
 
+.PHONY: e2e-deps-check
+e2e-deps-check: ## Verify every e2e test that uses an optional component declares it with a "// +e2e-deps:" marker.
+	go run -tags e2e ./tests/run-all.go deps-check
+
 .PHONY: e2e-test
 e2e-test: get-cluster-context ## Run e2e tests against Azure cluster.
 	TERMINFO=/etc/terminfo

@@ -293,7 +293,6 @@ jobs:
           AWS_RUN_IDENTITY_TESTS: true
           AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
           GCP_RUN_IDENTITY_TESTS: true
-          ENABLE_OPENTELEMETRY: true
           VERSION: ${{ needs.triage.outputs.image_tag }}
           SUFFIX: "-test"
           TEST_CLUSTER_NAME: keda-e2e-cluster-pr
