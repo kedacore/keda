@@ -95,6 +95,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Azure Event Hub Scaler**: Fix authentication failures caused by appending a duplicate `EntityPath` when `eventHubName` is provided ([#7926](https://github.com/kedacore/keda/issues/7926))
 - **Dynatrace Scaler**: Handle all documented DQL query states (`NOT_STARTED`, `FAILED`, `CANCELLED`, `RESULT_GONE`) in both the execute and poll paths; `NOT_STARTED` on either path now triggers a poll retry instead of an immediate error, and terminal error states produce descriptive messages instead of `unknown state: X` ([#7986](https://github.com/kedacore/keda/pull/7986))
 - **Github Runner Scaler**: Fix per-repository ETag job cache returning another concurrent workflow run's jobs, inflating the computed queue length when a repository has multiple simultaneous queued/in_progress runs ([#7949](https://github.com/kedacore/keda/issues/7949))
+- **Solr Scaler**: Fix a non-200 response being reported as a queue length of 0, which scaled the workload to zero during a Solr outage, an auth rejection or a missing collection instead of surfacing the error ([#8036](https://github.com/kedacore/keda/issues/8036))
 
 ### Deprecations
 
