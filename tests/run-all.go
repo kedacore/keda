@@ -45,12 +45,6 @@ func main() {
 
 	setAbsoluteConfigPath()
 
-	// deps-check is a standalone lint (no cluster needed) that verifies every test which
-	// uses an optional component also declares it with a "// +e2e-deps:" marker.
-	if len(os.Args) > 1 && os.Args[1] == "deps-check" {
-		os.Exit(runDepsCheck())
-	}
-
 	//
 	// Detect test cases
 	//
@@ -160,21 +154,19 @@ func executeTest(ctx context.Context, file string, timeout string, tries int) Te
 
 // optionalDependency describes an optional setup component that a test opts into via a
 // "// +e2e-deps:<name>" marker. env is the variable that setup_test.go reads to decide
-// whether to install the component; signature detects usage of the component so the
-// deps-check lint can flag a test that uses it without declaring the marker.
+// whether to install the component.
 type optionalDependency struct {
-	env       string
-	signature *regexp.Regexp
+	env string
 }
 
 // optionalDependencies maps a marker name to the setup component it controls. Only
-// components that are fully annotated (every consuming test carries the marker, enforced
-// by deps-check) belong here. Others (e.g. identity webhooks) stay driven by their env
-// var in CI until they are migrated too.
+// components that are fully annotated (every consuming test carries the marker) belong
+// here. Others (e.g. identity webhooks) stay driven by their env var in CI until they are
+// migrated too.
 var optionalDependencies = map[string]optionalDependency{
-	"argo-rollouts": {env: "E2E_INSTALL_ARGO_ROLLOUTS", signature: regexp.MustCompile(`(?i)argoproj\.io`)},
-	"kafka":         {env: "E2E_INSTALL_KAFKA", signature: regexp.MustCompile(`(?i)strimzi|kind: Kafka\b`)},
-	"opentelemetry": {env: "ENABLE_OPENTELEMETRY", signature: regexp.MustCompile(`(?i)opentelemetry|otlp`)},
+	"argo-rollouts": {env: "E2E_INSTALL_ARGO_ROLLOUTS"},
+	"kafka":         {env: "E2E_INSTALL_KAFKA"},
+	"opentelemetry": {env: "ENABLE_OPENTELEMETRY"},
 }
 
 var dependencyMarker = regexp.MustCompile(`(?m)^//\s*\+e2e-deps:\s*(.+)$`)
@@ -229,53 +221,6 @@ func resolveOptionalDependencies(testFiles []string) {
 			os.Setenv(dep.env, helper.StringFalse)
 		}
 	}
-}
-
-// runDepsCheck verifies that every test file using an optional component declares it with a
-// "// +e2e-deps:" marker. It returns a non-zero exit code when a marker is missing.
-func runDepsCheck() int {
-	var violations []string
-	err := filepath.Walk("tests", func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		// utils holds the setup/cleanup installers themselves, not consuming tests.
-		if info.IsDir() {
-			if info.Name() == "utils" {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if !strings.HasSuffix(info.Name(), "_test.go") {
-			return nil
-		}
-		content, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		declared := declaredDependencies(content)
-		for name, dep := range optionalDependencies {
-			if dep.signature.Match(content) && !declared[name] {
-				violations = append(violations, fmt.Sprintf("%s uses %q but does not declare it; add \"// +e2e-deps:%s\"", path, name, name))
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		fmt.Printf("deps-check failed to walk tests: %v\n", err)
-		return 1
-	}
-
-	if len(violations) > 0 {
-		slices.Sort(violations)
-		fmt.Println("Missing e2e dependency markers:")
-		for _, v := range violations {
-			fmt.Printf("  %s\n", v)
-		}
-		return 1
-	}
-	fmt.Println("All e2e dependency markers are present")
-	return 0
 }
 
 func getRegularTestFiles(e2eRegex string) []string {

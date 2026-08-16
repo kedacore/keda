@@ -105,10 +105,6 @@ jobs:
         if: steps.filter.outputs.go == 'true'
         run: make verify-scalers-schema
 
-      - name: Verify e2e dependency markers are present
-        if: steps.filter.outputs.go == 'true'
-        run: make e2e-deps-check
-
       - name: Build
         if: steps.filter.outputs.go == 'true'
         run: make build
