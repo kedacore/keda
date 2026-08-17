@@ -789,24 +789,26 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 			triggerName = scalerConfigs[triggerIndex].TriggerName
 		}
 
-		metricSpecs, err := scalersCache.GetMetricSpecForScalingForScaler(ctx, triggerIndex)
-		if errors.Is(err, cache.ErrCacheClosed) {
+		metricSpecs, specErr := scalersCache.GetMetricSpecForScalingForScaler(ctx, triggerIndex)
+		if errors.Is(specErr, cache.ErrCacheClosed) {
 			continue
 		}
-		if err != nil {
+		if specErr != nil {
 			isScalerError = true
-			logger.Error(err, "error getting metric spec for the scaler", "scaler", triggerName)
-			scalersCache.Recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, eventreason.KEDAScalerFailed, "%s", err.Error())
+			logger.Error(specErr, "error getting metric spec for the scaler", "scaler", triggerName)
+			scalersCache.Recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, eventreason.KEDAScalerFailed, "%s", specErr.Error())
 		}
 
 		if len(metricsArray) == 0 {
-			err = fmt.Errorf("no metrics found getting metricsArray array %s", metricsName)
-			logger.Error(err, "error metricsArray is empty")
-			scalersCache.Recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, eventreason.KEDAScalerFailed, "%s", err.Error())
+			emptyErr := fmt.Errorf("no metrics found getting metricsArray array %s", metricsName)
+			logger.Error(emptyErr, "error metricsArray is empty")
+			scalersCache.Recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, eventreason.KEDAScalerFailed, "%s", emptyErr.Error())
 		}
 
+		// Drive fallback when GetMetricSpec returned empty (no streamed cache)
+		// so the metrics loop below never runs (#8056).
 		h.enqueueFallbackForEmptyMetricSpec(
-			ctx, scalersCache, scaledObject, err, metricSpecs, len(allScalers), metricsArray,
+			ctx, scalersCache, scaledObject, specErr, metricSpecs, len(allScalers), metricsArray,
 			triggerIndex, triggerName, matchingMetricsChan, &wg, logger,
 		)
 
