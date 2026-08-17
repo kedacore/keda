@@ -389,10 +389,6 @@ func (e *EventEmitter) emitEventByHandler(eventData eventdata.EventData) {
 	}
 
 	if eventData.HandlerKey == "" {
-		// Both locks are taken once, before the loop, and in the same order as createEventHandlers
-		// (handlers then filters). Taking the filter lock per iteration with a deferred unlock kept
-		// the reader held across iterations, so a waiting writer would block the next RLock and
-		// deadlock the event loop against the reconcilers.
 		e.eventHandlersCacheLock.RLock()
 		defer e.eventHandlersCacheLock.RUnlock()
 		e.eventFilterCacheLock.RLock()
