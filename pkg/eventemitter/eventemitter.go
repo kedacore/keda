@@ -365,7 +365,7 @@ func (e *EventEmitter) enqueueEventData(eventData eventdata.EventData) {
 // 1. If there is a new EventData, call all handlers for emitting.
 // 2. Once there is an error when emitting event, record the handler's key and reqeueu this EventData.
 // 3. If the maximum number of retries has been exceeded, discard this event.
-// getEventHandler looks a handler up under the cache read lock. The map is mutated by
+// getEventHandler looks up a handler under the cache read lock. The map is mutated by
 // createEventHandlers and clearEventHandlersCache on the reconciler goroutines, so an unguarded
 // read here races with them and trips Go's "concurrent map read and map write" fatal error, which
 // no recover() can catch.
