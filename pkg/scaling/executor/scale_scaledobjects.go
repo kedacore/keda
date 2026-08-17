@@ -22,6 +22,13 @@ import (
 	"strings"
 	"time"
 
+	// lastActiveTimeRefreshInterval is the minimum interval between LastActiveTime
+	// status updates on steady-state ScaledObjects. Updating it on every poll
+	// forces a status patch on each polling interval even when nothing else
+	// changed, causing constant etcd write pressure and watch churn.
+	lastActiveTimeRefreshInterval = time.Minute
+
+
 	"github.com/go-logr/logr"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -77,7 +84,12 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			logger.V(1).Info("Some triggers defined in ScaledObject are not working correctly")
 		default:
 			// triggers are active, but we didn't need to scale (replica count > 0)
-			result.LastActiveTime = &metav1.Time{Time: time.Now()}
+			// Refresh LastActiveTime only if it is unset or stale, to avoid
+			// writing a redundant status patch on every polling cycle.
+			if scaledObject.Status.LastActiveTime == nil ||
+				time.Since(scaledObject.Status.LastActiveTime.Time) >= lastActiveTimeRefreshInterval {
+				result.LastActiveTime = &metav1.Time{Time: time.Now()}
+			}
 		}
 	} else {
 		// isActive == false
