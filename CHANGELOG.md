@@ -16,6 +16,12 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+
+## Unreleased
+
+### Fixes
+
+- **General**: Fix fallback never activating when an external gRPC scaler is unreachable ([#8056](https://github.com/kedacore/keda/issues/8056))
 - [v2.20.2](#v2202)
 - [v2.20.1](#v2201)
 - [v2.20.0](#v2200)

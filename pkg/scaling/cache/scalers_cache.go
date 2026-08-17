@@ -235,7 +235,27 @@ func (c *ScalersCache) GetMetricSpecForScalingForScaler(ctx context.Context, ind
 		}
 	}
 
-	return metricSpecs, err
+	if err != nil {
+		// The scaler failed to return metric specs (e.g. an unreachable external gRPC
+		// scaler). Fall back to the last known specs so the caller can still evaluate
+		// metrics and, when those fail too, trigger fallback. Without this, the caller's
+		// metric loop never runs and the fallback failure counter is never incremented.
+		sb, _ = c.getScalerBuilder(index)
+		if sb.CachedMetricSpecs != nil {
+			return cloneMetricSpecs(sb.CachedMetricSpecs), nil
+		}
+		return nil, err
+	}
+
+	// Cache the freshly fetched specs so they can be reused if the scaler becomes
+	// unreachable on a later poll (see fallback handling in pkg/scaling/scale_handler.go).
+	c.mutex.Lock()
+	if !c.closed && index >= 0 && index < len(c.Scalers) {
+		c.Scalers[index].CachedMetricSpecs = cloneMetricSpecs(metricSpecs)
+	}
+	c.mutex.Unlock()
+
+	return metricSpecs, nil
 }
 
 // GetMetricsAndActivityForScaler returns metric value, activity and latency for a scaler identified by the metric name
