@@ -21,6 +21,9 @@ import (
 
 const (
 	testName = "pause-scaledobject-explicitly-test"
+
+	// Bounds how long we wait for the operator to act on an annotation change.
+	hpaWaitTimeout = 2 * time.Minute
 )
 
 var (
@@ -203,16 +206,31 @@ func removeScaledObjectPausedScaleOutAnnotation(t assert.TestingT) {
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
+// waitForHPADeleted polls until the HPA KEDA manages for the ScaledObject is gone, which is
+// how a pause becomes observable. The annotation helpers above only confirm that kubectl
+// accepted the edit; the operator applies it asynchronously, and how long that takes varies
+// with cluster load, so there is no single sleep duration that is correct everywhere.
 func waitForHPADeleted(t *testing.T, kc *kubernetes.Clientset, message string) {
-	var err error
-	for i := 0; i < 12; i++ {
-		_, err = kc.AutoscalingV2().HorizontalPodAutoscalers(testNamespace).Get(context.Background(), hpaName, metav1.GetOptions{})
-		if errors.IsNotFound(err) {
-			return
-		}
-		time.Sleep(5 * time.Second)
-	}
-	assert.Truef(t, errors.IsNotFound(err), "%s: last observed error: %v", message, err)
+	t.Logf("waiting for hpa %s to be deleted", hpaName)
+
+	ctx, cancel := context.WithTimeout(context.Background(), hpaWaitTimeout)
+	defer cancel()
+
+	err := KedaEventually(ctx, func(ctx context.Context) (bool, error) {
+		_, err := kc.AutoscalingV2().HorizontalPodAutoscalers(testNamespace).Get(ctx, hpaName, metav1.GetOptions{})
+		return errors.IsNotFound(err), nil
+	}, IntervalShort)
+
+	assert.NoErrorf(t, err, "%s: %v", message, err)
+}
+
+// waitForHPACreated polls until KEDA has recreated the HPA, which is how an unpause becomes
+// observable.
+func waitForHPACreated(t *testing.T, kc *kubernetes.Clientset, message string) {
+	t.Logf("waiting for hpa %s to be created", hpaName)
+
+	_, err := WaitForHpaCreation(t, kc, hpaName, testNamespace, int(hpaWaitTimeout.Seconds()), 1)
+	assert.NoErrorf(t, err, "%s: %v", message, err)
 }
 
 func testPauseWhenScaleOut(t *testing.T, kc *kubernetes.Clientset) {
@@ -281,7 +299,9 @@ func testBothPauseAnnotationActive(t *testing.T, kc *kubernetes.Clientset) {
 
 	t.Log("--- testing adding paused first---")
 	upsertScaledObjectPausedAnnotation(t)
-	time.Sleep(3 * time.Second)
+	// This case is about the order the two annotations arrive in, so let the first one
+	// actually take effect before adding the second.
+	waitForHPADeleted(t, kc, "HPA should not exist after setting paused=true")
 	upsertScaledObjectPausedReplicasAnnotation(t, 5)
 
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 10, testNamespace)
@@ -307,7 +327,8 @@ func testBothPauseAnnotationActive(t *testing.T, kc *kubernetes.Clientset) {
 
 	t.Log("--- testing adding paused-replica first---")
 	upsertScaledObjectPausedReplicasAnnotation(t, 5)
-	time.Sleep(3 * time.Second)
+	// As above, but with the annotations applied in the opposite order.
+	waitForHPADeleted(t, kc, "HPA should not exist after setting paused-replicas")
 	upsertScaledObjectPausedAnnotation(t)
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 10, testNamespace)
 
@@ -321,13 +342,11 @@ func testHPANotExistWhilePaused(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing HPA does not exist while paused ---")
 
 	upsertScaledObjectPausedAnnotation(t)
-	time.Sleep(5 * time.Second)
+	waitForHPADeleted(t, kc, "HPA should not exist while paused with paused=true")
 
-	_, err := kc.AutoscalingV2().HorizontalPodAutoscalers(testNamespace).Get(context.Background(), hpaName, metav1.GetOptions{})
-	assert.True(t, errors.IsNotFound(err), "HPA should not exist while paused with paused=true")
-
+	// paused-replicas is still set from the previous case, so dropping paused on its own
+	// does not bring the HPA back. The next case waits for its own precondition.
 	removeScaledObjectPausedAnnotation(t)
-	time.Sleep(5 * time.Second)
 }
 
 func testHPANotExistWhilePausedReplicas(t *testing.T, kc *kubernetes.Clientset) {
@@ -341,8 +360,10 @@ func testHPANotExistWhilePausedReplicas(t *testing.T, kc *kubernetes.Clientset) 
 	_, err := kc.AutoscalingV2().HorizontalPodAutoscalers(testNamespace).Get(context.Background(), hpaName, metav1.GetOptions{})
 	assert.True(t, errors.IsNotFound(err), "HPA should not exist while paused with paused-replicas")
 
+	// Both pause annotations are gone now, so the ScaledObject is fully unpaused and the
+	// operator recreates the HPA. Wait for that so the next case starts from a known state.
 	removeScaledObjectPausedReplicasAnnotation(t)
-	time.Sleep(5 * time.Second)
+	waitForHPACreated(t, kc, "HPA should be recreated after removing paused-replicas")
 }
 
 func testPausedAnnotationTakesPrecedenceOverPauseScaleIn(t *testing.T, kc *kubernetes.Clientset) {
@@ -350,15 +371,14 @@ func testPausedAnnotationTakesPrecedenceOverPauseScaleIn(t *testing.T, kc *kuber
 
 	upsertScaledObjectPausedScaleInAnnotation(t)
 
-	_, err := WaitForHpaCreation(t, kc, hpaName, testNamespace, 12, 5)
-	assert.NoError(t, err, "HPA should exist while only paused-scale-in is set")
+	waitForHPACreated(t, kc, "HPA should exist while only paused-scale-in is set")
 
 	upsertScaledObjectPausedAnnotation(t)
 	waitForHPADeleted(t, kc, "HPA should not exist while paused=true is set with paused-scale-in")
 
 	removeScaledObjectPausedAnnotation(t)
 	removeScaledObjectPausedScaleInAnnotation(t)
-	time.Sleep(5 * time.Second)
+	waitForHPACreated(t, kc, "HPA should be recreated after removing paused and paused-scale-in")
 }
 
 func testPausedAnnotationTakesPrecedenceWhenPauseScaleInIsAdded(t *testing.T, kc *kubernetes.Clientset) {
@@ -372,7 +392,7 @@ func testPausedAnnotationTakesPrecedenceWhenPauseScaleInIsAdded(t *testing.T, kc
 
 	removeScaledObjectPausedScaleInAnnotation(t)
 	removeScaledObjectPausedAnnotation(t)
-	time.Sleep(5 * time.Second)
+	waitForHPACreated(t, kc, "HPA should be recreated after removing paused-scale-in and paused")
 }
 
 func testPausedAnnotationTakesPrecedenceOverPauseScaleOut(t *testing.T, kc *kubernetes.Clientset) {
@@ -380,15 +400,14 @@ func testPausedAnnotationTakesPrecedenceOverPauseScaleOut(t *testing.T, kc *kube
 
 	upsertScaledObjectPausedScaleOutAnnotation(t)
 
-	_, err := WaitForHpaCreation(t, kc, hpaName, testNamespace, 12, 5)
-	assert.NoError(t, err, "HPA should exist while only paused-scale-out is set")
+	waitForHPACreated(t, kc, "HPA should exist while only paused-scale-out is set")
 
 	upsertScaledObjectPausedAnnotation(t)
 	waitForHPADeleted(t, kc, "HPA should not exist while paused=true is set with paused-scale-out")
 
 	removeScaledObjectPausedAnnotation(t)
 	removeScaledObjectPausedScaleOutAnnotation(t)
-	time.Sleep(5 * time.Second)
+	waitForHPACreated(t, kc, "HPA should be recreated after removing paused and paused-scale-out")
 }
 
 func testPausedAnnotationTakesPrecedenceWhenPauseScaleOutIsAdded(t *testing.T, kc *kubernetes.Clientset) {
@@ -402,7 +421,7 @@ func testPausedAnnotationTakesPrecedenceWhenPauseScaleOutIsAdded(t *testing.T, k
 
 	removeScaledObjectPausedScaleOutAnnotation(t)
 	removeScaledObjectPausedAnnotation(t)
-	time.Sleep(5 * time.Second)
+	waitForHPACreated(t, kc, "HPA should be recreated after removing paused-scale-out and paused")
 }
 
 func testChangePausedReplicasValue(t *testing.T, kc *kubernetes.Clientset) {
@@ -417,7 +436,7 @@ func testChangePausedReplicasValue(t *testing.T, kc *kubernetes.Clientset) {
 		"replica count should be 7 after 1 minute")
 
 	removeScaledObjectPausedReplicasAnnotation(t)
-	time.Sleep(5 * time.Second)
+	waitForHPACreated(t, kc, "HPA should be recreated after removing paused-replicas")
 }
 
 func testSwitchFromPausedReplicasToPaused(t *testing.T, kc *kubernetes.Clientset) {
@@ -431,11 +450,9 @@ func testSwitchFromPausedReplicasToPaused(t *testing.T, kc *kubernetes.Clientset
 	// Switch: remove paused-replicas, add paused=true
 	removeScaledObjectPausedReplicasAnnotation(t)
 	upsertScaledObjectPausedAnnotation(t)
-	time.Sleep(5 * time.Second)
 
 	// HPA should not exist after switch
-	_, err := kc.AutoscalingV2().HorizontalPodAutoscalers(testNamespace).Get(context.Background(), hpaName, metav1.GetOptions{})
-	assert.True(t, errors.IsNotFound(err), "HPA should not exist after switching to paused=true")
+	waitForHPADeleted(t, kc, "HPA should not exist after switching to paused=true")
 
 	// Replicas should stay frozen at 5
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 5, 30)

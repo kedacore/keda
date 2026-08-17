@@ -87,12 +87,15 @@ func TestDynatraceGetMetricSpecForScaling(t *testing.T) {
 
 func TestDynatraceGetMetricByQuery(t *testing.T) {
 	testCases := []struct {
-		name                string
-		executeResponseFail bool
-		pollResponseFail    bool
-		pollResponseAfter   int
-		metricValue         float64
-		isError             bool
+		name                  string
+		executeResponseFail   bool
+		executeState          string
+		pollResponseFail      bool
+		pollResponseAfter     int
+		pollIntermediateState string
+		pollTerminalState     string
+		metricValue           float64
+		isError               bool
 	}{
 		{
 			name:                "value returned successfully on first poll",
@@ -127,10 +130,64 @@ func TestDynatraceGetMetricByQuery(t *testing.T) {
 			pollResponseFail: true,
 			isError:          true,
 		},
+		{
+			name:                "value returned successfully when execute returns NOT_STARTED",
+			executeState:        "NOT_STARTED",
+			executeResponseFail: false,
+			pollResponseFail:    false,
+			pollResponseAfter:   0,
+			metricValue:         300.3,
+			isError:             false,
+		},
+		{
+			name:                "execute returns unknown state returns error",
+			executeState:        "UNKNOWN_STATE",
+			executeResponseFail: false,
+			isError:             true,
+		},
+		{
+			name:                  "poll returns NOT_STARTED then SUCCEEDED",
+			executeResponseFail:   false,
+			pollResponseFail:      false,
+			pollIntermediateState: "NOT_STARTED",
+			pollResponseAfter:     1,
+			metricValue:           400.4,
+			isError:               false,
+		},
+		{
+			name:                "poll returns FAILED",
+			executeResponseFail: false,
+			pollTerminalState:   "FAILED",
+			isError:             true,
+		},
+		{
+			name:                "poll returns CANCELLED",
+			executeResponseFail: false,
+			pollTerminalState:   "CANCELLED",
+			isError:             true,
+		},
+		{
+			name:                "poll returns RESULT_GONE",
+			executeResponseFail: false,
+			pollTerminalState:   "RESULT_GONE",
+			isError:             true,
+		},
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+			executeState := tt.executeState
+			if executeState == "" {
+				executeState = "RUNNING"
+			}
+			pollIntermediateState := tt.pollIntermediateState
+			if pollIntermediateState == "" {
+				pollIntermediateState = "RUNNING"
+			}
+			pollTerminalState := tt.pollTerminalState
+			if pollTerminalState == "" {
+				pollTerminalState = "SUCCEEDED"
+			}
 			pollingCount := 0
 			var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/platform/storage/query/v1/query:execute" {
@@ -141,7 +198,7 @@ func TestDynatraceGetMetricByQuery(t *testing.T) {
 						w.Header().Set("Content-Type", "application/json")
 						w.WriteHeader(http.StatusAccepted)
 						bytes, err := json.Marshal(dynatraceExecuteQueryResponse{
-							State:        "RUNNING",
+							State:        executeState,
 							RequestToken: "token",
 						})
 						assert.NoError(t, err)
@@ -159,7 +216,7 @@ func TestDynatraceGetMetricByQuery(t *testing.T) {
 							w.Header().Set("Content-Type", "application/json")
 							w.WriteHeader(http.StatusOK)
 							bytes, err := json.Marshal(dynatraceQueryResponse{
-								State: "SUCCEEDED",
+								State: pollTerminalState,
 								Result: struct {
 									Records []struct {
 										R float64 `json:"r"`
@@ -175,7 +232,7 @@ func TestDynatraceGetMetricByQuery(t *testing.T) {
 							w.Header().Set("Content-Type", "application/json")
 							w.WriteHeader(http.StatusOK)
 							bytes, err := json.Marshal(dynatraceQueryResponse{
-								State: "RUNNING",
+								State: pollIntermediateState,
 							})
 							assert.NoError(t, err)
 							_, err = w.Write(bytes)

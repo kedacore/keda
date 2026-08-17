@@ -719,13 +719,16 @@ func (s *rabbitMQScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 		isActive = (ratio > s.metadata.ActivationValue) || ((publishRate > 0) && (deliverGetRate == 0))
 	case rabbitModeExpectedQueueConsumptionTime:
 		eta := float64(0)
-		if deliverGetRate == 0 {
+		switch {
+		case messages == 0:
+			eta = 0
+		case deliverGetRate == 0:
 			eta = float64(s.metadata.ActivationValue)
-		} else {
+		default:
 			eta = ((publishRate - deliverGetRate) / deliverGetRate) + (float64(messages) / deliverGetRate)
 		}
 		metric = GenerateMetricInMili(metricName, eta)
-		isActive = (eta > s.metadata.ActivationValue) || (deliverGetRate == 0)
+		isActive = (eta > s.metadata.ActivationValue) || (deliverGetRate == 0 && messages > 0)
 	}
 
 	return []external_metrics.ExternalMetricValue{metric}, isActive, nil

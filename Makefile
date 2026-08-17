@@ -126,6 +126,9 @@ e2e-test-clean-crds: ## Delete all scaled objects and jobs across all namespaces
 
 .PHONY: e2e-test-clean
 e2e-test-clean: get-cluster-context ## Delete all namespaces labeled with type=e2e
+	# Remove finalizers/resources left behind if KEDA was uninstalled before its CRs were finalized,
+	# otherwise the namespace deletion below gets stuck in "Terminating"
+	./tests/force-clean-keda-resources.sh
 	kubectl delete ns -l type=e2e
 	# Clean up the strimzi CRDs, helm will not update them on Strimzi install if they already exist
 	# and we get stranded on old versions when we try to upgrade

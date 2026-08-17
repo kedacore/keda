@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - 'release/v*'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -22,6 +23,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # git-cliff needs full history to resolve commits
+
+      - name: Validate target branch
+        run: |
+          if [[ "${{ github.ref_name }}" != "main" && ! "${{ github.ref_name }}" =~ ^release/v[0-9]+\.[0-9]+$ ]]; then
+            echo "Unsupported target branch: ${{ github.ref_name }}"
+            echo "Use main or release/vX.Y."
+            exit 1
+          fi
 
       - name: Compute next version and baseline tag
         id: version
@@ -55,7 +64,7 @@ jobs:
             | xargs -r -I{} gh release delete {} --yes --cleanup-tag 2>/dev/null || true
 
       - name: Install git-cliff
-        uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026 # v2.85.11
+        uses: taiki-e/install-action@b20dedce73af6905cdc30d6611090c9b67557c8d # v2.85.12
         with:
           tool: git-cliff
 
@@ -75,23 +84,19 @@ jobs:
             range=""
           fi
 
-          [[ "${RUNNER_DEBUG}" == "1" ]] && git-cliff $range --config .github/cliff.toml --tag "$VERSION" --strip all -vv > /dev/null || true
+          [[ "${RUNNER_DEBUG}" == "1" ]] && git-cliff $range --config .github/cliff.toml --tag "$VERSION" --ignore-tags '.*' --strip all -vv > /dev/null || true
 
-          changelog=$(git-cliff $range \
+          git-cliff $range \
             --config .github/cliff.toml \
             --tag "$VERSION" \
-            --strip all)
-
-          echo "changelog<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$changelog" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+            --ignore-tags '.*' \
+            --strip all > release-notes.md
 
       - name: Create draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
           BRANCH: ${{ github.ref_name }}
-          CHANGELOG: ${{ steps.notes.outputs.changelog }}
         run: |
           major=$(echo "$VERSION" | sed 's/^v//' | cut -d. -f1)
           minor=$(echo "$VERSION" | sed 's/^v//' | cut -d. -f2)
@@ -102,10 +107,15 @@ jobs:
           docs="Learn how to deploy KEDA by reading [our documentation](https://keda.sh/docs/${major}.${minor}/deploy/)."
           roadmap="🗓️ The next KEDA release is currently being estimated for <date>, learn more in our [roadmap](https://github.com/kedacore/keda/blob/main/ROADMAP.md#upcoming-release-cycles)."
           contributors=$(printf '### New Contributors\n\n<optional contributor highlights>')
-          body=$(printf '%s\n\n%s\n\n%s\n\n%s\n\n%s\n\n%s\n\n%s' "$intro" "$highlights" "$deprecations" "$docs" "$roadmap" "$CHANGELOG" "$contributors")
+
+          {
+            printf '%s\n\n%s\n\n%s\n\n%s\n\n%s\n\n' "$intro" "$highlights" "$deprecations" "$docs" "$roadmap"
+            cat release-notes.md
+            printf '\n%s\n' "$contributors"
+          } > release-body.md
 
           gh release create "$VERSION" \
             --draft \
             --target "$BRANCH" \
             --title "$VERSION" \
-            --notes "$body"
+            --notes-file release-body.md

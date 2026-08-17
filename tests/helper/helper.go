@@ -295,14 +295,17 @@ func DeleteNamespace(t *testing.T, nsName string) {
 	DeletePodsInNamespace(t, nsName)
 }
 
+// The wait helpers below share a rule: a read that failed must not be mistaken for an
+// observation. The generated clients return a non-nil zero value alongside the error, so reading
+// on regardless reports 0 replicas, 0 items or an absent status, which is indistinguishable from
+// the state a wait for zero is looking for. Each of them logs the error and tries again instead.
+
 func WaitForJobSuccess(t *testing.T, kc *kubernetes.Clientset, jobName, namespace string, iterations, interval int) bool {
 	for i := 0; i < iterations; i++ {
 		job, err := kc.BatchV1().Jobs(namespace).Get(context.Background(), jobName, metav1.GetOptions{})
 		if err != nil {
-			t.Logf("cannot run job - %s", err)
-		}
-
-		if job.Status.Succeeded > 0 {
+			t.Logf("cannot get job %s/%s - %s", namespace, jobName, err)
+		} else if job.Status.Succeeded > 0 {
 			t.Logf("job %s ran successfully!", jobName)
 			return true // Job ran successfully
 		}
@@ -315,20 +318,22 @@ func WaitForAllJobsSuccess(t *testing.T, kc *kubernetes.Clientset, namespace str
 	for i := 0; i < iterations; i++ {
 		jobs, err := kc.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{})
 		if err != nil {
-			t.Logf("cannot list jobs - %s", err)
-		}
-
-		allJobsSuccess := true
-		for _, job := range jobs.Items {
-			if job.Status.Succeeded == 0 {
-				allJobsSuccess = false
-				break
+			t.Logf("cannot list jobs in namespace %s - %s", namespace, err)
+		} else {
+			// Without this an empty namespace reports every job successful, so a list that came
+			// back before the jobs were created satisfies the wait.
+			allJobsSuccess := len(jobs.Items) > 0
+			for _, job := range jobs.Items {
+				if job.Status.Succeeded == 0 {
+					allJobsSuccess = false
+					break
+				}
 			}
-		}
 
-		if allJobsSuccess {
-			t.Logf("all jobs ran successfully!")
-			return true // Job ran successfully
+			if allJobsSuccess {
+				t.Logf("all jobs ran successfully!")
+				return true // Job ran successfully
+			}
 		}
 		time.Sleep(time.Duration(interval) * time.Second)
 	}
@@ -368,16 +373,20 @@ func WaitForJobCount(t *testing.T, kc *kubernetes.Clientset, namespace string, t
 
 func waitForJobCount(t *testing.T, kc *kubernetes.Clientset, selector, namespace string, target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
-		jobList, _ := kc.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{
+		jobList, err := kc.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{
 			LabelSelector: selector,
 		})
-		count := len(jobList.Items)
+		if err != nil {
+			t.Logf("cannot list jobs in namespace %s - %s", namespace, err)
+		} else {
+			count := len(jobList.Items)
 
-		t.Logf("Waiting for job count to hit target. Namespace - %s, Current  - %d, Target - %d",
-			namespace, count, target)
+			t.Logf("Waiting for job count to hit target. Namespace - %s, Current  - %d, Target - %d",
+				namespace, count, target)
 
-		if count == target {
-			return true
+			if count == target {
+				return true
+			}
 		}
 
 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
@@ -390,16 +399,17 @@ func WaitForJobCountUntilIteration(t *testing.T, kc *kubernetes.Clientset, names
 	isTargetAchieved := false
 
 	for i := 0; i < iterations; i++ {
-		jobList, _ := kc.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{})
-		count := len(jobList.Items)
-
-		t.Logf("Waiting for job count to hit target. Namespace - %s, Current  - %d, Target - %d",
-			namespace, count, target)
-
-		if count == target {
-			isTargetAchieved = true
-		} else {
+		jobList, err := kc.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{})
+		if err != nil {
+			t.Logf("cannot list jobs in namespace %s - %s", namespace, err)
 			isTargetAchieved = false
+		} else {
+			count := len(jobList.Items)
+
+			t.Logf("Waiting for job count to hit target. Namespace - %s, Current  - %d, Target - %d",
+				namespace, count, target)
+
+			isTargetAchieved = count == target
 		}
 
 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
@@ -432,13 +442,16 @@ func WaitForJobCreation(t *testing.T, kc *kubernetes.Clientset, scaledJobName, n
 // Waits until deployment count hits target or number of iterations are done.
 func WaitForPodCountInNamespace(t *testing.T, kc *kubernetes.Clientset, namespace string, target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
-		pods, _ := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
+		pods, err := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
+		if err != nil {
+			t.Logf("cannot list pods in namespace %s - %s", namespace, err)
+		} else {
+			t.Logf("Waiting for pods in namespace to hit target. Namespace - %s, Current  - %d, Target - %d",
+				namespace, len(pods.Items), target)
 
-		t.Logf("Waiting for pods in namespace to hit target. Namespace - %s, Current  - %d, Target - %d",
-			namespace, len(pods.Items), target)
-
-		if len(pods.Items) == target {
-			return true
+			if len(pods.Items) == target {
+				return true
+			}
 		}
 
 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
@@ -451,49 +464,69 @@ func WaitForPodCountInNamespace(t *testing.T, kc *kubernetes.Clientset, namespac
 func WaitForPodsCompleted(t *testing.T, kc *kubernetes.Clientset, selector, namespace string, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
 		pods, err := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: selector})
-		if (err != nil && errors.IsNotFound(err)) || len(pods.Items) == 0 {
+		switch {
+		case err != nil && !errors.IsNotFound(err):
+			t.Logf("cannot list pods with label %s in namespace %s - %s", selector, namespace, err)
+		case errors.IsNotFound(err) || len(pods.Items) == 0:
 			t.Logf("No pods with label %s", selector)
 			return true
-		}
+		default:
+			succeededCount := 0
 
-		succeededCount := 0
-
-		for _, pod := range pods.Items {
-			if pod.Status.Phase == corev1.PodSucceeded {
-				t.Logf("Pod %s in namespace %s is in completed status", pod.Name, namespace)
-				succeededCount++
+			for _, pod := range pods.Items {
+				if pod.Status.Phase == corev1.PodSucceeded {
+					t.Logf("Pod %s in namespace %s is in completed status", pod.Name, namespace)
+					succeededCount++
+				}
 			}
-		}
 
-		if succeededCount == len(pods.Items) {
-			return true
-		}
+			if succeededCount == len(pods.Items) {
+				return true
+			}
 
-		t.Logf("Waiting for pods with label %s to complete", selector)
+			t.Logf("Waiting for pods with label %s to complete", selector)
+		}
 
 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
 	}
 	return false
 }
 
-// Waits until all the pods in the namespace have a running status.
+// isPodReady reports whether the pod's Ready condition is true. The Running phase only means the
+// pod's containers have been created, so it is reached before a readiness probe first succeeds and
+// before the pod is reachable through a Service.
+func isPodReady(pod corev1.Pod) bool {
+	for _, cond := range pod.Status.Conditions {
+		if cond.Type == corev1.PodReady {
+			return cond.Status == corev1.ConditionTrue
+		}
+	}
+	return false
+}
+
+// Waits until all the pods in the namespace are ready.
 func WaitForAllPodRunningInNamespace(t *testing.T, kc *kubernetes.Clientset, namespace string, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
-		runningCount := 0
-		pods, _ := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
-
-		for _, pod := range pods.Items {
-			if pod.Status.Phase != corev1.PodRunning {
-				break
+		pods, err := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
+		if err != nil {
+			t.Logf("cannot list pods in namespace %s - %s", namespace, err)
+		} else {
+			readyCount := 0
+			for _, pod := range pods.Items {
+				if !isPodReady(pod) {
+					break
+				}
+				readyCount++
 			}
-			runningCount++
-		}
 
-		t.Logf("Waiting for pods in namespace to be in 'Running' status. Namespace - %s, Current - %d, Target - %d",
-			namespace, runningCount, len(pods.Items))
+			t.Logf("Waiting for pods in namespace to be ready. Namespace - %s, Current - %d, Target - %d",
+				namespace, readyCount, len(pods.Items))
 
-		if runningCount == len(pods.Items) {
-			return true
+			// Every caller creates the pods it is waiting on, so an empty namespace means the
+			// list arrived before they were scheduled rather than that everything is ready.
+			if len(pods.Items) > 0 && readyCount == len(pods.Items) {
+				return true
+			}
 		}
 
 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
@@ -509,21 +542,23 @@ func WaitForRunningPodCount(t *testing.T, kc *kubernetes.Clientset, scaledJobNam
 		})
 		if err != nil {
 			t.Logf("cannot list pods - %s", err)
-		}
-
-		runningPodCount := 0
-		for _, pod := range pods.Items {
-			if pod.Status.Phase == corev1.PodRunning {
-				runningPodCount++
+		} else {
+			// Phase rather than readiness on purpose: these are ScaledJob pods, and the callers are
+			// counting how many the executor started, not whether each one is serving traffic.
+			runningPodCount := 0
+			for _, pod := range pods.Items {
+				if pod.Status.Phase == corev1.PodRunning {
+					runningPodCount++
+				}
 			}
-		}
 
-		t.Logf("Waiting for running pods. Namespace - %s, Current - %d, Target - %d",
-			namespace, runningPodCount, target)
-		if runningPodCount == target {
-			return true
-		} else if runningPodCount > target {
-			return false
+			t.Logf("Waiting for running pods. Namespace - %s, Current - %d, Target - %d",
+				namespace, runningPodCount, target)
+			if runningPodCount == target {
+				return true
+			} else if runningPodCount > target {
+				return false
+			}
 		}
 
 		time.Sleep(time.Duration(interval) * time.Second)
@@ -539,8 +574,10 @@ func WaitForHPAMetricsToPopulate(t *testing.T, kc *kubernetes.Clientset, name, n
 	for i := 0; i < iterations; i++ {
 		t.Logf("Waiting up to %s for HPA to populate metrics - %s so far", totalWaitDuration, time.Since(startedWaiting).Round(time.Second))
 
-		hpa, _ := kc.AutoscalingV2().HorizontalPodAutoscalers(namespace).Get(context.Background(), name, metav1.GetOptions{})
-		if hpa.Status.CurrentMetrics != nil {
+		hpa, err := kc.AutoscalingV2().HorizontalPodAutoscalers(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		if err != nil {
+			t.Logf("cannot get hpa %s/%s - %s", namespace, name, err)
+		} else if hpa.Status.CurrentMetrics != nil {
 			for _, currentMetric := range hpa.Status.CurrentMetrics {
 				// When testing on a kind cluster at least, an empty metricStatus object with a blank type shows up first,
 				// so we need to make sure we have *actual* resource metrics before we return
@@ -560,14 +597,18 @@ func WaitForHPAMetricsToPopulate(t *testing.T, kc *kubernetes.Clientset, name, n
 // Waits until deployment ready replica count hits target or number of iterations are done.
 func WaitForDeploymentReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string, target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
-		deployment, _ := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
-		replicas := deployment.Status.ReadyReplicas
+		deployment, err := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		if err != nil {
+			t.Logf("cannot get deployment %s/%s - %s", namespace, name, err)
+		} else {
+			replicas := deployment.Status.ReadyReplicas
 
-		t.Logf("Waiting for deployment replicas to hit target. Deployment - %s, Current  - %d, Target - %d",
-			name, replicas, target)
+			t.Logf("Waiting for deployment replicas to hit target. Deployment - %s, Current  - %d, Target - %d",
+				name, replicas, target)
 
-		if replicas == int32(target) {
-			return true
+			if replicas == int32(target) {
+				return true
+			}
 		}
 
 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
@@ -579,13 +620,13 @@ func WaitForDeploymentReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, 
 // Waits until pod is in ready state or number of iterations are done.
 func WaitForPodReady(t *testing.T, kc *kubernetes.Clientset, podName, namespace string, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
-		pod, _ := kc.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
-		t.Logf("Waiting for pod to be in ready state. Pod - %s, Current Phase - %s", podName, pod.Status.Phase)
+		pod, err := kc.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
+		if err != nil {
+			t.Logf("cannot get pod %s/%s - %s", namespace, podName, err)
+		} else {
+			t.Logf("Waiting for pod to be in ready state. Pod - %s, Current Phase - %s", podName, pod.Status.Phase)
 
-		// A pod can be in the Running phase without all containers being ready.
-		// Check the Ready condition to ensure the pod is actually ready.
-		for _, cond := range pod.Status.Conditions {
-			if cond.Type == corev1.PodReady && cond.Status == corev1.ConditionTrue {
+			if isPodReady(*pod) {
 				return true
 			}
 		}
@@ -632,14 +673,18 @@ func WaitForArgoRolloutReplicaReadyCount(t *testing.T, _ *kubernetes.Clientset, 
 // Waits until statefulset count hits target or number of iterations are done.
 func WaitForStatefulsetReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string, target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
-		statefulset, _ := kc.AppsV1().StatefulSets(namespace).Get(context.Background(), name, metav1.GetOptions{})
-		replicas := statefulset.Status.ReadyReplicas
+		statefulset, err := kc.AppsV1().StatefulSets(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		if err != nil {
+			t.Logf("cannot get statefulset %s/%s - %s", namespace, name, err)
+		} else {
+			replicas := statefulset.Status.ReadyReplicas
 
-		t.Logf("Waiting for statefulset replicas to hit target. Statefulset - %s, Current  - %d, Target - %d",
-			name, replicas, target)
+			t.Logf("Waiting for statefulset replicas to hit target. Statefulset - %s, Current  - %d, Target - %d",
+				name, replicas, target)
 
-		if replicas == int32(target) {
-			return true
+			if replicas == int32(target) {
+				return true
+			}
 		}
 
 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
@@ -651,23 +696,26 @@ func WaitForStatefulsetReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset,
 // WaitForReplicaSetReplicaReadyCount waits until replicaset replica count hits target or number of iterations are done.
 func WaitForReplicaSetReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string, target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
-		rs, _ := kc.AppsV1().ReplicaSets(namespace).Get(context.Background(), name, metav1.GetOptions{})
-
-		// Use spec.replicas when target is 0 (status.readyReplicas won't be set)
-		var replicas int32
-		if target == 0 {
-			if rs.Spec.Replicas != nil {
-				replicas = *rs.Spec.Replicas
-			}
+		rs, err := kc.AppsV1().ReplicaSets(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		if err != nil {
+			t.Logf("cannot get replicaset %s/%s - %s", namespace, name, err)
 		} else {
-			replicas = rs.Status.ReadyReplicas
-		}
+			// Use spec.replicas when target is 0 (status.readyReplicas won't be set)
+			var replicas int32
+			if target == 0 {
+				if rs.Spec.Replicas != nil {
+					replicas = *rs.Spec.Replicas
+				}
+			} else {
+				replicas = rs.Status.ReadyReplicas
+			}
 
-		t.Logf("Waiting for replicaset replicas to hit target. ReplicaSet - %s, Current - %d, Target - %d",
-			name, replicas, target)
+			t.Logf("Waiting for replicaset replicas to hit target. ReplicaSet - %s, Current - %d, Target - %d",
+				name, replicas, target)
 
-		if replicas == int32(target) {
-			return true
+			if replicas == int32(target) {
+				return true
+			}
 		}
 
 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
@@ -683,16 +731,23 @@ func WaitForDeploymentReplicaCountChange(t *testing.T, kc *kubernetes.Clientset,
 	prevReplicas = -1
 
 	for i := 0; i < iterations; i++ {
-		deployment, _ := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
-		replicas = deployment.Status.Replicas
+		deployment, err := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		if err != nil {
+			// Reading on would report 0 replicas, which the caller cannot tell apart from a
+			// genuine scale to zero.
+			t.Logf("cannot get deployment %s/%s - %s", namespace, name, err)
+		} else {
+			replicas = deployment.Status.Replicas
 
-		t.Logf("Deployment - %s, Current  - %d", name, replicas)
+			t.Logf("Deployment - %s, Current  - %d", name, replicas)
 
-		if replicas != prevReplicas && prevReplicas != -1 {
-			break
+			if replicas != prevReplicas && prevReplicas != -1 {
+				break
+			}
+
+			prevReplicas = replicas
 		}
 
-		prevReplicas = replicas
 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
 	}
 
@@ -705,14 +760,20 @@ func AssertReplicaCountNotChangeDuringTimePeriod(t *testing.T, kc *kubernetes.Cl
 	var replicas int32
 
 	for i := 0; i < intervalSeconds; i++ {
-		deployment, _ := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
-		replicas = deployment.Status.Replicas
+		deployment, err := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		if err != nil {
+			// Reading on would report 0 replicas and fail the assertion with a count the
+			// deployment never had, turning one failed read into a failed test.
+			t.Logf("cannot get deployment %s/%s - %s", namespace, name, err)
+		} else {
+			replicas = deployment.Status.Replicas
 
-		t.Logf("Deployment - %s, Current  - %d", name, replicas)
+			t.Logf("Deployment - %s, Current  - %d", name, replicas)
 
-		if replicas != int32(target) {
-			assert.Fail(t, fmt.Sprintf("%s replica count has changed from %d to %d", name, target, replicas))
-			return
+			if replicas != int32(target) {
+				assert.Fail(t, fmt.Sprintf("%s replica count has changed from %d to %d", name, target, replicas))
+				return
+			}
 		}
 
 		time.Sleep(time.Second)
@@ -772,13 +833,17 @@ func WaitForHpaCreation(t *testing.T, kc *kubernetes.Clientset, name, namespace 
 }
 
 func KubernetesScaleDeployment(t *testing.T, kc *kubernetes.Clientset, name string, desiredReplica int64, namespace string) {
-	scaleObject, _ := kc.AppsV1().Deployments(namespace).GetScale(context.TODO(), name, metav1.GetOptions{})
+	// Scaling an empty Scale read back from a failed request would ask the API server to set
+	// replicas on a deployment with no name, so there is nothing useful to do but report it.
+	scaleObject, err := kc.AppsV1().Deployments(namespace).GetScale(context.Background(), name, metav1.GetOptions{})
+	if !assert.NoErrorf(t, err, "couldn't read the scale of deployment %s/%s - %s", namespace, name, err) {
+		return
+	}
+
 	sc := *scaleObject
 	sc.Spec.Replicas = int32(desiredReplica)
-	us, err := kc.AppsV1().Deployments(namespace).UpdateScale(context.TODO(), name, &sc, metav1.UpdateOptions{})
-	if err != nil {
-		assert.NoErrorf(t, err, "couldn't scale the deployment: %v: %v", us.Name, err.Error())
-	}
+	_, err = kc.AppsV1().Deployments(namespace).UpdateScale(context.Background(), name, &sc, metav1.UpdateOptions{})
+	assert.NoErrorf(t, err, "couldn't scale deployment %s/%s - %s", namespace, name, err)
 }
 
 func SetDeploymentContainerArg(t *testing.T, kc *kubernetes.Clientset, name, namespace, containerName, flagName, flagValue string) {
@@ -1089,12 +1154,15 @@ func DeletePodsInNamespace(t *testing.T, namespace string) {
 func WaitForPodsTerminated(t *testing.T, kc *kubernetes.Clientset, selector, namespace string, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
 		pods, err := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: selector})
-		if (err != nil && errors.IsNotFound(err)) || len(pods.Items) == 0 {
+		switch {
+		case err != nil && !errors.IsNotFound(err):
+			t.Logf("cannot list pods with label %s in namespace %s - %s", selector, namespace, err)
+		case errors.IsNotFound(err) || len(pods.Items) == 0:
 			t.Logf("No pods with label %s", selector)
 			return true
+		default:
+			t.Logf("Waiting for pods with label %s to terminate", selector)
 		}
-
-		t.Logf("Waiting for pods with label %s to terminate", selector)
 
 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
 	}
@@ -1231,31 +1299,61 @@ func generateCA(t *testing.T) {
 	}
 }
 
-// CheckKubectlGetResult runs `kubectl get` with parameters and compares output with expected value
+// The fields this reads are written by the operator as it reconciles the resource that references
+// the authentication, so they lag the apply or delete that triggered the change. A minute is many
+// times a reconcile and is only reached when the operator has genuinely stopped updating them.
+const kubectlGetResultTimeout = time.Minute
+
+// CheckKubectlGetResult runs `kubectl get` with parameters and waits for the output to match the
+// expected value.
 func CheckKubectlGetResult(t *testing.T, kind string, name string, namespace string, otherparameter string, expected string) {
-	time.Sleep(1 * time.Second) // wait a second for recource deployment finished
 	kctlGetCmd := fmt.Sprintf(`kubectl get %s/%s -n %s %s"`, kind, name, namespace, otherparameter)
 	t.Log("Running kubectl cmd:", kctlGetCmd)
-	output, err := ExecuteCommand(kctlGetCmd)
-	assert.NoErrorf(t, err, "cannot get rollout info - %s", err)
 
-	unqoutedOutput := strings.ReplaceAll(string(output), "\"", "")
-	assert.Equal(t, expected, unqoutedOutput)
+	ctx, cancel := context.WithTimeout(context.Background(), kubectlGetResultTimeout)
+	defer cancel()
+
+	lastRead := "<nothing read>"
+	err := KedaEventually(ctx, func(_ context.Context) (bool, error) {
+		output, cmdErr := ExecuteCommand(kctlGetCmd)
+		if cmdErr != nil {
+			// Retried rather than reported, so that a command that fails while the resource is
+			// still being created does not end the wait.
+			lastRead = fmt.Sprintf("<command failed: %s>", cmdErr)
+			return false, nil
+		}
+
+		lastRead = strings.ReplaceAll(string(output), "\"", "")
+		return lastRead == expected, nil
+	}, IntervalShort)
+
+	assert.NoErrorf(t, err, "%s/%s %s: expected %q, last read %q", kind, name, otherparameter, expected, lastRead)
 }
 
 // KedaEventually checks if the provided conditionFunc eventually returns true
 // (and no error) within the context's deadline. It polls the conditionFunc
 // at the given interval until the condition is met or the context times out.
+// An error from conditionFunc is treated as an attempt that could not observe
+// the condition, so polling continues; the error is only reported if the
+// deadline arrives while the most recent attempt is still failing. Callers may
+// therefore return errors directly instead of hiding them behind a false.
 func KedaEventually(ctx context.Context, conditionFunc wait.ConditionWithContextFunc, interval time.Duration) error {
 	if interval <= 0 {
 		return fmt.Errorf("polling interval must be positive, got %v", interval)
 	}
 
+	// A condition that returns an error has not been shown to be false, only that it could not be
+	// observed this time, so the error is remembered and the wait carries on. It is reported if the
+	// deadline arrives while the most recent attempt is still failing, which is when it becomes the
+	// likely explanation. A later attempt that observes the condition clears it, so a transient
+	// failure early in a long wait does not end up blamed for a condition that simply stayed false.
+	var lastErr error
+
 	ok, err := conditionFunc(ctx)
-	if err != nil {
-		return fmt.Errorf("eventually check failed on initial check: %w", err)
-	}
-	if ok {
+	switch {
+	case err != nil:
+		lastErr = err
+	case ok:
 		return nil
 	}
 
@@ -1265,14 +1363,15 @@ func KedaEventually(ctx context.Context, conditionFunc wait.ConditionWithContext
 	for {
 		select {
 		case <-ctx.Done():
+			if lastErr != nil {
+				return fmt.Errorf("eventually check failed: context deadline exceeded, last attempt errored: %w", lastErr)
+			}
 			return fmt.Errorf("eventually check failed: context deadline exceeded before condition was met")
 
 		case <-ticker.C:
 			ok, err := conditionFunc(ctx)
-			if err != nil {
-				return fmt.Errorf("eventually check failed during polling: %w", err)
-			}
-			if ok {
+			lastErr = err
+			if err == nil && ok {
 				return nil
 			}
 		}

@@ -914,6 +914,10 @@ func (m *MockClusterAdmin) DescribeConfig(_ sarama.ConfigResource) ([]sarama.Con
 	return nil, nil
 }
 
+func (m *MockClusterAdmin) DescribeConfigs(_ []*sarama.ConfigResource, _ sarama.DescribeConfigsOptions) ([]*sarama.ConfigResourceResult, error) {
+	return nil, nil
+}
+
 func (m *MockClusterAdmin) AlterConfig(_ sarama.ConfigResourceType, _ string, _ map[string]*string, _ bool) error {
 	return nil
 }
@@ -954,6 +958,10 @@ func (m *MockClusterAdmin) ListConsumerGroupOffsets(_ string, _ map[string][]int
 	return nil, nil
 }
 
+func (m *MockClusterAdmin) ListConsumerGroupOffsetsBatch(_ map[string]map[string][]int32) (map[string]*sarama.OffsetFetchResponseGroup, error) {
+	return nil, nil
+}
+
 func (m *MockClusterAdmin) ListOffsets(_ map[string]map[int32]int64, _ *sarama.ListOffsetsOptions) (map[string]map[int32]*sarama.OffsetResult, error) {
 	return nil, nil
 }
@@ -987,6 +995,10 @@ func (m *MockClusterAdmin) DeleteUserScramCredentials(_ []sarama.AlterUserScramC
 }
 
 func (m *MockClusterAdmin) UpsertUserScramCredentials(_ []sarama.AlterUserScramCredentialsUpsert) ([]*sarama.AlterUserScramCredentialsResult, error) {
+	return nil, nil
+}
+
+func (m *MockClusterAdmin) UpdateFeatures(_ []sarama.FeatureUpdate) ([]sarama.UpdatableFeatureResult, error) {
 	return nil, nil
 }
 
