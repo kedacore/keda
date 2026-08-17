@@ -77,7 +77,7 @@ func TestMultipleCustomCADirs(t *testing.T) {
 	//nolint:staticcheck // func (s *CertPool) Subjects was deprecated if s was returned by SystemCertPool, Subjects
 	subjects := rootCAs.Subjects()
 	var rdnSequence pkix.RDNSequence
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		_, err = asn1.Unmarshal(subjects[len(subjects)-1-i], &rdnSequence)
 		if err != nil {
 			t.Fatal("could not unmarshal der formatted subject")

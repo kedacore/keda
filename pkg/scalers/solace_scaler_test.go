@@ -575,7 +575,7 @@ func TestSolaceParseSolaceMetadata(t *testing.T) {
 }
 
 func TestSolaceGetMetricSpec(t *testing.T) {
-	for idx := 0; idx < len(testSolaceGetMetricSpecData); idx++ {
+	for idx := range testSolaceGetMetricSpecData {
 		testData := testSolaceGetMetricSpecData[idx]
 		fmt.Print(testData.testID)
 		var err error

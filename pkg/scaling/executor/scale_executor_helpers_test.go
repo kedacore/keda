@@ -26,7 +26,8 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
-func int32Ptr(v int32) *int32 { return &v }
+//go:fix inline
+func int32Ptr(v int32) *int32 { return new(v) }
 
 func TestGetIdleOrMinimumReplicaCount(t *testing.T) {
 	tests := []struct {
@@ -47,7 +48,7 @@ func TestGetIdleOrMinimumReplicaCount(t *testing.T) {
 			name: "IdleReplicaCount set returns true with its value",
 			scaledObject: &kedav1alpha1.ScaledObject{
 				Spec: kedav1alpha1.ScaledObjectSpec{
-					IdleReplicaCount: int32Ptr(0),
+					IdleReplicaCount: new(int32(0)),
 				},
 			},
 			expectedIsIdle:   true,
@@ -57,7 +58,7 @@ func TestGetIdleOrMinimumReplicaCount(t *testing.T) {
 			name: "IdleReplicaCount non-zero returns true with its value",
 			scaledObject: &kedav1alpha1.ScaledObject{
 				Spec: kedav1alpha1.ScaledObjectSpec{
-					IdleReplicaCount: int32Ptr(3),
+					IdleReplicaCount: new(int32(3)),
 				},
 			},
 			expectedIsIdle:   true,
@@ -67,7 +68,7 @@ func TestGetIdleOrMinimumReplicaCount(t *testing.T) {
 			name: "MinReplicaCount set with nil IdleReplicaCount returns false with its value",
 			scaledObject: &kedav1alpha1.ScaledObject{
 				Spec: kedav1alpha1.ScaledObjectSpec{
-					MinReplicaCount: int32Ptr(2),
+					MinReplicaCount: new(int32(2)),
 				},
 			},
 			expectedIsIdle:   false,

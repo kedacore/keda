@@ -145,7 +145,7 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 	excludedLabels := map[string]struct{}{}
 
 	if labels, ok := scaledObject.Annotations[kedav1alpha1.ScaledObjectExcludedLabelsAnnotation]; ok {
-		for _, excludedLabel := range strings.Split(labels, ",") {
+		for excludedLabel := range strings.SplitSeq(labels, ",") {
 			excludedLabels[excludedLabel] = struct{}{}
 		}
 	}

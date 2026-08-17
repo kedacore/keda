@@ -17,17 +17,13 @@ limitations under the License.
 package util
 
 import (
+	"slices"
 	"strings"
 )
 
 // Contains checks if the passed string is present in the given slice of strings.
 func Contains(list []string, s string) bool {
-	for _, v := range list {
-		if v == s {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, s)
 }
 
 // Remove deletes the passed string from the given slice of strings.

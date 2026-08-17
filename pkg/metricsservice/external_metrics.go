@@ -18,6 +18,7 @@ package metricsservice
 
 import (
 	"fmt"
+	"maps"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -137,9 +138,7 @@ func copyStringMap(in map[string]string) map[string]string {
 	}
 
 	out := make(map[string]string, len(in))
-	for k, v := range in {
-		out[k] = v
-	}
+	maps.Copy(out, in)
 	return out
 }
 

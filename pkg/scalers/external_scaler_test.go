@@ -218,7 +218,7 @@ func TestExternalPushScaler_Run(t *testing.T) {
 	var resultCount int64
 
 	ctx, cancel := context.WithCancel(context.Background())
-	for i := 0; i < serverCount*iterationCount; i++ {
+	for i := range serverCount * iterationCount {
 		id := i % serverCount
 		pushScaler, _ := NewExternalPushScaler(&scalersconfig.ScalerConfig{ScalableObjectName: "app", ScalableObjectNamespace: "namespace", TriggerMetadata: map[string]string{"scalerAddress": servers[id].address}, ResolvedEnv: map[string]string{}})
 		go pushScaler.Run(ctx, replyCh[i])
@@ -238,7 +238,7 @@ func TestExternalPushScaler_Run(t *testing.T) {
 	// producer
 	for _, s := range servers {
 		go func(c chan bool) {
-			for i := 0; i < iterationCount; i++ {
+			for range iterationCount {
 				c <- true
 			}
 		}(s.publish)
@@ -271,7 +271,7 @@ type testServer struct {
 
 func createGRPCServers(count int, t *testing.T) []testServer {
 	result := make([]testServer, 0, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		grpcServer := grpc.NewServer()
 		address := fmt.Sprintf("127.0.0.1:%d", 5050+i)
 		lis, _ := net.Listen("tcp", address)
@@ -299,7 +299,7 @@ func createGRPCServers(count int, t *testing.T) []testServer {
 
 func createIsActiveChannels(count int) []chan bool {
 	result := make([]chan bool, 0, count)
-	for i := 0; i < count; i++ {
+	for range count {
 		result = append(result, make(chan bool))
 	}
 
@@ -397,8 +397,7 @@ func TestWaitForState(t *testing.T) {
 	}
 	grpcClient.Connect()
 
-	waitCtx, waitCancel := context.WithCancel(context.Background())
-	defer waitCancel()
+	waitCtx := t.Context()
 
 	graceDone := make(chan struct{})
 	go func() {
@@ -477,8 +476,7 @@ func TestExternalPushScaler_StreamMetricSpec(t *testing.T) {
 		t.Fatalf("NewExternalPushScaler: %v", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	resultCh := make(chan bool, 10)
 	go pushScaler.Run(ctx, resultCh)
@@ -546,8 +544,7 @@ func TestExternalPushScaler_StreamMetricSpecUnimplemented(t *testing.T) {
 		t.Fatalf("NewExternalPushScaler: %v", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	resultCh := make(chan bool, 10)
 	go pushScaler.Run(ctx, resultCh)

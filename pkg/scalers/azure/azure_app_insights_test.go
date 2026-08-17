@@ -21,28 +21,29 @@ func mockAppInsightsInfo(aggregationType string) AppInsightsInfo {
 
 func mockAppInsightsMetric(metricName, aggregationType string, value *float64) ApplicationInsightsMetric {
 	metric := ApplicationInsightsMetric{
-		Value: map[string]interface{}{
-			metricName: map[string]interface{}{},
+		Value: map[string]any{
+			metricName: map[string]any{},
 		},
 	}
 
 	if value == nil {
-		metric.Value[metricName].(map[string]interface{})[aggregationType] = nil
+		metric.Value[metricName].(map[string]any)[aggregationType] = nil
 	} else {
-		metric.Value[metricName].(map[string]interface{})[aggregationType] = *value
+		metric.Value[metricName].(map[string]any)[aggregationType] = *value
 	}
 
 	return metric
 }
 
+//go:fix inline
 func newMetricValue(f float64) *float64 {
-	return &f
+	return new(f)
 }
 
 var testExtractAzAppInsightsData = []testExtractAzAppInsightsTestData{
-	{"metric not found", true, -1, mockAppInsightsInfo("avg"), mockAppInsightsMetric("test/test", "avg", newMetricValue(0.0))},
+	{"metric not found", true, -1, mockAppInsightsInfo("avg"), mockAppInsightsMetric("test/test", "avg", new(0.0))},
 	{"metric is nil", true, -1, mockAppInsightsInfo("avg"), mockAppInsightsMetric("testns/test", "avg", nil)},
-	{"incorrect aggregation type", true, -1, mockAppInsightsInfo("avg"), mockAppInsightsMetric("testns/test", "max", newMetricValue(0.0))},
+	{"incorrect aggregation type", true, -1, mockAppInsightsInfo("avg"), mockAppInsightsMetric("testns/test", "max", new(0.0))},
 }
 
 func TestAzGetAzureAppInsightsMetricValue(t *testing.T) {

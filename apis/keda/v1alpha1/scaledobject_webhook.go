@@ -214,7 +214,7 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 		allWarnings = append(allWarnings, warnings...)
 	}
 
-	verifyCommonFunctions := map[string]func(interface{}, string, bool) error{
+	verifyCommonFunctions := map[string]func(any, string, bool) error{
 		"verifyTriggers": verifyTriggers,
 	}
 
@@ -268,7 +268,7 @@ func verifyFallback(incomingSo *ScaledObject, action string, _ bool) (admission.
 	return nil, err
 }
 
-func verifyTriggers(incomingObject interface{}, action string, _ bool) error {
+func verifyTriggers(incomingObject any, action string, _ bool) error {
 	var triggers []ScaleTriggers
 	var name string
 	var namespace string

@@ -63,7 +63,7 @@ func (ash *AwsSecretManagerHandler) Read(ctx context.Context, logger logr.Logger
 	}
 	if secretKey != "" {
 		// Parse the secret string as JSON
-		var secretMap map[string]interface{}
+		var secretMap map[string]any
 		err = json.Unmarshal([]byte(*result.SecretString), &secretMap)
 		if err != nil {
 			logger.Error(err, "Error parsing secret string as JSON")

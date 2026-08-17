@@ -800,7 +800,7 @@ func TestGetHPAHealth_ScalingActiveTrue(t *testing.T) {
 	so.Status.HpaName = "my-hpa"
 
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "my-hpa", Namespace: "test-ns"}, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...any) error {
 			obj.Status.Conditions = []autoscalingv2.HorizontalPodAutoscalerCondition{
 				{Type: autoscalingv2.ScalingActive, Status: corev1.ConditionTrue},
 			}
@@ -825,7 +825,7 @@ func TestGetHPAHealth_ScalingActiveFalse(t *testing.T) {
 	so.Status.HpaName = "my-hpa"
 
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "my-hpa", Namespace: "test-ns"}, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...any) error {
 			obj.Status.Conditions = []autoscalingv2.HorizontalPodAutoscalerCondition{
 				{Type: autoscalingv2.ScalingActive, Status: corev1.ConditionFalse, Reason: "FailedGetExternalMetric", Message: "unable to get metrics"},
 			}
@@ -850,7 +850,7 @@ func TestGetHPAHealth_ScalingDisabled(t *testing.T) {
 	so.Status.HpaName = "my-hpa"
 
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "my-hpa", Namespace: "test-ns"}, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...any) error {
 			obj.Status.Conditions = []autoscalingv2.HorizontalPodAutoscalerCondition{
 				// ScalingDisabled is set by the HPA controller when the target has 0 replicas
 				// (scale-to-zero managed by KEDA). This should NOT be treated as unhealthy.
@@ -877,7 +877,7 @@ func TestGetHPAHealth_NoGracePeriod(t *testing.T) {
 	so.Status.HpaName = "my-hpa"
 
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "my-hpa", Namespace: "test-ns"}, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...any) error {
 			obj.CreationTimestamp = v1.Now() // just created
 			obj.Status.Conditions = []autoscalingv2.HorizontalPodAutoscalerCondition{
 				{Type: autoscalingv2.ScalingActive, Status: corev1.ConditionFalse, Reason: "FailedGetExternalMetric"},
@@ -908,7 +908,7 @@ func TestGetHPAHealth_EmptyReasonFallback(t *testing.T) {
 	so.Status.HpaName = "my-hpa"
 
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "my-hpa", Namespace: "test-ns"}, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...any) error {
 			obj.Status.Conditions = []autoscalingv2.HorizontalPodAutoscalerCondition{
 				{Type: autoscalingv2.ScalingActive, Status: corev1.ConditionFalse, Message: "unable to compute replica count"},
 			}
@@ -936,7 +936,7 @@ func TestGetHPAHealth_NoScalingActiveConditionYet(t *testing.T) {
 	so.Status.HpaName = "my-hpa"
 
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "my-hpa", Namespace: "test-ns"}, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...any) error {
 			obj.Status.Conditions = []autoscalingv2.HorizontalPodAutoscalerCondition{
 				{Type: autoscalingv2.AbleToScale, Status: corev1.ConditionTrue},
 			}
@@ -978,7 +978,7 @@ func newSOWithHPA() v1alpha1.ScaledObject {
 // mockHealthyHPA sets up the mock to return an HPA with ScalingActive=True.
 func mockHealthyHPA(mockClient *mock_client.MockClient) {
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "my-hpa", Namespace: "test-ns"}, gomock.AssignableToTypeOf(&autoscalingv2.HorizontalPodAutoscaler{})).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...any) error {
 			obj.Status.Conditions = []autoscalingv2.HorizontalPodAutoscalerCondition{
 				{Type: autoscalingv2.ScalingActive, Status: corev1.ConditionTrue},
 			}
@@ -990,7 +990,7 @@ func mockHealthyHPA(mockClient *mock_client.MockClient) {
 // mockUnhealthyHPA sets up the mock to return an HPA with ScalingActive=False.
 func mockUnhealthyHPA(mockClient *mock_client.MockClient) {
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "my-hpa", Namespace: "test-ns"}, gomock.AssignableToTypeOf(&autoscalingv2.HorizontalPodAutoscaler{})).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...any) error {
 			obj.Status.Conditions = []autoscalingv2.HorizontalPodAutoscalerCondition{
 				{Type: autoscalingv2.ScalingActive, Status: corev1.ConditionFalse, Reason: "FailedGetExternalMetric", Message: "metrics not available"},
 			}
@@ -1002,7 +1002,7 @@ func mockUnhealthyHPA(mockClient *mock_client.MockClient) {
 func mockDeploymentGet(mockClient *mock_client.MockClient) {
 	replicas := int32(1)
 	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&appsv1.Deployment{})).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *appsv1.Deployment, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *appsv1.Deployment, _ ...any) error {
 			obj.Spec.Replicas = &replicas
 			return nil
 		})
@@ -1196,7 +1196,7 @@ func TestRequestScale_HPAScalingDisabled_HPAActiveTrueWithDistinctReason(t *test
 
 	mockDeploymentGet(mockClient)
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "my-hpa", Namespace: "test-ns"}, gomock.AssignableToTypeOf(&autoscalingv2.HorizontalPodAutoscaler{})).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *autoscalingv2.HorizontalPodAutoscaler, _ ...any) error {
 			obj.Status.Conditions = []autoscalingv2.HorizontalPodAutoscalerCondition{
 				{Type: autoscalingv2.ScalingActive, Status: corev1.ConditionFalse, Reason: "ScalingDisabled", Message: "scaling is disabled since the replica count of the target is zero"},
 			}

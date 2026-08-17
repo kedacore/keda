@@ -17,6 +17,8 @@ limitations under the License.
 package util
 
 // StringPointer returns a pointer to the string value passed in.
+//
+//go:fix inline
 func StringPointer(v string) *string {
-	return &v
+	return new(v)
 }
