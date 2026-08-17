@@ -11,7 +11,7 @@ jobs:
   validate:
     name: Validate
     runs-on: ubuntu-latest
-    container: kedacore/build-tools:v1
+    container: kedacore/build-tools:v2@sha256:c064bec595d5569bde2aa186cc08897c9397dd983e79a9ea1794579128e72376
     steps:
       - name: Check out code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
