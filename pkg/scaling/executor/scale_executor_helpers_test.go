@@ -26,9 +26,6 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
-//go:fix inline
-func int32Ptr(v int32) *int32 { return new(v) }
-
 func TestGetIdleOrMinimumReplicaCount(t *testing.T) {
 	tests := []struct {
 		name             string

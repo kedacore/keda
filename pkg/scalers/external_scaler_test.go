@@ -39,6 +39,7 @@ jtq3TnHHw+BroQPje3zF/MZTAA8Z9RejkpALMtoHeE68ar07FPlC8wZXDlfQXzYS
 PWO1PoIiMX1UsfdZ35JCOF4=
 -----END CERTIFICATE-----
 `
+
 var clientCert = `-----BEGIN CERTIFICATE-----
 MIIC9jCCAd4CFEGcfEWHP2ckC/kIgUEDUPkAVHHIMA0GCSqGSIb3DQEBCwUAMC0x
 DjAMBgNVBAMMBWtlZGEyMQswCQYDVQQGEwJVUzEOMAwGA1UEBwwFRWFydGgwIBcN
@@ -318,6 +319,7 @@ type testExternalScaler struct {
 func (e *testExternalScaler) IsActive(context.Context, *pb.ScaledObjectRef) (*pb.IsActiveResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method IsActive not implemented")
 }
+
 func (e *testExternalScaler) StreamIsActive(_ *pb.ScaledObjectRef, epsServer pb.ExternalScaler_StreamIsActiveServer) error {
 	for {
 		select {
@@ -476,7 +478,8 @@ func TestExternalPushScaler_StreamMetricSpec(t *testing.T) {
 		t.Fatalf("NewExternalPushScaler: %v", err)
 	}
 
-	ctx := t.Context()
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
 
 	resultCh := make(chan bool, 10)
 	go pushScaler.Run(ctx, resultCh)
@@ -544,7 +547,8 @@ func TestExternalPushScaler_StreamMetricSpecUnimplemented(t *testing.T) {
 		t.Fatalf("NewExternalPushScaler: %v", err)
 	}
 
-	ctx := t.Context()
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
 
 	resultCh := make(chan bool, 10)
 	go pushScaler.Run(ctx, resultCh)

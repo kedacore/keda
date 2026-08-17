@@ -35,11 +35,6 @@ func mockAppInsightsMetric(metricName, aggregationType string, value *float64) A
 	return metric
 }
 
-//go:fix inline
-func newMetricValue(f float64) *float64 {
-	return new(f)
-}
-
 var testExtractAzAppInsightsData = []testExtractAzAppInsightsTestData{
 	{"metric not found", true, -1, mockAppInsightsInfo("avg"), mockAppInsightsMetric("test/test", "avg", new(0.0))},
 	{"metric is nil", true, -1, mockAppInsightsInfo("avg"), mockAppInsightsMetric("testns/test", "avg", nil)},

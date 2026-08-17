@@ -41,7 +41,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/go-logr/logr"
-
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
