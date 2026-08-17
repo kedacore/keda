@@ -672,6 +672,75 @@ func (h *scaleHandler) processMetricsWithFallback(soh fallback.ScaledObjectHandl
 	return metrics, fallbackActive, err
 }
 
+// scaledObjectMetricResult is the per-scaler metric query outcome collected
+// from parallel workers in GetScaledObjectMetrics.
+type scaledObjectMetricResult struct {
+	metrics           []external_metrics.ExternalMetricValue
+	metricTriggerPair map[string]string
+	metricName        string
+	triggerName       string
+	triggerIndex      int
+	metricSpec        v2.MetricSpec
+	err               error
+	fallbackActive    bool
+}
+
+// enqueueFallbackForEmptyMetricSpec drives fallback when GetMetricSpec fails
+// with no specs (and no cached specs), so the normal metrics loop never runs
+// (#8056). For a single-scaler ScaledObject, fallback is advanced using the
+// HPA metric name(s) directly.
+func (h *scaleHandler) enqueueFallbackForEmptyMetricSpec(
+	ctx context.Context,
+	scalersCache *cache.ScalersCache,
+	scaledObject *kedav1alpha1.ScaledObject,
+	specErr error,
+	metricSpecs []v2.MetricSpec,
+	allScalersCount int,
+	metricsArray []string,
+	triggerIndex int,
+	triggerName string,
+	results chan scaledObjectMetricResult,
+	wg *sync.WaitGroup,
+	logger logr.Logger,
+) {
+	if specErr == nil || len(metricSpecs) != 0 || allScalersCount != 1 || len(metricsArray) == 0 {
+		return
+	}
+
+	soh := fallback.ScaledObjectHandler{
+		Ctx:          ctx,
+		KubeClient:   h.client,
+		ScaleClient:  h.scaleClient,
+		UpdateLock:   &scalersCache.ScaledObjectUpdateLock,
+		ScaledObject: scaledObject,
+	}
+	for _, metricName := range metricsArray {
+		wg.Add(1)
+		go func(results chan scaledObjectMetricResult, wg *sync.WaitGroup, metricName string, triggerIndex int, triggerName string) {
+			defer wg.Done()
+			syntheticSpec := v2.MetricSpec{
+				Type: v2.ExternalMetricSourceType,
+				External: &v2.ExternalMetricSource{
+					Metric: v2.MetricIdentifier{Name: metricName},
+				},
+			}
+			metrics, fallbackActive, ferr := h.processMetricsWithFallback(
+				soh, nil, specErr, metricName, triggerName, triggerIndex, syntheticSpec,
+				shouldSendRawMetrics(RawMetricsHPA), false, logger,
+			)
+			results <- scaledObjectMetricResult{
+				metrics:        metrics,
+				metricName:     metricName,
+				triggerName:    triggerName,
+				triggerIndex:   triggerIndex,
+				metricSpec:     syntheticSpec,
+				err:            ferr,
+				fallbackActive: fallbackActive,
+			}
+		}(results, wg, metricName, triggerIndex, triggerName)
+	}
+}
+
 // GetScaledObjectMetrics returns metrics for specified metric name for a ScaledObject identified by its name and namespace.
 // It could either query the metric value directly from the scaler or from a cache, that's being stored for the scaler.
 func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricsName string) (*external_metrics.ExternalMetricValueList, error) {
@@ -710,19 +779,9 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	// as we can have multiple metrics in parallel for scaling modifiers
 	// we parallelize the scalers process to speed up the
 	// querying of the metric sources
-	type metricResult struct {
-		metrics           []external_metrics.ExternalMetricValue
-		metricTriggerPair map[string]string
-		metricName        string
-		triggerName       string
-		triggerIndex      int
-		metricSpec        v2.MetricSpec
-		err               error
-		fallbackActive    bool
-	}
 	allScalers, scalerConfigs := scalersCache.GetScalers()
 	// the matching metrics length has to be the same as required metrics length
-	matchingMetricsChan := make(chan metricResult, len(metricsArray))
+	matchingMetricsChan := make(chan scaledObjectMetricResult, len(metricsArray))
 	wg := sync.WaitGroup{}
 	for triggerIndex := 0; triggerIndex < len(allScalers); triggerIndex++ {
 		triggerName := strings.Replace(fmt.Sprintf("%T", allScalers[triggerIndex]), "*scalers.", "", 1)
@@ -745,6 +804,12 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 			logger.Error(err, "error metricsArray is empty")
 			scalersCache.Recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, eventreason.KEDAScalerFailed, "%s", err.Error())
 		}
+
+		h.enqueueFallbackForEmptyMetricSpec(
+			ctx, scalersCache, scaledObject, err, metricSpecs, len(allScalers), metricsArray,
+			triggerIndex, triggerName, matchingMetricsChan, &wg, logger,
+		)
+
 		for _, spec := range metricSpecs {
 			// skip cpu/memory resource scaler
 			if spec.External == nil {
@@ -756,8 +821,8 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 				// if compositeScaler is used, override with current metric, otherwise do nothing
 				metricName := spec.External.Metric.Name
 				wg.Add(1)
-				go func(results chan metricResult, wg *sync.WaitGroup, metricName string, triggerIndex int, scalerConfig scalersconfig.ScalerConfig, spec v2.MetricSpec) {
-					result := metricResult{}
+				go func(results chan scaledObjectMetricResult, wg *sync.WaitGroup, metricName string, triggerIndex int, scalerConfig scalersconfig.ScalerConfig, spec v2.MetricSpec) {
+					result := scaledObjectMetricResult{}
 
 					// Pair metric values with their trigger names. This is applied only when
 					// ScalingModifiers.Formula is defined in SO.

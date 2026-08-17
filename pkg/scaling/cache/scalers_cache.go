@@ -215,10 +215,9 @@ func (c *ScalersCache) GetMetricSpecForScalingForScaler(ctx context.Context, ind
 		return nil, err
 	}
 
-	if sb.CachedMetricSpecs != nil {
-		return cloneMetricSpecs(sb.CachedMetricSpecs), nil
-	}
-
+	// Prefer a live query so config changes are picked up; fall back to the
+	// last successful specs when the scaler is unreachable so the metrics /
+	// fallback path can still run (see kedacore/keda#8056).
 	metricSpecs := sb.Scaler.GetMetricSpecForScaling(ctx)
 
 	// no metric spec returned for a scaler -> this could signal error during connection to the scaler
@@ -229,13 +228,29 @@ func (c *ScalersCache) GetMetricSpecForScalingForScaler(ctx context.Context, ind
 		ns, err = c.refreshScaler(ctx, index)
 		if err == nil {
 			metricSpecs = ns.GetMetricSpecForScaling(ctx)
-			if len(metricSpecs) < 1 {
+		}
+		if len(metricSpecs) < 1 {
+			// Scaler unreachable / empty spec: reuse last-known specs so
+			// GetMetricsAndActivity can fail into fallback.IncrementFailure
+			// instead of skipping the metrics loop entirely (#8056).
+			if len(sb.CachedMetricSpecs) > 0 {
+				return cloneMetricSpecs(sb.CachedMetricSpecs), nil
+			}
+			if err == nil {
 				err = fmt.Errorf("got empty metric spec")
 			}
+			return nil, err
 		}
 	}
 
-	return metricSpecs, err
+	// Remember successful specs for later outages.
+	c.mutex.Lock()
+	if !c.closed && index >= 0 && index < len(c.Scalers) {
+		c.Scalers[index].CachedMetricSpecs = cloneMetricSpecs(metricSpecs)
+	}
+	c.mutex.Unlock()
+
+	return metricSpecs, nil
 }
 
 // GetMetricsAndActivityForScaler returns metric value, activity and latency for a scaler identified by the metric name
