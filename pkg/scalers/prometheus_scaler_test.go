@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 	"golang.org/x/oauth2"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -115,6 +117,20 @@ var testPrometheusAuthMetadata = []prometheusAuthMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "custom"}, map[string]string{"customAuthHeader": "header\n", "customAuthValue": "value\n"}, "", false},
 
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "tls,basic"}, map[string]string{"username": "user", "password": "pass"}, "", true},
+	// success oauth
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "oauth"}, map[string]string{"oauthTokenURI": "http://localhost:8080/token", "clientID": "client", "clientSecret": "secret"}, "", false},
+	// success oauth with scopes and endpointParams
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "oauth"}, map[string]string{"oauthTokenURI": "http://localhost:8080/token", "clientID": "client", "clientSecret": "secret", "scopes": "scope-a,scope-b", "endpointParams": "audience=aud"}, "", false},
+	// success oauth without clientSecret, mTLS client authentication (RFC 8705) does not use one
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "oauth,tls"}, map[string]string{"oauthTokenURI": "http://localhost:8080/token", "clientID": "client", "cert": "ceert", "key": "keey"}, "", false},
+	// fail oauth with no oauthTokenURI
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "oauth"}, map[string]string{"clientID": "client", "clientSecret": "secret"}, "", true},
+	// fail oauth with no clientID
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "oauth"}, map[string]string{"oauthTokenURI": "http://localhost:8080/token", "clientSecret": "secret"}, "", true},
+	// fail oauth combined with bearer, they are mutually exclusive
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "oauth,bearer"}, map[string]string{"oauthTokenURI": "http://localhost:8080/token", "clientID": "client", "clientSecret": "secret", "bearerToken": "tooooken"}, "", true},
+	// fail oauth combined with basic, they are mutually exclusive
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "oauth,basic"}, map[string]string{"oauthTokenURI": "http://localhost:8080/token", "clientID": "client", "clientSecret": "secret", "username": "user", "password": "pass"}, "", true},
 	// pod identity and other auth modes enabled together
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "basic"}, map[string]string{"username": "user", "password": "pass"}, "azure-workload", true},
 	// azure workload identity
@@ -170,7 +186,8 @@ func TestPrometheusScalerAuthParams(t *testing.T) {
 				if (meta.PrometheusAuth.EnabledBearerAuth() && !strings.Contains(testData.metadata["authModes"], "bearer")) ||
 					(meta.PrometheusAuth.EnabledBasicAuth() && !strings.Contains(testData.metadata["authModes"], "basic")) ||
 					(meta.PrometheusAuth.EnabledTLS() && !strings.Contains(testData.metadata["authModes"], "tls")) ||
-					(meta.PrometheusAuth.EnabledCustomAuth() && !strings.Contains(testData.metadata["authModes"], "custom")) {
+					(meta.PrometheusAuth.EnabledCustomAuth() && !strings.Contains(testData.metadata["authModes"], "custom")) ||
+					(meta.PrometheusAuth.EnabledOAuth() && !strings.Contains(testData.metadata["authModes"], "oauth")) {
 					t.Error("wrong auth mode detected")
 				}
 			}
@@ -443,6 +460,88 @@ func TestPrometheusScalerExecutePromQueryParameters(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestPrometheusScaler_ExecutePromQuery_WithOAuth(t *testing.T) {
+	t.Parallel()
+
+	var tokenRequests atomic.Int64
+	tokenForm := &url.Values{}
+
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenRequests.Add(1)
+		require.NoError(t, r.ParseForm())
+		*tokenForm = r.Form
+		if username, password, ok := r.BasicAuth(); ok {
+			tokenForm.Set("client_id", username)
+			tokenForm.Set("client_secret", password)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_, err := w.Write([]byte(`{"access_token":"fake_access_token","token_type":"Bearer","expires_in":3600}`))
+		assert.NoError(t, err)
+	}))
+	defer tokenServer.Close()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !assert.Equal(t, "Bearer fake_access_token", r.Header.Get("Authorization")) {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		assert.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+			"status": "success",
+			"data": map[string]any{
+				"resultType": "vector",
+				"result": []map[string]any{
+					{"metric": map[string]string{}, "value": []any{1686063687, "42"}},
+				},
+			},
+		}))
+	}))
+	defer server.Close()
+
+	config := &scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"serverAddress": server.URL,
+			"query":         "up",
+			"threshold":     "100",
+			"authModes":     "oauth",
+		},
+		AuthParams: map[string]string{
+			"oauthTokenURI":  tokenServer.URL,
+			"clientID":       "my-client",
+			"clientSecret":   "my-secret",
+			"scopes":         "scope-a,scope-b",
+			"endpointParams": "audience=my-audience",
+		},
+	}
+
+	scaler, err := NewPrometheusScaler(t.Context(), config)
+	require.NoError(t, err)
+
+	s, ok := scaler.(*prometheusScaler)
+	require.True(t, ok, "Scaler must be a Prometheus Scaler")
+	_, ok = s.httpClient.Transport.(*oauth2.Transport)
+	require.True(t, ok, "HTTP transport must be OAuth2")
+
+	got, err := s.ExecutePromQuery(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, float64(42), got)
+
+	assert.Equal(t, "client_credentials", tokenForm.Get("grant_type"))
+	assert.Equal(t, "my-client", tokenForm.Get("client_id"))
+	assert.Equal(t, "my-secret", tokenForm.Get("client_secret"))
+	assert.Equal(t, "scope-a scope-b", tokenForm.Get("scope"))
+	assert.Equal(t, "my-audience", tokenForm.Get("audience"))
+	assert.Equal(t, int64(1), tokenRequests.Load())
+
+	// The token is acquired once and reused for subsequent queries,
+	// rather than being re-fetched on every polling interval.
+	got, err = s.ExecutePromQuery(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, float64(42), got)
+	assert.Equal(t, int64(1), tokenRequests.Load(), "token should be reused across queries")
+}
+
 func TestPrometheusScaler_ExecutePromQuery_WithGcpNativeAuthentication(t *testing.T) {
 	fakeGoogleOAuthServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `{"token_type": "Bearer", "access_token": "fake_access_token"}`)
@@ -572,7 +671,7 @@ h+VRH7M7/22LuSxeKoQaRqeBRbvGup/oHGr9Ks/sVi0EQRUqwB45QLNiF1bi
 			require.NotNil(t, tt.config, "you must provide a config generator func")
 			config := tt.config(t, baseConfig)
 
-			scaler, err := NewPrometheusScaler(config)
+			scaler, err := NewPrometheusScaler(t.Context(), config)
 			require.NoError(t, err)
 
 			s, ok := scaler.(*prometheusScaler)
