@@ -601,12 +601,17 @@ func WaitForDeploymentReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, 
 		if err != nil {
 			t.Logf("cannot get deployment %s/%s - %s", namespace, name, err)
 		} else {
-			replicas := deployment.Status.ReadyReplicas
+			status := deployment.Status
 
-			t.Logf("Waiting for deployment replicas to hit target. Deployment - %s, Current  - %d, Target - %d",
-				name, replicas, target)
+			t.Logf("Waiting for deployment replicas to hit target. Deployment - %s, ObservedGeneration - %d/%d, ReadyReplicas - %d, UpdatedReplicas - %d, Target - %d",
+				name, status.ObservedGeneration, deployment.Generation, status.ReadyReplicas, status.UpdatedReplicas, target)
 
-			if replicas == int32(target) {
+			// ObservedGeneration rejects a status written before the current spec, and UpdatedReplicas
+			// rejects pods built from a previous template. Without both, a wait that follows a template
+			// change can be satisfied by the very pods that change is replacing.
+			if status.ObservedGeneration >= deployment.Generation &&
+				status.ReadyReplicas == int32(target) &&
+				status.UpdatedReplicas == int32(target) {
 				return true
 			}
 		}
@@ -677,12 +682,16 @@ func WaitForStatefulsetReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset,
 		if err != nil {
 			t.Logf("cannot get statefulset %s/%s - %s", namespace, name, err)
 		} else {
-			replicas := statefulset.Status.ReadyReplicas
+			status := statefulset.Status
 
-			t.Logf("Waiting for statefulset replicas to hit target. Statefulset - %s, Current  - %d, Target - %d",
-				name, replicas, target)
+			t.Logf("Waiting for statefulset replicas to hit target. Statefulset - %s, ObservedGeneration - %d/%d, ReadyReplicas - %d, UpdatedReplicas - %d, Target - %d",
+				name, status.ObservedGeneration, statefulset.Generation, status.ReadyReplicas, status.UpdatedReplicas, target)
 
-			if replicas == int32(target) {
+			// Same reasoning as the deployment helper above: the generation rules out a stale status,
+			// and UpdatedReplicas rules out pods still running the previous revision.
+			if status.ObservedGeneration >= statefulset.Generation &&
+				status.ReadyReplicas == int32(target) &&
+				status.UpdatedReplicas == int32(target) {
 				return true
 			}
 		}

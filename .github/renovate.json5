@@ -127,6 +127,18 @@
       pinDigests: false,
       groupName: "DevContainer",
     },
+
+    // Internal main references deliberately follow the latest KEDA build.
+    {
+      matchPackageNames: [
+        "kedacore/keda",
+        "ghcr.io/kedacore/keda",
+        "ghcr.io/kedacore/keda-admission-webhooks",
+        "ghcr.io/kedacore/keda-metrics-apiserver",
+      ],
+      matchCurrentValue: "main",
+      pinDigests: false,
+    },
   ],
   customManagers: [
     // Versions in Go source files annotated with // renovate: comments.
