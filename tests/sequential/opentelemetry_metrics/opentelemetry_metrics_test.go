@@ -63,9 +63,11 @@ var (
 	resourceMetricScalerName                 = fmt.Sprintf("%s-resource-cpu-scaler", testName)
 	httpClientScaledObjectName               = fmt.Sprintf("%s-so-http-client", testName)
 	wrongScaledObjectName                    = fmt.Sprintf("%s-so-wrong", testName)
+	notReadyScaledObjectName                 = fmt.Sprintf("%s-so-not-ready", testName)
 	scaledObjectGrpcName                     = fmt.Sprintf("%s-so-grpc", testName)
 	scaledJobName                            = fmt.Sprintf("%s-sj", testName)
 	wrongScaledJobName                       = fmt.Sprintf("%s-sj-wrong", testName)
+	notReadyScaledJobName                    = fmt.Sprintf("%s-sj-not-ready", testName)
 	wrongScalerName                          = fmt.Sprintf("%s-wrong-scaler", testName)
 	emptyUpstreamScaledObjectName            = fmt.Sprintf("%s-so-empty-upstream", testName)
 	httpClientScalerName                     = fmt.Sprintf("%s-http-client-scaler", testName)
@@ -97,7 +99,9 @@ type templateData struct {
 	ScaledJobName                  string
 	ScaledObjectGrpcName           string
 	WrongScaledObjectName          string
+	NotReadyScaledObjectName       string
 	WrongScaledJobName             string
+	NotReadyScaledJobName          string
 	WrongScalerName                string
 	EmptyUpstreamScaledObjectName  string
 	HTTPClientScalerName           string
@@ -357,6 +361,62 @@ spec:
         metricName: keda_scaler_errors_total
         threshold: '1'
         query: 'keda_scaler_errors_total{namespace="{{.TestNamespace}}",scaledJob="{{.WrongScaledJobName}}"}'
+`
+
+	// ScaledObject with a trigger missing required metadata (prometheus `query`),
+	// which passes admission but fails scaler creation during reconciliation,
+	// so its Ready condition is False. It targets the monitored deployment, which
+	// is not managed by any other ScaledObject, to pass the admission webhook.
+	notReadyScaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.NotReadyScaledObjectName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.MonitoredDeploymentName}}
+  pollingInterval: 2
+  minReplicaCount: 1
+  maxReplicaCount: 2
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://keda-prometheus.keda.svc.cluster.local:8080
+        threshold: '1'
+`
+
+	// ScaledJob with a trigger missing required metadata (prometheus `query`),
+	// which passes admission but fails scaler creation during reconciliation,
+	// so its Ready condition is False
+	notReadyScaledJobTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  name: {{.NotReadyScaledJobName}}
+  namespace: {{.TestNamespace}}
+spec:
+  jobTargetRef:
+    template:
+      spec:
+        containers:
+        - name: external-executor
+          image: busybox
+          command:
+          - sleep
+          - "30"
+          imagePullPolicy: IfNotPresent
+        restartPolicy: Never
+    backoffLimit: 1
+  pollingInterval: 2
+  maxReplicaCount: 3
+  successfulJobsHistoryLimit: 0
+  failedJobsHistoryLimit: 0
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://keda-prometheus.keda.svc.cluster.local:8080
+        threshold: '1'
 `
 
 	cronScaledJobTemplate = `
@@ -675,6 +735,8 @@ func TestOpenTelemetryMetrics(t *testing.T) {
 	testOperatorMetrics(t, kc, data)
 	testScalableObjectMetrics(t)
 	testScaledObjectPausedMetric(t, data)
+	testScaledObjectReadyMetric(t, data)
+	testScaledJobReadyMetric(t, data)
 	testCloudEventEmitted(t, data)
 	testCloudEventEmittedError(t, data)
 	testEmptyUpstreamResponse(t, data)
@@ -696,9 +758,11 @@ func getTemplateData() (templateData, []Template) {
 			ResourceMetricScalerName:       resourceMetricScalerName,
 			HTTPClientScaledObjectName:     httpClientScaledObjectName,
 			WrongScaledObjectName:          wrongScaledObjectName,
+			NotReadyScaledObjectName:       notReadyScaledObjectName,
 			ScaledObjectGrpcName:           scaledObjectGrpcName,
 			ScaledJobName:                  scaledJobName,
 			WrongScaledJobName:             wrongScaledJobName,
+			NotReadyScaledJobName:          notReadyScaledJobName,
 			WrongScalerName:                wrongScalerName,
 			EmptyUpstreamScaledObjectName:  emptyUpstreamScaledObjectName,
 			HTTPClientScalerName:           httpClientScalerName,
@@ -795,9 +859,13 @@ func testScalerGrpcMetricValue(t *testing.T, kc *kubernetes.Clientset, data temp
 // scaledObjectGaugeValue returns the gauge value labelled with the given ScaledObject name,
 // and whether such a metric was present at all.
 func scaledObjectGaugeValue(family *prommodel.MetricFamily, soName string) (float64, bool) {
+	return gaugeValueByLabel(family, labelScaledObject, soName)
+}
+
+func gaugeValueByLabel(family *prommodel.MetricFamily, labelName, name string) (float64, bool) {
 	for _, metric := range family.GetMetric() {
 		for _, label := range metric.GetLabel() {
-			if *label.Name == labelScaledObject && *label.Value == soName {
+			if *label.Name == labelName && *label.Value == name {
 				return metric.GetGauge().GetValue(), true
 			}
 		}
@@ -1182,6 +1250,67 @@ func testScaledObjectPausedMetric(t *testing.T, data templateData) {
 		return found && value == 0
 	})
 	assertScaledObjectFlagMetric(t, families, scaledObjectName, "keda_scaled_object_paused", false)
+}
+
+func testScaledObjectReadyMetric(t *testing.T, data templateData) {
+	t.Log("--- testing scaledobject ready metric ---")
+
+	// the correctly configured ScaledObject should report ready == 1
+	families := waitForCollectorMetric(t, "keda_scaled_object_ready", func(family *prommodel.MetricFamily) bool {
+		value, found := gaugeValueByLabel(family, labelScaledObject, scaledObjectName)
+		return found && value == 1
+	})
+	assertReadyMetric(t, families, "keda_scaled_object_ready", labelScaledObject, scaledObjectName, true)
+
+	// a misconfigured ScaledObject (invalid trigger metadata) should report ready == 0
+	KubectlApplyWithTemplate(t, data, "notReadyScaledObjectTemplate", notReadyScaledObjectTemplate)
+
+	families = waitForCollectorMetric(t, "keda_scaled_object_ready", func(family *prommodel.MetricFamily) bool {
+		value, found := gaugeValueByLabel(family, labelScaledObject, notReadyScaledObjectName)
+		return found && value == 0
+	})
+	assertReadyMetric(t, families, "keda_scaled_object_ready", labelScaledObject, notReadyScaledObjectName, false)
+
+	KubectlDeleteWithTemplate(t, data, "notReadyScaledObjectTemplate", notReadyScaledObjectTemplate)
+}
+
+func testScaledJobReadyMetric(t *testing.T, data templateData) {
+	t.Log("--- testing scaledjob ready metric ---")
+
+	// the correctly configured ScaledJob should report ready == 1
+	families := waitForCollectorMetric(t, "keda_scaled_job_ready", func(family *prommodel.MetricFamily) bool {
+		value, found := gaugeValueByLabel(family, labelScaledJob, scaledJobName)
+		return found && value == 1
+	})
+	assertReadyMetric(t, families, "keda_scaled_job_ready", labelScaledJob, scaledJobName, true)
+
+	// a misconfigured ScaledJob (invalid trigger metadata) should report ready == 0
+	KubectlApplyWithTemplate(t, data, "notReadyScaledJobTemplate", notReadyScaledJobTemplate)
+
+	families = waitForCollectorMetric(t, "keda_scaled_job_ready", func(family *prommodel.MetricFamily) bool {
+		value, found := gaugeValueByLabel(family, labelScaledJob, notReadyScaledJobName)
+		return found && value == 0
+	})
+	assertReadyMetric(t, families, "keda_scaled_job_ready", labelScaledJob, notReadyScaledJobName, false)
+
+	KubectlDeleteWithTemplate(t, data, "notReadyScaledJobTemplate", notReadyScaledJobTemplate)
+}
+
+func assertReadyMetric(t *testing.T, families map[string]*prommodel.MetricFamily, metricName, labelName, resourceName string, expected bool) {
+	family, ok := families[metricName]
+	assert.True(t, ok, "%s not available", metricName)
+	if !ok {
+		return
+	}
+
+	metricValue, found := gaugeValueByLabel(family, labelName, resourceName)
+	assert.True(t, found, "%s metric not found for %s", metricName, resourceName)
+
+	expectedMetricValue := 0.0
+	if expected {
+		expectedMetricValue = 1
+	}
+	assert.Equal(t, expectedMetricValue, metricValue)
 }
 
 func testOperatorMetrics(t *testing.T, kc *kubernetes.Clientset, data templateData) {
