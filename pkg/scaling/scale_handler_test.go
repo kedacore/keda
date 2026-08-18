@@ -2284,7 +2284,8 @@ func TestGetScaledObjectState_PushScalerPollsDespiteFreshObservation(t *testing.
 	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), metricName).Return([]external_metrics.ExternalMetricValue{}, false, nil)
 	scaler.EXPECT().Close(gomock.Any()).AnyTimes()
 
-	sh, scalerCache, _ := newStateFromHPAObservationsHandler(ctrl, scaledObject, scaler)
+	sh, scalerCache, mockClient := newStateFromHPAObservationsHandler(ctrl, scaledObject, scaler)
+	expectHPAScalingActive(mockClient, v1.ConditionTrue)
 	sh.scaledObjectsMetricCache.StoreRecord(scaledObject.GenerateIdentifier(), metricName, metricscache.MetricsRecord{IsMetricActive: true})
 
 	isActive, isError, _, _, _, err := sh.getScaledObjectState(t.Context(), scaledObject)
