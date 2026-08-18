@@ -30,7 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/scale"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	"k8s.io/utils/ptr"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -73,7 +72,7 @@ func (h *ScaledObjectHandler) IncrementFailure(metricName string) kedav1alpha1.H
 	}
 	healthStatus := h.ScaledObject.Status.Health[metricName]
 	if healthStatus.NumberOfFailures == nil {
-		healthStatus.NumberOfFailures = ptr.To(int32(0))
+		healthStatus.NumberOfFailures = new(int32(0))
 	}
 	*healthStatus.NumberOfFailures++
 	healthStatus.Status = kedav1alpha1.HealthStatusFailing
@@ -124,7 +123,7 @@ func GetMetricsWithFallback(soh ScaledObjectHandler, metrics []external_metrics.
 	if suppressedError == nil {
 		if fallbackConfigured {
 			soh.UpdateHealthStatus(metricName, kedav1alpha1.HealthStatus{
-				NumberOfFailures: ptr.To(int32(0)),
+				NumberOfFailures: new(int32(0)),
 				Status:           kedav1alpha1.HealthStatusHappy,
 			})
 		}

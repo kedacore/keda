@@ -715,7 +715,7 @@ type MockEventRecorder struct {
 	Messages    []string
 }
 
-func (m *MockEventRecorder) Eventf(regarding, related runtime.Object, eventtype, reason, action, note string, args ...interface{}) {
+func (m *MockEventRecorder) Eventf(regarding, related runtime.Object, eventtype, reason, action, note string, args ...any) {
 	m.EventCalled = true
 	m.Message = fmt.Sprintf(note, args...)
 	m.Messages = append(m.Messages, m.Message)
