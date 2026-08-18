@@ -432,14 +432,22 @@ func (c *cosmosDBClient) queryLeases(ctx context.Context) ([]leaseDocument, erro
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
 
-	// Parse and filter out metadata documents (those without LeaseToken or ContinuationToken)
+	// Parse and filter out non-lease metadata documents (the SDKs also create ".info"/".lock"
+	// bookkeeping documents in the lease container, which never have a LeaseToken field).
+	// A lease's ContinuationToken is intentionally NOT required here: a freshly created lease
+	// that has never checkpointed yet (CreateLeaseIfNotExistAsync's initial state) legitimately
+	// has an empty ContinuationToken - readChangeFeed/estimatePartitionLag already handle that
+	// correctly by reading from the beginning of the feed, which is exactly what's needed to
+	// detect a real customer's very first backlog. Requiring ContinuationToken here would
+	// permanently hide that backlog, since nothing else ever populates it while the deployment
+	// stays at 0 replicas.
 	var leases []leaseDocument
 	for _, raw := range result.Documents {
 		var doc leaseDocument
 		if err := json.Unmarshal(raw, &doc); err != nil {
 			continue
 		}
-		if doc.LeaseToken != "" && doc.ContinuationToken != "" {
+		if doc.LeaseToken != "" {
 			leases = append(leases, doc)
 		}
 	}
@@ -505,7 +513,10 @@ func (c *cosmosDBClient) readChangeFeed(ctx context.Context, partitionKeyRangeID
 
 // estimateLag estimates the total change feed lag across all partitions and
 // returns the lag, number of partitions with lag, and whether a processor must
-// wake to reconcile a stale parent lease.
+// wake to reconcile a stale parent lease. activePartitionCount is meant for scale-out
+// capping rather than pure observability: partitions that have never checkpointed are
+// collapsed to count as at most one, so a burst of simultaneously-bootstrapping partitions
+// doesn't request an outsized replica count (see estimateOnce).
 // If a partition split (410 Gone) is detected, it retries once to get fresh lease data.
 func (c *cosmosDBClient) estimateLag(ctx context.Context) (totalLag int64, activePartitionCount int64, splitRecoveryRequired bool, err error) {
 	totalLag, activePartitionCount, splitDetected, err := c.estimateOnce(ctx)
@@ -540,6 +551,7 @@ func (c *cosmosDBClient) estimateOnce(ctx context.Context) (int64, int64, bool, 
 
 	totalLag := int64(0)
 	activePartitionCount := int64(0)
+	neverCheckpointedActiveCount := int64(0)
 	splitDetected := false
 
 	for _, lease := range leases {
@@ -556,12 +568,29 @@ func (c *cosmosDBClient) estimateOnce(ctx context.Context) (int64, int64, bool, 
 		if lag > 0 {
 			totalLag += lag
 			activePartitionCount++
+			if lease.ContinuationToken == "" {
+				neverCheckpointedActiveCount++
+			}
 		}
 	}
 
 	// Cap to prevent int64 overflow from summing across many partitions
 	if totalLag < 0 {
 		totalLag = math.MaxInt64
+	}
+
+	// Partitions that have never checkpointed are all reading their backlog from the
+	// beginning of the feed, so their lag may reflect a one-time historical backlog rather
+	// than genuine, ongoing accumulation (e.g. many partitions bootstrapping together on a
+	// container that already had data). activePartitionCount feeds the scale-out cap in
+	// getChangeFeedTotalLagRelatedToPartitionAmount, so collapse the combined contribution of
+	// never-checkpointed partitions there to at most one partition's worth, preventing a burst
+	// of simultaneously-bootstrapping partitions from requesting an outsized replica count.
+	// Partitions that have already checkpointed at least once still count individually, since
+	// their lag reflects real, ongoing accumulation. totalLag itself is untouched, so
+	// activation (isActive) still correctly reflects the true backlog.
+	if neverCheckpointedActiveCount > 1 {
+		activePartitionCount -= neverCheckpointedActiveCount - 1
 	}
 
 	return totalLag, activePartitionCount, splitDetected, nil

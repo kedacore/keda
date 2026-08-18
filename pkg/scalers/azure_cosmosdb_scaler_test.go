@@ -1344,6 +1344,169 @@ func TestCosmosDBLagEstimationEmptyLeases(t *testing.T) {
 	assert.Equal(t, int64(0), activePartitionCount)
 }
 
+// TestCosmosDBLagEstimationNeverCheckpointedLease covers a lease document that exists
+// (LeaseToken set) but has never checkpointed yet - a real, common state immediately after
+// CreateLeaseIfNotExistAsync, before the processor has completed a single change feed read.
+// Such a lease must NOT be treated the same as a metadata/lock document (which has neither
+// field): its backlog must still be detected by reading the change feed from the beginning
+// (no If-None-Match sent), exactly like a fresh customer's very first deployment. Filtering
+// it out here would make that backlog permanently invisible to the scaler.
+func TestCosmosDBLagEstimationNeverCheckpointedLease(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/dbs/testdb/colls/leases/docs":
+			response := map[string]interface{}{
+				"Documents": []map[string]interface{}{
+					{
+						"id":                "lease1",
+						"LeaseToken":        "0",
+						"ContinuationToken": nil,
+						"Owner":             "testowner",
+					},
+					{
+						// Metadata doc - has neither field, must still be filtered out
+						"id":    "metadata",
+						"Owner": "metadata",
+					},
+				},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(response)
+		case "/dbs/testdb/colls/testcontainer/docs":
+			assert.Empty(t, r.Header.Get("If-None-Match"), "a never-checkpointed lease must read from the beginning")
+			w.Header().Set("x-ms-session-token", "0:0#10")
+			w.Header().Set("Content-Type", "application/json")
+			response := map[string]interface{}{
+				"Documents": []map[string]interface{}{
+					{"id": "item1", "_lsn": 1},
+				},
+			}
+			_ = json.NewEncoder(w).Encode(response)
+		}
+	}))
+	defer server.Close()
+
+	client := &cosmosDBClient{
+		httpClient:       &http.Client{},
+		dataEndpoint:     server.URL,
+		dataKey:          "dGVzdGtleQ==",
+		leaseEndpoint:    server.URL,
+		leaseKey:         "dGVzdGtleQ==",
+		databaseID:       "testdb",
+		containerID:      "testcontainer",
+		leaseDatabaseID:  "testdb",
+		leaseContainerID: "leases",
+		processorName:    "testprocessor",
+	}
+
+	totalLag, activePartitionCount, _, err := client.estimateLag(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, int64(10), totalLag, "backlog behind a never-checkpointed lease must be detected, not silently reported as 0")
+	assert.Equal(t, int64(1), activePartitionCount)
+}
+
+func TestCosmosDBLagEstimationManyBootstrappingPartitionsCollapseForCap(t *testing.T) {
+	// Simulates a container with 3 partitions all bootstrapping simultaneously (never
+	// checkpointed), each reporting real backlog. Without dampening, activePartitionCount
+	// would be 3, letting the scale-out cap request up to 3 replicas purely from a one-time
+	// historical backlog visible on first bootstrap, rather than genuine ongoing accumulation.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/dbs/testdb/colls/leases/docs":
+			response := map[string]interface{}{
+				"Documents": []map[string]interface{}{
+					{"id": "lease0", "LeaseToken": "0", "ContinuationToken": nil, "Owner": "owner0"},
+					{"id": "lease1", "LeaseToken": "1", "ContinuationToken": nil, "Owner": "owner1"},
+					{"id": "lease2", "LeaseToken": "2", "ContinuationToken": nil, "Owner": "owner2"},
+				},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(response)
+		case "/dbs/testdb/colls/testcontainer/docs":
+			partitionID := r.Header.Get("x-ms-documentdb-partitionkeyrangeid")
+			assert.Empty(t, r.Header.Get("If-None-Match"), "partition %s: a never-checkpointed lease must read from the beginning", partitionID)
+			w.Header().Set("x-ms-session-token", "0:0#10")
+			w.Header().Set("Content-Type", "application/json")
+			response := map[string]interface{}{
+				"Documents": []map[string]interface{}{
+					{"id": "item-" + partitionID, "_lsn": 1},
+				},
+			}
+			_ = json.NewEncoder(w).Encode(response)
+		}
+	}))
+	defer server.Close()
+
+	client := &cosmosDBClient{
+		httpClient:       &http.Client{},
+		dataEndpoint:     server.URL,
+		dataKey:          "dGVzdGtleQ==",
+		leaseEndpoint:    server.URL,
+		leaseKey:         "dGVzdGtleQ==",
+		databaseID:       "testdb",
+		containerID:      "testcontainer",
+		leaseDatabaseID:  "testdb",
+		leaseContainerID: "leases",
+		processorName:    "testprocessor",
+	}
+
+	totalLag, activePartitionCount, _, err := client.estimateLag(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, int64(30), totalLag, "raw backlog across all 3 bootstrapping partitions must still be fully detected")
+	assert.Equal(t, int64(1), activePartitionCount, "never-checkpointed partitions must collapse to at most one partition's worth for scale-out capping")
+}
+
+func TestCosmosDBLagEstimationMixedCheckpointedAndBootstrappingPartitions(t *testing.T) {
+	// 2 partitions already checkpointed with real ongoing lag, plus 3 more partitions
+	// simultaneously bootstrapping (never checkpointed). Checkpointed partitions must still
+	// count individually toward the scale-out cap; the bootstrapping group counts as only one more.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/dbs/testdb/colls/leases/docs":
+			response := map[string]interface{}{
+				"Documents": []map[string]interface{}{
+					{"id": "lease0", "LeaseToken": "0", "ContinuationToken": `"100"`, "Owner": "owner0"},
+					{"id": "lease1", "LeaseToken": "1", "ContinuationToken": `"100"`, "Owner": "owner1"},
+					{"id": "lease2", "LeaseToken": "2", "ContinuationToken": nil, "Owner": "owner2"},
+					{"id": "lease3", "LeaseToken": "3", "ContinuationToken": nil, "Owner": "owner3"},
+					{"id": "lease4", "LeaseToken": "4", "ContinuationToken": nil, "Owner": "owner4"},
+				},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(response)
+		case "/dbs/testdb/colls/testcontainer/docs":
+			partitionID := r.Header.Get("x-ms-documentdb-partitionkeyrangeid")
+			w.Header().Set("x-ms-session-token", "0:0#10")
+			w.Header().Set("Content-Type", "application/json")
+			response := map[string]interface{}{
+				"Documents": []map[string]interface{}{
+					{"id": "item-" + partitionID, "_lsn": 1},
+				},
+			}
+			_ = json.NewEncoder(w).Encode(response)
+		}
+	}))
+	defer server.Close()
+
+	client := &cosmosDBClient{
+		httpClient:       &http.Client{},
+		dataEndpoint:     server.URL,
+		dataKey:          "dGVzdGtleQ==",
+		leaseEndpoint:    server.URL,
+		leaseKey:         "dGVzdGtleQ==",
+		databaseID:       "testdb",
+		containerID:      "testcontainer",
+		leaseDatabaseID:  "testdb",
+		leaseContainerID: "leases",
+		processorName:    "testprocessor",
+	}
+
+	totalLag, activePartitionCount, _, err := client.estimateLag(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, int64(50), totalLag, "all 5 partitions contribute their real lag to the total")
+	assert.Equal(t, int64(3), activePartitionCount, "2 checkpointed partitions count individually, plus 1 for the collapsed bootstrapping group")
+}
+
 func TestCosmosDBLagEstimationAllPartitionsLagging(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -1700,6 +1863,76 @@ func TestCosmosDBGetMetricsAndActivityCapsLagByActivePartitions(t *testing.T) {
 				assert.Equal(t, tt.expectedMetric, metrics[0].Value.Value())
 			}
 		})
+	}
+}
+
+// TestCosmosDBGetMetricsAndActivityNeverCheckpointedPartitionsStayCapped proves why the
+// never-checkpointed collapse in estimateOnce must floor activePartitionCount at 1, not 0.
+// getChangeFeedTotalLagRelatedToPartitionAmount treats activePartitionCount<=0 as "nothing to
+// cap against" and passes totalLag through uncapped - safe in the original code, where that
+// case only arose when totalLag was also 0. Collapsing all-never-checkpointed partitions to 0
+// would put a nonzero totalLag through that same uncapped escape hatch, defeating the cap
+// entirely; flooring at 1 keeps a real (if minimal) cap of exactly 1*threshold in effect.
+func TestCosmosDBGetMetricsAndActivityNeverCheckpointedPartitionsStayCapped(t *testing.T) {
+	const partitionCount = 5
+	const lagPerPartition = 1000 // 5000 raw total - would pass through uncapped if the floor were 0
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/dbs/testdb/colls/leases/docs":
+			leases := make([]map[string]interface{}, 0, partitionCount)
+			for i := 0; i < partitionCount; i++ {
+				partitionID := strconv.Itoa(i)
+				leases = append(leases, map[string]interface{}{
+					"id":                "lease" + partitionID,
+					"LeaseToken":        partitionID,
+					"ContinuationToken": nil, // never checkpointed
+					"Owner":             "owner" + partitionID,
+				})
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"Documents": leases})
+		case "/dbs/testdb/colls/testcontainer/docs":
+			partitionID := r.Header.Get("x-ms-documentdb-partitionkeyrangeid")
+			w.Header().Set("x-ms-session-token", "0:0#"+strconv.Itoa(lagPerPartition))
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"Documents":[{"id":"item-` + partitionID + `","_lsn":1}]}`))
+		}
+	}))
+	defer server.Close()
+
+	scaler := &azureCosmosDBScaler{
+		metricType: v2.AverageValueMetricType,
+		metadata: &azureCosmosDBMetadata{
+			DatabaseID:          "testdb",
+			ContainerID:         "testcontainer",
+			LeaseDatabaseID:     "testdb",
+			LeaseContainerID:    "leases",
+			ProcessorName:       "testprocessor",
+			Threshold:           100,
+			ActivationThreshold: 0,
+		},
+		cosmosClient: &cosmosDBClient{
+			httpClient:       &http.Client{},
+			dataEndpoint:     server.URL,
+			dataKey:          "dGVzdGtleQ==",
+			leaseEndpoint:    server.URL,
+			leaseKey:         "dGVzdGtleQ==",
+			databaseID:       "testdb",
+			containerID:      "testcontainer",
+			leaseDatabaseID:  "testdb",
+			leaseContainerID: "leases",
+			processorName:    "testprocessor",
+		},
+		logger: logr.Discard(),
+	}
+
+	metrics, isActive, err := scaler.GetMetricsAndActivity(context.Background(), "test-metric")
+	assert.NoError(t, err)
+	assert.True(t, isActive, "real backlog behind never-checkpointed leases must still activate scale-from-zero")
+	if assert.Len(t, metrics, 1) {
+		assert.Equal(t, int64(100), metrics[0].Value.Value(),
+			"metric must stay capped at 1*threshold, not pass through the raw 5000 total lag uncapped")
 	}
 }
 

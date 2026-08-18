@@ -324,8 +324,7 @@ func getProcessorLeaseCount(ctx context.Context, endpoint, key string) (int, err
 
 	var result struct {
 		Documents []struct {
-			LeaseToken        string `json:"LeaseToken"`
-			ContinuationToken string `json:"ContinuationToken"`
+			LeaseToken string `json:"LeaseToken"`
 		} `json:"Documents"`
 	}
 	if err := json.Unmarshal(respBody, &result); err != nil {
@@ -334,7 +333,7 @@ func getProcessorLeaseCount(ctx context.Context, endpoint, key string) (int, err
 
 	leaseCount := 0
 	for _, document := range result.Documents {
-		if document.LeaseToken != "" && document.ContinuationToken != "" {
+		if document.LeaseToken != "" {
 			leaseCount++
 		}
 	}
