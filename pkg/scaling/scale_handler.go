@@ -1045,12 +1045,12 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 // stateFromHPAObservationsAllowed returns true if the state of the ScaledObject may be derived
 // from the metric observations of the HPA-driven metrics path instead of querying the trigger
 // sources on the scale loop. This is only allowed when pollingInterval is not relevant (see
-// IsPollingRelevant): the HPA then drives all scaling and already queries every external metric
+// IsPollingIntervalRelevant): the HPA then drives all scaling and already queries every external metric
 // itself, so querying the trigger sources on the scale loop would only duplicate those queries.
 // ScaledObjects using scaling modifiers are excluded because trigger activity is then derived
 // from the composite formula over all metrics at once.
 func stateFromHPAObservationsAllowed(scaledObject *kedav1alpha1.ScaledObject) bool {
-	return !scaledObject.IsPollingRelevant() && !scaledObject.IsUsingModifiers()
+	return !scaledObject.IsPollingIntervalRelevant() && !scaledObject.IsUsingModifiers()
 }
 
 // hpaObservedRecord returns the observation the HPA-driven metrics path stored for the given

@@ -22,7 +22,7 @@ type MetricsRecord struct {
 // path that doesn't. Per ScaledObject there is exactly one writer: the scale loop for triggers
 // with useCachedMetrics (StoreRecords), or the HPA-driven metrics path when pollingInterval is
 // not relevant (StoreRecord). The two modes are mutually exclusive, since useCachedMetrics makes
-// pollingInterval relevant (see ScaledObject.IsPollingRelevant).
+// pollingInterval relevant (see ScaledObject.IsPollingIntervalRelevant).
 type MetricsCache struct {
 	metricRecords map[string]map[string]MetricsRecord
 	lock          *sync.RWMutex

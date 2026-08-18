@@ -369,8 +369,8 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 
 	// PollingInterval warning: warn when pollingInterval is set but the scale loop has nothing to
 	// poll for because the HPA drives all scaling. This mirrors the exact condition the scale loop
-	// itself uses to decide whether to keep polling, see ScaledObject.IsPollingRelevant.
-	if incomingSo.Spec.PollingInterval != nil && !incomingSo.IsPollingRelevant() {
+	// itself uses to decide whether to keep polling, see ScaledObject.IsPollingIntervalRelevant.
+	if incomingSo.Spec.PollingInterval != nil && !incomingSo.IsPollingIntervalRelevant() {
 		msg := "PollingInterval is configured but is not relevant. PollingInterval is only relevant when minReplicaCount = 0, idleReplicaCount is set, or useCachedMetrics is enabled"
 		warnings = append(warnings, msg)
 		if eventRecorder != nil {

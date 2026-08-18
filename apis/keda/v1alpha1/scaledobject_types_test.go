@@ -477,7 +477,7 @@ func TestIsUsingModifiers(t *testing.T) {
 	}
 }
 
-func TestIsPollingRelevant(t *testing.T) {
+func TestIsPollingIntervalRelevant(t *testing.T) {
 	min0 := int32(0)
 	min2 := int32(2)
 	idle0 := int32(0)
@@ -549,9 +549,9 @@ func TestIsPollingRelevant(t *testing.T) {
 					Triggers:         test.triggers,
 				},
 			}
-			result := so.IsPollingRelevant()
+			result := so.IsPollingIntervalRelevant()
 			if result != test.expectResult {
-				t.Errorf("Expected IsPollingRelevant to return %v, got %v", test.expectResult, result)
+				t.Errorf("Expected IsPollingIntervalRelevant to return %v, got %v", test.expectResult, result)
 			}
 		})
 	}

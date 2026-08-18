@@ -299,13 +299,13 @@ func (so *ScaledObject) IsUsingModifiers() bool {
 	return so.Spec.Advanced != nil && !reflect.DeepEqual(so.Spec.Advanced.ScalingModifiers, ScalingModifiers{})
 }
 
-// IsPollingRelevant reports whether KEDA's own scale loop still needs to poll the triggers.
+// IsPollingIntervalRelevant reports whether KEDA's own scale loop still needs to poll the triggers.
 // Polling is only relevant when the scale loop can move the workload outside the HPA-managed
 // range (scale to zero when minReplicaCount is 0, or to the idle replica count when idle mode
 // is enabled), or when a trigger relies on cached metrics that the loop must refresh for the HPA.
 // Otherwise the HPA drives all scaling and the scale loop has nothing to contribute, so pollingInterval
 // has no effect.
-func (so *ScaledObject) IsPollingRelevant() bool {
+func (so *ScaledObject) IsPollingIntervalRelevant() bool {
 	minReplicas := int32(0)
 	if so.Spec.MinReplicaCount != nil {
 		minReplicas = *so.Spec.MinReplicaCount
