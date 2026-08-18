@@ -281,7 +281,15 @@ func waitForLeaseDocuments(ctx context.Context, t *testing.T, timeout time.Durat
 func getProcessorLeaseCount(ctx context.Context, endpoint, key string) (int, error) {
 	resourceLink := fmt.Sprintf("dbs/%s/colls/%s", leaseDatabaseID, leaseContainerID)
 	reqURL := fmt.Sprintf("%s/%s/docs", strings.TrimRight(endpoint, "/"), resourceLink)
-	prefix, err := json.Marshal(processorName + ".")
+	// Real .NET/Java SDK lease document ids are built as
+	// {processorName}{monitoredAccountHost}_{rid}..{partitionId} - the processor name is
+	// directly concatenated with the monitored (data) account's hostname, with no separator.
+	// Matching on processorName alone would let a processor named "app" also match leases
+	// from "app-extended"; appending the account's short name (e.g. "myaccount" from
+	// "myaccount.documents.azure.com") closes that gap. Since every Cosmos DB account
+	// hostname has the form "{account}.<domain-suffix>", the "." immediately following the
+	// short name in the real id lets us match without needing the domain suffix.
+	prefix, err := json.Marshal(processorName + accountShortName(endpoint) + ".")
 	if err != nil {
 		return 0, fmt.Errorf("cannot marshal processor name prefix: %w", err)
 	}
@@ -331,6 +339,21 @@ func getProcessorLeaseCount(ctx context.Context, endpoint, key string) (int, err
 		}
 	}
 	return leaseCount, nil
+}
+
+// accountShortName extracts the short account name from a Cosmos DB endpoint,
+// e.g. "https://myaccount.documents.azure.com:443/" -> "myaccount". Every Cosmos DB account
+// hostname has the form "{account}.<domain-suffix>", so this is stable across clouds
+// (public, sovereign, or private) without needing to know the exact domain suffix.
+func accountShortName(endpoint string) string {
+	host := endpoint
+	if u, err := url.Parse(endpoint); err == nil && u.Hostname() != "" {
+		host = u.Hostname()
+	}
+	if idx := strings.IndexByte(host, '.'); idx >= 0 {
+		return host[:idx]
+	}
+	return host
 }
 
 // addDocuments inserts documents into the Cosmos DB data container via the REST API

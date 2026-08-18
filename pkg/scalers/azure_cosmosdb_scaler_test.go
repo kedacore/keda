@@ -1863,6 +1863,7 @@ func TestCosmosDBLeaseQueryFiltersByProcessorName(t *testing.T) {
 
 	client := &cosmosDBClient{
 		httpClient:       &http.Client{},
+		dataEndpoint:     "https://myaccount.documents.azure.com:443/",
 		leaseEndpoint:    server.URL,
 		leaseKey:         "dGVzdGtleQ==",
 		leaseDatabaseID:  "testdb",
@@ -1873,5 +1874,57 @@ func TestCosmosDBLeaseQueryFiltersByProcessorName(t *testing.T) {
 	_, _ = client.queryLeases(context.Background())
 	assert.Contains(t, capturedBody, "STARTSWITH")
 	assert.Contains(t, capturedBody, "@prefix")
-	assert.Contains(t, capturedBody, "myprocessor")
+
+	var captured struct {
+		Parameters []struct {
+			Name  string `json:"name"`
+			Value string `json:"value"`
+		} `json:"parameters"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(capturedBody), &captured))
+	require.Len(t, captured.Parameters, 1)
+	// The prefix must include the monitored (data) account's short name, matching the real
+	// .NET/Java SDK lease id format of {processorName}{accountHost}_{rid}..{partitionId} -
+	// processorName alone would let "myprocessor-extended" collide with "myprocessor".
+	assert.Equal(t, "myprocessormyaccount.", captured.Parameters[0].Value)
+}
+
+func TestCosmosDBAccountShortName(t *testing.T) {
+	tests := []struct {
+		name     string
+		endpoint string
+		expected string
+	}{
+		{"standard public cloud endpoint", "https://myaccount.documents.azure.com:443/", "myaccount"},
+		{"endpoint without port", "https://myaccount.documents.azure.com/", "myaccount"},
+		{"sovereign cloud endpoint", "https://myaccount.documents.azure.cn:443/", "myaccount"},
+		{"bare hostname, no scheme", "myaccount.documents.azure.com", "myaccount"},
+		{"empty endpoint", "", ""},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, cosmosDBAccountShortName(tc.endpoint))
+		})
+	}
+}
+
+// TestCosmosDBLeasePrefixAvoidsProcessorNameCollision proves the fix for the collision the
+// prefix must avoid: a processor named "app" must not match leases belonging to a differently
+// named processor such as "app-extended" that happens to share the same string prefix. This
+// uses realistic (unquoted) lease ids in the exact shape the .NET/Java SDKs generate, and
+// STARTSWITH's semantics (strings.HasPrefix), rather than a mocked HTTP response - Cosmos DB
+// evaluates STARTSWITH server-side, so the scaler's Go code never sees non-matching documents.
+func TestCosmosDBLeasePrefixAvoidsProcessorNameCollision(t *testing.T) {
+	const dataEndpoint = "https://myaccount.documents.azure.com:443/"
+	accountHost := "myaccount.documents.azure.com"
+
+	buildLeaseID := func(processorName string) string {
+		return processorName + accountHost + "_dbRid_collRid..0"
+	}
+
+	appPrefix := "app" + cosmosDBAccountShortName(dataEndpoint) + "."
+	assert.True(t, strings.HasPrefix(buildLeaseID("app"), appPrefix),
+		"processor 'app' must match its own lease")
+	assert.False(t, strings.HasPrefix(buildLeaseID("app-extended"), appPrefix),
+		"processor 'app' must NOT match a lease belonging to 'app-extended'")
 }

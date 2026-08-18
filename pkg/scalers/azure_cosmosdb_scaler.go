@@ -315,6 +315,21 @@ func parseCosmosDBConnectionString(connectionString string) (string, string, err
 	return endpoint, key, nil
 }
 
+// cosmosDBAccountShortName extracts the short account name from a Cosmos DB endpoint,
+// e.g. "https://myaccount.documents.azure.com:443/" -> "myaccount". Every Cosmos DB account
+// hostname has the form "{account}.<domain-suffix>", so this is stable across clouds
+// (public, sovereign, or private) without needing to know the exact domain suffix.
+func cosmosDBAccountShortName(endpoint string) string {
+	host := endpoint
+	if u, err := url.Parse(endpoint); err == nil && u.Hostname() != "" {
+		host = u.Hostname()
+	}
+	if idx := strings.IndexByte(host, '.'); idx >= 0 {
+		return host[:idx]
+	}
+	return host
+}
+
 // setAuthHeader sets the Authorization header using either master key HMAC-SHA256 or bearer token.
 func (c *cosmosDBClient) setAuthHeader(req *http.Request, verb, resourceType, resourceLink, date, key string) error {
 	if key != "" {
@@ -366,7 +381,18 @@ func (c *cosmosDBClient) queryLeases(ctx context.Context) ([]leaseDocument, erro
 	resourceLink := fmt.Sprintf("dbs/%s/colls/%s", c.leaseDatabaseID, c.leaseContainerID)
 	reqURL := fmt.Sprintf("%s/%s/docs", strings.TrimRight(c.leaseEndpoint, "/"), resourceLink)
 
-	prefix := c.processorName + "."
+	// The .NET and Java Change Feed Processor SDKs build each lease document's id as
+	// {processorName}{monitoredAccountHost}_{rid}..{partitionId} - the processor name is
+	// directly concatenated with the monitored (data) account's hostname, with no separator
+	// (see the .NET SDK's CosmosContainerExtensions.GetLeasePrefix and the equivalent
+	// getLeasePrefix in the Java SDK). Matching on processorName alone would let a processor
+	// named "app" also match leases from "app-extended"; appending the monitored account's
+	// short name (e.g. "myaccount" from "myaccount.documents.azure.com") closes that gap.
+	// Since every Cosmos DB account hostname has the form "{account}.<domain-suffix>", the
+	// "." immediately following the short name in the real id lets us match on
+	// processorName + accountShortName + "." without needing to know the domain suffix for
+	// the current cloud.
+	prefix := c.processorName + cosmosDBAccountShortName(c.dataEndpoint) + "."
 	prefixJSON, err := json.Marshal(prefix)
 	if err != nil {
 		return nil, fmt.Errorf("error marshaling processor name prefix: %w", err)
