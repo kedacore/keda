@@ -91,7 +91,7 @@ require (
 	github.com/signalfx/signalflow-client-go/v2 v2.3.0
 	github.com/solarwinds/swo-sdk-go/swov1 v0.15.3
 	github.com/spf13/pflag v1.0.10
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.0
 	github.com/tidwall/gjson v1.19.0
 	github.com/xdg-go/scram v1.2.0
 	github.com/xhit/go-str2duration/v2 v2.1.0
@@ -115,7 +115,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/gotestsum v1.13.0
 	k8s.io/api v0.35.7
-	k8s.io/apimachinery v0.35.7
+	k8s.io/apimachinery v0.36.0
 	k8s.io/apiserver v0.35.7
 	k8s.io/client-go v0.35.7
 	k8s.io/code-generator v0.35.7
@@ -125,11 +125,13 @@ require (
 	k8s.io/metrics v0.35.7
 	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5
 	sigs.k8s.io/controller-runtime v0.23.3
-	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20251120014536-56f7b6493b03
+	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.24.1
 	sigs.k8s.io/controller-tools v0.20.1
 	sigs.k8s.io/custom-metrics-apiserver v1.35.0
 	sigs.k8s.io/kustomize/kustomize/v5 v5.8.1
 )
+
+require k8s.io/streaming v0.36.0 // indirect
 
 require (
 	cel.dev/expr v0.25.2 // indirect
@@ -287,7 +289,6 @@ require (
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
-	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
 	github.com/nexus-rpc/nexus-proto-annotations v0.1.0 // indirect
 	github.com/nexus-rpc/sdk-go v0.6.0 // indirect
 	github.com/oapi-codegen/runtime v1.1.2 // indirect
