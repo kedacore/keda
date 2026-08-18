@@ -824,13 +824,16 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 				metricName := spec.External.Metric.Name
 				wg.Add(1)
 				go func(results chan scaledObjectMetricResult, wg *sync.WaitGroup, metricName string, triggerIndex int, scalerConfig scalersconfig.ScalerConfig, spec v2.MetricSpec) {
+					defer wg.Done()
 					result := scaledObjectMetricResult{}
 
 					// Pair metric values with their trigger names. This is applied only when
-					// ScalingModifiers.Formula is defined in SO.
-					result.metricTriggerPair, err = modifiers.GetPairTriggerAndMetric(scaledObject, metricName, scalerConfig.TriggerName)
-					if err != nil {
-						logger.Error(err, "error pairing triggers & metrics for compositeScaler")
+					// ScalingModifiers.Formula is defined in SO. Use locals — never the
+					// outer loop err (data race under -race / parallel metrics).
+					pair, pairErr := modifiers.GetPairTriggerAndMetric(scaledObject, metricName, scalerConfig.TriggerName)
+					result.metricTriggerPair = pair
+					if pairErr != nil {
+						logger.Error(pairErr, "error pairing triggers & metrics for compositeScaler")
 					}
 					var rawMetrics []external_metrics.ExternalMetricValue
 					var isMetricActive bool
@@ -863,7 +866,6 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 						result.triggerIndex = triggerIndex
 						result.metricSpec = spec
 						results <- result
-						wg.Done()
 						return
 					}
 
@@ -875,17 +877,16 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 						UpdateLock:   &scalersCache.ScaledObjectUpdateLock,
 						ScaledObject: scaledObject,
 					}
-					metrics, fallbackActive, err := h.processMetricsWithFallback(soh, rawMetrics, rawErr, metricName, triggerName, triggerIndex, spec, shouldSendRawMetrics(RawMetricsHPA), isMetricActive, logger)
+					metrics, fallbackActive, metricErr := h.processMetricsWithFallback(soh, rawMetrics, rawErr, metricName, triggerName, triggerIndex, spec, shouldSendRawMetrics(RawMetricsHPA), isMetricActive, logger)
 
 					result.metricName = metricName
 					result.triggerName = triggerName
 					result.triggerIndex = triggerIndex
 					result.metricSpec = spec
 					result.metrics = metrics
-					result.err = err
+					result.err = metricErr
 					result.fallbackActive = fallbackActive
 					results <- result
-					wg.Done()
 				}(matchingMetricsChan, &wg, metricName, triggerIndex, scalerConfigs[triggerIndex], spec)
 			}
 		}
