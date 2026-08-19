@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -478,11 +479,9 @@ func waitForState(ctx context.Context, conn *grpc.ClientConn, states ...connecti
 			}
 
 			nowState := conn.GetState()
-			for _, state := range states {
-				if state == nowState {
-					// match one of the state passed return
-					return
-				}
+			if slices.Contains(states, nowState) {
+				// match one of the state passed return
+				return
 			}
 		}
 	}()

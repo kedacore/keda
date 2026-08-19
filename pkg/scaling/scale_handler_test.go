@@ -274,7 +274,7 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 
 	scalerCollection := []*mock_scalers.MockScaler{}
 
-	for i := 0; i < len(metricNames); i++ {
+	for range metricNames {
 		scalerCollection = append(scalerCollection, mock_scalers.NewMockScaler(ctrl))
 	}
 
@@ -328,7 +328,7 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 		Scalers:      []cache.ScalerBuilder{},
 		Recorder:     recorder,
 	}
-	for i := 0; i < len(metricNames); i++ {
+	for i := range metricNames {
 		scalerCache.Scalers = append(scalerCache.Scalers, cache.ScalerBuilder{
 			Scaler:       scalerCollection[i],
 			ScalerConfig: *scalerConfigFn(i),
@@ -354,7 +354,7 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 	}
 
 	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-	for i := 0; i < len(metricNames); i++ {
+	for i := range metricNames {
 		scalerCollection[i].EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecFn(i))
 		scalerCollection[i].EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 			return metricsValueFn(i), true, nil
@@ -369,7 +369,7 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 
 	expectNoStatusPatch(ctrl)
 
-	for i := 0; i < len(metricNames); i++ {
+	for i := range metricNames {
 		scalerCollection[i].EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecFn(i))
 		scalerCollection[i].EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 			return metricsValueFn(i), true, nil
@@ -381,7 +381,7 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 		assert.Nil(c, err)
 	}, 1*time.Second, 400*time.Millisecond, "timeout exceeded: scalers not processed in parallel during `GetScaledObjectMetrics`")
 
-	for i := 0; i < len(metricNames); i++ {
+	for i := range metricNames {
 		scalerCollection[i].EXPECT().Close(gomock.Any())
 	}
 	scalerCache.Close(context.Background())
@@ -1320,7 +1320,7 @@ func TestHandleResult_PatchesWhenConditionsChange(t *testing.T) {
 	}
 
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...any) error {
 			*obj = *existingSO.DeepCopy()
 			return nil
 		})
@@ -1346,7 +1346,7 @@ func TestHandleResult_SkipsPatchWhenUnchanged(t *testing.T) {
 	}
 
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...any) error {
 			*obj = *existingSO.DeepCopy()
 			return nil
 		})
@@ -1371,13 +1371,13 @@ func TestHandleResult_SetsLastActiveTime(t *testing.T) {
 	var patchedObj *kedav1alpha1.ScaledObject
 
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...any) error {
 			*obj = *existingSO.DeepCopy()
 			return nil
 		})
 	mockClient.EXPECT().Status().Return(statusWriter)
 	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ interface{}, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ any, _ ...any) error {
 			patchedObj = obj
 			return nil
 		})
@@ -1413,13 +1413,13 @@ func TestHandleResult_TriggersActivityUpdatesAndRemovals(t *testing.T) {
 	var patchedObj *kedav1alpha1.ScaledObject
 
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...any) error {
 			*obj = *baselineSO.DeepCopy()
 			return nil
 		})
 	mockClient.EXPECT().Status().Return(statusWriter)
 	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ interface{}, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ any, _ ...any) error {
 			patchedObj = obj
 			return nil
 		})
@@ -1463,13 +1463,13 @@ func TestHandleResult_PushScalerDeltaMerge(t *testing.T) {
 	var patchedObj *kedav1alpha1.ScaledObject
 
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...any) error {
 			*obj = *baselineSO.DeepCopy()
 			return nil
 		})
 	mockClient.EXPECT().Status().Return(statusWriter)
 	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ interface{}, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ any, _ ...any) error {
 			patchedObj = obj
 			return nil
 		})
@@ -1686,13 +1686,13 @@ func TestHandleResult_DeltaDoesNotOverwriteConcurrentChanges(t *testing.T) {
 	var patchedObj *kedav1alpha1.ScaledObject
 
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...any) error {
 			*obj = *freshSO.DeepCopy()
 			return nil
 		})
 	mockClient.EXPECT().Status().Return(statusWriter)
 	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ interface{}, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ any, _ ...any) error {
 			patchedObj = obj
 			return nil
 		})
@@ -1777,8 +1777,7 @@ func TestWatchMetricSpecUpdates_UsesLatestCacheAfterInvalidation(t *testing.T) {
 		metricSpecReconcileCh: make(chan event.GenericEvent, 1),
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	go h.watchMetricSpecUpdates(ctx, scaledObject.Name, scaledObject.Namespace, 0, streamer, uid, generation)
 
@@ -1837,8 +1836,7 @@ func TestWatchMetricSpecUpdates_IgnoresStaleGeneration(t *testing.T) {
 		metricSpecReconcileCh: make(chan event.GenericEvent, 1),
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	go h.watchMetricSpecUpdates(ctx, scaledObject.Name, scaledObject.Namespace, 0, streamer, uid, 1)
 
@@ -1889,8 +1887,7 @@ func TestWatchMetricSpecUpdates_IgnoresRecreatedObject(t *testing.T) {
 		metricSpecReconcileCh: make(chan event.GenericEvent, 1),
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	// Watcher was created for the deleted object (oldUID).
 	go h.watchMetricSpecUpdates(ctx, scaledObject.Name, scaledObject.Namespace, 0, streamer, oldUID, 0)
@@ -1929,8 +1926,7 @@ func TestEnqueueMetricSpecReconcile_WaitsForRoomWhenFull(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "other-so", Namespace: "other-ns"},
 	}}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	done := make(chan struct{})
 	go func() {

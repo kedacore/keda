@@ -200,8 +200,8 @@ func compareScope(scopes []string, scopeStr string) bool {
 	for _, scope := range scopes {
 		scopeMap[scope] = true
 	}
-	scopeList := strings.Fields(scopeStr)
-	for _, scope := range scopeList {
+	scopeList := strings.FieldsSeq(scopeStr)
+	for scope := range scopeList {
 		if !scopeMap[scope] {
 			return false
 		}

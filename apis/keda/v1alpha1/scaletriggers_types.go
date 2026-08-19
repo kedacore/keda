@@ -62,7 +62,7 @@ func ValidateTriggers(triggers []ScaleTriggers) error {
 
 	if triggers != nil && triggersCount > 0 {
 		triggerNames := make(map[string]bool, triggersCount)
-		for i := 0; i < triggersCount; i++ {
+		for i := range triggersCount {
 			trigger := triggers[i]
 
 			if trigger.UseCachedMetrics {

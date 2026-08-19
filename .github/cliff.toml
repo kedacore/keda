@@ -14,13 +14,25 @@ body = """
 <summary>Show</summary>
 
 {% endif -%}
-{% for commit in commits -%}
+{% for commit in commits | sort(attribute="remote.pr_title") -%}
 {% set title = commit.remote.pr_title | default(value=commit.message | split(pat="\n") | first) | trim -%}
 {% set title_parts = title | split(pat=":") -%}
 {% set component = title_parts | first | trim -%}
 {% set display_component = component | replace(from="**", to="") -%}
+{% if display_component == "General" -%}
 {% set description = title_parts | slice(start=1) | join(sep=":") | trim -%}
 - [`{{ commit.id | truncate(length=7, end="") }}`](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/commit/{{ commit.id }}) : **{{ display_component }}**{% if description %}: {{ description }}{% endif %}{% if commit.remote.pr_number %} ([#{{ commit.remote.pr_number }}](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/pull/{{ commit.remote.pr_number }})){% endif %}{% if commit.remote.username %} (@{{ commit.remote.username }}){% endif %}
+{% endif -%}
+{% endfor -%}
+{% for commit in commits | sort(attribute="remote.pr_title") -%}
+{% set title = commit.remote.pr_title | default(value=commit.message | split(pat="\n") | first) | trim -%}
+{% set title_parts = title | split(pat=":") -%}
+{% set component = title_parts | first | trim -%}
+{% set display_component = component | replace(from="**", to="") -%}
+{% if display_component != "General" -%}
+{% set description = title_parts | slice(start=1) | join(sep=":") | trim -%}
+- [`{{ commit.id | truncate(length=7, end="") }}`](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/commit/{{ commit.id }}) : **{{ display_component }}**{% if description %}: {{ description }}{% endif %}{% if commit.remote.pr_number %} ([#{{ commit.remote.pr_number }}](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/pull/{{ commit.remote.pr_number }})){% endif %}{% if commit.remote.username %} (@{{ commit.remote.username }}){% endif %}
+{% endif -%}
 {% endfor %}
 {% if group_name == "Dependencies" -%}
 </details>{{ "\n" }}

@@ -32,7 +32,7 @@ var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r 
 		w.WriteHeader(http.StatusOK)
 		result := struct {
 			Type   model.ValueType `json:"resultType"`
-			Result interface{}     `json:"result"`
+			Result any             `json:"result"`
 		}{
 			Type: model.ValScalar,
 			Result: model.Scalar{
@@ -53,7 +53,7 @@ var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r 
 		w.WriteHeader(http.StatusOK)
 		result := struct {
 			Type   model.ValueType `json:"resultType"`
-			Result interface{}     `json:"result"`
+			Result any             `json:"result"`
 		}{
 			Type: model.ValScalar,
 			Result: model.Scalar{

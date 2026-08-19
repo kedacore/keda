@@ -89,20 +89,6 @@ func (mr *MockScaleHandlerMockRecorder) GetRawMetricsChan(subscriber any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRawMetricsChan", reflect.TypeOf((*MockScaleHandler)(nil).GetRawMetricsChan), subscriber)
 }
 
-// MetricSpecReconcileChan mocks base method.
-func (m *MockScaleHandler) MetricSpecReconcileChan() <-chan event.GenericEvent {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MetricSpecReconcileChan")
-	ret0, _ := ret[0].(<-chan event.GenericEvent)
-	return ret0
-}
-
-// MetricSpecReconcileChan indicates an expected call of MetricSpecReconcileChan.
-func (mr *MockScaleHandlerMockRecorder) MetricSpecReconcileChan() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MetricSpecReconcileChan", reflect.TypeOf((*MockScaleHandler)(nil).MetricSpecReconcileChan))
-}
-
 // GetScaledObjectMetrics mocks base method.
 func (m *MockScaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error) {
 	m.ctrl.T.Helper()
@@ -145,6 +131,20 @@ func (m *MockScaleHandler) HandleScalableObject(ctx context.Context, scalableObj
 func (mr *MockScaleHandlerMockRecorder) HandleScalableObject(ctx, scalableObject any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleScalableObject", reflect.TypeOf((*MockScaleHandler)(nil).HandleScalableObject), ctx, scalableObject)
+}
+
+// MetricSpecReconcileChan mocks base method.
+func (m *MockScaleHandler) MetricSpecReconcileChan() <-chan event.GenericEvent {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MetricSpecReconcileChan")
+	ret0, _ := ret[0].(<-chan event.GenericEvent)
+	return ret0
+}
+
+// MetricSpecReconcileChan indicates an expected call of MetricSpecReconcileChan.
+func (mr *MockScaleHandlerMockRecorder) MetricSpecReconcileChan() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MetricSpecReconcileChan", reflect.TypeOf((*MockScaleHandler)(nil).MetricSpecReconcileChan))
 }
 
 // SubscribeMetric mocks base method.
