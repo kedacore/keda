@@ -186,9 +186,11 @@ func declaredDependencies(content []byte) map[string]bool {
 
 // neededDependencies returns the set of optional components declared across the given test
 // files. installAll is true when a file could not be read, in which case every optional
-// component should be installed to stay on the safe side.
+// component should be installed to stay on the safe side. An unknown marker name aborts
+// the run.
 func neededDependencies(testFiles []string) (needed map[string]bool, installAll bool) {
 	needed = map[string]bool{}
+	unknownMarker := false
 	for _, file := range testFiles {
 		content, err := os.ReadFile(file)
 		if err != nil {
@@ -197,10 +199,27 @@ func neededDependencies(testFiles []string) (needed map[string]bool, installAll 
 			continue
 		}
 		for name := range declaredDependencies(content) {
+			if _, ok := optionalDependencies[name]; !ok {
+				fmt.Printf("Unknown e2e-deps marker %q in %s, known markers: %s\n", name, file, strings.Join(knownDependencyNames(), ", "))
+				unknownMarker = true
+				continue
+			}
 			needed[name] = true
 		}
 	}
+	if unknownMarker {
+		os.Exit(1)
+	}
 	return needed, installAll
+}
+
+func knownDependencyNames() []string {
+	names := make([]string, 0, len(optionalDependencies))
+	for name := range optionalDependencies {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return names
 }
 
 // resolveOptionalDependencies exports the env var for each optional component based on
@@ -768,11 +787,7 @@ func showDryRunOutput(regularTestFiles, sequentialTestFiles []string, e2eRegex s
 
 	// Show which optional components would be installed based on the selected tests
 	needed, installAll := neededDependencies(append(append([]string{}, regularTestFiles...), sequentialTestFiles...))
-	names := make([]string, 0, len(optionalDependencies))
-	for name := range optionalDependencies {
-		names = append(names, name)
-	}
-	slices.Sort(names)
+	names := knownDependencyNames()
 	fmt.Println("\nOptional components:")
 	for _, name := range names {
 		install := installAll || needed[name]
