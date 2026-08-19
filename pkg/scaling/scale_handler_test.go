@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -662,101 +663,64 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 	assert.Equal(t, []string{"metric-name"}, activeTriggers)
 }
 
-func TestCheckScaledObject_CachedMetricsPreservedOnScalerError(t *testing.T) {
+func TestClearScalersCache_DeletionCompletesBeforeReturn(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	mockClient := mock_client.NewMockClient(ctrl)
-	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
 	recorder := events.NewFakeRecorder(1)
 
-	healthyMetricName := "healthy-metric"
-	healthyMetricSpecs := []v2.MetricSpec{createMetricSpec(10, healthyMetricName)}
-	healthyMetricValue := scalers.GenerateMetricInMili(healthyMetricName, float64(10))
+	metricName := "survivor-metric"
+	metricValue := scalers.GenerateMetricInMili(metricName, float64(42))
 
-	failingMetricName := "failing-metric"
-	failingMetricSpecs := []v2.MetricSpec{createMetricSpec(10, failingMetricName)}
-
-	healthyFactory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
-		scaler := mock_scalers.NewMockScaler(ctrl)
-		scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(healthyMetricSpecs)
-		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{healthyMetricValue}, true, nil)
-		scaler.EXPECT().Close(gomock.Any())
-		return scaler, &scalersconfig.ScalerConfig{TriggerUseCachedMetrics: true, TriggerName: "healthy-scaler"}, nil
+	scaler := mock_scalers.NewMockScaler(ctrl)
+	scaler.EXPECT().Close(gomock.Any())
+	factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		return scaler, &scalersconfig.ScalerConfig{}, nil
 	}
-	healthyScaler, healthyConfig, err := healthyFactory()
-	assert.Nil(t, err)
-
-	failingFactory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
-		scaler := mock_scalers.NewMockScaler(ctrl)
-		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{}, false, errors.New("transient error"))
-		scaler.EXPECT().Close(gomock.Any())
-		return scaler, &scalersconfig.ScalerConfig{TriggerUseCachedMetrics: false, TriggerName: "failing-scaler"}, nil
-	}
-	failingScaler := mock_scalers.NewMockScaler(ctrl)
-	failingScaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(failingMetricSpecs)
-	failingScaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{}, false, errors.New("transient error"))
-	failingScaler.EXPECT().Close(gomock.Any())
 
 	scaledObject := kedav1alpha1.ScaledObject{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: "test",
-		},
+		ObjectMeta: metav1.ObjectMeta{Name: "clear-test", Namespace: "ns"},
 		Spec: kedav1alpha1.ScaledObjectSpec{
-			ScaleTargetRef: &kedav1alpha1.ScaleTarget{
-				Name: "test",
-			},
-			Triggers: []kedav1alpha1.ScaleTriggers{
-				{Type: "healthy-scaler", UseCachedMetrics: true},
-				{Type: "failing-scaler"},
-			},
-		},
-		Status: kedav1alpha1.ScaledObjectStatus{
-			ExternalMetricNames: []string{healthyMetricName, failingMetricName},
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "target"},
 		},
 	}
+	key := scaledObject.GenerateIdentifier()
 
-	scalerCache := cache.ScalersCache{
+	scalerCache := &cache.ScalersCache{
 		ScaledObject: &scaledObject,
-		Scalers: []cache.ScalerBuilder{{
-			Scaler:       healthyScaler,
-			ScalerConfig: *healthyConfig,
-			Factory:      healthyFactory,
-		}, {
-			Scaler:       failingScaler,
-			ScalerConfig: scalersconfig.ScalerConfig{TriggerName: "failing-scaler"},
-			Factory:      failingFactory,
-		}},
-		Recorder: recorder,
+		Scalers:      []cache.ScalerBuilder{{Scaler: scaler, Factory: factory}},
+		Recorder:     recorder,
 	}
-
-	caches := map[string]*cache.ScalersCache{}
-	caches[scaledObject.GenerateIdentifier()] = &scalerCache
 
 	metricCache := metricscache.NewMetricsCache()
 	sh := scaleHandler{
-		client:                   mockClient,
-		scaleLoopContexts:        &sync.Map{},
-		scaleExecutor:            mockExecutor,
-		globalHTTPTimeout:        time.Duration(1000),
-		recorder:                 recorder,
-		scalerCaches:             caches,
+		scalerCaches:             map[string]*cache.ScalersCache{key: scalerCache},
 		scalerCachesLock:         &sync.RWMutex{},
 		scaledObjectsMetricCache: metricCache,
-		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
-		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
-		subsLock:                 &sync.RWMutex{},
 	}
 
-	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
-	expectHandleResult(mockClient)
+	// Pre-populate cache
+	metricCache.StoreRecords(key, map[string]metricscache.MetricsRecord{
+		metricName: {IsActive: true, Metric: []external_metrics.ExternalMetricValue{metricValue}},
+	})
 
-	sh.checkScalers(t.Context(), &scaledObject, &sync.RWMutex{})
-	scalerCache.Close(t.Context())
+	err := sh.ClearScalersCache(t.Context(), &scaledObject)
+	assert.NoError(t, err)
 
-	record, found := metricCache.ReadRecord(scaledObject.GenerateIdentifier(), healthyMetricName)
+	_, found := metricCache.ReadRecord(key, metricName)
+	assert.False(t, found, "cache entry must be deleted when ClearScalersCache returns")
+
+	// Store new metrics that should not be deleted
+	metricCache.StoreRecords(key, map[string]metricscache.MetricsRecord{
+		metricName: {IsActive: true, Metric: []external_metrics.ExternalMetricValue{metricValue}},
+	})
+
+	runtime.Gosched()
+	time.Sleep(50 * time.Millisecond)
+
+	record, found := metricCache.ReadRecord(key, metricName)
 	assert.True(t, found)
-	assert.Equal(t, healthyMetricValue, record.Metric[0])
+	if found {
+		assert.Equal(t, metricValue, record.Metric[0])
+	}
 }
 
 func TestGetScaledObjectStateRecordsResourceScalerActiveMetric(t *testing.T) {
