@@ -751,8 +751,8 @@ func TestCheckScaledObject_CachedMetricsPreservedOnScalerError(t *testing.T) {
 	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 	expectHandleResult(mockClient)
 
-	sh.checkScalers(context.TODO(), &scaledObject, &sync.RWMutex{})
-	scalerCache.Close(context.Background())
+	sh.checkScalers(t.Context(), &scaledObject, &sync.RWMutex{})
+	scalerCache.Close(t.Context())
 
 	record, found := metricCache.ReadRecord(scaledObject.GenerateIdentifier(), healthyMetricName)
 	assert.True(t, found)
