@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -222,6 +223,14 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	{map[string]string{"sasl": "gssapi", "username": "admin", "kerberosConfig": "<config>", "realm": "tst.com"}, true, false},
 	// failure, SASL GSSAPI provided both password and keytab
 	{map[string]string{"sasl": "gssapi", "username": "admin", "password": "admin", "keytab": "/path/to/keytab", "kerberosConfig": "<config>", "realm": "tst.com"}, true, false},
+	// failure, SASL GSSAPI provided both password and ccacheName
+	{map[string]string{"sasl": "gssapi", "username": "admin", "password": "admin", "ccacheName": "keda.ccache", "kerberosConfig": "<config>", "realm": "tst.com"}, true, false},
+	// failure, SASL GSSAPI provided both keytab and ccacheName
+	{map[string]string{"sasl": "gssapi", "username": "admin", "keytab": "/path/to/keytab", "ccacheName": "keda.ccache", "kerberosConfig": "<config>", "realm": "tst.com"}, true, false},
+	// failure, SASL GSSAPI provided password, keytab and ccacheName
+	{map[string]string{"sasl": "gssapi", "username": "admin", "password": "admin", "keytab": "/path/to/keytab", "ccacheName": "keda.ccache", "kerberosConfig": "<config>", "realm": "tst.com"}, true, false},
+	// failure, SASL GSSAPI ccacheName is a path rather than a file name
+	{map[string]string{"sasl": "gssapi", "username": "admin", "ccacheName": "../../etc/keda.ccache", "kerberosConfig": "<config>", "realm": "tst.com"}, true, false},
 	// failure, SASL GSSAPI/password + TLS missing realm
 	{map[string]string{"sasl": "gssapi", "username": "admin", "password": "admin", "kerberosConfig": "<config>", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
 	// failure, SASL GSSAPI/keytab + TLS missing username
@@ -424,6 +433,78 @@ func getBrokerTestBase(t *testing.T, meta kafkaMetadata, testData parseKafkaMeta
 	if meta.LagThreshold != expectedLagThreshold && meta.LagThreshold != defaultKafkaLagThreshold {
 		t.Errorf("Expected lagThreshold to be either %v or %v got %v ", meta.LagThreshold, defaultKafkaLagThreshold, expectedLagThreshold)
 	}
+}
+
+func TestKafkaGSSAPICcacheAuthParams(t *testing.T) {
+	ccacheAuthParams := func(ccacheName string) map[string]string {
+		return map[string]string{
+			"sasl":           "gssapi",
+			"username":       "admin",
+			"realm":          "tst.com",
+			"kerberosConfig": "<config>",
+			"ccacheName":     ccacheName,
+		}
+	}
+
+	parse := func(ccacheName string) (kafkaMetadata, error) {
+		return parseKafkaMetadata(&scalersconfig.ScalerConfig{
+			TriggerMetadata: validKafkaMetadata,
+			AuthParams:      ccacheAuthParams(ccacheName),
+		}, logr.Discard())
+	}
+
+	t.Run("resolves an existing ccache file", func(t *testing.T) {
+		dir := setupCcacheDir(t)
+		want := filepath.Join(dir, "keda.ccache")
+		if err := os.WriteFile(want, []byte("ccache"), 0600); err != nil {
+			t.Fatalf("cannot write ccache file: %v", err)
+		}
+
+		meta, err := parse("keda.ccache")
+		if err != nil {
+			t.Fatalf("expected success but got error: %v", err)
+		}
+		if meta.ccachePath != want {
+			t.Errorf("expected ccachePath to be %v but got %v", want, meta.ccachePath)
+		}
+	})
+
+	t.Run("fails when the ccache file is missing", func(t *testing.T) {
+		setupCcacheDir(t)
+
+		_, err := parse("keda.ccache")
+		if err == nil {
+			t.Fatal("expected error but got success")
+		}
+		if !strings.Contains(err.Error(), "does not exist") {
+			t.Errorf("expected a missing file error but got %v", err)
+		}
+	})
+
+	t.Run("fails when the ccache name is a directory", func(t *testing.T) {
+		dir := setupCcacheDir(t)
+		if err := os.MkdirAll(filepath.Join(dir, "keda.ccache"), 0700); err != nil {
+			t.Fatalf("cannot create ccache directory: %v", err)
+		}
+
+		_, err := parse("keda.ccache")
+		if err == nil {
+			t.Fatal("expected error but got success")
+		}
+		if !strings.Contains(err.Error(), "is a directory") {
+			t.Errorf("expected a directory error but got %v", err)
+		}
+	})
+}
+
+func setupCcacheDir(t *testing.T) string {
+	t.Setenv("TMPDIR", t.TempDir())
+
+	ccacheDirPath := filepath.Join(os.TempDir(), "kerberos", ccacheDir)
+	if err := os.MkdirAll(ccacheDirPath, 0700); err != nil {
+		t.Fatalf("cannot create ccache directory: %v", err)
+	}
+	return ccacheDirPath
 }
 
 func TestKafkaAuthParamsInTriggerAuthentication(t *testing.T) {
