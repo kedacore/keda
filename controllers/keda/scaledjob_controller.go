@@ -170,6 +170,8 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		conditions.SetReadyCondition(metav1.ConditionTrue, "ScaledJobReady", msg)
 	}
 
+	metricscollector.RecordScaledJobReady(scaledJob.Namespace, scaledJob.Name, conditions.GetReadyCondition().Status == metav1.ConditionTrue)
+
 	if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledJob, &conditions); err != nil {
 		r.EventEmitter.Emit(scaledJob, req.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobUpdateFailed, err.Error())
 		return ctrl.Result{}, err
