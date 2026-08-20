@@ -630,7 +630,7 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject ked
 
 	key := withTriggers.GenerateIdentifier()
 
-	go h.scaledObjectsMetricCache.Delete(key)
+	h.scaledObjectsMetricCache.Delete(key)
 
 	h.scalerCachesLock.Lock()
 	defer h.scalerCachesLock.Unlock()

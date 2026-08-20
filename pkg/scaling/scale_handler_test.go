@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -660,6 +661,66 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 	assert.Equal(t, true, isActive)
 	assert.Equal(t, true, isError)
 	assert.Equal(t, []string{"metric-name"}, activeTriggers)
+}
+
+func TestClearScalersCache_DeletionCompletesBeforeReturn(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	recorder := events.NewFakeRecorder(1)
+
+	metricName := "survivor-metric"
+	metricValue := scalers.GenerateMetricInMili(metricName, float64(42))
+
+	scaler := mock_scalers.NewMockScaler(ctrl)
+	scaler.EXPECT().Close(gomock.Any())
+	factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		return scaler, &scalersconfig.ScalerConfig{}, nil
+	}
+
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "clear-test", Namespace: "ns"},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "target"},
+		},
+	}
+	key := scaledObject.GenerateIdentifier()
+
+	scalerCache := &cache.ScalersCache{
+		ScaledObject: &scaledObject,
+		Scalers:      []cache.ScalerBuilder{{Scaler: scaler, Factory: factory}},
+		Recorder:     recorder,
+	}
+
+	metricCache := metricscache.NewMetricsCache()
+	sh := scaleHandler{
+		scalerCaches:             map[string]*cache.ScalersCache{key: scalerCache},
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricCache,
+	}
+
+	// Pre-populate cache
+	metricCache.StoreRecords(key, map[string]metricscache.MetricsRecord{
+		metricName: {IsActive: true, Metric: []external_metrics.ExternalMetricValue{metricValue}},
+	})
+
+	err := sh.ClearScalersCache(t.Context(), &scaledObject)
+	assert.NoError(t, err)
+
+	_, found := metricCache.ReadRecord(key, metricName)
+	assert.False(t, found, "cache entry must be deleted when ClearScalersCache returns")
+
+	// Store new metrics that should not be deleted
+	metricCache.StoreRecords(key, map[string]metricscache.MetricsRecord{
+		metricName: {IsActive: true, Metric: []external_metrics.ExternalMetricValue{metricValue}},
+	})
+
+	runtime.Gosched()
+	time.Sleep(50 * time.Millisecond)
+
+	record, found := metricCache.ReadRecord(key, metricName)
+	assert.True(t, found)
+	if found {
+		assert.Equal(t, metricValue, record.Metric[0])
+	}
 }
 
 func TestGetScaledObjectStateRecordsResourceScalerActiveMetric(t *testing.T) {
