@@ -611,7 +611,7 @@ func TestKafkaClientsOAuthTokenProvider(t *testing.T) {
 				t.Fatal("Could not parse metadata:", err)
 			}
 
-			cfg, err := getKafkaClientConfig(context.TODO(), meta, logr.Discard())
+			cfg, err := getKafkaClientConfig(t.Context(), meta, logr.Discard())
 			if err != nil {
 				t.Error("Expected success but got error", err)
 			}
@@ -653,7 +653,7 @@ func TestKafkaClientsOAuthTokenProviderAzureWorkloadIdentity(t *testing.T) {
 		t.Fatal("Could not parse metadata:", err)
 	}
 
-	cfg, err := getKafkaClientConfig(context.TODO(), meta, logr.Discard())
+	cfg, err := getKafkaClientConfig(t.Context(), meta, logr.Discard())
 	if err != nil {
 		t.Fatal("Expected success but got error", err)
 	}
@@ -715,7 +715,7 @@ func TestKafkaClientConfigFullMetadata(t *testing.T) {
 				t.Fatal("Could not parse metadata:", err)
 			}
 
-			cfg, err := getKafkaClientConfig(context.TODO(), meta, logr.Discard())
+			cfg, err := getKafkaClientConfig(t.Context(), meta, logr.Discard())
 			if err != nil {
 				t.Error("Expected success but got error", err)
 			}
