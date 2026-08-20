@@ -76,9 +76,9 @@ func TestGetScaledObjectMetrics_DirectCall(t *testing.T) {
 
 	metricsRecord := map[string]metricscache.MetricsRecord{}
 	metricsRecord[metricName] = metricscache.MetricsRecord{
-		IsActive:    true,
-		Metric:      []external_metrics.ExternalMetricValue{metricValue},
-		ScalerError: nil,
+		IsMetricActive: true,
+		Metric:         []external_metrics.ExternalMetricValue{metricValue},
+		ScalerError:    nil,
 	}
 
 	scaler := mock_scalers.NewMockScaler(ctrl)
@@ -169,9 +169,9 @@ func TestGetScaledObjectMetrics_FromCache(t *testing.T) {
 
 	metricsRecord := map[string]metricscache.MetricsRecord{}
 	metricsRecord[metricName] = metricscache.MetricsRecord{
-		IsActive:    true,
-		Metric:      []external_metrics.ExternalMetricValue{metricValue},
-		ScalerError: nil,
+		IsMetricActive: true,
+		Metric:         []external_metrics.ExternalMetricValue{metricValue},
+		ScalerError:    nil,
 	}
 
 	scaler := mock_scalers.NewMockScaler(ctrl)
@@ -1995,5 +1995,355 @@ func TestEnqueueMetricSpecReconcile_RespectsContextCancellation(t *testing.T) {
 	case evt := <-h.MetricSpecReconcileChan():
 		t.Fatalf("unexpected reconcile event after cancellation: %s/%s", evt.Object.GetNamespace(), evt.Object.GetName())
 	default:
+	}
+}
+
+// newStateFromHPAObservationsHandler builds a scaleHandler with a single mocked scaler for the
+// given ScaledObject, wired the same way the production code wires it, for testing how
+// getScaledObjectState combines live scaler queries with HPA-observed metric records.
+func newStateFromHPAObservationsHandler(ctrl *gomock.Controller, scaledObject *kedav1alpha1.ScaledObject, scaler scalers.Scaler) (*scaleHandler, *cache.ScalersCache, *mock_client.MockClient) {
+	scalerCache := &cache.ScalersCache{
+		ScaledObject: scaledObject,
+		Scalers: []cache.ScalerBuilder{{
+			Scaler: scaler,
+			Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+				return scaler, &scalersconfig.ScalerConfig{}, nil
+			},
+		}},
+		Recorder: events.NewFakeRecorder(10),
+	}
+
+	mockClient := mock_client.NewMockClient(ctrl)
+	sh := &scaleHandler{
+		client:                   mockClient,
+		scaleLoopContexts:        &sync.Map{},
+		scaleExecutor:            mock_executor.NewMockScaleExecutor(ctrl),
+		globalHTTPTimeout:        time.Duration(1000),
+		recorder:                 events.NewFakeRecorder(10),
+		scalerCaches:             map[string]*cache.ScalersCache{scaledObject.GenerateIdentifier(): scalerCache},
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
+	}
+	return sh, scalerCache, mockClient
+}
+
+// expectHPAScalingActive lets reads of the ScaledObject's HPA report the given ScalingActive
+// condition status.
+func expectHPAScalingActive(mockClient *mock_client.MockClient, status v1.ConditionStatus) {
+	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&v2.HorizontalPodAutoscaler{})).DoAndReturn(
+		func(_ context.Context, _ types.NamespacedName, hpa *v2.HorizontalPodAutoscaler, _ ...interface{}) error {
+			hpa.Status.Conditions = []v2.HorizontalPodAutoscalerCondition{{Type: v2.ScalingActive, Status: status}}
+			return nil
+		}).AnyTimes()
+}
+
+// scaledObjectWithIrrelevantPolling returns a ScaledObject for which pollingInterval is not
+// relevant (minReplicaCount > 0, no idleReplicaCount, no cached metrics), so its state may be
+// derived from the observations of the HPA-driven metrics path.
+func scaledObjectWithIrrelevantPolling() *kedav1alpha1.ScaledObject {
+	minReplicas := int32(1)
+	return &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: testNamespaceGlobal,
+		},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef:  &kedav1alpha1.ScaleTarget{Name: "test"},
+			MinReplicaCount: &minReplicas,
+			Triggers:        []kedav1alpha1.ScaleTriggers{{Type: "some-trigger"}},
+		},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			HpaName: "keda-hpa-test",
+		},
+	}
+}
+
+func TestStateFromHPAObservationsAllowed(t *testing.T) {
+	zero := int32(0)
+	one := int32(1)
+	two := int32(2)
+
+	tests := []struct {
+		name     string
+		spec     kedav1alpha1.ScaledObjectSpec
+		expected bool
+	}{
+		{
+			name:     "minReplicaCount > 0 without idle mode and cached metrics allows observations",
+			spec:     kedav1alpha1.ScaledObjectSpec{MinReplicaCount: &one},
+			expected: true,
+		},
+		{
+			name:     "minReplicaCount 0 requires polling",
+			spec:     kedav1alpha1.ScaledObjectSpec{MinReplicaCount: &zero},
+			expected: false,
+		},
+		{
+			name:     "idle mode requires polling",
+			spec:     kedav1alpha1.ScaledObjectSpec{MinReplicaCount: &two, IdleReplicaCount: &one},
+			expected: false,
+		},
+		{
+			name: "cached metrics require polling",
+			spec: kedav1alpha1.ScaledObjectSpec{
+				MinReplicaCount: &one,
+				Triggers:        []kedav1alpha1.ScaleTriggers{{Type: "some-trigger", UseCachedMetrics: true}},
+			},
+			expected: false,
+		},
+		{
+			name: "scaling modifiers require polling",
+			spec: kedav1alpha1.ScaledObjectSpec{
+				MinReplicaCount: &one,
+				Advanced: &kedav1alpha1.AdvancedConfig{
+					ScalingModifiers: kedav1alpha1.ScalingModifiers{Formula: "a + b", Target: "1"},
+				},
+			},
+			expected: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			scaledObject := &kedav1alpha1.ScaledObject{Spec: test.spec}
+			assert.Equal(t, test.expected, stateFromHPAObservationsAllowed(scaledObject))
+		})
+	}
+}
+
+func TestGetScaledObjectState_UsesFreshHPAObservations(t *testing.T) {
+	metricName := "state-from-cache-metric"
+
+	tests := []struct {
+		name                     string
+		record                   metricscache.MetricsRecord
+		expectedIsActive         bool
+		expectedIsError          bool
+		expectedIsFallbackActive bool
+		expectedActiveTriggers   []string
+	}{
+		{
+			name: "active observation",
+			record: metricscache.MetricsRecord{
+				IsMetricActive: true,
+				Metric:         []external_metrics.ExternalMetricValue{scalers.GenerateMetricInMili(metricName, float64(10))},
+			},
+			expectedIsActive:       true,
+			expectedActiveTriggers: []string{metricName},
+		},
+		{
+			name:   "inactive observation",
+			record: metricscache.MetricsRecord{IsMetricActive: false},
+		},
+		{
+			name:            "observation with scaler error",
+			record:          metricscache.MetricsRecord{IsMetricActive: false, ScalerError: errors.New("some error")},
+			expectedIsError: true,
+		},
+		{
+			name: "observation with active fallback",
+			record: metricscache.MetricsRecord{
+				IsMetricActive: false,
+				Metric:         []external_metrics.ExternalMetricValue{scalers.GenerateMetricInMili(metricName, float64(3))},
+				FallbackActive: true,
+			},
+			expectedIsActive:         true,
+			expectedIsFallbackActive: true,
+			expectedActiveTriggers:   []string{metricName},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			scaledObject := scaledObjectWithIrrelevantPolling()
+
+			// no GetMetricsAndActivity expectation: the state must be derived from the observed
+			// record without querying the scaler
+			scaler := mock_scalers.NewMockScaler(ctrl)
+			scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{createMetricSpec(10, metricName)})
+			scaler.EXPECT().Close(gomock.Any()).AnyTimes()
+
+			sh, scalerCache, mockClient := newStateFromHPAObservationsHandler(ctrl, scaledObject, scaler)
+			expectHPAScalingActive(mockClient, v1.ConditionTrue)
+			sh.scaledObjectsMetricCache.StoreRecord(scaledObject.GenerateIdentifier(), metricName, test.record)
+
+			isActive, isError, _, activeTriggers, isFallbackActive, err := sh.getScaledObjectState(t.Context(), scaledObject)
+
+			scalerCache.Close(t.Context())
+
+			assert.NoError(t, err)
+			assert.Equal(t, test.expectedIsActive, isActive)
+			assert.Equal(t, test.expectedIsError, isError)
+			assert.Equal(t, test.expectedIsFallbackActive, isFallbackActive)
+			assert.Equal(t, test.expectedActiveTriggers, activeTriggers)
+		})
+	}
+}
+
+func TestGetScaledObjectState_PollsWithoutUsableHPAObservation(t *testing.T) {
+	metricName := "state-from-cache-metric"
+	record := &metricscache.MetricsRecord{IsMetricActive: true}
+
+	tests := []struct {
+		name      string
+		record    *metricscache.MetricsRecord
+		expectHPA func(mockClient *mock_client.MockClient)
+	}{
+		{
+			name: "missing record",
+			expectHPA: func(mockClient *mock_client.MockClient) {
+				expectHPAScalingActive(mockClient, v1.ConditionTrue)
+			},
+		},
+		{
+			name:   "HPA not actively scaling",
+			record: record,
+			expectHPA: func(mockClient *mock_client.MockClient) {
+				expectHPAScalingActive(mockClient, v1.ConditionFalse)
+			},
+		},
+		{
+			name:   "HPA cannot be read",
+			record: record,
+			expectHPA: func(mockClient *mock_client.MockClient) {
+				mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&v2.HorizontalPodAutoscaler{})).Return(errors.New("hpa not found")).AnyTimes()
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			scaledObject := scaledObjectWithIrrelevantPolling()
+
+			// without a usable observation the scale loop must query the trigger source itself
+			scaler := mock_scalers.NewMockScaler(ctrl)
+			scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{createMetricSpec(10, metricName)})
+			scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), metricName).Return([]external_metrics.ExternalMetricValue{scalers.GenerateMetricInMili(metricName, float64(10))}, true, nil)
+			scaler.EXPECT().Close(gomock.Any()).AnyTimes()
+
+			sh, scalerCache, mockClient := newStateFromHPAObservationsHandler(ctrl, scaledObject, scaler)
+			test.expectHPA(mockClient)
+			if test.record != nil {
+				sh.scaledObjectsMetricCache.StoreRecord(scaledObject.GenerateIdentifier(), metricName, *test.record)
+			}
+
+			isActive, isError, _, activeTriggers, _, err := sh.getScaledObjectState(t.Context(), scaledObject)
+
+			scalerCache.Close(t.Context())
+
+			assert.NoError(t, err)
+			assert.True(t, isActive)
+			assert.False(t, isError)
+			assert.Equal(t, []string{metricName}, activeTriggers)
+		})
+	}
+}
+
+func TestGetScaledObjectState_PollsWhenPollingIsRelevant(t *testing.T) {
+	metricName := "state-from-cache-metric"
+
+	ctrl := gomock.NewController(t)
+	scaledObject := scaledObjectWithIrrelevantPolling()
+	minReplicas := int32(0)
+	scaledObject.Spec.MinReplicaCount = &minReplicas
+
+	// pollingInterval is relevant (minReplicaCount = 0), so even a fresh observation must not
+	// stop the scale loop from querying the trigger source
+	scaler := mock_scalers.NewMockScaler(ctrl)
+	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{createMetricSpec(10, metricName)})
+	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), metricName).Return([]external_metrics.ExternalMetricValue{}, false, nil)
+	scaler.EXPECT().Close(gomock.Any()).AnyTimes()
+
+	sh, scalerCache, _ := newStateFromHPAObservationsHandler(ctrl, scaledObject, scaler)
+	sh.scaledObjectsMetricCache.StoreRecord(scaledObject.GenerateIdentifier(), metricName, metricscache.MetricsRecord{IsMetricActive: true})
+
+	isActive, isError, _, _, _, err := sh.getScaledObjectState(t.Context(), scaledObject)
+
+	scalerCache.Close(t.Context())
+
+	assert.NoError(t, err)
+	assert.False(t, isActive)
+	assert.False(t, isError)
+}
+
+func TestGetScaledObjectState_PushScalerPollsDespiteFreshObservation(t *testing.T) {
+	metricName := "state-from-cache-metric"
+
+	ctrl := gomock.NewController(t)
+	scaledObject := scaledObjectWithIrrelevantPolling()
+
+	// push scaler activity changes must be picked up immediately, so a fresh observation must
+	// not stop the scale loop from querying the scaler
+	scaler := mock_scalers.NewMockPushScaler(ctrl)
+	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{createMetricSpec(10, metricName)})
+	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), metricName).Return([]external_metrics.ExternalMetricValue{}, false, nil)
+	scaler.EXPECT().Close(gomock.Any()).AnyTimes()
+
+	sh, scalerCache, mockClient := newStateFromHPAObservationsHandler(ctrl, scaledObject, scaler)
+	expectHPAScalingActive(mockClient, v1.ConditionTrue)
+	sh.scaledObjectsMetricCache.StoreRecord(scaledObject.GenerateIdentifier(), metricName, metricscache.MetricsRecord{IsMetricActive: true})
+
+	isActive, isError, _, _, _, err := sh.getScaledObjectState(t.Context(), scaledObject)
+
+	scalerCache.Close(t.Context())
+
+	assert.NoError(t, err)
+	assert.False(t, isActive)
+	assert.False(t, isError)
+}
+
+func TestGetScaledObjectMetrics_StoresRecordsForTheScaleLoop(t *testing.T) {
+	metricName := "state-from-cache-metric"
+
+	tests := []struct {
+		name            string
+		minReplicaCount int32
+		expectStored    bool
+	}{
+		{
+			name:            "pollingInterval not relevant, the observed state is stored for the scale loop",
+			minReplicaCount: 1,
+			expectStored:    true,
+		},
+		{
+			name:            "pollingInterval relevant, the scale loop polls itself so nothing is stored",
+			minReplicaCount: 0,
+			expectStored:    false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			scaledObject := scaledObjectWithIrrelevantPolling()
+			scaledObject.Spec.MinReplicaCount = &test.minReplicaCount
+
+			scaler := mock_scalers.NewMockScaler(ctrl)
+			scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{createMetricSpec(10, metricName)})
+			scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), metricName).Return([]external_metrics.ExternalMetricValue{scalers.GenerateMetricInMili(metricName, float64(10))}, true, nil)
+
+			sh, scalerCache, _ := newStateFromHPAObservationsHandler(ctrl, scaledObject, scaler)
+
+			metrics, err := sh.GetScaledObjectMetrics(t.Context(), scaledObject.Name, scaledObject.Namespace, metricName)
+
+			scaler.EXPECT().Close(gomock.Any())
+			scalerCache.Close(t.Context())
+
+			assert.NoError(t, err)
+			assert.NotNil(t, metrics)
+
+			record, found := sh.scaledObjectsMetricCache.ReadRecord(scaledObject.GenerateIdentifier(), metricName)
+			assert.Equal(t, test.expectStored, found)
+			if test.expectStored {
+				assert.True(t, record.IsMetricActive)
+				assert.NoError(t, record.ScalerError)
+				assert.False(t, record.FallbackActive)
+			}
+		})
 	}
 }

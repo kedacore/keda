@@ -477,6 +477,86 @@ func TestIsUsingModifiers(t *testing.T) {
 	}
 }
 
+func TestIsPollingIntervalRelevant(t *testing.T) {
+	min0 := int32(0)
+	min2 := int32(2)
+	idle0 := int32(0)
+	idle1 := int32(1)
+
+	tests := []struct {
+		name         string
+		minReplicas  *int32
+		idleReplicas *int32
+		triggers     []ScaleTriggers
+		expectResult bool
+	}{
+		{
+			name:         "minReplicaCount unset (defaults to 0)",
+			minReplicas:  nil,
+			expectResult: true,
+		},
+		{
+			name:         "minReplicaCount = 0 allows scale to zero",
+			minReplicas:  &min0,
+			expectResult: true,
+		},
+		{
+			name:         "minReplicaCount > 0, idle mode disabled, no cached metrics",
+			minReplicas:  &min2,
+			idleReplicas: nil,
+			expectResult: false,
+		},
+		{
+			name:         "minReplicaCount > 0, idleReplicaCount = 0 enables idle mode",
+			minReplicas:  &min2,
+			idleReplicas: &idle0,
+			expectResult: true,
+		},
+		{
+			name:         "minReplicaCount > 0, idleReplicaCount > 0 enables idle mode",
+			minReplicas:  &min2,
+			idleReplicas: &idle1,
+			expectResult: true,
+		},
+		{
+			name:         "minReplicaCount > 0, no idle, a trigger uses cached metrics",
+			minReplicas:  &min2,
+			idleReplicas: nil,
+			triggers: []ScaleTriggers{
+				{Type: "cpu"},
+				{Type: "kafka", UseCachedMetrics: true},
+			},
+			expectResult: true,
+		},
+		{
+			name:         "minReplicaCount > 0, no idle, no trigger uses cached metrics",
+			minReplicas:  &min2,
+			idleReplicas: nil,
+			triggers: []ScaleTriggers{
+				{Type: "cpu"},
+				{Type: "kafka"},
+			},
+			expectResult: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			so := &ScaledObject{
+				Spec: ScaledObjectSpec{
+					MinReplicaCount:  test.minReplicas,
+					IdleReplicaCount: test.idleReplicas,
+					Triggers:         test.triggers,
+				},
+			}
+			result := so.IsPollingIntervalRelevant()
+			if result != test.expectResult {
+				t.Errorf("Expected IsPollingIntervalRelevant to return %v, got %v", test.expectResult, result)
+			}
+		})
+	}
+}
+
 func TestCheckReplicaCountBoundsAreValid(t *testing.T) {
 	min1 := int32(1)
 	min2 := int32(2)
