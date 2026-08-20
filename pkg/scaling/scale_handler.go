@@ -696,6 +696,11 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	isScalerError := false
 	scaledObjectIdentifier := scaledObject.GenerateIdentifier()
 
+	// One cache for the whole call, shared by every per-metric handler below, so
+	// the ready-replica count behind a Value-target fallback costs one Scale read
+	// and one Pod list instead of one of each per metric.
+	readyReplicas := &fallback.ReadyReplicasCache{}
+
 	// returns all relevant metrics for current scaler (standard is one metric,
 	// composite scaler gets all external metrics for further computation)
 	metricsArray, err := h.getTrueMetricArray(ctx, metricsName, scaledObject)
@@ -801,11 +806,12 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 
 					// Use the helper function to process metrics with fallback
 					soh := fallback.ScaledObjectHandler{
-						Ctx:          ctx,
-						KubeClient:   h.client,
-						ScaleClient:  h.scaleClient,
-						UpdateLock:   &scalersCache.ScaledObjectUpdateLock,
-						ScaledObject: scaledObject,
+						Ctx:           ctx,
+						KubeClient:    h.client,
+						ScaleClient:   h.scaleClient,
+						UpdateLock:    &scalersCache.ScaledObjectUpdateLock,
+						ScaledObject:  scaledObject,
+						ReadyReplicas: readyReplicas,
 					}
 					metrics, fallbackActive, err := h.processMetricsWithFallback(soh, rawMetrics, rawErr, metricName, triggerName, triggerIndex, spec, shouldSendRawMetrics(RawMetricsHPA), isMetricActive, logger)
 
@@ -922,11 +928,14 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	// no matter if any scaler raises error or is active
 	allScalers, scalerConfigs := scalersCache.GetScalers()
 	results := make(chan scalerState, len(allScalers))
+	// Shared by every scaler in this pass: the ready-replica count is a property
+	// of the scale target, not of the individual trigger, so it is read once.
+	readyReplicas := &fallback.ReadyReplicasCache{}
 	wg := sync.WaitGroup{}
 	for scalerIndex := range allScalers {
 		wg.Add(1)
 		go func(scaler scalers.Scaler, index int, scalerConfig scalersconfig.ScalerConfig, results chan scalerState, wg *sync.WaitGroup) {
-			results <- h.getScalerState(ctx, scaler, index, scalerConfig, scalersCache, logger, scaledObject)
+			results <- h.getScalerState(ctx, scaler, index, scalerConfig, scalersCache, logger, scaledObject, readyReplicas)
 			wg.Done()
 		}(allScalers[scalerIndex], scalerIndex, scalerConfigs[scalerIndex], results, &wg)
 	}
@@ -1013,7 +1022,8 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 // with errors, but also the records for the cache and the metrics
 // for the custom formulas
 func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler, triggerIndex int, scalerConfig scalersconfig.ScalerConfig,
-	scalersCache *cache.ScalersCache, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) scalerState {
+	scalersCache *cache.ScalersCache, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject,
+	readyReplicas *fallback.ReadyReplicasCache) scalerState {
 	result := scalerState{
 		IsActive:        false,
 		Err:             nil,
@@ -1068,11 +1078,12 @@ func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler
 
 		// Use the helper function to process metrics with fallback
 		soh := fallback.ScaledObjectHandler{
-			Ctx:          ctx,
-			KubeClient:   h.client,
-			ScaleClient:  h.scaleClient,
-			UpdateLock:   &scalersCache.ScaledObjectUpdateLock,
-			ScaledObject: scaledObject,
+			Ctx:           ctx,
+			KubeClient:    h.client,
+			ScaleClient:   h.scaleClient,
+			UpdateLock:    &scalersCache.ScaledObjectUpdateLock,
+			ScaledObject:  scaledObject,
+			ReadyReplicas: readyReplicas,
 		}
 		metrics, fallbackActive, err := h.processMetricsWithFallback(soh, rawMetrics, rawErr, metricName, result.TriggerName, triggerIndex, spec, shouldSendRawMetrics(RawMetricsPollingInterval), isMetricActive, logger)
 

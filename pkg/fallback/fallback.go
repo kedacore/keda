@@ -46,6 +46,43 @@ type ScaledObjectHandler struct {
 	ScaleClient  scale.ScalesGetter
 	UpdateLock   *sync.RWMutex
 	ScaledObject *kedav1alpha1.ScaledObject
+	// ReadyReplicas is shared by every handler built for the same reconcile so
+	// the ready-replica count is read once instead of once per metric. May be
+	// nil, in which case each lookup reads through.
+	ReadyReplicas *ReadyReplicasCache
+}
+
+// ReadyReplicasCache memoises the ready-replica count for the lifetime of a
+// single reconcile.
+//
+// getReadyReplicasCount issues a Scale subresource read plus a full Pod list,
+// and it runs once per metric that falls back on a Value target. A ScaledObject
+// with N such triggers therefore repeated that pair of API calls N times per
+// reconcile to compute a number that is identical every time, because all of
+// its metrics share one scale target.
+//
+// The zero value is ready to use. A nil cache reads through, so callers that do
+// not have one - the fallback unit tests, and any future call site - keep the
+// previous behaviour.
+type ReadyReplicasCache struct {
+	once  sync.Once
+	count int32
+	err   error
+}
+
+// get returns the memoised count, calling fetch at most once. The handlers that
+// share a cache run concurrently (both GetScaledObjectMetrics and
+// getScaledObjectState fan out over goroutines), so the first caller fetches
+// and the rest block on that same result rather than racing to issue their own
+// API calls.
+func (c *ReadyReplicasCache) get(fetch func() (int32, error)) (int32, error) {
+	if c == nil {
+		return fetch()
+	}
+	c.once.Do(func() {
+		c.count, c.err = fetch()
+	})
+	return c.count, c.err
 }
 
 // UpdateHealthStatus safely serializes updates to ScaledObject's health status and ships them to kube-api
@@ -206,8 +243,17 @@ func IsPodReady(pod *v1.Pod) bool {
 	return false
 }
 
-// Similar to how it's done in HPA's code: https://github.com/kubernetes/kubernetes/blob/091f87c10bc3532041b77a783a5f832de5506dc8/pkg/controller/podautoscaler/replica_calculator.go#L323
+// getReadyReplicasCount returns the ready-replica count for the scale target,
+// reusing the value already computed for this reconcile when the handler
+// carries a cache.
 func getReadyReplicasCount(soh ScaledObjectHandler) (int32, error) {
+	return soh.ReadyReplicas.get(func() (int32, error) {
+		return fetchReadyReplicasCount(soh)
+	})
+}
+
+// Similar to how it's done in HPA's code: https://github.com/kubernetes/kubernetes/blob/091f87c10bc3532041b77a783a5f832de5506dc8/pkg/controller/podautoscaler/replica_calculator.go#L323
+func fetchReadyReplicasCount(soh ScaledObjectHandler) (int32, error) {
 	scaledObject := soh.ScaledObject
 	if scaledObject == nil || scaledObject.Spec.ScaleTargetRef == nil || scaledObject.Status.ScaleTargetGVKR == nil {
 		return -1, fmt.Errorf("")
