@@ -89,6 +89,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Fixes
 
 - **General**: Add controller-runtime cache field indexes for ScaledObject admission validation so `verifyScaledObjects` and `verifyHpas` look up duplicate scaleTargetRef and HPA-name conflicts via indexed Lists rather than full-namespace scans, eliminating the webhook OOM under high-scale creation bursts ([#7681](https://github.com/kedacore/keda/pull/7681))
+- **General**: Fix `ceilToInt64` float-to-int truncation overflow that silently wraps to `MinInt64` for values >= 2^63 ([#7796](https://github.com/kedacore/keda/issues/7796))
 - **General**: Fix CVE-2026-42151, CVE-2026-42154, CVE-2026-40179 ([#7868](https://github.com/kedacore/keda/issues/7868))
 - **General**: Fix `pollingInterval` and `cooldownPeriod` relevance warnings incorrectly firing when `idleReplicaCount` is set to a value greater than 0, since idle mode keeps both settings relevant ([#7984](https://github.com/kedacore/keda/pull/7984))
 - **General**: Fix `ScaledJob` removal event using `namespace/name` in place of the namespace, which malformed the emitted CloudEvent's subject and the `namespace` label on the CloudEventSource metrics ([#7967](https://github.com/kedacore/keda/issues/7967))
