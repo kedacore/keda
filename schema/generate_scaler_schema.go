@@ -239,13 +239,17 @@ func generateMetadataFields(structType *ast.StructType, otherReferenceKedaTagStr
 			continue
 		}
 
-		// If the field has a substruct, try to find substruct from reference structs
-		s, ok := commentGroup.Type.(*ast.Ident)
-		if !ok {
-			continue
+		// If the field has a substruct, try to find substruct from reference structs.
+		// Handle both *ast.Ident (same package) and *ast.SelectorExpr (e.g. gcp.AuthMetadata).
+		var subStructName string
+		switch t := commentGroup.Type.(type) {
+		case *ast.Ident:
+			subStructName = t.Name
+		case *ast.SelectorExpr:
+			subStructName = t.Sel.Name
 		}
-		if otherReferenceKedaTagStructs[s.Name] != nil {
-			subStructMetadataField := generateMetadataFields(otherReferenceKedaTagStructs[s.Name], otherReferenceKedaTagStructs)
+		if subStructName != "" && otherReferenceKedaTagStructs[subStructName] != nil {
+			subStructMetadataField := generateMetadataFields(otherReferenceKedaTagStructs[subStructName], otherReferenceKedaTagStructs)
 			if len(subStructMetadataField) > 0 {
 				scalerMetadata = append(scalerMetadata, subStructMetadataField...)
 			}
@@ -450,7 +454,13 @@ func getAllKedaTagedStructs(dir string) (map[string]*ast.StructType, map[string]
 
 	for _, e := range entries {
 		if e.IsDir() {
-			getAllKedaTagedStructs(dir + "/" + e.Name())
+			subScalerStructs, subTagStructs := getAllKedaTagedStructs(dir + "/" + e.Name())
+			for k, v := range subScalerStructs {
+				kedaScalerStructs[k] = v
+			}
+			for k, v := range subTagStructs {
+				kedaTagStructs[k] = v
+			}
 			continue
 		}
 
