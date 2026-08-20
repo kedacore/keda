@@ -315,6 +315,96 @@ spec:
                 - secrets
                 - vaultUri
                 type: object
+              azureServicePrincipal:
+                description: |-
+                  AzureServicePrincipal defines Microsoft Entra service principal credentials
+                  that can be shared by Azure scalers.
+                properties:
+                  activeDirectoryEndpoint:
+                    description: ActiveDirectoryEndpoint is required when cloud is
+                      set to Private.
+                    type: string
+                  clientCertificate:
+                    description: |-
+                      AzureServicePrincipalCredential references credential data stored in a
+                      Kubernetes Secret.
+                    properties:
+                      valueFrom:
+                        properties:
+                          secretKeyRef:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                        required:
+                        - secretKeyRef
+                        type: object
+                    required:
+                    - valueFrom
+                    type: object
+                  clientCertificatePassword:
+                    description: |-
+                      AzureServicePrincipalCredential references credential data stored in a
+                      Kubernetes Secret.
+                    properties:
+                      valueFrom:
+                        properties:
+                          secretKeyRef:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                        required:
+                        - secretKeyRef
+                        type: object
+                    required:
+                    - valueFrom
+                    type: object
+                  clientId:
+                    type: string
+                  clientSecret:
+                    description: |-
+                      AzureServicePrincipalCredential references credential data stored in a
+                      Kubernetes Secret.
+                    properties:
+                      valueFrom:
+                        properties:
+                          secretKeyRef:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                        required:
+                        - secretKeyRef
+                        type: object
+                    required:
+                    - valueFrom
+                    type: object
+                  cloud:
+                    description: Cloud specifies the Azure cloud environment. Defaults
+                      to AzurePublicCloud.
+                    type: string
+                  tenantId:
+                    type: string
+                required:
+                - clientId
+                - tenantId
+                type: object
               boundServiceAccountToken:
                 items:
                   properties:

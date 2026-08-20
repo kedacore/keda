@@ -42,6 +42,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -447,6 +448,35 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 						endpointParams.Add(k, v)
 					}
 					result["endpointParams"] = endpointParams.Encode()
+				}
+			}
+			if triggerAuthSpec.AzureServicePrincipal != nil {
+				servicePrincipal := triggerAuthSpec.AzureServicePrincipal
+
+				result[azure.ServicePrincipalAuthKey] = "true"
+				result[azure.ServicePrincipalTenantIDKey] = servicePrincipal.TenantID
+				result[azure.ServicePrincipalClientIDKey] = servicePrincipal.ClientID
+				if servicePrincipal.Cloud != "" {
+					result[azure.ServicePrincipalCloudKey] = servicePrincipal.Cloud
+				}
+				if servicePrincipal.ActiveDirectoryEndpoint != "" {
+					result[azure.ServicePrincipalActiveDirectoryEndpointKey] = servicePrincipal.ActiveDirectoryEndpoint
+				}
+
+				if servicePrincipal.ClientSecret != nil {
+					secretRef := servicePrincipal.ClientSecret.ValueFrom.SecretKeyRef
+					result[azure.ServicePrincipalClientSecretKey] = resolveAuthSecret(
+						ctx, client, logger, secretRef.Name, triggerNamespace, secretRef.Key, authClientSet.SecretLister)
+				}
+				if servicePrincipal.ClientCertificate != nil {
+					secretRef := servicePrincipal.ClientCertificate.ValueFrom.SecretKeyRef
+					result[azure.ServicePrincipalClientCertificateKey] = resolveAuthSecret(
+						ctx, client, logger, secretRef.Name, triggerNamespace, secretRef.Key, authClientSet.SecretLister)
+				}
+				if servicePrincipal.ClientCertificatePassword != nil {
+					secretRef := servicePrincipal.ClientCertificatePassword.ValueFrom.SecretKeyRef
+					result[azure.ServicePrincipalClientCertificatePasswordKey] = resolveAuthSecret(
+						ctx, client, logger, secretRef.Name, triggerNamespace, secretRef.Key, authClientSet.SecretLister)
 				}
 			}
 		}
