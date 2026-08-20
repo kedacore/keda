@@ -3022,6 +3022,12 @@
                     "triggerAuthenticationVariableReadable": true
                 },
                 {
+                    "name": "ccacheName",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
                     "name": "realm",
                     "type": "string",
                     "optional": true,
