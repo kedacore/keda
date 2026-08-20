@@ -624,7 +624,7 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 }
 
 // ClearScalersCache invalidates the scalers cache for the input scalableObject.
-// Metric records are kept, they are only deleted when the scalable object is stopped.
+// Metric records are kept; they are only deleted when the scalable object is stopped.
 func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject kedav1alpha1.ScalableObject) error {
 	withTriggers, err := kedav1alpha1.AsDuckWithTriggers(scalableObject)
 	if err != nil {

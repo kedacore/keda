@@ -748,7 +748,7 @@ func TestDeleteScalableObject_DeletesMetricsCacheRecords(t *testing.T) {
 
 	_, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	sh.scaleLoopContexts.Store(key, context.CancelFunc(cancel))
+	sh.scaleLoopContexts.Store(key, cancel)
 	metricCache.StoreRecords(key, map[string]metricscache.MetricsRecord{
 		metricName: {IsActive: true},
 	})
