@@ -847,7 +847,7 @@ func TestGetScaledObjectMetrics_ErrorDoesNotClearOtherTriggersCachedRecord(t *te
 	sh := scaleHandler{
 		client:                   mockClient,
 		scaleLoopContexts:        &sync.Map{},
-		globalHTTPTimeout:        time.Duration(1000),
+		globalHTTPTimeout:        time.Microsecond,
 		recorder:                 recorder,
 		scalerCaches:             map[string]*cache.ScalersCache{key: scalerCache},
 		scalerCachesLock:         &sync.RWMutex{},
