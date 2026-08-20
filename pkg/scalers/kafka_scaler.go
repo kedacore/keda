@@ -436,8 +436,8 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 				}
 				return meta, fmt.Errorf("error checking ccache file %s: %w", path, err)
 			}
-			if info.IsDir() {
-				return meta, fmt.Errorf("ccache file %s is a directory", path)
+			if !info.Mode().IsRegular() {
+				return meta, fmt.Errorf("ccache file %s is not a regular file", path)
 			}
 
 			meta.ccachePath = path
@@ -479,7 +479,7 @@ func saveToFile(content string) (string, error) {
 }
 
 func getTempKerberosDir() (string, error) {
-	tempKrbDir := fmt.Sprintf("%s%c%s", os.TempDir(), os.PathSeparator, "kerberos")
+	tempKrbDir := filepath.Join(os.TempDir(), "kerberos")
 	err := os.MkdirAll(tempKrbDir, 0700)
 	if err != nil {
 		return "", fmt.Errorf(`error creating temporary directory: %s.  Error: %w

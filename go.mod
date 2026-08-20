@@ -105,7 +105,6 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.44.0
 	go.temporal.io/sdk v1.47.0
 	go.uber.org/mock v0.6.0
-	golang.org/x/crypto v0.55.0
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sync v0.22.0
 	google.golang.org/api v0.293.0
@@ -131,7 +130,10 @@ require (
 	sigs.k8s.io/kustomize/kustomize/v5 v5.8.1
 )
 
-require k8s.io/streaming v0.36.0 // indirect
+require (
+	golang.org/x/crypto v0.55.0 // indirect
+	k8s.io/streaming v0.36.0 // indirect
+)
 
 require (
 	cel.dev/expr v0.25.2 // indirect
@@ -233,7 +235,7 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/btree v1.1.3 // indirect
-	github.com/google/cel-go v0.29.0 // indirect
+	github.com/google/cel-go v0.30.0 // indirect
 	github.com/google/flatbuffers v25.12.19+incompatible // indirect
 	github.com/google/gnostic-models v0.7.1 // indirect
 	github.com/google/go-github/v88 v88.0.0 // indirect
@@ -319,7 +321,7 @@ require (
 	github.com/tomnomnom/linkheader v0.0.0-20250811210735-e5fe3b51442e // indirect
 	github.com/ulikunitz/unixtime v0.1.2 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/valyala/fasthttp v1.69.0 // indirect
+	github.com/valyala/fasthttp v1.70.0 // indirect
 	github.com/valyala/fastjson v1.6.7 // indirect
 	github.com/wagslane/go-password-validator v0.3.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
