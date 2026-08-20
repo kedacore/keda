@@ -1962,6 +1962,7 @@ scalers:
           allowedValue:
             - bearer
             - aws_msk_iam
+            - azure_workload_identity
           metadataVariableReadable: true
           triggerAuthenticationVariableReadable: true
         - name: scopes
