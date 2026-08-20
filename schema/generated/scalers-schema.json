@@ -2992,7 +2992,8 @@
                     "optional": true,
                     "allowedValue": [
                         "bearer",
-                        "aws_msk_iam"
+                        "aws_msk_iam",
+                        "azure_workload_identity"
                     ],
                     "metadataVariableReadable": true,
                     "triggerAuthenticationVariableReadable": true
