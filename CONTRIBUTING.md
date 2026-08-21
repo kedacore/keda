@@ -94,10 +94,9 @@ Release notes are generated automatically from merged PR metadata rather than be
 
 To ensure your change appears correctly in the generated notes:
 - PR titles must follow `Component: Description` (for example: `General: Fix nil pointer dereference`). The release notes renderer bolds the component automatically.
-- PRs must include exactly one valid release-notes label (`kind/feature`, `kind/new-scaler`, `kind/improvement`, `kind/enhancement`, `kind/bug`, `kind/deprecation`, `kind/breaking-change`, `kind/chore`, `kind/documentation`, `kind/dependencies`, or `kind/ci`) unless `skip-changelog` is explicitly used.
-- Use `skip-changelog` only when the change should be excluded from generated release notes.
+- Release-notes labels are assigned by maintainers during review. A maintainer will add exactly one valid label (`kind/feature`, `kind/new-scaler`, `kind/improvement`, `kind/bug`, `kind/deprecation`, `kind/breaking-change`, `kind/chore`, `kind/documentation`, `kind/dependencies`, or `kind/ci`), or use `skip-changelog` when the change should be excluded from the generated notes.
 
-These rules are validated automatically by [pr-changelog-check workflow](.github/workflows/pr-changelog-check.yml).
+The PR title format is validated automatically by the [pr-changelog-check workflow](.github/workflows/pr-changelog-check.yml). Release-notes labels are reviewed as part of the PR review process.
 
 ## Including Documentation Changes
 

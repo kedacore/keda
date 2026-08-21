@@ -79,8 +79,8 @@ func HasEventHubEntityPath(connectionString string) bool {
 }
 
 func getConnectionStringValue(connectionString, key string) (string, bool) {
-	parts := strings.Split(connectionString, ";")
-	for _, part := range parts {
+	parts := strings.SplitSeq(connectionString, ";")
+	for part := range parts {
 		partKey, value, ok := parseConnectionStringPart(part)
 		if ok && strings.EqualFold(partKey, key) {
 			return value, true

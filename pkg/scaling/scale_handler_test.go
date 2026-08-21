@@ -274,7 +274,7 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 
 	scalerCollection := []*mock_scalers.MockScaler{}
 
-	for i := 0; i < len(metricNames); i++ {
+	for range metricNames {
 		scalerCollection = append(scalerCollection, mock_scalers.NewMockScaler(ctrl))
 	}
 
@@ -328,7 +328,7 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 		Scalers:      []cache.ScalerBuilder{},
 		Recorder:     recorder,
 	}
-	for i := 0; i < len(metricNames); i++ {
+	for i := range metricNames {
 		scalerCache.Scalers = append(scalerCache.Scalers, cache.ScalerBuilder{
 			Scaler:       scalerCollection[i],
 			ScalerConfig: *scalerConfigFn(i),
@@ -354,7 +354,7 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 	}
 
 	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-	for i := 0; i < len(metricNames); i++ {
+	for i := range metricNames {
 		scalerCollection[i].EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecFn(i))
 		scalerCollection[i].EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 			return metricsValueFn(i), true, nil
@@ -369,7 +369,7 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 
 	expectNoStatusPatch(ctrl)
 
-	for i := 0; i < len(metricNames); i++ {
+	for i := range metricNames {
 		scalerCollection[i].EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecFn(i))
 		scalerCollection[i].EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 			return metricsValueFn(i), true, nil
@@ -381,7 +381,7 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 		assert.Nil(c, err)
 	}, 1*time.Second, 400*time.Millisecond, "timeout exceeded: scalers not processed in parallel during `GetScaledObjectMetrics`")
 
-	for i := 0; i < len(metricNames); i++ {
+	for i := range metricNames {
 		scalerCollection[i].EXPECT().Close(gomock.Any())
 	}
 	scalerCache.Close(context.Background())
@@ -660,6 +660,233 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 	assert.Equal(t, true, isActive)
 	assert.Equal(t, true, isError)
 	assert.Equal(t, []string{"metric-name"}, activeTriggers)
+}
+
+func TestClearScalersCache_PreservesMetricsCacheRecords(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	recorder := events.NewFakeRecorder(1)
+
+	metricName := "survivor-metric"
+	metricValue := scalers.GenerateMetricInMili(metricName, float64(42))
+
+	closed := make(chan struct{}, 1)
+	scaler := mock_scalers.NewMockScaler(ctrl)
+	scaler.EXPECT().Close(gomock.Any()).DoAndReturn(func(context.Context) error {
+		closed <- struct{}{}
+		return nil
+	})
+	factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		return scaler, &scalersconfig.ScalerConfig{}, nil
+	}
+
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "clear-test", Namespace: "ns"},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "target"},
+		},
+	}
+	key := scaledObject.GenerateIdentifier()
+
+	scalerCache := &cache.ScalersCache{
+		ScaledObject: &scaledObject,
+		Scalers:      []cache.ScalerBuilder{{Scaler: scaler, Factory: factory}},
+		Recorder:     recorder,
+	}
+
+	metricCache := metricscache.NewMetricsCache()
+	sh := scaleHandler{
+		scalerCaches:             map[string]*cache.ScalersCache{key: scalerCache},
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricCache,
+	}
+
+	metricCache.StoreRecords(key, map[string]metricscache.MetricsRecord{
+		metricName: {IsActive: true, Metric: []external_metrics.ExternalMetricValue{metricValue}},
+	})
+
+	err := sh.ClearScalersCache(t.Context(), &scaledObject)
+	assert.NoError(t, err)
+
+	sh.scalerCachesLock.RLock()
+	_, scalersCacheFound := sh.scalerCaches[key]
+	sh.scalerCachesLock.RUnlock()
+	assert.False(t, scalersCacheFound, "scalers cache entry must be removed")
+
+	record, found := metricCache.ReadRecord(key, metricName)
+	assert.True(t, found, "metric records must survive a scalers cache invalidation")
+	if found {
+		assert.Equal(t, metricValue, record.Metric[0])
+	}
+
+	select {
+	case <-closed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for the scaler to be closed")
+	}
+}
+
+func TestDeleteScalableObject_DeletesMetricsCacheRecords(t *testing.T) {
+	recorder := events.NewFakeRecorder(1)
+
+	metricName := "some-metric"
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "delete-test", Namespace: "ns"},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "target"},
+		},
+	}
+	key := scaledObject.GenerateIdentifier()
+
+	metricCache := metricscache.NewMetricsCache()
+	sh := scaleHandler{
+		scaleLoopContexts:        &sync.Map{},
+		recorder:                 recorder,
+		scalerCaches:             map[string]*cache.ScalersCache{},
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricCache,
+	}
+
+	_, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	sh.scaleLoopContexts.Store(key, cancel)
+	metricCache.StoreRecords(key, map[string]metricscache.MetricsRecord{
+		metricName: {IsActive: true},
+	})
+
+	err := sh.DeleteScalableObject(t.Context(), &scaledObject)
+	assert.NoError(t, err)
+
+	_, found := metricCache.ReadRecord(key, metricName)
+	assert.False(t, found, "metric records must be deleted when the scalable object is deleted")
+}
+
+func TestStartScaleLoop_DeletesMetricsCacheRecordsOnShutdown(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	recorder := events.NewFakeRecorder(1)
+	mockClient := mock_client.NewMockClient(ctrl)
+
+	metricName := "some-metric"
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "shutdown-test", Namespace: "ns"},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "target"},
+		},
+	}
+	key := scaledObject.GenerateIdentifier()
+	withTriggers, err := kedav1alpha1.AsDuckWithTriggers(&scaledObject)
+	assert.NoError(t, err)
+
+	metricCache := metricscache.NewMetricsCache()
+	sh := scaleHandler{
+		client:                   mockClient,
+		scaleLoopContexts:        &sync.Map{},
+		recorder:                 recorder,
+		scalerCaches:             map[string]*cache.ScalersCache{},
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricCache,
+	}
+
+	metricCache.StoreRecords(key, map[string]metricscache.MetricsRecord{
+		metricName: {IsActive: true},
+	})
+
+	// canceled context makes the loop exit after one iteration, the client error short-circuits checkScalers
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("context canceled"))
+	sh.startScaleLoop(ctx, withTriggers, &scaledObject, &sync.Mutex{})
+
+	_, found := metricCache.ReadRecord(key, metricName)
+	assert.False(t, found, "metric records must be deleted when the scale loop shuts down")
+}
+
+func TestGetScaledObjectMetrics_ErrorDoesNotClearOtherTriggersCachedRecord(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	recorder := events.NewFakeRecorder(10)
+	mockClient := mock_client.NewMockClient(ctrl)
+
+	cachedMetricName := "cached-metric"
+	failingMetricName := "failing-metric"
+	cachedMetricValue := scalers.GenerateMetricInMili(cachedMetricName, float64(10))
+
+	closed := make(chan struct{}, 3)
+	signalClose := func(context.Context) error {
+		closed <- struct{}{}
+		return nil
+	}
+
+	cachedScaler := mock_scalers.NewMockScaler(ctrl)
+	cachedScalerConfig := scalersconfig.ScalerConfig{TriggerUseCachedMetrics: true}
+	cachedFactory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		return cachedScaler, &cachedScalerConfig, nil
+	}
+	failingScaler := mock_scalers.NewMockScaler(ctrl)
+	failingScalerConfig := scalersconfig.ScalerConfig{}
+	failingFactory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		return failingScaler, &failingScalerConfig, nil
+	}
+
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "multi-trigger", Namespace: "ns"},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "target"},
+		},
+	}
+	key := scaledObject.GenerateIdentifier()
+
+	scalerCache := &cache.ScalersCache{
+		ScaledObject: &scaledObject,
+		Scalers: []cache.ScalerBuilder{
+			{Scaler: cachedScaler, ScalerConfig: cachedScalerConfig, Factory: cachedFactory},
+			{Scaler: failingScaler, ScalerConfig: failingScalerConfig, Factory: failingFactory},
+		},
+		Recorder: recorder,
+	}
+
+	metricCache := metricscache.NewMetricsCache()
+	sh := scaleHandler{
+		client:                   mockClient,
+		scaleLoopContexts:        &sync.Map{},
+		globalHTTPTimeout:        time.Microsecond,
+		recorder:                 recorder,
+		scalerCaches:             map[string]*cache.ScalersCache{key: scalerCache},
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricCache,
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
+	}
+
+	metricCache.StoreRecords(key, map[string]metricscache.MetricsRecord{
+		cachedMetricName: {IsActive: true, Metric: []external_metrics.ExternalMetricValue{cachedMetricValue}},
+	})
+
+	cachedScaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{createMetricSpec(10, cachedMetricName)})
+	failingScaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{createMetricSpec(10, failingMetricName)})
+	// initial attempt plus the retry after refreshScaler
+	failingScaler.EXPECT().GetMetricsAndActivity(gomock.Any(), failingMetricName).Return(nil, false, errors.New("scaler error")).Times(2)
+	// refreshScaler close plus the async scalers cache close
+	failingScaler.EXPECT().Close(gomock.Any()).DoAndReturn(signalClose).Times(2)
+	cachedScaler.EXPECT().Close(gomock.Any()).DoAndReturn(signalClose)
+
+	metrics, err := sh.GetScaledObjectMetrics(t.Context(), scaledObject.Name, scaledObject.Namespace, failingMetricName)
+	assert.Nil(t, metrics)
+	assert.Error(t, err)
+
+	record, found := metricCache.ReadRecord(key, cachedMetricName)
+	assert.True(t, found, "an error in one trigger must not clear the cached record of another trigger")
+	if found {
+		assert.Equal(t, cachedMetricValue, record.Metric[0])
+	}
+
+	// wait for the async scalers cache close
+	for range 3 {
+		select {
+		case <-closed:
+		case <-time.After(5 * time.Second):
+			t.Fatal("timed out waiting for scalers to be closed")
+		}
+	}
 }
 
 func TestGetScaledObjectStateRecordsResourceScalerActiveMetric(t *testing.T) {
@@ -1320,7 +1547,7 @@ func TestHandleResult_PatchesWhenConditionsChange(t *testing.T) {
 	}
 
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...any) error {
 			*obj = *existingSO.DeepCopy()
 			return nil
 		})
@@ -1346,7 +1573,7 @@ func TestHandleResult_SkipsPatchWhenUnchanged(t *testing.T) {
 	}
 
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...any) error {
 			*obj = *existingSO.DeepCopy()
 			return nil
 		})
@@ -1371,13 +1598,13 @@ func TestHandleResult_SetsLastActiveTime(t *testing.T) {
 	var patchedObj *kedav1alpha1.ScaledObject
 
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...any) error {
 			*obj = *existingSO.DeepCopy()
 			return nil
 		})
 	mockClient.EXPECT().Status().Return(statusWriter)
 	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ interface{}, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ any, _ ...any) error {
 			patchedObj = obj
 			return nil
 		})
@@ -1413,13 +1640,13 @@ func TestHandleResult_TriggersActivityUpdatesAndRemovals(t *testing.T) {
 	var patchedObj *kedav1alpha1.ScaledObject
 
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...any) error {
 			*obj = *baselineSO.DeepCopy()
 			return nil
 		})
 	mockClient.EXPECT().Status().Return(statusWriter)
 	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ interface{}, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ any, _ ...any) error {
 			patchedObj = obj
 			return nil
 		})
@@ -1463,13 +1690,13 @@ func TestHandleResult_PushScalerDeltaMerge(t *testing.T) {
 	var patchedObj *kedav1alpha1.ScaledObject
 
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...any) error {
 			*obj = *baselineSO.DeepCopy()
 			return nil
 		})
 	mockClient.EXPECT().Status().Return(statusWriter)
 	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ interface{}, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ any, _ ...any) error {
 			patchedObj = obj
 			return nil
 		})
@@ -1686,13 +1913,13 @@ func TestHandleResult_DeltaDoesNotOverwriteConcurrentChanges(t *testing.T) {
 	var patchedObj *kedav1alpha1.ScaledObject
 
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...any) error {
 			*obj = *freshSO.DeepCopy()
 			return nil
 		})
 	mockClient.EXPECT().Status().Return(statusWriter)
 	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ interface{}, _ ...interface{}) error {
+		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ any, _ ...any) error {
 			patchedObj = obj
 			return nil
 		})
@@ -1777,8 +2004,7 @@ func TestWatchMetricSpecUpdates_UsesLatestCacheAfterInvalidation(t *testing.T) {
 		metricSpecReconcileCh: make(chan event.GenericEvent, 1),
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	go h.watchMetricSpecUpdates(ctx, scaledObject.Name, scaledObject.Namespace, 0, streamer, uid, generation)
 
@@ -1837,8 +2063,7 @@ func TestWatchMetricSpecUpdates_IgnoresStaleGeneration(t *testing.T) {
 		metricSpecReconcileCh: make(chan event.GenericEvent, 1),
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	go h.watchMetricSpecUpdates(ctx, scaledObject.Name, scaledObject.Namespace, 0, streamer, uid, 1)
 
@@ -1889,8 +2114,7 @@ func TestWatchMetricSpecUpdates_IgnoresRecreatedObject(t *testing.T) {
 		metricSpecReconcileCh: make(chan event.GenericEvent, 1),
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	// Watcher was created for the deleted object (oldUID).
 	go h.watchMetricSpecUpdates(ctx, scaledObject.Name, scaledObject.Namespace, 0, streamer, oldUID, 0)
@@ -1929,8 +2153,7 @@ func TestEnqueueMetricSpecReconcile_WaitsForRoomWhenFull(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "other-so", Namespace: "other-ns"},
 	}}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	done := make(chan struct{})
 	go func() {

@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"maps"
 	"os"
 	"time"
 
@@ -429,8 +430,6 @@ func buildWatchLabelSelectorByObjectOrDie() map[client.Object]ctrlcache.ByObject
 	if byObject == nil {
 		return taByObject
 	}
-	for k, v := range taByObject {
-		byObject[k] = v
-	}
+	maps.Copy(byObject, taByObject)
 	return byObject
 }

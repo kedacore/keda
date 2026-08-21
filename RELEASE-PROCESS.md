@@ -37,7 +37,7 @@ Release draft notes are generated automatically by [release-cliff workflow](.git
 
 How it works:
 
-- The workflow runs on push to `main` and `release/v*` branches.
+- The workflow runs on push to `main` and `release/v*` branches, and can also be started manually with a target branch.
 - It computes the next version and the baseline tag for the current branch.
 - It removes any existing draft release targeting the same branch.
 - It generates the changelog with `git-cliff` using PR labels (`kind/*`) to group entries.
@@ -57,23 +57,27 @@ Before publishing a release, review and edit the draft body in GitHub to add hig
 Minor release flow (`vX.Y.0`):
 
 1. Merge all release-bound PRs into `main`.
-1. Open the generated draft release for the next minor release.
-1. During the `vX.Y.0` release workflow, KEDA automatically creates `release/vX.Y` from the release tag commit when it does not exist yet.
-1. Use that `release/vX.Y` branch for subsequent patch releases (`vX.Y.1`, `vX.Y.2`, and so on).
-1. Review and edit the draft notes, then publish `vX.Y.0` from `main`.
+2. Open the generated draft release for the next minor release.
+3. During the `vX.Y.0` release workflow, KEDA automatically creates `release/vX.Y` from the release tag commit when it does not exist yet.
+4. Use that `release/vX.Y` branch for subsequent patch releases (`vX.Y.1`, `vX.Y.2`, and so on).
+5. Review and edit the draft notes, then publish `vX.Y.0` from `main`.
 
 Hotfix flow (`vX.Y.Z`):
 
 1. Merge the fix PR into `main`.
-1. Backport it to the corresponding `release/vX.Y` branch (cherry-pick bot or manual cherry-pick).
-1. Push the backport branch update and open the regenerated draft targeting `release/vX.Y`.
-1. Review, confirm the next patch version, and publish.
+2. Backport it to the corresponding `release/vX.Y` branch (cherry-pick bot or manual cherry-pick).
+3. Push the backport branch update and open the regenerated draft targeting `release/vX.Y`.
+4. Review, confirm the next patch version, and publish.
+
+### Regenerating draft notes
+
+If draft notes are not categorized correctly, update the source PR with the appropriate `kind/*` label. Then open **Actions > Release Notes (git-cliff) > Run workflow**, select `main` or the relevant `release/vX.Y` branch in GitHub's branch selector, and run it. The existing draft for that branch is replaced.
 
 ### PR requirements for generated notes
 
 The generated release notes depend on PR metadata. Keep these requirements in every PR:
 
-- Use exactly one changelog label from `kind/feature`, `kind/new-scaler`, `kind/improvement`, `kind/enhancement`, `kind/bug`, `kind/deprecation`, `kind/breaking-change`, `kind/chore`, `kind/documentation`, `kind/dependencies`, or `kind/ci`.
+- Use exactly one changelog label from `kind/feature`, `kind/new-scaler`, `kind/improvement`, `kind/bug`, `kind/deprecation`, `kind/breaking-change`, `kind/chore`, `kind/documentation`, `kind/dependencies`, or `kind/ci`.
 - Use `skip-changelog` only when the PR should not appear in release notes.
 - Use a PR title in format `Component: Description`. The release notes renderer bolds the component automatically.
 

@@ -19,11 +19,10 @@ package eventing
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/kedacore/keda/v2/controllers/keda/util"
 )
 
 const (
@@ -31,7 +30,7 @@ const (
 )
 
 func EnsureCloudEventSourceResourceFinalizer(ctx context.Context, logger logr.Logger, r cloudEventSourceReconcilerInterface, cloudEventSourceResource client.Object) error {
-	if !util.Contains(cloudEventSourceResource.GetFinalizers(), cloudEventSourceFinalizer) {
+	if !slices.Contains(cloudEventSourceResource.GetFinalizers(), cloudEventSourceFinalizer) {
 		logger.Info(fmt.Sprintf("Adding Finalizer for the %s", cloudEventSourceResource.GetName()))
 		cloudEventSourceResource.SetFinalizers(append(cloudEventSourceResource.GetFinalizers(), cloudEventSourceFinalizer))
 
@@ -46,11 +45,11 @@ func EnsureCloudEventSourceResourceFinalizer(ctx context.Context, logger logr.Lo
 }
 
 func FinalizeCloudEventSourceResource(ctx context.Context, logger logr.Logger, r cloudEventSourceReconcilerInterface, cloudEventSourceResource client.Object, namespacedName string) error {
-	if util.Contains(cloudEventSourceResource.GetFinalizers(), cloudEventSourceFinalizer) {
+	if slices.Contains(cloudEventSourceResource.GetFinalizers(), cloudEventSourceFinalizer) {
 		if err := StopEventLoop(logger, r, cloudEventSourceResource); err != nil {
 			return err
 		}
-		cloudEventSourceResource.SetFinalizers(util.Remove(cloudEventSourceResource.GetFinalizers(), cloudEventSourceFinalizer))
+		cloudEventSourceResource.SetFinalizers(slices.DeleteFunc(cloudEventSourceResource.GetFinalizers(), func(f string) bool { return f == cloudEventSourceFinalizer }))
 		if err := r.GetClient().Update(ctx, cloudEventSourceResource); err != nil {
 			logger.Error(err, fmt.Sprintf("Failed to update %s after removing a finalizer", cloudEventSourceResource.GetName()), "finalizer", cloudEventSourceFinalizer)
 			return err

@@ -172,7 +172,7 @@ func buildQueueJSON() []byte {
 func generateResponseExceed30Repos() []byte {
 	var repos []Repo
 
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		var repository Repo
 		id, _ := rand.Int(rand.Reader, big.NewInt(100000))
 		repository.ID = int(id.Int64())
@@ -928,7 +928,7 @@ func TestGithubRunnerPruneCachesBoundsMaps(t *testing.T) {
 		previousWfrs: make(map[string]map[string]*WorkflowRuns, overflow),
 		etags:        make(map[string]string, overflow),
 	}
-	for i := 0; i < overflow; i++ {
+	for i := range overflow {
 		repo := fmt.Sprintf("repo-%d", i)
 		currentRepos[i] = repo
 		s.etags[fmt.Sprintf("https://api.github.com/run/%d", i)] = "etag"

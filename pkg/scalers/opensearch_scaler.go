@@ -310,8 +310,8 @@ func (s *opensearchScaler) searchTemplate(ctx context.Context) ([]byte, error) {
 	return responseBody, nil
 }
 
-func (s *opensearchScaler) buildQueryFromMetadata() (map[string]interface{}, error) {
-	parameters := map[string]interface{}{}
+func (s *opensearchScaler) buildQueryFromMetadata() (map[string]any, error) {
+	parameters := map[string]any{}
 	for _, p := range s.metadata.Parameters {
 		if p != "" {
 			kv := strings.SplitN(p, ":", 2)
@@ -326,7 +326,7 @@ func (s *opensearchScaler) buildQueryFromMetadata() (map[string]interface{}, err
 			parameters[key] = value
 		}
 	}
-	query := map[string]interface{}{
+	query := map[string]any{
 		"id": s.metadata.SearchTemplateName,
 	}
 	if len(parameters) > 0 {
