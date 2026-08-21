@@ -39,7 +39,7 @@ var testGcpCloudTasksMetadata = []parseGcpCloudTasksMetadataTestData{
 		FilterDuration:  0,
 		QueueName:       "myQueue",
 		ProjectID:       "myproject",
-		AuthMetadata: gcp.AuthMetadata{Credentials: "{}"},
+		AuthMetadata:    gcp.AuthMetadata{Credentials: "{}"},
 		gcpAuthorization: &gcp.AuthorizationMetadata{
 			GoogleApplicationCredentials: "{}",
 			PodIdentityProviderEnabled:   false,
@@ -76,7 +76,7 @@ var testGcpCloudTasksMetadata = []parseGcpCloudTasksMetadataTestData{
 		FilterDuration:  0,
 		QueueName:       "mysubscription",
 		ProjectID:       "myproject",
-		AuthMetadata: gcp.AuthMetadata{Credentials: "{}"},
+		AuthMetadata:    gcp.AuthMetadata{Credentials: "{}"},
 		gcpAuthorization: &gcp.AuthorizationMetadata{
 			GoogleApplicationCredentials: "{}",
 			PodIdentityProviderEnabled:   false,
@@ -89,7 +89,7 @@ var testGcpCloudTasksMetadata = []parseGcpCloudTasksMetadataTestData{
 		FilterDuration:  0,
 		QueueName:       "myQueue",
 		ProjectID:       "myProject",
-		AuthMetadata: gcp.AuthMetadata{Credentials: "{}"},
+		AuthMetadata:    gcp.AuthMetadata{Credentials: "{}"},
 		gcpAuthorization: &gcp.AuthorizationMetadata{
 			GoogleApplicationCredentials: "{}",
 			PodIdentityProviderEnabled:   false,
@@ -102,7 +102,7 @@ var testGcpCloudTasksMetadata = []parseGcpCloudTasksMetadataTestData{
 		FilterDuration:  0,
 		QueueName:       "myQueue",
 		ProjectID:       "myProject",
-		AuthMetadata: gcp.AuthMetadata{Credentials: "{}"},
+		AuthMetadata:    gcp.AuthMetadata{Credentials: "{}"},
 		gcpAuthorization: &gcp.AuthorizationMetadata{
 			GoogleApplicationCredentials: "{}",
 			PodIdentityProviderEnabled:   false,
