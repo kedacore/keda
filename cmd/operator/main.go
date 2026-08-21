@@ -18,10 +18,12 @@ package main
 
 import (
 	"flag"
+	"maps"
 	"os"
 	"time"
 
 	"github.com/spf13/pflag"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	kubeinformers "k8s.io/client-go/informers"
@@ -32,6 +34,7 @@ import (
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -163,6 +166,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	byObject := buildWatchLabelSelectorByObjectOrDie()
+
 	leaseDuration, err := kedautil.ResolveOsEnvDuration("KEDA_OPERATOR_LEADER_ELECTION_LEASE_DURATION")
 	if err != nil {
 		setupLog.Error(err, "invalid KEDA_OPERATOR_LEADER_ELECTION_LEASE_DURATION")
@@ -210,6 +215,7 @@ func main() {
 		Cache: ctrlcache.Options{
 			DefaultNamespaces: namespaces,
 			DefaultTransform:  kedautil.CacheObjectTransform,
+			ByObject:          byObject,
 		},
 		HealthProbeBindAddress:  probeAddr,
 		PprofBindAddress:        profilingAddr,
@@ -392,4 +398,38 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+// buildWatchLabelSelectorByObjectOrDie composes the cache.ByObject filters for
+// both WATCH_LABEL_SELECTOR (SO/SJ/HPA) and WATCH_LABEL_SELECTOR_FOR_TRIGGERAUTH
+// (TA/CTA). Returning nil means no filter is applied at the cache level.
+//
+// The two selectors are independent so a cluster-scoped CTA can be shared
+// across operators scoped to different WATCH_LABEL_SELECTOR values.
+//
+// Follows the fail-fast pattern of ctrl.GetConfigOrDie() used elsewhere in
+// main: malformed env vars exit the process at startup rather than propagate.
+func buildWatchLabelSelectorByObjectOrDie() map[client.Object]ctrlcache.ByObject {
+	byObject, err := kedautil.WatchLabelSelectorByObject(
+		&kedav1alpha1.ScaledObject{},
+		&kedav1alpha1.ScaledJob{},
+		&autoscalingv2.HorizontalPodAutoscaler{},
+	)
+	if err != nil {
+		setupLog.Error(err, "failed to parse WATCH_LABEL_SELECTOR")
+		os.Exit(1)
+	}
+	taByObject, err := kedautil.WatchLabelSelectorForTriggerAuthByObject(
+		&kedav1alpha1.TriggerAuthentication{},
+		&kedav1alpha1.ClusterTriggerAuthentication{},
+	)
+	if err != nil {
+		setupLog.Error(err, "failed to parse WATCH_LABEL_SELECTOR_FOR_TRIGGERAUTH")
+		os.Exit(1)
+	}
+	if byObject == nil {
+		return taByObject
+	}
+	maps.Copy(byObject, taByObject)
+	return byObject
 }

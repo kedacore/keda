@@ -58,8 +58,8 @@ func (m *couchDBMetadata) Validate() error {
 }
 
 type couchDBQueryRequest struct {
-	Selector map[string]interface{} `json:"selector"`
-	Fields   []string               `json:"fields"`
+	Selector map[string]any `json:"selector"`
+	Fields   []string       `json:"fields"`
 }
 
 type Res struct {

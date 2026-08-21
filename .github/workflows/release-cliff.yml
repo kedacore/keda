@@ -1,0 +1,121 @@
+name: Release Notes (git-cliff)
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  update-release-draft:
+    permissions:
+      contents: write
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # git-cliff needs full history to resolve commits
+
+      - name: Validate target branch
+        run: |
+          if [[ "${{ github.ref_name }}" != "main" && ! "${{ github.ref_name }}" =~ ^release/v[0-9]+\.[0-9]+$ ]]; then
+            echo "Unsupported target branch: ${{ github.ref_name }}"
+            echo "Use main or release/vX.Y."
+            exit 1
+          fi
+
+      - name: Compute next version and baseline tag
+        id: version
+        run: |
+          git fetch --tags
+
+          if [[ "${{ github.ref_name }}" == release/* ]]; then
+            minor_prefix="${{ github.ref_name }}"
+            minor_prefix="${minor_prefix#release/}"
+            latest=$(git tag --list "${minor_prefix}.*" | sort -V | tail -1)
+            latest="${latest:-${minor_prefix}.0}"
+            patch=$(echo "$latest" | cut -d. -f3)
+            echo "version=v${minor_prefix#v}.$((patch + 1))" >> "$GITHUB_OUTPUT"
+            echo "start_tag=$latest" >> "$GITHUB_OUTPUT"
+          else
+            latest=$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.0$' | sort -V | tail -1)
+            latest="${latest:-v0.0.0}"
+            major=$(echo "$latest" | sed 's/^v//' | cut -d. -f1)
+            minor=$(echo "$latest" | cut -d. -f2)
+            echo "version=v${major}.$((minor + 1)).0" >> "$GITHUB_OUTPUT"
+            echo "start_tag=$latest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Delete existing draft targeting this branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api /repos/${{ github.repository }}/releases \
+            | jq -r --arg b "${{ github.ref_name }}" \
+                '.[] | select(.draft == true and .target_commitish == $b) | .tag_name' \
+            | xargs -r -I{} gh release delete {} --yes --cleanup-tag 2>/dev/null || true
+
+      - name: Install git-cliff
+        uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20 # v2.86.2
+        with:
+          tool: git-cliff
+
+      - name: Generate release notes
+        id: notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+          VERSION: ${{ steps.version.outputs.version }}
+          START_TAG: ${{ steps.version.outputs.start_tag }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          if git rev-parse "$START_TAG" >/dev/null 2>&1; then
+            # Use branch ref instead of HEAD so git-cliff fetches commits from this branch via API.
+            range="${START_TAG}..${BRANCH}"
+          else
+            range=""
+          fi
+
+          [[ "${RUNNER_DEBUG}" == "1" ]] && git-cliff $range --config .github/cliff.toml --tag "$VERSION" --ignore-tags '.*' --strip all -vv > /dev/null || true
+
+          git-cliff $range \
+            --config .github/cliff.toml \
+            --tag "$VERSION" \
+            --ignore-tags '.*' \
+            --strip all > release-notes.md
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          major=$(echo "$VERSION" | sed 's/^v//' | cut -d. -f1)
+          minor=$(echo "$VERSION" | sed 's/^v//' | cut -d. -f2)
+
+          intro="We are happy to release KEDA ${VERSION#v} 🎉"
+          highlights=$(printf 'Here are some highlights:\n\n- <list highlights>')
+          deprecations=$(printf 'Here are the new deprecation(s) as of this release:\n- <list deprecations>')
+          docs="Learn how to deploy KEDA by reading [our documentation](https://keda.sh/docs/${major}.${minor}/deploy/)."
+          roadmap="🗓️ The next KEDA release is currently being estimated for <date>, learn more in our [roadmap](https://github.com/kedacore/keda/blob/main/ROADMAP.md#upcoming-release-cycles)."
+          contributors=$(printf '### New Contributors\n\n<optional contributor highlights>')
+
+          {
+            printf '%s\n\n%s\n\n%s\n\n%s\n\n%s\n\n' "$intro" "$highlights" "$deprecations" "$docs" "$roadmap"
+            cat release-notes.md
+            printf '\n%s\n' "$contributors"
+          } > release-body.md
+
+          gh release create "$VERSION" \
+            --draft \
+            --target "$BRANCH" \
+            --title "$VERSION" \
+            --notes-file release-body.md

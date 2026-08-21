@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -93,12 +94,7 @@ func (c *Config) Enabled(mode Type) bool {
 	if c == nil {
 		return false
 	}
-	for _, m := range c.Modes {
-		if m == mode {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(c.Modes, mode)
 }
 
 // helpers for checking enabled auth modes

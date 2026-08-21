@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"slices"
 	"strconv"
@@ -250,6 +251,7 @@ func (h *scaleHandler) DeleteScalableObject(ctx context.Context, scalableObject 
 			cancel()
 		}
 		h.scaleLoopContexts.Delete(key)
+		h.scaledObjectsMetricCache.Delete(key)
 		err := h.ClearScalersCache(ctx, scalableObject)
 		if err != nil {
 			log.Error(err, "error clearing scalers cache", "scalableObject", scalableObject, "key", key)
@@ -288,6 +290,7 @@ func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1a
 			tmr.Stop()
 		case <-ctx.Done():
 			logger.V(1).Info("Context canceled")
+			h.scaledObjectsMetricCache.Delete(withTriggers.GenerateIdentifier())
 			err := h.ClearScalersCache(ctx, scalableObject)
 			if err != nil {
 				logger.Error(err, "error clearing scalers cache")
@@ -427,9 +430,7 @@ func (h *scaleHandler) handleResult(ctx context.Context, obj kedav1alpha1.Scalab
 		// apply triggers activity delta
 		if activityUpdates != nil || activityRemovals != nil {
 			existing := current.GetStatusTriggersActivity()
-			for k, v := range activityUpdates {
-				existing[k] = v
-			}
+			maps.Copy(existing, activityUpdates)
 			for k := range activityRemovals {
 				delete(existing, k)
 			}
@@ -622,7 +623,8 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 	return h.scalerCaches[key], nil
 }
 
-// ClearScalersCache invalidates chache for the input scalableObject
+// ClearScalersCache invalidates the scalers cache for the input scalableObject.
+// Metric records are kept; they are only deleted when the scalable object is stopped.
 func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject kedav1alpha1.ScalableObject) error {
 	withTriggers, err := kedav1alpha1.AsDuckWithTriggers(scalableObject)
 	if err != nil {
@@ -630,8 +632,6 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject ked
 	}
 
 	key := withTriggers.GenerateIdentifier()
-
-	go h.scaledObjectsMetricCache.Delete(key)
 
 	h.scalerCachesLock.Lock()
 	defer h.scalerCachesLock.Unlock()
@@ -724,7 +724,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	// the matching metrics length has to be the same as required metrics length
 	matchingMetricsChan := make(chan metricResult, len(metricsArray))
 	wg := sync.WaitGroup{}
-	for triggerIndex := 0; triggerIndex < len(allScalers); triggerIndex++ {
+	for triggerIndex := range allScalers {
 		triggerName := strings.Replace(fmt.Sprintf("%T", allScalers[triggerIndex]), "*scalers.", "", 1)
 		if scalerConfigs[triggerIndex].TriggerName != "" {
 			triggerName = scalerConfigs[triggerIndex].TriggerName
@@ -827,9 +827,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	wg.Wait()
 	close(matchingMetricsChan)
 	for result := range matchingMetricsChan {
-		for key, value := range result.metricTriggerPair {
-			metricTriggerPairList[key] = value
-		}
+		maps.Copy(metricTriggerPairList, result.metricTriggerPair)
 
 		// The fallback is already handled by processMetricsWithFallback
 		if result.fallbackActive {
@@ -926,7 +924,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	allScalers, scalerConfigs := scalersCache.GetScalers()
 	results := make(chan scalerState, len(allScalers))
 	wg := sync.WaitGroup{}
-	for scalerIndex := 0; scalerIndex < len(allScalers); scalerIndex++ {
+	for scalerIndex := range allScalers {
 		wg.Add(1)
 		go func(scaler scalers.Scaler, index int, scalerConfig scalersconfig.ScalerConfig, results chan scalerState, wg *sync.WaitGroup) {
 			results <- h.getScalerState(ctx, scaler, index, scalerConfig, scalersCache, logger, scaledObject)
@@ -954,12 +952,8 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 		}
 
 		matchingMetrics = append(matchingMetrics, result.Metrics...)
-		for k, v := range result.Pairs {
-			metricTriggerPairList[k] = v
-		}
-		for k, v := range result.Records {
-			metricsRecord[k] = v
-		}
+		maps.Copy(metricTriggerPairList, result.Pairs)
+		maps.Copy(metricsRecord, result.Records)
 
 		metricscollector.RecordScaledObjectError(scaledObject.Namespace, scaledObject.Name, result.Err)
 	}

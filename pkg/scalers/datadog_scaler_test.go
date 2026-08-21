@@ -40,7 +40,7 @@ type datadogAuthMetadataTestData struct {
 	isError    bool
 }
 
-func assertEqual(t *testing.T, a interface{}, b interface{}) {
+func assertEqual(t *testing.T, a any, b any) {
 	if a == b {
 		return
 	}

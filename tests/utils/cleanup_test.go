@@ -68,9 +68,8 @@ func TestRemoveOpentelemetryComponents(t *testing.T) {
 }
 
 func TestRemoveArgoRollouts(t *testing.T) {
-	// default to true
 	if InstallArgoRollouts == StringFalse {
-		t.Skip("skipping as requested -- Argo Rollouts not installed via these tests")
+		t.Skip("skipping -- Argo Rollouts was not installed for this run")
 	}
 
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl delete -n %s -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml", ArgoRolloutsNamespace))

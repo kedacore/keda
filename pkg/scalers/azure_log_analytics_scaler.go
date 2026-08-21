@@ -239,7 +239,7 @@ func (s *azureLogAnalyticsScaler) getMetricData(ctx context.Context) (float64, e
 	return -1, fmt.Errorf("error parsing the response %w", err)
 }
 
-func parseTableValueToFloat64(value interface{}, dataType azquery.LogsColumnType) (float64, error) {
+func parseTableValueToFloat64(value any, dataType azquery.LogsColumnType) (float64, error) {
 	if value != nil {
 		// type can be: real, int, long
 		if dataType == azquery.LogsColumnTypeReal || dataType == azquery.LogsColumnTypeInt || dataType == azquery.LogsColumnTypeLong {

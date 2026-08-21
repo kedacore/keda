@@ -3,7 +3,7 @@
 # Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM golang:1.26.2
+FROM golang:1.26.6
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
@@ -15,6 +15,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 ARG USERNAME=vscode
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
+
+# renovate: datasource=github-releases depName=protocolbuffers/protobuf
+ENV PROTOC_VERSION=v35.1
 
 # Configure apt, install packages and tools
 RUN apt-get update \
@@ -44,15 +47,14 @@ RUN apt-get update \
     && go install honnef.co/go/tools/cmd/staticcheck@latest \
     && go install golang.org/x/tools/gopls@latest \
     # Protocol Buffer Compiler
-    && PROTOC_VERSION=33.2 \
     && case $(dpkg --print-architecture) in \
         "amd64") PROTOC_ARCH="x86_64" ;; \
         "arm64") PROTOC_ARCH="aarch_64" ;; \
         "s390x") PROTOC_ARCH="s390_64" ;; \
         *) echo "Unsupported architecture"; exit 1 ;; \
     esac \
-    && curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-$PROTOC_ARCH.zip" \
-    && unzip "protoc-${PROTOC_VERSION}-linux-$PROTOC_ARCH.zip" -d $HOME/.local \
+    && curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/${PROTOC_VERSION}/protoc-${PROTOC_VERSION#v}-linux-$PROTOC_ARCH.zip" \
+    && unzip "protoc-${PROTOC_VERSION#v}-linux-$PROTOC_ARCH.zip" -d $HOME/.local \
     && mv $HOME/.local/bin/protoc /usr/local/bin/protoc \
     && mv $HOME/.local/include/ /usr/local/bin/include/ \
     && protoc --version \
@@ -84,7 +86,8 @@ RUN apt-get update \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 
-ENV OPERATOR_RELEASE_VERSION=v1.26.0
+# renovate: datasource=github-releases depName=operator-framework/operator-sdk
+ENV OPERATOR_RELEASE_VERSION=v1.42.3
 RUN ARCH=$(case $(uname -m) in x86_64) echo -n amd64 ;; aarch64) echo -n arm64 ;; *) echo -n $(uname -m) ;; esac) \
     && OS=$(uname | awk '{print tolower($0)}') \
     && OPERATOR_SDK_DL_URL=https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_RELEASE_VERSION} \

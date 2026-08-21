@@ -19,6 +19,7 @@ package keda
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -32,7 +33,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 	version "github.com/kedacore/keda/v2/version"
 )
@@ -145,7 +145,7 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 	excludedLabels := map[string]struct{}{}
 
 	if labels, ok := scaledObject.Annotations[kedav1alpha1.ScaledObjectExcludedLabelsAnnotation]; ok {
-		for _, excludedLabel := range strings.Split(labels, ",") {
+		for excludedLabel := range strings.SplitSeq(labels, ",") {
 			excludedLabels[excludedLabel] = struct{}{}
 		}
 	}
@@ -284,7 +284,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 
 		if metricSpec.External != nil {
 			externalMetricName := metricSpec.External.Metric.Name
-			if kedacontrollerutil.Contains(externalMetricNames, externalMetricName) {
+			if slices.Contains(externalMetricNames, externalMetricName) {
 				return nil, fmt.Errorf("metricName %s defined multiple times in ScaledObject %s", externalMetricName, scaledObject.Name)
 			}
 

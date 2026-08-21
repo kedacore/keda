@@ -18,6 +18,7 @@ package executor
 
 import (
 	"context"
+	"maps"
 	"sort"
 	"strconv"
 	"strings"
@@ -158,7 +159,7 @@ func (e *scaleExecutor) generateJobs(logger logr.Logger, scaledJob *kedav1alpha1
 	excludedLabels := map[string]struct{}{}
 
 	if labels, ok := scaledJob.Annotations[kedav1alpha1.ScaledJobExcludedLabelsAnnotation]; ok {
-		for _, excludedLabel := range strings.Split(labels, ",") {
+		for excludedLabel := range strings.SplitSeq(labels, ",") {
 			excludedLabels[excludedLabel] = struct{}{}
 		}
 	}
@@ -174,9 +175,7 @@ func (e *scaleExecutor) generateJobs(logger logr.Logger, scaledJob *kedav1alpha1
 	annotations := map[string]string{
 		"scaledjob.keda.sh/generation": strconv.FormatInt(scaledJob.Generation, 10),
 	}
-	for key, value := range scaledJob.Annotations {
-		annotations[key] = value
-	}
+	maps.Copy(annotations, scaledJob.Annotations)
 
 	jobs := make([]*batchv1.Job, int(scaleTo))
 	for i := 0; i < int(scaleTo); i++ {
