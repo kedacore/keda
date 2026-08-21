@@ -99,6 +99,7 @@ require (
 	github.com/prometheus/prometheus v0.310.0
 	github.com/rabbitmq/amqp091-go v1.11.0
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9
+	github.com/redis/go-redis-entraid v1.0.7
 	github.com/redis/go-redis/v9 v9.19.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/segmentio/kafka-go v0.4.51
