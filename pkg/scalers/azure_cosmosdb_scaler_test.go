@@ -620,7 +620,12 @@ func TestCosmosDBBearerAuthentication(t *testing.T) {
 		require.NoError(t, err)
 		err = client.setAuthHeader(req, http.MethodGet, "docs", "resource", "date", "")
 		require.NoError(t, err)
-		assert.Contains(t, req.Header.Get("Authorization"), "test-token")
+		authHeader := req.Header.Get("Authorization")
+		// Cosmos DB expects the URL-escaped form of "type=aad&ver=1.0&sig={bearer-token}"
+		// on the wire, so the header must start with type%3Daad and include the token
+		// returned by the injected TokenCredential unchanged.
+		assert.Contains(t, authHeader, "type%3Daad")
+		assert.Contains(t, authHeader, "test-token")
 	}
 
 	assert.Equal(t, []string{"https://cosmos.example/.default", "https://cosmos.example/.default"}, credential.scopes)
