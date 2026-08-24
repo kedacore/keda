@@ -354,44 +354,44 @@ func (s *elasticForecastScaler) getForecastedValue(ctx context.Context) (float64
 func (s *elasticForecastScaler) queryForecastBucket(ctx context.Context, forecastID string) (float64, bool, error) {
 	targetMs := time.Now().Add(s.metadata.LookAhead).UnixMilli()
 
-	filters := []interface{}{
-		map[string]interface{}{"term": map[string]interface{}{
+	filters := []any{
+		map[string]any{"term": map[string]any{
 			"job_id": s.metadata.JobID,
 		}},
-		map[string]interface{}{"term": map[string]interface{}{
+		map[string]any{"term": map[string]any{
 			"forecast_id": forecastID,
 		}},
-		map[string]interface{}{"term": map[string]interface{}{
+		map[string]any{"term": map[string]any{
 			"result_type": "model_forecast",
 		}},
 	}
 
 	if s.metadata.PartitionFieldValue != "" {
-		filters = append(filters, map[string]interface{}{"term": map[string]interface{}{
+		filters = append(filters, map[string]any{"term": map[string]any{
 			"partition_field_value": s.metadata.PartitionFieldValue,
 		}})
 	}
 
 	if s.metadata.ByFieldValue != "" {
-		filters = append(filters, map[string]interface{}{"term": map[string]interface{}{
+		filters = append(filters, map[string]any{"term": map[string]any{
 			"by_field_value": s.metadata.ByFieldValue,
 		}})
 	}
 
-	filters = append(filters, map[string]interface{}{"range": map[string]interface{}{
-		"timestamp": map[string]interface{}{"lte": targetMs},
+	filters = append(filters, map[string]any{"range": map[string]any{
+		"timestamp": map[string]any{"lte": targetMs},
 	}})
 
-	query := map[string]interface{}{
+	query := map[string]any{
 		"size": 1,
-		"query": map[string]interface{}{
-			"bool": map[string]interface{}{
+		"query": map[string]any{
+			"bool": map[string]any{
 				"filter": filters,
 			},
 		},
-		"sort": []interface{}{
-			map[string]interface{}{
-				"timestamp": map[string]interface{}{"order": "desc"},
+		"sort": []any{
+			map[string]any{
+				"timestamp": map[string]any{"order": "desc"},
 			},
 		},
 		"_source": []string{"forecast_prediction", "timestamp"},

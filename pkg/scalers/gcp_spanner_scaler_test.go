@@ -2,6 +2,7 @@ package scalers
 
 import (
 	"context"
+	"maps"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -27,12 +28,8 @@ var spannerRequiredFields = map[string]string{
 // withOverrides returns a copy of base with the given key/value pairs applied.
 func withOverrides(base map[string]string, overrides map[string]string) map[string]string {
 	out := make(map[string]string, len(base)+len(overrides))
-	for k, v := range base {
-		out[k] = v
-	}
-	for k, v := range overrides {
-		out[k] = v
-	}
+	maps.Copy(out, base)
+	maps.Copy(out, overrides)
 	return out
 }
 

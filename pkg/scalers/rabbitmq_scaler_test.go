@@ -9,6 +9,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
+	"maps"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -22,7 +23,6 @@ import (
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type closeTrackingRabbitMQTransport struct {
@@ -217,9 +217,9 @@ var testRabbitMQAuthParamData = []parseRabbitMQAuthParamTestData{
 	// failure, password from env but not username
 	{map[string]string{"queueName": "sample", "hostFromEnv": host, "passwordFromEnv": rabbitMQPassword}, v1alpha1.AuthPodIdentity{}, map[string]string{}, true, rmqTLSDisable, false},
 	// success, WorkloadIdentity
-	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "http"}, v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAzureWorkload, IdentityID: kedautil.StringPointer("client-id")}, map[string]string{"workloadIdentityResource": "rabbitmq-resource-id"}, false, rmqTLSDisable, true},
+	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "http"}, v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAzureWorkload, IdentityID: new("client-id")}, map[string]string{"workloadIdentityResource": "rabbitmq-resource-id"}, false, rmqTLSDisable, true},
 	// failure, WorkloadIdentity not supported for amqp
-	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "amqp"}, v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAzureWorkload, IdentityID: kedautil.StringPointer("client-id")}, map[string]string{"workloadIdentityResource": "rabbitmq-resource-id"}, true, rmqTLSDisable, false},
+	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "amqp"}, v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAzureWorkload, IdentityID: new("client-id")}, map[string]string{"workloadIdentityResource": "rabbitmq-resource-id"}, true, rmqTLSDisable, false},
 	// success, OAuth2 with HTTP protocol (minimal config)
 	{map[string]string{"queueName": "sample", "host": "http://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"oauthTokenURI": "https://oauth.example.com/token", "clientID": "my-client", "clientSecret": "my-secret"}, false, rmqTLSDisable, false},
 	// success, OAuth2 with scopes
@@ -477,9 +477,7 @@ func TestGetQueueInfo(t *testing.T) {
 			"hostFromEnv": host,
 			"protocol":    "http",
 		}
-		for k, v := range testData.extraMetadata {
-			metadata[k] = v
-		}
+		maps.Copy(metadata, testData.extraMetadata)
 
 		s, err := NewRabbitMQScaler(
 			&scalersconfig.ScalerConfig{
@@ -496,6 +494,7 @@ func TestGetQueueInfo(t *testing.T) {
 
 		ctx := context.TODO()
 		_, active, err := s.GetMetricsAndActivity(ctx, "Metric")
+		apiStub.Close()
 
 		if testData.responseStatus == http.StatusOK {
 			if err != nil {
@@ -705,9 +704,7 @@ func TestGetQueueInfoWithRegex(t *testing.T) {
 			"hostFromEnv": host,
 			"protocol":    "http",
 		}
-		for k, v := range testData.extraMetadata {
-			metadata[k] = v
-		}
+		maps.Copy(metadata, testData.extraMetadata)
 
 		s, err := NewRabbitMQScaler(
 			&scalersconfig.ScalerConfig{
@@ -724,6 +721,7 @@ func TestGetQueueInfoWithRegex(t *testing.T) {
 
 		ctx := context.TODO()
 		_, active, err := s.GetMetricsAndActivity(ctx, "Metric")
+		apiStub.Close()
 
 		if testData.responseStatus == http.StatusOK {
 			if err != nil {
@@ -808,6 +806,7 @@ func TestGetPageSizeWithRegex(t *testing.T) {
 
 		ctx := context.TODO()
 		_, active, err := s.GetMetricsAndActivity(ctx, "Metric")
+		apiStub.Close()
 
 		if err != nil {
 			t.Error("Expect success", err)
@@ -929,6 +928,7 @@ func TestRegexQueueMissingError(t *testing.T) {
 
 		ctx := context.TODO()
 		_, _, err = s.GetMetricsAndActivity(ctx, "Metric")
+		apiStub.Close()
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}

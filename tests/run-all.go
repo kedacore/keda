@@ -72,6 +72,11 @@ func main() {
 	}
 
 	//
+	// Only install the optional components that a selected test declares it needs
+	//
+	resolveOptionalDependencies(append(append([]string{}, regularTestFiles...), sequentialTestFiles...))
+
+	//
 	// Install KEDA
 	//
 	if helper.KEDATestConfig.KEDA.SkipSetup {
@@ -145,6 +150,96 @@ func executeTest(ctx context.Context, file string, timeout string, tries int) Te
 		fmt.Printf("Execution of %s, attempt %q has failed: %s \n", file, numberToWord(i), err)
 	}
 	return result
+}
+
+// optionalDependency describes an optional setup component that a test opts into via a
+// "// +e2e-deps:<name>" marker. env is the variable that setup_test.go reads to decide
+// whether to install the component.
+type optionalDependency struct {
+	env string
+}
+
+// optionalDependencies maps a marker name to the setup component it controls. Only
+// components that are fully annotated (every consuming test carries the marker) belong
+// here. Others (e.g. identity webhooks) stay driven by their env var in CI until they are
+// migrated too.
+var optionalDependencies = map[string]optionalDependency{
+	"argo-rollouts": {env: "E2E_INSTALL_ARGO_ROLLOUTS"},
+	"kafka":         {env: "E2E_INSTALL_KAFKA"},
+	"opentelemetry": {env: "ENABLE_OPENTELEMETRY"},
+}
+
+var dependencyMarker = regexp.MustCompile(`(?m)^//\s*\+e2e-deps:\s*(.+)$`)
+
+// declaredDependencies returns the dependency names declared in the given file content.
+func declaredDependencies(content []byte) map[string]bool {
+	declared := map[string]bool{}
+	for _, match := range dependencyMarker.FindAllStringSubmatch(string(content), -1) {
+		for _, name := range strings.Split(match[1], ",") {
+			if name = strings.TrimSpace(name); name != "" {
+				declared[name] = true
+			}
+		}
+	}
+	return declared
+}
+
+// neededDependencies returns the set of optional components declared across the given test
+// files. installAll is true when a file could not be read, in which case every optional
+// component should be installed to stay on the safe side. An unknown marker name aborts
+// the run.
+func neededDependencies(testFiles []string) (needed map[string]bool, installAll bool) {
+	needed = map[string]bool{}
+	unknownMarker := false
+	for _, file := range testFiles {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			fmt.Printf("Cannot read %s to resolve dependencies, installing all optional components: %v\n", file, err)
+			installAll = true
+			continue
+		}
+		for name := range declaredDependencies(content) {
+			if _, ok := optionalDependencies[name]; !ok {
+				fmt.Printf("Unknown e2e-deps marker %q in %s, known markers: %s\n", name, file, strings.Join(knownDependencyNames(), ", "))
+				unknownMarker = true
+				continue
+			}
+			needed[name] = true
+		}
+	}
+	if unknownMarker {
+		os.Exit(1)
+	}
+	return needed, installAll
+}
+
+func knownDependencyNames() []string {
+	names := make([]string, 0, len(optionalDependencies))
+	for name := range optionalDependencies {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return names
+}
+
+// resolveOptionalDependencies exports the env var for each optional component based on
+// whether any selected test declared it, so setup only installs what is actually needed.
+// An explicitly set env var always wins, and an unreadable file falls back to installing
+// everything to stay on the safe side.
+func resolveOptionalDependencies(testFiles []string) {
+	needed, installAll := neededDependencies(testFiles)
+
+	for name, dep := range optionalDependencies {
+		if os.Getenv(dep.env) != "" {
+			continue // explicit override wins
+		}
+		if installAll || needed[name] {
+			os.Setenv(dep.env, helper.StringTrue)
+		} else {
+			fmt.Printf("No selected test needs %q, skipping its installation\n", name)
+			os.Setenv(dep.env, helper.StringFalse)
+		}
+	}
 }
 
 func getRegularTestFiles(e2eRegex string) []string {
@@ -688,6 +783,19 @@ func showDryRunOutput(regularTestFiles, sequentialTestFiles []string, e2eRegex s
 				fmt.Println()
 			}
 		}
+	}
+
+	// Show which optional components would be installed based on the selected tests
+	needed, installAll := neededDependencies(append(append([]string{}, regularTestFiles...), sequentialTestFiles...))
+	names := knownDependencyNames()
+	fmt.Println("\nOptional components:")
+	for _, name := range names {
+		install := installAll || needed[name]
+		if override := os.Getenv(optionalDependencies[name].env); override != "" {
+			fmt.Printf("├── %s: %s (forced by %s)\n", name, override, optionalDependencies[name].env)
+			continue
+		}
+		fmt.Printf("├── %s: install=%t\n", name, install)
 	}
 
 	fmt.Println("\nThis was a dry-run. No actual tests were executed.")

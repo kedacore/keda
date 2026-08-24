@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
 	"reflect"
 	"strconv"
@@ -536,9 +537,7 @@ func testFileContents(testData parseKafkaAuthParamsTestData, meta kafkaMetadata,
 
 func TestKafkaOAuthbearerAuthParams(t *testing.T) {
 	for _, testData := range parseKafkaOAuthbearerAuthParamsTestDataset {
-		for k, v := range validKafkaMetadata {
-			testData.metadata[k] = v
-		}
+		maps.Copy(testData.metadata, validKafkaMetadata)
 
 		meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
 

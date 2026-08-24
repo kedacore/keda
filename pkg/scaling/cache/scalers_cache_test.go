@@ -358,7 +358,7 @@ func TestScalersCache_FastReaderDoesNotTripBudgetTimer(t *testing.T) {
 	cache := newCacheWithScaler(scaler)
 	cache.ReaderDrainBudget = time.Second
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		if _, _, _, err := cache.GetMetricsAndActivityForScaler(context.Background(), 0, "fake"); err != nil {
 			t.Fatalf("reader %d got unexpected error: %v", i, err)
 		}
@@ -380,7 +380,7 @@ func TestScalersCache_FastReaderDoesNotTripBudgetTimer(t *testing.T) {
 
 func TestScalersCache_ConcurrentCloseAndRead(t *testing.T) {
 	const iterations = 200
-	for i := 0; i < iterations; i++ {
+	for i := range iterations {
 		scaler := newFakeScaler(nil)
 		cache := newCacheWithScaler(scaler)
 

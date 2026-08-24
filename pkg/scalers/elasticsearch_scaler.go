@@ -208,8 +208,8 @@ func (s *elasticsearchScaler) getQueryResult(ctx context.Context) (float64, erro
 	return v, nil
 }
 
-func buildQuery(metadata *elasticsearchMetadata) map[string]interface{} {
-	parameters := map[string]interface{}{}
+func buildQuery(metadata *elasticsearchMetadata) map[string]any {
+	parameters := map[string]any{}
 	for _, p := range metadata.Parameters {
 		if p != "" {
 			kv := strings.Split(p, ":")
@@ -218,7 +218,7 @@ func buildQuery(metadata *elasticsearchMetadata) map[string]interface{} {
 			parameters[key] = value
 		}
 	}
-	query := map[string]interface{}{
+	query := map[string]any{
 		"id": metadata.SearchTemplateName,
 	}
 	if len(parameters) > 0 {

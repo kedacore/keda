@@ -75,7 +75,7 @@ var _ = Describe("hpa", func() {
 
 		var capturedScaledObject v1alpha1.ScaledObject
 		client.EXPECT().Status().Return(statusWriter)
-		statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(arg interface{}, scaledObject *v1alpha1.ScaledObject, anotherArg interface{}, opts ...interface{}) {
+		statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(arg any, scaledObject *v1alpha1.ScaledObject, anotherArg any, opts ...any) {
 			capturedScaledObject = *scaledObject
 		})
 
@@ -162,7 +162,7 @@ var _ = Describe("hpa", func() {
 
 		var capturedScaledObject v1alpha1.ScaledObject
 		client.EXPECT().Status().Return(statusWriter)
-		statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(arg interface{}, scaledObject *v1alpha1.ScaledObject, anotherArg interface{}, opts ...interface{}) {
+		statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(arg any, scaledObject *v1alpha1.ScaledObject, anotherArg any, opts ...any) {
 			capturedScaledObject = *scaledObject
 		})
 

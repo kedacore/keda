@@ -143,7 +143,7 @@ func TestWorkloadGetMetricSpecForScaling(t *testing.T) {
 
 func createPodlist(count int) *v1.PodList {
 	list := &v1.PodList{}
-	for i := 0; i < count; i++ {
+	for i := range count {
 		pod := &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        fmt.Sprintf("demo-pod-v%d", i),

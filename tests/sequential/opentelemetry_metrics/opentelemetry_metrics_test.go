@@ -1,6 +1,8 @@
 //go:build e2e
 // +build e2e
 
+// +e2e-deps:opentelemetry
+
 package opentelemetry_metrics_test
 
 import (

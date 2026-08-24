@@ -52,7 +52,7 @@ jobs:
           severity: ${{ inputs.severity }}
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
         if: ${{ inputs.publish }}
         with:
           sarif_file: ${{ inputs.output }}
