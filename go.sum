@@ -32,8 +32,8 @@ cloud.google.com/go/secretmanager v1.21.0/go.mod h1:+nlV+GYqTD8DM+x7Kk3UF7ZPYgdY
 cloud.google.com/go/spanner v1.94.0 h1:tve2XojeMa32SsrDNkp3J08TW4TZUVrv8TvTqGUif4A=
 cloud.google.com/go/spanner v1.94.0/go.mod h1:Z2+83J5oVDmd1n5ntVMmjEuiNoXOpAyNeG7y1tuEHk0=
 cloud.google.com/go/storage v1.0.0/go.mod h1:IhtSnM/ZTZV8YYJWCY8RULGVqBDmpoyjwiyrjsg+URw=
-cloud.google.com/go/storage v1.64.0 h1:KLpxI/oX9LxeRsNqn877d2WyeT3ryiEwnGt8pwcSPZg=
-cloud.google.com/go/storage v1.64.0/go.mod h1:lWyAtwvDZHdL3k68WVKbESP6bmWaV23ZJJ/JEVw/ZaQ=
+cloud.google.com/go/storage v1.65.0 h1:McbFt5j+hTNx+dkFuzq7teakIKcpqGp/cJZRxMyfvAc=
+cloud.google.com/go/storage v1.65.0/go.mod h1:UsS9OgFg/XHOSYakQ8ZtLWWeyGkk1WnmD/GsGfN0BHM=
 cloud.google.com/go/trace v1.16.0 h1:GmQovzFc5F0CNfl0VLgL64aoTtu7xsM0YajW2GlG9+E=
 cloud.google.com/go/trace v1.16.0/go.mod h1:r+bdAn16dKLSV1G2D5v3e58IlQlizfxWrUfjx7kM7X0=
 code.cloudfoundry.org/clock v0.0.0-20180518195852-02e53af36e6c/go.mod h1:QD9Lzhd/ux6eNQVUDVRJX/RKTigpewimNYBi7ivZKY8=
