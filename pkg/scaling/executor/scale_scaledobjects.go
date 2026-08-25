@@ -77,10 +77,30 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			logger.V(1).Info("Some triggers defined in ScaledObject are not working correctly")
 		default:
 			// triggers are active, but we didn't need to scale (replica count > 0)
-			result.LastActiveTime = &metav1.Time{Time: time.Now()}
+			// Note: LastActiveTime is intentionally not refreshed here. It's only consumed by the
+			// scale-to-zero cooldown check below, once triggers become inactive, so writing it on
+			// every steady-state active poll only forces a redundant status patch (LastActiveTime
+			// is the sole field that changes every poll, which defeats the DeepEqual skip-check in
+			// scale_handler.go's handleResult). We set it instead at the point where triggers
+			// actually transition from active to inactive, see below.
 		}
 	} else {
 		// isActive == false
+		// Record the transition point: if triggers were active as of the last reconcile and are
+		// inactive now, this poll is the true end of the active period, so this is when
+		// LastActiveTime should be refreshed for the scale-to-zero cooldown check below. On
+		// subsequent polls, while triggers remain inactive, the previously persisted Active
+		// condition is already False, so this stays a no-op and the status patch can be skipped.
+		previousActiveCondition := scaledObject.Status.Conditions.GetActiveCondition()
+		if previousActiveCondition.IsTrue() {
+			now := metav1.Time{Time: time.Now()}
+			result.LastActiveTime = &now
+			// scaleToZeroOrIdle (below, same poll) reads scaledObject.Status.LastActiveTime
+			// directly to evaluate the cooldown period. Update this in-memory copy too, so the
+			// cooldown check sees "just went inactive" rather than a stale value from before this
+			// active period began; it doesn't get persisted here, only via result.LastActiveTime.
+			scaledObject.Status.LastActiveTime = &now
+		}
 		result.Conditions.SetActiveCondition(metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active")
 		switch {
 		case isError && scaledObject.Spec.Fallback != nil && scaledObject.Spec.Fallback.Replicas != 0:

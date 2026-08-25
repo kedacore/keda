@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -1279,4 +1280,92 @@ func TestRequestScale_ScalerErrorWithFallback_HPAHealthy(t *testing.T) {
 
 	readyCond := result.Conditions.GetReadyCondition()
 	assert.Truef(t, readyCond.IsTrue(), "with fallback configured and HPA healthy, Ready should be True, got %s/%s", readyCond.Status, readyCond.Reason)
+}
+
+// TestRequestScale_SteadyStateActive_DoesNotRefreshLastActiveTime covers
+// https://github.com/kedacore/keda/issues/7998: while triggers stay active and
+// replica count is already correct (steady state, nothing to scale), LastActiveTime
+// must not be refreshed on every poll, since it's only consumed by the scale-to-zero
+// cooldown check once triggers go inactive. Refreshing it every poll defeats the
+// DeepEqual skip-check in scale_handler.go's handleResult and forces a redundant
+// status patch (and etcd write) every polling interval.
+func TestRequestScale_SteadyStateActive_DoesNotRefreshLastActiveTime(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := events.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+
+	so := newSOWithHPA() // MinReplicaCount=1
+	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
+	so.Status.Conditions.SetActiveCondition(v1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active")
+
+	mockDeploymentGet(mockClient) // currentReplicas=1, i.e. already at MinReplicaCount
+	mockHealthyHPA(mockClient)
+
+	// isActive=true, currentReplicas == minReplicas > 0 → lands in the "nothing to
+	// scale" default branch.
+	result := exec.RequestScale(context.TODO(), &so, true, false, ScaleExecutorOptions{})
+
+	assert.Nil(t, result.LastActiveTime, "LastActiveTime should not be refreshed while triggers remain active in steady state")
+}
+
+// TestRequestScale_ActiveToInactiveTransition_RefreshesLastActiveTime covers the other
+// half of the #7998 fix: the moment triggers actually transition from active to
+// inactive, LastActiveTime must be refreshed so the scale-to-zero cooldown period is
+// measured from roughly the true end of the active period, not from some earlier,
+// possibly much older activation timestamp.
+func TestRequestScale_ActiveToInactiveTransition_RefreshesLastActiveTime(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := events.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+
+	so := newSOWithHPA() // MinReplicaCount=1
+	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
+	// Simulate: as of the last reconcile, triggers were active.
+	so.Status.Conditions.SetActiveCondition(v1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active")
+	// And LastActiveTime was last refreshed a long time ago (e.g. when this active
+	// period first began), well outside any reasonable cooldown period.
+	staleActiveTime := v1.NewTime(time.Now().Add(-2 * time.Hour))
+	so.Status.LastActiveTime = &staleActiveTime
+
+	mockDeploymentGet(mockClient) // currentReplicas=1 == minReplicas, so this lands in the inactive "default: nothing to do" case, not scaleToZeroOrIdle
+	mockHealthyHPA(mockClient)
+
+	// isActive=false: triggers just went inactive this poll.
+	result := exec.RequestScale(context.TODO(), &so, false, false, ScaleExecutorOptions{})
+
+	if assert.NotNil(t, result.LastActiveTime, "LastActiveTime should be refreshed exactly at the active->inactive transition") {
+		assert.WithinDuration(t, time.Now(), result.LastActiveTime.Time, 5*time.Second)
+		assert.True(t, result.LastActiveTime.After(staleActiveTime.Time), "the refreshed LastActiveTime should be newer than the stale pre-transition value")
+	}
+}
+
+// TestRequestScale_SteadyStateInactive_DoesNotRefreshLastActiveTime confirms the
+// transition detection is a one-time event: once the Active condition is already
+// False from a prior reconcile, subsequent inactive polls must not keep refreshing
+// LastActiveTime (which would otherwise re-introduce the same redundant-patch problem
+// for steady-state inactive ScaledObjects).
+func TestRequestScale_SteadyStateInactive_DoesNotRefreshLastActiveTime(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := events.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+
+	so := newSOWithHPA() // MinReplicaCount=1
+	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
+	// Simulate: triggers were already inactive as of the last reconcile.
+	so.Status.Conditions.SetActiveCondition(v1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active")
+	priorTransitionTime := v1.NewTime(time.Now().Add(-1 * time.Minute))
+	so.Status.LastActiveTime = &priorTransitionTime
+
+	mockDeploymentGet(mockClient)
+	mockHealthyHPA(mockClient)
+
+	result := exec.RequestScale(context.TODO(), &so, false, false, ScaleExecutorOptions{})
+
+	assert.Nil(t, result.LastActiveTime, "LastActiveTime should not be refreshed on repeated inactive polls once the transition has already been recorded")
 }
