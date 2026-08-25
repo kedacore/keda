@@ -605,8 +605,6 @@ func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_WithNotModified(t *testing
 	if err := json.Unmarshal([]byte(testGhWFJobResponse), &jobs); err != nil {
 		t.Fail()
 	}
-	jobsPageURL := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=%d",
-		meta.GithubAPIURL, meta.Owner, "Hello-World", int64(30433642), githubJobsPerPage)
 	previousJobPages := map[jobCacheKey][]Job{
 		{repo: "Hello-World", runID: 30433642, page: 1}: jobs.Jobs,
 	}
@@ -971,7 +969,7 @@ func TestGithubRunnerPruneCachesDropsAbsentWfrRepos(t *testing.T) {
 	s := githubRunnerScaler{
 		metadata:         &githubRunnerMetadata{},
 		previousJobPages: map[jobCacheKey][]Job{},
-		previousWfrs:     map[string]map[string]*WorkflowRuns{
+		previousWfrs: map[string]map[string]*WorkflowRuns{
 			"keep-1": {"queued": &WorkflowRuns{}},
 			"drop-2": {"queued": &WorkflowRuns{}},
 		},
@@ -993,7 +991,7 @@ func TestGithubRunnerPruneCompletedJobsDropsFinishedRuns(t *testing.T) {
 
 	s := githubRunnerScaler{
 		metadata: meta,
-		previousJobs: map[jobCacheKey][]Job{
+		previousJobPages: map[jobCacheKey][]Job{
 			{repo: "repo", runID: 100, page: 1}: nil, // still active, kept
 			{repo: "repo", runID: 200, page: 1}: nil, // completed, dropped
 			{repo: "repo", runID: 200, page: 2}: nil, // completed, dropped
@@ -1009,14 +1007,14 @@ func TestGithubRunnerPruneCompletedJobsDropsFinishedRuns(t *testing.T) {
 		{ID: 100, Repository: Repo{Name: "repo"}},
 	})
 
-	if _, ok := s.previousJobs[jobCacheKey{repo: "repo", runID: 200, page: 1}]; ok {
-		t.Errorf("previousJobs still contains completed run 200 page 1 after pruneCompletedJobs")
+	if _, ok := s.previousJobPages[jobCacheKey{repo: "repo", runID: 200, page: 1}]; ok {
+		t.Errorf("previousJobPages still contains completed run 200 page 1 after pruneCompletedJobs")
 	}
-	if _, ok := s.previousJobs[jobCacheKey{repo: "repo", runID: 200, page: 2}]; ok {
-		t.Errorf("previousJobs still contains completed run 200 page 2 after pruneCompletedJobs")
+	if _, ok := s.previousJobPages[jobCacheKey{repo: "repo", runID: 200, page: 2}]; ok {
+		t.Errorf("previousJobPages still contains completed run 200 page 2 after pruneCompletedJobs")
 	}
-	if _, ok := s.previousJobs[jobCacheKey{repo: "repo", runID: 100, page: 1}]; !ok {
-		t.Errorf("previousJobs lost still-active run 100 after pruneCompletedJobs")
+	if _, ok := s.previousJobPages[jobCacheKey{repo: "repo", runID: 100, page: 1}]; !ok {
+		t.Errorf("previousJobPages lost still-active run 100 after pruneCompletedJobs")
 	}
 	if _, ok := s.etags[s.jobsAPIURL("repo", 200, 1)]; ok {
 		t.Errorf("etags still contains completed run 200's jobs URL after pruneCompletedJobs")
@@ -1189,7 +1187,7 @@ func TestGetWorkflowRunJobs_SecondPageChangedWhileFirstPageNotModified(t *testin
 	if got := s.etags[page2URL]; got != `"page2-fresh-etag"` {
 		t.Fatalf("expected page 2 etag to be refreshed to %q, got %q", `"page2-fresh-etag"`, got)
 	}
-	if got := s.previousJobPages[page2URL]; len(got) != 50 {
+	if got := s.previousJobPages[jobCacheKey{repo: repo, runID: int64(30433642), page: 2}]; len(got) != 50 {
 		t.Fatalf("expected previousJobPages for page 2 to be updated with 50 fresh jobs, got %d entries", len(got))
 	}
 }
@@ -1228,9 +1226,9 @@ func TestGetWorkflowRunJobs_PerRunCacheDoesNotConflateConcurrentRuns(t *testing.
 			urlA: `"etag-a"`,
 			urlB: `"etag-b"`,
 		},
-		previousJobs: map[jobCacheKey][]Job{
-			{repo: repo, runID: runA}: jobsA,
-			{repo: repo, runID: runB}: jobsB,
+		previousJobPages: map[jobCacheKey][]Job{
+			{repo: repo, runID: runA, page: 1}: jobsA,
+			{repo: repo, runID: runB, page: 1}: jobsB,
 		},
 	}
 

@@ -33,17 +33,18 @@ const (
 	// githubScalerMaxCacheEntries caps the etags, previousJobPages, and
 	// previousWfrs maps. Without it the etags and previousJobPages maps grow
 	// once per workflow run page for the lifetime of the operator pod (the URL
-	// contains the run ID and page number), and previousJobs and previousWfrs
-	// grow once per distinct repository name (previousJobs once per distinct
-	// (repository, run ID) pair) returned by the API.
+	// contains the run ID and page number), and previousWfrs grows once per
+	// distinct repository name returned by the API.
 	githubScalerMaxCacheEntries = 5000
 )
 
 var reservedLabels = []string{"self-hosted", "linux", "x64"}
 
-// jobCacheKey identifies a single workflow run's job list within
-// previousJobs. A repository can have several runs queued/in_progress at
-// once, so the run ID is required in addition to the repository name.
+// jobCacheKey identifies a single page of a single workflow run's job list
+// within previousJobPages. A repository can have several runs
+// queued/in_progress at once, and a run can have more jobs than fit on a
+// single page, so the run ID and page number are required in addition to the
+// repository name.
 type jobCacheKey struct {
 	repo  string
 	runID int64
@@ -634,7 +635,7 @@ func stripDeadRuns(allWfrs []WorkflowRuns) []WorkflowRun {
 // jobsAPIURL returns the GitHub API URL for a workflow run's jobs, used both
 // to fetch the jobs and as the etags cache key for that same request.
 func (s *githubRunnerScaler) jobsAPIURL(repoName string, workflowRunID int64, page int) string {
-	return fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=%d",
+	apiURL := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=%d",
 		s.metadata.GithubAPIURL,
 		url.PathEscape(s.metadata.Owner),
 		url.PathEscape(repoName),
@@ -643,14 +644,13 @@ func (s *githubRunnerScaler) jobsAPIURL(repoName string, workflowRunID int64, pa
 	if page > 1 {
 		apiURL = fmt.Sprintf("%s&page=%d", apiURL, page)
 	}
+	return apiURL
 }
 
 // fetchWorkflowRunJobsPage fetches a single page of jobs for a workflow run.
 // Each page is cached and validated against GitHub independently, keyed by
 // its own URL (which encodes both the workflow run and the page number). A
-// 304 on one page therefore never assumes that other pages of the same
-// workflow run are also unchanged: every page is still requested and its own
-// ETag verified before its cached contents are reused.
+// 304 on one page never assumes that other pages are also unchanged.
 func (s *githubRunnerScaler) fetchWorkflowRunJobsPage(ctx context.Context, workflowRunID int64, repoName string, page int) ([]Job, error) {
 	apiURL := s.jobsAPIURL(repoName, workflowRunID, page)
 
@@ -713,6 +713,8 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 	}
 
 	return allJobs, nil
+}
+
 // getWorkflowRuns returns a list of workflow runs for a given repository
 func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName string, status string) (*WorkflowRuns, error) {
 	apiURL := fmt.Sprintf("%s/repos/%s/%s/actions/runs?status=%s&per_page=100",
@@ -844,18 +846,25 @@ func (s *githubRunnerScaler) pruneCaches(currentRepos []string) {
 	evictExcess(s.etags, githubScalerMaxCacheEntries)
 }
 
-// pruneCompletedJobs removes previousJobs entries for runs that are no
-// longer queued/in_progress, so a completed run's cached job list is not
-// held indefinitely waiting for size-based eviction in pruneCaches.
+// pruneCompletedJobs removes previousJobPages and etags entries for job
+// pages belonging to runs that are no longer queued/in_progress, so a
+// completed run's cached job pages are not held indefinitely waiting for
+// size-based eviction in pruneCaches. previousJobPages is keyed per page
+// while activeWfrs has no notion of pages, so each cached (repo, runID,
+// page) entry is matched against activeWfrs by (repo, runID) alone.
 func (s *githubRunnerScaler) pruneCompletedJobs(activeWfrs []WorkflowRun) {
-	active := make(map[jobCacheKey]struct{}, len(activeWfrs)) // TODO: add pages
-	for _, wfr := range activeWfrs {
-		active[jobCacheKey{repo: wfr.Repository.Name, runID: wfr.ID}] = struct{}{}
+	isActive := func(repo string, runID int64) bool {
+		for _, wfr := range activeWfrs {
+			if wfr.Repository.Name == repo && wfr.ID == runID {
+				return true
+			}
+		}
+		return false
 	}
-	for key := range s.previousJobs {
-		if _, ok := active[key]; !ok {
-			delete(s.previousJobs, key)
-			delete(s.etags, s.jobsAPIURL(key.repo, key.runID))
+	for key := range s.previousJobPages {
+		if !isActive(key.repo, key.runID) {
+			delete(s.previousJobPages, key)
+			delete(s.etags, s.jobsAPIURL(key.repo, key.runID, key.page))
 		}
 	}
 }
