@@ -11,7 +11,7 @@ jobs:
     name: validate - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     container:
-      image: ghcr.io/kedacore/keda-tools:1.26.5
+      image: ghcr.io/kedacore/keda-tools:1.26.5@sha256:b17becd155fff15c6874701fef4bf654b7b4e32d187affa0aa592d263039ce36
       volumes:
         - /usr:/host/usr
         - /opt:/host/opt
@@ -42,7 +42,7 @@ jobs:
         with:
           fetch-depth: 1
 
-      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |
@@ -131,7 +131,7 @@ jobs:
       pull-requests: read # for dorny/paths-filter to read pull requests
     name: validate-dockerfiles - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.26.5
+    container: ghcr.io/kedacore/keda-tools:1.26.5@sha256:b17becd155fff15c6874701fef4bf654b7b4e32d187affa0aa592d263039ce36
     strategy:
       matrix:
         include:
@@ -150,7 +150,7 @@ jobs:
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |
@@ -167,7 +167,7 @@ jobs:
       pull-requests: read # for dorny/paths-filter to read pull requests
     name: Validate dev-container - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.26.5
+    container: ghcr.io/kedacore/keda-tools:1.26.5@sha256:b17becd155fff15c6874701fef4bf654b7b4e32d187affa0aa592d263039ce36
     strategy:
       matrix:
         include:
@@ -183,7 +183,7 @@ jobs:
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |

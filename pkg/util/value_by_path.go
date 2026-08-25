@@ -24,7 +24,7 @@ import (
 //
 // GetValueByPath(data, "a.b.0.c") // 1
 // GetValueByPath(data, "not.found") // error
-func GetValueByPath(data map[string]interface{}, path string) (interface{}, error) {
+func GetValueByPath(data map[string]any, path string) (any, error) {
 	keys := strings.Split(path, ".")
 	current := data
 
@@ -35,19 +35,19 @@ func GetValueByPath(data map[string]interface{}, path string) (interface{}, erro
 		}
 
 		switch typedValue := val.(type) {
-		case map[interface{}]interface{}:
+		case map[any]any:
 			// Convert map[interface{}]interface{} to map[string]interface{}
-			current = make(map[string]interface{})
+			current = make(map[string]any)
 			for k, v := range typedValue {
 				current[fmt.Sprintf("%v", k)] = v
 			}
-		case []interface{}:
+		case []any:
 			// Convert map[interface{}]interface{} to map[string]interface{}
-			current = make(map[string]interface{})
+			current = make(map[string]any)
 			for k, v := range typedValue {
 				current[fmt.Sprintf("%v", k)] = v
 			}
-		case map[string]interface{}:
+		case map[string]any:
 			current = typedValue
 		default:
 			// Reached the final value

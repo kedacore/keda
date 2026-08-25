@@ -64,9 +64,8 @@ func TestSetupAzureManagedPrometheusComponents(t *testing.T) {
 }
 
 func TestSetupArgoRollouts(t *testing.T) {
-	// default to true
 	if InstallArgoRollouts == StringFalse {
-		t.Skip("skipping as requested -- Argo Rollouts assumed to be already installed")
+		t.Skip("skipping -- no selected test needs Argo Rollouts (or it is assumed to be already installed)")
 	}
 	KubeClient = GetKubernetesClient(t)
 	CreateNamespace(t, KubeClient, ArgoRolloutsNamespace)

@@ -9,6 +9,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
+	"maps"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -22,7 +23,6 @@ import (
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type closeTrackingRabbitMQTransport struct {
@@ -217,9 +217,9 @@ var testRabbitMQAuthParamData = []parseRabbitMQAuthParamTestData{
 	// failure, password from env but not username
 	{map[string]string{"queueName": "sample", "hostFromEnv": host, "passwordFromEnv": rabbitMQPassword}, v1alpha1.AuthPodIdentity{}, map[string]string{}, true, rmqTLSDisable, false},
 	// success, WorkloadIdentity
-	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "http"}, v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAzureWorkload, IdentityID: kedautil.StringPointer("client-id")}, map[string]string{"workloadIdentityResource": "rabbitmq-resource-id"}, false, rmqTLSDisable, true},
+	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "http"}, v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAzureWorkload, IdentityID: new("client-id")}, map[string]string{"workloadIdentityResource": "rabbitmq-resource-id"}, false, rmqTLSDisable, true},
 	// failure, WorkloadIdentity not supported for amqp
-	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "amqp"}, v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAzureWorkload, IdentityID: kedautil.StringPointer("client-id")}, map[string]string{"workloadIdentityResource": "rabbitmq-resource-id"}, true, rmqTLSDisable, false},
+	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "amqp"}, v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAzureWorkload, IdentityID: new("client-id")}, map[string]string{"workloadIdentityResource": "rabbitmq-resource-id"}, true, rmqTLSDisable, false},
 	// success, OAuth2 with HTTP protocol (minimal config)
 	{map[string]string{"queueName": "sample", "host": "http://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"oauthTokenURI": "https://oauth.example.com/token", "clientID": "my-client", "clientSecret": "my-secret"}, false, rmqTLSDisable, false},
 	// success, OAuth2 with scopes
@@ -477,9 +477,7 @@ func TestGetQueueInfo(t *testing.T) {
 			"hostFromEnv": host,
 			"protocol":    "http",
 		}
-		for k, v := range testData.extraMetadata {
-			metadata[k] = v
-		}
+		maps.Copy(metadata, testData.extraMetadata)
 
 		s, err := NewRabbitMQScaler(
 			&scalersconfig.ScalerConfig{
@@ -496,6 +494,7 @@ func TestGetQueueInfo(t *testing.T) {
 
 		ctx := context.TODO()
 		_, active, err := s.GetMetricsAndActivity(ctx, "Metric")
+		apiStub.Close()
 
 		if testData.responseStatus == http.StatusOK {
 			if err != nil {
@@ -512,6 +511,73 @@ func TestGetQueueInfo(t *testing.T) {
 		} else if !strings.Contains(err.Error(), testData.response) {
 			t.Error("Expect error to be like '", testData.response, "' but it's '", err, "'")
 		}
+	}
+}
+
+var testExpectedQueueConsumptionTimeTestData = []struct {
+	name          string
+	response      string
+	expectedMilli int64
+	isActive      bool
+}{
+	// empty idle queue: nothing to consume and nobody consuming - must be
+	// inactive with a zero metric so the workload can scale to zero
+	{name: "empty idle queue", response: `{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}, "deliver_get_details": {"rate": 0}}, "name": "evaluate_trials"}`, expectedMilli: 0, isActive: false},
+	// queue just drained, delivery rate still decaying: empty queue wins
+	{name: "empty queue with decaying delivery rate", response: `{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}, "deliver_get_details": {"rate": 2}}, "name": "evaluate_trials"}`, expectedMilli: 0, isActive: false},
+	// backlog with no consumers: consumption time cannot be estimated, report
+	// the activation value and activate so consumers get scaled up
+	{name: "backlog without consumers", response: `{"messages": 10, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 3}, "deliver_get_details": {"rate": 0}}, "name": "evaluate_trials"}`, expectedMilli: 1000, isActive: true},
+	// steady state: eta = (publish-deliver)/deliver + messages/deliver = (3-2)/2 + 10/2 = 5.5
+	{name: "backlog with consumers", response: `{"messages": 10, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 3}, "deliver_get_details": {"rate": 2}}, "name": "evaluate_trials"}`, expectedMilli: 5500, isActive: true},
+	// draining after publish stopped: eta = (0-2)/2 + 4/2 = 1, not above activation
+	{name: "draining backlog", response: `{"messages": 4, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}, "deliver_get_details": {"rate": 2}}, "name": "evaluate_trials"}`, expectedMilli: 1000, isActive: false},
+}
+
+func TestExpectedQueueConsumptionTime(t *testing.T) {
+	for _, testData := range testExpectedQueueConsumptionTimeTestData {
+		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			// nosemgrep: no-direct-write-to-responsewriter
+			_, _ = w.Write([]byte(testData.response))
+		}))
+
+		resolvedEnv := map[string]string{host: apiStub.URL}
+
+		metadata := map[string]string{
+			"queueName":       "evaluate_trials",
+			"hostFromEnv":     host,
+			"protocol":        "http",
+			"mode":            "ExpectedQueueConsumptionTime",
+			"value":           "1",
+			"activationValue": "1",
+		}
+
+		s, err := NewRabbitMQScaler(
+			&scalersconfig.ScalerConfig{
+				ResolvedEnv:       resolvedEnv,
+				TriggerMetadata:   metadata,
+				AuthParams:        map[string]string{},
+				GlobalHTTPTimeout: 1000 * time.Millisecond,
+			},
+		)
+		if err != nil {
+			t.Fatal("Expect success", err)
+		}
+
+		metrics, active, err := s.GetMetricsAndActivity(context.TODO(), "Metric")
+		if err != nil {
+			t.Fatal("Expect success", err)
+		}
+
+		if got := metrics[0].Value.MilliValue(); got != testData.expectedMilli {
+			t.Error(testData.name, ": expect metric =", testData.expectedMilli, "milli but got", got)
+		}
+		if active != testData.isActive {
+			t.Error(testData.name, ": expect isActive =", testData.isActive, "but got", active)
+		}
+
+		apiStub.Close()
 	}
 }
 
@@ -638,9 +704,7 @@ func TestGetQueueInfoWithRegex(t *testing.T) {
 			"hostFromEnv": host,
 			"protocol":    "http",
 		}
-		for k, v := range testData.extraMetadata {
-			metadata[k] = v
-		}
+		maps.Copy(metadata, testData.extraMetadata)
 
 		s, err := NewRabbitMQScaler(
 			&scalersconfig.ScalerConfig{
@@ -657,6 +721,7 @@ func TestGetQueueInfoWithRegex(t *testing.T) {
 
 		ctx := context.TODO()
 		_, active, err := s.GetMetricsAndActivity(ctx, "Metric")
+		apiStub.Close()
 
 		if testData.responseStatus == http.StatusOK {
 			if err != nil {
@@ -741,6 +806,7 @@ func TestGetPageSizeWithRegex(t *testing.T) {
 
 		ctx := context.TODO()
 		_, active, err := s.GetMetricsAndActivity(ctx, "Metric")
+		apiStub.Close()
 
 		if err != nil {
 			t.Error("Expect success", err)
@@ -862,6 +928,7 @@ func TestRegexQueueMissingError(t *testing.T) {
 
 		ctx := context.TODO()
 		_, _, err = s.GetMetricsAndActivity(ctx, "Metric")
+		apiStub.Close()
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}

@@ -24,6 +24,10 @@ var _ = godotenv.Load("../../.env")
 
 const (
 	testName = "scaledjob-conditions-test"
+
+	// Reached only if the executor never creates a job for an active ScaledJob, which is a failure
+	// rather than slowness, so the budget is loose enough that a busy cluster cannot hit it.
+	jobCreationTimeout = 2 * time.Minute
 )
 
 var (
@@ -376,10 +380,21 @@ func testReadyConditionUnknown(t *testing.T, kc *kubernetes.Clientset) {
 		}),
 		"ScaledJob should have ReadyCondition=Unknown and ActiveCondition=True")
 
-	// Verify that at least some jobs were created
-	time.Sleep(5 * time.Second)
-	jobCount, _ := GetScaledJobCount(kc, scaledJobNs, testNs)
-	assert.Greater(t, jobCount, int64(0), "at least one job should be created when one trigger is active")
+	// Verify that at least some jobs were created. The ScaledJob polls every 5s, so this is waiting
+	// for the first evaluation after the active condition above, not for a fixed amount of time.
+	ctx, cancel := context.WithTimeout(context.Background(), jobCreationTimeout)
+	defer cancel()
+
+	var jobCount int64
+	err := KedaEventually(ctx, func(_ context.Context) (bool, error) {
+		var countErr error
+		jobCount, countErr = GetScaledJobCount(kc, scaledJobNs, testNs)
+		if countErr != nil {
+			return false, countErr
+		}
+		return jobCount > 0, nil
+	}, IntervalShort)
+	assert.NoErrorf(t, err, "at least one job should be created when one trigger is active, last count was %d", jobCount)
 }
 
 // Helper function to wait for ScaledJob conditions

@@ -135,8 +135,8 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig) (*sumologicMetadata, 
 func parseMultiMetricsQueries(triggerMetadata map[string]string) (map[string]string, error) {
 	queries := make(map[string]string)
 	for key, value := range triggerMetadata {
-		if strings.HasPrefix(key, multiMetricsQueryPrefix) {
-			rowID := strings.TrimPrefix(key, multiMetricsQueryPrefix)
+		if after, ok := strings.CutPrefix(key, multiMetricsQueryPrefix); ok {
+			rowID := after
 			if rowID == "" {
 				return nil, fmt.Errorf("malformed metadata, unable to parse rowID from key: %s", key)
 			}

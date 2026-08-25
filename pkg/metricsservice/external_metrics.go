@@ -18,6 +18,7 @@ package metricsservice
 
 import (
 	"fmt"
+	"maps"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -40,7 +41,7 @@ func externalMetricsToProto(in *external_metrics.ExternalMetricValueList) *api.E
 		item := in.Items[i]
 		out.Items = append(out.Items, &api.ExternalMetricValue{
 			MetricName:   item.MetricName,
-			MetricLabels: copyStringMap(item.MetricLabels),
+			MetricLabels: maps.Clone(item.MetricLabels),
 			Timestamp:    timeToProto(item.Timestamp),
 			Window:       copyInt64Pointer(item.WindowSeconds),
 			Value:        quantityToProto(item.Value),
@@ -71,7 +72,7 @@ func protoToExternalMetrics(in *api.ExternalMetricValueList) (*external_metrics.
 
 		out.Items = append(out.Items, external_metrics.ExternalMetricValue{
 			MetricName:    item.GetMetricName(),
-			MetricLabels:  copyStringMap(item.GetMetricLabels()),
+			MetricLabels:  maps.Clone(item.GetMetricLabels()),
 			Timestamp:     timeFromProto(item.GetTimestamp()),
 			WindowSeconds: copyInt64Pointer(item.Window),
 			Value:         value,
@@ -129,18 +130,6 @@ func quantityFromProto(in *api.Quantity) (resource.Quantity, error) {
 	}
 
 	return resource.ParseQuantity(in.GetString_())
-}
-
-func copyStringMap(in map[string]string) map[string]string {
-	if len(in) == 0 {
-		return nil
-	}
-
-	out := make(map[string]string, len(in))
-	for k, v := range in {
-		out[k] = v
-	}
-	return out
 }
 
 func copyInt64Pointer(in *int64) *int64 {

@@ -47,7 +47,8 @@ COSIGN_FLAGS ?= -y -a GIT_HASH=${GIT_COMMIT} -a GIT_VERSION=${VERSION} -a BUILD_
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.35
 
-GOLANGCI_VERSION:=2.12.2
+# renovate: datasource=github-releases depName=golangci/golangci-lint
+GOLANGCI_VERSION:=v2.12.2
 GOLANGCI_CONFIG ?=
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
@@ -125,10 +126,14 @@ e2e-test-clean-crds: ## Delete all scaled objects and jobs across all namespaces
 
 .PHONY: e2e-test-clean
 e2e-test-clean: get-cluster-context ## Delete all namespaces labeled with type=e2e
+	# Remove finalizers/resources left behind if KEDA was uninstalled before its CRs were finalized,
+	# otherwise the namespace deletion below gets stuck in "Terminating"
+	./tests/force-clean-keda-resources.sh
 	kubectl delete ns -l type=e2e
 	# Clean up the strimzi CRDs, helm will not update them on Strimzi install if they already exist
-	# and we get stranded on old versions when we try to upgrade
-	kubectl get crd -o name | grep kafka.strimzi.io | xargs -r kubectl delete --ignore-not-found=true --timeout=60s
+	# and we get stranded on old versions when we try to upgrade. grep exits non-zero when no
+	# Strimzi CRDs are present (e.g. a run that never installed Kafka), which is fine here.
+	kubectl get crd -o name | { grep kafka.strimzi.io || true; } | xargs -r kubectl delete --ignore-not-found=true --timeout=60s
 
 .PHONY: smoke-test
 smoke-test: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
@@ -161,8 +166,8 @@ vet: ## Run go vet against code.
 .PHONY: golangci
 golangci: ## Run golangci against code.
 	@HAS_GOLANGCI_VERSION=$$($(GOPATH)/bin/golangci-lint version --short 2>/dev/null || echo ""); \
-	if [ "$$HAS_GOLANGCI_VERSION" != "$(GOLANGCI_VERSION)" ]; then \
-		go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v$(GOLANGCI_VERSION); \
+	if [ "v$$HAS_GOLANGCI_VERSION" != "$(GOLANGCI_VERSION)" ]; then \
+		go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_VERSION); \
 	fi
 	$(GOPATH)/bin/golangci-lint run $(if $(GOLANGCI_CONFIG),--config $(GOLANGCI_CONFIG))
 
@@ -411,7 +416,3 @@ help: ## Display this help.
 .PHONY: docker-build-dev-containers
 docker-build-dev-containers: ## Build dev-containers image
 	docker build -f .devcontainer/Dockerfile .
-
-.PHONY: validate-changelog
-validate-changelog: ## Validate changelog
-	./hack/validate-changelog.sh

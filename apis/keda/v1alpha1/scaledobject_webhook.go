@@ -214,7 +214,7 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 		allWarnings = append(allWarnings, warnings...)
 	}
 
-	verifyCommonFunctions := map[string]func(interface{}, string, bool) error{
+	verifyCommonFunctions := map[string]func(any, string, bool) error{
 		"verifyTriggers": verifyTriggers,
 	}
 
@@ -268,7 +268,7 @@ func verifyFallback(incomingSo *ScaledObject, action string, _ bool) (admission.
 	return nil, err
 }
 
-func verifyTriggers(incomingObject interface{}, action string, _ bool) error {
+func verifyTriggers(incomingObject any, action string, _ bool) error {
 	var triggers []ScaleTriggers
 	var name string
 	var namespace string
@@ -376,11 +376,13 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 		}
 	}
 
-	// PollingInterval warning: if minReplicaCount > 0 AND (idleReplicaCount is not set OR idleReplicaCount != 0) AND NOT useCachedMetrics
+	// PollingInterval warning: if minReplicaCount > 0 AND idleReplicaCount is not set (idle mode disabled) AND NOT useCachedMetrics.
+	// When idle mode is enabled (idleReplicaCount is set to any value), the scale loop is what detects the
+	// idle<->active transitions, so pollingInterval stays relevant regardless of the idle value.
 	if incomingSo.Spec.PollingInterval != nil {
-		idleReplicaNotZero := incomingSo.Spec.IdleReplicaCount == nil || *incomingSo.Spec.IdleReplicaCount != 0
-		if minReplicas > 0 && idleReplicaNotZero && !usesCachedMetrics {
-			msg := "PollingInterval is configured but is not relevant. PollingInterval is only relevant when minReplicaCount = 0 or idleReplicaCount = 0 or useCachedMetrics is enabled"
+		idleModeDisabled := incomingSo.Spec.IdleReplicaCount == nil
+		if minReplicas > 0 && idleModeDisabled && !usesCachedMetrics {
+			msg := "PollingInterval is configured but is not relevant. PollingInterval is only relevant when minReplicaCount = 0, idleReplicaCount is set, or useCachedMetrics is enabled"
 			warnings = append(warnings, msg)
 			if eventRecorder != nil {
 				eventRecorder.Eventf(incomingSo, nil, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", msg)
@@ -388,11 +390,13 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 		}
 	}
 
-	// CooldownPeriod warning: if minReplicaCount > 0 AND (idleReplicaCount is not set OR idleReplicaCount != 0)
+	// CooldownPeriod warning: if minReplicaCount > 0 AND idleReplicaCount is not set (idle mode disabled).
+	// When idle mode is enabled, the target still scales down to the idle replica count on inactivity,
+	// so cooldownPeriod stays relevant regardless of the idle value.
 	if incomingSo.Spec.CooldownPeriod != nil {
-		idleReplicaNotZero := incomingSo.Spec.IdleReplicaCount == nil || *incomingSo.Spec.IdleReplicaCount != 0
-		if minReplicas > 0 && idleReplicaNotZero {
-			msg := "CooldownPeriod is configured but is not relevant. CooldownPeriod is only relevant when minReplicaCount = 0 or idleReplicaCount = 0"
+		idleModeDisabled := incomingSo.Spec.IdleReplicaCount == nil
+		if minReplicas > 0 && idleModeDisabled {
+			msg := "CooldownPeriod is configured but is not relevant. CooldownPeriod is only relevant when minReplicaCount = 0 or idleReplicaCount is set"
 			warnings = append(warnings, msg)
 			if eventRecorder != nil {
 				eventRecorder.Eventf(incomingSo, nil, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", msg)

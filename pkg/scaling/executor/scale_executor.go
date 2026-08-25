@@ -18,6 +18,7 @@ package executor
 
 import (
 	"context"
+	"maps"
 
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -87,9 +88,7 @@ func getTriggersActivity(object kedav1alpha1.ScalableObject, options ScaleExecut
 
 	if isPushScaler {
 		// for push scaler, copy existing activity and update the specific metric
-		for k, v := range object.GetStatusTriggersActivity() {
-			triggersActivity[k] = v
-		}
+		maps.Copy(triggersActivity, object.GetStatusTriggersActivity())
 		allTriggerNames = []string{pushScalerMetric}
 	} else {
 		allTriggerNames = object.GetStatusExternalMetricNames()
