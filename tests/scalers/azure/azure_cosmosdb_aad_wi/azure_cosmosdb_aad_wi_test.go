@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_cosmosdb_test
+package azure_cosmosdb_aad_wi_test
 
 import (
 	"context"
@@ -30,7 +30,7 @@ import (
 var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "azure-cosmosdb-test"
+	testName = "azure-cosmosdb-aad-wi-test"
 )
 
 var (
@@ -50,6 +50,7 @@ type templateData struct {
 	TestNamespace    string
 	SecretName       string
 	Connection       string
+	Endpoint         string
 	DeploymentName   string
 	ScaledObjectName string
 	DatabaseID       string
@@ -77,10 +78,8 @@ metadata:
   name: {{.SecretName}}-trigger-auth
   namespace: {{.TestNamespace}}
 spec:
-  secretTargetRef:
-    - parameter: connection
-      name: {{.SecretName}}
-      key: connection
+  podIdentity:
+    provider: azure-workload
 `
 
 	deploymentTemplate = `
@@ -163,6 +162,7 @@ spec:
         leaseDatabaseId: {{.LeaseDatabaseID}}
         leaseContainerId: {{.LeaseContainerID}}
         processorName: {{.ProcessorName}}
+        endpoint: {{.Endpoint}}
         activationChangeFeedLagThreshold: "0"
       authenticationRef:
         name: {{.SecretName}}-trigger-auth
@@ -174,13 +174,15 @@ func TestScaler(t *testing.T) {
 	ctx := context.Background()
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, connectionString, "TF_AZURE_COSMOSDB_CONNECTION_STRING env variable is required for azure cosmosdb test")
+	endpoint, _, err := parseConnString(connectionString)
+	require.NoErrorf(t, err, "cannot parse connection string - %s", err)
 
 	// Create Cosmos DB resources (database + containers)
 	setupCosmosDB(ctx, t)
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
-	data, templates := getTemplateData()
+	data, templates := getTemplateData(endpoint)
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates[:3])
 	t.Cleanup(func() {
@@ -204,13 +206,14 @@ func TestScaler(t *testing.T) {
 	KubectlDeleteMultipleWithTemplate(t, data, templates)
 }
 
-func getTemplateData() (templateData, []Template) {
+func getTemplateData(endpoint string) (templateData, []Template) {
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
 
 	return templateData{
 			TestNamespace:    testNamespace,
 			SecretName:       secretName,
 			Connection:       base64ConnectionString,
+			Endpoint:         endpoint,
 			DeploymentName:   deploymentName,
 			ScaledObjectName: scaledObjectName,
 			DatabaseID:       databaseID,
