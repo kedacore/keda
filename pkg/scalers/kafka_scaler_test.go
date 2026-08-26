@@ -491,8 +491,8 @@ func TestKafkaGSSAPICcacheAuthParams(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error but got success")
 		}
-		if !strings.Contains(err.Error(), "is a directory") {
-			t.Errorf("expected a directory error but got %v", err)
+		if !strings.Contains(err.Error(), "is not a regular file") {
+			t.Errorf("expected a non-regular-file error but got %v", err)
 		}
 	})
 }
