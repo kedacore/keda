@@ -48,7 +48,7 @@ COSIGN_FLAGS ?= -y -a GIT_HASH=${GIT_COMMIT} -a GIT_VERSION=${VERSION} -a BUILD_
 ENVTEST_K8S_VERSION = 1.36
 
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_VERSION:=v2.12.2
+GOLANGCI_VERSION:=v2.13.1
 GOLANGCI_CONFIG ?=
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
