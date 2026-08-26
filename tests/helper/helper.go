@@ -849,11 +849,19 @@ func WaitForHpaCreation(t *testing.T, kc *kubernetes.Clientset, name, namespace 
 	// the wait to fail, so an empty HPA stands in until a read succeeds.
 	hpa := &autoscalingv2.HorizontalPodAutoscaler{}
 
+	// The API error is handed back rather than described, because custom_hpa_name waits for an HPA
+	// it expects to be gone and asserts errors.IsNotFound on the result. A read the deadline
+	// cancelled is not kept: it says nothing about the HPA and would mask that NotFound.
+	var lastErr error
+
 	ok := pollUntil(t, iterations, intervalSeconds, func(ctx context.Context) (bool, error) {
 		t.Log("Waiting for hpa creation")
 
 		found, err := kc.AutoscalingV2().HorizontalPodAutoscalers(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
+			if ctx.Err() == nil {
+				lastErr = err
+			}
 			return false, err
 		}
 
@@ -862,6 +870,9 @@ func WaitForHpaCreation(t *testing.T, kc *kubernetes.Clientset, name, namespace 
 	})
 
 	if !ok {
+		if lastErr != nil {
+			return hpa, lastErr
+		}
 		return hpa, fmt.Errorf("hpa %s/%s was not created", namespace, name)
 	}
 
