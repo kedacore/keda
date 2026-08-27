@@ -69,8 +69,8 @@ func TestSetupArgoRollouts(t *testing.T) {
 	}
 	KubeClient = GetKubernetesClient(t)
 	CreateNamespace(t, KubeClient, ArgoRolloutsNamespace)
-	cmdWithNamespace := fmt.Sprintf("kubectl apply -n %s -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml",
-		ArgoRolloutsNamespace)
+	cmdWithNamespace := fmt.Sprintf("kubectl apply -n %s -f https://github.com/argoproj/argo-rollouts/releases/download/%s/install.yaml",
+		ArgoRolloutsNamespace, ArgoRolloutsVersion)
 	_, err := ExecuteCommand(cmdWithNamespace)
 
 	require.NoErrorf(t, err, "cannot install argo resources - %s", err)
