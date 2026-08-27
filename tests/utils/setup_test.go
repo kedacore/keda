@@ -69,7 +69,7 @@ func TestSetupArgoRollouts(t *testing.T) {
 	}
 	KubeClient = GetKubernetesClient(t)
 	CreateNamespace(t, KubeClient, ArgoRolloutsNamespace)
-	cmdWithNamespace := fmt.Sprintf("kubectl apply -n %s -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml",
+	cmdWithNamespace := fmt.Sprintf("kubectl apply --server-side -n %s -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml",
 		ArgoRolloutsNamespace)
 	_, err := ExecuteCommand(cmdWithNamespace)
 
