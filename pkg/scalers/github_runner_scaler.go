@@ -29,7 +29,11 @@ const (
 	ENT                  = "ent"
 	REPO                 = "repo"
 	githubDefaultPerPage = 30
-	githubJobsPerPage    = 100
+	// githubMaxPages caps the number of pages to fetch from the GitHub API. The
+	// API returns a maximum of 100 items per page, so this allows for up to 5000
+	// items to be fetched. This is a safeguard against excessive fetching
+	githubMaxPages    = 50
+	githubJobsPerPage = 100
 	// githubScalerMaxCacheEntries caps the etags, previousJobPages, and
 	// previousWfrs maps. Without it the etags and previousJobPages maps grow
 	// once per workflow run page for the lifetime of the operator pod (the URL
@@ -507,6 +511,11 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 			break
 		}
 
+		if page >= githubMaxPages {
+			s.logger.V(1).Info(fmt.Sprintf("Reached max page limit (%d) while fetching repositories, results may be incomplete", githubMaxPages))
+			break
+		}
+
 		page++
 	}
 
@@ -690,7 +699,8 @@ func (s *githubRunnerScaler) fetchWorkflowRunJobsPage(ctx context.Context, workf
 
 // getWorkflowRunJobs returns a list of jobs for a given workflow run. A workflow
 // run can have more jobs than fit on a single page, so all pages are fetched
-// and combined until GitHub returns a page with fewer than githubJobsPerPage jobs.
+// and combined until GitHub returns a page with fewer than githubJobsPerPage jobs,
+// or until githubMaxPages is reached.
 // When ETags are enabled, every page is independently fetched and validated,
 // so a 304 on an earlier page never short-circuits the fetch of later pages.
 func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRunID int64, repoName string) ([]Job, error) {
@@ -709,6 +719,12 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 		if len(jobs) < githubJobsPerPage {
 			break
 		}
+
+		if page >= githubMaxPages {
+			s.logger.V(1).Info(fmt.Sprintf("Reached max page limit (%d) while fetching jobs for workflow run %d in repo %s, results may be incomplete", githubMaxPages, workflowRunID, repoName))
+			break
+		}
+
 		page++
 	}
 
