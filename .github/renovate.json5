@@ -10,8 +10,10 @@
     ":gitSignOff",
     ":prHourlyLimitNone",
   ],
+  ignorePresets: [":ignoreModulesAndTests"],
   commitBodyTable: true,
   commitMessagePrefix: "Dependencies:",
+  ignorePaths: ["**/vendor/**"],
   labels: ["dependencies", "kind/dependencies"],
   osvVulnerabilityAlerts: true,
   packageRules: [
