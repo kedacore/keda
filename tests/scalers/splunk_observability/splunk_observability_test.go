@@ -58,6 +58,7 @@ type templateData struct {
 	MaxReplicaCount       string
 	TargetValue           string
 	ActivationTargetValue string
+	QueryAggregator       string
 }
 
 const (
@@ -132,7 +133,7 @@ spec:
       duration: "10"
       targetValue: "250"
       activationTargetValue: "1.1"
-      queryAggregator: "max" # 'min', 'max', 'avg', 'sum', 'count', 'latest'
+      queryAggregator: "{{.QueryAggregator}}" # 'min', 'max', 'avg', 'sum', 'count', 'latest'
     authenticationRef:
       name: keda-trigger-auth-splunk-secret
 `
@@ -257,6 +258,7 @@ func getTemplateData() (templateData, []Template) {
 			MaxReplicaCount:       fmt.Sprintf("%v", maxReplicaCount),
 			TargetValue:           scaleInTargetValue,
 			ActivationTargetValue: scaleInActivationValue,
+			QueryAggregator:       "max",
 		}, []Template{
 			{Name: "authTemplate", Config: authTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
