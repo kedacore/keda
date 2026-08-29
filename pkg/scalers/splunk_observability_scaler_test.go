@@ -2,6 +2,7 @@ package scalers
 
 import (
 	"context"
+	"sort"
 	"testing"
 	"time"
 
@@ -155,7 +156,9 @@ func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testin
 	}
 }
 
-func newFakeSplunkO11yScalerWithAggregator(t *testing.T, program string, duration int, aggregator string, tsidVals map[idtool.ID]float64) (*splunkObservabilityScaler, func()) {
+const splunkO11yAggregatorTestProgram = "data('demo.trans.latency').publish()"
+
+func newFakeSplunkO11yScalerWithAggregator(t *testing.T, aggregator string, tsidVals map[idtool.ID]float64) (*splunkObservabilityScaler, func()) {
 	t.Helper()
 	fake := signalflow.NewRunningFakeBackend()
 	client, err := fake.Client()
@@ -164,15 +167,18 @@ func newFakeSplunkO11yScalerWithAggregator(t *testing.T, program string, duratio
 		t.Fatal("could not create fake backend client:", err)
 	}
 	tsids := make([]idtool.ID, 0, len(tsidVals))
-	for tsid, val := range tsidVals {
+	for tsid := range tsidVals {
 		tsids = append(tsids, tsid)
-		fake.SetTSIDFloatData(tsid, val)
 	}
-	fake.AddProgramTSIDs(program, tsids)
+	sort.Slice(tsids, func(i, j int) bool { return tsids[i] < tsids[j] })
+	for _, tsid := range tsids {
+		fake.SetTSIDFloatData(tsid, tsidVals[tsid])
+	}
+	fake.AddProgramTSIDs(splunkO11yAggregatorTestProgram, tsids)
 	scaler := &splunkObservabilityScaler{
 		metadata: &splunkObservabilityMetadata{
-			Query:           program,
-			Duration:        duration,
+			Query:           splunkO11yAggregatorTestProgram,
+			Duration:        2,
 			QueryAggregator: aggregator,
 		},
 		apiClient: client,
@@ -182,15 +188,12 @@ func newFakeSplunkO11yScalerWithAggregator(t *testing.T, program string, duratio
 }
 
 func TestSplunkObservabilityAggregators(t *testing.T) {
-	const program = "data('demo.trans.latency').publish()"
-
 	t.Run("single series", func(t *testing.T) {
 		for _, agg := range []string{"max", "min", "avg", "sum", "count", "latest"} {
-			agg := agg
 			t.Run(agg, func(t *testing.T) {
 				t.Parallel()
 				tsid := idtool.ID(1)
-				scaler, stop := newFakeSplunkO11yScalerWithAggregator(t, program, 2, agg, map[idtool.ID]float64{tsid: 42.0})
+				scaler, stop := newFakeSplunkO11yScalerWithAggregator(t, agg, map[idtool.ID]float64{tsid: 42.0})
 				defer stop()
 				ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
 				defer cancel()
@@ -218,7 +221,6 @@ func TestSplunkObservabilityAggregators(t *testing.T) {
 
 	t.Run("multi series", func(t *testing.T) {
 		for _, agg := range []string{"max", "min", "avg", "latest"} {
-			agg := agg
 			t.Run(agg, func(t *testing.T) {
 				t.Parallel()
 				tsids := map[idtool.ID]float64{
@@ -226,7 +228,7 @@ func TestSplunkObservabilityAggregators(t *testing.T) {
 					idtool.ID(2): 20.0,
 					idtool.ID(3): 30.0,
 				}
-				scaler, stop := newFakeSplunkO11yScalerWithAggregator(t, program, 2, agg, tsids)
+				scaler, stop := newFakeSplunkO11yScalerWithAggregator(t, agg, tsids)
 				defer stop()
 				ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
 				defer cancel()
@@ -258,7 +260,7 @@ func TestSplunkObservabilityAggregators(t *testing.T) {
 				idtool.ID(2): 20.0,
 				idtool.ID(3): 30.0,
 			}
-			scaler, stop := newFakeSplunkO11yScalerWithAggregator(t, program, 2, "count", tsids)
+			scaler, stop := newFakeSplunkO11yScalerWithAggregator(t, "count", tsids)
 			defer stop()
 			ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
 			defer cancel()
@@ -277,7 +279,7 @@ func TestSplunkObservabilityAggregators(t *testing.T) {
 				idtool.ID(2): 20.0,
 				idtool.ID(3): 30.0,
 			}
-			scaler, stop := newFakeSplunkO11yScalerWithAggregator(t, program, 2, "sum", tsids)
+			scaler, stop := newFakeSplunkO11yScalerWithAggregator(t, "sum", tsids)
 			defer stop()
 			ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
 			defer cancel()
@@ -295,7 +297,7 @@ func TestSplunkObservabilityAggregators(t *testing.T) {
 	t.Run("invalid aggregator", func(t *testing.T) {
 		t.Parallel()
 		tsid := idtool.ID(1)
-		scaler, stop := newFakeSplunkO11yScalerWithAggregator(t, program, 2, "invalid", map[idtool.ID]float64{tsid: 42.0})
+		scaler, stop := newFakeSplunkO11yScalerWithAggregator(t, "invalid", map[idtool.ID]float64{tsid: 42.0})
 		defer stop()
 		ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
 		defer cancel()
@@ -311,7 +313,7 @@ func TestSplunkObservabilityAggregators(t *testing.T) {
 			idtool.ID(1): 10.0,
 			idtool.ID(2): 20.0,
 		}
-		scaler, stop := newFakeSplunkO11yScalerWithAggregator(t, program, 2, "", tsids)
+		scaler, stop := newFakeSplunkO11yScalerWithAggregator(t, "", tsids)
 		defer stop()
 		ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
 		defer cancel()
