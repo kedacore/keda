@@ -154,3 +154,170 @@ func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testin
 		t.Fatal("getQueryResult did not return after parent context was cancelled; it is hanging")
 	}
 }
+
+func newFakeSplunkO11yScalerWithAggregator(t *testing.T, program string, duration int, aggregator string, tsidVals map[idtool.ID]float64) (*splunkObservabilityScaler, func()) {
+	t.Helper()
+	fake := signalflow.NewRunningFakeBackend()
+	client, err := fake.Client()
+	if err != nil {
+		fake.Stop()
+		t.Fatal("could not create fake backend client:", err)
+	}
+	tsids := make([]idtool.ID, 0, len(tsidVals))
+	for tsid, val := range tsidVals {
+		tsids = append(tsids, tsid)
+		fake.SetTSIDFloatData(tsid, val)
+	}
+	fake.AddProgramTSIDs(program, tsids)
+	scaler := &splunkObservabilityScaler{
+		metadata: &splunkObservabilityMetadata{
+			Query:           program,
+			Duration:        duration,
+			QueryAggregator: aggregator,
+		},
+		apiClient: client,
+		logger:    logr.Discard(),
+	}
+	return scaler, fake.Stop
+}
+
+func TestSplunkObservabilityAggregators(t *testing.T) {
+	const program = "data('demo.trans.latency').publish()"
+
+	t.Run("single series", func(t *testing.T) {
+		for _, agg := range []string{"max", "min", "avg", "sum", "count", "latest"} {
+			agg := agg
+			t.Run(agg, func(t *testing.T) {
+				t.Parallel()
+				tsid := idtool.ID(1)
+				scaler, stop := newFakeSplunkO11yScalerWithAggregator(t, program, 2, agg, map[idtool.ID]float64{tsid: 42.0})
+				defer stop()
+				ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
+				defer cancel()
+				result, err := scaler.getQueryResult(ctx)
+				if err != nil {
+					t.Fatalf("aggregator %s error: %v", agg, err)
+				}
+				switch agg {
+				case "max", "min", "avg", "latest":
+					if result != 42.0 {
+						t.Errorf("aggregator %s expected 42 got %v", agg, result)
+					}
+				case "count":
+					if result < 1 {
+						t.Errorf("count expected >=1 got %v", result)
+					}
+				case "sum":
+					if result < 42.0 || int(result)%42 != 0 {
+						t.Errorf("sum expected multiple of 42 got %v", result)
+					}
+				}
+			})
+		}
+	})
+
+	t.Run("multi series", func(t *testing.T) {
+		for _, agg := range []string{"max", "min", "avg", "latest"} {
+			agg := agg
+			t.Run(agg, func(t *testing.T) {
+				t.Parallel()
+				tsids := map[idtool.ID]float64{
+					idtool.ID(1): 10.0,
+					idtool.ID(2): 20.0,
+					idtool.ID(3): 30.0,
+				}
+				scaler, stop := newFakeSplunkO11yScalerWithAggregator(t, program, 2, agg, tsids)
+				defer stop()
+				ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
+				defer cancel()
+				result, err := scaler.getQueryResult(ctx)
+				if err != nil {
+					t.Fatalf("agg %s error: %v", agg, err)
+				}
+				var expected float64
+				switch agg {
+				case "max":
+					expected = 30.0
+				case "min":
+					expected = 10.0
+				case "avg":
+					expected = 20.0
+				case "latest":
+					expected = 30.0
+				}
+				if result != expected {
+					t.Errorf("agg %s expected %v got %v", agg, expected, result)
+				}
+			})
+		}
+		// count and sum are proportional to message count, check divisibility
+		t.Run("count", func(t *testing.T) {
+			t.Parallel()
+			tsids := map[idtool.ID]float64{
+				idtool.ID(1): 10.0,
+				idtool.ID(2): 20.0,
+				idtool.ID(3): 30.0,
+			}
+			scaler, stop := newFakeSplunkO11yScalerWithAggregator(t, program, 2, "count", tsids)
+			defer stop()
+			ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
+			defer cancel()
+			result, err := scaler.getQueryResult(ctx)
+			if err != nil {
+				t.Fatalf("count error: %v", err)
+			}
+			if int(result)%3 != 0 || result < 3 {
+				t.Errorf("count expected multiple of 3 got %v", result)
+			}
+		})
+		t.Run("sum", func(t *testing.T) {
+			t.Parallel()
+			tsids := map[idtool.ID]float64{
+				idtool.ID(1): 10.0,
+				idtool.ID(2): 20.0,
+				idtool.ID(3): 30.0,
+			}
+			scaler, stop := newFakeSplunkO11yScalerWithAggregator(t, program, 2, "sum", tsids)
+			defer stop()
+			ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
+			defer cancel()
+			result, err := scaler.getQueryResult(ctx)
+			if err != nil {
+				t.Fatalf("sum error: %v", err)
+			}
+			// each message sum =60, so result should be multiple of 10 and >=60
+			if result < 60 || int(result)%10 != 0 {
+				t.Errorf("sum expected >=60 multiple of 10 got %v", result)
+			}
+		})
+	})
+
+	t.Run("invalid aggregator", func(t *testing.T) {
+		t.Parallel()
+		tsid := idtool.ID(1)
+		scaler, stop := newFakeSplunkO11yScalerWithAggregator(t, program, 2, "invalid", map[idtool.ID]float64{tsid: 42.0})
+		defer stop()
+		ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
+		defer cancel()
+		_, err := scaler.getQueryResult(ctx)
+		if err == nil {
+			t.Error("expected error for invalid aggregator")
+		}
+	})
+
+	t.Run("no aggregator multi-series should error", func(t *testing.T) {
+		t.Parallel()
+		tsids := map[idtool.ID]float64{
+			idtool.ID(1): 10.0,
+			idtool.ID(2): 20.0,
+		}
+		scaler, stop := newFakeSplunkO11yScalerWithAggregator(t, program, 2, "", tsids)
+		defer stop()
+		ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
+		defer cancel()
+		_, err := scaler.getQueryResult(ctx)
+		if err == nil {
+			t.Error("expected error for multi-series without aggregator")
+		}
+	})
+}

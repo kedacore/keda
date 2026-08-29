@@ -132,7 +132,7 @@ spec:
       duration: "10"
       targetValue: "250"
       activationTargetValue: "1.1"
-      queryAggregator: "max" # 'min', 'max', or 'avg'
+      queryAggregator: "max" # 'min', 'max', 'avg', 'sum', 'count', 'latest'
     authenticationRef:
       name: keda-trigger-auth-splunk-secret
 `
