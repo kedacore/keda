@@ -230,3 +230,43 @@ func TestSplunkObservabilityGetQueryResultAfterClose(t *testing.T) {
 		t.Fatalf("expected closed error, got %v", err)
 	}
 }
+
+func TestSplunkObservabilityCloseIsIdempotent(t *testing.T) {
+	const program = "data('demo.trans.latency').max().publish()"
+	scaler, stop := newFakeSplunkO11yScaler(t, program, 1)
+	defer stop()
+
+	if err := scaler.Close(context.Background()); err != nil {
+		t.Fatalf("first Close: %v", err)
+	}
+	if err := scaler.Close(context.Background()); err != nil {
+		t.Fatalf("second Close: %v", err)
+	}
+}
+
+func TestSplunkObservabilityReconnectsAfterWebsocketDrop(t *testing.T) {
+	const program = "data('demo.trans.latency').max().publish()"
+	scaler, fake, stop := newFakeSplunkO11yScalerWithBackend(t, program, 1)
+	defer stop()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	if _, err := scaler.getQueryResult(ctx); err != nil {
+		t.Fatalf("healthy poll: %v", err)
+	}
+
+	fake.KillExistingConnections()
+
+	deadline := time.Now().Add(20 * time.Second)
+	var lastErr error
+	for time.Now().Before(deadline) {
+		pctx, pcancel := context.WithTimeout(context.Background(), 20*time.Second)
+		_, lastErr = scaler.getQueryResult(pctx)
+		pcancel()
+		if lastErr == nil {
+			return
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	t.Fatalf("library did not recover on the same client within 20s: %v", lastErr)
+}
