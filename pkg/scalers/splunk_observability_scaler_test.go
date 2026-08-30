@@ -2,6 +2,8 @@ package scalers
 
 import (
 	"context"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -100,8 +102,19 @@ func TestSplunkObservabilityGetMetricSpecForScaling(t *testing.T) {
 	}
 }
 
-// newFakeSplunkO11yScaler wires a scaler to a fake backend that streams indefinitely without closing.
-func newFakeSplunkO11yScaler(t *testing.T, program string, duration int) (*splunkObservabilityScaler, func()) {
+func countSplunkO11ySignalflowGoroutines() int {
+	buf := make([]byte, 1<<20)
+	n := runtime.Stack(buf, true)
+	count := 0
+	for _, stack := range strings.Split(string(buf[:n]), "\n\n") {
+		if strings.Contains(stack, "signalflow-client-go") {
+			count++
+		}
+	}
+	return count
+}
+
+func newFakeSplunkO11yScalerWithBackend(t *testing.T, program string, duration int) (*splunkObservabilityScaler, *signalflow.FakeBackend, func()) {
 	t.Helper()
 
 	fake := signalflow.NewRunningFakeBackend()
@@ -125,7 +138,14 @@ func newFakeSplunkO11yScaler(t *testing.T, program string, duration int) (*splun
 		logger:    logr.Discard(),
 	}
 
-	return scaler, fake.Stop
+	return scaler, fake, fake.Stop
+}
+
+// newFakeSplunkO11yScaler wires a scaler to a fake backend that streams indefinitely without closing.
+func newFakeSplunkO11yScaler(t *testing.T, program string, duration int) (*splunkObservabilityScaler, func()) {
+	t.Helper()
+	scaler, _, stop := newFakeSplunkO11yScalerWithBackend(t, program, duration)
+	return scaler, stop
 }
 
 // Regression guard: a stuck stream must not block getQueryResult past the parent context deadline.
@@ -152,5 +172,61 @@ func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testin
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("getQueryResult did not return after parent context was cancelled; it is hanging")
+	}
+}
+
+func TestSplunkObservabilityCloseReapsClientGoroutines(t *testing.T) {
+	const program = "data('demo.trans.latency').max().publish()"
+	before := countSplunkO11ySignalflowGoroutines()
+	if before != 0 {
+		t.Fatalf("expected 0 signalflow goroutines before scaler, got %d", before)
+	}
+
+	scaler, stop := newFakeSplunkO11yScaler(t, program, 1)
+	defer stop()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	if _, err := scaler.getQueryResult(ctx); err != nil {
+		t.Fatalf("getQueryResult: %v", err)
+	}
+	if during := countSplunkO11ySignalflowGoroutines(); during == 0 {
+		t.Fatal("expected signalflow goroutines while the client is open")
+	}
+
+	if err := scaler.Close(context.Background()); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	var after int
+	for {
+		after = countSplunkO11ySignalflowGoroutines()
+		if after <= 1 || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if after > 1 {
+		t.Fatalf("expected at most 1 leftover signalflow goroutine after Close, got %d", after)
+	}
+}
+
+func TestSplunkObservabilityGetQueryResultAfterClose(t *testing.T) {
+	const program = "data('demo.trans.latency').max().publish()"
+	scaler, stop := newFakeSplunkO11yScaler(t, program, 1)
+	defer stop()
+
+	if err := scaler.Close(context.Background()); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err := scaler.getQueryResult(ctx)
+	if err == nil {
+		t.Fatal("expected error from getQueryResult after Close")
+	}
+	if !strings.Contains(err.Error(), "splunk observability scaler is closed") {
+		t.Fatalf("expected closed error, got %v", err)
 	}
 }
