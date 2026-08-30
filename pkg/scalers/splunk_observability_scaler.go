@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -38,6 +39,8 @@ type splunkObservabilityScaler struct {
 	metadata  *splunkObservabilityMetadata
 	apiClient *signalflow.Client
 	logger    logr.Logger
+	mu        sync.RWMutex
+	closed    bool
 }
 
 func parseSplunkObservabilityMetadata(config *scalersconfig.ScalerConfig) (*splunkObservabilityMetadata, error) {
@@ -125,6 +128,12 @@ func (s *splunkObservabilityScaler) stopAndDrain(comp *signalflow.Computation, p
 }
 
 func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.closed || s.apiClient == nil {
+		return -1, fmt.Errorf("splunk observability scaler is closed")
+	}
+
 	comp, err := s.apiClient.Execute(ctx, &signalflow.ExecuteRequest{
 		Program: s.metadata.Query,
 	})
@@ -259,5 +268,15 @@ func (s *splunkObservabilityScaler) GetMetricSpecForScaling(context.Context) []v
 }
 
 func (s *splunkObservabilityScaler) Close(context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return nil
+	}
+	s.closed = true
+	if s.apiClient != nil {
+		s.apiClient.Close()
+		s.apiClient = nil
+	}
 	return nil
 }
