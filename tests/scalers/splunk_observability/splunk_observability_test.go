@@ -58,16 +58,18 @@ type aggregatorTestCase struct {
 	aggregator            string
 	targetValue           string
 	activationTargetValue string
+	scaleOutReplicas      int
+	scaleInReplicas       int
 }
 
 var aggregatorTestCases = []aggregatorTestCase{
 	// max/latest: high phase datapoints are all 1000, low phase datapoints are all 100.
-	{aggregator: "max", targetValue: "400", activationTargetValue: "1.1"},
-	{aggregator: "latest", targetValue: "400", activationTargetValue: "1.1"},
+	{aggregator: "max", targetValue: "400", activationTargetValue: "1.1", scaleOutReplicas: 10, scaleInReplicas: 4},
+	{aggregator: "latest", targetValue: "400", activationTargetValue: "1.1", scaleOutReplicas: 10, scaleInReplicas: 4},
 	// sum: ~10 points * 1000 during high phase vs ~2 points * 100 during low phase.
-	{aggregator: "sum", targetValue: "2000", activationTargetValue: "1.1"},
+	{aggregator: "sum", targetValue: "2000", activationTargetValue: "1.1", scaleOutReplicas: 10, scaleInReplicas: 1},
 	// count: ~10 points during high phase (1s interval) vs ~2 points during low phase (5s interval).
-	{aggregator: "count", targetValue: "5", activationTargetValue: "1.1"},
+	{aggregator: "count", targetValue: "5", activationTargetValue: "1.1", scaleOutReplicas: 10, scaleInReplicas: 4},
 }
 
 type templateData struct {
@@ -255,26 +257,26 @@ func TestSplunkObservabilityScaler(t *testing.T) {
 				"pods should be running after 3 minutes")
 
 			// test scaling
-			testScaleOut(t, kc)
-			testScaleIn(t, kc)
+			testScaleOut(t, kc, tc.scaleOutReplicas)
+			testScaleIn(t, kc, tc.scaleInReplicas)
 		})
 	}
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, expectedReplicas int) {
 	t.Log("--- testing scale out ---")
 	t.Log("waiting for 4 minutes for scale out to complete")
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 10, 4, 60),
-		"replica count should be 10 after 4 minutes")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, expectedReplicas, 4, 60),
+		"replica count should be %d after 4 minutes", expectedReplicas)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, expectedReplicas int) {
 	t.Log("--- testing scale in ---")
 	t.Log("waiting for 10 minutes for scale in to complete")
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 10, 60),
-		"replica count should be 4 after 10 minutes")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, expectedReplicas, 10, 60),
+		"replica count should be %d after 10 minutes", expectedReplicas)
 }
 
 func getTemplateData(tc aggregatorTestCase) (templateData, []Template) {
