@@ -25,7 +25,7 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -72,6 +72,7 @@ type kafkaMetadata struct {
 	ScaleToZeroOnInvalidOffset         bool              `keda:"name=scaleToZeroOnInvalidOffset,order=triggerMetadata,default=false"`
 	LimitToPartitionsWithLag           bool              `keda:"name=limitToPartitionsWithLag,order=triggerMetadata,default=false"`
 	EnsureEvenDistributionOfPartitions bool              `keda:"name=ensureEvenDistributionOfPartitions,order=triggerMetadata,default=false"`
+	FullMetadata                       bool              `keda:"name=fullMetadata,order=triggerMetadata,default=true"`
 
 	VersionStr string `keda:"name=version,order=triggerMetadata,optional"`
 
@@ -144,6 +145,9 @@ func (m *kafkaMetadata) Validate() error {
 	if len(m.Topic) == 0 && m.EnsureEvenDistributionOfPartitions {
 		return fmt.Errorf("topic must be specified when using ensureEvenDistributionOfPartitions")
 	}
+	if !m.FullMetadata && len(m.Topic) == 0 {
+		return fmt.Errorf("topic must be specified when fullMetadata is false")
+	}
 
 	if err := m.parseTLS(); err != nil {
 		return err
@@ -157,7 +161,7 @@ func (m *kafkaMetadata) Validate() error {
 
 func parsePartitionLimitation(partitionLimitationStr string) ([]int32, error) {
 	partitionLimitation := make([]int32, 0)
-	for _, part := range strings.Split(partitionLimitationStr, ",") {
+	for part := range strings.SplitSeq(partitionLimitationStr, ",") {
 		part = strings.TrimSpace(part)
 		if strings.Contains(part, "-") {
 			rangeParts := strings.Split(part, "-")
@@ -258,7 +262,7 @@ func (m *kafkaMetadata) parseOAuthParams() error {
 		m.scopes = strings.Split(m.ScopesStr, ",")
 		m.oauthExtensions = make(map[string]string)
 		if m.OAuthExtensionsStr != "" {
-			for _, ext := range strings.Split(m.OAuthExtensionsStr, ",") {
+			for ext := range strings.SplitSeq(m.OAuthExtensionsStr, ",") {
 				kv := strings.Split(ext, "=")
 				if len(kv) != 2 {
 					return errors.New("invalid OAuthBearer extension, must be of format key=value")
@@ -446,6 +450,15 @@ func getKafkaClients(ctx context.Context, metadata kafkaMetadata) (sarama.Client
 		return nil, nil, fmt.Errorf("error creating kafka client: %w", err)
 	}
 
+	if !metadata.FullMetadata && metadata.Topic != "" {
+		if err := client.RefreshMetadata(metadata.Topic); err != nil {
+			if !client.Closed() {
+				client.Close()
+			}
+			return nil, nil, fmt.Errorf("error registering topic metadata for topic %q: %w", metadata.Topic, err)
+		}
+	}
+
 	admin, err := sarama.NewClusterAdminFromClient(client)
 	if err != nil {
 		if !client.Closed() {
@@ -460,6 +473,7 @@ func getKafkaClients(ctx context.Context, metadata kafkaMetadata) (sarama.Client
 func getKafkaClientConfig(ctx context.Context, metadata kafkaMetadata) (*sarama.Config, error) {
 	config := sarama.NewConfig()
 	config.Version = metadata.version
+	config.Metadata.Full = metadata.FullMetadata
 
 	if metadata.saslType != KafkaSASLTypeNone && metadata.saslType != KafkaSASLTypeGSSAPI {
 		config.Net.SASL.Enable = true
@@ -594,12 +608,7 @@ func (s *kafkaScaler) isActivePartition(pID int32) bool {
 	if s.metadata.PartitionLimitation == nil {
 		return true
 	}
-	for _, _pID := range s.metadata.PartitionLimitation {
-		if pID == _pID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(s.metadata.PartitionLimitation, pID)
 }
 
 func (s *kafkaScaler) getConsumerOffsets(topicPartitions map[string][]int32) (*sarama.OffsetFetchResponse, error) {
@@ -936,9 +945,7 @@ func FindFactors(n int64) []int64 {
 		}
 	}
 
-	sort.Slice(factors, func(i, j int) bool {
-		return factors[i] < factors[j]
-	})
+	slices.Sort(factors)
 
 	return factors
 }

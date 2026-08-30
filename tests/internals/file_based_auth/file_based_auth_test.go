@@ -172,11 +172,12 @@ func TestFileBasedAuthentication(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
+	// Deferred because this test's ClusterTriggerAuthentication is cluster-scoped and so outlives
+	// the namespace, and testScaledObjectWithFileAuth can end the test early with a Fatalf.
+	defer DeleteKubernetesResources(t, testNamespace, data, templates)
+
 	// test scaled object creation with file-based auth
 	testScaledObjectWithFileAuth(t)
-
-	// cleanup
-	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func getTemplateData() (templateData, []Template) {

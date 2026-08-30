@@ -10,3 +10,4 @@ labels:
 resources:
 - role.yaml
 - role_binding.yaml
+- aggregate_cluster_roles.yaml

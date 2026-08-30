@@ -26,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	"k8s.io/utils/ptr"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache"
@@ -114,7 +113,7 @@ func TestScalingModifierTriggerValue(t *testing.T) {
 		return so
 	}
 	failing := func(n int32) *kedav1alpha1.HealthStatus {
-		return &kedav1alpha1.HealthStatus{NumberOfFailures: ptr.To(n), Status: kedav1alpha1.HealthStatusFailing}
+		return &kedav1alpha1.HealthStatus{NumberOfFailures: new(n), Status: kedav1alpha1.HealthStatusFailing}
 	}
 
 	tests := []struct {
@@ -135,7 +134,7 @@ func TestScalingModifierTriggerValue(t *testing.T) {
 		{name: "failures exceed threshold returns nil",
 			so: withHealth(failing(5)), wantNil: true},
 		{name: "healthy (failures reset to 0) returns the metric value",
-			so: withHealth(&kedav1alpha1.HealthStatus{NumberOfFailures: ptr.To(int32(0)), Status: kedav1alpha1.HealthStatusHappy})},
+			so: withHealth(&kedav1alpha1.HealthStatus{NumberOfFailures: new(int32(0)), Status: kedav1alpha1.HealthStatusHappy})},
 	}
 
 	for _, tt := range tests {
@@ -301,7 +300,7 @@ func TestCalculateScalingModifiersFormulaFallbackReplicas(t *testing.T) {
 			Timestamp:  v1.Now(),
 		}
 	}
-	failures := ptr.To(int32(5))
+	failures := new(int32(5))
 	so := &kedav1alpha1.ScaledObject{
 		Spec: kedav1alpha1.ScaledObjectSpec{
 			Advanced: &kedav1alpha1.AdvancedConfig{

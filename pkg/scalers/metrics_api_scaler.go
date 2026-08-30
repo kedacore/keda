@@ -84,6 +84,10 @@ const (
 	MinAggregationType     AggregationType = "min"
 )
 
+var (
+	promQLParser parser.Parser = parser.NewParser(parser.Options{})
+)
+
 // NewMetricsAPIScaler creates a new HTTP scaler
 func NewMetricsAPIScaler(config *scalersconfig.ScalerConfig, kubeClient client.Client) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -156,7 +160,7 @@ func GetValueFromResponse(body []byte, valueLocation string, format APIFormat) (
 
 // getValueFromPrometheusResponse uses provided valueLocation to access the numeric value in provided body
 func getValueFromPrometheusResponse(body []byte, valueLocation string) (float64, error) {
-	matchers, err := parser.ParseMetricSelector(valueLocation)
+	matchers, err := promQLParser.ParseMetricSelector(valueLocation)
 	if err != nil {
 		return 0, err
 	}
@@ -248,7 +252,7 @@ func getValueFromJSONResponse(body []byte, valueLocation string) (float64, error
 
 // getValueFromXMLResponse uses provided valueLocation to access the numeric value in provided body
 func getValueFromXMLResponse(body []byte, valueLocation string) (float64, error) {
-	var xmlMap map[string]interface{}
+	var xmlMap map[string]any
 	err := xml.Unmarshal(body, &xmlMap)
 	if err != nil {
 		return 0, err
@@ -280,7 +284,7 @@ func getValueFromXMLResponse(body []byte, valueLocation string) (float64, error)
 // getValueFromYAMLResponse uses provided valueLocation to access the numeric value in provided body
 // using generic ketautil.GetValueByPath
 func getValueFromYAMLResponse(body []byte, valueLocation string) (float64, error) {
-	var yamlMap map[string]interface{}
+	var yamlMap map[string]any
 	err := yaml.Unmarshal(body, &yamlMap)
 	if err != nil {
 		return 0, err
