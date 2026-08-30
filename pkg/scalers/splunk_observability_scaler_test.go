@@ -178,9 +178,6 @@ func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testin
 func TestSplunkObservabilityCloseReapsClientGoroutines(t *testing.T) {
 	const program = "data('demo.trans.latency').max().publish()"
 	before := countSplunkO11ySignalflowGoroutines()
-	if before != 0 {
-		t.Fatalf("expected 0 signalflow goroutines before scaler, got %d", before)
-	}
 
 	scaler, stop := newFakeSplunkO11yScaler(t, program, 1)
 	defer stop()
@@ -190,7 +187,7 @@ func TestSplunkObservabilityCloseReapsClientGoroutines(t *testing.T) {
 	if _, err := scaler.getQueryResult(ctx); err != nil {
 		t.Fatalf("getQueryResult: %v", err)
 	}
-	if during := countSplunkO11ySignalflowGoroutines(); during == 0 {
+	if during := countSplunkO11ySignalflowGoroutines(); during <= before {
 		t.Fatal("expected signalflow goroutines while the client is open")
 	}
 
@@ -201,13 +198,13 @@ func TestSplunkObservabilityCloseReapsClientGoroutines(t *testing.T) {
 	var after int
 	for {
 		after = countSplunkO11ySignalflowGoroutines()
-		if after <= 1 || time.Now().After(deadline) {
+		if after <= before+1 || time.Now().After(deadline) {
 			break
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	if after > 1 {
-		t.Fatalf("expected at most 1 leftover signalflow goroutine after Close, got %d", after)
+	if after > before+1 {
+		t.Fatalf("expected at most 1 leftover signalflow goroutine after Close, got %d (baseline %d)", after-before, before)
 	}
 }
 
