@@ -600,7 +600,7 @@ func ValidateAndCompileScalingModifiers(so *ScaledObject) (*vm.Program, error) {
 	}
 
 	// cast return value of formula to float if necessary to avoid wrong value return
-	// type (ternary operator doesnt return float)
+	// type (ternary operator doesn't return float)
 	so.Spec.Advanced.ScalingModifiers.Formula = castToFloatIfNecessary(sm.Formula)
 
 	// validate formula if not empty
