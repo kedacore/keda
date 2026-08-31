@@ -9,6 +9,7 @@ There are many areas we can use contributions - ranging from code, documentation
 **Table of contents**
 
 - [Project governance](#project-governance)
+- [Anti-Spam & PR authorization policy](#anti-spam--pr-authorization-policy)
 - [Getting Help](#getting-help)
 - [Making Breaking Changes](#making-breaking-changes)
 - [Contributing Scalers](#contributing-scalers)
@@ -31,6 +32,17 @@ There are many areas we can use contributions - ranging from code, documentation
 ## Project governance
 
 You can learn about the governance of KEDA [here](https://github.com/kedacore/governance).
+
+## Anti-Spam & PR authorization policy
+
+To keep review load manageable and respect everyone's time, we ask contributors to follow these rules:
+
+- **Require an issue:** Do not open a Pull Request unless there is an existing, open GitHub Issue that explicitly requests the work. Drive-by PRs, speculative refactors, typo-only PRs, and unsolicited feature work are not accepted.
+- **Require assignment:** Do not start work on an issue unless you have been assigned to it. An unassigned issue is not an invitation to start coding. Comment on the issue and ask a maintainer to assign you before you begin.
+- **Respect claimed issues:** If someone has commented that they intend to work on an issue, or has been assigned to it, do not open a competing PR. If there has been no visible progress for an extended period, it is fine to politely ask whether they are still actively working on it before taking further action.
+- **Stay inside the issue's scope:** Implement only what the issue describes. If you discover related problems, mention them in the PR description or open a separate issue — do not silently expand the scope.
+- **One issue, one PR:** Do not bundle multiple issues into a single PR, and do not split a single issue across multiple PRs without coordinating in the issue first.
+- **No PR for chores that already have automation:** Dependency bumps (Renovate/Dependabot), changelog regeneration, generated-file refreshes, and similar housekeeping are handled by bots or release tooling. Do not open PRs that duplicate that work.
 
 ## Getting Help
 

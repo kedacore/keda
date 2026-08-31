@@ -6,12 +6,7 @@ If a rule here conflicts with `CONTRIBUTING.md`, follow `CONTRIBUTING.md` and fl
 
 ## Zero-spam & PR authorization policy
 
-- **Require an issue:** DO NOT create a Pull Request unless there is an existing, open, and approved GitHub Issue that explicitly requests this work. Drive-by PRs, speculative refactors, "found a typo" PRs, and unsolicited feature work are not accepted.
-- **Require assignment:** DO NOT start work on an issue unless it is assigned to the human user driving you. An unassigned issue is not an invitation to start coding. If the human has not been assigned, ask them to request assignment from a maintainer first and wait.
-- **Respect claimed issues**: If someone has commented that they intend to work on the issue, or has been assigned to it, do not open a competing PR, push commits, or start a draft PR. However, if there has been no visible progress for an extended period, it is acceptable to politely ask whether they are still actively working on it before taking further action.
-- **Stay inside the issue's scope:** Implement only what the issue describes. If you discover related problems, mention them in the PR description or open a separate issue. Do not silently expand the scope.
-- **One issue, one PR:** Do not bundle multiple issues into a single PR, and do not split a single issue across multiple PRs without coordinating in the issue first.
-- **No PR for chores that already have automation:** Dependency bumps (Renovate/Dependabot), changelog regeneration, generated-file refreshes, and similar housekeeping are handled by bots or release tooling. Do not open PRs that duplicate that work.
+Follow the [Anti-Spam & PR authorization policy](CONTRIBUTING.md#anti-spam--pr-authorization-policy) in `CONTRIBUTING.md`. In short: require an approved issue and assignment before opening a PR, respect claimed issues, stay in scope, one issue per PR, and do not duplicate bot-managed chores.
 
 ## Pull request rules
 
