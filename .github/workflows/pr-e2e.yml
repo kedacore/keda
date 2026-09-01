@@ -461,7 +461,7 @@ jobs:
         uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
         env:
           # renovate: datasource=docker depName=kindest/node
-          NODE_IMAGE_VERSION: v1.32.0
+          NODE_IMAGE_VERSION: v1.36.1
         with:
           node_image: kindest/node:${{ env.NODE_IMAGE_VERSION }}
           cluster_name: arm-smoke-test-${{ github.run_id }}
@@ -544,9 +544,9 @@ jobs:
       - name: Install Kubernetes
         env:
           # renovate: datasource=github-releases depName=kubernetes-sigs/kind
-          KIND_VERSION: v0.29.0
+          KIND_VERSION: v0.32.0
           # renovate: datasource=docker depName=vishnubijukumar/kindest-node-s390x
-          KINDEST_NODE_S390X_VERSION: v0.29.0
+          KINDEST_NODE_S390X_VERSION: v1.35.0
           # renovate: datasource=docker depName=vishnubijukumar/kindnetd
           KINDNETD_S390X_VERSION: v20250512-s390x
           # renovate: datasource=docker depName=vishnubijukumar/local-path-provisioner

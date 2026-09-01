@@ -139,10 +139,6 @@ type Rollout struct {
 	PropagationPolicy string `json:"propagationPolicy,omitempty"`
 }
 
-func init() {
-	SchemeBuilder.Register(&ScaledJob{}, &ScaledJobList{})
-}
-
 // MaxReplicaCount returns MaxReplicaCount
 func (s ScaledJob) MaxReplicaCount() int64 {
 	if s.Spec.MaxReplicaCount != nil {
