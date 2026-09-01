@@ -65,6 +65,28 @@ var _ = It("should validate the so creation when there are other SO for other wo
 	}).ShouldNot(HaveOccurred())
 })
 
+var _ = It("should validate the so creation when another SO targets the same name with a different Kind", func() {
+	// Regression coverage for the scaleTargetRefNameIdx field index: SOs
+	// sharing a scaleTargetRef.Name are returned by the indexed List
+	// together, and verifyScaledObjects must disambiguate them by GVK so a
+	// Deployment "foo" and a StatefulSet "foo" can coexist in one namespace.
+	namespaceName := "same-name-different-kind"
+	sharedTargetName := "shared-target"
+	namespace := createNamespace(namespaceName)
+	soDeployment := createScaledObject("so-for-deployment", namespaceName, sharedTargetName, "apps/v1", "Deployment", false, map[string]string{}, "")
+	soStatefulSet := createScaledObject("so-for-statefulset", namespaceName, sharedTargetName, "apps/v1", "StatefulSet", false, map[string]string{}, "")
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), soDeployment)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), soStatefulSet)
+	}).ShouldNot(HaveOccurred())
+})
+
 var _ = It("should validate the so creation when there are other HPA for other workloads", func() {
 
 	namespaceName := "valid-other-hpa"
@@ -1262,13 +1284,13 @@ var _ = It("should emit warning when PollingInterval is set with minReplicaCount
 	err = k8sClient.Create(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	warnings, err := so.ValidateCreate(ptr.To(false))
+	warnings, err := so.ValidateCreate(new(false))
 	Expect(err).ToNot(HaveOccurred())
 	Expect(warnings).To(ContainElement(ContainSubstring("PollingInterval is configured but is not relevant")))
 })
 
-var _ = It("should emit warning when PollingInterval is set with minReplicaCount > 0 and idleReplicaCount > 0", func() {
-	namespaceName := "polling-interval-warning-idle-greater-zero"
+var _ = It("should NOT emit warning when PollingInterval is set with minReplicaCount > 0 and idleReplicaCount > 0", func() {
+	namespaceName := "polling-interval-no-warning-idle-greater-zero"
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, true, true)
 	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
@@ -1283,9 +1305,9 @@ var _ = It("should emit warning when PollingInterval is set with minReplicaCount
 	err = k8sClient.Create(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	warnings, err := so.ValidateCreate(ptr.To(false))
+	warnings, err := so.ValidateCreate(new(false))
 	Expect(err).ToNot(HaveOccurred())
-	Expect(warnings).To(ContainElement(ContainSubstring("PollingInterval is configured but is not relevant")))
+	Expect(warnings).ToNot(ContainElement(ContainSubstring("PollingInterval is configured but is not relevant")))
 })
 
 var _ = It("should NOT emit warning when PollingInterval is set with idleReplicaCount = 0", func() {
@@ -1304,7 +1326,7 @@ var _ = It("should NOT emit warning when PollingInterval is set with idleReplica
 	err = k8sClient.Create(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	warnings, err := so.ValidateCreate(ptr.To(false))
+	warnings, err := so.ValidateCreate(new(false))
 	Expect(err).ToNot(HaveOccurred())
 	Expect(warnings).ToNot(ContainElement(ContainSubstring("PollingInterval is configured but is not relevant")))
 })
@@ -1337,7 +1359,7 @@ var _ = It("should NOT emit warning when PollingInterval is set with useCachedMe
 	err = k8sClient.Create(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	warnings, err := so.ValidateCreate(ptr.To(false))
+	warnings, err := so.ValidateCreate(new(false))
 	Expect(err).ToNot(HaveOccurred())
 	Expect(warnings).ToNot(ContainElement(ContainSubstring("PollingInterval is configured but is not relevant")))
 })
@@ -1358,7 +1380,7 @@ var _ = It("should NOT emit warning when PollingInterval is not set", func() {
 	err = k8sClient.Create(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	warnings, err := so.ValidateCreate(ptr.To(false))
+	warnings, err := so.ValidateCreate(new(false))
 	Expect(err).ToNot(HaveOccurred())
 	Expect(warnings).ToNot(ContainElement(ContainSubstring("PollingInterval is configured but is not relevant")))
 })
@@ -1381,13 +1403,13 @@ var _ = It("should emit warning when CooldownPeriod is set with minReplicaCount 
 	err = k8sClient.Create(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	warnings, err := so.ValidateCreate(ptr.To(false))
+	warnings, err := so.ValidateCreate(new(false))
 	Expect(err).ToNot(HaveOccurred())
 	Expect(warnings).To(ContainElement(ContainSubstring("CooldownPeriod is configured but is not relevant")))
 })
 
-var _ = It("should emit warning when CooldownPeriod is set with minReplicaCount > 0 and idleReplicaCount > 0", func() {
-	namespaceName := "cooldown-warning-idle-greater-zero"
+var _ = It("should NOT emit warning when CooldownPeriod is set with minReplicaCount > 0 and idleReplicaCount > 0", func() {
+	namespaceName := "cooldown-no-warning-idle-greater-zero"
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, true, true)
 	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
@@ -1402,9 +1424,9 @@ var _ = It("should emit warning when CooldownPeriod is set with minReplicaCount 
 	err = k8sClient.Create(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	warnings, err := so.ValidateCreate(ptr.To(false))
+	warnings, err := so.ValidateCreate(new(false))
 	Expect(err).ToNot(HaveOccurred())
-	Expect(warnings).To(ContainElement(ContainSubstring("CooldownPeriod is configured but is not relevant")))
+	Expect(warnings).ToNot(ContainElement(ContainSubstring("CooldownPeriod is configured but is not relevant")))
 })
 
 var _ = It("should NOT emit warning when CooldownPeriod is set with idleReplicaCount = 0", func() {
@@ -1423,7 +1445,7 @@ var _ = It("should NOT emit warning when CooldownPeriod is set with idleReplicaC
 	err = k8sClient.Create(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	warnings, err := so.ValidateCreate(ptr.To(false))
+	warnings, err := so.ValidateCreate(new(false))
 	Expect(err).ToNot(HaveOccurred())
 	Expect(warnings).ToNot(ContainElement(ContainSubstring("CooldownPeriod is configured but is not relevant")))
 })
@@ -1444,7 +1466,7 @@ var _ = It("should NOT emit warning when CooldownPeriod is not set", func() {
 	err = k8sClient.Create(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	warnings, err := so.ValidateCreate(ptr.To(false))
+	warnings, err := so.ValidateCreate(new(false))
 	Expect(err).ToNot(HaveOccurred())
 	Expect(warnings).ToNot(ContainElement(ContainSubstring("CooldownPeriod is configured but is not relevant")))
 })
@@ -1458,7 +1480,7 @@ var _ = It("should emit both warnings when both PollingInterval and CooldownPeri
 	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
 
 	so.Spec.MinReplicaCount = ptr.To[int32](2)
-	so.Spec.IdleReplicaCount = ptr.To[int32](1)
+	so.Spec.IdleReplicaCount = nil
 	so.Spec.PollingInterval = ptr.To[int32](30)
 	so.Spec.CooldownPeriod = ptr.To[int32](300)
 
@@ -1468,7 +1490,7 @@ var _ = It("should emit both warnings when both PollingInterval and CooldownPeri
 	err = k8sClient.Create(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	warnings, err := so.ValidateCreate(ptr.To(false))
+	warnings, err := so.ValidateCreate(new(false))
 	Expect(err).ToNot(HaveOccurred())
 	Expect(warnings).To(ContainElement(ContainSubstring("PollingInterval is configured but is not relevant")))
 	Expect(warnings).To(ContainElement(ContainSubstring("CooldownPeriod is configured but is not relevant")))
@@ -1491,7 +1513,7 @@ var _ = It("should emit no warnings when both are properly configured with idleR
 	err = k8sClient.Create(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	warnings, err := so.ValidateCreate(ptr.To(false))
+	warnings, err := so.ValidateCreate(new(false))
 	Expect(err).ToNot(HaveOccurred())
 	Expect(warnings).To(BeEmpty())
 })
@@ -1817,8 +1839,8 @@ func createScaledObjectSTZ(name string, namespace string, targetName string, min
 			ScaleTargetRef: &ScaleTarget{
 				Name: targetName,
 			},
-			MinReplicaCount: ptr.To(minReplicas),
-			MaxReplicaCount: ptr.To(maxReplicas),
+			MinReplicaCount: new(minReplicas),
+			MaxReplicaCount: new(maxReplicas),
 			CooldownPeriod:  ptr.To[int32](1),
 			Triggers:        triggers,
 		},

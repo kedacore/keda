@@ -16,15 +16,17 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 type opensearchScaler struct {
-	metricType  v2.MetricTargetType
-	metadata    opensearchMetadata
-	osAPIClient *opensearchapi.Client
-	logger      logr.Logger
+	metricType    v2.MetricTargetType
+	metadata      opensearchMetadata
+	osAPIClient   *opensearchapi.Client
+	httpTransport metricscollector.CloseableRoundTripper
+	logger        logr.Logger
 }
 
 type opensearchMetadata struct {
@@ -79,50 +81,63 @@ func NewOpensearchScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("failed to parse opensearch metadata: %w", err)
 	}
 
-	opensearchAPIClient, err := newOpensearchAPIClient(meta, logger)
+	opensearchAPIClient, httpTransport, err := newOpensearchAPIClient(meta, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create opensearch client: %w", err)
 	}
 
 	return &opensearchScaler{
-		metricType:  metricType,
-		metadata:    meta,
-		osAPIClient: opensearchAPIClient,
-		logger:      logger,
+		metricType:    metricType,
+		metadata:      meta,
+		osAPIClient:   opensearchAPIClient,
+		httpTransport: httpTransport,
+		logger:        logger,
 	}, nil
 }
 
-func newOpensearchAPIClient(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, error) {
+func newOpensearchAPIClient(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, metricscollector.CloseableRoundTripper, error) {
 	if meta.EnableTLS {
 		return newOpensearchAPIClientWithTLS(meta, logger)
 	}
 	return newOpensearchAPIClientWithBasicAuth(meta, logger)
 }
 
-func newOpensearchAPIClientWithTLS(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, error) {
+func newOpensearchAPIClientWithTLS(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, metricscollector.CloseableRoundTripper, error) {
 	tlsConfig, err := util.NewTLSConfig(meta.ClientCert, meta.ClientKey, meta.CACert, meta.UnsafeSsl)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create TLS config: %w", err)
+		return nil, nil, fmt.Errorf("failed to create TLS config: %w", err)
 	}
 
-	return newOpensearchAPIClientFromConfig(opensearch.Config{
+	transport := util.CreateRTWithTLSConfig(tlsConfig)
+	client, err := newOpensearchAPIClientFromConfig(opensearch.Config{
 		Addresses: meta.Addresses,
-		Transport: util.CreateRTWithTLSConfig(tlsConfig),
+		Transport: transport,
 	}, logger)
+	if err != nil {
+		transport.CloseIdleConnections()
+		return nil, nil, err
+	}
+	return client, transport, nil
 }
 
-func newOpensearchAPIClientWithBasicAuth(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, error) {
+func newOpensearchAPIClientWithBasicAuth(meta opensearchMetadata, logger logr.Logger) (*opensearchapi.Client, metricscollector.CloseableRoundTripper, error) {
 	tlsConfig, err := util.NewTLSConfig("", "", meta.CACert, meta.UnsafeSsl)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create TLS config: %w", err)
+		return nil, nil, fmt.Errorf("failed to create TLS config: %w", err)
 	}
 
-	return newOpensearchAPIClientFromConfig(opensearch.Config{
+	transport := util.CreateRTWithTLSConfig(tlsConfig)
+	client, err := newOpensearchAPIClientFromConfig(opensearch.Config{
 		Addresses: meta.Addresses,
 		Username:  meta.Username,
 		Password:  meta.Password,
-		Transport: util.CreateRTWithTLSConfig(tlsConfig),
+		Transport: transport,
 	}, logger)
+	if err != nil {
+		transport.CloseIdleConnections()
+		return nil, nil, err
+	}
+	return client, transport, nil
 }
 
 func newOpensearchAPIClientFromConfig(cfg opensearch.Config, logger logr.Logger) (*opensearchapi.Client, error) {
@@ -161,6 +176,10 @@ func parseOpensearchMetadata(config *scalersconfig.ScalerConfig) (opensearchMeta
 }
 
 func (s *opensearchScaler) Close(_ context.Context) error {
+	if s.httpTransport != nil {
+		s.httpTransport.CloseIdleConnections()
+		s.httpTransport = nil
+	}
 	return nil
 }
 
@@ -291,8 +310,8 @@ func (s *opensearchScaler) searchTemplate(ctx context.Context) ([]byte, error) {
 	return responseBody, nil
 }
 
-func (s *opensearchScaler) buildQueryFromMetadata() (map[string]interface{}, error) {
-	parameters := map[string]interface{}{}
+func (s *opensearchScaler) buildQueryFromMetadata() (map[string]any, error) {
+	parameters := map[string]any{}
 	for _, p := range s.metadata.Parameters {
 		if p != "" {
 			kv := strings.SplitN(p, ":", 2)
@@ -307,7 +326,7 @@ func (s *opensearchScaler) buildQueryFromMetadata() (map[string]interface{}, err
 			parameters[key] = value
 		}
 	}
-	query := map[string]interface{}{
+	query := map[string]any{
 		"id": s.metadata.SearchTemplateName,
 	}
 	if len(parameters) > 0 {

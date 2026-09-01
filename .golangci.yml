@@ -5,7 +5,7 @@ run:
   # add the build tags to include e2e tests files
   build-tags:
   - e2e
-  modules-download-mode: vendor
+
 linters:
   default: none
   enable:
@@ -15,7 +15,6 @@ linters:
     - dogsled
     - dupl
     - errcheck
-    - goconst
     - gocritic
     - gocyclo
     - goprintffuncname
@@ -30,6 +29,9 @@ linters:
     - unused
     - whitespace
   settings:
+    govet:
+      disable:
+        - inline
     depguard:
       rules:
         main:
@@ -50,7 +52,6 @@ linters:
     rules:
       - linters:
           - dupl
-          - goconst
           - mnd
           - revive
         path: _test\.go
@@ -159,7 +160,6 @@ linters:
         path: pkg/scalers/external_mock_scaler.go
       - linters:
           - depguard
-          - goconst
         path: controllers/keda/scaledobject_controller_test.go
       - linters:
           - depguard
@@ -176,7 +176,6 @@ linters:
           - dupl
         path: pkg/scalers/azure/azure_storage.go
     paths:
-      - vendor
       - third_party$
       - builtin$
       - examples$
@@ -194,7 +193,6 @@ formatters:
   exclusions:
     generated: lax
     paths:
-      - vendor
       - third_party$
       - builtin$
       - examples$

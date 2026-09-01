@@ -310,7 +310,7 @@ func (s *PredictKubeScaler) parsePrometheusResult(result model.Value) (out []*co
 	case model.ValVector:
 		if res, ok := result.(model.Vector); ok {
 			for _, val := range res {
-				t, err := tc.AdaptTimeToPbTimestamp(tc.TimeToTimePtr(val.Timestamp.Time()))
+				t, err := tc.AdaptTimeToPbTimestamp(new(val.Timestamp.Time()))
 				if err != nil {
 					return nil, err
 				}
@@ -326,7 +326,7 @@ func (s *PredictKubeScaler) parsePrometheusResult(result model.Value) (out []*co
 		if res, ok := result.(model.Matrix); ok {
 			for _, val := range res {
 				for _, v := range val.Values {
-					t, err := tc.AdaptTimeToPbTimestamp(tc.TimeToTimePtr(v.Timestamp.Time()))
+					t, err := tc.AdaptTimeToPbTimestamp(new(v.Timestamp.Time()))
 					if err != nil {
 						return nil, err
 					}
@@ -341,7 +341,7 @@ func (s *PredictKubeScaler) parsePrometheusResult(result model.Value) (out []*co
 		}
 	case model.ValScalar:
 		if res, ok := result.(*model.Scalar); ok {
-			t, err := tc.AdaptTimeToPbTimestamp(tc.TimeToTimePtr(res.Timestamp.Time()))
+			t, err := tc.AdaptTimeToPbTimestamp(new(res.Timestamp.Time()))
 			if err != nil {
 				return nil, err
 			}
@@ -354,7 +354,7 @@ func (s *PredictKubeScaler) parsePrometheusResult(result model.Value) (out []*co
 		}
 	case model.ValString:
 		if res, ok := result.(*model.String); ok {
-			t, err := tc.AdaptTimeToPbTimestamp(tc.TimeToTimePtr(res.Timestamp.Time()))
+			t, err := tc.AdaptTimeToPbTimestamp(new(res.Timestamp.Time()))
 			if err != nil {
 				return nil, err
 			}

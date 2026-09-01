@@ -170,7 +170,7 @@ func TestSqsScaler(t *testing.T) {
 	// for a role that can be assumed
 	testScaleWithExplicitRoleArnUsingRoleAssumtion(t, kc, data, sqsClient, queueWorkload1.QueueUrl)
 	// test scaling using correct identity provided via podIdentity.RoleArn
-	// for a role to be used with web indentity (workload-2 role allows it)
+	// for a role to be used with web identity (workload-2 role allows it)
 	testScaleWithExplicitRoleArnUsingWebIdentityRole(t, kc, data, sqsClient, queueWorkload2.QueueUrl)
 	// test scaling using correct identity provided via workload
 	testScaleWithWorkloadArn(t, kc, data, sqsClient, queueWorkload1.QueueUrl)

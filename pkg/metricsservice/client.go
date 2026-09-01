@@ -26,6 +26,7 @@ import (
 	"github.com/go-logr/logr"
 	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/keepalive"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -75,6 +76,7 @@ func NewGrpcClient(ctx context.Context, url, certDir, authority, confOptions str
 			PermitWithoutStream: true,             // Send pings even without active RPCs
 		}),
 		grpc.WithConnectParams(grpc.ConnectParams{
+			Backoff:           backoff.DefaultConfig, // BaseDelay 1s, Multiplier 1.6, Jitter 0.2, MaxDelay 120s
 			MinConnectTimeout: 5 * time.Second,
 		}),
 	}

@@ -32,7 +32,7 @@ import (
 
 // SetStatusConditions patches given object with passed list of conditions based on the object's type or returns an error.
 func SetStatusConditions(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, object runtimeclient.Object, conditions *kedav1alpha1.Conditions) error {
-	transform := func(runtimeObj runtimeclient.Object, target interface{}) error {
+	transform := func(runtimeObj runtimeclient.Object, target any) error {
 		conditions, ok := target.(*kedav1alpha1.Conditions)
 		if !ok {
 			return fmt.Errorf("transform target is not kedav1alpha1.Conditions type %v", target)
@@ -64,8 +64,8 @@ func UpdateScaledJobStatus(ctx context.Context, client runtimeclient.StatusClien
 }
 
 // updateObjectStatus patches the given ScaledObject with the updated status passed to it or returns an error.
-func updateObjectStatus(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, object runtimeclient.Object, status interface{}) error {
-	transform := func(runtimeObj runtimeclient.Object, target interface{}) error {
+func updateObjectStatus(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, object runtimeclient.Object, status any) error {
+	transform := func(runtimeObj runtimeclient.Object, target any) error {
 		switch obj := runtimeObj.(type) {
 		case *kedav1alpha1.ScaledObject:
 			status, ok := target.(*kedav1alpha1.ScaledObjectStatus)
@@ -126,7 +126,7 @@ func updateTriggerAuthenticationStatus(ctx context.Context, logger logr.Logger, 
 
 	triggerAuthenticationStatus := statusHandler(triggerAuthStatus.DeepCopy())
 
-	transform := func(runtimeObj runtimeclient.Object, target interface{}) error {
+	transform := func(runtimeObj runtimeclient.Object, target any) error {
 		status, ok := target.(*kedav1alpha1.TriggerAuthenticationStatus)
 		if !ok {
 			return fmt.Errorf("transform target is not kedav1alpha1.TriggerAuthenticationStatus type %v", target)
@@ -169,7 +169,7 @@ func UpdateTriggerAuthenticationStatusFromTriggers(ctx context.Context, logger l
 }
 
 // TransformObject patches the given object with the targeted passed to it through a transformer function or returns an error.
-func TransformObject(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, object runtimeclient.Object, target interface{}, transform func(runtimeclient.Object, interface{}) error) error {
+func TransformObject(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, object runtimeclient.Object, target any, transform func(runtimeclient.Object, any) error) error {
 	var patch runtimeclient.Patch
 
 	switch obj := object.(type) {

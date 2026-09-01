@@ -57,7 +57,48 @@ var cpuString = "cpu"
 // maxK8sLabelValueLength is the Kubernetes label value limit. The ScaledObject name is used as a label value (scaledobject.keda.sh/name=<so.Name>) on the SO and HPA, and the generated HPA name (keda-hpa-<so.Name> when no custom name is set) is itself a DNS-1123 label.
 const maxK8sLabelValueLength = 63
 
+// Cache field indexes used by verifyScaledObjects and verifyHpas to avoid full
+// namespace List scans on every admission. Without these indexes each
+// admission DeepCopies every ScaledObject (and HPA) in the namespace, which at
+// high SO counts allocates enough memory to OOMKill the webhook under
+// creation bursts. With the indexes each List narrows to candidates that
+// share the indexed field value, then the existing loop disambiguates by GVK.
+const (
+	// scaleTargetRefNameIdx indexes both ScaledObjects and HPAs by
+	// spec.scaleTargetRef.name. controller-runtime keys field indexes
+	// per-GVK so it is safe to reuse the same path string for both objects.
+	scaleTargetRefNameIdx = "spec.scaleTargetRef.name"
+	// hpaNameIdx indexes ScaledObjects by the HPA name they own (computed
+	// default keda-hpa-<so.Name> or the explicit spec.advanced.hpa.name
+	// override) so HPA-ownership conflicts can be detected without scanning
+	// every SO in the namespace.
+	hpaNameIdx = "spec.hpaName"
+)
+
 func (so *ScaledObject) SetupWebhookWithManager(mgr ctrl.Manager, cacheMissFallback bool) error {
+	// Register field indexes before wiring the webhook so verifyScaledObjects
+	// and verifyHpas can use cached, narrowed lookups instead of full
+	// namespace scans. See the index constants above for context.
+	ctx := context.Background()
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &ScaledObject{}, scaleTargetRefNameIdx,
+		func(obj client.Object) []string {
+			return []string{obj.(*ScaledObject).Spec.ScaleTargetRef.Name}
+		}); err != nil {
+		return fmt.Errorf("failed to register ScaledObject index %q: %w", scaleTargetRefNameIdx, err)
+	}
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &ScaledObject{}, hpaNameIdx,
+		func(obj client.Object) []string {
+			return []string{getHpaName(*obj.(*ScaledObject))}
+		}); err != nil {
+		return fmt.Errorf("failed to register ScaledObject index %q: %w", hpaNameIdx, err)
+	}
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &autoscalingv2.HorizontalPodAutoscaler{}, scaleTargetRefNameIdx,
+		func(obj client.Object) []string {
+			return []string{obj.(*autoscalingv2.HorizontalPodAutoscaler).Spec.ScaleTargetRef.Name}
+		}); err != nil {
+		return fmt.Errorf("failed to register HPA index %q: %w", scaleTargetRefNameIdx, err)
+	}
+
 	err := setupKubernetesClients(mgr, cacheMissFallback)
 	if err != nil {
 		return fmt.Errorf("failed to setup kubernetes clients: %w", err)
@@ -173,7 +214,7 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 		allWarnings = append(allWarnings, warnings...)
 	}
 
-	verifyCommonFunctions := map[string]func(interface{}, string, bool) error{
+	verifyCommonFunctions := map[string]func(any, string, bool) error{
 		"verifyTriggers": verifyTriggers,
 	}
 
@@ -189,7 +230,6 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 	return allWarnings, nil
 }
 
-//nolint:unparam
 func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) (admission.Warnings, error) {
 	err := CheckReplicaCountBoundsAreValid(incomingSo)
 	if err != nil {
@@ -199,7 +239,6 @@ func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) (admiss
 	return nil, err
 }
 
-//nolint:unparam
 func verifyName(incomingSo *ScaledObject, action string, _ bool) (admission.Warnings, error) {
 	if len(incomingSo.Name) > maxK8sLabelValueLength {
 		err := fmt.Errorf("scaledobject name %q is %d characters long; must be no more than %d characters because it is used as the %q label value", incomingSo.Name, len(incomingSo.Name), maxK8sLabelValueLength, ScaledObjectOwnerAnnotation)
@@ -217,7 +256,6 @@ func verifyName(incomingSo *ScaledObject, action string, _ bool) (admission.Warn
 	return nil, nil
 }
 
-//nolint:unparam
 func verifyFallback(incomingSo *ScaledObject, action string, _ bool) (admission.Warnings, error) {
 	err := CheckFallbackValid(incomingSo)
 	if err != nil {
@@ -227,7 +265,7 @@ func verifyFallback(incomingSo *ScaledObject, action string, _ bool) (admission.
 	return nil, err
 }
 
-func verifyTriggers(incomingObject interface{}, action string, _ bool) error {
+func verifyTriggers(incomingObject any, action string, _ bool) error {
 	var triggers []ScaleTriggers
 	var name string
 	var namespace string
@@ -252,13 +290,14 @@ func verifyTriggers(incomingObject interface{}, action string, _ bool) error {
 	return err
 }
 
-//nolint:unparam
 func verifyHpas(incomingSo *ScaledObject, action string, _ bool) (admission.Warnings, error) {
+	// Narrow to HPAs targeting the same workload name via the
+	// scaleTargetRefNameIdx index; the loop below still disambiguates by GVK.
 	hpaList := &autoscalingv2.HorizontalPodAutoscalerList{}
-	opt := &client.ListOptions{
-		Namespace: incomingSo.Namespace,
-	}
-	err := kc.List(context.Background(), hpaList, opt)
+	err := kc.List(context.Background(), hpaList,
+		client.InNamespace(incomingSo.Namespace),
+		client.MatchingFields{scaleTargetRefNameIdx: incomingSo.Spec.ScaleTargetRef.Name},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -333,11 +372,13 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 		}
 	}
 
-	// PollingInterval warning: if minReplicaCount > 0 AND (idleReplicaCount is not set OR idleReplicaCount != 0) AND NOT useCachedMetrics
+	// PollingInterval warning: if minReplicaCount > 0 AND idleReplicaCount is not set (idle mode disabled) AND NOT useCachedMetrics.
+	// When idle mode is enabled (idleReplicaCount is set to any value), the scale loop is what detects the
+	// idle<->active transitions, so pollingInterval stays relevant regardless of the idle value.
 	if incomingSo.Spec.PollingInterval != nil {
-		idleReplicaNotZero := incomingSo.Spec.IdleReplicaCount == nil || *incomingSo.Spec.IdleReplicaCount != 0
-		if minReplicas > 0 && idleReplicaNotZero && !usesCachedMetrics {
-			msg := "PollingInterval is configured but is not relevant. PollingInterval is only relevant when minReplicaCount = 0 or idleReplicaCount = 0 or useCachedMetrics is enabled"
+		idleModeDisabled := incomingSo.Spec.IdleReplicaCount == nil
+		if minReplicas > 0 && idleModeDisabled && !usesCachedMetrics {
+			msg := "PollingInterval is configured but is not relevant. PollingInterval is only relevant when minReplicaCount = 0, idleReplicaCount is set, or useCachedMetrics is enabled"
 			warnings = append(warnings, msg)
 			if eventRecorder != nil {
 				eventRecorder.Eventf(incomingSo, nil, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", msg)
@@ -345,11 +386,13 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 		}
 	}
 
-	// CooldownPeriod warning: if minReplicaCount > 0 AND (idleReplicaCount is not set OR idleReplicaCount != 0)
+	// CooldownPeriod warning: if minReplicaCount > 0 AND idleReplicaCount is not set (idle mode disabled).
+	// When idle mode is enabled, the target still scales down to the idle replica count on inactivity,
+	// so cooldownPeriod stays relevant regardless of the idle value.
 	if incomingSo.Spec.CooldownPeriod != nil {
-		idleReplicaNotZero := incomingSo.Spec.IdleReplicaCount == nil || *incomingSo.Spec.IdleReplicaCount != 0
-		if minReplicas > 0 && idleReplicaNotZero {
-			msg := "CooldownPeriod is configured but is not relevant. CooldownPeriod is only relevant when minReplicaCount = 0 or idleReplicaCount = 0"
+		idleModeDisabled := incomingSo.Spec.IdleReplicaCount == nil
+		if minReplicas > 0 && idleModeDisabled {
+			msg := "CooldownPeriod is configured but is not relevant. CooldownPeriod is only relevant when minReplicaCount = 0 or idleReplicaCount is set"
 			warnings = append(warnings, msg)
 			if eventRecorder != nil {
 				eventRecorder.Eventf(incomingSo, nil, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", msg)
@@ -357,28 +400,40 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 		}
 	}
 
-	// Check for conflicts with other ScaledObjects
-	soList := &ScaledObjectList{}
-	opt := &client.ListOptions{
-		Namespace: incomingSo.Namespace,
-	}
-	err := kc.List(context.Background(), soList, opt)
-	if err != nil {
-		return nil, err
-	}
-
+	// Check for conflicts with other ScaledObjects.
+	//
+	// Two conditions must hold for the incoming SO to be valid:
+	//   1. No other SO in the namespace already targets the same workload
+	//      (same GVK + same scaleTargetRef.name).
+	//   2. No other SO in the namespace already owns the same HPA name.
+	//
+	// Both used to be evaluated by listing every SO in the namespace. With
+	// the scaleTargetRefNameIdx and hpaNameIdx field indexes we issue two
+	// narrow indexed Lists instead; each returns the small set of candidates
+	// that share the indexed value (typically 0–1) and the loops still
+	// post-filter by GVK / identity.
+	ctx := context.Background()
 	incomingSoGckr, err := ParseGVKR(restMapper, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind)
 	if err != nil {
 		scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from incoming ScaledObject", "apiVersion", incomingSo.Spec.ScaleTargetRef.APIVersion, "kind", incomingSo.Spec.ScaleTargetRef.Kind)
 		return nil, err
 	}
 
-	incomingSoHpaName := getHpaName(*incomingSo)
-	for _, so := range soList.Items {
+	// Check 1: duplicate scaleTargetRef. SOs in the index share the target
+	// name; GVK is checked in the loop so e.g. a Deployment "foo" and a
+	// StatefulSet "foo" can coexist.
+	targetCandidates := &ScaledObjectList{}
+	if err := kc.List(ctx, targetCandidates,
+		client.InNamespace(incomingSo.Namespace),
+		client.MatchingFields{scaleTargetRefNameIdx: incomingSo.Spec.ScaleTargetRef.Name},
+	); err != nil {
+		return nil, err
+	}
+	for _, so := range targetCandidates.Items {
 		if so.Name == incomingSo.Name {
 			continue
 		}
-		scaledobjectlog.V(1).Info("checking scaledobject", "name", so.Name, "namespace", so.Namespace, "scaledobject", so)
+		scaledobjectlog.V(1).Info("checking scaledobject for duplicate scaleTarget", "name", so.Name, "namespace", so.Namespace)
 
 		soGckr, err := ParseGVKR(restMapper, so.Spec.ScaleTargetRef.APIVersion, so.Spec.ScaleTargetRef.Kind)
 		if err != nil {
@@ -386,20 +441,32 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 			return nil, err
 		}
 
-		if soGckr.GVKString() == incomingSoGckr.GVKString() &&
-			so.Spec.ScaleTargetRef.Name == incomingSo.Spec.ScaleTargetRef.Name {
+		if soGckr.GVKString() == incomingSoGckr.GVKString() {
 			err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the ScaledObject '%s'", so.Spec.ScaleTargetRef.Name, incomingSoGckr.GVKString(), so.Name)
 			scaledobjectlog.Error(err, "validation error")
 			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-scaled-object")
 			return nil, err
 		}
+	}
 
-		if getHpaName(so) == incomingSoHpaName {
-			err = fmt.Errorf("the HPA '%s' is already managed by the ScaledObject '%s'", so.Spec.Advanced.HorizontalPodAutoscalerConfig.Name, so.Name)
-			scaledobjectlog.Error(err, "validation error")
-			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-scaled-object-hpa")
-			return nil, err
+	// Check 2: duplicate HPA name. Anything in the hpaName index for the
+	// incoming SO's computed HPA name is a real conflict regardless of GVK.
+	incomingSoHpaName := getHpaName(*incomingSo)
+	hpaOwnerCandidates := &ScaledObjectList{}
+	if err := kc.List(ctx, hpaOwnerCandidates,
+		client.InNamespace(incomingSo.Namespace),
+		client.MatchingFields{hpaNameIdx: incomingSoHpaName},
+	); err != nil {
+		return nil, err
+	}
+	for _, so := range hpaOwnerCandidates.Items {
+		if so.Name == incomingSo.Name {
+			continue
 		}
+		err := fmt.Errorf("the HPA '%s' is already managed by the ScaledObject '%s'", incomingSoHpaName, so.Name)
+		scaledobjectlog.Error(err, "validation error")
+		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-scaled-object-hpa")
+		return nil, err
 	}
 
 	// verify ScalingModifiers structure if defined in ScaledObject
@@ -437,7 +504,6 @@ func getFromCacheOrDirect(ctx context.Context, key client.ObjectKey, obj client.
 	return err
 }
 
-//nolint:unparam
 func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string, dryRun bool) (admission.Warnings, error) {
 	if dryRun {
 		return nil, nil
@@ -529,7 +595,7 @@ func ValidateAndCompileScalingModifiers(so *ScaledObject) (*vm.Program, error) {
 	}
 
 	// cast return value of formula to float if necessary to avoid wrong value return
-	// type (ternary operator doesnt return float)
+	// type (ternary operator doesn't return float)
 	so.Spec.Advanced.ScalingModifiers.Formula = castToFloatIfNecessary(sm.Formula)
 
 	// validate formula if not empty

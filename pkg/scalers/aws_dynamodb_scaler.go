@@ -224,7 +224,7 @@ func json2Map(js string) (m map[string]string, err error) {
 
 // json2DynamoMap converts Json to map[string]types.AttributeValue
 func json2DynamoMap(js string) (map[string]types.AttributeValue, error) {
-	var valueMap map[string]interface{}
+	var valueMap map[string]any
 	err := json.Unmarshal([]byte(js), &valueMap)
 	if err != nil {
 		return nil, err
@@ -242,10 +242,10 @@ func json2DynamoMap(js string) (map[string]types.AttributeValue, error) {
 	return attributeValues, nil
 }
 
-func attributeValueFromInterface(value interface{}) (types.AttributeValue, error) {
+func attributeValueFromInterface(value any) (types.AttributeValue, error) {
 	var err error
 	switch v := value.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		// Check the nested map to determine the data type
 		for dataType, val := range v {
 			switch dataType {
@@ -263,7 +263,7 @@ func attributeValueFromInterface(value interface{}) (types.AttributeValue, error
 			case "B":
 				return &types.AttributeValueMemberB{Value: []byte(val.(string))}, nil
 			case "L":
-				listValues := val.([]interface{})
+				listValues := val.([]any)
 				list := make([]types.AttributeValue, len(listValues))
 				for i, listVal := range listValues {
 					list[i], err = attributeValueFromInterface(listVal)
@@ -273,7 +273,7 @@ func attributeValueFromInterface(value interface{}) (types.AttributeValue, error
 				}
 				return &types.AttributeValueMemberL{Value: list}, nil
 			case "M":
-				mapValues := val.(map[string]interface{})
+				mapValues := val.(map[string]any)
 				m := make(map[string]types.AttributeValue)
 				for mapKey, mapVal := range mapValues {
 					mapAttr, err := attributeValueFromInterface(mapVal)

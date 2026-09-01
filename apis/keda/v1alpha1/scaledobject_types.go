@@ -225,10 +225,6 @@ type ScaledObjectList struct {
 	Items           []ScaledObject `json:"items"`
 }
 
-func init() {
-	SchemeBuilder.Register(&ScaledObject{}, &ScaledObjectList{})
-}
-
 // GenerateIdentifier returns identifier for the object in for "kind.namespace.name"
 func (so *ScaledObject) GenerateIdentifier() string {
 	return GenerateIdentifier("ScaledObject", so.Namespace, so.Name)

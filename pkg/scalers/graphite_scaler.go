@@ -47,9 +47,9 @@ func (g *graphiteMetadata) Validate() error {
 }
 
 type grapQueryResult []struct {
-	Target     string                 `json:"target"`
-	Tags       map[string]interface{} `json:"tags"`
-	Datapoints [][]*float64           `json:"datapoints,omitempty"`
+	Target     string         `json:"target"`
+	Tags       map[string]any `json:"tags"`
+	Datapoints [][]*float64   `json:"datapoints,omitempty"`
 }
 
 // NewGraphiteScaler creates a new graphiteScaler

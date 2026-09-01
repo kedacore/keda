@@ -115,7 +115,7 @@ type ScaledJobList struct {
 // +optional
 type ScalingStrategy struct {
 	// +optional
-	// +kubebuilder:validation:Enum=custom;accurate;eager
+	// +kubebuilder:validation:Enum=default;custom;accurate;eager
 	Strategy string `json:"strategy,omitempty"`
 	// +optional
 	CustomScalingQueueLengthDeduction *int32 `json:"customScalingQueueLengthDeduction,omitempty"`
@@ -137,10 +137,6 @@ type Rollout struct {
 	// +optional
 	// +kubebuilder:validation:Enum=foreground;background
 	PropagationPolicy string `json:"propagationPolicy,omitempty"`
-}
-
-func init() {
-	SchemeBuilder.Register(&ScaledJob{}, &ScaledJobList{})
 }
 
 // MaxReplicaCount returns MaxReplicaCount

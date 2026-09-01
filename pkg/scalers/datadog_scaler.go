@@ -384,7 +384,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 
 	// Collect all latest point values from any/all series
 	results := make([]float64, len(series))
-	for i := 0; i < len(series); i++ {
+	for i := range series {
 		points := series[i].GetPointlist()
 		index := len(points) - 1
 		// Find out the last point != nil

@@ -187,7 +187,7 @@ Test are split in different folders based on what it's testing:
 >
 > - Even though the cleaning of resources is expected inside each e2e test file, all test namespaces
 > (namespaces with label type=e2e) are  cleaned up to ensure not having dangling resources after global e2e
-> execution finishes. To not break this behaviour, it's mandatory to use the `CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string)` function from [`helper.go`](helper.go), instead of creating them manually.
+> execution finishes. To not break this behaviour, it's mandatory to use the `CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string)` function from [`helper.go`](helper/helper.go), instead of creating them manually.
 
 #### ⚠⚠ Important: ⚠⚠
 > - `Go` code can panic when performing forbidden operations such as accessing a nil pointer, or from code that
@@ -317,7 +317,7 @@ func cleanupTest(t *testing.T) {
 
 - You can see [`azure_queue_test.go`](scalers/azure/azure_queue/azure_queue_test.go) for a full example.
 - All tests must have the `// +build e2e` build tag.
-- Refer [`helper.go`](helper.go) for various helper methods available to use in your tests.
+- Refer [`helper.go`](helper/helper.go) for various helper methods available to use in your tests.
 - Prefer using helper methods or `k8s` libraries in `Go` over manually executing `shell` commands. Only if the task
 you're trying to achieve is too complicated or tedious using above, use `ParseCommand` or `ExecuteCommand` from `helper.go`
 for executing shell commands.
@@ -353,5 +353,20 @@ There are cases where it isn't needed the whole e2e test suite. In order to redu
 ```
 
 This regex will be evaluated by the golang script, so it has to be written in a golang compliance way.
+
+### Optional components (dependency markers)
+
+Some tests need an optional component installed in the cluster (Argo Rollouts, the Strimzi Kafka operator, the OpenTelemetry collector, ...). Rather than always installing every component, a test declares what it needs with a `// +e2e-deps:` marker near its build tags:
+
+```go
+//go:build e2e
+// +build e2e
+
+// +e2e-deps:argo-rollouts
+
+package subresource_scale_test
+```
+
+Before running the setup, `tests/run-all.go` collects the markers of the selected tests and only installs the components they declare. A full run (no regex) installs everything, since every declaring test is selected. An explicitly set env var (e.g. `E2E_INSTALL_ARGO_ROLLOUTS`) always wins. Available markers map to: `argo-rollouts`, `kafka`, `opentelemetry`.
 
 This new check is mandatory on every PR, the CI checks expect to execute the e2e tests. As not always the e2e tests are useful (for instance, when the changes apply only to documentation), it can be skipped labeling the PR with `skip-e2e`

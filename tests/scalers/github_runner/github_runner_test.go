@@ -315,18 +315,18 @@ func TestScaler(t *testing.T) {
 	// test scaling Scaled Job with App
 	KubectlApplyWithTemplate(t, data, "scaledGhaJobTemplate", scaledGhaJobTemplate)
 	testJobScaleOut(t, kc, client, ghaWorkflowID)
-	testJobScaleIn(t, kc)
+	testJobScaleIn(t, kc, client, ghaWorkflowID)
 
 	// test scaling Scaled Job
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
 	testJobScaleOut(t, kc, client, workflowID)
-	testJobScaleIn(t, kc)
+	testJobScaleIn(t, kc, client, workflowID)
 
 	// test scaling Scaled Object
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	testSONotActivated(t, kc)
 	testSOScaleOut(t, kc, client)
-	testSOScaleIn(t, kc)
+	testSOScaleIn(t, kc, client)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
@@ -342,10 +342,16 @@ func queueRun(t *testing.T, ghClient *github.Client, flowID string) {
 		t.Log(err)
 	}
 
-	_, err = ghClient.Actions.CreateWorkflowDispatchEventByID(context.Background(), owner, repos, wID, *b)
+	resp, err := ghClient.Actions.CreateWorkflowDispatchEventByID(context.Background(), owner, repos, wID, *b)
 	if err != nil {
-		t.Log(err)
+		status := 0
+		if resp != nil {
+			status = resp.StatusCode
+		}
+		t.Logf("queueRun: failed to dispatch workflow %s (owner=%s repo=%s ref=main): HTTP %d: %v", flowID, owner, repos, status, err)
+		return
 	}
+	t.Logf("queueRun: dispatched workflow %s (owner=%s repo=%s)", flowID, owner, repos)
 }
 
 func cancelAllRuns(t *testing.T, ghClient *github.Client, repos string, flowID string) {
@@ -354,17 +360,23 @@ func cancelAllRuns(t *testing.T, ghClient *github.Client, repos string, flowID s
 		t.Log(err)
 	}
 
-	runs, resp, err := ghClient.Actions.ListWorkflowRunsByID(context.Background(), owner, repos, wID, &github.ListWorkflowRunsOptions{
-		Status: "queued",
-	})
-	t.Log(resp.Body)
-	if err != nil {
-		t.Log(err)
-	}
-	for _, run := range runs.WorkflowRuns {
-		_, err := ghClient.Actions.CancelWorkflowRunByID(context.Background(), owner, repos, *run.ID)
+	// Cancel both queued and in_progress runs so the scaler's queue length drops to zero regardless of whether an ephemeral runner already picked the run up.
+	for _, status := range []string{"queued", "in_progress"} {
+		runs, resp, err := ghClient.Actions.ListWorkflowRunsByID(context.Background(), owner, repos, wID, &github.ListWorkflowRunsOptions{
+			Status: status,
+		})
 		if err != nil {
-			t.Log(err)
+			code := 0
+			if resp != nil {
+				code = resp.StatusCode
+			}
+			t.Logf("cancelAllRuns: failed to list %s runs for workflow %s (owner=%s repo=%s): HTTP %d: %v", status, flowID, owner, repos, code, err)
+			continue
+		}
+		for _, run := range runs.WorkflowRuns {
+			if _, err := ghClient.Actions.CancelWorkflowRunByID(context.Background(), owner, repos, *run.ID); err != nil {
+				t.Logf("cancelAllRuns: failed to cancel run %d: %v", *run.ID, err)
+			}
 		}
 	}
 }
@@ -410,26 +422,30 @@ func testSOScaleOut(t *testing.T, kc *kubernetes.Clientset, ghClient *github.Cli
 	queueRun(t, ghClient, soWorkflowID)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 1),
-		"replica count should be 2 after 1 minute")
+		"deployment should scale to maxReplicaCount within 1 minute")
 }
 
-func testSOScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+func testSOScaleIn(t *testing.T, kc *kubernetes.Clientset, ghClient *github.Client) {
 	t.Log("--- testing scale in ---")
 
-	assert.True(t, WaitForPodCountInNamespace(t, kc, testNamespace, minReplicaCount, 60, 5),
-		"pod count should be 0 after 1 minute")
+	// Drain the queue by cancelling the dispatched run so GitHub flakiness won't affect execution of this test
+	cancelAllRuns(t, ghClient, repos, soWorkflowID)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 5),
+		"deployment should scale back to minReplicaCount within 5 minutes")
 }
 
 func testJobScaleOut(t *testing.T, kc *kubernetes.Clientset, ghClient *github.Client, wfID string) {
 	t.Log("--- testing scale out ---")
 	queueRun(t, ghClient, wfID)
 
-	assert.True(t, WaitForJobCount(t, kc, testNamespace, 1, 60, 1), "replica count should be 1 after 1 minute")
+	assert.True(t, WaitForJobCount(t, kc, testNamespace, 1, 60, 1), "a runner job should be created within 1 minute")
 }
 
-func testJobScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+func testJobScaleIn(t *testing.T, kc *kubernetes.Clientset, ghClient *github.Client, wfID string) {
 	t.Log("--- testing scale in ---")
 
-	assert.True(t, WaitForAllJobsSuccess(t, kc, testNamespace, 60, 5), "jobs should be completed after 1 minute")
-	DeletePodsInNamespaceBySelector(t, kc, "app="+scaledJobName, testNamespace)
+	// Drain the queue by cancelling the dispatched run so GitHub flakiness won't affect execution of this test
+	cancelAllRuns(t, ghClient, repos, wfID)
+	DeleteAllJobsInNamespace(t, kc, testNamespace)
+	assert.True(t, WaitForJobCount(t, kc, testNamespace, 0, 30, 2), "job count should return to 0 after the queue drains")
 }

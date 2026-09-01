@@ -1,6 +1,6 @@
 default_stages: [pre-commit, pre-push]
 minimum_pre_commit_version: "4.0.0"
-exclude: (^vendor/|^pkg/generated/)
+exclude: ^pkg/generated/
 repos:
   - repo: https://github.com/dnephin/pre-commit-golang
     rev: v0.5.1
@@ -17,7 +17,7 @@ repos:
       - id: check-merge-conflict
       - id: mixed-line-ending
   - repo: https://github.com/thlorenz/doctoc.git
-    rev: v2.2.0
+    rev: v2.5.0
     hooks:
       - id: doctoc
         name: Add TOC for md files
@@ -38,11 +38,6 @@ repos:
         language: system
         entry: "bash tools/sort_scalers.sh"
         files: .*scalers_builder\.go$
-      - id: validate-changelog
-        name: Validate Changelog
-        language: system
-        entry: "bash hack/validate-changelog.sh"
-        pass_filenames: false
       - id: golangci-lint
         language: system
         name: Run golangci against the code
