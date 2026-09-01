@@ -271,10 +271,6 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 			authParams["awsRoleArn"] = value
 			// FIXME: Delete this for v3
 			logger.Info("WARNING: AWS EKS Identity has been deprecated (https://github.com/kedacore/keda/discussions/5343) and will be removed from KEDA on v3")
-		case kedav1alpha1.PodIdentityProviderAzureWorkload:
-			if podIdentity.IdentityID != nil && *podIdentity.IdentityID == "" {
-				return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, fmt.Errorf("IdentityID of PodIdentity should not be empty")
-			}
 		default:
 		}
 		return authParams, podIdentity, nil

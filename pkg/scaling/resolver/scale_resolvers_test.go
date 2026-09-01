@@ -759,6 +759,62 @@ func TestResolveAuthRef(t *testing.T) {
 	}
 }
 
+// TestResolveAuthRefAndPodIdentity_AzureWorkloadEmptyIdentityID is a regression test for
+// https://github.com/kedacore/keda/issues/5109: a TriggerAuthentication stored with
+// `podIdentity.identityId: ""` (as written by KEDA v2.11 when adding the finalizer, or by Helm
+// charts that serialize the empty string) must not break scaling at reconcile time.
+//
+// Before the fix, ResolveAuthRefAndPodIdentity returned
+// `IdentityID of PodIdentity should not be empty` for this case. The validation now lives only
+// in the admission webhook, which blocks *new* bad input; pre-existing stored `""` resources
+// pass through the resolver unchanged.
+func TestResolveAuthRefAndPodIdentity_AzureWorkloadEmptyIdentityID(t *testing.T) {
+	if err := corev1.AddToScheme(scheme.Scheme); err != nil {
+		t.Fatalf("failed to add corev1 scheme: %v", err)
+	}
+	if err := kedav1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		t.Fatalf("failed to add keda scheme: %v", err)
+	}
+
+	emptyIdentityID := ""
+	existing := []runtime.Object{
+		&kedav1alpha1.TriggerAuthentication{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: namespace,
+				Name:      triggerAuthenticationName,
+			},
+			Spec: kedav1alpha1.TriggerAuthenticationSpec{
+				PodIdentity: &kedav1alpha1.AuthPodIdentity{
+					Provider:   kedav1alpha1.PodIdentityProviderAzureWorkload,
+					IdentityID: &emptyIdentityID,
+				},
+			},
+		},
+	}
+
+	podTemplateSpec := &corev1.PodTemplateSpec{
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{Name: "app"}},
+		},
+	}
+
+	cl := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(existing...).Build()
+	authParams, podIdentity, err := ResolveAuthRefAndPodIdentity(
+		context.Background(),
+		cl,
+		logf.Log.WithName("test"),
+		&kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName},
+		podTemplateSpec,
+		namespace,
+		&authentication.AuthClientSet{},
+	)
+
+	assert.NoErrorf(t, err, "expected no error for pre-existing TriggerAuthentication with identityId: \"\", got: %v", err)
+	assert.Equal(t, kedav1alpha1.PodIdentityProviderAzureWorkload, podIdentity.Provider,
+		"podIdentity provider should pass through unchanged")
+	assert.NotNil(t, authParams, "authParams should not be nil")
+}
+
 func TestResolveDependentEnv(t *testing.T) {
 	tests := []struct {
 		name      string
