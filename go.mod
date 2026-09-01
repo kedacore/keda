@@ -113,15 +113,15 @@ require (
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/gotestsum v1.13.0
-	k8s.io/api v0.35.7
-	k8s.io/apimachinery v0.36.0
+	k8s.io/api v0.35.8
+	k8s.io/apimachinery v0.36.4
 	k8s.io/apiserver v0.35.7
-	k8s.io/client-go v0.35.7
-	k8s.io/code-generator v0.35.7
-	k8s.io/component-base v0.35.7
+	k8s.io/client-go v0.35.8
+	k8s.io/code-generator v0.35.8
+	k8s.io/component-base v0.35.8
 	k8s.io/klog/v2 v2.140.0
 	k8s.io/kube-openapi v0.0.0-20260427204847-8949caaa1199
-	k8s.io/metrics v0.35.7
+	k8s.io/metrics v0.35.8
 	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5
 	sigs.k8s.io/controller-runtime v0.23.3
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.24.1
@@ -132,7 +132,7 @@ require (
 
 require (
 	golang.org/x/crypto v0.55.0 // indirect
-	k8s.io/streaming v0.36.0 // indirect
+	k8s.io/streaming v0.36.4 // indirect
 )
 
 require (
