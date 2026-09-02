@@ -251,6 +251,7 @@ func (h *scaleHandler) DeleteScalableObject(ctx context.Context, scalableObject 
 			cancel()
 		}
 		h.scaleLoopContexts.Delete(key)
+		h.scaledObjectsMetricCache.Delete(key)
 		err := h.ClearScalersCache(ctx, scalableObject)
 		if err != nil {
 			log.Error(err, "error clearing scalers cache", "scalableObject", scalableObject, "key", key)
@@ -289,6 +290,7 @@ func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1a
 			tmr.Stop()
 		case <-ctx.Done():
 			logger.V(1).Info("Context canceled")
+			h.scaledObjectsMetricCache.Delete(withTriggers.GenerateIdentifier())
 			err := h.ClearScalersCache(ctx, scalableObject)
 			if err != nil {
 				logger.Error(err, "error clearing scalers cache")
@@ -621,7 +623,8 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 	return h.scalerCaches[key], nil
 }
 
-// ClearScalersCache invalidates chache for the input scalableObject
+// ClearScalersCache invalidates the scalers cache for the input scalableObject.
+// Metric records are kept; they are only deleted when the scalable object is stopped.
 func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject kedav1alpha1.ScalableObject) error {
 	withTriggers, err := kedav1alpha1.AsDuckWithTriggers(scalableObject)
 	if err != nil {
@@ -629,8 +632,6 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject ked
 	}
 
 	key := withTriggers.GenerateIdentifier()
-
-	go h.scaledObjectsMetricCache.Delete(key)
 
 	h.scalerCachesLock.Lock()
 	defer h.scalerCachesLock.Unlock()

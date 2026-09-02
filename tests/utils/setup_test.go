@@ -64,14 +64,13 @@ func TestSetupAzureManagedPrometheusComponents(t *testing.T) {
 }
 
 func TestSetupArgoRollouts(t *testing.T) {
-	// default to true
 	if InstallArgoRollouts == StringFalse {
-		t.Skip("skipping as requested -- Argo Rollouts assumed to be already installed")
+		t.Skip("skipping -- no selected test needs Argo Rollouts (or it is assumed to be already installed)")
 	}
 	KubeClient = GetKubernetesClient(t)
 	CreateNamespace(t, KubeClient, ArgoRolloutsNamespace)
-	cmdWithNamespace := fmt.Sprintf("kubectl apply -n %s -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml",
-		ArgoRolloutsNamespace)
+	cmdWithNamespace := fmt.Sprintf("kubectl apply --server-side -n %s -f https://github.com/argoproj/argo-rollouts/releases/download/%s/install.yaml",
+		ArgoRolloutsNamespace, ArgoRolloutsVersion)
 	_, err := ExecuteCommand(cmdWithNamespace)
 
 	require.NoErrorf(t, err, "cannot install argo resources - %s", err)

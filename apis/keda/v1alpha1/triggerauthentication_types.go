@@ -438,8 +438,3 @@ const (
 type OAuth2ClientSecret struct {
 	ValueFrom ValueFromSecret `json:"valueFrom"`
 }
-
-func init() {
-	SchemeBuilder.Register(&ClusterTriggerAuthentication{}, &ClusterTriggerAuthenticationList{})
-	SchemeBuilder.Register(&TriggerAuthentication{}, &TriggerAuthenticationList{})
-}

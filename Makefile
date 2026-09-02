@@ -45,10 +45,10 @@ GO_LDFLAGS="-X=github.com/kedacore/keda/v2/version.GitCommit=$(GIT_COMMIT) -X=gi
 COSIGN_FLAGS ?= -y -a GIT_HASH=${GIT_COMMIT} -a GIT_VERSION=${VERSION} -a BUILD_DATE=${DATE}
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.35
+ENVTEST_K8S_VERSION = 1.36
 
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_VERSION:=v2.12.2
+GOLANGCI_VERSION:=v2.13.2
 GOLANGCI_CONFIG ?=
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
@@ -131,8 +131,9 @@ e2e-test-clean: get-cluster-context ## Delete all namespaces labeled with type=e
 	./tests/force-clean-keda-resources.sh
 	kubectl delete ns -l type=e2e
 	# Clean up the strimzi CRDs, helm will not update them on Strimzi install if they already exist
-	# and we get stranded on old versions when we try to upgrade
-	kubectl get crd -o name | grep kafka.strimzi.io | xargs -r kubectl delete --ignore-not-found=true --timeout=60s
+	# and we get stranded on old versions when we try to upgrade. grep exits non-zero when no
+	# Strimzi CRDs are present (e.g. a run that never installed Kafka), which is fine here.
+	kubectl get crd -o name | { grep kafka.strimzi.io || true; } | xargs -r kubectl delete --ignore-not-found=true --timeout=60s
 
 .PHONY: smoke-test
 smoke-test: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
@@ -213,7 +214,7 @@ pkg/scalers/liiklus/mocks/mock_liiklus.go:
 
 ##@ Build
 
-build: update-mod generate fmt vet manager adapter webhooks ## Build Operator (manager), Metrics Server (adapter) and Admision Web Hooks (webhooks) binaries.
+build: update-mod generate fmt vet manager adapter webhooks ## Build Operator (manager), Metrics Server (adapter) and Admission Web Hooks (webhooks) binaries.
 
 update-mod:
 	go mod tidy

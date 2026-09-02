@@ -96,7 +96,6 @@ func listMetaFromProto(in *api.ListMeta) metav1.ListMeta {
 	}
 
 	return metav1.ListMeta{
-		SelfLink:           in.GetSelfLink(),
 		ResourceVersion:    in.GetResourceVersion(),
 		Continue:           in.GetContinue(),
 		RemainingItemCount: copyInt64Pointer(in.RemainingItemCount),
