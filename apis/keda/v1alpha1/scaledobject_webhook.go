@@ -363,11 +363,12 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 		minReplicas = *incomingSo.Spec.MinReplicaCount
 	}
 
-	// PollingInterval warning: warn when pollingInterval is set but the scale loop has nothing to
-	// poll for because the HPA drives all scaling. This mirrors the exact condition the scale loop
-	// itself uses to decide whether to keep polling, see ScaledObject.IsPollingIntervalRelevant.
+	// PollingInterval warning: warn when pollingInterval no longer affects scaling because the HPA
+	// drives it all. This mirrors the exact condition the scale loop itself uses to decide whether
+	// to keep polling, see ScaledObject.IsPollingIntervalRelevant. The scale loop still runs on
+	// pollingInterval to refresh the status, so the message must not claim it does nothing at all.
 	if incomingSo.Spec.PollingInterval != nil && !incomingSo.IsPollingIntervalRelevant() {
-		msg := "PollingInterval is configured but is not relevant. PollingInterval is only relevant when minReplicaCount = 0, idleReplicaCount is set, or useCachedMetrics is enabled"
+		msg := "PollingInterval is configured but is not relevant for scaling. It only affects scaling when minReplicaCount = 0, idleReplicaCount is set, or useCachedMetrics is enabled, but it still controls how often KEDA refreshes the ScaledObject status conditions and events"
 		warnings = append(warnings, msg)
 		if eventRecorder != nil {
 			eventRecorder.Eventf(incomingSo, nil, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", msg)
