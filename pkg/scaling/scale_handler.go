@@ -179,6 +179,14 @@ func (h *scaleHandler) watchMetricSpecUpdates(ctx context.Context, scaledObjectN
 				return
 			}
 
+			// UpdateMetricSpecForScaler also rejects these, but a scaler that
+			// streams no metric specs is a scaler bug worth surfacing rather
+			// than dropping silently.
+			if len(specs) == 0 {
+				logger.V(1).Info("ignoring streamed metric spec update with no metric specs")
+				continue
+			}
+
 			scalersCache, err := h.getScalersCacheForScaledObject(ctx, scaledObjectName, scaledObjectNamespace)
 			if err != nil {
 				if ctx.Err() != nil {
