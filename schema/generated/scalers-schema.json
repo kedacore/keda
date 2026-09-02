@@ -5441,6 +5441,12 @@
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "includeOngoingSessions",
+                    "type": "string",
+                    "default": "true",
+                    "metadataVariableReadable": true
                 }
             ]
         },
