@@ -701,7 +701,7 @@ func TestClearScalersCache_PreservesMetricsCacheRecords(t *testing.T) {
 	}
 
 	metricCache.StoreRecords(key, map[string]metricscache.MetricsRecord{
-		metricName: {IsActive: true, Metric: []external_metrics.ExternalMetricValue{metricValue}},
+		metricName: {IsMetricActive: true, Metric: []external_metrics.ExternalMetricValue{metricValue}},
 	})
 
 	err := sh.ClearScalersCache(t.Context(), &scaledObject)
@@ -750,7 +750,7 @@ func TestDeleteScalableObject_DeletesMetricsCacheRecords(t *testing.T) {
 	defer cancel()
 	sh.scaleLoopContexts.Store(key, cancel)
 	metricCache.StoreRecords(key, map[string]metricscache.MetricsRecord{
-		metricName: {IsActive: true},
+		metricName: {IsMetricActive: true},
 	})
 
 	err := sh.DeleteScalableObject(t.Context(), &scaledObject)
@@ -787,7 +787,7 @@ func TestStartScaleLoop_DeletesMetricsCacheRecordsOnShutdown(t *testing.T) {
 	}
 
 	metricCache.StoreRecords(key, map[string]metricscache.MetricsRecord{
-		metricName: {IsActive: true},
+		metricName: {IsMetricActive: true},
 	})
 
 	// canceled context makes the loop exit after one iteration, the client error short-circuits checkScalers
@@ -858,7 +858,7 @@ func TestGetScaledObjectMetrics_ErrorDoesNotClearOtherTriggersCachedRecord(t *te
 	}
 
 	metricCache.StoreRecords(key, map[string]metricscache.MetricsRecord{
-		cachedMetricName: {IsActive: true, Metric: []external_metrics.ExternalMetricValue{cachedMetricValue}},
+		cachedMetricName: {IsMetricActive: true, Metric: []external_metrics.ExternalMetricValue{cachedMetricValue}},
 	})
 
 	cachedScaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{createMetricSpec(10, cachedMetricName)})
