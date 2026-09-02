@@ -5917,6 +5917,12 @@
                     "metadataVariableReadable": true
                 },
                 {
+                    "name": "ignoreNullValues",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
                     "name": "resultQueryRowID",
                     "type": "string",
                     "optional": true,
