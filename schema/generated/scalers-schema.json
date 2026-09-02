@@ -2535,6 +2535,64 @@
             ]
         },
         {
+            "type": "gitea-runner",
+            "parameters": [
+                {
+                    "name": "token",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "address",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "labels",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "global",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "owner",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "org",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "repo",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "matchUnlabeledJobsWithUnlabeledRunners",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "targetJobs",
+                    "type": "string",
+                    "default": "1",
+                    "metadataVariableReadable": true
+                }
+            ]
+        },
+        {
             "type": "graphite",
             "parameters": [
                 {
