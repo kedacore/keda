@@ -777,7 +777,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	// When the scale loop derives the ScaledObject state from the metrics observed here instead
 	// of querying the trigger sources itself (see hpaObservedRecord), this is the only place the
 	// trigger sources are polled, so persist the observations for the loop.
-	storeRecordsForState := stateFromHPAObservationsAllowed(scaledObject)
+	storeRecordsForState := usesHPAObservations(scaledObject)
 	// the matching metrics length has to be the same as required metrics length
 	matchingMetricsChan := make(chan metricResult, len(metricsArray))
 	wg := sync.WaitGroup{}
@@ -950,7 +950,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 
 	// Evaluated once per tick so every scaler in this tick sources its state consistently,
 	// either all from the HPA observations or all from querying the trigger sources.
-	hpaObservationsUsable := stateFromHPAObservationsAllowed(scaledObject) && h.hpaActivelyQuerying(ctx, scaledObject)
+	hpaObservationsUsable := usesHPAObservations(scaledObject) && h.hpaActivelyQuerying(ctx, scaledObject)
 
 	// Let's collect status of all allScalers in parallel,
 	// no matter if any scaler raises error or is active
@@ -1042,32 +1042,29 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	return isScaledObjectActive, isScaledObjectError, metricsRecord, activeTriggers, isFallbackActive, err
 }
 
-// stateFromHPAObservationsAllowed returns true if the state of the ScaledObject may be derived
+// usesHPAObservations returns true if the state of the ScaledObject may be derived
 // from the metric observations of the HPA-driven metrics path instead of querying the trigger
 // sources on the scale loop. This is only allowed when pollingInterval is not relevant (see
 // IsPollingIntervalRelevant): the HPA then drives all scaling and already queries every external metric
 // itself, so querying the trigger sources on the scale loop would only duplicate those queries.
 // ScaledObjects using scaling modifiers are excluded because trigger activity is then derived
 // from the composite formula over all metrics at once.
-func stateFromHPAObservationsAllowed(scaledObject *kedav1alpha1.ScaledObject) bool {
+func usesHPAObservations(scaledObject *kedav1alpha1.ScaledObject) bool {
 	return !scaledObject.IsPollingIntervalRelevant() && !scaledObject.IsUsingModifiers()
 }
 
 // hpaObservedRecord returns the observation the HPA-driven metrics path stored for the given
 // metric, if the scale loop may use it instead of querying the trigger source.
 // hpaObservationsUsable is evaluated once per scale loop tick (see getScaledObjectState) and
-// combines stateFromHPAObservationsAllowed with hpaActivelyQuerying. Push scalers never use
-// observations because their activity changes must be picked up immediately rather than on the
-// HPA's cadence. The second return value reports whether a usable observation exists; if false
+// combines usesHPAObservations with hpaActivelyQuerying. Push scalers are not
+// excluded: their activations are handled immediately by startPushScalers, outside the scale
+// loop. The second return value reports whether a usable observation exists; if false
 // the caller must query the trigger source itself. That happens whenever the HPA is not actively
-// querying or the record is missing, e.g. before the HPA's first query or after a scaler error
-// cleared the cache, so the scale loop transparently falls back to authoritative polling in
-// every abnormal situation.
-func (h *scaleHandler) hpaObservedRecord(scaledObject *kedav1alpha1.ScaledObject, scaler scalers.Scaler, metricName string, hpaObservationsUsable bool) (metricscache.MetricsRecord, bool) {
+// querying or the record is missing, e.g. before the HPA's first query or after the records were
+// dropped, so the scale loop transparently falls back to authoritative polling in every abnormal
+// situation.
+func (h *scaleHandler) hpaObservedRecord(scaledObject *kedav1alpha1.ScaledObject, metricName string, hpaObservationsUsable bool) (metricscache.MetricsRecord, bool) {
 	if !hpaObservationsUsable {
-		return metricscache.MetricsRecord{}, false
-	}
-	if _, isPushScaler := scaler.(scalers.PushScaler); isPushScaler {
 		return metricscache.MetricsRecord{}, false
 	}
 	return h.scaledObjectsMetricCache.ReadRecord(scaledObject.GenerateIdentifier(), metricName)
@@ -1079,6 +1076,10 @@ func (h *scaleHandler) hpaObservedRecord(scaledObject *kedav1alpha1.ScaledObject
 // explicit True counts: a False condition (implicit maintenance mode after the workload was
 // manually scaled to zero, or failing metric queries), a missing condition, a missing HPA or a
 // read error all mean the observations can no longer be trusted to be current.
+// This is deliberately stricter than checkHPAHealth, which reads the same condition but answers
+// a different question: it reports a ScalingDisabled HPA as healthy, since KEDA scaling the
+// target to zero is expected. A disabled HPA does not compute metrics though, so it refreshes
+// no observations, which is exactly what this function must not report as usable.
 func (h *scaleHandler) hpaActivelyQuerying(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) bool {
 	if scaledObject.Status.HpaName == "" {
 		return false
@@ -1143,7 +1144,7 @@ func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler
 		// instead of querying the trigger source a second time (the mirror image of the
 		// useCachedMetrics read in GetScaledObjectMetrics, fallback is already applied)
 		var record metricscache.MetricsRecord
-		if observed, ok := h.hpaObservedRecord(scaledObject, scaler, metricName, hpaObservationsUsable); ok {
+		if observed, ok := h.hpaObservedRecord(scaledObject, metricName, hpaObservationsUsable); ok {
 			record = observed
 
 			logger.V(1).Info("Using metrics observed by the HPA", "scaler", result.TriggerName, "metricName", metricName, "metrics", record.Metric, "activity", record.IsMetricActive, "scalerError", record.ScalerError)
