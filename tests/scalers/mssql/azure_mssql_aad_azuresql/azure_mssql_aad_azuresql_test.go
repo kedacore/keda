@@ -139,7 +139,7 @@ spec:
   - type: mssql
     metadata:
       driverName: azuresql
-      query: "SELECT COUNT(*) FROM tasks WHERE [status]='running' OR [status]='queued'"
+      query: "SELECT COUNT(*) FROM tasks_azuresql WHERE [status]='running' OR [status]='queued'"
       targetValue: "4"
       activationTargetValue: "5"
     authenticationRef:
@@ -194,7 +194,7 @@ spec:
         - -c
         - |
           for i in 1 2 3; do
-            /opt/mssql-tools18/bin/sqlcmd -S {{.AzureMSSQLFQDN}} -C -U {{.AzureMSSQLAdminUsername}} -P "{{.AzureMSSQLAdminPassword}}" -d {{.AzureMSSQLDatabase}} -Q "INSERT INTO tasks ([status]) VALUES ('running')"
+            /opt/mssql-tools18/bin/sqlcmd -S {{.AzureMSSQLFQDN}} -C -U {{.AzureMSSQLAdminUsername}} -P "{{.AzureMSSQLAdminPassword}}" -d {{.AzureMSSQLDatabase}} -Q "INSERT INTO tasks_azuresql ([status]) VALUES ('running')"
           done
       restartPolicy: Never
   backoffLimit: 4
@@ -222,13 +222,16 @@ spec:
         - -c
         - |
           for i in 1 2 3 4 5 6 7 8 9 10; do
-            /opt/mssql-tools18/bin/sqlcmd -S {{.AzureMSSQLFQDN}} -C -U {{.AzureMSSQLAdminUsername}} -P "{{.AzureMSSQLAdminPassword}}" -d {{.AzureMSSQLDatabase}} -Q "INSERT INTO tasks ([status]) VALUES ('running')"
+            /opt/mssql-tools18/bin/sqlcmd -S {{.AzureMSSQLFQDN}} -C -U {{.AzureMSSQLAdminUsername}} -P "{{.AzureMSSQLAdminPassword}}" -d {{.AzureMSSQLDatabase}} -Q "INSERT INTO tasks_azuresql ([status]) VALUES ('running')"
           done
       restartPolicy: Never
   backoffLimit: 4
 `
 )
 
+// The e2e suite runs tests concurrently against the same Azure SQL database, so
+// this test works on its own tasks_azuresql table rather than sharing the table
+// used by the workload identity test.
 func TestAzureMSSQLAzureSQLDriverScaler(t *testing.T) {
 	if azureMSSQLFQDN == "" || azureMSSQLAdminUsername == "" ||
 		azureMSSQLAdminPassword == "" || azureMSSQLDatabase == "" ||
@@ -242,7 +245,7 @@ func TestAzureMSSQLAzureSQLDriverScaler(t *testing.T) {
 	t.Cleanup(func() {
 		// Drop table on remote Azure SQL
 		dropTableSQL := fmt.Sprintf(
-			"/opt/mssql-tools18/bin/sqlcmd -S %s -C -U %s -P \"%s\" -d %s -Q \"DROP TABLE IF EXISTS tasks\"",
+			"/opt/mssql-tools18/bin/sqlcmd -S %s -C -U %s -P \"%s\" -d %s -Q \"DROP TABLE IF EXISTS tasks_azuresql\"",
 			azureMSSQLFQDN, azureMSSQLAdminUsername, azureMSSQLAdminPassword, azureMSSQLDatabase)
 		_, _, _, _ = WaitForSuccessfulExecCommandOnSpecificPod(t, mssqlHelperPodName, testNamespace, dropTableSQL, 60, 3)
 
@@ -257,14 +260,14 @@ func TestAzureMSSQLAzureSQLDriverScaler(t *testing.T) {
 
 	// Drop any existing table
 	dropTableSQL := fmt.Sprintf(
-		"/opt/mssql-tools18/bin/sqlcmd -S %s -C -U %s -P \"%s\" -d %s -Q \"DROP TABLE IF EXISTS tasks\"",
+		"/opt/mssql-tools18/bin/sqlcmd -S %s -C -U %s -P \"%s\" -d %s -Q \"DROP TABLE IF EXISTS tasks_azuresql\"",
 		azureMSSQLFQDN, azureMSSQLAdminUsername, azureMSSQLAdminPassword, azureMSSQLDatabase)
 	ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, mssqlHelperPodName, testNamespace, dropTableSQL, 60, 3)
 	require.True(t, ok, "executing a command on MSSQL helper Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
 
 	// Create table on remote Azure SQL
 	createTableSQL := fmt.Sprintf(
-		"/opt/mssql-tools18/bin/sqlcmd -S %s -C -U %s -P \"%s\" -d %s -Q \"CREATE TABLE tasks ([id] int identity primary key, [status] varchar(10))\"",
+		"/opt/mssql-tools18/bin/sqlcmd -S %s -C -U %s -P \"%s\" -d %s -Q \"CREATE TABLE tasks_azuresql ([id] int identity primary key, [status] varchar(10))\"",
 		azureMSSQLFQDN, azureMSSQLAdminUsername, azureMSSQLAdminPassword, azureMSSQLDatabase)
 	ok, out, errOut, err = WaitForSuccessfulExecCommandOnSpecificPod(t, mssqlHelperPodName, testNamespace, createTableSQL, 60, 3)
 	require.True(t, ok, "executing a command on MSSQL helper Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
@@ -299,7 +302,7 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 
 	// Update all records to processed
 	updateRecords := fmt.Sprintf(
-		"/opt/mssql-tools18/bin/sqlcmd -S %s -C -U %s -P \"%s\" -d %s -Q \"UPDATE tasks SET [status] = 'processed'\"",
+		"/opt/mssql-tools18/bin/sqlcmd -S %s -C -U %s -P \"%s\" -d %s -Q \"UPDATE tasks_azuresql SET [status] = 'processed'\"",
 		azureMSSQLFQDN, azureMSSQLAdminUsername, azureMSSQLAdminPassword, azureMSSQLDatabase)
 	ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, mssqlHelperPodName, testNamespace, updateRecords, 60, 3)
 	require.True(t, ok, "executing a command on MSSQL helper Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
