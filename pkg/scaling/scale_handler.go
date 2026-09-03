@@ -64,6 +64,12 @@ var (
 	log = logf.Log.WithName("scale_handler")
 )
 
+// hpaMinReplicaSinceTimeWriter is implemented by scalable objects that use HPA for scaling
+// used for strict scale down behavior
+type hpaMinReplicaSinceTimeWriter interface {
+	SetStatusHPAMinReplicaSinceTime(*metav1.Time)
+}
+
 // ScaleHandler encapsulates the logic of calling the right scalers for
 // each ScaledObject and making the final scale decision and operation
 type ScaleHandler interface {
@@ -428,8 +434,10 @@ func (h *scaleHandler) handleResult(ctx context.Context, obj kedav1alpha1.Scalab
 			current.SetStatusPausedReplicaCount(result.PauseReplicas)
 		}
 
-		// Apply HPA min replica since time
-		current.SetStatusHPAMinReplicaSinceTime(result.HPAMinReplicaSinceTime)
+		// Apply HPA min replica since time on objects that track it
+		if writer, ok := current.(hpaMinReplicaSinceTimeWriter); ok {
+			writer.SetStatusHPAMinReplicaSinceTime(result.HPAMinReplicaSinceTime)
+		}
 
 		// apply triggers activity delta
 		if activityUpdates != nil || activityRemovals != nil {

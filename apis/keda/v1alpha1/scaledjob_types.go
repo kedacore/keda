@@ -101,8 +101,6 @@ type ScaledJobStatus struct {
 	ExternalMetricNames []string `json:"externalMetricNames,omitempty"`
 	// +optional
 	TriggersActivity map[string]TriggerActivityStatus `json:"triggersActivity,omitempty"`
-	// +optional
-	HpaMinReplicaSinceTime *metav1.Time `json:"hpaMinReplicaSinceTime,omitempty"`
 }
 
 // ScaledJobList contains a list of ScaledJob
@@ -187,11 +185,6 @@ func (s *ScaledJob) GetStatusConditions() *Conditions { return &s.Status.Conditi
 
 // SetStatusLastActiveTime sets the LastActiveTime in the status.
 func (s *ScaledJob) SetStatusLastActiveTime(t *metav1.Time) { s.Status.LastActiveTime = t }
-
-// SetStatusHPAMinReplicaSinceTime sets the HPA min replica since time in the status.
-func (s *ScaledJob) SetStatusHPAMinReplicaSinceTime(t *metav1.Time) {
-	s.Status.HpaMinReplicaSinceTime = t
-}
 
 // SetStatusPausedReplicaCount is a no-op for ScaledJob (no paused replica count).
 func (s *ScaledJob) SetStatusPausedReplicaCount(_ *int32) {}

@@ -32,8 +32,6 @@ type ScalableObject interface {
 	GetStatusConditions() *Conditions
 	// SetStatusLastActiveTime sets the LastActiveTime in the status.
 	SetStatusLastActiveTime(*metav1.Time)
-	// SetStatusHPAMinReplicaSinceTime sets the HPA min replica since time in the status.
-	SetStatusHPAMinReplicaSinceTime(*metav1.Time)
 	// SetStatusPausedReplicaCount sets the PausedReplicaCount in the status.
 	// For ScaledJob this is a no-op.
 	SetStatusPausedReplicaCount(*int32)
