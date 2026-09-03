@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/expr-lang/expr"
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -112,7 +113,7 @@ func TestScalingModifierTriggerValue(t *testing.T) {
 		return so
 	}
 	failing := func(n int32) *kedav1alpha1.HealthStatus {
-		return &kedav1alpha1.HealthStatus{NumberOfFailures: new(n), Status: kedav1alpha1.HealthStatusFailing}
+		return &kedav1alpha1.HealthStatus{NumberOfFailures: &n, Status: kedav1alpha1.HealthStatusFailing}
 	}
 
 	tests := []struct {
@@ -133,7 +134,7 @@ func TestScalingModifierTriggerValue(t *testing.T) {
 		{name: "failures exceed threshold returns nil",
 			so: withHealth(failing(5)), wantNil: true},
 		{name: "healthy (failures reset to 0) returns the metric value",
-			so: withHealth(&kedav1alpha1.HealthStatus{NumberOfFailures: new(int32(0)), Status: kedav1alpha1.HealthStatusHappy})},
+			so: withHealth(&kedav1alpha1.HealthStatus{NumberOfFailures: func(v int32) *int32 { return &v }(0), Status: kedav1alpha1.HealthStatusHappy})},
 	}
 
 	for _, tt := range tests {
@@ -299,7 +300,8 @@ func TestCalculateScalingModifiersFormulaFallbackReplicas(t *testing.T) {
 			Timestamp:  v1.Now(),
 		}
 	}
-	failures := new(int32(5))
+	val := int32(5)
+	failures := &val
 	so := &kedav1alpha1.ScaledObject{
 		Spec: kedav1alpha1.ScaledObjectSpec{
 			Advanced: &kedav1alpha1.AdvancedConfig{
@@ -329,6 +331,50 @@ func TestCalculateScalingModifiersFormulaFallbackReplicas(t *testing.T) {
 	require.Len(t, result, 1)
 	// Replicas (7) * target (2) = 14 → HPA divides by target → 7 desired.
 	assert.Equal(t, int64(14000), result[0].Value.MilliValue())
+}
+
+// TestHandleScalingModifiersFallbackDoesNotMultiplyByTriggerCount is a regression test for
+// https://github.com/kedacore/keda/issues/5371: with 2+ triggers and a scalingModifiers
+// formula (e.g. "max(trigger_1, trigger_2)"), when fallback is active every trigger
+// independently reports its own fallback-derived metric value. HandleScalingModifiers must
+// collapse these into a single composite metric using only the first entry - if it instead
+// returned all of them (or summed them), the HPA would compute replicas as
+// triggerCount * fallback.replicas instead of fallback.replicas.
+func TestHandleScalingModifiersFallbackDoesNotMultiplyByTriggerCount(t *testing.T) {
+	so := &kedav1alpha1.ScaledObject{
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			Advanced: &kedav1alpha1.AdvancedConfig{
+				ScalingModifiers: kedav1alpha1.ScalingModifiers{
+					Formula:    "max(trigger_1, trigger_2)",
+					MetricType: "AverageValue",
+					Target:     "1",
+				},
+			},
+			Fallback: &kedav1alpha1.Fallback{
+				FailureThreshold: 4,
+				Replicas:         12,
+			},
+		},
+	}
+
+	// Each trigger independently computes its own fallback metric (target * fallback.replicas = 1 * 12).
+	trigger1Fallback := external_metrics.ExternalMetricValue{MetricName: "s0-trigger_1", Value: *resource.NewMilliQuantity(12000, resource.DecimalSI), Timestamp: v1.Now()}
+	trigger2Fallback := external_metrics.ExternalMetricValue{MetricName: "s1-trigger_2", Value: *resource.NewMilliQuantity(12000, resource.DecimalSI), Timestamp: v1.Now()}
+
+	result := HandleScalingModifiers(
+		so,
+		nil,
+		map[string]string{"s0-trigger_1": "trigger_1", "s1-trigger_2": "trigger_2"},
+		true,
+		[]external_metrics.ExternalMetricValue{trigger1Fallback, trigger2Fallback},
+		&cache.ScalersCache{},
+		logr.Discard(),
+	)
+
+	require.Len(t, result, 1, "fallback with multiple triggers must collapse to a single composite metric")
+	assert.Equal(t, kedav1alpha1.CompositeMetricName, result[0].MetricName)
+	// 12 (target 1 * fallback.replicas 12), NOT 24 (2 triggers * 12).
+	assert.Equal(t, int64(12000), result[0].Value.MilliValue())
 }
 
 func TestCalculateScalingModifiersFormulaNilCompiled(t *testing.T) {
