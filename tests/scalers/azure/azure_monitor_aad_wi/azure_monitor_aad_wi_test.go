@@ -118,7 +118,7 @@ spec:
         metricAggregationType: Count
         metricFilter: cloud/roleName eq '{{.ApplicationInsightsRole}}'
         targetValue: "5"
-        activationTargetValue: "10"
+        activationTargetValue: "30"
       authenticationRef:
         name: {{.TriggerAuthName}}
 `
