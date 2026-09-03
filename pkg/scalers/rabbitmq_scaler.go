@@ -203,7 +203,9 @@ func (r *rabbitMQMetadata) validateOAuth2() error {
 		r.Auth.Modes = []authentication.Type{authentication.OAuthType}
 	}
 
-	if err := r.Auth.ValidateAllowed(authentication.OAuthType); err != nil {
+	// Basic and TLS are also allowed as declared modes: the scaler supports both via its own
+	// username/password and ca/cert/key fields, even though only the OAuth mode drives behavior here.
+	if err := r.Auth.ValidateAllowed(authentication.OAuthType, authentication.BasicAuthType, authentication.TLSAuthType); err != nil {
 		return err
 	}
 

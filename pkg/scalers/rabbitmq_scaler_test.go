@@ -219,6 +219,12 @@ var testRabbitMQAuthParamData = []parseRabbitMQAuthParamTestData{
 	{map[string]string{"queueName": "sample", "host": "http://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"oauthTokenURI": "https://oauth.example.com/token", "clientSecret": "my-secret"}, true, rmqTLSDisable, false},
 	// failure, OAuth2 missing clientSecret
 	{map[string]string{"queueName": "sample", "host": "http://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"oauthTokenURI": "https://oauth.example.com/token", "clientID": "my-client"}, true, rmqTLSDisable, false},
+	// success, explicitly declared authModes basic with username/password
+	{map[string]string{"queueName": "sample", "host": "http://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"authModes": "basic", "username": "user", "password": "pass"}, false, rmqTLSDisable, false},
+	// success, explicitly declared authModes tls with cert/key/ca
+	{map[string]string{"queueName": "sample", "host": "https://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"authModes": "tls", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, rmqTLSEnable, false},
+	// failure, declared authModes bearer is not supported by this scaler
+	{map[string]string{"queueName": "sample", "host": "http://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"authModes": "bearer", "bearerToken": "token"}, true, rmqTLSDisable, false},
 }
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
 	{&testRabbitMQMetadata[1], 0, "s0-rabbitmq-sample"},

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -426,7 +427,40 @@ func (meta *githubRunnerMetadata) Validate() error {
 	return meta.Auth.ValidateAllowed(authentication.BearerAuthType)
 }
 
+// bridgePersonalAccessTokenToBearer maps personalAccessToken to bearerToken when bearer auth is
+// declared without its own token. This must happen before TypedConfig runs, because the nested
+// authentication.Config validates itself during parsing, before Validate() could bridge the token.
+func bridgePersonalAccessTokenToBearer(config *scalersconfig.ScalerConfig) *scalersconfig.ScalerConfig {
+	pat := config.AuthParams["personalAccessToken"]
+	if pat == "" || config.AuthParams["bearerToken"] != "" || config.AuthParams["token"] != "" {
+		return config
+	}
+	// Mirror the lookup order of authentication.Config.Modes: name authModes;authMode, order triggerMetadata;authParams.
+	var declared string
+	for _, v := range []string{config.TriggerMetadata["authModes"], config.TriggerMetadata["authMode"], config.AuthParams["authModes"], config.AuthParams["authMode"]} {
+		if v != "" {
+			declared = v
+			break
+		}
+	}
+	hasBearer := false
+	for _, m := range strings.Split(declared, ",") {
+		if strings.TrimSpace(m) == string(authentication.BearerAuthType) {
+			hasBearer = true
+			break
+		}
+	}
+	if !hasBearer {
+		return config
+	}
+	bridged := *config
+	bridged.AuthParams = maps.Clone(config.AuthParams)
+	bridged.AuthParams["bearerToken"] = pat
+	return &bridged
+}
+
 func parseGitHubRunnerMetadata(config *scalersconfig.ScalerConfig) (*githubRunnerMetadata, error) {
+	config = bridgePersonalAccessTokenToBearer(config)
 	meta := &githubRunnerMetadata{}
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing github runner metadata: %w", err)

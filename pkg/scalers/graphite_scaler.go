@@ -37,6 +37,13 @@ type graphiteMetadata struct {
 }
 
 func (g *graphiteMetadata) Validate() error {
+	if g.Auth == nil {
+		g.Auth = &authentication.Config{}
+	}
+	// Legacy bridge: enable basic auth for manifests that set username/password without authModes.
+	if g.Auth.Disabled() && g.Auth.Username != "" {
+		g.Auth.Modes = []authentication.Type{authentication.BasicAuthType}
+	}
 	return g.Auth.ValidateAllowed(authentication.BasicAuthType)
 }
 
