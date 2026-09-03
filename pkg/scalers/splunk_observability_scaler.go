@@ -30,7 +30,7 @@ type splunkObservabilityMetadata struct {
 	Query                 string  `keda:"name=query,                 order=triggerMetadata"`
 	Duration              int     `keda:"name=duration,              order=triggerMetadata"`
 	TargetValue           float64 `keda:"name=targetValue,   	     order=triggerMetadata"`
-	QueryAggregator       string  `keda:"name=queryAggregator,       order=triggerMetadata"`
+	QueryAggregator       string  `keda:"name=queryAggregator,       order=triggerMetadata, enum=min;max;avg;sum;count;latest"`
 	ActivationTargetValue float64 `keda:"name=activationTargetValue, order=triggerMetadata"`
 }
 

@@ -65,6 +65,8 @@ var testSplunkObservabilityMetadata = []parseSplunkObservabilityMetadataTestData
 	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
 	// Missing 'activationTargetValue' field, fail
 	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "queryAggregator": "avg"}, validSplunkObservabilityAuthParams, true},
+	// Unsupported 'queryAggregator' value, fail
+	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "queryAggregator": "median", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
 	// Empty 'accessToken' field
 	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "queryAggregator": "avg"}, invalidSplunkObservabilityAuthParams, true},
 }
