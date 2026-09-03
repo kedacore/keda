@@ -17,6 +17,7 @@ import (
 
 const tokensEndpoint = "/v3/auth/tokens"
 const catalogEndpoint = "/v3/auth/catalog"
+const publicEndpointInterface = "public"
 
 // Client is a struct containing an authentication token and an HTTP client for HTTP requests.
 // It can also have a public URL for an specific OpenStack project or service.
@@ -42,6 +43,9 @@ type KeystoneAuthRequest struct {
 
 	// HTTPClientTimeout is the HTTP client for querying the OpenStack service API.
 	HTTPClientTimeout time.Duration `json:"-"`
+
+	// serviceTypesLookup is used to resolve OpenStack service aliases for dynamic catalog lookup.
+	serviceTypesLookup func(context.Context, string) ([]string, error) `json:"-"`
 
 	// Properties contains the authentication metadata to build the body of a token request.
 	Properties *authProps `json:"auth"`
@@ -174,6 +178,7 @@ func NewPasswordAuth(authURL string, userID string, userPassword string, project
 	passAuth.AuthURL = url.String()
 
 	passAuth.HTTPClientTimeout = time.Duration(httpTimeout) * time.Second
+	passAuth.serviceTypesLookup = openstackutil.GetServiceTypes
 
 	passAuth.Properties.Identity.Methods = []string{"password"}
 
@@ -209,6 +214,7 @@ func NewAppCredentialsAuth(authURL string, id string, secret string, httpTimeout
 	appAuth.Properties.Identity.AppCredential.Secret = secret
 
 	appAuth.HTTPClientTimeout = time.Duration(httpTimeout) * time.Second
+	appAuth.serviceTypesLookup = openstackutil.GetServiceTypes
 
 	return appAuth, nil
 }
@@ -285,7 +291,10 @@ func (keystone *KeystoneAuthRequest) getToken(ctx context.Context) (string, erro
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
-		return resp.Header["X-Subject-Token"][0], nil
+		if tokens, ok := resp.Header["X-Subject-Token"]; ok && len(tokens) > 0 {
+			return tokens[0], nil
+		}
+		return "", fmt.Errorf("missing X-Subject-Token header in Keystone response")
 	}
 
 	errBody, err := io.ReadAll(resp.Body)
@@ -348,10 +357,15 @@ func (keystone *KeystoneAuthRequest) getCatalog(ctx context.Context, token strin
 
 // getServiceURL retrieves a public URL for an OpenStack project from the OpenStack catalog
 func (keystone *KeystoneAuthRequest) getServiceURL(ctx context.Context, token string, projectName string, region string) (string, error) {
-	serviceTypes, err := openstackutil.GetServiceTypes(ctx, projectName)
+	serviceTypesLookup := keystone.serviceTypesLookup
+	if serviceTypesLookup == nil {
+		serviceTypesLookup = openstackutil.GetServiceTypes
+	}
+
+	serviceTypes, err := serviceTypesLookup(ctx, projectName)
 
 	if err != nil {
-		return "", err
+		serviceTypes = []string{}
 	}
 
 	serviceCatalog, err := keystone.getCatalog(ctx, token)
@@ -368,7 +382,7 @@ func (keystone *KeystoneAuthRequest) getServiceURL(ctx context.Context, token st
 		for _, service := range serviceCatalog {
 			if serviceType == service.Type {
 				for _, endpoint := range service.Endpoints {
-					if endpoint.Interface == "public" {
+					if endpoint.Interface == publicEndpointInterface {
 						if region != "" {
 							if endpoint.Region == region {
 								return endpoint.URL, nil
@@ -383,11 +397,30 @@ func (keystone *KeystoneAuthRequest) getServiceURL(ctx context.Context, token st
 		}
 	}
 
+	// Some callers already pass a catalog service type such as "metric".
+	// Match it directly so discovery does not depend on the external alias registry.
+	for _, service := range serviceCatalog {
+		if projectName == service.Type {
+			for _, endpoint := range service.Endpoints {
+				if endpoint.Interface == publicEndpointInterface {
+					if region != "" {
+						if endpoint.Region == region {
+							return endpoint.URL, nil
+						}
+						continue
+					}
+					return endpoint.URL, nil
+				}
+			}
+			return "", fmt.Errorf("service '%s' does not have a public URL or the public URL for a specific region is not registered in the catalog", projectName)
+		}
+	}
+
 	// If getServiceTypes() timed-out or failed or if serviceType is not in the catalog, try to find by project name
 	for _, service := range serviceCatalog {
 		if projectName == service.Name {
 			for _, endpoint := range service.Endpoints {
-				if endpoint.Interface == "public" {
+				if endpoint.Interface == publicEndpointInterface {
 					if region != "" {
 						if endpoint.Region == region {
 							return endpoint.URL, nil
