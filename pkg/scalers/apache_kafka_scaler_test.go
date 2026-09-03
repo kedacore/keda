@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/segmentio/kafka-go"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -386,6 +387,59 @@ func TestApacheKafkaGetMetricSpecForScaling(t *testing.T) {
 			str := fmt.Sprintf("Wrong External metric source name: %s, expected: %s for %#v\n", metricName, testData.name, testData)
 			t.Error("Wrong External metric source name:", metricName, str)
 		}
+	}
+}
+
+func TestApacheKafkaSubscribedTopics(t *testing.T) {
+	testCases := []struct {
+		name    string
+		members []kafka.DescribeGroupsResponseMember
+		exp     []string
+	}{
+		{
+			name:    "no members",
+			members: []kafka.DescribeGroupsResponseMember{},
+			exp:     nil,
+		},
+		{
+			name: "single member, single topic",
+			members: []kafka.DescribeGroupsResponseMember{
+				{MemberMetadata: kafka.DescribeGroupsResponseMemberMetadata{Topics: []string{"topic-a"}}},
+			},
+			exp: []string{"topic-a"},
+		},
+		{
+			name: "multiple members, disjoint topics are unioned",
+			members: []kafka.DescribeGroupsResponseMember{
+				{MemberMetadata: kafka.DescribeGroupsResponseMemberMetadata{Topics: []string{"topic-a"}}},
+				{MemberMetadata: kafka.DescribeGroupsResponseMemberMetadata{Topics: []string{"topic-b"}}},
+			},
+			exp: []string{"topic-a", "topic-b"},
+		},
+		{
+			name: "multiple members, overlapping topics are deduplicated",
+			members: []kafka.DescribeGroupsResponseMember{
+				{MemberMetadata: kafka.DescribeGroupsResponseMemberMetadata{Topics: []string{"topic-a", "topic-b"}}},
+				{MemberMetadata: kafka.DescribeGroupsResponseMemberMetadata{Topics: []string{"topic-b"}}},
+			},
+			exp: []string{"topic-a", "topic-b"},
+		},
+		{
+			name: "member with no subscribed topics contributes nothing",
+			members: []kafka.DescribeGroupsResponseMember{
+				{MemberMetadata: kafka.DescribeGroupsResponseMemberMetadata{Topics: nil}},
+			},
+			exp: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			topics := subscribedTopics(tc.members)
+			if !reflect.DeepEqual(tc.exp, topics) {
+				t.Errorf("Expected %v but got %v", tc.exp, topics)
+			}
+		})
 	}
 }
 
