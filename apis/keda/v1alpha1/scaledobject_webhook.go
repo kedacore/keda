@@ -543,9 +543,11 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string, dryRun bool
 			containerName := trigger.Metadata["containerName"]
 			resourceType := corev1.ResourceName(trigger.Type)
 
-			// Pod-level requests (KEP-2837) cover every container in the pod and are what the HPA
-			// uses as the utilization denominator, so the per-container check must be skipped.
-			if podSpec.Resources == nil || !isWorkloadResourceSet(*podSpec.Resources, resourceType) {
+			// The HPA uses the pod-level request (KEP-2837) only for Resource metrics; a containerName
+			// trigger yields a ContainerResource metric, which ignores it and needs the container request.
+			podLevelRequestApplies := containerName == "" && podSpec.Resources != nil && isWorkloadResourceSet(*podSpec.Resources, resourceType)
+
+			if !podLevelRequestApplies {
 				for _, container := range podSpec.Containers {
 					if containerName != "" && container.Name != containerName {
 						continue

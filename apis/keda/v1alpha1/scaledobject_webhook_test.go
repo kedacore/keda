@@ -627,7 +627,10 @@ var _ = It("should validate the so creation with cpu and memory when deployment 
 	}).ShouldNot(HaveOccurred())
 })
 
-var _ = It("should validate the so creation with cpu when deployment has pod-level requests and the trigger sets containerName", func() {
+// A trigger that sets containerName produces an HPA ContainerResource metric, whose denominator is
+// the named container's own request. The HPA ignores pod-level requests in that case, so validation
+// must keep rejecting a container that declares none.
+var _ = It("shouldn't validate the so creation with cpu when the trigger sets containerName and only pod-level requests are declared", func() {
 
 	namespaceName := "deployment-pod-level-requests-container-name"
 	namespace := createNamespace(namespaceName)
@@ -640,7 +643,36 @@ var _ = It("should validate the so creation with cpu when deployment has pod-lev
 	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
 	so.Spec.Triggers = []ScaleTriggers{
 		{
-			Type: "cpu",
+			Type:       "cpu",
+			MetricType: v2.UtilizationMetricType,
+			Metadata: map[string]string{
+				"value":         "10",
+				"containerName": "test",
+			},
+		},
+	}
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(MatchError(ContainSubstring("the container test doesn't have the cpu request defined")))
+})
+
+var _ = It("should validate the so creation with cpu when the trigger sets containerName and that container declares requests", func() {
+
+	namespaceName := "deployment-container-requests-container-name"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, true)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
+	so.Spec.Triggers = []ScaleTriggers{
+		{
+			Type:       "cpu",
+			MetricType: v2.UtilizationMetricType,
 			Metadata: map[string]string{
 				"value":         "10",
 				"containerName": "test",
@@ -681,7 +713,7 @@ var _ = It("shouldn't validate the so creation with cpu and memory when deployme
 
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), so)
-	}).Should(HaveOccurred())
+	}).Should(MatchError(ContainSubstring("the scaledobject has a memory trigger")))
 })
 
 // Regression guard: container-level requests must keep satisfying the check when the pod-level
