@@ -132,7 +132,7 @@ require (
 
 require (
 	github.com/go-openapi/swag/pools v0.29.1 // indirect
-	golang.org/x/crypto v0.55.0 // indirect
+	golang.org/x/crypto v0.56.0 // indirect
 	k8s.io/streaming v0.36.4 // indirect
 )
 
