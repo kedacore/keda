@@ -64,8 +64,8 @@ type aggregatorTestCase struct {
 
 var aggregatorTestCases = []aggregatorTestCase{
 	// max/latest: high phase datapoints are all 1000, low phase datapoints are all 100.
-	{aggregator: "max", targetValue: "400", activationTargetValue: "1.1", scaleOutReplicas: 10, scaleInReplicas: 4},
-	{aggregator: "latest", targetValue: "400", activationTargetValue: "1.1", scaleOutReplicas: 10, scaleInReplicas: 4},
+	{aggregator: "max", targetValue: "250", activationTargetValue: "1.1", scaleOutReplicas: 10, scaleInReplicas: 4},
+	{aggregator: "latest", targetValue: "250", activationTargetValue: "1.1", scaleOutReplicas: 10, scaleInReplicas: 4},
 	// sum: ~10 points * 1000 during high phase vs ~2 points * 100 during low phase.
 	{aggregator: "sum", targetValue: "2000", activationTargetValue: "1.1", scaleOutReplicas: 10, scaleInReplicas: 1},
 	// count: ~10 points during high phase (1s interval) vs ~2 points during low phase (5s interval).
