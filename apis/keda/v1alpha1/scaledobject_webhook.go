@@ -541,15 +541,18 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string, dryRun bool
 				}
 			}
 			containerName := trigger.Metadata["containerName"]
-			for _, container := range podSpec.Containers {
-				if containerName != "" && container.Name != containerName {
-					continue
-				}
+			resourceType := corev1.ResourceName(trigger.Type)
 
-				if trigger.Type == cpuString || trigger.Type == memoryString {
+			// Pod-level requests (KEP-2837) cover every container in the pod and are what the HPA
+			// uses as the utilization denominator, so the per-container check must be skipped.
+			if podSpec.Resources == nil || !isWorkloadResourceSet(*podSpec.Resources, resourceType) {
+				for _, container := range podSpec.Containers {
+					if containerName != "" && container.Name != containerName {
+						continue
+					}
+
 					// Fail if neither pod's container spec has particular resource limit specified, nor a default limit is
 					// specified in LimitRange in the same namespace as the deployment
-					resourceType := corev1.ResourceName(trigger.Type)
 					if !isWorkloadResourceSet(container.Resources, resourceType) &&
 						!isContainerResourceLimitSet(context.Background(), incomingSo.Namespace, resourceType) {
 						err := fmt.Errorf("the scaledobject has a %v trigger but the container %s doesn't have the %v request defined", resourceType, container.Name, resourceType)

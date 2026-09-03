@@ -600,6 +600,135 @@ var _ = It("shouldn't validate the so creation with cpu and memory when stateful
 	}).Should(HaveOccurred())
 })
 
+// The following tests cover cpu/memory requests declared at pod level (KEP-2837) instead of on the
+// containers. The HPA uses the pod-level request as the utilization denominator, so such a workload
+// is valid and must be accepted. See github.com/kedacore/keda/issues/8113
+var _ = It("should validate the so creation with cpu and memory when deployment has pod-level requests", func() {
+
+	namespaceName := "deployment-has-pod-level-requests"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+	workload.Spec.Template.Spec.Resources = &v1.ResourceRequirements{
+		Requests: v1.ResourceList{
+			v1.ResourceCPU:    *resource.NewMilliQuantity(100, resource.DecimalSI),
+			v1.ResourceMemory: *resource.NewQuantity(100*1024*1024, resource.BinarySI),
+		},
+	}
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("should validate the so creation with cpu when deployment has pod-level requests and the trigger sets containerName", func() {
+
+	namespaceName := "deployment-pod-level-requests-container-name"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+	workload.Spec.Template.Spec.Resources = &v1.ResourceRequirements{
+		Requests: v1.ResourceList{
+			v1.ResourceCPU: *resource.NewMilliQuantity(100, resource.DecimalSI),
+		},
+	}
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
+	so.Spec.Triggers = []ScaleTriggers{
+		{
+			Type: "cpu",
+			Metadata: map[string]string{
+				"value":         "10",
+				"containerName": "test",
+			},
+		},
+	}
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+// A pod-level request only satisfies the trigger for the resource it declares, so a memory trigger
+// must still be rejected when only cpu is declared at pod level.
+var _ = It("shouldn't validate the so creation with cpu and memory when deployment has pod-level cpu request only", func() {
+
+	namespaceName := "deployment-pod-level-cpu-request-only"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+	workload.Spec.Template.Spec.Resources = &v1.ResourceRequirements{
+		Requests: v1.ResourceList{
+			v1.ResourceCPU: *resource.NewMilliQuantity(100, resource.DecimalSI),
+		},
+	}
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
+// Regression guard: container-level requests must keep satisfying the check when the pod-level
+// resources are present but declare nothing.
+var _ = It("should validate the so creation with cpu and memory when deployment has container requests and empty pod-level resources", func() {
+
+	namespaceName := "deployment-container-requests-empty-pod-level"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, true)
+	workload.Spec.Template.Spec.Resources = &v1.ResourceRequirements{}
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("should validate the so creation with cpu and memory when statefulset has pod-level requests", func() {
+
+	namespaceName := "statefulset-has-pod-level-requests"
+	namespace := createNamespace(namespaceName)
+	workload := createStatefulSet(namespaceName, false, false)
+	workload.Spec.Template.Spec.Resources = &v1.ResourceRequirements{
+		Requests: v1.ResourceList{
+			v1.ResourceCPU:    *resource.NewMilliQuantity(100, resource.DecimalSI),
+			v1.ResourceMemory: *resource.NewQuantity(100*1024*1024, resource.BinarySI),
+		},
+	}
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "StatefulSet", true, map[string]string{}, "")
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
 var _ = It("should validate the so creation without cpu and memory when custom resources", func() {
 
 	namespaceName := "crd-not-resources"
