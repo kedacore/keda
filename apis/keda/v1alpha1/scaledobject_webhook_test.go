@@ -1364,6 +1364,38 @@ var _ = It("should NOT emit warning when PollingInterval is set with useCachedMe
 	Expect(warnings).ToNot(ContainElement(ContainSubstring("PollingInterval is configured but is not relevant")))
 })
 
+var _ = It("should NOT emit warning when PollingInterval is set with scalingModifiers", func() {
+	namespaceName := "polling-interval-no-warning-scaling-modifiers"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, true)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
+
+	so.Spec.MinReplicaCount = ptr.To[int32](2)
+	so.Spec.IdleReplicaCount = nil
+	so.Spec.PollingInterval = ptr.To[int32](30)
+	so.Spec.Triggers = []ScaleTriggers{
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+	so.Spec.Advanced.ScalingModifiers = ScalingModifiers{Target: "2", Formula: "workload_trig + 1"}
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	warnings, err := so.ValidateCreate(new(false))
+	Expect(err).ToNot(HaveOccurred())
+	Expect(warnings).ToNot(ContainElement(ContainSubstring("PollingInterval is configured but is not relevant")))
+})
+
 var _ = It("should NOT emit warning when PollingInterval is not set", func() {
 	namespaceName := "polling-interval-not-set"
 	namespace := createNamespace(namespaceName)
