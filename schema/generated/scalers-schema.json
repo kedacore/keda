@@ -908,6 +908,58 @@
                     "type": "string",
                     "default": "10000",
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "connection",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "consumerGroup",
+                    "type": "string",
+                    "default": "$Default",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "storageConnection",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "storageAccountName",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "blobContainer",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "eventHubNamespace",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "eventHubName",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "checkpointStrategy",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
                 }
             ]
         },
@@ -3224,6 +3276,147 @@
                     "type": "string",
                     "default": "false",
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "authModes",
+                    "type": "string",
+                    "optional": true,
+                    "allowedValue": [
+                        "apiKey",
+                        "basic",
+                        "tls",
+                        "bearer",
+                        "custom",
+                        "oauth"
+                    ],
+                    "exclusiveSet": [
+                        "bearer",
+                        "basic",
+                        "oauth"
+                    ],
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "authMode",
+                    "type": "string",
+                    "optional": true,
+                    "allowedValue": [
+                        "apiKey",
+                        "basic",
+                        "tls",
+                        "bearer",
+                        "custom",
+                        "oauth"
+                    ],
+                    "exclusiveSet": [
+                        "bearer",
+                        "basic",
+                        "oauth"
+                    ],
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "bearerToken",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "token",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "cert",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "key",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "ca",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "oauthTokenURI",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "scopes",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "scope",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "clientID",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "clientSecret",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "endpointParams",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "customAuthHeader",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "customAuthValue",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "apiKey",
+                    "type": "string",
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "method",
+                    "type": "string",
+                    "default": "header",
+                    "allowedValue": [
+                        "header",
+                        "query"
+                    ],
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "keyParamName",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 }
             ]
         },
@@ -4405,6 +4598,36 @@
                     "name": "workloadIdentityResource",
                     "type": "string",
                     "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "oauthTokenURI",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "scopes",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "scope",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "clientID",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "clientSecret",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "endpointParams",
+                    "type": "string",
                     "triggerAuthenticationVariableReadable": true
                 }
             ]
@@ -5914,6 +6137,12 @@
                     "name": "query.*",
                     "type": "string",
                     "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "ignoreNullValues",
+                    "type": "string",
+                    "default": "false",
                     "metadataVariableReadable": true
                 },
                 {

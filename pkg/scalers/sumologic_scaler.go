@@ -35,6 +35,7 @@ type sumologicMetadata struct {
 	QueryType           string            `keda:"name=queryType,           order=triggerMetadata, enum=logs;metrics"`
 	Query               string            `keda:"name=query,               order=triggerMetadata, optional"`
 	Queries             map[string]string `keda:"name=query.*,             order=triggerMetadata, optional"`                                // Only for metrics queries
+	IgnoreNullValues    bool              `keda:"name=ignoreNullValues,    order=triggerMetadata, default=false"`                           // Only for metrics queries
 	ResultQueryRowID    string            `keda:"name=resultQueryRowID,    order=triggerMetadata, optional"`                                // Only for metrics queries
 	Quantization        time.Duration     `keda:"name=quantization,        order=triggerMetadata, optional"`                                // Only for metrics queries
 	Rollup              string            `keda:"name=rollup,              order=triggerMetadata, enum=Avg;Sum;Count;Min;Max, default=Avg"` // Only for metrics queries
@@ -196,6 +197,7 @@ func (s *sumologicScaler) executeQuery() (float64, error) {
 		TimeRange(s.metadata.Timerange).
 		Timezone(s.metadata.Timezone).
 		Aggregator(s.metadata.QueryAggregator).
+		IgnoreNullValues(s.metadata.IgnoreNullValues).
 		Build()
 
 	return s.client.GetQueryResult(query)

@@ -116,11 +116,13 @@ func TestScaledJobValidations(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
+	// Deferred because the checks below end the test early when they fail, which would otherwise
+	// leave this namespace behind for whatever runs next.
+	defer DeleteKubernetesResources(t, testNamespace, data, templates)
+
 	testTriggersWithEmptyArray(t, data)
 
 	testScaledJobWithExcludedLabels(t, data)
-
-	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func testTriggersWithEmptyArray(t *testing.T, data templateData) {
@@ -140,9 +142,11 @@ func testScaledJobWithExcludedLabels(t *testing.T, data templateData) {
 	err = KubectlApplyWithErrors(t, data, "scaledJobTemplateWithExcludedLabels", scaledJobTemplateWithExcludedLabels)
 	assert.NoError(t, err, "scaledJob should be deployed")
 
+	// Required rather than asserted: the label checks below read fields off this job, so a wait that
+	// timed out would panic here instead of reporting that no job was created.
 	job, err := WaitForJobCreation(t, GetKubernetesClient(t), data.ExcludedLabelsSjName, data.TestNamespace, 10, 5)
-	assert.NoError(t, err, "job should be created")
-	assert.NotNil(t, job, "job should be created")
+	require.NoError(t, err, "job should be created")
+	require.NotNil(t, job, "job should be created")
 
 	// Ensure that foo.bar/environment and foo.bar/version labels are not propagated
 	assert.Equal(t, "", job.Labels["foo.bar/environment"], "job should not have the 'foo.bar/environment' label")
