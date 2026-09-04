@@ -473,6 +473,56 @@ func TestScalersCache_UpdateMetricSpecForScaler_IdentityMismatch(t *testing.T) {
 	}
 }
 
+// A scaler that streams no metric specs must not be able to wedge the
+// ScaledObject: caching a non-nil empty slice would satisfy the "use the cache"
+// checks while yielding no metric specs at all, so the HPA could not be built
+// and the pull-based fallback would stay suppressed indefinitely.
+func TestScalersCache_UpdateMetricSpecForScaler_RejectsEmptySpecs(t *testing.T) {
+	scaler := newFakeScaler(nil)
+	c := newCacheWithScaler(scaler)
+
+	for _, specs := range [][]v2.MetricSpec{nil, {}} {
+		if c.UpdateMetricSpecForScaler(0, specs, testCacheUID, testCacheGeneration) {
+			t.Fatalf("UpdateMetricSpecForScaler should report false for %d specs", len(specs))
+		}
+	}
+
+	if got := c.GetMetricSpecForScaling(context.Background()); len(got) != 1 || got[0].External.Metric.Name != "fake" {
+		t.Fatalf("expected the scaler's own specs, got %+v", got)
+	}
+
+	got, err := c.GetMetricSpecForScalingForScaler(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != 1 || got[0].External.Metric.Name != "fake" {
+		t.Fatalf("expected the scaler's own specs, got %+v", got)
+	}
+}
+
+func TestScalersCache_UpdateMetricSpecForScaler_EmptyUpdateKeepsCachedSpecs(t *testing.T) {
+	scaler := newFakeScaler(nil)
+	c := newCacheWithScaler(scaler)
+
+	streamed := []v2.MetricSpec{{
+		External: &v2.ExternalMetricSource{
+			Metric: v2.MetricIdentifier{Name: "streamed-metric"},
+		},
+		Type: "External",
+	}}
+	if !c.UpdateMetricSpecForScaler(0, streamed, testCacheUID, testCacheGeneration) {
+		t.Fatal("UpdateMetricSpecForScaler should report true for a valid update")
+	}
+
+	if c.UpdateMetricSpecForScaler(0, nil, testCacheUID, testCacheGeneration) {
+		t.Fatal("UpdateMetricSpecForScaler should report false for an empty update")
+	}
+
+	if got := c.GetMetricSpecForScaling(context.Background()); len(got) != 1 || got[0].External.Metric.Name != "streamed-metric" {
+		t.Fatalf("expected the last non-empty streamed specs to be kept, got %+v", got)
+	}
+}
+
 func TestScalersCache_GetMetricSpecForScalingForScaler_UsesCachedSpecs(t *testing.T) {
 	scaler := newFakeScaler(nil)
 	c := newCacheWithScaler(scaler)
