@@ -255,7 +255,8 @@ func (s *apacheKafkaScaler) getTopicPartitions(ctx context.Context) (map[string]
 	}
 	s.logger.V(1).Info(fmt.Sprintf("Listed topics %v", metadata.Topics))
 
-	if len(s.metadata.Topic) == 0 {
+	topicFilter := s.metadata.Topic
+	if len(topicFilter) == 0 {
 		// in case of empty topic name, we will get all topics that the consumer group is subscribed to
 		describeGrpReq := &kafka.DescribeGroupsRequest{
 			Addr: s.client.Addr,
@@ -272,25 +273,17 @@ func (s *apacheKafkaScaler) getTopicPartitions(ctx context.Context) (map[string]
 		}
 		s.logger.V(4).Info(fmt.Sprintf("Described group %s with response %v", s.metadata.Group, describeGrp))
 
-		result := make(map[string][]int)
-		for _, topic := range metadata.Topics {
-			partitions := make([]int, 0)
-			for _, partition := range topic.Partitions {
-				// if no partitions limitations are specified, all partitions are considered
-				if (len(s.metadata.PartitionLimitation) == 0) ||
-					(len(s.metadata.PartitionLimitation) > 0 && slices.Contains(s.metadata.PartitionLimitation, partition.ID)) {
-					partitions = append(partitions, partition.ID)
-				}
-			}
-			result[topic.Name] = partitions
-		}
-		return result, nil
+		// Restrict to the topics the group's members actually subscribed to - falling back to every
+		// topic visible on the broker would pick up lag from unrelated topics.
+		topicFilter = subscribedTopics(describeGrp.Groups[0].Members)
 	}
+
 	result := make(map[string][]int)
 	for _, topic := range metadata.Topics {
 		partitions := make([]int, 0)
-		if slices.Contains(s.metadata.Topic, topic.Name) {
+		if slices.Contains(topicFilter, topic.Name) {
 			for _, partition := range topic.Partitions {
+				// if no partitions limitations are specified, all partitions are considered
 				if (len(s.metadata.PartitionLimitation) == 0) ||
 					(len(s.metadata.PartitionLimitation) > 0 && slices.Contains(s.metadata.PartitionLimitation, partition.ID)) {
 					partitions = append(partitions, partition.ID)
@@ -300,6 +293,20 @@ func (s *apacheKafkaScaler) getTopicPartitions(ctx context.Context) (map[string]
 		result[topic.Name] = partitions
 	}
 	return result, nil
+}
+
+// subscribedTopics returns the union of topics that the group's members subscribed to, as reported
+// in their join-group metadata.
+func subscribedTopics(members []kafka.DescribeGroupsResponseMember) []string {
+	var topics []string
+	for _, member := range members {
+		for _, topic := range member.MemberMetadata.Topics {
+			if !slices.Contains(topics, topic) {
+				topics = append(topics, topic)
+			}
+		}
+	}
+	return topics
 }
 
 func (s *apacheKafkaScaler) getConsumerOffsets(ctx context.Context, topicPartitions map[string][]int) (map[string]map[int]int64, error) {
