@@ -7,6 +7,8 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: destinationName
           type: string
           optional: true

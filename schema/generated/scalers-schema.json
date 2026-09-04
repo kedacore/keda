@@ -9,7 +9,9 @@
                     "name": "managementEndpoint",
                     "type": "string",
                     "optional": true,
-                    "metadataVariableReadable": true
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "destinationName",
