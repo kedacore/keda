@@ -5960,6 +5960,14 @@
                 {
                     "name": "queryAggregator",
                     "type": "string",
+                    "allowedValue": [
+                        "min",
+                        "max",
+                        "avg",
+                        "sum",
+                        "count",
+                        "latest"
+                    ],
                     "metadataVariableReadable": true
                 },
                 {

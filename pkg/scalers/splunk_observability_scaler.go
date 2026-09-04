@@ -30,7 +30,7 @@ type splunkObservabilityMetadata struct {
 	Query                 string  `keda:"name=query,                 order=triggerMetadata"`
 	Duration              int     `keda:"name=duration,              order=triggerMetadata"`
 	TargetValue           float64 `keda:"name=targetValue,   	     order=triggerMetadata"`
-	QueryAggregator       string  `keda:"name=queryAggregator,       order=triggerMetadata"`
+	QueryAggregator       string  `keda:"name=queryAggregator,       order=triggerMetadata, enum=min;max;avg;sum;count;latest"`
 	ActivationTargetValue float64 `keda:"name=activationTargetValue, order=triggerMetadata"`
 }
 
@@ -146,6 +146,7 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 	minValue := math.Inf(1)
 	valueSum := 0.0
 	valueCount := 0
+	latestValue := 0.0
 
 	process := func(msg *messages.DataMessage) error {
 		if len(msg.Payloads) == 0 {
@@ -162,6 +163,7 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 			minValue = math.Min(minValue, value)
 			valueSum += value
 			valueCount++
+			latestValue = value
 		}
 		return nil
 	}
@@ -227,6 +229,16 @@ loop:
 		avg := valueSum / float64(valueCount)
 		s.logger.V(1).Info(fmt.Sprintf("Returning avg value: %.4f\n", avg))
 		return avg, nil
+	case "sum":
+		s.logger.V(1).Info(fmt.Sprintf("Returning sum value: %.4f\n", valueSum))
+		return valueSum, nil
+	case "count":
+		count := float64(valueCount)
+		s.logger.V(1).Info(fmt.Sprintf("Returning count value: %.4f\n", count))
+		return count, nil
+	case "latest":
+		s.logger.V(1).Info(fmt.Sprintf("Returning latest value: %.4f\n", latestValue))
+		return latestValue, nil
 	default:
 		return 0, fmt.Errorf("invalid queryAggregator: %q", s.metadata.QueryAggregator)
 	}

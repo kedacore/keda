@@ -30,20 +30,35 @@ const (
 )
 
 var (
-	testNamespace          = fmt.Sprintf("%s-ns", testName)
-	deploymentName         = fmt.Sprintf("%s-deployment", testName)
-	scaledObjectName       = fmt.Sprintf("%s-so", testName)
-	authName               = fmt.Sprintf("%s-auth", testName)
-	accessToken            = os.Getenv("SPLUNK_OBSERVABILITY_ACCESS_TOKEN")
-	ingestToken            = os.Getenv("SPLUNK_OBSERVABILITY_INGEST_TOKEN")
-	realm                  = os.Getenv("SPLUNK_OBSERVABILITY_REALM")
-	signalflowQuery        = "data('keda-test-metric').publish()"
-	duration               = "10"
-	maxReplicaCount        = 10
-	minReplicaCount        = 1
-	scaleInTargetValue     = "400"
-	scaleInActivationValue = "1.1"
+	testNamespace     = fmt.Sprintf("%s-ns", testName)
+	deploymentName    = fmt.Sprintf("%s-deployment", testName)
+	scaledObjectName  = fmt.Sprintf("%s-so", testName)
+	authName          = fmt.Sprintf("%s-auth", testName)
+	accessToken       = os.Getenv("SPLUNK_OBSERVABILITY_ACCESS_TOKEN")
+	ingestToken       = os.Getenv("SPLUNK_OBSERVABILITY_INGEST_TOKEN")
+	realm             = os.Getenv("SPLUNK_OBSERVABILITY_REALM")
+	signalflowQuery   = "data('keda-test-metric').publish()"
+	duration          = "10"
+	maxReplicaCount   = 10
+	minReplicaCount   = 1
+	highValue         = 1000.0
+	lowValue          = 100.0
+	highInterval      = 1 * time.Second
+	lowInterval       = 5 * time.Second
+	highPhaseDuration = 4 * time.Minute
 )
+
+type aggregatorTestCase struct {
+	aggregator            string
+	targetValue           string
+	activationTargetValue string
+	scaleOutReplicas      int
+	scaleInReplicas       int
+}
+
+var aggregatorTestCases = []aggregatorTestCase{
+	{aggregator: "max", targetValue: "250", activationTargetValue: "1.1", scaleOutReplicas: 10, scaleInReplicas: 4},
+}
 
 type templateData struct {
 	TestNamespace         string
@@ -58,6 +73,7 @@ type templateData struct {
 	MaxReplicaCount       string
 	TargetValue           string
 	ActivationTargetValue string
+	QueryAggregator       string
 }
 
 const (
@@ -130,9 +146,9 @@ spec:
     metadata:
       query: data('keda-test-metric').publish()
       duration: "10"
-      targetValue: "250"
-      activationTargetValue: "1.1"
-      queryAggregator: "max" # 'min', 'max', or 'avg'
+      targetValue: "{{.TargetValue}}"
+      activationTargetValue: "{{.ActivationTargetValue}}"
+      queryAggregator: "{{.QueryAggregator}}" # 'min', 'max', 'avg', 'sum', 'count', 'latest'
     authenticationRef:
       name: keda-trigger-auth-splunk-secret
 `
@@ -149,10 +165,13 @@ func sendTestMetrics(ctx context.Context, token string, realm string) {
 		default:
 			tNow := time.Now()
 			var value float64
-			if tNow.Sub(tStart) < 4*time.Minute {
-				value = 1000.0
+			var interval time.Duration
+			if tNow.Sub(tStart) < highPhaseDuration {
+				value = highValue
+				interval = highInterval
 			} else {
-				value = 100.0
+				value = lowValue
+				interval = lowInterval
 			}
 
 			body := map[string]interface{}{
@@ -192,58 +211,63 @@ func sendTestMetrics(ctx context.Context, token string, realm string) {
 			log.Printf("Sent value %.5f to SignalFx. Status: %d. Response: %s\n", value, resp.StatusCode, resp.Status)
 			resp.Body.Close()
 
-			time.Sleep(3 * time.Second)
+			time.Sleep(interval)
 		}
 	}
 }
 
 func TestSplunkObservabilityScaler(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	kc := GetKubernetesClient(t)
-	data, templates := getTemplateData()
 
-	t.Cleanup(func() {
-		DeleteKubernetesResources(t, testNamespace, data, templates)
-	})
+	for _, tc := range aggregatorTestCases {
+		t.Run(tc.aggregator, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
-	// Start sending metrics concurrently
-	go sendTestMetrics(ctx, ingestToken, realm)
+			data, templates := getTemplateData(tc)
 
-	// Wait 30 seconds to ensure initial metrics are in Splunk
-	t.Log("Waiting 30 seconds for initial metrics to populate in Splunk...")
-	time.Sleep(30 * time.Second)
+			t.Cleanup(func() {
+				DeleteKubernetesResources(t, testNamespace, data, templates)
+			})
 
-	// Create kubernetes resources
-	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+			// Start sending metrics concurrently
+			go sendTestMetrics(ctx, ingestToken, realm)
 
-	// Ensure nginx deployment is ready
-	assert.True(t, WaitForAllPodRunningInNamespace(t, kc, testNamespace, 18, 10),
-		"pods should be running after 3 minutes")
+			// Wait 30 seconds to ensure initial metrics are in Splunk
+			t.Log("Waiting 30 seconds for initial metrics to populate in Splunk...")
+			time.Sleep(30 * time.Second)
 
-	// test scaling
-	testScaleOut(t, kc)
-	testScaleIn(t, kc)
+			// Create kubernetes resources
+			CreateKubernetesResources(t, kc, testNamespace, data, templates)
+
+			// Ensure nginx deployment is ready
+			assert.True(t, WaitForAllPodRunningInNamespace(t, kc, testNamespace, 18, 10),
+				"pods should be running after 3 minutes")
+
+			// test scaling
+			testScaleOut(t, kc, tc.scaleOutReplicas)
+			testScaleIn(t, kc, tc.scaleInReplicas)
+		})
+	}
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, expectedReplicas int) {
 	t.Log("--- testing scale out ---")
 	t.Log("waiting for 4 minutes for scale out to complete")
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 10, 4, 60),
-		"replica count should be 10 after 4 minutes")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, expectedReplicas, 4, 60),
+		"replica count should be %d after 4 minutes", expectedReplicas)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, expectedReplicas int) {
 	t.Log("--- testing scale in ---")
 	t.Log("waiting for 10 minutes for scale in to complete")
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 10, 60),
-		"replica count should be 4 after 10 minutes")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, expectedReplicas, 10, 60),
+		"replica count should be %d after 10 minutes", expectedReplicas)
 }
 
-func getTemplateData() (templateData, []Template) {
+func getTemplateData(tc aggregatorTestCase) (templateData, []Template) {
 	return templateData{
 			TestNamespace:         testNamespace,
 			DeploymentName:        deploymentName,
@@ -255,8 +279,9 @@ func getTemplateData() (templateData, []Template) {
 			Duration:              duration,
 			MinReplicaCount:       fmt.Sprintf("%v", minReplicaCount),
 			MaxReplicaCount:       fmt.Sprintf("%v", maxReplicaCount),
-			TargetValue:           scaleInTargetValue,
-			ActivationTargetValue: scaleInActivationValue,
+			TargetValue:           tc.targetValue,
+			ActivationTargetValue: tc.activationTargetValue,
+			QueryAggregator:       tc.aggregator,
 		}, []Template{
 			{Name: "authTemplate", Config: authTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
