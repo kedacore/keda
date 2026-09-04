@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -53,6 +54,7 @@ type kafkaScaler struct {
 const (
 	stringEnable  = "enable"
 	stringDisable = "disable"
+	ccacheDir     = "ccache"
 )
 
 type kafkaMetadata struct {
@@ -93,6 +95,7 @@ type kafkaMetadata struct {
 	OAuthExtensionsStr    string `keda:"name=oauthExtensions,order=authParams,optional"`
 
 	Keytab              string `keda:"name=keytab,order=authParams,optional"`
+	CcacheName          string `keda:"name=ccacheName,order=authParams,optional"`
 	Realm               string `keda:"name=realm,order=authParams,optional"`
 	KerberosConfigRaw   string `keda:"name=kerberosConfig,order=authParams,optional"`
 	KerberosServiceName string `keda:"name=kerberosServiceName,order=authParams,optional"`
@@ -105,6 +108,7 @@ type kafkaMetadata struct {
 	tokenProvider      kafkaSaslOAuthTokenProvider
 	enableTLS          bool
 	keytabPath         string
+	ccachePath         string
 	kerberosConfigPath string
 	awsAuthorization   awsutils.AuthorizationMetadata
 	scopes             []string
@@ -288,9 +292,22 @@ func (m *kafkaMetadata) parseGSSAPIParams() error {
 	if m.Username == "" {
 		return errors.New("no username given")
 	}
-	if (m.Password == "" && m.Keytab == "") || (m.Password != "" && m.Keytab != "") {
-		return errors.New("exactly one of 'password' or 'keytab' must be provided for GSSAPI authentication")
+
+	count := 0
+	if m.Password != "" {
+		count++
 	}
+	if m.Keytab != "" {
+		count++
+	}
+	if m.CcacheName != "" {
+		count++
+	}
+
+	if count != 1 {
+		return errors.New("exactly one of 'password', 'keytab' or 'ccacheName' must be provided for GSSAPI authentication")
+	}
+
 	if m.Realm == "" {
 		return errors.New("no realm given")
 	}
@@ -401,6 +418,30 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 			}
 			meta.kerberosConfigPath = path
 		}
+		if meta.CcacheName != "" {
+			if meta.CcacheName != filepath.Base(meta.CcacheName) || meta.CcacheName == "." || meta.CcacheName == ".." {
+				return meta, fmt.Errorf("ccacheName must be a file name and not a path")
+			}
+
+			tempKrbDir, err := getTempKerberosDir()
+			if err != nil {
+				return meta, err
+			}
+
+			path := filepath.Join(tempKrbDir, ccacheDir, meta.CcacheName)
+			info, err := os.Stat(path)
+			if err != nil {
+				if errors.Is(err, os.ErrNotExist) {
+					return meta, fmt.Errorf("ccache file %s does not exist", path)
+				}
+				return meta, fmt.Errorf("error checking ccache file %s: %w", path, err)
+			}
+			if !info.Mode().IsRegular() {
+				return meta, fmt.Errorf("ccache file %s is not a regular file", path)
+			}
+
+			meta.ccachePath = path
+		}
 	}
 
 	if meta.saslType == KafkaSASLTypeOAuthbearer && meta.tokenProvider == KafkaSASLOAuthTokenProviderAWSMSKIAM {
@@ -418,11 +459,9 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 func saveToFile(content string) (string, error) {
 	data := []byte(content)
 
-	tempKrbDir := fmt.Sprintf("%s%c%s", os.TempDir(), os.PathSeparator, "kerberos")
-	err := os.MkdirAll(tempKrbDir, 0700)
+	tempKrbDir, err := getTempKerberosDir()
 	if err != nil {
-		return "", fmt.Errorf(`error creating temporary directory: %s.  Error: %w
-		Note, when running in a container a writable /tmp/kerberos emptyDir must be mounted.  Refer to documentation`, tempKrbDir, err)
+		return "", err
 	}
 
 	tempFile, err := os.CreateTemp(tempKrbDir, "krb_*")
@@ -437,6 +476,16 @@ func saveToFile(content string) (string, error) {
 	}
 
 	return tempFile.Name(), nil
+}
+
+func getTempKerberosDir() (string, error) {
+	tempKrbDir := filepath.Join(os.TempDir(), "kerberos")
+	err := os.MkdirAll(tempKrbDir, 0700)
+	if err != nil {
+		return "", fmt.Errorf(`error creating temporary directory: %s.  Error: %w
+		Note, when running in a container a writable /tmp/kerberos emptyDir must be mounted.  Refer to documentation`, tempKrbDir, err)
+	}
+	return tempKrbDir, nil
 }
 
 func getKafkaClients(ctx context.Context, metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin, error) {
@@ -536,10 +585,14 @@ func getKafkaClientConfig(ctx context.Context, metadata kafkaMetadata) (*sarama.
 		config.Net.SASL.GSSAPI.Username = metadata.Username
 		config.Net.SASL.GSSAPI.Realm = metadata.Realm
 		config.Net.SASL.GSSAPI.KerberosConfigPath = metadata.kerberosConfigPath
-		if metadata.keytabPath != "" {
+		switch {
+		case metadata.keytabPath != "":
 			config.Net.SASL.GSSAPI.AuthType = sarama.KRB5_KEYTAB_AUTH
 			config.Net.SASL.GSSAPI.KeyTabPath = metadata.keytabPath
-		} else {
+		case metadata.ccachePath != "":
+			config.Net.SASL.GSSAPI.AuthType = sarama.KRB5_CCACHE_AUTH
+			config.Net.SASL.GSSAPI.CCachePath = metadata.ccachePath
+		default:
 			config.Net.SASL.GSSAPI.AuthType = sarama.KRB5_USER_AUTH
 			config.Net.SASL.GSSAPI.Password = metadata.Password
 		}
