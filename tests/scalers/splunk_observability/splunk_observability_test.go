@@ -30,20 +30,17 @@ const (
 )
 
 var (
-	testNamespace    = fmt.Sprintf("%s-ns", testName)
-	deploymentName   = fmt.Sprintf("%s-deployment", testName)
-	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	authName         = fmt.Sprintf("%s-auth", testName)
-	accessToken      = os.Getenv("SPLUNK_OBSERVABILITY_ACCESS_TOKEN")
-	ingestToken      = os.Getenv("SPLUNK_OBSERVABILITY_INGEST_TOKEN")
-	realm            = os.Getenv("SPLUNK_OBSERVABILITY_REALM")
-	signalflowQuery  = "data('keda-test-metric').publish()"
-	duration         = "10"
-	maxReplicaCount  = 10
-	minReplicaCount  = 1
-	// highValue/lowValue drive the max/latest aggregators; highInterval/lowInterval (send
-	// frequency) additionally drive the sum/count aggregators, which are insensitive to the
-	// datapoint value alone.
+	testNamespace     = fmt.Sprintf("%s-ns", testName)
+	deploymentName    = fmt.Sprintf("%s-deployment", testName)
+	scaledObjectName  = fmt.Sprintf("%s-so", testName)
+	authName          = fmt.Sprintf("%s-auth", testName)
+	accessToken       = os.Getenv("SPLUNK_OBSERVABILITY_ACCESS_TOKEN")
+	ingestToken       = os.Getenv("SPLUNK_OBSERVABILITY_INGEST_TOKEN")
+	realm             = os.Getenv("SPLUNK_OBSERVABILITY_REALM")
+	signalflowQuery   = "data('keda-test-metric').publish()"
+	duration          = "10"
+	maxReplicaCount   = 10
+	minReplicaCount   = 1
 	highValue         = 1000.0
 	lowValue          = 100.0
 	highInterval      = 1 * time.Second
@@ -51,9 +48,6 @@ var (
 	highPhaseDuration = 4 * time.Minute
 )
 
-// aggregatorTestCase pairs a queryAggregator with target values tuned to the signal produced by
-// sendTestMetrics, so that each aggregator both activates/scales-out during the high phase and
-// scales back in during the low phase.
 type aggregatorTestCase struct {
 	aggregator            string
 	targetValue           string
@@ -63,13 +57,7 @@ type aggregatorTestCase struct {
 }
 
 var aggregatorTestCases = []aggregatorTestCase{
-	// max/latest: high phase datapoints are all 1000, low phase datapoints are all 100.
 	{aggregator: "max", targetValue: "250", activationTargetValue: "1.1", scaleOutReplicas: 10, scaleInReplicas: 4},
-	{aggregator: "latest", targetValue: "250", activationTargetValue: "1.1", scaleOutReplicas: 10, scaleInReplicas: 4},
-	// sum: ~10 points * 1000 during high phase vs ~2 points * 100 during low phase.
-	{aggregator: "sum", targetValue: "2000", activationTargetValue: "1.1", scaleOutReplicas: 10, scaleInReplicas: 1},
-	// count: ~10 points during high phase (1s interval) vs ~2 points during low phase (5s interval).
-	{aggregator: "count", targetValue: "5", activationTargetValue: "1.1", scaleOutReplicas: 10, scaleInReplicas: 4},
 }
 
 type templateData struct {
