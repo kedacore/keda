@@ -107,7 +107,7 @@ New deprecation(s):
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Temporal Scaler**: Remove deprecated `buildId`, `selectAllActive` and `selectUnversioned` settings; use `workerDeploymentName` and `workerDeploymentBuildId` instead ([#7718](https://github.com/kedacore/keda/issues/7718))
 
 ### Other
 
