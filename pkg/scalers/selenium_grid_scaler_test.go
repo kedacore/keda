@@ -3643,3 +3643,37 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 		})
 	}
 }
+
+func Test_getCapabilityAndManagedDownloadsSafeTypes(t *testing.T) {
+	// Numeric / boolean / nil capabilities should not panic
+	capMap := map[string]any{
+		"browserVersion": float64(128),
+		"browserName":    "chrome",
+		"nilField":       nil,
+		"boolField":      true,
+	}
+
+	if got := getCapability(capMap, "browserVersion"); got != "128" {
+		t.Errorf("getCapability(browserVersion) = %v, want 128", got)
+	}
+	if got := getCapability(capMap, "browserName"); got != "chrome" {
+		t.Errorf("getCapability(browserName) = %v, want chrome", got)
+	}
+	if got := getCapability(capMap, "nilField"); got != "" {
+		t.Errorf("getCapability(nilField) = %v, want empty", got)
+	}
+	if got := getCapability(capMap, "missingField"); got != "" {
+		t.Errorf("getCapability(missingField) = %v, want empty", got)
+	}
+
+	// Non-boolean managed downloads should not panic
+	if got := managedDownloadsEnabled(map[string]any{EnableManagedDownloadsCapability: "invalid"}, map[string]any{}); !got {
+		t.Errorf("managedDownloadsEnabled() = false, want true")
+	}
+	if got := managedDownloadsEnabled(map[string]any{EnableManagedDownloadsCapability: "invalid"}, map[string]any{EnableManagedDownloadsCapability: true}); got {
+		t.Errorf("managedDownloadsEnabled() = true, want false")
+	}
+	if got := managedDownloadsEnabled(map[string]any{EnableManagedDownloadsCapability: true}, map[string]any{EnableManagedDownloadsCapability: true}); !got {
+		t.Errorf("managedDownloadsEnabled() = false, want true")
+	}
+}
