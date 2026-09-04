@@ -144,6 +144,20 @@ func TestGitHubRunnerParseMetadata(t *testing.T) {
 	}
 }
 
+func TestGitHubRunnerBearerAuthModeWithPersonalAccessToken(t *testing.T) {
+	meta, err := parseGitHubRunnerMetadata(&scalersconfig.ScalerConfig{
+		ResolvedEnv:     testGitHubRunnerResolvedEnv,
+		TriggerMetadata: map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "targetWorkflowQueueLength": "1"},
+		AuthParams:      map[string]string{"authModes": "bearer", "personalAccessToken": "sample"},
+	})
+	if err != nil {
+		t.Fatalf("expected no error but got %s", err)
+	}
+	if !meta.Auth.EnabledBearerAuth() || meta.Auth.BearerToken != "sample" {
+		t.Fatalf("expected bearer auth with personalAccessToken mapped, got modes %v and token %q", meta.Auth.Modes, meta.Auth.BearerToken)
+	}
+}
+
 func getGitHubTestMetaData(url string) *githubRunnerMetadata {
 	testpat := "testpat"
 

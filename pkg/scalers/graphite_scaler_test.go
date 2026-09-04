@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -45,18 +44,21 @@ var graphiteMetricIdentifiers = []graphiteMetricIdentifier{
 }
 
 type graphiteAuthMetadataTestData struct {
-	metadata   map[string]string
-	authParams map[string]string
-	isError    bool
+	metadata        map[string]string
+	authParams      map[string]string
+	isError         bool
+	expectBasicAuth bool
 }
 
 var testGraphiteAuthMetadata = []graphiteAuthMetadataTestData{
 	// success basicAuth
-	{map[string]string{"serverAddress": "http://localhost:81", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds", "authMode": "basic"}, map[string]string{"username": "user", "password": "pass"}, false},
+	{map[string]string{"serverAddress": "http://localhost:81", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds", "authMode": "basic"}, map[string]string{"username": "user", "password": "pass"}, false, true},
+	// success basicAuth via legacy bridge: username/password without authMode
+	{map[string]string{"serverAddress": "http://localhost:81", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds"}, map[string]string{"username": "user", "password": "pass"}, false, true},
 	// fail basicAuth with no username
-	{map[string]string{"serverAddress": "http://localhost:81", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds", "authMode": "basic"}, map[string]string{}, true},
+	{map[string]string{"serverAddress": "http://localhost:81", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds", "authMode": "basic"}, map[string]string{}, true, false},
 	// fail if using non-basicAuth authMode
-	{map[string]string{"serverAddress": "http://localhost:81", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds", "authMode": "tls"}, map[string]string{"username": "user"}, true},
+	{map[string]string{"serverAddress": "http://localhost:81", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds", "authMode": "tls"}, map[string]string{"username": "user"}, true, false},
 }
 
 type grapQueryResultTestData struct {
@@ -155,7 +157,7 @@ func TestGraphiteScalerAuthParams(t *testing.T) {
 		}
 
 		if err == nil {
-			if meta.AuthMode == "basic" && !strings.Contains(testData.metadata["authMode"], "basic") {
+			if meta.Auth.EnabledBasicAuth() != testData.expectBasicAuth {
 				t.Error("wrong auth mode detected")
 			}
 		}
