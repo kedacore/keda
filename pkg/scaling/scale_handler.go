@@ -244,21 +244,25 @@ func (h *scaleHandler) DeleteScalableObject(ctx context.Context, scalableObject 
 	}
 
 	key := withTriggers.GenerateIdentifier()
-	result, ok := h.scaleLoopContexts.Load(key)
-	if ok {
-		cancel, ok := result.(context.CancelFunc)
-		if ok {
+	result, hasScaleLoopContext := h.scaleLoopContexts.Load(key)
+	if hasScaleLoopContext {
+		cancel, isCancelFunc := result.(context.CancelFunc)
+		if isCancelFunc {
 			cancel()
 		}
 		h.scaleLoopContexts.Delete(key)
-		h.scaledObjectsMetricCache.Delete(key)
-		err := h.ClearScalersCache(ctx, scalableObject)
-		if err != nil {
-			log.Error(err, "error clearing scalers cache", "scalableObject", scalableObject, "key", key)
-		}
-		h.recorder.Eventf(withTriggers, nil, corev1.EventTypeNormal, eventreason.KEDAScalersStopped, eventreason.KEDAScalersStopped, "%s", "Stopped scalers watch")
 	} else {
 		log.V(1).Info("ScalableObject was not found in controller cache", "key", key)
+	}
+
+	// Cache entries can exist even when HPA creation fails before the scale loop starts.
+	h.scaledObjectsMetricCache.Delete(key)
+	if err := h.ClearScalersCache(ctx, scalableObject); err != nil {
+		log.Error(err, "error clearing scalers cache", "scalableObject", scalableObject, "key", key)
+	}
+
+	if hasScaleLoopContext {
+		h.recorder.Eventf(withTriggers, nil, corev1.EventTypeNormal, eventreason.KEDAScalersStopped, eventreason.KEDAScalersStopped, "%s", "Stopped scalers watch")
 	}
 
 	return nil

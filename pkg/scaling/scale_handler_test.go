@@ -42,6 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
 	mock_scalers "github.com/kedacore/keda/v2/pkg/mock/mock_scaler"
@@ -725,39 +726,115 @@ func TestClearScalersCache_PreservesMetricsCacheRecords(t *testing.T) {
 	}
 }
 
-func TestDeleteScalableObject_DeletesMetricsCacheRecords(t *testing.T) {
-	recorder := events.NewFakeRecorder(1)
-
-	metricName := "some-metric"
-	scaledObject := kedav1alpha1.ScaledObject{
-		ObjectMeta: metav1.ObjectMeta{Name: "delete-test", Namespace: "ns"},
-		Spec: kedav1alpha1.ScaledObjectSpec{
-			ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "target"},
-		},
-	}
-	key := scaledObject.GenerateIdentifier()
-
-	metricCache := metricscache.NewMetricsCache()
-	sh := scaleHandler{
-		scaleLoopContexts:        &sync.Map{},
-		recorder:                 recorder,
-		scalerCaches:             map[string]*cache.ScalersCache{},
-		scalerCachesLock:         &sync.RWMutex{},
-		scaledObjectsMetricCache: metricCache,
+func TestDeleteScalableObject_ClearsCaches(t *testing.T) {
+	tests := []struct {
+		name                 string
+		withScaleLoopContext bool
+	}{
+		{name: "without scale loop context"},
+		{name: "with scale loop context", withScaleLoopContext: true},
 	}
 
-	_, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	sh.scaleLoopContexts.Store(key, cancel)
-	metricCache.StoreRecords(key, map[string]metricscache.MetricsRecord{
-		metricName: {IsActive: true},
-	})
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			recorder := events.NewFakeRecorder(2)
 
-	err := sh.DeleteScalableObject(t.Context(), &scaledObject)
-	assert.NoError(t, err)
+			metricName := "some-metric"
+			scaledObject := kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: "delete-test", Namespace: "ns", Generation: 1},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "target"},
+				},
+			}
+			key := scaledObject.GenerateIdentifier()
 
-	_, found := metricCache.ReadRecord(key, metricName)
-	assert.False(t, found, "metric records must be deleted when the scalable object is deleted")
+			closed := make(chan struct{})
+			scaler := mock_scalers.NewMockScaler(ctrl)
+			scaler.EXPECT().Close(gomock.Any()).DoAndReturn(func(context.Context) error {
+				close(closed)
+				return nil
+			})
+			scalerCache := &cache.ScalersCache{
+				ScaledObject:             &scaledObject,
+				ScalableObjectGeneration: scaledObject.Generation,
+				Scalers:                  []cache.ScalerBuilder{{Scaler: scaler}},
+				Recorder:                 recorder,
+			}
+
+			metricCache := metricscache.NewMetricsCache()
+			sh := scaleHandler{
+				scaleLoopContexts:        &sync.Map{},
+				recorder:                 recorder,
+				scalerCaches:             map[string]*cache.ScalersCache{key: scalerCache},
+				scalerCachesLock:         &sync.RWMutex{},
+				scaledObjectsMetricCache: metricCache,
+			}
+
+			var scaleLoopCtx context.Context
+			if test.withScaleLoopContext {
+				var cancel context.CancelFunc
+				scaleLoopCtx, cancel = context.WithCancel(t.Context())
+				t.Cleanup(cancel)
+				sh.scaleLoopContexts.Store(key, cancel)
+			}
+			metricCache.StoreRecords(key, map[string]metricscache.MetricsRecord{
+				metricName: {IsActive: true},
+			})
+
+			_, found := metricCache.ReadRecord(key, metricName)
+			assert.True(t, found, "metric record must exist before deletion")
+			sh.scalerCachesLock.RLock()
+			_, found = sh.scalerCaches[key]
+			sh.scalerCachesLock.RUnlock()
+			assert.True(t, found, "scalers cache entry must exist before deletion")
+
+			err := sh.DeleteScalableObject(t.Context(), &scaledObject)
+			assert.NoError(t, err)
+
+			sh.scalerCachesLock.RLock()
+			_, found = sh.scalerCaches[key]
+			sh.scalerCachesLock.RUnlock()
+			assert.False(t, found, "scalers cache entry must be removed synchronously")
+			_, found = metricCache.ReadRecord(key, metricName)
+			assert.False(t, found, "metric records must be removed synchronously")
+			_, found = sh.scaleLoopContexts.Load(key)
+			assert.False(t, found, "scale loop context must be absent after deletion")
+
+			if test.withScaleLoopContext {
+				select {
+				case <-scaleLoopCtx.Done():
+				default:
+					t.Fatal("scale loop context was not canceled")
+				}
+				select {
+				case event := <-recorder.Events:
+					assert.Contains(t, event, eventreason.KEDAScalersStopped)
+				default:
+					t.Fatal("expected a scalers stopped event")
+				}
+			} else {
+				select {
+				case event := <-recorder.Events:
+					t.Fatalf("unexpected event: %s", event)
+				default:
+				}
+			}
+
+			select {
+			case <-closed:
+			case <-time.After(5 * time.Second):
+				t.Fatal("timed out waiting for the scaler to be closed")
+			}
+
+			assert.NoError(t, sh.DeleteScalableObject(t.Context(), &scaledObject), "repeated deletion must be safe")
+			select {
+			case event := <-recorder.Events:
+				t.Fatalf("unexpected event after repeated deletion: %s", event)
+			default:
+			}
+		})
+	}
 }
 
 func TestStartScaleLoop_DeletesMetricsCacheRecordsOnShutdown(t *testing.T) {
