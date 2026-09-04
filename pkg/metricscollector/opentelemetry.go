@@ -46,8 +46,10 @@ var (
 	otCloudEventEmittedCounter  api.Int64Counter
 	otCloudEventQueueStatusVals []OtelMetricFloat64Val
 
-	otelScalerActiveVals []OtelMetricFloat64Val
-	otelScalerPauseVals  []OtelMetricFloat64Val
+	otelScalerActiveVals      []OtelMetricFloat64Val
+	otelScalerPauseVals       []OtelMetricFloat64Val
+	otelScaledObjectReadyVals []OtelMetricFloat64Val
+	otelScaledJobReadyVals    []OtelMetricFloat64Val
 
 	otHTTPClientRequestsCounter api.Int64Counter
 	otHTTPClientRequestDuration api.Float64Histogram
@@ -231,6 +233,24 @@ func initMeters() {
 		otLog.Error(err, msg)
 	}
 
+	_, err = meter.Float64ObservableGauge(
+		"keda.scaled.object.ready",
+		api.WithDescription("Indicates whether a ScaledObject is ready"),
+		api.WithFloat64Callback(ReadyStatusCallback),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
+	_, err = meter.Float64ObservableGauge(
+		"keda.scaled.job.ready",
+		api.WithDescription("Indicates whether a ScaledJob is ready"),
+		api.WithFloat64Callback(ScaledJobReadyStatusCallback),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
 	otHTTPClientRequestsCounter, err = meter.Int64Counter(
 		"keda.scaler.http.requests.count",
 		api.WithDescription("Total number of outbound HTTP requests issued during scaler metric collection, labeled by HTTP status code."),
@@ -400,6 +420,56 @@ func (o *OtelMetrics) RecordScaledObjectPaused(namespace string, scaledObject st
 	otelScalerPause.val = float64(activeVal)
 	otelScalerPause.measurementOption = opt
 	otelScalerPauseVals = append(otelScalerPauseVals, otelScalerPause)
+}
+
+func ReadyStatusCallback(_ context.Context, obsrv api.Float64Observer) error {
+	for _, v := range otelScaledObjectReadyVals {
+		obsrv.Observe(v.val, v.measurementOption)
+	}
+	otelScaledObjectReadyVals = []OtelMetricFloat64Val{}
+	return nil
+}
+
+// RecordScaledObjectReady marks whether the current ScaledObject is ready.
+func (o *OtelMetrics) RecordScaledObjectReady(namespace string, scaledObject string, ready bool) {
+	readyVal := 0
+	if ready {
+		readyVal = 1
+	}
+
+	opt := api.WithAttributes(
+		attribute.Key("namespace").String(namespace),
+		attribute.Key("scaledObject").String(scaledObject))
+
+	otelScaledObjectReady := OtelMetricFloat64Val{}
+	otelScaledObjectReady.val = float64(readyVal)
+	otelScaledObjectReady.measurementOption = opt
+	otelScaledObjectReadyVals = append(otelScaledObjectReadyVals, otelScaledObjectReady)
+}
+
+func ScaledJobReadyStatusCallback(_ context.Context, obsrv api.Float64Observer) error {
+	for _, v := range otelScaledJobReadyVals {
+		obsrv.Observe(v.val, v.measurementOption)
+	}
+	otelScaledJobReadyVals = []OtelMetricFloat64Val{}
+	return nil
+}
+
+// RecordScaledJobReady marks whether the current ScaledJob is ready.
+func (o *OtelMetrics) RecordScaledJobReady(namespace string, scaledJob string, ready bool) {
+	readyVal := 0
+	if ready {
+		readyVal = 1
+	}
+
+	opt := api.WithAttributes(
+		attribute.Key("namespace").String(namespace),
+		attribute.Key("scaledJob").String(scaledJob))
+
+	otelScaledJobReady := OtelMetricFloat64Val{}
+	otelScaledJobReady.val = float64(readyVal)
+	otelScaledJobReady.measurementOption = opt
+	otelScaledJobReadyVals = append(otelScaledJobReadyVals, otelScaledJobReady)
 }
 
 // RecordScalerError counts the number of errors occurred in trying to get an external metric used by the HPA

@@ -77,6 +77,15 @@ var (
 		},
 		[]string{"namespace", "scaledObject"},
 	)
+	scaledObjectReady = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaled_object",
+			Name:      "ready",
+			Help:      "Indicates whether a ScaledObject is ready (1), or not (0).",
+		},
+		[]string{"namespace", "scaledObject"},
+	)
 	scalerErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: DefaultPromMetricsNamespace,
@@ -101,6 +110,15 @@ var (
 			Subsystem: "scaled_job",
 			Name:      "errors_total",
 			Help:      "Number of scaled job errors",
+		},
+		[]string{"namespace", "scaledJob"},
+	)
+	scaledJobReady = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaled_job",
+			Name:      "ready",
+			Help:      "Indicates whether a ScaledJob is ready (1), or not (0).",
 		},
 		[]string{"namespace", "scaledJob"},
 	)
@@ -189,9 +207,11 @@ func NewPromMetrics(enableHighCardinalityLabels bool) *PromMetrics {
 	metrics.Registry.MustRegister(scalerErrors)
 	metrics.Registry.MustRegister(scaledObjectErrors)
 	metrics.Registry.MustRegister(scaledObjectPaused)
+	metrics.Registry.MustRegister(scaledObjectReady)
 	metrics.Registry.MustRegister(triggerRegistered)
 	metrics.Registry.MustRegister(crdRegistered)
 	metrics.Registry.MustRegister(scaledJobErrors)
+	metrics.Registry.MustRegister(scaledJobReady)
 	metrics.Registry.MustRegister(emptyUpstreamResponse)
 
 	metrics.Registry.MustRegister(buildInfo)
@@ -278,6 +298,18 @@ func (p *PromMetrics) RecordScaledObjectPaused(namespace string, scaledObject st
 	scaledObjectPaused.With(labels).Set(float64(activeVal))
 }
 
+// RecordScaledObjectReady marks whether the current ScaledObject is ready.
+func (p *PromMetrics) RecordScaledObjectReady(namespace string, scaledObject string, ready bool) {
+	labels := prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject}
+
+	readyVal := 0
+	if ready {
+		readyVal = 1
+	}
+
+	scaledObjectReady.With(labels).Set(float64(readyVal))
+}
+
 // RecordScalerError counts the number of errors occurred in trying to get an external metric used by the HPA
 func (p *PromMetrics) RecordScalerError(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, err error) {
 	if err != nil {
@@ -320,6 +352,18 @@ func (p *PromMetrics) RecordScaledJobError(namespace string, scaledJob string, e
 		log.Error(errscaledjob, "Unable to write to metrics to Prometheus Server: %v")
 		return
 	}
+}
+
+// RecordScaledJobReady marks whether the current ScaledJob is ready.
+func (p *PromMetrics) RecordScaledJobReady(namespace string, scaledJob string, ready bool) {
+	labels := prometheus.Labels{"namespace": namespace, "scaledJob": scaledJob}
+
+	readyVal := 0
+	if ready {
+		readyVal = 1
+	}
+
+	scaledJobReady.With(labels).Set(float64(readyVal))
 }
 
 func getLabels(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, isScaledObject bool) prometheus.Labels {

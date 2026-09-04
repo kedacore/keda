@@ -61,6 +61,9 @@ type MetricsCollector interface {
 	// RecordScaledObjectPaused marks whether the current ScaledObject is paused.
 	RecordScaledObjectPaused(namespace string, scaledObject string, active bool)
 
+	// RecordScaledObjectReady marks whether the current ScaledObject is ready.
+	RecordScaledObjectReady(namespace string, scaledObject string, ready bool)
+
 	// RecordScalerError counts the number of errors occurred in trying to get an external metric used by the HPA
 	RecordScalerError(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, err error)
 
@@ -69,6 +72,9 @@ type MetricsCollector interface {
 
 	// RecordScaledJobError counts the number of errors with the scaled job
 	RecordScaledJobError(namespace string, scaledJob string, err error)
+
+	// RecordScaledJobReady marks whether the current ScaledJob is ready.
+	RecordScaledJobReady(namespace string, scaledJob string, ready bool)
 
 	IncrementTriggerTotal(triggerType string)
 
@@ -155,6 +161,13 @@ func RecordScaledObjectPaused(namespace string, scaledObject string, active bool
 	}
 }
 
+// RecordScaledObjectReady marks whether the current ScaledObject is ready.
+func RecordScaledObjectReady(namespace string, scaledObject string, ready bool) {
+	for _, element := range collectors {
+		element.RecordScaledObjectReady(namespace, scaledObject, ready)
+	}
+}
+
 // RecordScalerError counts the number of errors occurred in trying to get an external metric used by the HPA
 func RecordScalerError(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, isScaledObject bool, err error) {
 	for _, element := range collectors {
@@ -173,6 +186,13 @@ func RecordScaledObjectError(namespace string, scaledObject string, err error) {
 func RecordScaledJobError(namespace string, scaledJob string, err error) {
 	for _, element := range collectors {
 		element.RecordScaledJobError(namespace, scaledJob, err)
+	}
+}
+
+// RecordScaledJobReady marks whether the current ScaledJob is ready.
+func RecordScaledJobReady(namespace string, scaledJob string, ready bool) {
+	for _, element := range collectors {
+		element.RecordScaledJobReady(namespace, scaledJob, ready)
 	}
 }
 
