@@ -3730,6 +3730,10 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
+        - name: includeOngoingSessions
+          type: string
+          default: "true"
+          metadataVariableReadable: true
     - type: solace-direct-messaging
       parameters:
         - name: solaceSempBaseURL
