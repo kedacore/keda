@@ -796,6 +796,10 @@ scalers:
           type: string
           default: "false"
           metadataVariableReadable: true
+        - name: enableLicenseCheck
+          type: string
+          default: "false"
+          metadataVariableReadable: true
     - type: azure-queue
       parameters:
         - name: activationQueueLength

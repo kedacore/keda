@@ -1213,6 +1213,12 @@
                     "type": "string",
                     "default": "false",
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "enableLicenseCheck",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
                 }
             ]
         },
