@@ -745,7 +745,8 @@ func changeOtlpProtocolInOperator(t *testing.T, kc *kubernetes.Clientset, name s
 	_, err := kc.AppsV1().Deployments(namespace).Update(context.TODO(), operator, metav1.UpdateOptions{})
 
 	require.NoErrorf(t, err, "error change keda operator - %s", err)
-	WaitForDeploymentReplicaReadyCount(t, kc, operator.Name, "keda", 1, 60, 2)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, operator.Name, "keda", 1, 60, 2),
+		"the operator should be ready again after its OTLP protocol changed")
 }
 
 func fallbackHTTPProtocolInOperator(t *testing.T, kc *kubernetes.Clientset, name string, namespace string) {
@@ -769,7 +770,8 @@ func fallbackHTTPProtocolInOperator(t *testing.T, kc *kubernetes.Clientset, name
 	_, err := kc.AppsV1().Deployments(namespace).Update(context.TODO(), operator, metav1.UpdateOptions{})
 
 	require.NoErrorf(t, err, "error change keda operator - %s", err)
-	WaitForDeploymentReplicaReadyCount(t, kc, operator.Name, "keda", 1, 60, 2)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, operator.Name, "keda", 1, 60, 2),
+		"the operator should be ready again after its OTLP protocol changed")
 }
 
 func testScalerGrpcMetricValue(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -777,7 +779,8 @@ func testScalerGrpcMetricValue(t *testing.T, kc *kubernetes.Clientset, data temp
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectGrpcTemplate", scaledObjectGrpcTemplate)
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)
-	WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 2)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 2),
+		"replica count should be 0 before the metric it produces is read")
 
 	// The deployment reaching zero does not mean the metric has caught up: the value only
 	// changes once the scaler re-polls and the operator's next push reaches the collector.
@@ -1134,7 +1137,8 @@ func testScalerActiveMetric(t *testing.T, kc *kubernetes.Clientset) {
 
 	t.Log("--- testing scaler active metric scaled down ---")
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)
-	WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 2)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 2),
+		"replica count should be 0 before the metric it produces is read")
 	families = waitForCollectorMetric(t, "keda_scaler_active", func(family *prommodel.MetricFamily) bool {
 		value, found := scaledObjectGaugeValue(family, scaledObjectName)
 		return found && value == 0
