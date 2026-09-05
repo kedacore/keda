@@ -31,8 +31,8 @@ var (
 	organizationURL              = os.Getenv("AZURE_DEVOPS_ORGANIZATION_URL")
 	personalAccessToken          = os.Getenv("AZURE_DEVOPS_PAT")
 	project                      = os.Getenv("AZURE_DEVOPS_PROJECT")
-	buildID                      = os.Getenv("AZURE_DEVOPS_BUILD_DEFINITION_ID")
-	poolName                     = os.Getenv("AZURE_DEVOPS_POOL_NAME")
+	buildID                      = os.Getenv("AZURE_DEVOPS_SP_BUILD_DEFINITION_ID")
+	poolName                     = os.Getenv("AZURE_DEVOPS_SP_POOL_NAME")
 	servicePrincipalClientID     = os.Getenv("TF_AZURE_SP_APP_ID")
 	servicePrincipalClientSecret = os.Getenv("AZURE_SP_KEY")
 	servicePrincipalTenantID     = os.Getenv("TF_AZURE_SP_TENANT")
@@ -200,8 +200,8 @@ func TestScaler(t *testing.T) {
 	require.NotEmpty(t, organizationURL, "AZURE_DEVOPS_ORGANIZATION_URL env variable is required for azure pipelines test")
 	require.NotEmpty(t, personalAccessToken, "AZURE_DEVOPS_PAT env variable is required for azure pipelines test")
 	require.NotEmpty(t, project, "AZURE_DEVOPS_PROJECT env variable is required for azure pipelines test")
-	require.NotEmpty(t, buildID, "AZURE_DEVOPS_BUILD_DEFINITION_ID env variable is required for azure pipelines test")
-	require.NotEmpty(t, poolName, "AZURE_DEVOPS_POOL_NAME env variable is required for azure pipelines test")
+	require.NotEmpty(t, buildID, "AZURE_DEVOPS_SP_BUILD_DEFINITION_ID env variable is required for azure pipelines service principal test")
+	require.NotEmpty(t, poolName, "AZURE_DEVOPS_SP_POOL_NAME env variable is required for azure pipelines service principal test")
 	require.NotEmpty(t, servicePrincipalClientID, "TF_AZURE_SP_APP_ID env variable is required for azure pipelines service principal test")
 	require.NotEmpty(t, servicePrincipalClientSecret, "AZURE_SP_KEY env variable is required for azure pipelines service principal test")
 	require.NotEmpty(t, servicePrincipalTenantID, "TF_AZURE_SP_TENANT env variable is required for azure pipelines service principal test")
@@ -274,9 +274,16 @@ func clearAllBuilds(t *testing.T, connection *azuredevops.Connection) {
 	buildClient, err := build.NewClient(ctx, connection)
 	require.NoError(t, err, "unable to create build client")
 
+	definitionID, err := strconv.Atoi(buildID)
+	require.NoError(t, err, "unable to parse build ID")
+
 	top := 20
+	// Scope the cleanup to this test's build definition - the azure_pipelines
+	// e2e variants share one project and run in parallel, so cancelling every
+	// build in the project kills the sibling tests' queued builds mid-flight.
 	builds, err := buildClient.GetBuilds(ctx, build.GetBuildsArgs{
 		Project:      &project,
+		Definitions:  &[]int{definitionID},
 		StatusFilter: &build.BuildStatusValues.All,
 		QueryOrder:   &build.BuildQueryOrderValues.QueueTimeDescending,
 		Top:          &top,
