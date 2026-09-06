@@ -114,7 +114,9 @@ func countSplunkO11ySignalflowGoroutines() int {
 	return count
 }
 
-func newFakeSplunkO11yScalerWithBackend(t *testing.T, program string, duration int) (*splunkObservabilityScaler, *signalflow.FakeBackend, func()) {
+const splunkO11yFakeProgram = "data('demo.trans.latency').max().publish()"
+
+func newFakeSplunkO11yScalerWithBackend(t *testing.T, duration int) (*splunkObservabilityScaler, *signalflow.FakeBackend, func()) {
 	t.Helper()
 
 	fake := signalflow.NewRunningFakeBackend()
@@ -125,12 +127,12 @@ func newFakeSplunkO11yScalerWithBackend(t *testing.T, program string, duration i
 	}
 
 	tsid := idtool.ID(1)
-	fake.AddProgramTSIDs(program, []idtool.ID{tsid})
+	fake.AddProgramTSIDs(splunkO11yFakeProgram, []idtool.ID{tsid})
 	fake.SetTSIDFloatData(tsid, 42.0)
 
 	scaler := &splunkObservabilityScaler{
 		metadata: &splunkObservabilityMetadata{
-			Query:           program,
+			Query:           splunkO11yFakeProgram,
 			Duration:        duration,
 			QueryAggregator: "max",
 		},
@@ -142,17 +144,16 @@ func newFakeSplunkO11yScalerWithBackend(t *testing.T, program string, duration i
 }
 
 // newFakeSplunkO11yScaler wires a scaler to a fake backend that streams indefinitely without closing.
-func newFakeSplunkO11yScaler(t *testing.T, program string, duration int) (*splunkObservabilityScaler, func()) {
+func newFakeSplunkO11yScaler(t *testing.T, duration int) (*splunkObservabilityScaler, func()) {
 	t.Helper()
-	scaler, _, stop := newFakeSplunkO11yScalerWithBackend(t, program, duration)
+	scaler, _, stop := newFakeSplunkO11yScalerWithBackend(t, duration)
 	return scaler, stop
 }
 
 // Regression guard: a stuck stream must not block getQueryResult past the parent context deadline.
 func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testing.T) {
-	const program = "data('demo.trans.latency').max().publish()"
 	// Large duration so the stopTimer never fires; the parent deadline must bound the call.
-	scaler, stop := newFakeSplunkO11yScaler(t, program, 3600)
+	scaler, stop := newFakeSplunkO11yScaler(t, 3600)
 	defer stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
@@ -176,10 +177,9 @@ func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testin
 }
 
 func TestSplunkObservabilityCloseReapsClientGoroutines(t *testing.T) {
-	const program = "data('demo.trans.latency').max().publish()"
 	before := countSplunkO11ySignalflowGoroutines()
 
-	scaler, stop := newFakeSplunkO11yScaler(t, program, 1)
+	scaler, stop := newFakeSplunkO11yScaler(t, 1)
 	defer stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -209,8 +209,7 @@ func TestSplunkObservabilityCloseReapsClientGoroutines(t *testing.T) {
 }
 
 func TestSplunkObservabilityGetQueryResultAfterClose(t *testing.T) {
-	const program = "data('demo.trans.latency').max().publish()"
-	scaler, stop := newFakeSplunkO11yScaler(t, program, 1)
+	scaler, stop := newFakeSplunkO11yScaler(t, 1)
 	defer stop()
 
 	if err := scaler.Close(context.Background()); err != nil {
@@ -229,8 +228,7 @@ func TestSplunkObservabilityGetQueryResultAfterClose(t *testing.T) {
 }
 
 func TestSplunkObservabilityCloseIsIdempotent(t *testing.T) {
-	const program = "data('demo.trans.latency').max().publish()"
-	scaler, stop := newFakeSplunkO11yScaler(t, program, 1)
+	scaler, stop := newFakeSplunkO11yScaler(t, 1)
 	defer stop()
 
 	if err := scaler.Close(context.Background()); err != nil {
@@ -242,8 +240,7 @@ func TestSplunkObservabilityCloseIsIdempotent(t *testing.T) {
 }
 
 func TestSplunkObservabilityReconnectsAfterWebsocketDrop(t *testing.T) {
-	const program = "data('demo.trans.latency').max().publish()"
-	scaler, fake, stop := newFakeSplunkO11yScalerWithBackend(t, program, 1)
+	scaler, fake, stop := newFakeSplunkO11yScalerWithBackend(t, 1)
 	defer stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
