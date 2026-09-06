@@ -236,7 +236,6 @@ func TestSplunkObservabilityAggregators(t *testing.T) {
 	t.Run("single series", func(t *testing.T) {
 		for _, agg := range []string{"max", "min", "avg", "sum", "count", "latest"} {
 			t.Run(agg, func(t *testing.T) {
-				t.Parallel()
 				tsid := idtool.ID(1)
 				scaler, stop, _ := newFakeSplunkO11yScalerWithAggregator(t, agg, map[idtool.ID]float64{tsid: 42.0})
 				defer stop()
@@ -255,7 +254,6 @@ func TestSplunkObservabilityAggregators(t *testing.T) {
 			})
 		}
 		t.Run("count and sum", func(t *testing.T) {
-			t.Parallel()
 			tsid := idtool.ID(1)
 			countScaler, stopCount, countCounter := newFakeSplunkO11yScalerWithAggregator(t, "count", map[idtool.ID]float64{tsid: 42.0})
 			defer stopCount()
@@ -285,7 +283,6 @@ func TestSplunkObservabilityAggregators(t *testing.T) {
 	t.Run("multi series", func(t *testing.T) {
 		for _, agg := range []string{"max", "min", "avg", "latest"} {
 			t.Run(agg, func(t *testing.T) {
-				t.Parallel()
 				tsids := map[idtool.ID]float64{
 					idtool.ID(1): 10.0,
 					idtool.ID(2): 20.0,
@@ -316,7 +313,6 @@ func TestSplunkObservabilityAggregators(t *testing.T) {
 			})
 		}
 		t.Run("count and sum", func(t *testing.T) {
-			t.Parallel()
 			tsids := map[idtool.ID]float64{
 				idtool.ID(1): 10.0,
 				idtool.ID(2): 20.0,
@@ -348,7 +344,6 @@ func TestSplunkObservabilityAggregators(t *testing.T) {
 	})
 
 	t.Run("invalid aggregator", func(t *testing.T) {
-		t.Parallel()
 		tsid := idtool.ID(1)
 		scaler, stop, _ := newFakeSplunkO11yScalerWithAggregator(t, "invalid", map[idtool.ID]float64{tsid: 42.0})
 		defer stop()
@@ -361,7 +356,6 @@ func TestSplunkObservabilityAggregators(t *testing.T) {
 	})
 
 	t.Run("no aggregator multi-series should error", func(t *testing.T) {
-		t.Parallel()
 		tsids := map[idtool.ID]float64{
 			idtool.ID(1): 10.0,
 			idtool.ID(2): 20.0,
