@@ -30,6 +30,13 @@
       matchUpdateTypes: ["minor", "patch", "digest"],
       groupName: "Go Dependencies (non-major)",
     },
+    // Catch-all so unrelated major bumps don't each open their own PR/dashboard entry.
+    // Family-specific rules below override this groupName for their packages.
+    {
+      matchManagers: ["gomod"],
+      matchUpdateTypes: ["major"],
+      groupName: "Go Dependencies (major)",
+    },
     // Split minor and patch for k8s packages so patch fixes
     // can be merged independently of k8s minor version bumps.
     {
@@ -72,6 +79,12 @@
     },
     {
       matchManagers: ["gomod"],
+      matchPackageNames: ["github.com/prometheus/**"],
+      matchUpdateTypes: ["major"],
+      groupName: "Prometheus Dependencies (major)",
+    },
+    {
+      matchManagers: ["gomod"],
       matchPackageNames: [
         "github.com/aws/aws-sdk-go-v2",
         "github.com/aws/aws-sdk-go-v2/**",
@@ -81,9 +94,24 @@
     },
     {
       matchManagers: ["gomod"],
+      matchPackageNames: [
+        "github.com/aws/aws-sdk-go-v2",
+        "github.com/aws/aws-sdk-go-v2/**",
+      ],
+      matchUpdateTypes: ["major"],
+      groupName: "AWS SDK (major)",
+    },
+    {
+      matchManagers: ["gomod"],
       matchPackageNames: ["github.com/Azure/azure-sdk-for-go/**"],
       matchUpdateTypes: ["minor", "patch"],
       groupName: "Azure SDK",
+    },
+    {
+      matchManagers: ["gomod"],
+      matchPackageNames: ["github.com/Azure/azure-sdk-for-go/**"],
+      matchUpdateTypes: ["major"],
+      groupName: "Azure SDK (major)",
     },
     {
       matchManagers: ["gomod"],
@@ -93,9 +121,21 @@
     },
     {
       matchManagers: ["gomod"],
+      matchPackageNames: ["go.opentelemetry.io/**"],
+      matchUpdateTypes: ["major"],
+      groupName: "OpenTelemetry (major)",
+    },
+    {
+      matchManagers: ["gomod"],
       matchPackageNames: ["cloud.google.com/go/**", "google.golang.org/api"],
       matchUpdateTypes: ["minor", "patch"],
       groupName: "Google Cloud SDK",
+    },
+    {
+      matchManagers: ["gomod"],
+      matchPackageNames: ["cloud.google.com/go/**", "google.golang.org/api"],
+      matchUpdateTypes: ["major"],
+      groupName: "Google Cloud SDK (major)",
     },
 
     // --- Custom regex ---
@@ -116,10 +156,20 @@
       matchPackageNames: ["vishnubijukumar/**"],
       groupName: "s390x Test Infrastructure",
     },
+    // Other one-off e2e/build tooling deps tracked via renovate comments.
+    {
+      matchDepNames: [
+        "argoproj/argo-rollouts",
+        "strimzi/strimzi-kafka-operator",
+        "protocolbuffers/protobuf",
+      ],
+      groupName: "Test Infrastructure (misc)",
+    },
 
     // --- Pre-commit ---
     {
       matchManagers: ["pre-commit"],
+      separateMajorMinor: false,
       groupName: "Pre-commit Hooks",
     },
 

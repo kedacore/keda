@@ -12,7 +12,8 @@ import (
 	"strings"
 	"time"
 
-	datadog "github.com/DataDog/datadog-api-client-go/api/v1/datadog"
+	datadog "github.com/DataDog/datadog-api-client-go/v2/api/datadog"
+	"github.com/DataDog/datadog-api-client-go/v2/api/datadogV1"
 	"github.com/go-logr/logr"
 	"github.com/tidwall/gjson"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -28,6 +29,7 @@ import (
 type datadogScaler struct {
 	metadata             *datadogMetadata
 	apiClient            *datadog.APIClient
+	metricsAPI           *datadogV1.MetricsApi
 	httpClient           *http.Client
 	logger               logr.Logger
 	useClusterAgentProxy bool
@@ -94,6 +96,7 @@ func NewDatadogScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	logger := InitializeLogger(config, "datadog_scaler")
 
 	var apiClient *datadog.APIClient
+	var metricsAPI *datadogV1.MetricsApi
 	var httpClient *http.Client
 
 	meta := &datadogMetadata{}
@@ -116,12 +119,14 @@ func NewDatadogScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 			return nil, err
 		}
 		apiClient = newDatadogAPIClient(meta)
+		metricsAPI = datadogV1.NewMetricsApi(apiClient)
 	}
 
 	return &datadogScaler{
 		metricType:           metricType,
 		metadata:             meta,
 		apiClient:            apiClient,
+		metricsAPI:           metricsAPI,
 		httpClient:           httpClient,
 		logger:               logger,
 		useClusterAgentProxy: meta.UseClusterAgentProxy,
@@ -306,7 +311,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 
 	httpClientTimeout := s.apiClient.GetConfig().HTTPClient.Timeout
 	startTime := time.Now()
-	resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, timeWindowFrom, timeWindowTo, s.metadata.Query) //nolint:bodyclose
+	resp, r, err := s.metricsAPI.QueryMetrics(ctx, timeWindowFrom, timeWindowTo, s.metadata.Query) //nolint:bodyclose
 	elapsed := time.Since(startTime)
 
 	if r != nil {

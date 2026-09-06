@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	_ "github.com/go-kivik/couchdb/v3"
-	"github.com/go-kivik/kivik/v3"
+	"github.com/go-kivik/kivik/v4"
+	_ "github.com/go-kivik/kivik/v4/couchdb"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 
