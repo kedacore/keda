@@ -6,6 +6,11 @@ go 1.26.0
 // temporal.io/api and temporal.io/sdk use this package but it doesn't have license yet in 0.1.0 -> https://github.com/nexus-rpc/nexus-proto-annotations/issues/5
 replace github.com/nexus-rpc/nexus-proto-annotations v0.1.0 => github.com/nexus-rpc/nexus-proto-annotations v0.1.1-0.20260629224316-835bd8d49cb4
 
+// go-chi is an unused transitive dependency declared by github.com/go-kivik/kivik/v4's
+// experimental x/server and x/kivikd/couchserver packages, which KEDA never imports.
+// Excluded to keep vulnerable versions out of the module graph reported by scanners.
+exclude github.com/go-chi/chi/v5 v5.2.3
+
 require (
 	cloud.google.com/go/compute/metadata v0.9.0
 	cloud.google.com/go/monitoring v1.30.0
