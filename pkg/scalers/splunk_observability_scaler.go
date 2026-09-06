@@ -33,6 +33,12 @@ type splunkObservabilityMetadata struct {
 	TargetValue           float64 `keda:"name=targetValue,   	     order=triggerMetadata"`
 	QueryAggregator       string  `keda:"name=queryAggregator,       order=triggerMetadata"`
 	ActivationTargetValue float64 `keda:"name=activationTargetValue, order=triggerMetadata"`
+	PersistentStream      bool    `keda:"name=persistentStream,      order=triggerMetadata, optional"`
+}
+
+type splunkO11ySample struct {
+	t time.Time
+	v float64
 }
 
 type splunkObservabilityScaler struct {
@@ -41,6 +47,9 @@ type splunkObservabilityScaler struct {
 	logger    logr.Logger
 	mu        sync.RWMutex
 	closed    bool
+	comp      *signalflow.Computation
+	samples   []splunkO11ySample
+	streamErr error
 }
 
 func parseSplunkObservabilityMetadata(config *scalersconfig.ScalerConfig) (*splunkObservabilityMetadata, error) {
@@ -81,11 +90,18 @@ func NewSplunkObservabilityScaler(config *scalersconfig.ScalerConfig) (Scaler, e
 		return nil, fmt.Errorf("error establishing Splunk Observability Cloud connection: %w", err)
 	}
 
-	return &splunkObservabilityScaler{
+	scaler := &splunkObservabilityScaler{
 		metadata:  meta,
 		apiClient: apiClient,
 		logger:    logger,
-	}, nil
+	}
+	if meta.PersistentStream {
+		if err := scaler.startPersistentStream(); err != nil {
+			_ = scaler.Close(context.Background())
+			return nil, err
+		}
+	}
+	return scaler, nil
 }
 
 // stopAndDrain stops the computation and keeps reading Data() until it closes or a
@@ -127,7 +143,126 @@ func (s *splunkObservabilityScaler) stopAndDrain(comp *signalflow.Computation, p
 	}
 }
 
+func (s *splunkObservabilityScaler) startPersistentStream() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed || s.apiClient == nil {
+		return fmt.Errorf("splunk observability scaler is closed")
+	}
+	comp, err := s.apiClient.Execute(context.Background(), &signalflow.ExecuteRequest{
+		Program: s.metadata.Query,
+	})
+	if err != nil {
+		return fmt.Errorf("could not execute signalflow query: %w", err)
+	}
+	s.comp = comp
+	go s.readPersistentStream(comp)
+	return nil
+}
+
+func (s *splunkObservabilityScaler) readPersistentStream(comp *signalflow.Computation) {
+	for msg := range comp.Data() {
+		if err := s.ingestPersistentMessage(msg); err != nil {
+			s.mu.Lock()
+			s.streamErr = err
+			s.mu.Unlock()
+			return
+		}
+	}
+	s.mu.Lock()
+	if s.streamErr == nil {
+		s.streamErr = fmt.Errorf("splunk observability persistent stream ended")
+	}
+	s.mu.Unlock()
+}
+
+func (s *splunkObservabilityScaler) ingestPersistentMessage(msg *messages.DataMessage) error {
+	if len(msg.Payloads) == 0 {
+		return nil
+	}
+	ts := time.Now()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cutoff := ts.Add(-time.Duration(s.metadata.Duration) * time.Second)
+	kept := s.samples[:0]
+	for _, sample := range s.samples {
+		if sample.t.After(cutoff) {
+			kept = append(kept, sample)
+		}
+	}
+	s.samples = kept
+	for _, pl := range msg.Payloads {
+		value, ok := pl.Value().(float64)
+		if !ok {
+			return fmt.Errorf("could not convert Splunk Observability metric value to float64")
+		}
+		s.samples = append(s.samples, splunkO11ySample{t: ts, v: value})
+	}
+	return nil
+}
+
+func (s *splunkObservabilityScaler) persistentQueryResult() (float64, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.closed || s.apiClient == nil {
+		return -1, fmt.Errorf("splunk observability scaler is closed")
+	}
+	cutoff := time.Now().Add(-time.Duration(s.metadata.Duration) * time.Second)
+	var window []splunkO11ySample
+	for _, sample := range s.samples {
+		if sample.t.After(cutoff) {
+			window = append(window, sample)
+		}
+	}
+	if len(window) == 0 {
+		if s.streamErr != nil {
+			return -1, fmt.Errorf("splunk observability persistent stream is stale: %w", s.streamErr)
+		}
+		if len(s.samples) > 0 {
+			return -1, fmt.Errorf("splunk observability persistent stream is stale")
+		}
+		return 0, fmt.Errorf("query returned no data points")
+	}
+	return aggregateSplunkO11ySamples(s.metadata.QueryAggregator, window)
+}
+
+func aggregateSplunkO11ySamples(aggregator string, samples []splunkO11ySample) (float64, error) {
+	if len(samples) > 1 && aggregator == "" {
+		return 0, fmt.Errorf("query returned more than 1 series; modify the query to return only 1 series or add a queryAggregator")
+	}
+	maxValue := math.Inf(-1)
+	minValue := math.Inf(1)
+	valueSum := 0.0
+	latestValue := samples[len(samples)-1].v
+	for _, sample := range samples {
+		maxValue = math.Max(maxValue, sample.v)
+		minValue = math.Min(minValue, sample.v)
+		valueSum += sample.v
+	}
+	switch aggregator {
+	case "max":
+		return maxValue, nil
+	case "min":
+		return minValue, nil
+	case "avg":
+		return valueSum / float64(len(samples)), nil
+	case "sum":
+		return valueSum, nil
+	case "count":
+		return float64(len(samples)), nil
+	case "latest":
+		return latestValue, nil
+	case "":
+		return samples[0].v, nil
+	default:
+		return 0, fmt.Errorf("invalid queryAggregator: %q", aggregator)
+	}
+}
+
 func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64, error) {
+	if s.metadata.PersistentStream {
+		return s.persistentQueryResult()
+	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if s.closed || s.apiClient == nil {
@@ -274,6 +409,10 @@ func (s *splunkObservabilityScaler) Close(context.Context) error {
 		return nil
 	}
 	s.closed = true
+	if s.comp != nil {
+		_ = s.stopAndDrain(s.comp, nil)
+		s.comp = nil
+	}
 	if s.apiClient != nil {
 		s.apiClient.Close()
 		s.apiClient = nil
