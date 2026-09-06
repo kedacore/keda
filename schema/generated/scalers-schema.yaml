@@ -3916,6 +3916,7 @@ scalers:
           metadataVariableReadable: true
         - name: queryAggregator
           type: string
+          default: avg
           allowedValue:
             - min
             - max

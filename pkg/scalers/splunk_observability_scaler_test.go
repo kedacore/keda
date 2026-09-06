@@ -61,8 +61,8 @@ var testSplunkObservabilityMetadata = []parseSplunkObservabilityMetadataTestData
 	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "targetValue": "200.0", "queryAggregator": "avg", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
 	// Missing 'targetValue' field, fail
 	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "queryAggregator": "avg", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
-	// Missing 'queryAggregator' field, fail
-	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
+	// Missing 'queryAggregator' field defaults to avg, pass
+	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, false},
 	// Missing 'activationTargetValue' field, fail
 	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "queryAggregator": "avg"}, validSplunkObservabilityAuthParams, true},
 	// Unsupported 'queryAggregator' value, fail
@@ -84,6 +84,24 @@ func TestSplunkObservabilityParseMetadata(t *testing.T) {
 		} else if testData.isError && err == nil {
 			t.Error("Expected error but got success")
 		}
+	}
+}
+
+func TestSplunkObservabilityQueryAggregatorDefault(t *testing.T) {
+	meta, err := parseSplunkObservabilityMetadata(&scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"query":                 "data('demo.trans.latency').max().publish()",
+			"duration":              "10",
+			"targetValue":           "200.0",
+			"activationTargetValue": "1.1",
+		},
+		AuthParams: validSplunkObservabilityAuthParams,
+	})
+	if err != nil {
+		t.Fatal("expected omitted queryAggregator to parse:", err)
+	}
+	if meta.QueryAggregator != "avg" {
+		t.Errorf("expected default queryAggregator %q, got %q", "avg", meta.QueryAggregator)
 	}
 }
 

@@ -57,7 +57,7 @@ type aggregatorTestCase struct {
 }
 
 var aggregatorTestCases = []aggregatorTestCase{
-	{aggregator: "max", targetValue: "250", activationTargetValue: "1.1", scaleOutReplicas: 10, scaleInReplicas: 4},
+	{aggregator: "latest", targetValue: "250", activationTargetValue: "1.1", scaleOutReplicas: 10, scaleInReplicas: 4},
 }
 
 type templateData struct {
