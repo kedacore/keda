@@ -416,7 +416,7 @@ metadata:
     strimzi.io/node-pools: enabled
 spec:
   kafka:
-    version: "4.0.0"
+    version: "4.2.0"
     replicas: 1
     listeners:
       - name: plain
