@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -20,6 +21,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/eventreason"
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -79,6 +81,8 @@ type githubRunnerMetadata struct {
 	ApplicationID                          int64  `keda:"name=applicationID, order=triggerMetadata;resolvedEnv, optional"`
 	InstallationID                         int64  `keda:"name=installationID, order=triggerMetadata;resolvedEnv, optional"`
 	ApplicationKey                         string `keda:"name=appKey, order=authParams, optional"`
+
+	Auth *authentication.Config `keda:"optional"`
 }
 
 type WorkflowRuns struct {
@@ -413,18 +417,59 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 }
 
 func (meta *githubRunnerMetadata) Validate() error {
-	if meta.ApplicationKey == "" && meta.PersonalAccessToken == "" {
-		return fmt.Errorf("no personalAccessToken or appKey given")
+	if meta.Auth == nil {
+		meta.Auth = &authentication.Config{}
+	}
+	if meta.ApplicationKey == "" && meta.PersonalAccessToken == "" && !meta.Auth.EnabledBearerAuth() {
+		return fmt.Errorf("no personalAccessToken/bearerToken or appKey given")
 	}
 	if meta.ApplicationID != 0 || meta.InstallationID != 0 || meta.ApplicationKey != "" {
 		if err := validateGitHubApp(meta); err != nil {
 			return err
 		}
 	}
-	return nil
+	// Legacy bridge: only map personalAccessToken if no GitHub App is in use and Auth has no mode yet.
+	if meta.Auth.Disabled() && meta.ApplicationID == 0 && meta.PersonalAccessToken != "" {
+		meta.Auth.Modes = []authentication.Type{authentication.BearerAuthType}
+		meta.Auth.BearerToken = meta.PersonalAccessToken
+	}
+	return meta.Auth.ValidateAllowed(authentication.BearerAuthType)
+}
+
+// bridgePersonalAccessTokenToBearer maps personalAccessToken to bearerToken when bearer auth is
+// declared without its own token. This must happen before TypedConfig runs, because the nested
+// authentication.Config validates itself during parsing, before Validate() could bridge the token.
+func bridgePersonalAccessTokenToBearer(config *scalersconfig.ScalerConfig) *scalersconfig.ScalerConfig {
+	pat := config.AuthParams["personalAccessToken"]
+	if pat == "" || config.AuthParams["bearerToken"] != "" || config.AuthParams["token"] != "" {
+		return config
+	}
+	// Mirror the lookup order of authentication.Config.Modes: name authModes;authMode, order triggerMetadata;authParams.
+	var declared string
+	for _, v := range []string{config.TriggerMetadata["authModes"], config.TriggerMetadata["authMode"], config.AuthParams["authModes"], config.AuthParams["authMode"]} {
+		if v != "" {
+			declared = v
+			break
+		}
+	}
+	hasBearer := false
+	for _, m := range strings.Split(declared, ",") {
+		if strings.TrimSpace(m) == string(authentication.BearerAuthType) {
+			hasBearer = true
+			break
+		}
+	}
+	if !hasBearer {
+		return config
+	}
+	bridged := *config
+	bridged.AuthParams = maps.Clone(config.AuthParams)
+	bridged.AuthParams["bearerToken"] = pat
+	return &bridged
 }
 
 func parseGitHubRunnerMetadata(config *scalersconfig.ScalerConfig) (*githubRunnerMetadata, error) {
+	config = bridgePersonalAccessTokenToBearer(config)
 	meta := &githubRunnerMetadata{}
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing github runner metadata: %w", err)
@@ -559,8 +604,8 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, apiURL string
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
-	if metadata.ApplicationID == 0 && metadata.PersonalAccessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+metadata.PersonalAccessToken)
+	if metadata.Auth.EnabledBearerAuth() {
+		req.Header.Set("Authorization", metadata.Auth.GetBearerToken())
 	}
 
 	if s.metadata.EnableEtags {
