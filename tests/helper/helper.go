@@ -67,7 +67,7 @@ const (
 	StringTrue  = "true"
 
 	// renovate: datasource=github-releases depName=strimzi/strimzi-kafka-operator
-	StrimziVersion   = "0.47.0"
+	StrimziVersion   = "0.51.0"
 	StrimziChartName = "strimzi"
 	StrimziNamespace = "strimzi"
 )
