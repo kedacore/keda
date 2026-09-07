@@ -12,7 +12,7 @@ jobs:
   triage:
     runs-on: ubuntu-latest
     name: Comment evaluate
-    container: ghcr.io/kedacore/keda-tools:1.26.6@sha256:7db93d7d2720c0ddbc67d35291cf8ba8f34a28c3125d08b0f93fe4c7f2e6debc
+    container: ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c
     if: |
       github.event.issue.pull_request != null &&
       (
@@ -77,7 +77,7 @@ jobs:
     needs: triage
     runs-on: ubuntu-24.04-arm
     name: Build images
-    container: ghcr.io/kedacore/keda-tools:1.26.6@sha256:7db93d7d2720c0ddbc67d35291cf8ba8f34a28c3125d08b0f93fe4c7f2e6debc
+    container: ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
@@ -247,7 +247,7 @@ jobs:
     needs: [triage, build-test-images]
     runs-on: e2e
     name: Execute e2e tests
-    container: ghcr.io/kedacore/keda-tools:1.26.6@sha256:7db93d7d2720c0ddbc67d35291cf8ba8f34a28c3125d08b0f93fe4c7f2e6debc
+    container: ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c
     if: needs.triage.outputs.run-e2e == 'true'
     outputs:
       test-outcome: ${{ steps.test.outcome }}
