@@ -557,6 +557,62 @@ func TestIsPollingIntervalRelevant(t *testing.T) {
 	}
 }
 
+func TestUsesHPAObservations(t *testing.T) {
+	zero := int32(0)
+	one := int32(1)
+	two := int32(2)
+
+	tests := []struct {
+		name         string
+		spec         ScaledObjectSpec
+		expectResult bool
+	}{
+		{
+			name:         "minReplicaCount > 0 without idle mode and cached metrics allows observations",
+			spec:         ScaledObjectSpec{MinReplicaCount: &one},
+			expectResult: true,
+		},
+		{
+			name:         "minReplicaCount 0 requires polling",
+			spec:         ScaledObjectSpec{MinReplicaCount: &zero},
+			expectResult: false,
+		},
+		{
+			name:         "idle mode requires polling",
+			spec:         ScaledObjectSpec{MinReplicaCount: &two, IdleReplicaCount: &one},
+			expectResult: false,
+		},
+		{
+			name: "cached metrics require polling",
+			spec: ScaledObjectSpec{
+				MinReplicaCount: &one,
+				Triggers:        []ScaleTriggers{{Type: "some-trigger", UseCachedMetrics: true}},
+			},
+			expectResult: false,
+		},
+		{
+			name: "scaling modifiers require polling",
+			spec: ScaledObjectSpec{
+				MinReplicaCount: &one,
+				Advanced: &AdvancedConfig{
+					ScalingModifiers: ScalingModifiers{Formula: "a + b", Target: "1"},
+				},
+			},
+			expectResult: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			so := &ScaledObject{Spec: test.spec}
+			result := so.UsesHPAObservations()
+			if result != test.expectResult {
+				t.Errorf("Expected UsesHPAObservations to return %v, got %v", test.expectResult, result)
+			}
+		})
+	}
+}
+
 func TestCheckReplicaCountBoundsAreValid(t *testing.T) {
 	min1 := int32(1)
 	min2 := int32(2)

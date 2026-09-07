@@ -317,6 +317,17 @@ func (so *ScaledObject) IsPollingIntervalRelevant() bool {
 	return false
 }
 
+// UsesHPAObservations reports whether the state of the ScaledObject may be derived from the metric
+// observations of the HPA-driven metrics path instead of querying the trigger sources on KEDA's own
+// scale loop. This is only allowed when pollingInterval is not relevant (see
+// IsPollingIntervalRelevant): the HPA then drives all scaling and already queries every external
+// metric itself, so querying the trigger sources on the scale loop would only duplicate those
+// queries. ScaledObjects using scaling modifiers are excluded because trigger activity is then
+// derived from the composite formula over all metrics at once.
+func (so *ScaledObject) UsesHPAObservations() bool {
+	return !so.IsPollingIntervalRelevant() && !so.IsUsingModifiers()
+}
+
 // GetHPAMinReplicas returns MinReplicas based on definition in ScaledObject or default value if not defined
 func (so *ScaledObject) GetHPAMinReplicas() *int32 {
 	if so.Spec.MinReplicaCount != nil && *so.Spec.MinReplicaCount > 0 {

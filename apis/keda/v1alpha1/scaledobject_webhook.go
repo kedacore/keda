@@ -364,13 +364,13 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 	}
 
 	// PollingInterval warning: warn when pollingInterval no longer affects scaling because the HPA
-	// drives it all. This mirrors the exact condition the scale loop uses to decide whether to keep
-	// querying the trigger sources itself, see ScaledObject.IsPollingIntervalRelevant and
-	// usesHPAObservations in pkg/scaling. ScaledObjects using scaling modifiers are excluded, because
-	// there the scale loop keeps querying every trigger source on pollingInterval to evaluate the
-	// composite formula, so the interval still drives the queries. The scale loop also still runs on
-	// pollingInterval to refresh the status, so the message must not claim it does nothing at all.
-	if incomingSo.Spec.PollingInterval != nil && !incomingSo.IsPollingIntervalRelevant() && !incomingSo.IsUsingModifiers() {
+	// drives it all. UsesHPAObservations is the very condition the scale loop evaluates to decide
+	// whether to keep querying the trigger sources itself, so the warning cannot drift away from the
+	// actual behaviour. ScaledObjects using scaling modifiers are excluded, because the scale loop
+	// keeps querying every trigger source on pollingInterval there to evaluate the composite formula,
+	// so the interval still drives the queries. The scale loop also still runs on pollingInterval to
+	// refresh the status, so the message must not claim it does nothing at all.
+	if incomingSo.Spec.PollingInterval != nil && incomingSo.UsesHPAObservations() {
 		msg := "PollingInterval is configured but is not relevant for scaling. It only affects scaling when minReplicaCount = 0, idleReplicaCount is set, or useCachedMetrics is enabled, but it still controls how often KEDA refreshes the ScaledObject status conditions and events"
 		warnings = append(warnings, msg)
 		if eventRecorder != nil {

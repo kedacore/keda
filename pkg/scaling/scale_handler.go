@@ -778,7 +778,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	// When the scale loop derives the ScaledObject state from the metrics observed here instead
 	// of querying the trigger sources itself (see hpaObservedRecord), this is the only place the
 	// trigger sources are polled, so persist the observations for the loop.
-	storeRecordsForState := usesHPAObservations(scaledObject)
+	storeRecordsForState := scaledObject.UsesHPAObservations()
 	// the matching metrics length has to be the same as required metrics length
 	matchingMetricsChan := make(chan metricResult, len(metricsArray))
 	wg := sync.WaitGroup{}
@@ -951,7 +951,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 
 	// Evaluated once per tick so every scaler in this tick sources its state consistently,
 	// either all from the HPA observations or all from querying the trigger sources.
-	hpaObservationsUsable := usesHPAObservations(scaledObject) && h.hpaActivelyQuerying(ctx, scaledObject)
+	hpaObservationsUsable := scaledObject.UsesHPAObservations() && h.hpaActivelyQuerying(ctx, scaledObject)
 
 	// Let's collect status of all allScalers in parallel,
 	// no matter if any scaler raises error or is active
@@ -1043,21 +1043,10 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	return isScaledObjectActive, isScaledObjectError, metricsRecord, activeTriggers, isFallbackActive, err
 }
 
-// usesHPAObservations returns true if the state of the ScaledObject may be derived
-// from the metric observations of the HPA-driven metrics path instead of querying the trigger
-// sources on the scale loop. This is only allowed when pollingInterval is not relevant (see
-// IsPollingIntervalRelevant): the HPA then drives all scaling and already queries every external metric
-// itself, so querying the trigger sources on the scale loop would only duplicate those queries.
-// ScaledObjects using scaling modifiers are excluded because trigger activity is then derived
-// from the composite formula over all metrics at once.
-func usesHPAObservations(scaledObject *kedav1alpha1.ScaledObject) bool {
-	return !scaledObject.IsPollingIntervalRelevant() && !scaledObject.IsUsingModifiers()
-}
-
 // hpaObservedRecord returns the observation the HPA-driven metrics path stored for the given
 // metric, if the scale loop may use it instead of querying the trigger source.
 // hpaObservationsUsable is evaluated once per scale loop tick (see getScaledObjectState) and
-// combines usesHPAObservations with hpaActivelyQuerying. Push scalers are not
+// combines ScaledObject.UsesHPAObservations with hpaActivelyQuerying. Push scalers are not
 // excluded: their activations are handled immediately by startPushScalers, outside the scale
 // loop. The second return value reports whether a usable observation exists; if false
 // the caller must query the trigger source itself. That happens whenever the HPA is not actively

@@ -2288,59 +2288,6 @@ func scaledObjectWithIrrelevantPolling() *kedav1alpha1.ScaledObject {
 	}
 }
 
-func TestUsesHPAObservations(t *testing.T) {
-	zero := int32(0)
-	one := int32(1)
-	two := int32(2)
-
-	tests := []struct {
-		name     string
-		spec     kedav1alpha1.ScaledObjectSpec
-		expected bool
-	}{
-		{
-			name:     "minReplicaCount > 0 without idle mode and cached metrics allows observations",
-			spec:     kedav1alpha1.ScaledObjectSpec{MinReplicaCount: &one},
-			expected: true,
-		},
-		{
-			name:     "minReplicaCount 0 requires polling",
-			spec:     kedav1alpha1.ScaledObjectSpec{MinReplicaCount: &zero},
-			expected: false,
-		},
-		{
-			name:     "idle mode requires polling",
-			spec:     kedav1alpha1.ScaledObjectSpec{MinReplicaCount: &two, IdleReplicaCount: &one},
-			expected: false,
-		},
-		{
-			name: "cached metrics require polling",
-			spec: kedav1alpha1.ScaledObjectSpec{
-				MinReplicaCount: &one,
-				Triggers:        []kedav1alpha1.ScaleTriggers{{Type: "some-trigger", UseCachedMetrics: true}},
-			},
-			expected: false,
-		},
-		{
-			name: "scaling modifiers require polling",
-			spec: kedav1alpha1.ScaledObjectSpec{
-				MinReplicaCount: &one,
-				Advanced: &kedav1alpha1.AdvancedConfig{
-					ScalingModifiers: kedav1alpha1.ScalingModifiers{Formula: "a + b", Target: "1"},
-				},
-			},
-			expected: false,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			scaledObject := &kedav1alpha1.ScaledObject{Spec: test.spec}
-			assert.Equal(t, test.expected, usesHPAObservations(scaledObject))
-		})
-	}
-}
-
 func TestGetScaledObjectState_UsesFreshHPAObservations(t *testing.T) {
 	metricName := "state-from-cache-metric"
 
