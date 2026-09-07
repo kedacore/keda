@@ -11,7 +11,7 @@ require (
 	cloud.google.com/go/monitoring v1.30.0
 	cloud.google.com/go/secretmanager v1.21.0
 	cloud.google.com/go/spanner v1.95.0
-	cloud.google.com/go/storage v1.65.1
+	cloud.google.com/go/storage v1.67.0
 	dario.cat/mergo v1.0.2
 	github.com/Azure/azure-amqp-common-go/v4 v4.2.0
 	github.com/Azure/azure-kusto-go/azkustodata v1.2.2
@@ -107,7 +107,7 @@ require (
 	go.uber.org/mock v0.6.0
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sync v0.22.0
-	google.golang.org/api v0.294.0
+	google.golang.org/api v0.297.0
 	google.golang.org/grpc v1.83.2
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.6.2
 	google.golang.org/protobuf v1.36.12
