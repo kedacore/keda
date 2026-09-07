@@ -21,8 +21,11 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"encoding/pem"
 	"math/big"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -77,6 +80,7 @@ func TestNewServicePrincipalCredentialWithClientCertificate(t *testing.T) {
 func TestGetServicePrincipalCredentialOptions(t *testing.T) {
 	tests := []struct {
 		name                     string
+		setup                    func(t *testing.T)
 		authParams               map[string]string
 		expectedAuthorityHost    string
 		disableInstanceDiscovery bool
@@ -117,6 +121,17 @@ func TestGetServicePrincipalCredentialOptions(t *testing.T) {
 			wantError: true,
 		},
 		{
+			name: "Azure Stack",
+			setup: func(t *testing.T) {
+				writeAzureStackEnvironment(t, "https://login.stack.example")
+			},
+			authParams: map[string]string{
+				ServicePrincipalCloudKey: stackCloud,
+			},
+			expectedAuthorityHost:    "https://login.stack.example",
+			disableInstanceDiscovery: true,
+		},
+		{
 			name: "invalid cloud",
 			authParams: map[string]string{
 				ServicePrincipalCloudKey: "invalid",
@@ -127,6 +142,9 @@ func TestGetServicePrincipalCredentialOptions(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			if test.setup != nil {
+				test.setup(t)
+			}
 			options, disableInstanceDiscovery, err := getServicePrincipalCredentialOptions(test.authParams)
 			if test.wantError {
 				if err == nil {
@@ -145,6 +163,27 @@ func TestGetServicePrincipalCredentialOptions(t *testing.T) {
 			}
 		})
 	}
+}
+
+// writeAzureStackEnvironment points EnvironmentFilepathName at a minimal Azure
+// Stack environment file exposing the given Active Directory endpoint.
+func writeAzureStackEnvironment(t *testing.T, activeDirectoryEndpoint string) {
+	t.Helper()
+
+	contents, err := json.Marshal(AzEnvironment{
+		Name:                    stackCloud,
+		ActiveDirectoryEndpoint: activeDirectoryEndpoint,
+	})
+	if err != nil {
+		t.Fatalf("failed to marshal stack environment: %v", err)
+	}
+
+	path := filepath.Join(t.TempDir(), "stack-env.json")
+	if err := os.WriteFile(path, contents, 0600); err != nil {
+		t.Fatalf("failed to write stack environment file: %v", err)
+	}
+
+	t.Setenv(EnvironmentFilepathName, path)
 }
 
 func TestNewServicePrincipalCredentialValidation(t *testing.T) {

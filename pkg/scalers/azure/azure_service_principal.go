@@ -37,6 +37,10 @@ const (
 	ServicePrincipalClientSecretKey              = "azureServicePrincipalClientSecret"
 	ServicePrincipalClientCertificateKey         = "azureServicePrincipalClientCertificate"
 	ServicePrincipalClientCertificatePasswordKey = "azureServicePrincipalClientCertificatePassword"
+
+	// stackCloud is the cloud name for Azure Stack, whose environment is
+	// resolved from a file rather than a built-in endpoint table.
+	stackCloud = "AzureStackCloud"
 )
 
 // IsServicePrincipalAuthConfigured reports whether authParams were resolved
@@ -134,9 +138,16 @@ func getServicePrincipalCredentialOptions(authParams map[string]string) (azcore.
 		return azcore.ClientOptions{}, false, fmt.Errorf("failed to resolve azure service principal cloud: %w", err)
 	}
 
+	// Instance discovery validates the authority against the public Microsoft
+	// Entra endpoint, which a disconnected cloud cannot reach: Private carries
+	// its own authority, and Azure Stack resolves one from the file named by
+	// EnvironmentFilepathName (see EnvironmentFromName).
+	disableInstanceDiscovery := strings.EqualFold(cloudName, PrivateCloud) ||
+		strings.EqualFold(cloudName, stackCloud)
+
 	return azcore.ClientOptions{
 		Cloud: cloud.Configuration{
 			ActiveDirectoryAuthorityHost: resolvedEndpoint,
 		},
-	}, strings.EqualFold(cloudName, PrivateCloud), nil
+	}, disableInstanceDiscovery, nil
 }
