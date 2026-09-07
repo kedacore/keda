@@ -230,7 +230,6 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 	return allWarnings, nil
 }
 
-//nolint:unparam
 func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) (admission.Warnings, error) {
 	err := CheckReplicaCountBoundsAreValid(incomingSo)
 	if err != nil {
@@ -240,7 +239,6 @@ func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) (admiss
 	return nil, err
 }
 
-//nolint:unparam
 func verifyName(incomingSo *ScaledObject, action string, _ bool) (admission.Warnings, error) {
 	if len(incomingSo.Name) > maxK8sLabelValueLength {
 		err := fmt.Errorf("scaledobject name %q is %d characters long; must be no more than %d characters because it is used as the %q label value", incomingSo.Name, len(incomingSo.Name), maxK8sLabelValueLength, ScaledObjectOwnerAnnotation)
@@ -258,7 +256,6 @@ func verifyName(incomingSo *ScaledObject, action string, _ bool) (admission.Warn
 	return nil, nil
 }
 
-//nolint:unparam
 func verifyFallback(incomingSo *ScaledObject, action string, _ bool) (admission.Warnings, error) {
 	err := CheckFallbackValid(incomingSo)
 	if err != nil {
@@ -293,7 +290,6 @@ func verifyTriggers(incomingObject any, action string, _ bool) error {
 	return err
 }
 
-//nolint:unparam
 func verifyHpas(incomingSo *ScaledObject, action string, _ bool) (admission.Warnings, error) {
 	// Narrow to HPAs targeting the same workload name via the
 	// scaleTargetRefNameIdx index; the loop below still disambiguates by GVK.
@@ -508,7 +504,6 @@ func getFromCacheOrDirect(ctx context.Context, key client.ObjectKey, obj client.
 	return err
 }
 
-//nolint:unparam
 func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string, dryRun bool) (admission.Warnings, error) {
 	if dryRun {
 		return nil, nil
@@ -546,15 +541,20 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string, dryRun bool
 				}
 			}
 			containerName := trigger.Metadata["containerName"]
-			for _, container := range podSpec.Containers {
-				if containerName != "" && container.Name != containerName {
-					continue
-				}
+			resourceType := corev1.ResourceName(trigger.Type)
 
-				if trigger.Type == cpuString || trigger.Type == memoryString {
+			// The HPA uses the pod-level request (KEP-2837) only for Resource metrics; a containerName
+			// trigger yields a ContainerResource metric, which ignores it and needs the container request.
+			podLevelRequestApplies := containerName == "" && podSpec.Resources != nil && isWorkloadResourceSet(*podSpec.Resources, resourceType)
+
+			if !podLevelRequestApplies {
+				for _, container := range podSpec.Containers {
+					if containerName != "" && container.Name != containerName {
+						continue
+					}
+
 					// Fail if neither pod's container spec has particular resource limit specified, nor a default limit is
 					// specified in LimitRange in the same namespace as the deployment
-					resourceType := corev1.ResourceName(trigger.Type)
 					if !isWorkloadResourceSet(container.Resources, resourceType) &&
 						!isContainerResourceLimitSet(context.Background(), incomingSo.Namespace, resourceType) {
 						err := fmt.Errorf("the scaledobject has a %v trigger but the container %s doesn't have the %v request defined", resourceType, container.Name, resourceType)
@@ -600,7 +600,7 @@ func ValidateAndCompileScalingModifiers(so *ScaledObject) (*vm.Program, error) {
 	}
 
 	// cast return value of formula to float if necessary to avoid wrong value return
-	// type (ternary operator doesnt return float)
+	// type (ternary operator doesn't return float)
 	so.Spec.Advanced.ScalingModifiers.Formula = castToFloatIfNecessary(sm.Formula)
 
 	// validate formula if not empty

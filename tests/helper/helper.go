@@ -48,6 +48,8 @@ import (
 )
 
 const (
+	// renovate: datasource=github-releases depName=argoproj/argo-rollouts
+	ArgoRolloutsVersion            = "v1.9.1"
 	ArgoRolloutsNamespace          = "argo-rollouts"
 	AzureWorkloadIdentityNamespace = "azure-workload-identity-system"
 	AwsIdentityNamespace           = "aws-identity-system"

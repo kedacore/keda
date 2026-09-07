@@ -248,14 +248,12 @@ func (s *externalPushScaler) runStreamIsActive(ctx context.Context, active chan<
 			s.logger.Error(err, "unable to get connection from the pool")
 			return
 		}
-		if err := handleIsActiveStream(ctx, &s.scaledObjectRef, grpcClient, active); err != nil {
-			if !errors.Is(err, io.EOF) {
-				s.logger.Error(err, "error running StreamIsActive")
-				return
-			}
-			retryDuration = 2 * time.Second
+		err = handleIsActiveStream(ctx, &s.scaledObjectRef, grpcClient, active)
+		if !errors.Is(err, io.EOF) {
+			s.logger.Error(err, "error running StreamIsActive")
 			return
 		}
+		retryDuration = 2 * time.Second
 	}
 
 	runOnce()

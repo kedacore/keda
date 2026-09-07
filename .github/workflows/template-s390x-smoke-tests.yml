@@ -28,7 +28,7 @@ jobs:
       - name: Install Kubernetes
         env:
           # renovate: datasource=github-releases depName=kubernetes-sigs/kind
-          KIND_VERSION: v0.29.0
+          KIND_VERSION: v0.32.0
           # renovate: datasource=docker depName=vishnubijukumar/kindest-node-s390x
           KINDEST_NODE_S390X_VERSION: v1.35.0
           # renovate: datasource=docker depName=vishnubijukumar/kindnetd
