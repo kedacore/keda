@@ -416,7 +416,7 @@ metadata:
     strimzi.io/node-pools: enabled
 spec:
   kafka:
-	version: "4.3.1"
+    version: "4.3.1"
     listeners:
       - name: plain
         port: 9092
