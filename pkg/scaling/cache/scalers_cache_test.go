@@ -151,7 +151,7 @@ func newCacheWithScaler(s scalers.Scaler) *ScalersCache {
 		Scalers: []ScalerBuilder{{
 			Scaler:       s,
 			ScalerConfig: scalersconfig.ScalerConfig{},
-			Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+			Factory: func(_ context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 				return s, &scalersconfig.ScalerConfig{}, nil
 			},
 		}},
@@ -512,5 +512,35 @@ func TestScalersCache_GetMetricSpecForScalingForScaler_UsesCachedSpecs(t *testin
 	}
 	if specsAgain[0].External.Metric.Selector.MatchLabels["owner"] != "cache" {
 		t.Fatalf("expected selector owner=cache on second read, got %q", specsAgain[0].External.Metric.Selector.MatchLabels["owner"])
+	}
+}
+
+func TestScalersCache_RefreshScalerUsesCallerContext(t *testing.T) {
+	// The cache may be built while serving an HPA metrics read, so the Factory
+	// must not depend on the context that was live at build time: the apiserver
+	// cancels it once the response is written, long before the next refresh.
+	buildCtx, cancelBuild := context.WithCancel(context.Background())
+	scaler := newFakeScaler(nil)
+	cache := newCacheWithScaler(scaler)
+
+	var gotCtx context.Context
+	cache.Scalers[0].Factory = func(ctx context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		gotCtx = ctx
+		return scaler, &scalersconfig.ScalerConfig{}, nil
+	}
+	cancelBuild()
+
+	refreshCtx := context.Background()
+	if _, err := cache.refreshScaler(refreshCtx, 0); err != nil {
+		t.Fatalf("refreshScaler() error = %v", err)
+	}
+	if gotCtx != refreshCtx {
+		t.Fatalf("Factory received ctx %v, want the refreshScaler caller ctx", gotCtx)
+	}
+	if err := gotCtx.Err(); err != nil {
+		t.Fatalf("Factory received a cancelled ctx: %v", err)
+	}
+	if err := buildCtx.Err(); err == nil {
+		t.Fatal("test setup: build-time ctx should be cancelled")
 	}
 }

@@ -46,7 +46,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 	for i, t := range withTriggers.Spec.Triggers {
 		triggerIndex, trigger := i, t
 
-		factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		factory := func(ctx context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 			if podTemplateSpec != nil {
 				resolvedEnv, err = resolver.ResolveContainerEnv(ctx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace, h.authClientSet.SecretLister)
 				if err != nil {
@@ -90,7 +90,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 		}
 
 		// nosemgrep: invalid-usage-of-modified-variable
-		scaler, config, err := factory()
+		scaler, config, err := factory(ctx)
 		if err != nil {
 			h.recorder.Eventf(withTriggers, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, eventreason.KEDAScalerFailed, "%s", err.Error())
 			logger.Error(err, "error resolving auth params", "triggerIndex", triggerIndex)

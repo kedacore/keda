@@ -98,7 +98,7 @@ var _ = Describe("ScaledObjectController", func() {
 
 					testScalers = append(testScalers, cache.ScalerBuilder{
 						Scaler: s,
-						Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+						Factory: func(_ context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 							scaler, err := scalers.NewPrometheusScaler(config)
 							return scaler, config, err
 						},
@@ -155,7 +155,7 @@ var _ = Describe("ScaledObjectController", func() {
 				scalersCache := cache.ScalersCache{
 					Scalers: []cache.ScalerBuilder{{
 						Scaler: s,
-						Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+						Factory: func(_ context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 							return s, config, nil
 						},
 					}},
@@ -199,7 +199,7 @@ var _ = Describe("ScaledObjectController", func() {
 
 					testScalers = append(testScalers, cache.ScalerBuilder{
 						Scaler: s,
-						Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+						Factory: func(_ context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 							return s, config, nil
 						},
 					})

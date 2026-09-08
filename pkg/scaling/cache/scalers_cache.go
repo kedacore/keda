@@ -93,7 +93,7 @@ func (c *ScalersCache) acquireReader() (release func(), err error) {
 type ScalerBuilder struct {
 	Scaler            scalers.Scaler
 	ScalerConfig      scalersconfig.ScalerConfig
-	Factory           func() (scalers.Scaler, *scalersconfig.ScalerConfig, error)
+	Factory           func(ctx context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error)
 	CachedMetricSpecs []v2.MetricSpec
 }
 
@@ -315,7 +315,7 @@ func (c *ScalersCache) refreshScaler(ctx context.Context, index int) (scalers.Sc
 
 	oldSb := c.Scalers[index]
 
-	newScaler, sConfig, err := oldSb.Factory()
+	newScaler, sConfig, err := oldSb.Factory(ctx)
 	if err != nil {
 		return nil, err
 	}
