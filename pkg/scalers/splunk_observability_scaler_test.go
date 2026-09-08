@@ -223,13 +223,16 @@ func newFakeSplunkO11yScalerWithAggregator(t *testing.T, aggregator string, tsid
 	scaler := &splunkObservabilityScaler{
 		metadata: &splunkObservabilityMetadata{
 			Query:           splunkO11yAggregatorTestProgram,
-			Duration:        2,
+			Duration:        1,
 			QueryAggregator: aggregator,
 		},
 		apiClient: client,
 		logger:    logr.Discard(),
 	}
-	return scaler, fake.Stop, counter
+	return scaler, func() {
+		client.Close()
+		fake.Stop()
+	}, counter
 }
 
 func TestSplunkObservabilityAggregators(t *testing.T) {
