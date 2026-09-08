@@ -8,16 +8,16 @@ import (
 func TestGetValueByPath(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    map[string]interface{}
+		input    map[string]any
 		path     string
-		expected interface{}
+		expected any
 		wantErr  bool
 	}{
 		{
 			name: "Valid path - String value",
-			input: map[string]interface{}{
-				"some": map[string]interface{}{
-					"nested": map[string]interface{}{
+			input: map[string]any{
+				"some": map[string]any{
+					"nested": map[string]any{
 						"key": "value",
 					},
 				},
@@ -28,9 +28,9 @@ func TestGetValueByPath(t *testing.T) {
 		},
 		{
 			name: "Valid path - Integer value",
-			input: map[string]interface{}{
-				"another": map[string]interface{}{
-					"nested": map[string]interface{}{
+			input: map[string]any{
+				"another": map[string]any{
+					"nested": map[string]any{
 						"key": 42,
 					},
 				},
@@ -41,9 +41,9 @@ func TestGetValueByPath(t *testing.T) {
 		},
 		{
 			name: "Invalid path - Key not found",
-			input: map[string]interface{}{
-				"some": map[string]interface{}{
-					"nested": map[string]interface{}{
+			input: map[string]any{
+				"some": map[string]any{
+					"nested": map[string]any{
 						"key": "value",
 					},
 				},
@@ -54,8 +54,8 @@ func TestGetValueByPath(t *testing.T) {
 		},
 		{
 			name: "Interface slice",
-			input: map[string]interface{}{
-				"some": []interface{}{
+			input: map[string]any{
+				"some": []any{
 					1, 2, 3,
 				},
 			},

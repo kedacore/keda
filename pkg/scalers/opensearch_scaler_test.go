@@ -15,6 +15,27 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
+type closeTrackingOpensearchTransport struct {
+	closed bool
+}
+
+func (t *closeTrackingOpensearchTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, nil
+}
+
+func (t *closeTrackingOpensearchTransport) CloseIdleConnections() {
+	t.closed = true
+}
+
+func TestOpensearchScalerCloseClosesHTTPTransport(t *testing.T) {
+	transport := &closeTrackingOpensearchTransport{}
+	scaler := &opensearchScaler{httpTransport: transport}
+
+	assert.NoError(t, scaler.Close(context.Background()))
+	assert.True(t, transport.closed)
+	assert.Nil(t, scaler.httpTransport)
+}
+
 func TestOpensearchMetadataValidate(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -344,7 +365,7 @@ func TestNewOpensearchAPIClientWithBasicAuth(t *testing.T) {
 			Username:  "admin",
 			Password:  "secret",
 		}
-		client, err := newOpensearchAPIClientWithBasicAuth(meta, logr.Discard())
+		client, _, err := newOpensearchAPIClientWithBasicAuth(meta, logr.Discard())
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
 	})
@@ -361,7 +382,7 @@ func TestNewOpensearchAPIClientWithBasicAuth(t *testing.T) {
 			Username:  "admin",
 			Password:  "secret",
 		}
-		client, err := newOpensearchAPIClientWithBasicAuth(meta, logr.Discard())
+		client, _, err := newOpensearchAPIClientWithBasicAuth(meta, logr.Discard())
 		assert.Error(t, err)
 		assert.Nil(t, client)
 	})
@@ -374,7 +395,7 @@ func TestNewOpensearchAPIClientWithTLS(t *testing.T) {
 			ClientCert: "not-a-valid-cert",
 			ClientKey:  "not-a-valid-key",
 		}
-		client, err := newOpensearchAPIClientWithTLS(meta, logr.Discard())
+		client, _, err := newOpensearchAPIClientWithTLS(meta, logr.Discard())
 		assert.ErrorContains(t, err, "failed to create TLS config")
 		assert.Nil(t, client)
 	})
@@ -395,7 +416,7 @@ func TestNewOpensearchAPIClientWithTLS(t *testing.T) {
 			CACert:    caCertPEM,
 			UnsafeSsl: false,
 		}
-		client, err := newOpensearchAPIClientWithTLS(meta, logr.Discard())
+		client, _, err := newOpensearchAPIClientWithTLS(meta, logr.Discard())
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
 	})
@@ -410,7 +431,7 @@ func TestNewOpensearchAPIClientWithTLS(t *testing.T) {
 			Addresses: []string{srv.URL},
 			UnsafeSsl: true,
 		}
-		client, err := newOpensearchAPIClientWithTLS(meta, logr.Discard())
+		client, _, err := newOpensearchAPIClientWithTLS(meta, logr.Discard())
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
 	})
@@ -427,7 +448,7 @@ func TestNewOpensearchAPIClientWithTLS(t *testing.T) {
 			Addresses: []string{"https://" + srv.Listener.Addr().String()},
 			UnsafeSsl: true,
 		}
-		client, err := newOpensearchAPIClientWithTLS(meta, logr.Discard())
+		client, _, err := newOpensearchAPIClientWithTLS(meta, logr.Discard())
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "tls: first record does not look like a TLS handshake")
 		assert.Nil(t, client)

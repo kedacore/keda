@@ -122,6 +122,18 @@ var parseEventHubMetadataDataset = []parseEventHubMetadataTestData{
 		resolvedEnv: map[string]string{eventHubConnectionSetting: "Endpoint=sb://testEventHubNamespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=testKey;", storageConnectionSetting: "none"},
 		isError:     false,
 	},
+	// connection string with lower-case entitypath key
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "unprocessedEventThreshold": "15"},
+		resolvedEnv: map[string]string{eventHubConnectionSetting: "Endpoint=sb://testEventHubNamespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=testKey;entitypath=testEventHub", storageConnectionSetting: "none"},
+		isError:     false,
+	},
+	// connection string value contains EntityPath but key is not present
+	{
+		metadata:    map[string]string{"storageConnectionFromEnv": storageConnectionSetting, "consumerGroup": eventHubConsumerGroup, "connectionFromEnv": eventHubConnectionSetting, "unprocessedEventThreshold": "15"},
+		resolvedEnv: map[string]string{eventHubConnectionSetting: "Endpoint=sb://EntityPath.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=testKey;", storageConnectionSetting: "none"},
+		isError:     true,
+	},
 }
 
 var parseEventHubMetadataDatasetWithPodIdentity = []parseEventHubMetadataTestData{
@@ -324,6 +336,31 @@ func TestParseEventHubMetadata(t *testing.T) {
 		if testData.isError && err == nil {
 			t.Error("Expected error and got success")
 		}
+	}
+}
+
+func TestParseEventHubMetadataDoesNotAppendDuplicateEntityPath(t *testing.T) {
+	connection := "Endpoint=sb://testEventHubNamespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=testKey;EntityPath=testEventHub"
+	metadata, err := parseAzureEventHubMetadata(logr.Discard(), &scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"storageConnectionFromEnv":  storageConnectionSetting,
+			"consumerGroup":             eventHubConsumerGroup,
+			"connectionFromEnv":         eventHubConnectionSetting,
+			"unprocessedEventThreshold": "15",
+			"eventHubName":              testEventHubName,
+		},
+		ResolvedEnv: map[string]string{
+			eventHubConnectionSetting: connection,
+			storageConnectionSetting:  "none",
+		},
+		AuthParams: map[string]string{},
+	})
+
+	if err != nil {
+		t.Fatalf("Expected success but got error: %s", err)
+	}
+	if metadata.EventHubInfo.EventHubConnection != connection {
+		t.Fatalf("expected connection string to remain unchanged, got %q", metadata.EventHubInfo.EventHubConnection)
 	}
 }
 

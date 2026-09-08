@@ -61,6 +61,12 @@ type PushScaler interface {
 	Run(ctx context.Context, active chan<- bool)
 }
 
+// MetricSpecStreamer is optionally implemented by PushScalers that support
+// dynamic metric spec updates via server-streaming RPCs.
+type MetricSpecStreamer interface {
+	MetricSpecChan() <-chan []v2.MetricSpec
+}
+
 var (
 	// ErrScalerUnsupportedUtilizationMetricType is returned when v2.UtilizationMetricType
 	// is provided as the metric target type for scaler.

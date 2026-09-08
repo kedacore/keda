@@ -183,7 +183,7 @@ var _ = Describe("ScaledObjectController", func() {
 			It("should pass metric name validation", func() {
 				// Generate test data
 				testScalers := make([]cache.ScalerBuilder, 0)
-				for i := 0; i < 4; i++ {
+				for i := range 4 {
 					config := &scalersconfig.ScalerConfig{
 						ScalableObjectName:      fmt.Sprintf("test.%d", i),
 						ScalableObjectNamespace: "test",

@@ -65,6 +65,10 @@ spec:
                   fieldPath: metadata.namespace
             - name: WATCH_NAMESPACE
               value: ""
+            - name: WATCH_LABEL_SELECTOR
+              value: ""
+            - name: WATCH_LABEL_SELECTOR_FOR_TRIGGERAUTH
+              value: ""
             - name: KEDA_HTTP_DEFAULT_TIMEOUT
               value: ""
           securityContext:

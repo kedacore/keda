@@ -62,18 +62,18 @@ const (
 // Knative and most Kubernetes workload resources. It allows extracting a
 // PodTemplateSpec from arbitrary custom resources via JSON round-tripping.
 type podSpecable struct {
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.ObjectMeta `json:"metadata"`
 
-	Spec podSpecableSpec `json:"spec,omitempty"`
+	Spec podSpecableSpec `json:"spec"`
 }
 
 type podSpecableSpec struct {
-	Template corev1.PodTemplateSpec `json:"template,omitempty"`
+	Template corev1.PodTemplateSpec `json:"template"`
 }
 
 // fromUnstructured converts an unstructured Kubernetes object into a typed
 // struct by JSON round-tripping.
-func fromUnstructured(obj *unstructured.Unstructured, target interface{}) error {
+func fromUnstructured(obj *unstructured.Unstructured, target any) error {
 	raw, err := obj.MarshalJSON()
 	if err != nil {
 		return err
@@ -748,7 +748,7 @@ func resolveBoundServiceAccountToken(ctx context.Context, client client.Client, 
 
 // GenerateBoundServiceAccountToken creates a Kubernetes token for a namespaced service account with a runtime-configurable expiration time and returns the token string.
 func GenerateBoundServiceAccountToken(ctx context.Context, serviceAccountName, namespace string, acs *authentication.AuthClientSet) string {
-	expirationSeconds := ptr.To(int64(boundServiceAccountTokenExpiry.Seconds()))
+	expirationSeconds := new(int64(boundServiceAccountTokenExpiry.Seconds()))
 	token, err := acs.CoreV1Interface.ServiceAccounts(namespace).CreateToken(
 		ctx,
 		serviceAccountName,
@@ -814,21 +814,21 @@ func GetCurrentReplicas(ctx context.Context, client client.Client, scaleClient s
 			logger.Error(err, "target deployment doesn't exist")
 			return 0, err
 		}
-		return *deployment.Spec.Replicas, nil
+		return ptr.Deref(deployment.Spec.Replicas, 1), nil
 	case targetGVKR.Group == appsGroup && targetGVKR.Kind == statefulSetKind:
 		statefulSet := &appsv1.StatefulSet{}
 		if err := client.Get(ctx, types.NamespacedName{Name: targetName, Namespace: scaledObject.Namespace}, statefulSet); err != nil {
 			logger.Error(err, "target statefulset doesn't exist")
 			return 0, err
 		}
-		return *statefulSet.Spec.Replicas, nil
+		return ptr.Deref(statefulSet.Spec.Replicas, 1), nil
 	case targetGVKR.Group == appsGroup && targetGVKR.Kind == replicaSetKind:
 		replicaSet := &appsv1.ReplicaSet{}
 		if err := client.Get(ctx, types.NamespacedName{Name: targetName, Namespace: scaledObject.Namespace}, replicaSet); err != nil {
 			logger.Error(err, "target replicaset doesn't exist")
 			return 0, err
 		}
-		return *replicaSet.Spec.Replicas, nil
+		return ptr.Deref(replicaSet.Spec.Replicas, 1), nil
 	default:
 		// Try reading from the informer cache via Unstructured to avoid an API call.
 		unstruct := &unstructured.Unstructured{}

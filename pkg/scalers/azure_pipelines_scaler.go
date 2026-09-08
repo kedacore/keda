@@ -37,9 +37,9 @@ const (
 type JobRequest struct {
 	RequestID     int       `json:"requestId"`
 	QueueTime     time.Time `json:"queueTime"`
-	AssignTime    time.Time `json:"assignTime,omitempty"`
-	ReceiveTime   time.Time `json:"receiveTime,omitempty"`
-	LockedUntil   time.Time `json:"lockedUntil,omitempty"`
+	AssignTime    time.Time `json:"assignTime"`
+	ReceiveTime   time.Time `json:"receiveTime"`
+	LockedUntil   time.Time `json:"lockedUntil"`
 	ServiceOwner  string    `json:"serviceOwner"`
 	HostID        string    `json:"hostId"`
 	Result        *string   `json:"result"`

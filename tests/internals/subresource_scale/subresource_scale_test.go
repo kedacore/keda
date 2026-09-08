@@ -1,6 +1,8 @@
 //go:build e2e
 // +build e2e
 
+// +e2e-deps:argo-rollouts
+
 package subresource_scale_test
 
 import (

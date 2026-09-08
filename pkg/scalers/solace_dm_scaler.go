@@ -317,9 +317,9 @@ func parseSolaceDMConfiguration(scalerConfig *scalersconfig.ScalerConfig) (*Sola
 
 	// initialize urls
 	meta.sempURL = []string{}
-	urls := strings.Split(meta.SolaceSEMPBaseURL, ",")
+	urls := strings.SplitSeq(meta.SolaceSEMPBaseURL, ",")
 
-	for _, v := range urls {
+	for v := range urls {
 		url := strings.TrimSpace(v)
 		fullURL := fmt.Sprintf(sempURLPattern, url)
 		meta.sempURL = append(meta.sempURL, fullURL)
@@ -475,7 +475,7 @@ func (s *SolaceDMScaler) getClientStats(ctx context.Context, metricValues *Solac
 	metricValues.AggregatedClientAverageTxMsgRate = 0
 	var numClients int64
 
-	for i := 0; i < len(clients); i++ {
+	for i := range clients {
 		client := clients[i]
 
 		// only consider the configured vpn
@@ -521,14 +521,14 @@ func (s *SolaceDMScaler) getClientStatQueues(ctx context.Context, metricValues *
 	var aggregatedUsedUnitsOfWork int64
 	var numClients int32
 
-	for i := 0; i < len(clients); i++ {
+	for i := range clients {
 		client := clients[i]
 
 		// only consider the configured vpn
 		if client.MessageVpn == s.configuration.MessageVpn {
 			clientQueues := client.ClientQueues
 
-			for j := 0; j < len(clientQueues); j++ {
+			for j := range clientQueues {
 				clientQueue := clientQueues[j]
 
 				if clientQueue.QueuePriority == d1PriorityQueue {

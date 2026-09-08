@@ -90,5 +90,5 @@ func (m *MockServiceAccountInterface) CreateToken(ctx context.Context, serviceAc
 // CreateToken indicates an expected call of CreateToken.
 func (mr *MockServiceAccountInterfaceMockRecorder) CreateToken(ctx, serviceAccountName, tokenRequest, opts any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateToken", reflect.TypeOf((*MockServiceAccountInterface)(nil).CreateToken), ctx, serviceAccountName, tokenRequest, opts)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateToken", reflect.TypeFor[func(ctx context.Context, serviceAccountName string, tokenRequest *v10.TokenRequest, opts v12.CreateOptions) (*v10.TokenRequest, error)](), ctx, serviceAccountName, tokenRequest, opts)
 }

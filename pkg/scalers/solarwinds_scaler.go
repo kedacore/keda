@@ -157,8 +157,10 @@ func (s *solarWindsScaler) getFirstMeasurement(res *operations.ListMetricMeasure
 			}
 
 			for _, measurement := range group.Measurements {
-				firstValue = measurement.Value
-				return firstValue, nil
+				if measurement.Value != nil {
+					firstValue = *measurement.Value
+					return firstValue, nil
+				}
 			}
 		}
 	}

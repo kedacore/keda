@@ -1,6 +1,8 @@
 //go:build e2e
 // +build e2e
 
+// +e2e-deps:kafka
+
 package apache_kafka_test
 
 import (

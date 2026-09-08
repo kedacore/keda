@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net"
 
-	couchdb "github.com/go-kivik/couchdb/v3"
-	"github.com/go-kivik/kivik/v3"
+	"github.com/go-kivik/kivik/v4"
+	couchdb "github.com/go-kivik/kivik/v4/couchdb"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -58,8 +58,8 @@ func (m *couchDBMetadata) Validate() error {
 }
 
 type couchDBQueryRequest struct {
-	Selector map[string]interface{} `json:"selector"`
-	Fields   []string               `json:"fields"`
+	Selector map[string]any `json:"selector"`
+	Fields   []string       `json:"fields"`
 }
 
 type Res struct {
@@ -85,14 +85,9 @@ func NewCouchDBScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (
 		connStr = "http://" + addr
 	}
 
-	client, err := kivik.New("couch", connStr)
+	client, err := kivik.New("couch", connStr, couchdb.BasicAuth("admin", meta.Password))
 	if err != nil {
 		return nil, fmt.Errorf("error creating couchdb client: %w", err)
-	}
-
-	err = client.Authenticate(ctx, couchdb.BasicAuth("admin", meta.Password))
-	if err != nil {
-		return nil, fmt.Errorf("error authenticating with couchdb: %w", err)
 	}
 
 	isConnected, err := client.Ping(ctx)
@@ -127,9 +122,9 @@ func parseCouchDBMetadata(config *scalersconfig.ScalerConfig) (couchDBMetadata, 
 	return meta, nil
 }
 
-func (s *couchDBScaler) Close(ctx context.Context) error {
+func (s *couchDBScaler) Close(_ context.Context) error {
 	if s.client != nil {
-		if err := s.client.Close(ctx); err != nil {
+		if err := s.client.Close(); err != nil {
 			s.logger.Error(err, "failed to close couchdb connection")
 			return err
 		}
@@ -150,17 +145,14 @@ func (s *couchDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec
 }
 
 func (s *couchDBScaler) getQueryResult(ctx context.Context) (int64, error) {
-	db := s.client.DB(ctx, s.metadata.DBName)
+	db := s.client.DB(s.metadata.DBName)
 
 	var request couchDBQueryRequest
 	if err := json.Unmarshal([]byte(s.metadata.Query), &request); err != nil {
 		return 0, fmt.Errorf("error unmarshaling query: %w", err)
 	}
 
-	rows, err := db.Find(ctx, request, nil)
-	if err != nil {
-		return 0, fmt.Errorf("error executing query: %w", err)
-	}
+	rows := db.Find(ctx, request)
 
 	var count int64
 	for rows.Next() {
@@ -169,6 +161,9 @@ func (s *couchDBScaler) getQueryResult(ctx context.Context) (int64, error) {
 		if err := rows.ScanDoc(&res); err != nil {
 			return 0, fmt.Errorf("error scanning document: %w", err)
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, fmt.Errorf("error executing query: %w", err)
 	}
 
 	return count, nil

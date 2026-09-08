@@ -199,7 +199,7 @@ func parseSolaceMetadata(config *scalersconfig.ScalerConfig) (*SolaceMetadata, e
 
 	// Format Solace SEMP Queue Endpoint (REST URL)
 	sempURLs := strings.Split(meta.SolaceMetaSempBaseURL, ",")
-	for i := 0; i < len(sempURLs); i++ {
+	for i := range sempURLs {
 		sempURL := strings.TrimSpace(sempURLs[i])
 		meta.endpointURLsList = append(meta.endpointURLsList, fmt.Sprintf(
 			solaceSempEndpointURLTemplate,

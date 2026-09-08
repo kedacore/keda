@@ -25,6 +25,7 @@ import (
 
 	"github.com/expr-lang/expr/vm"
 	v2 "k8s.io/api/autoscaling/v2"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -90,9 +91,23 @@ func (c *ScalersCache) acquireReader() (release func(), err error) {
 }
 
 type ScalerBuilder struct {
-	Scaler       scalers.Scaler
-	ScalerConfig scalersconfig.ScalerConfig
-	Factory      func() (scalers.Scaler, *scalersconfig.ScalerConfig, error)
+	Scaler            scalers.Scaler
+	ScalerConfig      scalersconfig.ScalerConfig
+	Factory           func() (scalers.Scaler, *scalersconfig.ScalerConfig, error)
+	CachedMetricSpecs []v2.MetricSpec
+}
+
+func cloneMetricSpecs(specs []v2.MetricSpec) []v2.MetricSpec {
+	if specs == nil {
+		return nil
+	}
+
+	cloned := make([]v2.MetricSpec, 0, len(specs))
+	for i := range specs {
+		spec := specs[i]
+		cloned = append(cloned, *spec.DeepCopy())
+	}
+	return cloned
 }
 
 // GetScalers returns array of scalers and scaler config stored in the cache
@@ -170,18 +185,24 @@ func (c *ScalersCache) Close(ctx context.Context) {
 	}
 }
 
-// GetMetricSpecForScaling returns metrics specs for all scalers in the cache
+// GetMetricSpecForScaling returns metrics specs for all scalers in the cache.
+// If a scaler has cached metric specs from StreamMetricSpec, those take precedence.
 func (c *ScalersCache) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 	var spec []v2.MetricSpec
 	for _, s := range c.Scalers {
-		spec = append(spec, s.Scaler.GetMetricSpecForScaling(ctx)...)
+		if s.CachedMetricSpecs != nil {
+			spec = append(spec, cloneMetricSpecs(s.CachedMetricSpecs)...)
+		} else {
+			spec = append(spec, s.Scaler.GetMetricSpecForScaling(ctx)...)
+		}
 	}
 	return spec
 }
 
-// GetMetricSpecForScalingForScaler returns metrics spec for a scaler identified by the metric name
+// GetMetricSpecForScalingForScaler returns metrics spec for a scaler identified by the metric name.
+// If the scaler has cached metric specs from StreamMetricSpec, those take precedence.
 func (c *ScalersCache) GetMetricSpecForScalingForScaler(ctx context.Context, index int) ([]v2.MetricSpec, error) {
 	release, err := c.acquireReader()
 	if err != nil {
@@ -192,6 +213,10 @@ func (c *ScalersCache) GetMetricSpecForScalingForScaler(ctx context.Context, ind
 	sb, err := c.getScalerBuilder(index)
 	if err != nil {
 		return nil, err
+	}
+
+	if sb.CachedMetricSpecs != nil {
+		return cloneMetricSpecs(sb.CachedMetricSpecs), nil
 	}
 
 	metricSpecs := sb.Scaler.GetMetricSpecForScaling(ctx)
@@ -247,6 +272,35 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 	return metric, activity, time.Since(startTime), err
 }
 
+// UpdateMetricSpecForScaler replaces the cached metric specs for a given scaler
+// index, but only when the cache still belongs to the ScaledObject identified by
+// uid and generation. The identity guard prevents a stale streaming watcher
+// (bound to an older ScaledObject generation, or to an object that was deleted
+// and recreated under the same name) from overwriting the specs of an unrelated
+// cache. A cache rebuilt for the same UID and generation (e.g. after a scaler
+// error) keeps the same identity, so legitimate cache invalidation still
+// receives streamed updates.
+//
+// The identity check and the write are performed under the same lock so the
+// validated cache cannot silently become stale between the two operations. It
+// reports whether the update was applied (false if the cache is closed, the
+// index is out of range, or the identity does not match).
+func (c *ScalersCache) UpdateMetricSpecForScaler(index int, specs []v2.MetricSpec, uid types.UID, generation int64) bool {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	if c.closed || index < 0 || index >= len(c.Scalers) {
+		return false
+	}
+
+	if c.ScaledObject == nil || c.ScaledObject.UID != uid || c.ScalableObjectGeneration != generation {
+		return false
+	}
+
+	c.Scalers[index].CachedMetricSpecs = cloneMetricSpecs(specs)
+	return true
+}
+
 func (c *ScalersCache) refreshScaler(ctx context.Context, index int) (scalers.Scaler, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -267,9 +321,10 @@ func (c *ScalersCache) refreshScaler(ctx context.Context, index int) (scalers.Sc
 	}
 
 	c.Scalers[index] = ScalerBuilder{
-		Scaler:       newScaler,
-		ScalerConfig: *sConfig,
-		Factory:      oldSb.Factory,
+		Scaler:            newScaler,
+		ScalerConfig:      *sConfig,
+		Factory:           oldSb.Factory,
+		CachedMetricSpecs: cloneMetricSpecs(oldSb.CachedMetricSpecs),
 	}
 
 	oldSb.Scaler.Close(ctx)

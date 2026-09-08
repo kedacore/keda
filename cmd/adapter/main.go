@@ -144,7 +144,7 @@ func getMetricHandler() http.HandlerFunc {
 	}
 }
 
-// getMetricInterceptor returns a metrics inceptor that records metrics between the adapter and opertaor
+// getMetricInterceptor returns a metrics interceptor that records metrics between the adapter and operator
 func getMetricInterceptor() *grpcprom.ClientMetrics {
 	metricsNamespace := "keda_internal_metricsservice"
 

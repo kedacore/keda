@@ -23,6 +23,7 @@ import (
 	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
 func TestHTTPStatusCodeLabel(t *testing.T) {
@@ -52,7 +53,11 @@ func TestHTTPStatusCodeLabel(t *testing.T) {
 }
 
 func TestPromMetrics_RecordHTTPClientRequest(t *testing.T) {
-	p := &PromMetrics{}
+	httpClientRequestDuration := newHTTPClientRequestDuration(true)
+	p := &PromMetrics{
+		enableHighCardinalityLabels: true,
+		httpClientRequestDuration:   httpClientRequestDuration,
+	}
 
 	// Verify no panic and label combinations are created without error.
 	p.RecordHTTPClientRequest(0.05, 200, false, "prometheus", "my-trigger", "my-metric", "default", "my-so")
@@ -82,9 +87,43 @@ func TestPromMetrics_RecordHTTPClientRequest(t *testing.T) {
 	require.NoError(t, counter.Write(m))
 	assert.EqualValues(t, 1, m.Counter.GetValue())
 
-	hist, err := httpClientRequestDuration.GetMetricWithLabelValues("prometheus", "200")
+	hist, err := httpClientRequestDuration.GetMetricWithLabelValues("default", "my-so", "prometheus", "my-trigger", "my-metric", "200")
 	require.NoError(t, err)
 	require.NoError(t, hist.(prometheus.Metric).Write(m))
 	assert.EqualValues(t, 1, m.Histogram.GetSampleCount())
 	assert.InDelta(t, 0.05, m.Histogram.GetSampleSum(), 0.001)
+}
+
+func TestNewPromMetrics_DisablesHighCardinalityLabels(t *testing.T) {
+	previousRegistry := ctrlmetrics.Registry
+	ctrlmetrics.Registry = prometheus.NewRegistry()
+	t.Cleanup(func() {
+		ctrlmetrics.Registry = previousRegistry
+	})
+
+	p := NewPromMetrics(false)
+	p.RecordHTTPClientRequest(0.05, 200, false, "prometheus", "my-trigger", "my-metric", "default", "my-so")
+
+	families, err := ctrlmetrics.Registry.Gather()
+	require.NoError(t, err)
+
+	names := map[string]struct{}{}
+	for _, family := range families {
+		names[family.GetName()] = struct{}{}
+	}
+
+	_, ok := names["keda_scaler_http_requests_total"]
+	assert.True(t, ok, "keda_scaler_http_requests_total should be registered when high-cardinality labels are disabled")
+
+	_, ok = names["keda_scaler_http_request_duration_seconds"]
+	assert.True(t, ok, "keda_scaler_http_request_duration_seconds should be registered when high-cardinality labels are disabled")
+
+	hist, err := p.httpClientRequestDuration.GetMetricWithLabelValues("prometheus", "200")
+	require.NoError(t, err)
+	m := &dto.Metric{}
+	require.NoError(t, hist.(prometheus.Metric).Write(m))
+	assert.EqualValues(t, 1, m.Histogram.GetSampleCount())
+
+	_, err = p.httpClientRequestDuration.GetMetricWithLabelValues("default", "my-so", "prometheus", "my-trigger", "my-metric", "200")
+	assert.Error(t, err, "high-cardinality labels should not be accepted when disabled")
 }

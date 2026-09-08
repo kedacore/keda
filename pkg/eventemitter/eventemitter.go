@@ -439,7 +439,7 @@ func (e *EventEmitter) setCloudEventSourceStatusActive(ctx context.Context, clou
 
 func (e *EventEmitter) updateCloudEventSourceStatus(ctx context.Context, cloudEventSourceI eventingv1alpha1.CloudEventSourceInterface, cloudEventSourceStatus *eventingv1alpha1.CloudEventSourceStatus) error {
 	e.log.V(1).Info("Updating CloudEventSource status", "CloudEventSource", cloudEventSourceI.GetName())
-	transform := func(runtimeObj client.Object, target interface{}) error {
+	transform := func(runtimeObj client.Object, target any) error {
 		status, ok := target.(eventingv1alpha1.CloudEventSourceStatus)
 		if !ok {
 			return fmt.Errorf("transform target is not eventingv1alpha1.CloudEventSourceStatus type %v", target)

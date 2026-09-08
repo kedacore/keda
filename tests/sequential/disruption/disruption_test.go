@@ -151,6 +151,8 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	// scale monitored deployment to maxReplicaCount - 2 replicas
 	replicas := maxReplicaCount - 2
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, int64(replicas), testNamespace)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredDeploymentName, testNamespace, replicas, 60, 5),
+		"monitored deployment should be ready before operator disruption")
 	saveLogs(t, kc, operatorLogName, operatorLabelSelector, kedaNamespace)
 	DeletePodsInNamespaceBySelector(t, kc, operatorLabelSelector, kedaNamespace)
 	var wg sync.WaitGroup
@@ -167,6 +169,8 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	// scale monitored deployment to maxReplicaCount - 1 replicas
 	replicas = maxReplicaCount - 1
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, int64(replicas), testNamespace)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredDeploymentName, testNamespace, replicas, 60, 5),
+		"monitored deployment should be ready before operator disruption")
 	saveLogs(t, kc, operatorLogName, operatorLabelSelector, kedaNamespace)
 	DeletePodsInNamespaceBySelector(t, kc, operatorLabelSelector, kedaNamespace)
 	wg.Add(scaledObjectCount)
@@ -182,6 +186,8 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	// scale monitored deployment to maxReplicaCount replicas
 	replicas = maxReplicaCount
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, int64(replicas), testNamespace)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredDeploymentName, testNamespace, replicas, 60, 5),
+		"monitored deployment should be ready before metrics-server disruption")
 	saveLogs(t, kc, msLogName, msLabelSelector, kedaNamespace)
 	DeletePodsInNamespaceBySelector(t, kc, msLabelSelector, kedaNamespace)
 	wg.Add(scaledObjectCount)
@@ -199,6 +205,8 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	// scale monitored deployment to minReplicaCount + 1 replicas
 	replicas := minReplicaCount + 1
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, int64(replicas), testNamespace)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredDeploymentName, testNamespace, replicas, 60, 5),
+		"monitored deployment should be ready before operator/metrics-server disruption")
 	saveLogs(t, kc, operatorLogName, operatorLabelSelector, kedaNamespace)
 	DeletePodsInNamespaceBySelector(t, kc, operatorLabelSelector, kedaNamespace)
 	saveLogs(t, kc, msLogName, msLabelSelector, kedaNamespace)
@@ -217,6 +225,8 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	// scale monitored deployment to minReplicaCount replicas
 	replicas = minReplicaCount
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, int64(replicas), testNamespace)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredDeploymentName, testNamespace, replicas, 60, 5),
+		"monitored deployment should be ready before operator disruption")
 	saveLogs(t, kc, operatorLogName, operatorLabelSelector, kedaNamespace)
 	DeletePodsInNamespaceBySelector(t, kc, operatorLabelSelector, kedaNamespace)
 	wg.Add(scaledObjectCount)

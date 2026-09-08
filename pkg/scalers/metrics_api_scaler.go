@@ -252,7 +252,7 @@ func getValueFromJSONResponse(body []byte, valueLocation string) (float64, error
 
 // getValueFromXMLResponse uses provided valueLocation to access the numeric value in provided body
 func getValueFromXMLResponse(body []byte, valueLocation string) (float64, error) {
-	var xmlMap map[string]interface{}
+	var xmlMap map[string]any
 	err := xml.Unmarshal(body, &xmlMap)
 	if err != nil {
 		return 0, err
@@ -284,7 +284,7 @@ func getValueFromXMLResponse(body []byte, valueLocation string) (float64, error)
 // getValueFromYAMLResponse uses provided valueLocation to access the numeric value in provided body
 // using generic ketautil.GetValueByPath
 func getValueFromYAMLResponse(body []byte, valueLocation string) (float64, error) {
-	var yamlMap map[string]interface{}
+	var yamlMap map[string]any
 	err := yaml.Unmarshal(body, &yamlMap)
 	if err != nil {
 		return 0, err

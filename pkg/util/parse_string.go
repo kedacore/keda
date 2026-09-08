@@ -40,8 +40,8 @@ func ParseRange(from, to string) ([]int32, error) {
 
 func ParseInt32List(pattern string) ([]int32, error) {
 	var parsed []int32
-	terms := strings.Split(pattern, ",")
-	for _, term := range terms {
+	terms := strings.SplitSeq(pattern, ",")
+	for term := range terms {
 		literals := strings.Split(term, "-")
 		switch {
 		case len(literals) == 1:
@@ -70,8 +70,8 @@ func ParseStringList(pattern string) (map[string]string, error) {
 	if pattern == "" {
 		return parsed, nil
 	}
-	pairs := strings.Split(pattern, ",")
-	for _, pair := range pairs {
+	pairs := strings.SplitSeq(pattern, ",")
+	for pair := range pairs {
 		keyvalue := strings.Split(pair, "=")
 		if len(keyvalue) != 2 {
 			return nil, fmt.Errorf("error in key-value syntax, got '%s'", pair)

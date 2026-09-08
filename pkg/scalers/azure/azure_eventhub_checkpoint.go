@@ -273,7 +273,7 @@ func getCheckpointFromStorageMetadata(get *azblob.DownloadStreamResponse, partit
 	return checkpoint, nil
 }
 
-func readToCheckpointFromBody(get *azblob.DownloadStreamResponse, checkpoint interface{}) error {
+func readToCheckpointFromBody(get *azblob.DownloadStreamResponse, checkpoint any) error {
 	blobData := &bytes.Buffer{}
 
 	reader := get.Body

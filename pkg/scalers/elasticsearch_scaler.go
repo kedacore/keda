@@ -9,8 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/go-elasticsearch/v7"
-	"github.com/elastic/go-elasticsearch/v7/esapi"
+	"github.com/elastic/elastic-transport-go/v8/elastictransport"
+	"github.com/elastic/go-elasticsearch/v9"
+	"github.com/elastic/go-elasticsearch/v9/esapi"
 	"github.com/go-logr/logr"
 	"github.com/tidwall/gjson"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -115,23 +116,17 @@ func parseElasticsearchMetadata(config *scalersconfig.ScalerConfig) (elasticsear
 }
 
 func newElasticsearchClient(meta elasticsearchMetadata, logger logr.Logger) (*elasticsearch.Client, error) {
-	var config elasticsearch.Config
-
-	if meta.CloudID != "" {
-		config = elasticsearch.Config{
-			CloudID: meta.CloudID,
-			APIKey:  meta.APIKey,
-		}
-	} else {
-		config = elasticsearch.Config{
-			Addresses: meta.Addresses,
-			Username:  meta.Username,
-			Password:  meta.Password,
-		}
+	opts := []elasticsearch.Option{
+		elasticsearch.WithTransportOptions(elastictransport.WithTransport(util.CreateRT(meta.UnsafeSsl))),
 	}
 
-	config.Transport = util.CreateRT(meta.UnsafeSsl)
-	esClient, err := elasticsearch.NewClient(config)
+	if meta.CloudID != "" {
+		opts = append(opts, elasticsearch.WithCloudID(meta.CloudID), elasticsearch.WithAPIKey(meta.APIKey))
+	} else {
+		opts = append(opts, elasticsearch.WithAddresses(meta.Addresses...), elasticsearch.WithBasicAuth(meta.Username, meta.Password))
+	}
+
+	esClient, err := elasticsearch.New(opts...)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Found error when creating client: %s", err))
 		return nil, err
@@ -208,8 +203,8 @@ func (s *elasticsearchScaler) getQueryResult(ctx context.Context) (float64, erro
 	return v, nil
 }
 
-func buildQuery(metadata *elasticsearchMetadata) map[string]interface{} {
-	parameters := map[string]interface{}{}
+func buildQuery(metadata *elasticsearchMetadata) map[string]any {
+	parameters := map[string]any{}
 	for _, p := range metadata.Parameters {
 		if p != "" {
 			kv := strings.Split(p, ":")
@@ -218,7 +213,7 @@ func buildQuery(metadata *elasticsearchMetadata) map[string]interface{} {
 			parameters[key] = value
 		}
 	}
-	query := map[string]interface{}{
+	query := map[string]any{
 		"id": metadata.SearchTemplateName,
 	}
 	if len(parameters) > 0 {

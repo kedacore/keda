@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -75,5 +76,71 @@ func TestSolrGetMetricSpecForScaling(t *testing.T) {
 		if metricName != testData.name {
 			t.Errorf("Wrong External metric source name: %s, expected: %s", metricName, testData.name)
 		}
+	}
+}
+
+// Solr reports failures as JSON when wt=json, and those bodies unmarshal cleanly into solrResponse
+// with numFound left at 0. Without a status check the scaler reported a healthy queue length of 0
+// and scaled the workload to zero during an outage or an auth rejection.
+func TestSolrGetItemCountErrorsOnNon200(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		status int
+		body   string
+	}{
+		{"server error", http.StatusInternalServerError, `{"responseHeader":{"status":500},"error":{"msg":"no servers hosting shard","code":500}}`},
+		{"unauthorized", http.StatusUnauthorized, `{"responseHeader":{"status":401},"error":{"msg":"require authentication","code":401}}`},
+		{"collection missing", http.StatusNotFound, `{"responseHeader":{"status":404},"error":{"msg":"no such collection","code":404}}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tc.status)
+				// nosemgrep: no-direct-write-to-responsewriter
+				_, _ = w.Write([]byte(tc.body))
+			}))
+			defer server.Close()
+
+			s, err := NewSolrScaler(&scalersconfig.ScalerConfig{
+				TriggerMetadata: map[string]string{
+					"host": server.URL, "collection": "my_core", "query": "*:*", "targetQueryValue": "1",
+				},
+				AuthParams: map[string]string{"username": "u", "password": "p"},
+			})
+			if err != nil {
+				t.Fatalf("failed to create solr scaler: %v", err)
+			}
+
+			count, err := s.(*solrScaler).getItemCount(context.Background())
+			if err == nil {
+				t.Errorf("expected an error for HTTP %d, got count %v and nil error", tc.status, count)
+			}
+			if count != -1 {
+				t.Errorf("expected the sentinel count -1 on error, got %v", count)
+			}
+		})
+	}
+}
+
+// A literal JSON null body leaves the *solrResponse nil, which used to panic on dereference.
+func TestSolrGetItemCountHandlesNullBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		// nosemgrep: no-direct-write-to-responsewriter
+		_, _ = w.Write([]byte("null"))
+	}))
+	defer server.Close()
+
+	s, err := NewSolrScaler(&scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"host": server.URL, "collection": "my_core", "query": "*:*", "targetQueryValue": "1",
+		},
+		AuthParams: map[string]string{"username": "u", "password": "p"},
+	})
+	if err != nil {
+		t.Fatalf("failed to create solr scaler: %v", err)
+	}
+
+	if _, err := s.(*solrScaler).getItemCount(context.Background()); err == nil {
+		t.Error("expected an error for a null response body, got nil")
 	}
 }

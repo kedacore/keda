@@ -30,8 +30,13 @@ import (
 )
 
 type mockRoundTripper struct {
-	resp *http.Response
-	err  error
+	resp                  *http.Response
+	err                   error
+	idleConnectionsClosed bool
+}
+
+func (m *mockRoundTripper) CloseIdleConnections() {
+	m.idleConnectionsClosed = true
 }
 
 func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -49,14 +54,19 @@ func fakeResponse(statusCode int) *http.Response {
 	}
 }
 
-func withPromCollector(t *testing.T) {
+func withPromCollector(t *testing.T) *PromMetrics {
 	t.Helper()
 
 	previousCollectors := collectors
-	collectors = []MetricsCollector{&PromMetrics{}}
+	collector := &PromMetrics{
+		enableHighCardinalityLabels: true,
+		httpClientRequestDuration:   newHTTPClientRequestDuration(true),
+	}
+	collectors = []MetricsCollector{collector}
 	t.Cleanup(func() {
 		collectors = previousCollectors
 	})
+	return collector
 }
 
 func TestInstrumentedRoundTripper_RecordsSuccessfulResponses(t *testing.T) {
@@ -72,7 +82,7 @@ func TestInstrumentedRoundTripper_RecordsSuccessfulResponses(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			RegisterTestingT(t)
-			withPromCollector(t)
+			collector := withPromCollector(t)
 
 			scalerName := fmt.Sprintf("prometheus-%d", tc.statusCode)
 			triggerName := fmt.Sprintf("trigger-%d", tc.statusCode)
@@ -107,8 +117,8 @@ func TestInstrumentedRoundTripper_RecordsSuccessfulResponses(t *testing.T) {
 			Expect(err).To(BeNil())
 			Expect(m.Counter.GetValue()).To(BeNumerically("==", 1))
 
-			durationHistogram, err := httpClientRequestDuration.
-				GetMetricWithLabelValues(scalerName, fmt.Sprintf("%d", tc.statusCode))
+			durationHistogram, err := collector.httpClientRequestDuration.
+				GetMetricWithLabelValues("default", scaledResource, scalerName, triggerName, metricName, fmt.Sprintf("%d", tc.statusCode))
 			Expect(err).To(BeNil())
 			Expect(durationHistogram).NotTo(BeNil())
 			err = durationHistogram.(prometheus.Metric).Write(m)
@@ -120,7 +130,7 @@ func TestInstrumentedRoundTripper_RecordsSuccessfulResponses(t *testing.T) {
 
 func TestInstrumentedRoundTripper_RecordsTransportErrors(t *testing.T) {
 	RegisterTestingT(t)
-	withPromCollector(t)
+	collector := withPromCollector(t)
 
 	scalerName := "prometheus-transport-error"
 	triggerName := "trigger-transport-error"
@@ -156,8 +166,8 @@ func TestInstrumentedRoundTripper_RecordsTransportErrors(t *testing.T) {
 	Expect(err).To(BeNil())
 	Expect(m.Counter.GetValue()).To(BeNumerically("==", 1))
 
-	durationHistogram, err := httpClientRequestDuration.
-		GetMetricWithLabelValues(scalerName, "error")
+	durationHistogram, err := collector.httpClientRequestDuration.
+		GetMetricWithLabelValues("default", scaledResource, scalerName, triggerName, metricName, "error")
 	Expect(err).To(BeNil())
 	Expect(durationHistogram).NotTo(BeNil())
 	err = durationHistogram.(prometheus.Metric).Write(m)
@@ -185,6 +195,26 @@ func TestInstrumentedRoundTripper_NilNextUsesDefault(t *testing.T) {
 
 	rt := NewInstrumentedRoundTripper(nil)
 	Expect(fmt.Sprintf("%T", rt)).To(Equal("*metricscollector.InstrumentedRoundTripper"))
+}
+
+func TestInstrumentedRoundTripper_ClosesIdleConnections(t *testing.T) {
+	RegisterTestingT(t)
+
+	next := &mockRoundTripper{}
+	client := &http.Client{Transport: NewInstrumentedRoundTripperWithCloseIdleConnections(next)}
+	client.CloseIdleConnections()
+
+	Expect(next.idleConnectionsClosed).To(BeTrue())
+}
+
+func TestInstrumentedRoundTripper_DoesNotCloseIdleConnectionsByDefault(t *testing.T) {
+	RegisterTestingT(t)
+
+	next := &mockRoundTripper{}
+	client := &http.Client{Transport: NewInstrumentedRoundTripper(next)}
+	client.CloseIdleConnections()
+
+	Expect(next.idleConnectionsClosed).To(BeFalse())
 }
 
 func TestInstrumentedRoundTripper_ScalerContextKey_Missing(t *testing.T) {

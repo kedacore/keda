@@ -1142,12 +1142,24 @@ func TestGetCurrentReplicas_NilScaleTargetGVKR(t *testing.T) {
 	const soName = "so-nil-gvkr"
 	const soNamespace = "test-ns"
 	const deploymentName = "target-dep"
+	const stsName = "target-sts"
+	const rsName = "target-rs"
 	replicas := int32(3)
 
 	populatedGVKR := &kedav1alpha1.GroupVersionKindResource{
 		Group:   "apps",
 		Version: "v1",
 		Kind:    "Deployment",
+	}
+	populatedGVKRSts := &kedav1alpha1.GroupVersionKindResource{
+		Group:   "apps",
+		Version: "v1",
+		Kind:    "StatefulSet",
+	}
+	populatedGVKRRs := &kedav1alpha1.GroupVersionKindResource{
+		Group:   "apps",
+		Version: "v1",
+		Kind:    "ReplicaSet",
 	}
 
 	tests := []struct {
@@ -1173,6 +1185,57 @@ func TestGetCurrentReplicas_NilScaleTargetGVKR(t *testing.T) {
 				},
 			},
 			wantReplicas: replicas,
+		},
+		{
+			name: "deployment with nil spec.replicas defaults to 1",
+			existing: []runtime.Object{
+				&kedav1alpha1.ScaledObject{
+					ObjectMeta: metav1.ObjectMeta{Name: soName, Namespace: soNamespace},
+					Spec: kedav1alpha1.ScaledObjectSpec{
+						ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: deploymentName},
+					},
+					Status: kedav1alpha1.ScaledObjectStatus{ScaleTargetGVKR: populatedGVKR},
+				},
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{Name: deploymentName, Namespace: soNamespace},
+					Spec:       appsv1.DeploymentSpec{Replicas: nil},
+				},
+			},
+			wantReplicas: 1,
+		},
+		{
+			name: "statefulset with nil spec.replicas defaults to 1",
+			existing: []runtime.Object{
+				&kedav1alpha1.ScaledObject{
+					ObjectMeta: metav1.ObjectMeta{Name: soName, Namespace: soNamespace},
+					Spec: kedav1alpha1.ScaledObjectSpec{
+						ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: stsName},
+					},
+					Status: kedav1alpha1.ScaledObjectStatus{ScaleTargetGVKR: populatedGVKRSts},
+				},
+				&appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{Name: stsName, Namespace: soNamespace},
+					Spec:       appsv1.StatefulSetSpec{Replicas: nil},
+				},
+			},
+			wantReplicas: 1,
+		},
+		{
+			name: "replicaset with nil spec.replicas defaults to 1",
+			existing: []runtime.Object{
+				&kedav1alpha1.ScaledObject{
+					ObjectMeta: metav1.ObjectMeta{Name: soName, Namespace: soNamespace},
+					Spec: kedav1alpha1.ScaledObjectSpec{
+						ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: rsName},
+					},
+					Status: kedav1alpha1.ScaledObjectStatus{ScaleTargetGVKR: populatedGVKRRs},
+				},
+				&appsv1.ReplicaSet{
+					ObjectMeta: metav1.ObjectMeta{Name: rsName, Namespace: soNamespace},
+					Spec:       appsv1.ReplicaSetSpec{Replicas: nil},
+				},
+			},
+			wantReplicas: 1,
 		},
 		{
 			name: "nil GVKR on input, refetch also has nil GVKR",

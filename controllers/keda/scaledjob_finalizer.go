@@ -18,13 +18,13 @@ package keda
 
 import (
 	"context"
+	"slices"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/common/message"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 )
@@ -36,7 +36,7 @@ const (
 // finalizeScaledJob runs finalization logic on ScaledJob if there's finalizer
 func (r *ScaledJobReconciler) finalizeScaledJob(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob,
 	namespacedName string) error {
-	if util.Contains(scaledJob.GetFinalizers(), scaledJobFinalizer) {
+	if slices.Contains(scaledJob.GetFinalizers(), scaledJobFinalizer) {
 		// Run finalization logic for scaledJobFinalizer. If the
 		// finalization logic fails, don't remove the finalizer so
 		// that we can retry during the next reconciliation.
@@ -46,7 +46,7 @@ func (r *ScaledJobReconciler) finalizeScaledJob(ctx context.Context, logger logr
 
 		// Remove scaledJobFinalizer. Once all finalizers have been
 		// removed, the object will be deleted.
-		scaledJob.SetFinalizers(util.Remove(scaledJob.GetFinalizers(), scaledJobFinalizer))
+		scaledJob.SetFinalizers(slices.DeleteFunc(scaledJob.GetFinalizers(), func(f string) bool { return f == scaledJobFinalizer }))
 		if err := r.Update(ctx, scaledJob); err != nil {
 			logger.Error(err, "Failed to update ScaledJob after removing a finalizer", "finalizer", scaledJobFinalizer)
 			return err
@@ -59,13 +59,13 @@ func (r *ScaledJobReconciler) finalizeScaledJob(ctx context.Context, logger logr
 	}
 
 	logger.Info("Successfully finalized ScaledJob")
-	r.EventEmitter.Emit(scaledJob, namespacedName, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobRemovedType, eventreason.ScaledJobDeleted, message.ScaledJobRemoved)
+	r.EventEmitter.Emit(scaledJob, scaledJob.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobRemovedType, eventreason.ScaledJobDeleted, message.ScaledJobRemoved)
 	return nil
 }
 
 // ensureFinalizer check there is finalizer present on the ScaledJob, if not it adds one
 func (r *ScaledJobReconciler) ensureFinalizer(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
-	if !util.Contains(scaledJob.GetFinalizers(), scaledJobFinalizer) {
+	if !slices.Contains(scaledJob.GetFinalizers(), scaledJobFinalizer) {
 		logger.Info("Adding Finalizer for the ScaledJob")
 		scaledJob.SetFinalizers(append(scaledJob.GetFinalizers(), scaledJobFinalizer))
 

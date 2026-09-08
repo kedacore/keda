@@ -34,9 +34,6 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
 )
 
-// hpaHealthGracePeriod is the amount of time after HPA creation during which we skip health checks to allow the HPA to initialize and report metrics, avoiding condition flapping.
-const hpaHealthGracePeriod = time.Minute
-
 func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool, isError bool, options ScaleExecutorOptions) ScaleResult {
 	logger := e.logger.WithValues("scaledobject.Name", scaledObject.Name, "scaledObject.Namespace", scaledObject.Namespace, "scaleTarget.Name", scaledObject.Spec.ScaleTargetRef.Name)
 	var currentReplicas int32
@@ -120,56 +117,71 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	return result
 }
 
-// checkHPAHealth checks HPA health and adjusts the Ready condition. If the HPA is healthy, the existing Ready condition is left as-is.
-// If the HPA is unhealthy, the Ready condition is set to False with an appropriate reason.
+// checkHPAHealth checks the HPA's health and sets the ScaledObject-only HPAActive condition
+// accordingly. It mirrors the HPA's own ScalingActive condition and does not read or mutate the
+// Ready condition: Ready reflects ScaledObject-level validity only, while HPAActive reflects the
+// HPA's operational health.
+//
+// If the HPA cannot currently be observed (no HPA yet, a transient read error, or the HPA hasn't
+// reported a ScalingActive condition yet), HPAActive is left completely untouched so the last
+// genuinely observed state persists until the HPA can be read again.
 func (e *scaleExecutor) checkHPAHealth(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, result *ScaleResult) {
-	hpaHealthy, hpaMessage := e.getHPAHealth(ctx, logger, scaledObject)
-	if hpaHealthy {
+	status, reason, message := e.getHPAHealth(ctx, logger, scaledObject)
+	if status == "" {
 		return
 	}
-
-	readyCondition := result.Conditions.GetReadyCondition()
-	if readyCondition.IsTrue() {
-		msg := fmt.Sprintf("ScaledObject is configured correctly but HPA is not healthy: %v", hpaMessage)
-		result.Conditions.SetReadyCondition(metav1.ConditionFalse, kedav1alpha1.ScaledObjectConditionHPAMetricsUnavailableReason, msg)
-	} else {
-		msg := fmt.Sprintf("Not ready because HPA is not healthy: %v and SO is not healthy: %v - %v", hpaMessage, readyCondition.Reason, readyCondition.Message)
-		result.Conditions.SetReadyCondition(metav1.ConditionFalse, kedav1alpha1.ScaledObjectConditionScalingDegradedReason, msg)
-	}
+	result.Conditions.SetHPAActiveCondition(status, reason, message)
 }
 
-// getHPAHealth gets the HPA ScalingActive condition to determine if the HPA is operationally healthy.
-func (e *scaleExecutor) getHPAHealth(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (healthy bool, message string) {
+// getHPAHealth inspects the HPA's ScalingActive condition to determine HPA health. It returns a
+// tri-state result:
+//   - metav1.ConditionTrue: the HPA is healthy - either actively scaling (reason
+//     ScaledObjectConditionHPAActiveReason) or intentionally idle because KEDA has scaled the
+//     target to zero (reason ScaledObjectConditionHPAScalingDisabledReason).
+//   - metav1.ConditionFalse: the HPA is unhealthy. The HPA's own cond.Reason is passed through as-is
+//     so downstream tooling can filter on the specific reason (e.g. FailedGetExternalMetric);
+//     ScaledObjectConditionHPAMetricsUnavailableReason is used as a fallback only when the HPA
+//     reports an empty reason.
+//   - "" (empty status): the HPA could not be observed on this reconcile (no HPA yet, a transient
+//     read error, or the HPA hasn't reported a ScalingActive condition yet). This is distinct from
+//     "healthy" - callers must not treat it as such.
+func (e *scaleExecutor) getHPAHealth(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (status metav1.ConditionStatus, reason string, message string) {
 	hpaName := scaledObject.Status.HpaName
 	if hpaName == "" {
 		logger.V(1).Info("HPA name not found in ScaledObject status, skipping health check")
-		return true, ""
+		return "", "", ""
 	}
 
 	hpa := &autoscalingv2.HorizontalPodAutoscaler{}
 	err := e.client.Get(ctx, types.NamespacedName{Name: hpaName, Namespace: scaledObject.Namespace}, hpa)
 	if err != nil {
 		logger.Error(err, "Could not read HPA status, skipping health check")
-		return true, ""
-	}
-
-	// Grace period after HPA creation where we skip health checks to allow HPA to initialize and report metrics and avoid condition flapping.
-	if hpa.CreationTimestamp.Add(hpaHealthGracePeriod).After(time.Now()) {
-		logger.V(1).Info("HPA is still initializing, skipping health check")
-		return true, ""
+		return "", "", ""
 	}
 
 	// Check HPA's ScalingActive condition
 	for _, cond := range hpa.Status.Conditions {
-		if cond.Type == autoscalingv2.ScalingActive {
-			if cond.Status == corev1.ConditionTrue || cond.Reason == "ScalingDisabled" {
-				return true, ""
+		if cond.Type != autoscalingv2.ScalingActive {
+			continue
+		}
+		switch {
+		case cond.Status == corev1.ConditionTrue:
+			return metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionHPAActiveReason, "HPA is actively scaling"
+		case cond.Reason == "ScalingDisabled":
+			// KEDA manages scale-to-zero; HPA disables itself at 0 replicas.
+			return metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionHPAScalingDisabledReason, cond.Message
+		default:
+			hpaReason := cond.Reason
+			if hpaReason == "" {
+				hpaReason = kedav1alpha1.ScaledObjectConditionHPAMetricsUnavailableReason
 			}
-			return false, cond.Reason
+			msg := fmt.Sprintf("HPA is not actively scaling: %s", cond.Message)
+			return metav1.ConditionFalse, hpaReason, msg
 		}
 	}
 
-	return true, ""
+	logger.V(1).Info("HPA has not yet reported a ScalingActive condition, skipping health check")
+	return "", "", ""
 }
 
 // An object will be scaled down to 0 only if it's passed its cooldown period

@@ -45,7 +45,7 @@ const (
 )
 
 var (
-	vaultTokenSelf = map[string]interface{}{
+	vaultTokenSelf = map[string]any{
 		"accessor":         "8609694a-cdbc-db9b-d345-e782dbb562ed",
 		"creation_time":    1697036787,
 		"creation_ttl":     0,
@@ -63,16 +63,16 @@ var (
 		"renewable":        false,
 		"ttl":              0,
 	}
-	kvV2SecretDataKeda = map[string]interface{}{
-		"data": map[string]interface{}{
+	kvV2SecretDataKeda = map[string]any{
+		"data": map[string]any{
 			"test":  kedaSecretValue,
 			"array": []string{kedaSecretValue},
 		},
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"version": 1,
 		},
 	}
-	kvV1SecretDataKeda = map[string]interface{}{
+	kvV1SecretDataKeda = map[string]any{
 		"test":  kedaSecretValue,
 		"array": []string{kedaSecretValue},
 	}
@@ -82,7 +82,7 @@ type pkiRequestTestData struct {
 	name     string
 	raw      string
 	secret   kedav1alpha1.VaultSecret
-	expected map[string]interface{}
+	expected map[string]any
 }
 
 var pkiRequestTestDataset = []pkiRequestTestData{
@@ -90,7 +90,7 @@ var pkiRequestTestDataset = []pkiRequestTestData{
 		name:   "valid pki request",
 		raw:    `{ "commonName": "test" }`,
 		secret: kedav1alpha1.VaultSecret{},
-		expected: map[string]interface{}{
+		expected: map[string]any{
 			"common_name": "test",
 		},
 	},
@@ -107,7 +107,7 @@ var pkiRequestTestDataset = []pkiRequestTestData{
 				Format:     "pem",
 			},
 		},
-		expected: map[string]interface{}{
+		expected: map[string]any{
 			"common_name": "test",
 			"alt_names":   "test2",
 			"ip_sans":     "192.168.1.1",
@@ -148,7 +148,7 @@ func TestGetPkiRequest(t *testing.T) {
 
 func mockVault(t *testing.T, useRootToken bool) *httptest.Server {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var data map[string]interface{}
+		var data map[string]any
 		var auth *vaultapi.SecretAuth
 		switch r.URL.Path {
 		case "/v1/auth/token/lookup-self":
@@ -166,9 +166,9 @@ func mockVault(t *testing.T, useRootToken bool) *httptest.Server {
 			str := base64.RawURLEncoding.EncodeToString(bytes)
 			randomCert := fmt.Sprintf("-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----", str)
 			randomKey := fmt.Sprintf("-----BEGIN END RSA PRIVATE KEY-----\n%s\n-----END END RSA PRIVATE KEY-----", str)
-			data = map[string]interface{}{
+			data = map[string]any{
 
-				"ca_chain": []interface{}{
+				"ca_chain": []any{
 					"-----BEGIN CERTIFICATE-----\nMIIA\n-----END CERTIFICATE-----",
 					"-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----",
 				},

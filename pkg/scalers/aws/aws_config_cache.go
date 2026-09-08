@@ -28,6 +28,7 @@ package aws
 
 import (
 	"context"
+	"crypto/sha3"
 	"encoding/hex"
 	"fmt"
 	"os"
@@ -40,7 +41,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/go-logr/logr"
-	"golang.org/x/crypto/sha3"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 

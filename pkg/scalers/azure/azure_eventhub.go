@@ -33,7 +33,11 @@ func GetEventHubClient(info EventHubInfo, logger logr.Logger) (*azeventhubs.Prod
 
 	switch info.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		hub, err := azeventhubs.NewProducerClientFromConnectionString(info.EventHubConnection, info.EventHubName, opts)
+		eventHubName := info.EventHubName
+		if HasEventHubEntityPath(info.EventHubConnection) {
+			eventHubName = ""
+		}
+		hub, err := azeventhubs.NewProducerClientFromConnectionString(info.EventHubConnection, eventHubName, opts)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create hub client: %w", err)
 		}
@@ -54,30 +58,45 @@ func GetEventHubClient(info EventHubInfo, logger logr.Logger) (*azeventhubs.Prod
 // Connection string should be in following format:
 // Endpoint=sb://eventhub-namespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=secretKey123;EntityPath=eventhub-name
 func parseAzureEventHubConnectionString(connectionString string) (string, string, error) {
-	parts := strings.Split(connectionString, ";")
-
-	var eventHubNamespace, eventHubName string
-	for _, v := range parts {
-		if strings.HasPrefix(v, "Endpoint") {
-			endpointParts := strings.SplitN(v, "=", 2)
-			if len(endpointParts) == 2 {
-				endpointParts[1] = strings.TrimPrefix(endpointParts[1], "sb://")
-				endpointParts[1] = strings.TrimSuffix(endpointParts[1], "/")
-				eventHubNamespace = endpointParts[1]
-			}
-		} else if strings.HasPrefix(v, "EntityPath") {
-			entityPathParts := strings.SplitN(v, "=", 2)
-			if len(entityPathParts) == 2 {
-				eventHubName = entityPathParts[1]
-			}
-		}
+	eventHubNamespace, _ := getConnectionStringValue(connectionString, "Endpoint")
+	if eventHubNamespace != "" {
+		eventHubNamespace = strings.TrimPrefix(eventHubNamespace, "sb://")
+		eventHubNamespace = strings.TrimSuffix(eventHubNamespace, "/")
 	}
+	eventHubName, _ := getConnectionStringValue(connectionString, "EntityPath")
 
 	if eventHubNamespace == "" || eventHubName == "" {
 		return "", "", errors.New("can't parse event hub connection string. Missing eventHubNamespace or eventHubName")
 	}
 
 	return eventHubNamespace, eventHubName, nil
+}
+
+// HasEventHubEntityPath returns true when EntityPath is present as a connection string key.
+func HasEventHubEntityPath(connectionString string) bool {
+	_, ok := getConnectionStringValue(connectionString, "EntityPath")
+	return ok
+}
+
+func getConnectionStringValue(connectionString, key string) (string, bool) {
+	parts := strings.SplitSeq(connectionString, ";")
+	for part := range parts {
+		partKey, value, ok := parseConnectionStringPart(part)
+		if ok && strings.EqualFold(partKey, key) {
+			return value, true
+		}
+	}
+
+	return "", false
+}
+
+func parseConnectionStringPart(part string) (string, string, bool) {
+	keyValue := strings.SplitN(part, "=", 2)
+	if len(keyValue) != 2 {
+		return "", "", false
+	}
+
+	return strings.TrimSpace(keyValue[0]), keyValue[1], true
 }
 
 func getHubAndNamespace(info EventHubInfo) (string, string, error) {

@@ -130,7 +130,7 @@ func (s *ibmmqScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 	depths := make([]int64, 0, len(s.metadata.QueueName))
 
 	for _, queueName := range s.metadata.QueueName {
-		requestJSON := []byte(fmt.Sprintf(`{"type": "runCommandJSON", "command": "display", "qualifier": "qlocal", "name": "%s", "responseParameters": ["CURDEPTH"]}`, queueName))
+		requestJSON := fmt.Appendf(nil, `{"type": "runCommandJSON", "command": "display", "qualifier": "qlocal", "name": "%s", "responseParameters": ["CURDEPTH"]}`, queueName)
 
 		req, err := http.NewRequestWithContext(ctx, "POST", s.metadata.Host, bytes.NewBuffer(requestJSON))
 		if err != nil {

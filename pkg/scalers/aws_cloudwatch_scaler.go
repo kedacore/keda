@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -155,10 +156,8 @@ func checkMetricUnit(unit string) error {
 	if unit == "" {
 		return nil
 	}
-	for _, s := range types.StandardUnit("").Values() {
-		if s == types.StandardUnit(unit) {
-			return nil
-		}
+	if slices.Contains(types.StandardUnit("").Values(), types.StandardUnit(unit)) {
+		return nil
 	}
 	return fmt.Errorf("metricUnit '%s' is not one of %v", unit, types.StandardUnit("").Values())
 }
