@@ -406,7 +406,7 @@ spec:
       activationLagThreshold: '1'
       ensureEvenDistributionOfPartitions: '{{.EnsureEvenDistributionOfPartitions}}'`
 
-	kafkaClusterTemplate = `apiVersion: kafka.strimzi.io/v1beta2
+	kafkaClusterTemplate = `apiVersion: kafka.strimzi.io/v1
 kind: Kafka
 metadata:
   name: {{.KafkaName}}
@@ -416,8 +416,7 @@ metadata:
     strimzi.io/node-pools: enabled
 spec:
   kafka:
-    version: "4.2.0"
-    replicas: 1
+	version: "4.3.1"
     listeners:
       - name: plain
         port: 9092
@@ -431,9 +430,6 @@ spec:
       offsets.topic.replication.factor: 1
       transaction.state.log.replication.factor: 1
       transaction.state.log.min.isr: 1
-      log.message.format.version: "2.5"
-    storage:
-      type: ephemeral
   entityOperator:
     topicOperator: {}
     userOperator: {}
@@ -445,7 +441,7 @@ spec:
           - name: STRIMZI_USE_FINALIZERS
             value: "false"
 ---
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: KafkaNodePool
 metadata:
   name: {{ .KafkaName }}-pool
@@ -460,17 +456,15 @@ spec:
   storage:
     type: ephemeral
   jvmOptions: {} # Optional, configure as needed
-  resources:     # Optional, configure requests/limits as needed
 `
 
-	kafkaTopicTemplate = `apiVersion: kafka.strimzi.io/v1beta2
+	kafkaTopicTemplate = `apiVersion: kafka.strimzi.io/v1
 kind: KafkaTopic
 metadata:
   name: {{.KafkaTopicName}}
   namespace: {{.TestNamespace}}
   labels:
     strimzi.io/cluster: {{.KafkaName}}
-  namespace: {{.TestNamespace}}
 spec:
   partitions: {{.KafkaTopicPartitions}}
   replicas: 1
