@@ -210,37 +210,36 @@ loop:
 		}
 	}
 
+	result, err := splunkObservabilityRollup(s.metadata.QueryAggregator, maxValue, minValue, valueSum, valueCount, latestValue)
+	if err != nil {
+		return result, err
+	}
+	s.logger.V(1).Info(fmt.Sprintf("Returning %s value: %.4f\n", s.metadata.QueryAggregator, result))
+	return result, nil
+}
+
+func splunkObservabilityRollup(aggregator string, maxValue, minValue, valueSum float64, valueCount int, latestValue float64) (float64, error) {
 	if valueCount == 0 {
 		return 0, fmt.Errorf("query returned no data points")
 	}
-
-	if valueCount > 1 && s.metadata.QueryAggregator == "" {
+	if valueCount > 1 && aggregator == "" {
 		return 0, fmt.Errorf("query returned more than 1 series; modify the query to return only 1 series or add a queryAggregator")
 	}
-
-	switch s.metadata.QueryAggregator {
+	switch aggregator {
 	case "max":
-		s.logger.V(1).Info(fmt.Sprintf("Returning max value: %.4f\n", maxValue))
 		return maxValue, nil
 	case "min":
-		s.logger.V(1).Info(fmt.Sprintf("Returning min value: %.4f\n", minValue))
 		return minValue, nil
 	case "avg":
-		avg := valueSum / float64(valueCount)
-		s.logger.V(1).Info(fmt.Sprintf("Returning avg value: %.4f\n", avg))
-		return avg, nil
+		return valueSum / float64(valueCount), nil
 	case "sum":
-		s.logger.V(1).Info(fmt.Sprintf("Returning sum value: %.4f\n", valueSum))
 		return valueSum, nil
 	case "count":
-		count := float64(valueCount)
-		s.logger.V(1).Info(fmt.Sprintf("Returning count value: %.4f\n", count))
-		return count, nil
+		return float64(valueCount), nil
 	case "latest":
-		s.logger.V(1).Info(fmt.Sprintf("Returning latest value: %.4f\n", latestValue))
 		return latestValue, nil
 	default:
-		return 0, fmt.Errorf("invalid queryAggregator: %q", s.metadata.QueryAggregator)
+		return 0, fmt.Errorf("invalid queryAggregator: %q", aggregator)
 	}
 }
 
