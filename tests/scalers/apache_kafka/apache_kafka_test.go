@@ -49,6 +49,8 @@ var (
 	ensureEvenDistributionOfPartitionsGroup           = "ensureEvenDistributionOfPartitions"
 	ensureEvenDistributionOfPartitionsTopicPartitions = 10
 	topicPartitions                                   = 3
+	noTopicSetTopic                                   = "kafka-topic-no-topic-set"
+	noTopicSetGroup                                   = "noTopicSetGroup"
 )
 
 type templateData struct {
@@ -406,6 +408,47 @@ spec:
       activationLagThreshold: '1'
       ensureEvenDistributionOfPartitions: '{{.EnsureEvenDistributionOfPartitions}}'`
 
+	// noTopicScaledObjectTemplate intentionally omits `topic`, so KEDA has to auto-discover the
+	// topics subscribed by the consumer group's active member. minReplicaCount keeps a consumer pod
+	// always running so the group always has an active member to discover a subscription from.
+	noTopicScaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  pollingInterval: 5
+  cooldownPeriod: 0
+  minReplicaCount: 1
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+        scaleDown:
+          stabilizationWindowSeconds: 0
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+  triggers:
+  - type: apache-kafka
+    metadata:
+      bootstrapServers: {{.BootstrapServer}}
+      consumerGroup: {{.ResetPolicy}}
+      lagThreshold: '1'
+      activationLagThreshold: '0'
+      offsetResetPolicy: 'earliest'`
+
 	kafkaClusterTemplate = `apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
@@ -512,6 +555,7 @@ func TestScaler(t *testing.T) {
 	addTopic(t, data, persistentLagTopic, topicPartitions)
 	addTopic(t, data, limitToPartitionsWithLagTopic, topicPartitions)
 	addTopic(t, data, ensureEvenDistributionOfPartitionsTopic, ensureEvenDistributionOfPartitionsTopicPartitions)
+	addTopic(t, data, noTopicSetTopic, topicPartitions)
 
 	// test scaling
 	testEarliestPolicy(t, kc, data)
@@ -524,6 +568,8 @@ func TestScaler(t *testing.T) {
 	testPersistentLag(t, kc, data)
 	testScalingOnlyPartitionsWithLag(t, kc, data)
 	testScalingEnsureEvenDistributionOfPartitions(t, kc, data)
+	// Run last: relies on lag having already accumulated on unrelated topics from the tests above.
+	testNoTopicSetWithUnrelatedLag(t, kc, data)
 }
 
 func testEarliestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -863,6 +909,47 @@ func testScalingEnsureEvenDistributionOfPartitions(t *testing.T, kc *kubernetes.
 	// we should scale to 10 pods
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 10, 60, 2),
 		"replica count should be %d after 2 minute", 10)
+}
+
+func testNoTopicSetWithUnrelatedLag(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing noTopicSetWithUnrelatedLag: no scale out from unrelated topics ---")
+
+	// This consumer group only ever subscribes to noTopicSetTopic. The ScaledObject below has no
+	// `topic` set, so KEDA must auto-discover the topics subscribed by the group's active member.
+	// That must resolve to just noTopicSetTopic - not fall back to every topic visible to the
+	// credentials, several of which (topic1, topic2, persistentLagTopic, ...) have real, non-zero
+	// lag by this point in the suite.
+	data.Params = fmt.Sprintf("--topic %s --group %s --from-beginning", noTopicSetTopic, noTopicSetGroup)
+	data.Commit = StringFalse
+	data.TopicName = noTopicSetTopic
+	data.ResetPolicy = noTopicSetGroup
+	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+
+	// Bring up the consumer manually before the ScaledObject exists. KEDA's scale-from-zero needs a
+	// successful metric read to ever move replicas off 0, but with no `topic` set that read itself
+	// needs an active group member - so if we let the ScaledObject bring the deployment up from 0,
+	// neither side can ever go first and the group stays permanently in state "Dead". Starting the
+	// consumer directly sidesteps that: minReplicaCount then only has to keep it there.
+	KubernetesScaleDeployment(t, kc, deploymentName, 1, testNamespace)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 2),
+		"replica count should be %d after 2 minute", 1)
+
+	KubectlApplyWithTemplate(t, data, "noTopicScaledObjectTemplate", noTopicScaledObjectTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "noTopicScaledObjectTemplate", noTopicScaledObjectTemplate)
+
+	// Shouldn't scale beyond minReplicaCount even though unrelated topics have real lag
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 1, 60)
+
+	// Publish messages on noTopicSetTopic itself: the group's real subscription should still be
+	// correctly auto-discovered and scale accordingly
+	messages := 5
+	for i := 0; i < messages; i++ {
+		publishMessage(t, noTopicSetTopic)
+	}
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, topicPartitions, 60, 2),
+		"replica count should be %d after 2 minute", topicPartitions)
 }
 
 func addTopic(t *testing.T, data templateData, name string, partitions int) {

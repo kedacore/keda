@@ -49,6 +49,8 @@ var (
 	ensureEvenDistributionOfPartitionsGroup           = "ensureEvenDistributionOfPartitions"
 	ensureEvenDistributionOfPartitionsTopicPartitions = 10
 	topicPartitions                                   = 3
+	noTopicSetTopic                                   = "kafka-topic-no-topic-set"
+	noTopicSetGroup                                   = "noTopicSetGroup"
 )
 
 type templateData struct {
@@ -405,6 +407,48 @@ spec:
       activationLagThreshold: '1'
       ensureEvenDistributionOfPartitions: '{{.EnsureEvenDistributionOfPartitions}}'`
 
+	// noTopicScaledObjectTemplate intentionally omits `topic`, so KEDA has to auto-discover the
+	// topics subscribed by the consumer group. Combined with a consumer group that never committed
+	// any offset, this reproduces https://github.com/kedacore/keda/issues/8104: an empty topic
+	// filter must not be treated as "describe every topic visible to the credentials".
+	noTopicScaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  pollingInterval: 5
+  cooldownPeriod: 0
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+        scaleDown:
+          stabilizationWindowSeconds: 0
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+  triggers:
+  - type: kafka
+    metadata:
+      bootstrapServers: {{.BootstrapServer}}
+      consumerGroup: {{.ResetPolicy}}
+      lagThreshold: '1'
+      activationLagThreshold: '0'
+      offsetResetPolicy: 'earliest'
+      scaleToZeroOnInvalidOffset: 'false'`
+
 	kafkaClusterTemplate = `apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
@@ -511,6 +555,7 @@ func TestScaler(t *testing.T) {
 	addTopic(t, data, persistentLagTopic, topicPartitions)
 	addTopic(t, data, limitToPartitionsWithLagTopic, topicPartitions)
 	addTopic(t, data, ensureEvenDistributionOfPartitionsTopic, ensureEvenDistributionOfPartitionsTopicPartitions)
+	addTopic(t, data, noTopicSetTopic, 1)
 
 	// test scaling
 	testEarliestPolicy(t, kc, data)
@@ -523,6 +568,8 @@ func TestScaler(t *testing.T) {
 	testPersistentLag(t, kc, data)
 	testScalingOnlyPartitionsWithLag(t, kc, data)
 	testScalingEnsureEvenDistributionOfPartitions(t, kc, data)
+	// Run last: relies on lag having already accumulated on unrelated topics from the tests above.
+	testNoTopicSetWithNoCommittedOffset(t, kc, data)
 }
 
 func testEarliestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -861,6 +908,25 @@ func testScalingEnsureEvenDistributionOfPartitions(t *testing.T, kc *kubernetes.
 	// we should scale to 10 pods
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 10, 60, 2),
 		"replica count should be %d after 2 minute", 10)
+}
+
+func testNoTopicSetWithNoCommittedOffset(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing noTopicSetWithNoCommittedOffset: no scale out ---")
+
+	// This consumer group never runs and never commits any offset on noTopicSetTopic (which stays
+	// empty throughout). The ScaledObject below has no `topic` set, so KEDA must auto-discover the
+	// topics subscribed by the group. Since nothing was ever committed, that discovery must resolve
+	// to zero topics - not fall back to every topic visible to the credentials, several of which
+	// (topic1, topic2, persistentLagTopic, ...) have real, non-zero lag by this point in the suite.
+	data.Params = fmt.Sprintf("--topic %s --group %s", noTopicSetTopic, noTopicSetGroup)
+	data.Commit = StringFalse
+	data.ResetPolicy = noTopicSetGroup
+	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+	KubectlApplyWithTemplate(t, data, "noTopicScaledObjectTemplate", noTopicScaledObjectTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "noTopicScaledObjectTemplate", noTopicScaledObjectTemplate)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
 
 func addTopic(t *testing.T, data templateData, name string, partitions int) {

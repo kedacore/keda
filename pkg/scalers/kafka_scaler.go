@@ -567,6 +567,13 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 		for topicName := range listCGOffsetResponse.Blocks {
 			topicsToDescribe = append(topicsToDescribe, topicName)
 		}
+		// The consumer group has not committed any offset yet, so there is nothing to describe.
+		// Passing an empty slice to DescribeTopics would be encoded on the wire as a null topics
+		// array, which Kafka interprets as "no filter" and returns metadata for every topic
+		// visible to the configured credentials instead of none.
+		if len(topicsToDescribe) == 0 {
+			return map[string][]int32{}, nil
+		}
 	} else {
 		topicsToDescribe = []string{s.metadata.Topic}
 	}
