@@ -4,12 +4,14 @@
 package scaling_modifiers_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -315,9 +317,15 @@ func testFormula(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	_, err = ExecuteCommand(fmt.Sprintf("kubectl scale deployment/%s --replicas=0 -n %s", metricsServerDeploymentName, namespace))
 	assert.NoErrorf(t, err, "cannot scale metricsServer deployment - %s", err)
 
+	// The metrics-api trigger now fails every poll. Once it has failed failureThreshold times in a row
+	// the operator sets the ScaledObject's Fallback condition and serves fallback.replicas in place of
+	// the formula, so the condition is the state that has to be reached before the replica count below
+	// means anything: it is what a 45s sleep here used to stand in for. Asserting it also shows the
+	// five replicas came from the fallback and not from the formula.
+	assert.True(t, waitForFallbackActive(t),
+		"the Fallback condition of scaledobject %s should be True once the metrics server is gone", scaledObjectName)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 5, 12, 10),
 		"replica count should be %d after 2 minutes", 5)
-	time.Sleep(45 * time.Second) // waiting for passing failureThreshold
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 5, 60)
 
 	// ensure state returns to normal after error resolved and triggers are healthy
@@ -351,6 +359,34 @@ func testFormula(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	// 5//2 = 3
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 3, 12, 10),
 		"replica count should be %d after 2 minutes", 3)
+}
+
+// The condition needs failureThreshold (3) failed polls at pollingInterval 5s, so it arrives within
+// about 20 seconds of the metrics server going away. Two minutes matches the budget the replica wait
+// that follows it has, and is only reached when the fallback did not engage at all.
+const fallbackConditionTimeout = 2 * time.Minute
+
+func waitForFallbackActive(t *testing.T) bool {
+	kedaKc := GetKedaKubernetesClient(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), fallbackConditionTimeout)
+	defer cancel()
+
+	err := KedaEventually(ctx, func(ctx context.Context) (bool, error) {
+		so, err := kedaKc.ScaledObjects(namespace).Get(ctx, scaledObjectName, metav1.GetOptions{})
+		if err != nil {
+			return false, fmt.Errorf("cannot get scaledobject %s/%s - %w", namespace, scaledObjectName, err)
+		}
+
+		condition := so.Status.Conditions.GetFallbackCondition()
+		t.Logf("ScaledObject %s Fallback condition: Status=%s, Reason=%s", scaledObjectName, condition.Status, condition.Reason)
+		return condition.IsTrue(), nil
+	}, IntervalShort)
+	if err != nil {
+		t.Log(err)
+		return false
+	}
+	return true
 }
 
 func getTemplateData() (templateData, []Template) {
