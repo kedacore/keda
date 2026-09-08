@@ -55,7 +55,7 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.16.2
 	github.com/dysnix/predictkube-libs v0.1.0
 	github.com/dysnix/predictkube-proto v0.0.0-20250415003810-aa0af0a0019b
-	github.com/elastic/elastic-transport-go/v8 v8.9.0
+	github.com/elastic/elastic-transport-go/v8 v8.11.0
 	github.com/elastic/go-elasticsearch/v9 v9.5.2
 	github.com/expr-lang/expr v1.17.8
 	github.com/go-kivik/kivik/v4 v4.5.2
@@ -70,7 +70,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0
 	github.com/hashicorp/vault/api v1.23.0
 	github.com/influxdata/influxdb-client-go/v2 v2.14.0
-	github.com/jackc/pgx/v5 v5.10.0
+	github.com/jackc/pgx/v5 v5.11.0
 	github.com/joho/godotenv v1.5.1
 	github.com/jstemmer/go-junit-report/v2 v2.1.0
 	github.com/microsoft/ApplicationInsights-Go v0.4.4
