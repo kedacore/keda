@@ -184,7 +184,7 @@ func (s *splunkObservabilityScaler) ingestPersistentMessage(msg *messages.DataMe
 	if len(msg.Payloads) == 0 {
 		return nil
 	}
-	ts := time.Now()
+	ts := msg.Timestamp()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	cutoff := ts.Add(-time.Duration(s.metadata.Duration) * time.Second)
@@ -218,10 +218,10 @@ func (s *splunkObservabilityScaler) persistentQueryResult() (float64, error) {
 			window = append(window, sample)
 		}
 	}
+	if s.streamErr != nil {
+		return -1, fmt.Errorf("splunk observability persistent stream ended: %w", s.streamErr)
+	}
 	if len(window) == 0 {
-		if s.streamErr != nil {
-			return -1, fmt.Errorf("splunk observability persistent stream is stale: %w", s.streamErr)
-		}
 		if len(s.samples) > 0 {
 			return -1, fmt.Errorf("splunk observability persistent stream is stale")
 		}
