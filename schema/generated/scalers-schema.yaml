@@ -2681,6 +2681,14 @@ scalers:
           triggerAuthenticationVariableReadable: true
     - type: mssql
       parameters:
+        - name: driverName
+          type: string
+          default: sqlserver
+          allowedValue:
+            - sqlserver
+            - azuresql
+          metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: connectionString
           type: string
           optional: true
