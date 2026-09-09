@@ -113,8 +113,12 @@ func TestScaler(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	// assert that the deployment did not scale down after one minute
-	WaitForDeploymentReplicaCountChange(t, kc, deploymentName, testNamespace, 0, 60)
+	// The trigger is inactive to start with - the monitored deployment has no pods - so KEDA takes
+	// this deployment to idleReplicaCount. Waiting for that is what gives the force-activation
+	// assertion something to prove: the deployment is created with two replicas, which is the very
+	// count that assertion looks for, so without this it is satisfied before anything is forced.
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+		"replica count should be 0 before activation is forced")
 
 	// test activation
 	testForceActivation(t, kc)

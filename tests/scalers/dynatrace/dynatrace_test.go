@@ -131,6 +131,7 @@ spec:
 )
 
 func TestDynatraceScaler(t *testing.T) {
+	t.Skip("Disabled - Dynatrace tenant access is currently unavailable due to licensing; see https://github.com/kedacore/keda/issues/6995 for details")
 	// setup
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, dynatraceToken, "DYNATRACE_METRICS_TOKEN env variable is required for dynatrace tests")

@@ -12,7 +12,7 @@ jobs:
   triage:
     runs-on: ubuntu-latest
     name: Comment evaluate
-    container: ghcr.io/kedacore/keda-tools:1.26.6@sha256:7db93d7d2720c0ddbc67d35291cf8ba8f34a28c3125d08b0f93fe4c7f2e6debc
+    container: ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c
     if: |
       github.event.issue.pull_request != null &&
       (
@@ -77,7 +77,7 @@ jobs:
     needs: triage
     runs-on: ubuntu-24.04-arm
     name: Build images
-    container: ghcr.io/kedacore/keda-tools:1.26.6@sha256:7db93d7d2720c0ddbc67d35291cf8ba8f34a28c3125d08b0f93fe4c7f2e6debc
+    container: ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
@@ -247,7 +247,7 @@ jobs:
     needs: [triage, build-test-images]
     runs-on: e2e
     name: Execute e2e tests
-    container: ghcr.io/kedacore/keda-tools:1.26.6@sha256:7db93d7d2720c0ddbc67d35291cf8ba8f34a28c3125d08b0f93fe4c7f2e6debc
+    container: ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c
     if: needs.triage.outputs.run-e2e == 'true'
     outputs:
       test-outcome: ${{ steps.test.outcome }}
@@ -458,7 +458,7 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
 
       - name: Create k8s ${{ inputs.kubernetesVersion }} Kind Cluster
-        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
+        uses: helm/kind-action@06c1ae10762d3b9c1644e7fe69596ae519e015a2 # v1.15.0
         env:
           # renovate: datasource=docker depName=kindest/node
           NODE_IMAGE_VERSION: v1.36.1
@@ -548,9 +548,9 @@ jobs:
           # renovate: datasource=docker depName=vishnubijukumar/kindest-node-s390x
           KINDEST_NODE_S390X_VERSION: v1.35.0
           # renovate: datasource=docker depName=vishnubijukumar/kindnetd
-          KINDNETD_S390X_VERSION: v20250512-s390x
+          KINDNETD_S390X_VERSION: v20250829-s390x
           # renovate: datasource=docker depName=vishnubijukumar/local-path-provisioner
-          LOCAL_PATH_PROVISIONER_S390X_VERSION: v1
+          LOCAL_PATH_PROVISIONER_S390X_VERSION: v2
         run: |
           go install sigs.k8s.io/kind@${KIND_VERSION}
           kind create cluster --name s390x-smoke-test-${{ github.run_id }} --image vishnubijukumar/kindest-node-s390x:${KINDEST_NODE_S390X_VERSION}

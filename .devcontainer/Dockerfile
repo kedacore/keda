@@ -17,7 +17,7 @@ ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 
 # renovate: datasource=github-releases depName=protocolbuffers/protobuf
-ENV PROTOC_VERSION=v35.1
+ENV PROTOC_VERSION=v36.1
 
 # Configure apt, install packages and tools
 RUN apt-get update \

@@ -35,8 +35,7 @@ type spannerMetadata struct {
 	TargetValue     float64 `keda:"name=targetValue,            order=triggerMetadata, default=5"`
 	ActivationValue float64 `keda:"name=activationValue,        order=triggerMetadata, default=0"`
 
-	Credentials            string `keda:"name=credentials,            order=triggerMetadata;resolvedEnv, optional"`
-	CredentialsFromEnvFile string `keda:"name=credentialsFromEnvFile, order=triggerMetadata;resolvedEnv, optional"`
+	gcp.AuthMetadata `keda:"optional"`
 
 	gcpAuthorization *gcp.AuthorizationMetadata
 	metricName       string
