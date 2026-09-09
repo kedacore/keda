@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"net"
 	"os"
 	"path"
 	"strings"
@@ -34,6 +35,69 @@ import (
 )
 
 var log = logf.Log.WithName("grpc_server_certificates")
+
+type tlsMaterial struct {
+	sync.RWMutex
+	pool        *x509.CertPool
+	certificate tls.Certificate
+}
+
+func (m *tlsMaterial) config(server bool, serverName string) *tls.Config {
+	m.RLock()
+	defer m.RUnlock()
+	config := &tls.Config{
+		MinVersion:   kedautil.GetServiceMinTLSVersion(),
+		CipherSuites: kedautil.GetServiceTLSCipherList(),
+		Certificates: []tls.Certificate{m.certificate},
+		ServerName:   serverName,
+	}
+	if server {
+		config.ClientAuth = tls.RequireAndVerifyClientCert
+		config.ClientCAs = m.pool
+	} else {
+		config.RootCAs = m.pool
+	}
+	return config
+}
+
+// dynamicTLSCredentials snapshots the current certificate and CA pool for each
+// connection, so both client and server handshakes observe certificate rotation.
+type dynamicTLSCredentials struct {
+	material *tlsMaterial
+	server   bool
+	mu       sync.RWMutex
+	name     string
+}
+
+func (c *dynamicTLSCredentials) ClientHandshake(ctx context.Context, authority string, rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
+	c.mu.RLock()
+	name := c.name
+	c.mu.RUnlock()
+	return credentials.NewTLS(c.material.config(false, name)).ClientHandshake(ctx, authority, rawConn)
+}
+
+func (c *dynamicTLSCredentials) ServerHandshake(rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
+	return credentials.NewTLS(c.material.config(true, "")).ServerHandshake(rawConn)
+}
+
+func (c *dynamicTLSCredentials) Info() credentials.ProtocolInfo {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return credentials.ProtocolInfo{SecurityProtocol: "tls", SecurityVersion: "1.2", ServerName: c.name}
+}
+
+func (c *dynamicTLSCredentials) Clone() credentials.TransportCredentials {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return &dynamicTLSCredentials{material: c.material, server: c.server, name: c.name}
+}
+
+func (c *dynamicTLSCredentials) OverrideServerName(name string) error {
+	c.mu.Lock()
+	c.name = name
+	c.mu.Unlock()
+	return nil
+}
 
 // buildCertPool creates a fresh x509.CertPool seeded from the system pool
 // and appends the PEM-encoded CA bundle at caPath.
@@ -81,8 +145,7 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 		return nil, err
 	}
 
-	certMutex := sync.RWMutex{}
-	certPool := initialPool
+	material := &tlsMaterial{pool: initialPool, certificate: mTLSCertificate}
 
 	go func() {
 		log.V(1).Info("starting mTLS certificates monitoring")
@@ -115,10 +178,10 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 					log.Error(err, "error reading grpc certificate")
 					continue
 				}
-				certMutex.Lock()
-				certPool = newPool
-				mTLSCertificate = cert
-				certMutex.Unlock()
+				material.Lock()
+				material.pool = newPool
+				material.certificate = cert
+				material.Unlock()
 				log.V(1).Info("grpc mTLS certificate and CA pool have been updated")
 
 			case err, ok := <-watcher.Errors:
@@ -134,46 +197,5 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 		}
 	}()
 
-	// Create the credentials and return it
-	config := &tls.Config{
-		MinVersion:   kedautil.GetServiceMinTLSVersion(),
-		CipherSuites: kedautil.GetServiceTLSCipherList(),
-		GetCertificate: func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
-			certMutex.RLock()
-			defer certMutex.RUnlock()
-			return &mTLSCertificate, nil
-		},
-		GetClientCertificate: func(_ *tls.CertificateRequestInfo) (*tls.Certificate, error) {
-			certMutex.RLock()
-			defer certMutex.RUnlock()
-			return &mTLSCertificate, nil
-		},
-		GetConfigForClient: func(_ *tls.ClientHelloInfo) (*tls.Config, error) {
-			certMutex.RLock()
-			pool := certPool
-			cert := mTLSCertificate
-			certMutex.RUnlock()
-
-			cfg := &tls.Config{
-				MinVersion:   kedautil.GetServiceMinTLSVersion(),
-				CipherSuites: kedautil.GetServiceTLSCipherList(),
-				Certificates: []tls.Certificate{cert},
-			}
-			if server {
-				cfg.ClientAuth = tls.RequireAndVerifyClientCert
-				cfg.ClientCAs = pool
-			} else {
-				cfg.RootCAs = pool
-			}
-			return cfg, nil
-		},
-	}
-	if server {
-		config.ClientAuth = tls.RequireAndVerifyClientCert
-		config.ClientCAs = initialPool
-	} else {
-		config.RootCAs = initialPool
-	}
-
-	return credentials.NewTLS(config), nil
+	return &dynamicTLSCredentials{material: material, server: server}, nil
 }

@@ -20,13 +20,14 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
+	"net"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 	"time"
 
@@ -116,6 +117,59 @@ func TestLoadGrpcTLSCredentialsClient(t *testing.T) {
 	assert.NotNil(t, creds)
 }
 
+func handshake(client, server credentials.TransportCredentials) error {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return err
+	}
+	defer listener.Close()
+
+	serverErr := make(chan error, 1)
+	go func() {
+		rawConn, err := listener.Accept()
+		if err != nil {
+			serverErr <- err
+			return
+		}
+		conn, _, err := server.ServerHandshake(rawConn)
+		if conn != nil {
+			defer conn.Close()
+		}
+		serverErr <- err
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	clientConn, err := net.DialTimeout("tcp", listener.Addr().String(), 2*time.Second)
+	if err != nil {
+		return err
+	}
+	conn, _, clientErr := client.ClientHandshake(ctx, "localhost", clientConn)
+	if conn != nil {
+		defer conn.Close()
+	}
+	if clientErr != nil {
+		return clientErr
+	}
+	return <-serverErr
+}
+
+func staticTLSCredentials(t *testing.T, dir string, server bool) credentials.TransportCredentials {
+	t.Helper()
+	pool, err := buildCertPool(filepath.Join(dir, "ca.crt"))
+	require.NoError(t, err)
+	cert, err := tls.LoadX509KeyPair(filepath.Join(dir, "tls.crt"), filepath.Join(dir, "tls.key"))
+	require.NoError(t, err)
+	config := &tls.Config{MinVersion: tls.VersionTLS12, Certificates: []tls.Certificate{cert}}
+	if server {
+		config.ClientAuth = tls.RequireAndVerifyClientCert
+		config.ClientCAs = pool
+	} else {
+		config.RootCAs = pool
+	}
+	return credentials.NewTLS(config)
+}
+
 func TestLoadGrpcTLSCredentialsConcurrentRotationRace(t *testing.T) {
 	dir := t.TempDir()
 	generateTestCertAndKey(t, dir)
@@ -123,41 +177,22 @@ func TestLoadGrpcTLSCredentialsConcurrentRotationRace(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	creds, err := LoadGrpcTLSCredentials(ctx, dir, true)
+	serverCreds, err := LoadGrpcTLSCredentials(ctx, dir, true)
 	require.NoError(t, err)
-	require.NotNil(t, creds)
+	clientCreds, err := LoadGrpcTLSCredentials(ctx, dir, false)
+	require.NoError(t, err)
+	require.NoError(t, handshake(clientCreds, serverCreds))
 
-	tlsCreds, ok := creds.(interface {
-		Info() credentials.ProtocolInfo
-	})
-	require.True(t, ok)
-	require.Equal(t, "tls", tlsCreds.Info().SecurityProtocol)
-
-	var wg sync.WaitGroup
-	stop := make(chan struct{})
-
-	// Concurrently simulate client handshakes accessing certPool & mTLSCertificate
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for {
-				select {
-				case <-stop:
-					return
-				default:
-					pool, err := buildCertPool(filepath.Join(dir, "ca.crt"))
-					if err != nil || pool == nil {
-						t.Errorf("failed to build cert pool: %v", err)
-						return
-					}
-				}
-			}
-		}()
-	}
-
-	// Run for a short burst
-	time.Sleep(100 * time.Millisecond)
-	close(stop)
-	wg.Wait()
+	generateTestCertAndKey(t, dir)
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "..data"), 0700))
+	freshClient := staticTLSCredentials(t, dir, false)
+	freshServer := staticTLSCredentials(t, dir, true)
+	require.Eventually(t, func() bool {
+		clientErr := handshake(clientCreds, freshServer)
+		serverErr := handshake(freshClient, serverCreds)
+		if clientErr != nil || serverErr != nil {
+			t.Logf("waiting for rotated credentials: client=%v server=%v", clientErr, serverErr)
+		}
+		return clientErr == nil && serverErr == nil
+	}, 5*time.Second, 50*time.Millisecond, "client and server should use the rotated certificate material")
 }
