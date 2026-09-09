@@ -36,11 +36,15 @@ type splunkObservabilityMetadata struct {
 }
 
 type splunkObservabilityScaler struct {
-	metadata  *splunkObservabilityMetadata
-	apiClient *signalflow.Client
-	logger    logr.Logger
-	mu        sync.RWMutex
-	closed    bool
+	metadata      *splunkObservabilityMetadata
+	apiClient     *signalflow.Client
+	logger        logr.Logger
+	mu            sync.Mutex
+	closed        bool
+	nextQueryID   uint64
+	activeQueries map[uint64]context.CancelFunc
+	inFlight      sync.WaitGroup
+	closeDone     chan struct{}
 }
 
 func parseSplunkObservabilityMetadata(config *scalersconfig.ScalerConfig) (*splunkObservabilityMetadata, error) {
@@ -127,14 +131,50 @@ func (s *splunkObservabilityScaler) stopAndDrain(comp *signalflow.Computation, p
 	}
 }
 
-func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+func (s *splunkObservabilityScaler) startQuery(ctx context.Context) (*signalflow.Client, context.Context, func(), error) {
+	queryCtx, cancel := context.WithCancel(ctx)
+
+	s.mu.Lock()
 	if s.closed || s.apiClient == nil {
-		return -1, fmt.Errorf("splunk observability scaler is closed")
+		s.mu.Unlock()
+		cancel()
+		return nil, nil, nil, fmt.Errorf("splunk observability scaler is closed")
 	}
 
-	comp, err := s.apiClient.Execute(ctx, &signalflow.ExecuteRequest{
+	queryID := s.nextQueryID
+	s.nextQueryID++
+	if s.activeQueries == nil {
+		s.activeQueries = make(map[uint64]context.CancelFunc)
+	}
+	s.activeQueries[queryID] = cancel
+	s.inFlight.Add(1)
+	apiClient := s.apiClient
+	s.mu.Unlock()
+
+	finishQuery := func() {
+		s.mu.Lock()
+		delete(s.activeQueries, queryID)
+		s.mu.Unlock()
+		cancel()
+		s.inFlight.Done()
+	}
+
+	return apiClient, queryCtx, finishQuery, nil
+}
+
+func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64, error) {
+	apiClient, queryCtx, finishQuery, err := s.startQuery(ctx)
+	if err != nil {
+		return -1, err
+	}
+	cleanupStarted := false
+	defer func() {
+		if !cleanupStarted {
+			finishQuery()
+		}
+	}()
+
+	comp, err := apiClient.Execute(queryCtx, &signalflow.ExecuteRequest{
 		Program: s.metadata.Query,
 	})
 	if err != nil {
@@ -145,7 +185,7 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 
 	streamDuration := time.Duration(s.metadata.Duration) * time.Second
 	// Hard deadline beyond the Duration window so a non-responsive backend cannot block forever.
-	streamCtx, cancel := context.WithTimeout(ctx, streamDuration+splunkO11yStreamMargin)
+	streamCtx, cancel := context.WithTimeout(queryCtx, streamDuration+splunkO11yStreamMargin)
 	defer cancel()
 
 	stopTimer := time.NewTimer(streamDuration)
@@ -182,7 +222,11 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 	// timedOut handles the hard-deadline path: stop, drain, and return the timeout error.
 	timedOut := func() (float64, error) {
 		s.logger.V(1).Info("Context done before stream completed; stopping computation.")
-		_ = s.stopAndDrain(comp, nil)
+		cleanupStarted = true
+		go func() {
+			_ = s.stopAndDrain(comp, nil)
+			finishQuery()
+		}()
 		return -1, fmt.Errorf("splunk observability query ended before stream completed: %w", streamCtx.Err())
 	}
 
@@ -269,14 +313,32 @@ func (s *splunkObservabilityScaler) GetMetricSpecForScaling(context.Context) []v
 
 func (s *splunkObservabilityScaler) Close(context.Context) error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if s.closed {
+		done := s.closeDone
+		s.mu.Unlock()
+		if done != nil {
+			<-done
+		}
 		return nil
 	}
 	s.closed = true
-	if s.apiClient != nil {
-		s.apiClient.Close()
-		s.apiClient = nil
+	s.closeDone = make(chan struct{})
+	done := s.closeDone
+	apiClient := s.apiClient
+	s.apiClient = nil
+	cancels := make([]context.CancelFunc, 0, len(s.activeQueries))
+	for _, cancel := range s.activeQueries {
+		cancels = append(cancels, cancel)
 	}
+	s.mu.Unlock()
+
+	for _, cancel := range cancels {
+		cancel()
+	}
+	s.inFlight.Wait()
+	if apiClient != nil {
+		apiClient.Close()
+	}
+	close(done)
 	return nil
 }

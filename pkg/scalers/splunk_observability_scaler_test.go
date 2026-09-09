@@ -154,47 +154,88 @@ func newFakeSplunkO11yScaler(t *testing.T, duration int) (*splunkObservabilitySc
 	return scaler, stop
 }
 
+func waitForSplunkO11yJob(t *testing.T, fake *signalflow.FakeBackend) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for fake.RunningJobsForProgram(splunkO11yFakeProgram) == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("SignalFlow fake backend did not start the query")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
 // Regression guard: a stuck stream must not block getQueryResult past the parent context deadline.
 func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testing.T) {
-	// Large duration so the stopTimer never fires; the parent deadline must bound the call.
-	scaler, stop := newFakeSplunkO11yScaler(t, 3600)
+	scaler, fake, stop := newFakeSplunkO11yScalerWithBackend(t, 3600)
 	defer stop()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	done := make(chan struct{})
-	start := time.Now()
+	done := make(chan error, 1)
 	go func() {
-		defer close(done)
-		_, _ = scaler.getQueryResult(ctx)
+		_, err := scaler.getQueryResult(ctx)
+		done <- err
 	}()
+	waitForSplunkO11yJob(t, fake)
+
+	start := time.Now()
+	cancel()
 
 	select {
-	case <-done:
-		if elapsed := time.Since(start); elapsed > 5*time.Second {
-			t.Fatalf("getQueryResult returned after %v, far longer than the context deadline", elapsed)
+	case err := <-done:
+		if err == nil {
+			t.Fatal("expected cancelled query to return an error")
 		}
-	case <-time.After(10 * time.Second):
+		if elapsed := time.Since(start); elapsed >= splunkO11yDrainTimeout/2 {
+			t.Fatalf("getQueryResult returned after %v, waited for timeout cleanup", elapsed)
+		}
+	case <-time.After(splunkO11yDrainTimeout):
 		t.Fatal("getQueryResult did not return after parent context was cancelled; it is hanging")
 	}
 }
 
-func TestSplunkObservabilityCloseAfterCancelledQuery(t *testing.T) {
-	scaler, stop := newFakeSplunkO11yScaler(t, 3600)
+func TestSplunkObservabilityCloseCancelsActiveQuery(t *testing.T) {
+	scaler, fake, stop := newFakeSplunkO11yScalerWithBackend(t, 3600)
+	defer stop()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	_, err := scaler.getQueryResult(ctx)
-	cancel()
-	if err == nil {
-		stop()
-		t.Fatal("expected cancelled query to return an error")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	queryDone := make(chan error, 1)
+	go func() {
+		_, err := scaler.getQueryResult(ctx)
+		queryDone <- err
+	}()
+	waitForSplunkO11yJob(t, fake)
+
+	closeDone := make(chan error, 1)
+	go func() {
+		closeDone <- scaler.Close(context.Background())
+	}()
+
+	select {
+	case err := <-queryDone:
+		if err == nil {
+			t.Fatal("expected Close to cancel the active query")
+		}
+	case <-time.After(time.Second):
+		cancel()
+		select {
+		case <-queryDone:
+		case <-time.After(splunkO11yDrainTimeout):
+		}
+		t.Fatal("Close did not cancel the active query")
 	}
-	if err := scaler.Close(context.Background()); err != nil {
-		stop()
-		t.Fatalf("Close: %v", err)
+
+	select {
+	case err := <-closeDone:
+		if err != nil {
+			t.Fatalf("Close: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Close did not wait for query cleanup")
 	}
-	stop()
 }
 
 func TestSplunkObservabilityCloseReapsClientGoroutines(t *testing.T) {
