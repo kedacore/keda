@@ -2,6 +2,8 @@ package scalers
 
 import (
 	"context"
+	"encoding/binary"
+	"math"
 	"runtime"
 	"strings"
 	"testing"
@@ -9,6 +11,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/signalfx/signalflow-client-go/v2/signalflow"
+	"github.com/signalfx/signalflow-client-go/v2/signalflow/messages"
 	"github.com/signalfx/signalfx-go/idtool"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -140,7 +143,11 @@ func newFakeSplunkO11yScalerWithBackend(t *testing.T, duration int) (*splunkObse
 		logger:    logr.Discard(),
 	}
 
-	return scaler, fake, fake.Stop
+	cleanup := func() {
+		_ = scaler.Close(context.Background())
+		fake.Stop()
+	}
+	return scaler, fake, cleanup
 }
 
 // newFakeSplunkO11yScaler wires a scaler to a fake backend that streams indefinitely without closing.
@@ -174,6 +181,23 @@ func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testin
 	case <-time.After(10 * time.Second):
 		t.Fatal("getQueryResult did not return after parent context was cancelled; it is hanging")
 	}
+}
+
+func TestSplunkObservabilityCloseAfterCancelledQuery(t *testing.T) {
+	scaler, stop := newFakeSplunkO11yScaler(t, 3600)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	_, err := scaler.getQueryResult(ctx)
+	cancel()
+	if err == nil {
+		stop()
+		t.Fatal("expected cancelled query to return an error")
+	}
+	if err := scaler.Close(context.Background()); err != nil {
+		stop()
+		t.Fatalf("Close: %v", err)
+	}
+	stop()
 }
 
 func TestSplunkObservabilityCloseReapsClientGoroutines(t *testing.T) {
@@ -344,7 +368,7 @@ func TestSplunkObservabilityPersistentStreamEmpty(t *testing.T) {
 }
 
 func TestSplunkObservabilityPersistentStreamStale(t *testing.T) {
-	scaler, fake, stop := newFakePersistentSplunkO11yScaler(t, 1)
+	scaler, fake, stop := newFakePersistentSplunkO11yScaler(t, 3)
 	defer stop()
 	waitForSplunkO11yValue(t, scaler)
 	fake.RemoveTSIDData(idtool.ID(1))
@@ -360,8 +384,35 @@ func TestSplunkObservabilityPersistentStreamStale(t *testing.T) {
 	t.Fatalf("expected stale error, got %v", lastErr)
 }
 
+func TestSplunkObservabilityPersistentStreamUsesMessageTimestamp(t *testing.T) {
+	scaler, _, stop := newFakeSplunkO11yScalerWithBackend(t, 1)
+	defer stop()
+	scaler.metadata.PersistentStream = true
+
+	var value [8]byte
+	binary.BigEndian.PutUint64(value[:], math.Float64bits(42))
+	message := &messages.DataMessage{
+		TimestampedMessage: messages.TimestampedMessage{
+			TimestampMillis: uint64(time.Now().Add(-2 * time.Second).UnixMilli()),
+		},
+		Payloads: []messages.DataPayload{{
+			Type: messages.ValTypeDouble,
+			TSID: idtool.ID(1),
+			Val:  value,
+		}},
+	}
+	if err := scaler.ingestPersistentMessage(message); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := scaler.getQueryResult(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "persistent stream is stale") {
+		t.Fatalf("expected stale error for an old message, got %v", err)
+	}
+}
+
 func TestSplunkObservabilityPersistentStreamEndsWithoutRestart(t *testing.T) {
-	scaler, fake, stop := newFakePersistentSplunkO11yScaler(t, 1)
+	scaler, fake, stop := newFakePersistentSplunkO11yScaler(t, 10)
 	defer stop()
 	waitForSplunkO11yValue(t, scaler)
 	fake.KillExistingConnections()
