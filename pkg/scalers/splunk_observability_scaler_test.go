@@ -2,8 +2,10 @@ package scalers
 
 import (
 	"context"
+	"log"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -116,7 +118,19 @@ func countSplunkO11ySignalflowGoroutines() int {
 
 const splunkO11yFakeProgram = "data('demo.trans.latency').max().publish()"
 
-func newFakeSplunkO11yScalerWithBackend(t *testing.T, duration int) (*splunkObservabilityScaler, *signalflow.FakeBackend, func()) {
+type splunkO11yLogRecorder struct {
+	started chan struct{}
+	once    sync.Once
+}
+
+func (r *splunkO11yLogRecorder) Write(p []byte) (int, error) {
+	if strings.Contains(string(p), "Executing SignalFlow program "+splunkO11yFakeProgram) {
+		r.once.Do(func() { close(r.started) })
+	}
+	return len(p), nil
+}
+
+func newFakeSplunkO11yScalerWithBackend(t *testing.T, duration int) (*splunkObservabilityScaler, *signalflow.FakeBackend, <-chan struct{}, func()) {
 	t.Helper()
 
 	fake := signalflow.NewRunningFakeBackend()
@@ -140,34 +154,34 @@ func newFakeSplunkO11yScalerWithBackend(t *testing.T, duration int) (*splunkObse
 		logger:    logr.Discard(),
 	}
 
+	recorder := &splunkO11yLogRecorder{started: make(chan struct{})}
+	fake.SetLogger(log.New(recorder, "", 0))
 	cleanup := func() {
 		_ = scaler.Close(context.Background())
 		fake.Stop()
 	}
-	return scaler, fake, cleanup
+	return scaler, fake, recorder.started, cleanup
 }
 
 // newFakeSplunkO11yScaler wires a scaler to a fake backend that streams indefinitely without closing.
 func newFakeSplunkO11yScaler(t *testing.T, duration int) (*splunkObservabilityScaler, func()) {
 	t.Helper()
-	scaler, _, stop := newFakeSplunkO11yScalerWithBackend(t, duration)
+	scaler, _, _, stop := newFakeSplunkO11yScalerWithBackend(t, duration)
 	return scaler, stop
 }
 
-func waitForSplunkO11yJob(t *testing.T, fake *signalflow.FakeBackend) {
+func waitForSplunkO11yJob(t *testing.T, started <-chan struct{}) {
 	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
-	for fake.RunningJobsForProgram(splunkO11yFakeProgram) == 0 {
-		if time.Now().After(deadline) {
-			t.Fatal("SignalFlow fake backend did not start the query")
-		}
-		time.Sleep(10 * time.Millisecond)
+	select {
+	case <-started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("SignalFlow fake backend did not start the query")
 	}
 }
 
 // Regression guard: a stuck stream must not block getQueryResult past the parent context deadline.
 func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testing.T) {
-	scaler, fake, stop := newFakeSplunkO11yScalerWithBackend(t, 3600)
+	scaler, _, started, stop := newFakeSplunkO11yScalerWithBackend(t, 3600)
 	defer stop()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -178,7 +192,7 @@ func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testin
 		_, err := scaler.getQueryResult(ctx)
 		done <- err
 	}()
-	waitForSplunkO11yJob(t, fake)
+	waitForSplunkO11yJob(t, started)
 
 	start := time.Now()
 	cancel()
@@ -197,7 +211,7 @@ func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testin
 }
 
 func TestSplunkObservabilityCloseCancelsActiveQuery(t *testing.T) {
-	scaler, fake, stop := newFakeSplunkO11yScalerWithBackend(t, 3600)
+	scaler, _, started, stop := newFakeSplunkO11yScalerWithBackend(t, 3600)
 	defer stop()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -207,7 +221,7 @@ func TestSplunkObservabilityCloseCancelsActiveQuery(t *testing.T) {
 		_, err := scaler.getQueryResult(ctx)
 		queryDone <- err
 	}()
-	waitForSplunkO11yJob(t, fake)
+	waitForSplunkO11yJob(t, started)
 
 	closeDone := make(chan error, 1)
 	go func() {
@@ -241,7 +255,7 @@ func TestSplunkObservabilityCloseCancelsActiveQuery(t *testing.T) {
 func TestSplunkObservabilityCloseReapsClientGoroutines(t *testing.T) {
 	before := countSplunkO11ySignalflowGoroutines()
 
-	scaler, stop := newFakeSplunkO11yScaler(t, 1)
+	scaler, stop := newFakeSplunkO11yScaler(t, 2)
 	defer stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -302,7 +316,7 @@ func TestSplunkObservabilityCloseIsIdempotent(t *testing.T) {
 }
 
 func TestSplunkObservabilityReconnectsAfterWebsocketDrop(t *testing.T) {
-	scaler, fake, stop := newFakeSplunkO11yScalerWithBackend(t, 1)
+	scaler, fake, _, stop := newFakeSplunkO11yScalerWithBackend(t, 1)
 	defer stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
