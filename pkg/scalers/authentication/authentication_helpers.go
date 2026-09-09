@@ -29,10 +29,6 @@ const (
 	// InsecureOAuthWarningMessage is emitted when OAuth is configured without a client secret and without mTLS,
 	// which leaves the client effectively unauthenticated.
 	InsecureOAuthWarningMessage = "OAuth is configured without clientSecret and without mTLS (RFC 8705). Add a clientSecret or enable mTLS to ensure secure authentication."
-
-	// unusedClientSecret satisfies Go's OAuth library, which requires a non-empty secret,
-	// for the mTLS client authentication flow (RFC 8705) that does not use one.
-	unusedClientSecret = "unused"
 )
 
 // InsecureOAuthWarning returns a warning message when OAuth is enabled without a client secret and without mTLS,
@@ -54,17 +50,16 @@ func (c *Config) InsecureOAuthWarning() string {
 // tokenClient is used for the requests to the token endpoint, so that they share the scaler's timeout and TLS settings.
 // It must not be a client whose transport is wrapped by the returned token source, as token requests would then recurse back into it.
 func (c *Config) OAuthTokenSource(ctx context.Context, tokenClient *http.Client) oauth2.TokenSource {
-	clientSecret := c.ClientSecret
-	if clientSecret == "" {
-		clientSecret = unusedClientSecret
-	}
-
 	cfg := clientcredentials.Config{
 		ClientID:       c.ClientID,
-		ClientSecret:   clientSecret,
+		ClientSecret:   c.ClientSecret,
 		TokenURL:       c.OauthTokenURI,
 		Scopes:         c.Scopes,
 		EndpointParams: c.EndpointParams,
+	}
+
+	if c.ClientSecret == "" {
+		cfg.AuthStyle = oauth2.AuthStyleInParams
 	}
 
 	if tokenClient != nil {

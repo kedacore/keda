@@ -61,13 +61,22 @@ func TestInsecureOAuthWarning(t *testing.T) {
 	}
 }
 
+// tokenRequest records what the token endpoint received on its most recent request.
+type tokenRequest struct {
+	// form holds the request's form values, with any credentials from the Authorization header folded in,
+	// so that assertions on client_id and client_secret hold for both OAuth auth styles.
+	form url.Values
+	// authorization is the raw Authorization header, empty when the request carried none.
+	authorization string
+}
+
 // newTokenServer returns a token endpoint handing out client credentials tokens,
-// the number of requests it has served and the form values of the most recent request.
-func newTokenServer(t *testing.T) (*httptest.Server, *atomic.Int64, *url.Values) {
+// the number of requests it has served and the most recent request it received.
+func newTokenServer(t *testing.T) (*httptest.Server, *atomic.Int64, *tokenRequest) {
 	t.Helper()
 
 	var requests atomic.Int64
-	lastForm := &url.Values{}
+	last := &tokenRequest{}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests.Add(1)
@@ -75,10 +84,10 @@ func newTokenServer(t *testing.T) (*httptest.Server, *atomic.Int64, *url.Values)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		*lastForm = r.Form
+		*last = tokenRequest{form: r.Form, authorization: r.Header.Get("Authorization")}
 		if username, password, ok := r.BasicAuth(); ok {
-			lastForm.Set("client_id", username)
-			lastForm.Set("client_secret", password)
+			last.form.Set("client_id", username)
+			last.form.Set("client_secret", password)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -89,13 +98,13 @@ func newTokenServer(t *testing.T) (*httptest.Server, *atomic.Int64, *url.Values)
 	}))
 	t.Cleanup(server.Close)
 
-	return server, &requests, lastForm
+	return server, &requests, last
 }
 
 func TestOAuthTokenSource(t *testing.T) {
 	t.Parallel()
 
-	server, requests, lastForm := newTokenServer(t)
+	server, requests, last := newTokenServer(t)
 
 	config := &Config{
 		Modes: []Type{OAuthType},
@@ -115,11 +124,11 @@ func TestOAuthTokenSource(t *testing.T) {
 	assert.Equal(t, "fake_token", token.AccessToken)
 	assert.Equal(t, "Bearer", token.TokenType)
 
-	assert.Equal(t, "client_credentials", lastForm.Get("grant_type"))
-	assert.Equal(t, "my-client", lastForm.Get("client_id"))
-	assert.Equal(t, "my-secret", lastForm.Get("client_secret"))
-	assert.Equal(t, "scope-a scope-b", lastForm.Get("scope"))
-	assert.Equal(t, "my-audience", lastForm.Get("audience"))
+	assert.Equal(t, "client_credentials", last.form.Get("grant_type"))
+	assert.Equal(t, "my-client", last.form.Get("client_id"))
+	assert.Equal(t, "my-secret", last.form.Get("client_secret"))
+	assert.Equal(t, "scope-a scope-b", last.form.Get("scope"))
+	assert.Equal(t, "my-audience", last.form.Get("audience"))
 	assert.Equal(t, int64(1), requests.Load())
 
 	// A cached, unexpired token must not trigger another request to the token endpoint.
@@ -129,7 +138,7 @@ func TestOAuthTokenSource(t *testing.T) {
 }
 
 func TestOAuthTokenSourceWithoutClientSecret(t *testing.T) {
-	server, _, lastForm := newTokenServer(t)
+	server, _, last := newTokenServer(t)
 
 	config := &Config{
 		Modes: []Type{OAuthType, TLSAuthType},
@@ -142,10 +151,12 @@ func TestOAuthTokenSourceWithoutClientSecret(t *testing.T) {
 	_, err := config.OAuthTokenSource(t.Context(), server.Client()).Token()
 	require.NoError(t, err)
 
-	// mTLS client authentication (RFC 8705) carries no secret,
-	// but Go's OAuth library requires a non-empty one, so a placeholder is sent instead.
-	assert.Equal(t, "my-client", lastForm.Get("client_id"))
-	assert.Equal(t, unusedClientSecret, lastForm.Get("client_secret"))
+	// mTLS client authentication (RFC 8705) identifies the client by its certificate,
+	// so the token request must carry the client ID but no second client authentication method:
+	// neither a client_secret parameter nor an Authorization header.
+	assert.Equal(t, "my-client", last.form.Get("client_id"))
+	assert.Empty(t, last.form.Get("client_secret"))
+	assert.Empty(t, last.authorization)
 }
 
 func TestOAuthTokenSourceUsesGivenClient(t *testing.T) {
