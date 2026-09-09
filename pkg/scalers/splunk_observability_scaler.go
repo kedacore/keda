@@ -182,7 +182,7 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 	// timedOut handles the hard-deadline path: stop, drain, and return the timeout error.
 	timedOut := func() (float64, error) {
 		s.logger.V(1).Info("Context done before stream completed; stopping computation.")
-		go func() { _ = s.stopAndDrain(comp, nil) }()
+		_ = s.stopAndDrain(comp, nil)
 		return -1, fmt.Errorf("splunk observability query ended before stream completed: %w", streamCtx.Err())
 	}
 

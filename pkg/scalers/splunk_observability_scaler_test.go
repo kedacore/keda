@@ -140,7 +140,11 @@ func newFakeSplunkO11yScalerWithBackend(t *testing.T, duration int) (*splunkObse
 		logger:    logr.Discard(),
 	}
 
-	return scaler, fake, fake.Stop
+	cleanup := func() {
+		_ = scaler.Close(context.Background())
+		fake.Stop()
+	}
+	return scaler, fake, cleanup
 }
 
 // newFakeSplunkO11yScaler wires a scaler to a fake backend that streams indefinitely without closing.
@@ -174,6 +178,23 @@ func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testin
 	case <-time.After(10 * time.Second):
 		t.Fatal("getQueryResult did not return after parent context was cancelled; it is hanging")
 	}
+}
+
+func TestSplunkObservabilityCloseAfterCancelledQuery(t *testing.T) {
+	scaler, stop := newFakeSplunkO11yScaler(t, 3600)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	_, err := scaler.getQueryResult(ctx)
+	cancel()
+	if err == nil {
+		stop()
+		t.Fatal("expected cancelled query to return an error")
+	}
+	if err := scaler.Close(context.Background()); err != nil {
+		stop()
+		t.Fatalf("Close: %v", err)
+	}
+	stop()
 }
 
 func TestSplunkObservabilityCloseReapsClientGoroutines(t *testing.T) {
