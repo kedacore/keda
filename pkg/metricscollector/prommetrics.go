@@ -310,6 +310,11 @@ func (p *PromMetrics) RecordScaledObjectReady(namespace string, scaledObject str
 	scaledObjectReady.With(labels).Set(float64(readyVal))
 }
 
+// DeleteScaledObjectReady removes the ready metric of a deleted ScaledObject.
+func (p *PromMetrics) DeleteScaledObjectReady(namespace string, scaledObject string) {
+	scaledObjectReady.Delete(prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject})
+}
+
 // RecordScalerError counts the number of errors occurred in trying to get an external metric used by the HPA
 func (p *PromMetrics) RecordScalerError(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, err error) {
 	if err != nil {
@@ -364,6 +369,11 @@ func (p *PromMetrics) RecordScaledJobReady(namespace string, scaledJob string, r
 	}
 
 	scaledJobReady.With(labels).Set(float64(readyVal))
+}
+
+// DeleteScaledJobReady removes the ready metric of a deleted ScaledJob.
+func (p *PromMetrics) DeleteScaledJobReady(namespace string, scaledJob string) {
+	scaledJobReady.Delete(prometheus.Labels{"namespace": namespace, "scaledJob": scaledJob})
 }
 
 func getLabels(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, isScaledObject bool) prometheus.Labels {

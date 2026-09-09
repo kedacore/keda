@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 
 	"github.com/go-logr/logr"
@@ -695,6 +696,10 @@ func (r *ScaledObjectReconciler) updatePromMetricsOnDelete(namespacedName string
 		for _, triggerType := range metricsData.triggerTypes {
 			metricscollector.DecrementTriggerTotal(triggerType)
 		}
+	}
+
+	if namespace, name, ok := strings.Cut(namespacedName, "/"); ok {
+		metricscollector.DeleteScaledObjectReady(namespace, name)
 	}
 
 	delete(scaledObjectPromMetricsMap, namespacedName)

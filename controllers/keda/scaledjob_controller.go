@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -376,6 +377,10 @@ func (r *ScaledJobReconciler) updatePromMetricsOnDelete(namespacedName string) {
 		for _, triggerType := range metricsData.triggerTypes {
 			metricscollector.DecrementTriggerTotal(triggerType)
 		}
+	}
+
+	if namespace, name, ok := strings.Cut(namespacedName, "/"); ok {
+		metricscollector.DeleteScaledJobReady(namespace, name)
 	}
 
 	delete(scaledJobPromMetricsMap, namespacedName)

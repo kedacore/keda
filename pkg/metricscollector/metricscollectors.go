@@ -64,6 +64,9 @@ type MetricsCollector interface {
 	// RecordScaledObjectReady marks whether the current ScaledObject is ready.
 	RecordScaledObjectReady(namespace string, scaledObject string, ready bool)
 
+	// DeleteScaledObjectReady removes the ready metric of a deleted ScaledObject.
+	DeleteScaledObjectReady(namespace string, scaledObject string)
+
 	// RecordScalerError counts the number of errors occurred in trying to get an external metric used by the HPA
 	RecordScalerError(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, err error)
 
@@ -75,6 +78,9 @@ type MetricsCollector interface {
 
 	// RecordScaledJobReady marks whether the current ScaledJob is ready.
 	RecordScaledJobReady(namespace string, scaledJob string, ready bool)
+
+	// DeleteScaledJobReady removes the ready metric of a deleted ScaledJob.
+	DeleteScaledJobReady(namespace string, scaledJob string)
 
 	IncrementTriggerTotal(triggerType string)
 
@@ -168,6 +174,13 @@ func RecordScaledObjectReady(namespace string, scaledObject string, ready bool) 
 	}
 }
 
+// DeleteScaledObjectReady removes the ready metric of a deleted ScaledObject.
+func DeleteScaledObjectReady(namespace string, scaledObject string) {
+	for _, element := range collectors {
+		element.DeleteScaledObjectReady(namespace, scaledObject)
+	}
+}
+
 // RecordScalerError counts the number of errors occurred in trying to get an external metric used by the HPA
 func RecordScalerError(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, isScaledObject bool, err error) {
 	for _, element := range collectors {
@@ -193,6 +206,13 @@ func RecordScaledJobError(namespace string, scaledJob string, err error) {
 func RecordScaledJobReady(namespace string, scaledJob string, ready bool) {
 	for _, element := range collectors {
 		element.RecordScaledJobReady(namespace, scaledJob, ready)
+	}
+}
+
+// DeleteScaledJobReady removes the ready metric of a deleted ScaledJob.
+func DeleteScaledJobReady(namespace string, scaledJob string) {
+	for _, element := range collectors {
+		element.DeleteScaledJobReady(namespace, scaledJob)
 	}
 }
 
