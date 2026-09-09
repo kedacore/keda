@@ -81,6 +81,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
+- **Azure Pipelines Scaler**: Add service principal authentication through a reusable Azure authentication provider ([#4853](https://github.com/kedacore/keda/issues/4853))
 - **Datadog Scaler**: Migrate Datadog to authentication.Config ([#7766](https://github.com/kedacore/keda/issues/7766))
 - **Kafka Scaler**: Add optional `fullMetadata` trigger metadata field to control Sarama's full cluster metadata refresh, reducing operator memory for topic scoped triggers ([#7453](https://github.com/kedacore/keda/issues/7453))
 - **MSSQL Scaler**: Add `driverName` to select the `azuresql` driver, which enables the Microsoft Entra ID authentication methods offered by the driver ([#7412](https://github.com/kedacore/keda/issues/7412))
