@@ -3,9 +3,11 @@ package scalers
 import (
 	"context"
 	"encoding/binary"
+	"log"
 	"math"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -119,10 +121,24 @@ func countSplunkO11ySignalflowGoroutines() int {
 
 const splunkO11yFakeProgram = "data('demo.trans.latency').max().publish()"
 
-func newFakeSplunkO11yScalerWithBackend(t *testing.T, duration int) (*splunkObservabilityScaler, *signalflow.FakeBackend, func()) {
+type splunkO11yExecutionObserver struct {
+	started chan struct{}
+	once    sync.Once
+}
+
+func (o *splunkO11yExecutionObserver) Write(p []byte) (int, error) {
+	if strings.Contains(string(p), "Executing SignalFlow program "+splunkO11yFakeProgram) {
+		o.once.Do(func() { close(o.started) })
+	}
+	return len(p), nil
+}
+
+func newFakeSplunkO11yScalerWithBackend(t *testing.T, duration int) (*splunkObservabilityScaler, *signalflow.FakeBackend, <-chan struct{}, func()) {
 	t.Helper()
 
 	fake := signalflow.NewRunningFakeBackend()
+	started := &splunkO11yExecutionObserver{started: make(chan struct{})}
+	fake.SetLogger(log.New(started, "", 0))
 	client, err := fake.Client()
 	if err != nil {
 		fake.Stop()
@@ -147,57 +163,97 @@ func newFakeSplunkO11yScalerWithBackend(t *testing.T, duration int) (*splunkObse
 		_ = scaler.Close(context.Background())
 		fake.Stop()
 	}
-	return scaler, fake, cleanup
+	return scaler, fake, started.started, cleanup
 }
 
 // newFakeSplunkO11yScaler wires a scaler to a fake backend that streams indefinitely without closing.
 func newFakeSplunkO11yScaler(t *testing.T, duration int) (*splunkObservabilityScaler, func()) {
 	t.Helper()
-	scaler, _, stop := newFakeSplunkO11yScalerWithBackend(t, duration)
+	scaler, _, _, stop := newFakeSplunkO11yScalerWithBackend(t, duration)
 	return scaler, stop
+}
+
+func waitForSplunkO11yJob(t *testing.T, started <-chan struct{}) {
+	t.Helper()
+	select {
+	case <-started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("SignalFlow fake backend did not start the query")
+	}
 }
 
 // Regression guard: a stuck stream must not block getQueryResult past the parent context deadline.
 func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testing.T) {
-	// Large duration so the stopTimer never fires; the parent deadline must bound the call.
-	scaler, stop := newFakeSplunkO11yScaler(t, 3600)
+	// Large duration so the stopTimer never fires; the parent context must bound the call.
+	scaler, _, started, stop := newFakeSplunkO11yScalerWithBackend(t, 3600)
 	defer stop()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	done := make(chan struct{})
-	start := time.Now()
+	done := make(chan error, 1)
 	go func() {
-		defer close(done)
-		_, _ = scaler.getQueryResult(ctx)
+		_, err := scaler.getQueryResult(ctx)
+		done <- err
 	}()
+	waitForSplunkO11yJob(t, started)
+
+	start := time.Now()
+	cancel()
 
 	select {
-	case <-done:
-		if elapsed := time.Since(start); elapsed > 5*time.Second {
-			t.Fatalf("getQueryResult returned after %v, far longer than the context deadline", elapsed)
+	case err := <-done:
+		if err == nil {
+			t.Fatal("expected cancelled query to return an error")
 		}
-	case <-time.After(10 * time.Second):
+		if elapsed := time.Since(start); elapsed >= splunkO11yDrainTimeout/2 {
+			t.Fatalf("getQueryResult returned after %v, waited for timeout cleanup", elapsed)
+		}
+	case <-time.After(3 * splunkO11yDrainTimeout):
 		t.Fatal("getQueryResult did not return after parent context was cancelled; it is hanging")
 	}
 }
 
-func TestSplunkObservabilityCloseAfterCancelledQuery(t *testing.T) {
-	scaler, stop := newFakeSplunkO11yScaler(t, 3600)
+func TestSplunkObservabilityCloseCancelsActiveQuery(t *testing.T) {
+	scaler, _, started, stop := newFakeSplunkO11yScalerWithBackend(t, 3600)
+	defer stop()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	_, err := scaler.getQueryResult(ctx)
-	cancel()
-	if err == nil {
-		stop()
-		t.Fatal("expected cancelled query to return an error")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	queryDone := make(chan error, 1)
+	go func() {
+		_, err := scaler.getQueryResult(ctx)
+		queryDone <- err
+	}()
+	waitForSplunkO11yJob(t, started)
+
+	closeDone := make(chan error, 1)
+	go func() {
+		closeDone <- scaler.Close(context.Background())
+	}()
+
+	select {
+	case err := <-queryDone:
+		if err == nil {
+			t.Fatal("expected Close to cancel the active query")
+		}
+	case <-time.After(time.Second):
+		cancel()
+		select {
+		case <-queryDone:
+		case <-time.After(splunkO11yDrainTimeout):
+		}
+		t.Fatal("Close did not cancel the active query")
 	}
-	if err := scaler.Close(context.Background()); err != nil {
-		stop()
-		t.Fatalf("Close: %v", err)
+
+	select {
+	case err := <-closeDone:
+		if err != nil {
+			t.Fatalf("Close: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Close did not wait for query cleanup")
 	}
-	stop()
 }
 
 func TestSplunkObservabilityCloseReapsClientGoroutines(t *testing.T) {
@@ -264,7 +320,7 @@ func TestSplunkObservabilityCloseIsIdempotent(t *testing.T) {
 }
 
 func TestSplunkObservabilityReconnectsAfterWebsocketDrop(t *testing.T) {
-	scaler, fake, stop := newFakeSplunkO11yScalerWithBackend(t, 1)
+	scaler, fake, _, stop := newFakeSplunkO11yScalerWithBackend(t, 1)
 	defer stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -291,7 +347,7 @@ func TestSplunkObservabilityReconnectsAfterWebsocketDrop(t *testing.T) {
 
 func newFakePersistentSplunkO11yScaler(t *testing.T, duration int) (*splunkObservabilityScaler, *signalflow.FakeBackend, func()) {
 	t.Helper()
-	scaler, fake, stop := newFakeSplunkO11yScalerWithBackend(t, duration)
+	scaler, fake, _, stop := newFakeSplunkO11yScalerWithBackend(t, duration)
 	scaler.metadata.PersistentStream = true
 	if err := scaler.startPersistentStream(); err != nil {
 		stop()
@@ -317,7 +373,7 @@ func waitForSplunkO11yValue(t *testing.T, scaler *splunkObservabilityScaler) flo
 }
 
 func TestSplunkObservabilityDefaultPathStopsJob(t *testing.T) {
-	scaler, fake, stop := newFakeSplunkO11yScalerWithBackend(t, 2)
+	scaler, fake, _, stop := newFakeSplunkO11yScalerWithBackend(t, 2)
 	defer stop()
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
@@ -353,7 +409,7 @@ func TestSplunkObservabilityPersistentStreamOneExecute(t *testing.T) {
 }
 
 func TestSplunkObservabilityPersistentStreamEmpty(t *testing.T) {
-	scaler, fake, stop := newFakeSplunkO11yScalerWithBackend(t, 10)
+	scaler, fake, _, stop := newFakeSplunkO11yScalerWithBackend(t, 10)
 	defer stop()
 	fake.RemoveTSIDData(idtool.ID(1))
 	scaler.metadata.PersistentStream = true
@@ -385,7 +441,7 @@ func TestSplunkObservabilityPersistentStreamStale(t *testing.T) {
 }
 
 func TestSplunkObservabilityPersistentStreamUsesMessageTimestamp(t *testing.T) {
-	scaler, _, stop := newFakeSplunkO11yScalerWithBackend(t, 1)
+	scaler, _, _, stop := newFakeSplunkO11yScalerWithBackend(t, 1)
 	defer stop()
 	scaler.metadata.PersistentStream = true
 
@@ -408,6 +464,72 @@ func TestSplunkObservabilityPersistentStreamUsesMessageTimestamp(t *testing.T) {
 	_, err := scaler.getQueryResult(context.Background())
 	if err == nil || !strings.Contains(err.Error(), "persistent stream is stale") {
 		t.Fatalf("expected stale error for an old message, got %v", err)
+	}
+}
+
+type splunkO11yTestComputation struct {
+	data     <-chan *messages.DataMessage
+	stopped  chan struct{}
+	stopOnce sync.Once
+}
+
+func (c *splunkO11yTestComputation) Data() <-chan *messages.DataMessage {
+	return c.data
+}
+
+func (c *splunkO11yTestComputation) Stop(context.Context) error {
+	c.stopOnce.Do(func() { close(c.stopped) })
+	return nil
+}
+
+func TestSplunkObservabilityPersistentStreamIngestErrorStopsComputation(t *testing.T) {
+	data := make(chan *messages.DataMessage, 1)
+	data <- &messages.DataMessage{Payloads: []messages.DataPayload{{Type: messages.ValType(99)}}}
+	close(data)
+	computation := &splunkO11yTestComputation{data: data, stopped: make(chan struct{})}
+	scaler := &splunkObservabilityScaler{
+		metadata: &splunkObservabilityMetadata{Duration: 1},
+		logger:   logr.Discard(),
+	}
+
+	scaler.readPersistentStream(computation)
+	select {
+	case <-computation.stopped:
+	case <-time.After(time.Second):
+		t.Fatal("persistent stream ingest error did not stop the computation")
+	}
+}
+
+func TestSplunkObservabilityPersistentStreamStartupHonorsContext(t *testing.T) {
+	fake := signalflow.NewRunningFakeBackend()
+	client, err := fake.Client()
+	if err != nil {
+		fake.Stop()
+		t.Fatal("could not create fake backend client:", err)
+	}
+	fake.Stop()
+
+	scaler := &splunkObservabilityScaler{
+		metadata:  &splunkObservabilityMetadata{Query: splunkO11yFakeProgram},
+		apiClient: client,
+		logger:    logr.Discard(),
+	}
+	defer scaler.Close(context.Background())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		done <- scaler.startPersistentStreamWithContext(ctx)
+	}()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("expected persistent stream startup to fail when its context expires")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("persistent stream startup ignored its context")
 	}
 }
 
@@ -464,7 +586,7 @@ func TestSplunkObservabilityPersistentStreamCloseStopsJob(t *testing.T) {
 }
 
 func TestSplunkObservabilityPersistentStreamMax(t *testing.T) {
-	scaler, fake, stop := newFakeSplunkO11yScalerWithBackend(t, 10)
+	scaler, fake, _, stop := newFakeSplunkO11yScalerWithBackend(t, 10)
 	defer stop()
 	fake.SetTSIDFloatData(idtool.ID(1), 10)
 	fake.SetTSIDFloatData(idtool.ID(2), 30)
