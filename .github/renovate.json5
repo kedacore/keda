@@ -139,6 +139,16 @@
     },
 
     // --- Custom regex ---
+    // config:best-practices pins digests for every docker datasource, but the
+    // custom managers below only capture a version (no currentDigest group and
+    // no digest in the file), so Renovate cannot write the pin back and the
+    // whole branch update fails. These versions are also interpolated into
+    // non-image fields (e.g. kubernetesVersion), where a digest is invalid.
+    {
+      matchManagers: ["custom.regex"],
+      matchDatasources: ["docker"],
+      pinDigests: false,
+    },
     // Deps annotated with @only-patch should only receive patch updates.
     {
       matchManagers: ["custom.regex"],
