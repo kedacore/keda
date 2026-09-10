@@ -2,6 +2,7 @@ package scalers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"sync/atomic"
@@ -672,5 +673,70 @@ func TestConvertMetricSpecResponse(t *testing.T) {
 	// First spec uses integer target
 	if specs[0].External.Target.AverageValue.Value() != 50 {
 		t.Errorf("expected target 50, got %d", specs[0].External.Target.AverageValue.Value())
+	}
+}
+
+type cancellationStreamClient struct {
+	pb.ExternalScalerClient
+	stream *cancellationActiveStream
+}
+
+func (c *cancellationStreamClient) StreamIsActive(context.Context, *pb.ScaledObjectRef, ...grpc.CallOption) (grpc.ServerStreamingClient[pb.IsActiveResponse], error) {
+	return c.stream, nil
+}
+
+type cancellationActiveStream struct {
+	grpc.ClientStream
+	ctx      context.Context
+	first    bool
+	received chan struct{}
+}
+
+func (s *cancellationActiveStream) Recv() (*pb.IsActiveResponse, error) {
+	if !s.first {
+		s.first = true
+		close(s.received)
+		return &pb.IsActiveResponse{Result: true}, nil
+	}
+	<-s.ctx.Done()
+	return nil, s.ctx.Err()
+}
+
+// TestHandleIsActiveStreamRespectsCancellation ensures the activation send is
+// released when the stream context is canceled, even if no receiver remains.
+func TestHandleIsActiveStreamRespectsCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	stream := &cancellationActiveStream{ctx: ctx, received: make(chan struct{})}
+	client := &cancellationStreamClient{stream: stream}
+	active := make(chan bool)
+	done := make(chan error, 1)
+	go func() { done <- handleIsActiveStream(ctx, &pb.ScaledObjectRef{}, client, active) }()
+
+	select {
+	case <-stream.received:
+	case <-time.After(time.Second):
+		t.Fatal("did not receive activation from fake RPC")
+	}
+	cancel()
+
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("unexpected cancellation result: %v", err)
+		}
+	case <-time.After(time.Second):
+		// Drain the blocked send so a failed regression run does not leak a goroutine.
+		select {
+		case <-active:
+		case <-time.After(time.Second):
+			t.Fatal("could not drain blocked activation")
+		}
+		select {
+		case <-done:
+		case <-time.After(time.Second):
+			t.Fatal("stream did not exit after draining activation")
+		}
+		t.Fatal("cancellation did not release the blocked activation send")
 	}
 }

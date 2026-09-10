@@ -382,7 +382,11 @@ func handleIsActiveStream(ctx context.Context, scaledObjectRef *pb.ScaledObjectR
 			return err
 		}
 
-		active <- resp.Result
+		select {
+		case active <- resp.Result:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 }
 
