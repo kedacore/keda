@@ -1,6 +1,8 @@
 //go:build e2e
 // +build e2e
 
+// +e2e-deps:kafka
+
 package kafka_gssapi_test
 
 import (
@@ -238,7 +240,7 @@ spec:
       protocol: UDP
 `
 
-	kafkaClusterTemplate = `apiVersion: kafka.strimzi.io/v1beta2
+	kafkaClusterTemplate = `apiVersion: kafka.strimzi.io/v1
 kind: Kafka
 metadata:
   name: {{.KafkaName}}
@@ -248,8 +250,7 @@ metadata:
     strimzi.io/node-pools: enabled
 spec:
   kafka:
-    version: "4.0.0"
-    replicas: {{.BrokerReplicas}}
+    version: "4.3.1"
     listeners:
       - name: plain
         port: 9092
@@ -295,8 +296,6 @@ spec:
       offsets.topic.replication.factor: 1
       transaction.state.log.replication.factor: 1
       transaction.state.log.min.isr: 1
-    storage:
-      type: ephemeral
   entityOperator:
     topicOperator: {}
     userOperator: {}
@@ -306,7 +305,7 @@ spec:
           - name: STRIMZI_USE_FINALIZERS
             value: "false"
 ---
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: KafkaNodePool
 metadata:
   name: broker
@@ -322,7 +321,7 @@ spec:
     type: ephemeral
 `
 
-	kafkaTopicTemplate = `apiVersion: kafka.strimzi.io/v1beta2
+	kafkaTopicTemplate = `apiVersion: kafka.strimzi.io/v1
 kind: KafkaTopic
 metadata:
   name: {{.TopicName}}

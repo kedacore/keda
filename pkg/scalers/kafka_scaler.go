@@ -404,20 +404,6 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 	}
 
 	if meta.saslType == KafkaSASLTypeGSSAPI {
-		if meta.Keytab != "" {
-			path, err := saveToFile(meta.Keytab)
-			if err != nil {
-				return meta, fmt.Errorf("error saving keytab to file: %w", err)
-			}
-			meta.keytabPath = path
-		}
-		if meta.KerberosConfigRaw != "" {
-			path, err := saveToFile(meta.KerberosConfigRaw)
-			if err != nil {
-				return meta, fmt.Errorf("error saving kerberosConfig to file: %w", err)
-			}
-			meta.kerberosConfigPath = path
-		}
 		if meta.CcacheName != "" {
 			if meta.CcacheName != filepath.Base(meta.CcacheName) || meta.CcacheName == "." || meta.CcacheName == ".." {
 				return meta, fmt.Errorf("ccacheName must be a file name and not a path")
@@ -441,6 +427,20 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 			}
 
 			meta.ccachePath = path
+		}
+		if meta.Keytab != "" {
+			path, err := saveToFile(meta.Keytab)
+			if err != nil {
+				return meta, fmt.Errorf("error saving keytab to file: %w", err)
+			}
+			meta.keytabPath = path
+		}
+		if meta.KerberosConfigRaw != "" {
+			path, err := saveToFile(meta.KerberosConfigRaw)
+			if err != nil {
+				return meta, fmt.Errorf("error saving kerberosConfig to file: %w", err)
+			}
+			meta.kerberosConfigPath = path
 		}
 	}
 
