@@ -91,7 +91,7 @@ spec:
         imagePullPolicy: Always
         name: mssql-consumer-worker
         command: ["/app"]
-        args: ["-mode", "consumer"]
+        args: ["-mode", "consumer", "-table", "tasks_azuresql"]
         env:
           - name: SQL_CONNECTION_STRING
             valueFrom:
