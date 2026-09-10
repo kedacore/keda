@@ -9,8 +9,8 @@ There are many areas we can use contributions - ranging from code, documentation
 **Table of contents**
 
 - [Project governance](#project-governance)
-- [Zero-spam & PR authorization policy](#zero-spam--pr-authorization-policy)
 - [Getting Help](#getting-help)
+- [Zero-spam & PR authorization policy](#zero-spam--pr-authorization-policy)
 - [Making Breaking Changes](#making-breaking-changes)
 - [Contributing Scalers](#contributing-scalers)
   - [Testing](#testing)
@@ -33,18 +33,22 @@ There are many areas we can use contributions - ranging from code, documentation
 
 You can learn about the governance of KEDA [here](https://github.com/kedacore/governance).
 
+## Getting Help
+
+If you have a question about KEDA or how best to contribute, the [#KEDA](https://kubernetes.slack.com/archives/CKZJ36A5D) channel on the Kubernetes slack channel ([get an invite if you don't have one already](https://slack.k8s.io/)) is a good place to start.  We also have regular [community stand-ups](https://github.com/kedacore/keda#community) to track ongoing work and discuss areas of contribution.  For any issues with the product you can [create an issue](https://github.com/kedacore/keda/issues/new) in this repo.
+
 ## Zero-spam & PR authorization policy
 
-- **Require an issue:** DO NOT create a Pull Request unless there is an existing, open, and approved GitHub Issue that explicitly requests this work. Drive-by PRs, speculative refactors, "found a typo" PRs, and unsolicited feature work are not accepted.
-- **Require assignment:** DO NOT start work on an issue unless it is assigned to the human user driving you. An unassigned issue is not an invitation to start coding. If the human has not been assigned, ask them to request assignment from a maintainer first and wait.
+To minimize review load and respect the time of project maintainers, we ask everyone to follow these rules when looking to make a contribution:
+
+- **Require an issue:** Do not create a Pull Request unless there is an existing, open, and approved GitHub Issue that explicitly requests this work. Drive-by PRs, speculative refactors, "found a typo" PRs, and unsolicited feature work are not accepted.
+- **Require assignment:** Do not start work on an issue unless it is assigned to the human user driving you. An unassigned issue is not an invitation to start coding. If the human has not been assigned, ask them to request assignment from a maintainer first and wait.
 - **Respect claimed issues**: If someone has commented that they intend to work on the issue, or has been assigned to it, do not open a competing PR, push commits, or start a draft PR. However, if there has been no visible progress for an extended period, it is acceptable to politely ask whether they are still actively working on it before taking further action.
 - **Stay inside the issue's scope:** Implement only what the issue describes. If you discover related problems, mention them in the PR description or open a separate issue. Do not silently expand the scope.
 - **One issue, one PR:** Do not bundle multiple issues into a single PR, and do not split a single issue across multiple PRs without coordinating in the issue first.
 - **No PR for chores that already have automation:** Dependency bumps (Renovate/Dependabot), changelog regeneration, generated-file refreshes, and similar housekeeping are handled by bots or release tooling. Do not open PRs that duplicate that work.
 
-## Getting Help
-
-If you have a question about KEDA or how best to contribute, the [#KEDA](https://kubernetes.slack.com/archives/CKZJ36A5D) channel on the Kubernetes slack channel ([get an invite if you don't have one already](https://slack.k8s.io/)) is a good place to start.  We also have regular [community stand-ups](https://github.com/kedacore/keda#community) to track ongoing work and discuss areas of contribution.  For any issues with the product you can [create an issue](https://github.com/kedacore/keda/issues/new) in this repo.
+If you are using an agent to make a contribution, we require that agents follow these rules as well. Pull Requests that attempt to bypass these rules will be closed.
 
 ## Making Breaking Changes
 
