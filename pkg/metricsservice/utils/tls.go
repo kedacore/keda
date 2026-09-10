@@ -83,7 +83,7 @@ func (c *dynamicTLSCredentials) ServerHandshake(rawConn net.Conn) (net.Conn, cre
 func (c *dynamicTLSCredentials) Info() credentials.ProtocolInfo {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return credentials.ProtocolInfo{SecurityProtocol: "tls", SecurityVersion: "1.2", ServerName: c.name}
+	return credentials.ProtocolInfo{SecurityProtocol: "tls"}
 }
 
 func (c *dynamicTLSCredentials) Clone() credentials.TransportCredentials {
