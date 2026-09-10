@@ -302,7 +302,7 @@ func (s *seleniumGridScaler) getSessionsQueueLength(ctx context.Context, logger 
 		return -1, -1, err
 	}
 	if len(b) > maxSeleniumGridResponseSize {
-		err = fmt.Errorf("Selenium Grid response body exceeds the %d byte limit", maxSeleniumGridResponseSize)
+		err = fmt.Errorf("selenium Grid response body exceeds the %d byte limit", maxSeleniumGridResponseSize)
 		logger.Error(err, "Selenium Grid response body is too large")
 		return -1, -1, err
 	}
