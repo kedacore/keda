@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/mitchellh/hashstructure"
+	"github.com/mitchellh/hashstructure/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
@@ -398,7 +398,7 @@ func getConnectionPoolKey(metadata externalScalerMetadata) (uint64, error) {
 		TLSClientKey:  metadata.TLSClientKey,
 	}
 
-	return hashstructure.Hash(key, nil)
+	return hashstructure.Hash(key, hashstructure.FormatV1, nil)
 }
 
 // getClientForConnectionPool returns a grpcClient and a done() Func. The done() function must be called once the client is no longer

@@ -64,7 +64,7 @@ jobs:
             | xargs -r -I{} gh release delete {} --yes --cleanup-tag 2>/dev/null || true
 
       - name: Install git-cliff
-        uses: taiki-e/install-action@e67fa11c4b9316fa714ddf0abed07a0c3143b95b # v2.87.4
+        uses: taiki-e/install-action@d438492cf8a250514fa2d34b30bc3c0dc37c65ff # v2.87.8
         with:
           tool: git-cliff
 
