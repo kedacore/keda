@@ -230,7 +230,6 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 	return allWarnings, nil
 }
 
-//nolint:unparam
 func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) (admission.Warnings, error) {
 	err := CheckReplicaCountBoundsAreValid(incomingSo)
 	if err != nil {
@@ -240,7 +239,6 @@ func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) (admiss
 	return nil, err
 }
 
-//nolint:unparam
 func verifyName(incomingSo *ScaledObject, action string, _ bool) (admission.Warnings, error) {
 	if len(incomingSo.Name) > maxK8sLabelValueLength {
 		err := fmt.Errorf("scaledobject name %q is %d characters long; must be no more than %d characters because it is used as the %q label value", incomingSo.Name, len(incomingSo.Name), maxK8sLabelValueLength, ScaledObjectOwnerAnnotation)
@@ -258,7 +256,6 @@ func verifyName(incomingSo *ScaledObject, action string, _ bool) (admission.Warn
 	return nil, nil
 }
 
-//nolint:unparam
 func verifyFallback(incomingSo *ScaledObject, action string, _ bool) (admission.Warnings, error) {
 	err := CheckFallbackValid(incomingSo)
 	if err != nil {
@@ -293,7 +290,6 @@ func verifyTriggers(incomingObject any, action string, _ bool) error {
 	return err
 }
 
-//nolint:unparam
 func verifyHpas(incomingSo *ScaledObject, action string, _ bool) (admission.Warnings, error) {
 	// Narrow to HPAs targeting the same workload name via the
 	// scaleTargetRefNameIdx index; the loop below still disambiguates by GVK.
@@ -367,26 +363,18 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 		minReplicas = *incomingSo.Spec.MinReplicaCount
 	}
 
-	// Check if any trigger uses cached metrics
-	usesCachedMetrics := false
-	for _, trigger := range incomingSo.Spec.Triggers {
-		if trigger.UseCachedMetrics {
-			usesCachedMetrics = true
-			break
-		}
-	}
-
-	// PollingInterval warning: if minReplicaCount > 0 AND idleReplicaCount is not set (idle mode disabled) AND NOT useCachedMetrics.
-	// When idle mode is enabled (idleReplicaCount is set to any value), the scale loop is what detects the
-	// idle<->active transitions, so pollingInterval stays relevant regardless of the idle value.
-	if incomingSo.Spec.PollingInterval != nil {
-		idleModeDisabled := incomingSo.Spec.IdleReplicaCount == nil
-		if minReplicas > 0 && idleModeDisabled && !usesCachedMetrics {
-			msg := "PollingInterval is configured but is not relevant. PollingInterval is only relevant when minReplicaCount = 0, idleReplicaCount is set, or useCachedMetrics is enabled"
-			warnings = append(warnings, msg)
-			if eventRecorder != nil {
-				eventRecorder.Eventf(incomingSo, nil, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", msg)
-			}
+	// PollingInterval warning: warn when pollingInterval no longer affects scaling because the HPA
+	// drives it all. UsesHPAObservations is the very condition the scale loop evaluates to decide
+	// whether to keep querying the trigger sources itself, so the warning cannot drift away from the
+	// actual behaviour. ScaledObjects using scaling modifiers are excluded, because the scale loop
+	// keeps querying every trigger source on pollingInterval there to evaluate the composite formula,
+	// so the interval still drives the queries. The scale loop also still runs on pollingInterval to
+	// refresh the status, so the message must not claim it does nothing at all.
+	if incomingSo.Spec.PollingInterval != nil && incomingSo.UsesHPAObservations() {
+		msg := "PollingInterval is configured but is not relevant for scaling. It only affects scaling when minReplicaCount = 0, idleReplicaCount is set, or useCachedMetrics is enabled, but it still controls how often KEDA refreshes the ScaledObject status conditions and events"
+		warnings = append(warnings, msg)
+		if eventRecorder != nil {
+			eventRecorder.Eventf(incomingSo, nil, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", msg)
 		}
 	}
 
@@ -508,7 +496,6 @@ func getFromCacheOrDirect(ctx context.Context, key client.ObjectKey, obj client.
 	return err
 }
 
-//nolint:unparam
 func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string, dryRun bool) (admission.Warnings, error) {
 	if dryRun {
 		return nil, nil
@@ -546,15 +533,20 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string, dryRun bool
 				}
 			}
 			containerName := trigger.Metadata["containerName"]
-			for _, container := range podSpec.Containers {
-				if containerName != "" && container.Name != containerName {
-					continue
-				}
+			resourceType := corev1.ResourceName(trigger.Type)
 
-				if trigger.Type == cpuString || trigger.Type == memoryString {
+			// The HPA uses the pod-level request (KEP-2837) only for Resource metrics; a containerName
+			// trigger yields a ContainerResource metric, which ignores it and needs the container request.
+			podLevelRequestApplies := containerName == "" && podSpec.Resources != nil && isWorkloadResourceSet(*podSpec.Resources, resourceType)
+
+			if !podLevelRequestApplies {
+				for _, container := range podSpec.Containers {
+					if containerName != "" && container.Name != containerName {
+						continue
+					}
+
 					// Fail if neither pod's container spec has particular resource limit specified, nor a default limit is
 					// specified in LimitRange in the same namespace as the deployment
-					resourceType := corev1.ResourceName(trigger.Type)
 					if !isWorkloadResourceSet(container.Resources, resourceType) &&
 						!isContainerResourceLimitSet(context.Background(), incomingSo.Namespace, resourceType) {
 						err := fmt.Errorf("the scaledobject has a %v trigger but the container %s doesn't have the %v request defined", resourceType, container.Name, resourceType)
@@ -600,7 +592,7 @@ func ValidateAndCompileScalingModifiers(so *ScaledObject) (*vm.Program, error) {
 	}
 
 	// cast return value of formula to float if necessary to avoid wrong value return
-	// type (ternary operator doesnt return float)
+	// type (ternary operator doesn't return float)
 	so.Spec.Advanced.ScalingModifiers.Formula = castToFloatIfNecessary(sm.Formula)
 
 	// validate formula if not empty

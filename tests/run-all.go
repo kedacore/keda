@@ -626,7 +626,7 @@ func buildRegexFromConfig(config helper.TestConfig) (string, error) {
 		}
 
 		if len(supportedTests) > 0 {
-			// go regex doesn't support negative lookaheads, so we need to explicily include the tests we want to run
+			// go regex doesn't support negative lookaheads, so we need to explicitly include the tests we want to run
 			regexParts = append(regexParts, fmt.Sprintf("%s/(%s)/.*", category, strings.Join(supportedTests, "|")))
 		}
 		// if there's no tests for that category, we don't need to add anything to the regex

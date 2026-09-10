@@ -10,11 +10,27 @@
     ":gitSignOff",
     ":prHourlyLimitNone",
   ],
+  ignorePresets: [":ignoreModulesAndTests"],
   commitBodyTable: true,
   commitMessagePrefix: "Dependencies:",
+  ignorePaths: ["**/vendor/**"],
   labels: ["dependencies", "kind/dependencies"],
+  // Give malware scanners and the community time to flag a bad release before
+  // we pull it in. vulnerabilityAlerts defaults to minimumReleaseAge: null, so
+  // security fixes are not delayed by this.
+  minimumReleaseAge: "3 days",
   osvVulnerabilityAlerts: true,
   packageRules: [
+    // Registries rarely expose a release timestamp for a tag, and the default
+    // minimumReleaseAgeBehaviour (timestamp-required) treats a missing one as
+    // "not old enough" and blocks the update outright. Fail open for docker so
+    // kindest/node, vishnubijukumar/** and our base images keep updating; every
+    // other datasource here does report timestamps, so it stays fail-closed.
+    {
+      matchDatasources: ["docker"],
+      minimumReleaseAgeBehaviour: "timestamp-optional",
+    },
+
     // --- GitHub Actions ---
     {
       matchManagers: ["github-actions"],
@@ -28,6 +44,13 @@
       matchUpdateTypes: ["minor", "patch", "digest"],
       groupName: "Go Dependencies (non-major)",
     },
+    // Catch-all so unrelated major bumps don't each open their own PR/dashboard entry.
+    // Family-specific rules below override this groupName for their packages.
+    {
+      matchManagers: ["gomod"],
+      matchUpdateTypes: ["major"],
+      groupName: "Go Dependencies (major)",
+    },
     // Split minor and patch for k8s packages so patch fixes
     // can be merged independently of k8s minor version bumps.
     {
@@ -35,6 +58,7 @@
       matchPackageNames: [
         "k8s.io/**",
         "sigs.k8s.io/controller-runtime",
+        "sigs.k8s.io/controller-runtime/**",
         "sigs.k8s.io/controller-tools",
         "sigs.k8s.io/custom-metrics-apiserver",
       ],
@@ -45,6 +69,7 @@
       matchPackageNames: [
         "k8s.io/**",
         "sigs.k8s.io/controller-runtime",
+        "sigs.k8s.io/controller-runtime/**",
         "sigs.k8s.io/controller-tools",
         "sigs.k8s.io/custom-metrics-apiserver",
       ],
@@ -56,6 +81,7 @@
       matchPackageNames: [
         "k8s.io/**",
         "sigs.k8s.io/controller-runtime",
+        "sigs.k8s.io/controller-runtime/**",
         "sigs.k8s.io/controller-tools",
         "sigs.k8s.io/custom-metrics-apiserver",
       ],
@@ -70,6 +96,12 @@
     },
     {
       matchManagers: ["gomod"],
+      matchPackageNames: ["github.com/prometheus/**"],
+      matchUpdateTypes: ["major"],
+      groupName: "Prometheus Dependencies (major)",
+    },
+    {
+      matchManagers: ["gomod"],
       matchPackageNames: [
         "github.com/aws/aws-sdk-go-v2",
         "github.com/aws/aws-sdk-go-v2/**",
@@ -79,9 +111,24 @@
     },
     {
       matchManagers: ["gomod"],
+      matchPackageNames: [
+        "github.com/aws/aws-sdk-go-v2",
+        "github.com/aws/aws-sdk-go-v2/**",
+      ],
+      matchUpdateTypes: ["major"],
+      groupName: "AWS SDK (major)",
+    },
+    {
+      matchManagers: ["gomod"],
       matchPackageNames: ["github.com/Azure/azure-sdk-for-go/**"],
       matchUpdateTypes: ["minor", "patch"],
       groupName: "Azure SDK",
+    },
+    {
+      matchManagers: ["gomod"],
+      matchPackageNames: ["github.com/Azure/azure-sdk-for-go/**"],
+      matchUpdateTypes: ["major"],
+      groupName: "Azure SDK (major)",
     },
     {
       matchManagers: ["gomod"],
@@ -91,12 +138,34 @@
     },
     {
       matchManagers: ["gomod"],
+      matchPackageNames: ["go.opentelemetry.io/**"],
+      matchUpdateTypes: ["major"],
+      groupName: "OpenTelemetry (major)",
+    },
+    {
+      matchManagers: ["gomod"],
       matchPackageNames: ["cloud.google.com/go/**", "google.golang.org/api"],
       matchUpdateTypes: ["minor", "patch"],
       groupName: "Google Cloud SDK",
     },
+    {
+      matchManagers: ["gomod"],
+      matchPackageNames: ["cloud.google.com/go/**", "google.golang.org/api"],
+      matchUpdateTypes: ["major"],
+      groupName: "Google Cloud SDK (major)",
+    },
 
     // --- Custom regex ---
+    // config:best-practices pins digests for every docker datasource, but the
+    // custom managers below only capture a version (no currentDigest group and
+    // no digest in the file), so Renovate cannot write the pin back and the
+    // whole branch update fails. These versions are also interpolated into
+    // non-image fields (e.g. kubernetesVersion), where a digest is invalid.
+    {
+      matchManagers: ["custom.regex"],
+      matchDatasources: ["docker"],
+      pinDigests: false,
+    },
     // Deps annotated with @only-patch should only receive patch updates.
     {
       matchManagers: ["custom.regex"],
@@ -114,10 +183,20 @@
       matchPackageNames: ["vishnubijukumar/**"],
       groupName: "s390x Test Infrastructure",
     },
+    // Other one-off e2e/build tooling deps tracked via renovate comments.
+    {
+      matchDepNames: [
+        "argoproj/argo-rollouts",
+        "strimzi/strimzi-kafka-operator",
+        "protocolbuffers/protobuf",
+      ],
+      groupName: "Test Infrastructure (misc)",
+    },
 
     // --- Pre-commit ---
     {
       matchManagers: ["pre-commit"],
+      separateMajorMinor: false,
       groupName: "Pre-commit Hooks",
     },
 

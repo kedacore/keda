@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -202,27 +203,22 @@ func testScaledObjectWithFileAuth(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	kedaKc := GetKedaKubernetesClient(t)
 
-	// Verify ScaledObject was created successfully
+	// Setup applies scaledObjectTemplate unconditionally, so a missing ScaledObject is a failure and
+	// not an environment to skip: returning here passed the whole test without reaching a single one
+	// of the scaling assertions below.
 	scaledObject, err := kedaKc.ScaledObjects(testNamespace).Get(context.Background(), scaledObjectName, metav1.GetOptions{})
-	if err != nil {
-		t.Logf("ScaledObject not found (expected in e2e environment): %v", err)
-		return
-	}
-	assert.NotNil(t, scaledObject)
+	require.NoErrorf(t, err, "scaledobject %s/%s should exist", testNamespace, scaledObjectName)
 
-	// Verify the authenticationRef exists
-	if len(scaledObject.Spec.Triggers) > 0 {
-		assert.NotNil(t, scaledObject.Spec.Triggers[0].AuthenticationRef)
-		assert.Equal(t, "file-auth", scaledObject.Spec.Triggers[0].AuthenticationRef.Name)
-		assert.Equal(t, "ClusterTriggerAuthentication", scaledObject.Spec.Triggers[0].AuthenticationRef.Kind)
-	}
+	// Verify the authenticationRef exists. Asserted rather than guarded by a length check, which
+	// skipped these three silently when the trigger the template defines was not there.
+	require.NotEmpty(t, scaledObject.Spec.Triggers, "scaledobject should have one trigger")
+	require.NotNil(t, scaledObject.Spec.Triggers[0].AuthenticationRef, "trigger should reference an authentication")
+	assert.Equal(t, "file-auth", scaledObject.Spec.Triggers[0].AuthenticationRef.Name)
+	assert.Equal(t, "ClusterTriggerAuthentication", scaledObject.Spec.Triggers[0].AuthenticationRef.Kind)
 
 	// Verify ClusterTriggerAuthentication has the filePath
 	clusterTriggerAuth, err := kedaKc.ClusterTriggerAuthentications().Get(context.Background(), "file-auth", metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("ClusterTriggerAuthentication not found: %v", err)
-	}
-	assert.NotNil(t, clusterTriggerAuth)
+	require.NoError(t, err, "clustertriggerauthentication file-auth should exist")
 	assert.Equal(t, "creds.json", clusterTriggerAuth.Spec.FilePath)
 
 	// Check app is scaled to 0

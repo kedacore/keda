@@ -54,7 +54,12 @@ jobs:
                 per_page: 100,
               });
 
-              const payload = skip ? skipPayload : queuedPayload;
+              // Keep s390x skipped when the skip-e2e label is added or removed.
+              const payload = name === process.env.S390X_SMOKE_CHECK_NAME ? {
+                status: 'completed',
+                conclusion: 'skipped',
+                output: { title: name, summary: 'Temporarily disabled while IBM s390x runners are unavailable.' },
+              } : (skip ? skipPayload : queuedPayload);
               for (const run of runs) {
                 await github.rest.checks.update({
                   ...context.repo,

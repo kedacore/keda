@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/mitchellh/hashstructure"
+	"github.com/mitchellh/hashstructure/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
@@ -248,14 +248,12 @@ func (s *externalPushScaler) runStreamIsActive(ctx context.Context, active chan<
 			s.logger.Error(err, "unable to get connection from the pool")
 			return
 		}
-		if err := handleIsActiveStream(ctx, &s.scaledObjectRef, grpcClient, active); err != nil {
-			if !errors.Is(err, io.EOF) {
-				s.logger.Error(err, "error running StreamIsActive")
-				return
-			}
-			retryDuration = 2 * time.Second
+		err = handleIsActiveStream(ctx, &s.scaledObjectRef, grpcClient, active)
+		if !errors.Is(err, io.EOF) {
+			s.logger.Error(err, "error running StreamIsActive")
 			return
 		}
+		retryDuration = 2 * time.Second
 	}
 
 	runOnce()
@@ -400,7 +398,7 @@ func getConnectionPoolKey(metadata externalScalerMetadata) (uint64, error) {
 		TLSClientKey:  metadata.TLSClientKey,
 	}
 
-	return hashstructure.Hash(key, nil)
+	return hashstructure.Hash(key, hashstructure.FormatV1, nil)
 }
 
 // getClientForConnectionPool returns a grpcClient and a done() Func. The done() function must be called once the client is no longer
