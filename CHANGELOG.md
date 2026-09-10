@@ -81,7 +81,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
-- **General**: Add `keda_scaled_object_ready` and `keda_scaled_job_ready` metrics exposing whether a ScaledObject's / ScaledJob's `Ready` condition is `True` ([#5663](https://github.com/kedacore/keda/issues/5663))
 - **Azure Pipelines Scaler**: Add service principal authentication through a reusable Azure authentication provider ([#4853](https://github.com/kedacore/keda/issues/4853))
 - **Datadog Scaler**: Migrate Datadog to authentication.Config ([#7766](https://github.com/kedacore/keda/issues/7766))
 - **Kafka Scaler**: Add optional `fullMetadata` trigger metadata field to control Sarama's full cluster metadata refresh, reducing operator memory for topic scoped triggers ([#7453](https://github.com/kedacore/keda/issues/7453))
