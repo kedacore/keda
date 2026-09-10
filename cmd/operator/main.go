@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"maps"
 	"os"
@@ -98,6 +99,7 @@ func main() {
 	var httpMaxIdleConns int
 	var httpMaxIdleConnsPerHost int
 	var httpIdleConnTimeout time.Duration
+	var enableMetricsTLSServer bool
 	pflag.BoolVar(&enablePrometheusMetrics, "enable-prometheus-metrics", true, "Enable the prometheus metric of keda-operator.")
 	pflag.BoolVar(&enableOpenTelemetryMetrics, "enable-opentelemetry-metrics", false, "Enable the opentelemetry metric of keda-operator.")
 	pflag.BoolVar(&enableHighCardinalityLabels, "enable-high-cardinality-metrics-labels", false, "Enable high-cardinality labels for scaler HTTP request duration metrics.")
@@ -128,6 +130,7 @@ func main() {
 	pflag.IntVar(&httpMaxIdleConns, "http-max-idle-conns", 0, "Maximum number of idle HTTP connections across all hosts. Zero means no limit.")
 	pflag.IntVar(&httpMaxIdleConnsPerHost, "http-max-idle-conns-per-host", 1000, "Maximum number of idle HTTP connections to keep per host.")
 	pflag.DurationVar(&httpIdleConnTimeout, "http-idle-conn-timeout", 90*time.Second, "Maximum time an idle HTTP connection remains in the pool. Must be greater than zero.")
+	pflag.BoolVar(&enableMetricsTLSServer, "enable-metrics-tls-server", false, "Enable TLS for the metrics server. Defaults to false (HTTP only).")
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 
@@ -208,6 +211,14 @@ func main() {
 		Scheme: scheme,
 		Metrics: server.Options{
 			BindAddress: metricsAddr,
+			SecureServing: enableMetricsTLSServer,
+			CertDir: certDir,
+			TLSOpts: []func(*tls.Config){
+				func(tlsConfig *tls.Config) {
+					tlsConfig.MinVersion = kedautil.GetServiceMinTLSVersion()
+					tlsConfig.CipherSuites = kedautil.GetServiceTLSCipherList()
+				},
+			},
 		},
 		WebhookServer: webhook.NewServer(webhook.Options{
 			Port: 9443,

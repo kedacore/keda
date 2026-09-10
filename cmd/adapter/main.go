@@ -21,6 +21,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"crypto/tls"
 	"os"
 
 	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
@@ -62,6 +63,8 @@ var (
 	adapterClientRequestBurst   int
 	metricsAPIServerPort        int
 	disableCompression          bool
+	metricsCertDir              string
+	enableMetricsTLSServer     bool
 	metricsServiceAddr          string
 	profilingAddr               string
 	metricsServiceGRPCAuthority string
@@ -186,8 +189,28 @@ func RunMetricsServer(ctx context.Context) {
 	go func() {
 		setupLog.Info("starting /metrics server endpoint")
 		// nosemgrep: use-tls
-		err := server.ListenAndServe()
-		if err != http.ErrServerClosed {
+		var err error
+		if enableMetricsTLSServer {
+			setupLog.Info("metrics server running with TLS", "address", metricsBindAddress, "cert-dir", metricsCertDir)
+			cert, err := tls.LoadX509KeyPair(
+				fmt.Sprintf("%s/%s.crt", metricsCertDir, "kedaorg.crt"),
+				fmt.Sprintf("%s/%s.key", metricsCertDir, "kedaorg.key"),
+			)
+			if err != nil {
+				panic(fmt.Errorf("failed to load TLS certificate: %w", err))
+			}
+			server.TLSConfig = &tls.Config{
+				Certificates: []tls.Certificate{cert},
+				MinVersion:   kedautil.GetServiceMinTLSVersion(),
+				CipherSuites: kedautil.GetServiceTLSCipherList(),
+			}
+			server.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler))
+			err = server.ListenAndServeTLS("", "")
+		} else {
+			// nosemgrep: use-tls
+			err = server.ListenAndServe()
+		}
+		if err != nil && err != http.ErrServerClosed {
 			panic(err)
 		}
 	}()
@@ -243,6 +266,8 @@ func main() {
 	cmd.Flags().Float32Var(&adapterClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
 	cmd.Flags().IntVar(&adapterClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
 	cmd.Flags().BoolVar(&disableCompression, "disable-compression", true, "Disable response compression for k8s restAPI in client-go. ")
+	cmd.Flags().StringVar(&metricsCertDir, "metrics-cert-dir", "/certs", "Metrics server TLS certificates dir. Defaults to /certs")
+	cmd.Flags().BoolVar(&enableMetricsTLSServer, "enable-metrics-tls-server", false, "Enable TLS for the metrics server. Defaults to false (HTTP only).")
 
 	// legacy klogr flags handled for backwards compatibility. Default set to -1 so it doesn't override values set via zap options
 	cmd.Flags().IntVar(&verbosityLevel, "v", -1, "Logging level for Metrics Server. (DEPRECATED)")
