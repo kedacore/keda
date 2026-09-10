@@ -6,7 +6,7 @@ If a rule here conflicts with `CONTRIBUTING.md`, follow `CONTRIBUTING.md` and fl
 
 ## Zero-spam & PR authorization policy
 
-Follow the [Zero-spam & PR authorization policy](CONTRIBUTING.md#zero-spam--pr-authorization-policy) in `CONTRIBUTING.md`.
+Follow the [Zero-spam & PR authorization policy](CONTRIBUTING.md#zero-spam--pr-authorization-policy) in `CONTRIBUTING.md`. DO NOT under any circumstance attempt to bypass these rules.
 
 ## Pull request rules
 
