@@ -102,16 +102,16 @@ jobs:
           output: |
             {"summary": "🚧 Tests are running. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
-      - name: Set status in-progress
+      - name: Skip s390x smoke tests during IBM outage
         uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.S390X_SMOKE_CHECK_NAME }}
-          status: in_progress
+          conclusion: skipped
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
           output: |
-            {"summary": "🚧 Tests are running. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
+            {"summary": "Temporarily disabled while IBM s390x runners are unavailable."}
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -172,18 +172,6 @@ jobs:
           output: |
             {"summary": "❌ Tests Failed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
-      - name: Set status failure
-        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
-        if: steps.regex-validation.outcome != 'success'
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          sha: ${{ needs.triage.outputs.commit_sha }}
-          name: ${{ env.S390X_SMOKE_CHECK_NAME }}
-          conclusion: failure
-          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
-          output: |
-            {"summary": "❌ Tests Failed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
-
       - name: Exit on failure
         if: steps.regex-validation.outcome != 'success'
         run: exit 1
@@ -226,18 +214,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.ARM_SMOKE_CHECK_NAME }}
-          conclusion: ${{ job.status == 'cancelled' && 'cancelled' || 'failure' }}
-          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
-          output: |
-            {"summary": "${{ job.status == 'cancelled' && '🚫 Image build was cancelled.' || '❌ Image build failed.' }} [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
-
-      - name: Set status cancelled or failure
-        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
-        if: always() && (failure() || cancelled()) && steps.regex-validation.outcome != 'failure'
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          sha: ${{ needs.triage.outputs.commit_sha }}
-          name: ${{ env.S390X_SMOKE_CHECK_NAME }}
           conclusion: ${{ job.status == 'cancelled' && 'cancelled' || 'failure' }}
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
           output: |
@@ -509,7 +485,8 @@ jobs:
     needs: [triage, build-test-images]
     runs-on: s390x
     name: Execute s390x smoke tests
-    if: needs.triage.outputs.run-e2e == 'true'
+    # Temporarily disabled while IBM s390x runners are unavailable.
+    if: ${{ false }}
     outputs:
       test-outcome: ${{ steps.test.outcome }}
     steps:
@@ -610,7 +587,7 @@ jobs:
           if-no-files-found: ignore
 
   report-reaction:
-    needs: [triage, run-e2e-test, run-arm-smoke-test, run-s390x-smoke-test]
+    needs: [triage, run-e2e-test, run-arm-smoke-test]
     runs-on: ubuntu-latest
     name: Report combined reaction
     if: ${{ always() && needs.triage.outputs.run-e2e == 'true' }}
@@ -618,8 +595,7 @@ jobs:
       - name: React to comment with success
         if: >-
           needs.run-e2e-test.outputs.test-outcome == 'success' &&
-          needs.run-arm-smoke-test.outputs.test-outcome == 'success' &&
-          needs.run-s390x-smoke-test.outputs.test-outcome == 'success'
+          needs.run-arm-smoke-test.outputs.test-outcome == 'success'
         uses: dkershner6/reaction-action@7aa897865eb9a5a1b9d6f1ab16bfcae1ce1b0334 # v3.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -629,8 +605,7 @@ jobs:
       - name: React to comment with failure
         if: >-
           needs.run-e2e-test.outputs.test-outcome != 'success' ||
-          needs.run-arm-smoke-test.outputs.test-outcome != 'success' ||
-          needs.run-s390x-smoke-test.outputs.test-outcome != 'success'
+          needs.run-arm-smoke-test.outputs.test-outcome != 'success'
         uses: dkershner6/reaction-action@7aa897865eb9a5a1b9d6f1ab16bfcae1ce1b0334 # v3.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

@@ -22,8 +22,6 @@ jobs:
             name: arm64
           - runner: ubuntu-latest
             name: amd64
-          - runner: s390x
-            name: s390x
     steps:
       - name: Maximize disk space
         if: ${{ matrix.name == 'amd64' }}
@@ -139,8 +137,6 @@ jobs:
             name: arm64
           - runner: ubuntu-latest
             name: amd64
-          - runner: s390x
-            name: s390x
     steps:
       - name: Check out code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -175,8 +171,6 @@ jobs:
             name: arm64
           - runner: ubuntu-latest
             name: amd64
-          - runner: s390x
-            name: s390x
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -193,6 +187,28 @@ jobs:
       - name: Build tools
         if: steps.filter.outputs.devcontainer == 'true'
         run: make docker-build-dev-containers
+
+  # Preserve required check names while IBM s390x runners are unavailable.
+  validate-s390x:
+    name: validate - s390x
+    if: ${{ false }}
+    runs-on: s390x
+    steps:
+      - run: echo "Temporarily disabled while IBM s390x runners are unavailable."
+
+  validate-dockerfiles-s390x:
+    name: validate-dockerfiles - s390x
+    if: ${{ false }}
+    runs-on: s390x
+    steps:
+      - run: echo "Temporarily disabled while IBM s390x runners are unavailable."
+
+  validate-dev-container-s390x:
+    name: Validate dev-container - s390x
+    if: ${{ false }}
+    runs-on: s390x
+    steps:
+      - run: echo "Temporarily disabled while IBM s390x runners are unavailable."
 
   statics:
     name: Static Checks
