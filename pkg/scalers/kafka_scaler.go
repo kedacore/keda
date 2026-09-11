@@ -689,6 +689,9 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 		}
 		// Retention can advance the start past the end sampled by the earlier request.
 		lag := max(0, latestOffset-offsetsForPartition.earliestOffset)
+		s.logger.V(1).Info(fmt.Sprintf(
+			"invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet. Returning retained lag of %d (latest=%d, earliest=%d)",
+			topic, s.metadata.ConsumerGroup, partitionID, lag, latestOffset, offsetsForPartition.earliestOffset))
 		return lag, lag, nil
 	}
 
