@@ -470,7 +470,7 @@ func TestCreateJobs(t *testing.T) {
 	}).Times(2).
 		Return(nil)
 
-	scaledJob := getMockScaledJobWithDefaultStrategyAndMeta("test")
+	scaledJob := getMockScaledJobWithDefaultStrategyAndMeta()
 	createdCount, err := scaleExecutor.createJobs(ctx, logger, scaledJob, 2, 2)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(2), createdCount)
@@ -487,7 +487,7 @@ func TestCreateJobs_KubernetesAPITimeoutStopsBatch(t *testing.T) {
 
 	const timeout = 20 * time.Millisecond
 	scaleExecutor.kubernetesAPITimeout = timeout
-	scaledJob := getMockScaledJobWithDefaultStrategyAndMeta("test")
+	scaledJob := getMockScaledJobWithDefaultStrategyAndMeta()
 
 	gomock.InOrder(
 		client.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil),
@@ -517,7 +517,7 @@ func TestRequestJobScale_ReportsJobCreationFailure(t *testing.T) {
 	client := mock_client.NewMockClient(ctrl)
 	scaleExecutor := getMockScaleExecutor(client)
 	scaleExecutor.recorder = events.NewFakeRecorder(10)
-	scaledJob := getMockScaledJobWithDefaultStrategyAndMeta("test")
+	scaledJob := getMockScaledJobWithDefaultStrategyAndMeta()
 	createErr := errors.New("job creation failed")
 
 	client.EXPECT().List(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
@@ -579,7 +579,7 @@ func TestGenerateJobs(t *testing.T) {
 	defer ctrl.Finish()
 	client := mock_client.NewMockClient(ctrl)
 	scaleExecutor := getMockScaleExecutor(client)
-	scaledJob := getMockScaledJobWithDefaultStrategyAndMeta("test")
+	scaledJob := getMockScaledJobWithDefaultStrategyAndMeta()
 
 	jobs := scaleExecutor.generateJobs(logger, scaledJob, 2)
 
@@ -698,8 +698,8 @@ func getMockScaledJobWithDefaultStrategy(name string) *kedav1alpha1.ScaledJob {
 	return scaledJob
 }
 
-func getMockScaledJobWithDefaultStrategyAndMeta(name string) *kedav1alpha1.ScaledJob {
-	sc := getMockScaledJobWithDefaultStrategy(name)
+func getMockScaledJobWithDefaultStrategyAndMeta() *kedav1alpha1.ScaledJob {
+	sc := getMockScaledJobWithDefaultStrategy("test")
 	sc.Namespace = "test"
 	sc.Labels = map[string]string{"test": "test"}
 	sc.Annotations = map[string]string{"test": "test"}
