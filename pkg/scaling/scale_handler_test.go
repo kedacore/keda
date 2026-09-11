@@ -2602,3 +2602,87 @@ func TestGetScaledObjectMetrics_StoresRecordsForTheScaleLoop(t *testing.T) {
 		})
 	}
 }
+
+// activationTestPushScaler is a PushScaler that emits a single positive
+// activation and then closes the channel, as required by the PushScaler
+// contract.
+type activationTestPushScaler struct{}
+
+func (s *activationTestPushScaler) GetMetricsAndActivity(context.Context, string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	return nil, false, nil
+}
+
+func (s *activationTestPushScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	return nil
+}
+
+func (s *activationTestPushScaler) Close(context.Context) error {
+	return nil
+}
+
+func (s *activationTestPushScaler) Run(_ context.Context, active chan<- bool) {
+	active <- true
+	close(active)
+}
+
+// TestPushScalerActivationWithMissingMetricNameRequestsReconcile verifies that
+// a positive activation which cannot resolve its metric name from
+// Status.ExternalMetricNames (for example after a partial metric discovery was
+// persisted) enqueues a metric spec reconcile so the ScaledObject status gets
+// repaired, instead of silently dropping activations until the controller
+// restarts.
+func TestPushScalerActivationWithMissingMetricNameRequestsReconcile(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+
+	scaledObject := &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testNameGlobal,
+			Namespace: testNamespaceGlobal,
+			UID:       types.UID("so-uid-missing-name"),
+		},
+		// Status.ExternalMetricNames is intentionally empty: the s0- entry is
+		// missing because a partial discovery persisted an incomplete list.
+	}
+
+	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...any) error {
+			*obj = *scaledObject.DeepCopy()
+			return nil
+		}).AnyTimes()
+
+	key := scaledObject.GenerateIdentifier()
+	scalersCache := &cache.ScalersCache{
+		ScaledObject:             scaledObject,
+		ScalableObjectGeneration: scaledObject.Generation,
+		Scalers: []cache.ScalerBuilder{{
+			Scaler:       &activationTestPushScaler{},
+			ScalerConfig: scalersconfig.ScalerConfig{TriggerIndex: 0},
+		}},
+		Recorder: events.NewFakeRecorder(10),
+	}
+
+	h := &scaleHandler{
+		client:                mockClient,
+		scalerCaches:          map[string]*cache.ScalersCache{key: scalersCache},
+		scalerCachesLock:      &sync.RWMutex{},
+		metricSpecReconcileCh: make(chan event.GenericEvent, 1),
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	withTriggers, err := kedav1alpha1.AsDuckWithTriggers(scaledObject)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+	h.startPushScalers(ctx, withTriggers, scaledObject, &sync.Mutex{})
+
+	select {
+	case evt := <-h.MetricSpecReconcileChan():
+		assert.Equal(t, testNameGlobal, evt.Object.GetName())
+		assert.Equal(t, testNamespaceGlobal, evt.Object.GetNamespace())
+	case <-time.After(5 * time.Second):
+		t.Fatal("expected a metric spec reconcile event for the activation with unresolvable metric name")
+	}
+}
