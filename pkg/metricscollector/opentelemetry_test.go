@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
@@ -264,4 +265,79 @@ func TestContinuousMetrics(t *testing.T) {
 	attribute, _ = scaledJobMetric.Attributes.Value("metric")
 	assert.Equal(t, attribute.AsString(), "testmetric")
 	assert.Equal(t, scaledJobMetric.Value, 0.0)
+}
+
+func findReadyDataPoint(metrics []metricdata.Metrics, metricName, labelName, resourceName string) *metricdata.DataPoint[float64] {
+	m := retrieveMetric(metrics, metricName)
+	if m == nil {
+		return nil
+	}
+	for _, dp := range m.Data.(metricdata.Gauge[float64]).DataPoints {
+		if v, ok := dp.Attributes.Value(attribute.Key(labelName)); ok && v.AsString() == resourceName {
+			dp := dp
+			return &dp
+		}
+	}
+	return nil
+}
+
+func TestOtelReadyMetrics(t *testing.T) {
+	resetTestOtel(true)
+
+	testOtel.RecordScaledObjectReady("testns", "test-so", true)
+	testOtel.RecordScaledJobReady("testns", "test-sj", false)
+
+	// collect twice without recording again: reconciliation is event-driven, so
+	// readiness observations must persist across collections
+	for i := 0; i < 2; i++ {
+		got := metricdata.ResourceMetrics{}
+		err := testReader.Collect(context.Background(), &got)
+		assert.Nil(t, err)
+		metrics := got.ScopeMetrics[0].Metrics
+
+		soReady := findReadyDataPoint(metrics, "keda.scaled.object.ready", "scaledObject", "test-so")
+		if assert.NotNil(t, soReady, "keda.scaled.object.ready should be observed on collection %d", i+1) {
+			assert.Equal(t, 1.0, soReady.Value)
+		}
+
+		sjReady := findReadyDataPoint(metrics, "keda.scaled.job.ready", "scaledJob", "test-sj")
+		if assert.NotNil(t, sjReady, "keda.scaled.job.ready should be observed on collection %d", i+1) {
+			assert.Equal(t, 0.0, sjReady.Value)
+		}
+	}
+
+	// a new record replaces the stored observation instead of accumulating
+	testOtel.RecordScaledObjectReady("testns", "test-so", false)
+	testOtel.RecordScaledJobReady("testns", "test-sj", true)
+
+	got := metricdata.ResourceMetrics{}
+	err := testReader.Collect(context.Background(), &got)
+	assert.Nil(t, err)
+	metrics := got.ScopeMetrics[0].Metrics
+
+	soReady := findReadyDataPoint(metrics, "keda.scaled.object.ready", "scaledObject", "test-so")
+	if assert.NotNil(t, soReady) {
+		assert.Equal(t, 0.0, soReady.Value)
+	}
+	sjReady := findReadyDataPoint(metrics, "keda.scaled.job.ready", "scaledJob", "test-sj")
+	if assert.NotNil(t, sjReady) {
+		assert.Equal(t, 1.0, sjReady.Value)
+	}
+
+	// deleted resources must stop being observed
+	testOtel.DeleteScaledObjectReady("testns", "test-so")
+	testOtel.DeleteScaledJobReady("testns", "test-sj")
+
+	got = metricdata.ResourceMetrics{}
+	err = testReader.Collect(context.Background(), &got)
+	assert.Nil(t, err)
+	metrics = nil
+	if len(got.ScopeMetrics) > 0 {
+		metrics = got.ScopeMetrics[0].Metrics
+	}
+
+	assert.Nil(t, findReadyDataPoint(metrics, "keda.scaled.object.ready", "scaledObject", "test-so"),
+		"deleted ScaledObject should no longer be observed")
+	assert.Nil(t, findReadyDataPoint(metrics, "keda.scaled.job.ready", "scaledJob", "test-sj"),
+		"deleted ScaledJob should no longer be observed")
 }

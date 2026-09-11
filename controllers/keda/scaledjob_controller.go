@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -169,6 +170,8 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		reqLogger.V(1).Info(msg)
 		conditions.SetReadyCondition(metav1.ConditionTrue, "ScaledJobReady", msg)
 	}
+
+	metricscollector.RecordScaledJobReady(scaledJob.Namespace, scaledJob.Name, conditions.GetReadyCondition().Status == metav1.ConditionTrue)
 
 	if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledJob, &conditions); err != nil {
 		r.EventEmitter.Emit(scaledJob, req.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobUpdateFailed, err.Error())
@@ -374,6 +377,10 @@ func (r *ScaledJobReconciler) updatePromMetricsOnDelete(namespacedName string) {
 		for _, triggerType := range metricsData.triggerTypes {
 			metricscollector.DecrementTriggerTotal(triggerType)
 		}
+	}
+
+	if namespace, name, ok := strings.Cut(namespacedName, "/"); ok {
+		metricscollector.DeleteScaledJobReady(namespace, name)
 	}
 
 	delete(scaledJobPromMetricsMap, namespacedName)
