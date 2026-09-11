@@ -348,7 +348,14 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 						}
 						metricName := metricNameForTriggerIndex(freshSO.Status.ExternalMetricNames, triggerIndex)
 						if metricName == "" {
-							logger.V(1).Info("Could not resolve metric name for push scaler, will retry on next activation", "triggerIndex", triggerIndex)
+							// The metric name can be missing when the initial discovery
+							// was partial (for example the external scaler was briefly
+							// unreachable when the HPA was created, so the persisted
+							// ExternalMetricNames lack this trigger). Ask the
+							// ScaledObject reconciler to re-run discovery and repair
+							// the status instead of dropping activations forever.
+							logger.V(1).Info("Could not resolve metric name for push scaler, requesting metric spec reconcile and retrying on next activation", "triggerIndex", triggerIndex)
+							h.enqueueMetricSpecReconcile(ctx, freshSO.GetName(), freshSO.GetNamespace())
 							continue
 						}
 						opts := executor.ScaleExecutorOptions{
