@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"flag"
 	"maps"
 	"os"
@@ -149,14 +150,7 @@ func main() {
 	pflag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-	if err := kedautil.ConfigureHTTPTransport(kedautil.HTTPTransportConfig{
-		MaxIdleConns:        httpMaxIdleConns,
-		MaxIdleConnsPerHost: httpMaxIdleConnsPerHost,
-		IdleConnTimeout:     httpIdleConnTimeout,
-	}); err != nil {
-		setupLog.Error(err, "invalid HTTP transport configuration")
-		os.Exit(1)
-	}
+	configureHTTPTransportOrDie(httpMaxIdleConns, httpMaxIdleConnsPerHost, httpIdleConnTimeout)
 
 	ctx := ctrl.SetupSignalHandler()
 
@@ -257,18 +251,10 @@ func main() {
 	}
 
 	globalHTTPTimeout := time.Duration(globalHTTPTimeoutMS) * time.Millisecond
-	kubernetesAPITimeoutValue, err := kedautil.ResolveOsEnvDuration("KEDA_KUBERNETES_API_TIMEOUT")
+	kubernetesAPITimeout, err := resolveKubernetesAPITimeout()
 	if err != nil {
 		setupLog.Error(err, "invalid KEDA_KUBERNETES_API_TIMEOUT")
 		os.Exit(1)
-	}
-	kubernetesAPITimeout := time.Duration(0)
-	if kubernetesAPITimeoutValue != nil {
-		kubernetesAPITimeout = *kubernetesAPITimeoutValue
-		if kubernetesAPITimeout < 0 {
-			setupLog.Error(nil, "KEDA_KUBERNETES_API_TIMEOUT must not be negative")
-			os.Exit(1)
-		}
 	}
 	eventRecorder := mgr.GetEventRecorder("keda-operator")
 
@@ -410,6 +396,32 @@ func main() {
 
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
+		os.Exit(1)
+	}
+}
+
+func resolveKubernetesAPITimeout() (time.Duration, error) {
+	timeoutValue, err := kedautil.ResolveOsEnvDuration("KEDA_KUBERNETES_API_TIMEOUT")
+	if err != nil {
+		return 0, err
+	}
+	if timeoutValue == nil {
+		return 0, nil
+	}
+	if *timeoutValue < 0 {
+		return 0, errors.New("must not be negative")
+	}
+
+	return *timeoutValue, nil
+}
+
+func configureHTTPTransportOrDie(maxIdleConns, maxIdleConnsPerHost int, idleConnTimeout time.Duration) {
+	if err := kedautil.ConfigureHTTPTransport(kedautil.HTTPTransportConfig{
+		MaxIdleConns:        maxIdleConns,
+		MaxIdleConnsPerHost: maxIdleConnsPerHost,
+		IdleConnTimeout:     idleConnTimeout,
+	}); err != nil {
+		setupLog.Error(err, "invalid HTTP transport configuration")
 		os.Exit(1)
 	}
 }
