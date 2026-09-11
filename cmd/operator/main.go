@@ -257,6 +257,19 @@ func main() {
 	}
 
 	globalHTTPTimeout := time.Duration(globalHTTPTimeoutMS) * time.Millisecond
+	kubernetesAPITimeoutValue, err := kedautil.ResolveOsEnvDuration("KEDA_KUBERNETES_API_TIMEOUT")
+	if err != nil {
+		setupLog.Error(err, "invalid KEDA_KUBERNETES_API_TIMEOUT")
+		os.Exit(1)
+	}
+	kubernetesAPITimeout := time.Duration(0)
+	if kubernetesAPITimeoutValue != nil {
+		kubernetesAPITimeout = *kubernetesAPITimeoutValue
+		if kubernetesAPITimeout < 0 {
+			setupLog.Error(nil, "KEDA_KUBERNETES_API_TIMEOUT must not be negative")
+			os.Exit(1)
+		}
+	}
 	eventRecorder := mgr.GetEventRecorder("keda-operator")
 
 	kubeClientset, err := kubernetes.NewForConfig(cfg)
@@ -285,7 +298,7 @@ func main() {
 		SecretLister:    secretInformer.Lister(),
 	}
 
-	scaledHandler := scaling.NewScaleHandler(mgr.GetClient(), scaleClient, mgr.GetScheme(), globalHTTPTimeout, eventRecorder, authClientSet)
+	scaledHandler := scaling.NewScaleHandler(mgr.GetClient(), scaleClient, mgr.GetScheme(), globalHTTPTimeout, kubernetesAPITimeout, eventRecorder, authClientSet)
 	eventEmitter := eventemitter.NewEventEmitter(mgr.GetClient(), eventRecorder, k8sClusterName, authClientSet)
 
 	if err = (&kedacontrollers.ScaledObjectReconciler{
@@ -301,11 +314,12 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&kedacontrollers.ScaledJobReconciler{
-		Client:            mgr.GetClient(),
-		Scheme:            mgr.GetScheme(),
-		GlobalHTTPTimeout: globalHTTPTimeout,
-		EventEmitter:      eventEmitter,
-		AuthClientSet:     authClientSet,
+		Client:               mgr.GetClient(),
+		Scheme:               mgr.GetScheme(),
+		GlobalHTTPTimeout:    globalHTTPTimeout,
+		KubernetesAPITimeout: kubernetesAPITimeout,
+		EventEmitter:         eventEmitter,
+		AuthClientSet:        authClientSet,
 	}).SetupWithManager(mgr, controller.Options{
 		MaxConcurrentReconciles: scaledJobMaxReconciles,
 	}); err != nil {

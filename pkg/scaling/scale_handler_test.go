@@ -1695,6 +1695,40 @@ func TestHandleResult_SetsLastActiveTime(t *testing.T) {
 	assert.Equal(t, &now, patchedObj.Status.LastActiveTime)
 }
 
+func TestHandleResult_KubernetesAPITimeout(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	const timeout = 20 * time.Millisecond
+	sh := scaleHandler{client: mockClient, kubernetesAPITimeout: timeout}
+	existingSO := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "ns"},
+	}
+
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
+		DoAndReturn(func(ctx context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...any) error {
+			deadline, ok := ctx.Deadline()
+			assert.True(t, ok)
+			assert.WithinDuration(t, time.Now().Add(timeout), deadline, 10*time.Millisecond)
+			*obj = *existingSO.DeepCopy()
+			return nil
+		})
+	mockClient.EXPECT().Status().Return(statusWriter)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, _ *kedav1alpha1.ScaledObject, _ any, _ ...any) error {
+			<-ctx.Done()
+			return ctx.Err()
+		})
+
+	now := metav1.Now()
+	result := executor.ScaleResult{LastActiveTime: &now}
+	startedAt := time.Now()
+	sh.handleResult(context.Background(), &existingSO, result)
+
+	assert.Less(t, time.Since(startedAt), time.Second)
+}
+
 func TestHandleResult_TriggersActivityUpdatesAndRemovals(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockClient := mock_client.NewMockClient(ctrl)

@@ -18,6 +18,7 @@ package executor
 
 import (
 	"context"
+	"errors"
 	"maps"
 	"sort"
 	"strconv"
@@ -33,6 +34,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	version "github.com/kedacore/keda/v2/version"
 )
 
@@ -60,7 +62,7 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 	if isActive {
 		logger.V(1).Info("At least one scaler is active")
 		result.LastActiveTime = &metav1.Time{Time: time.Now()}
-		e.createJobs(ctx, logger, scaledJob, scaleTo, effectiveMaxScale)
+		_, result.Error = e.createJobs(ctx, logger, scaledJob, scaleTo, effectiveMaxScale)
 	} else {
 		logger.V(1).Info("No change in activity")
 	}
@@ -79,6 +81,9 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 			logger.V(1).Info(msg)
 			result.Conditions.SetReadyCondition(metav1.ConditionFalse, "TriggerError", msg)
 		}
+	}
+	if result.Error != nil {
+		result.Conditions.SetReadyCondition(metav1.ConditionFalse, eventreason.KEDAJobCreateFailed, result.Error.Error())
 	}
 
 	// set active condition and send events if the state has changed
@@ -117,10 +122,10 @@ func (e *scaleExecutor) getScalingDecision(scaledJob *kedav1alpha1.ScaledJob, ru
 	return effectiveMaxScale, scaleTo
 }
 
-func (e *scaleExecutor) createJobs(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, scaleTo int64, maxScale int64) {
+func (e *scaleExecutor) createJobs(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, scaleTo int64, maxScale int64) (int64, error) {
 	if maxScale <= 0 {
 		logger.Info("No need to create jobs - all requested jobs already exist", "jobs", maxScale)
-		return
+		return 0, nil
 	}
 	logger.Info("Creating jobs", "Effective number of max jobs", maxScale)
 	if scaleTo > maxScale {
@@ -129,16 +134,29 @@ func (e *scaleExecutor) createJobs(ctx context.Context, logger logr.Logger, scal
 	logger.Info("Creating jobs", "Number of jobs", scaleTo)
 
 	jobs := e.generateJobs(logger, scaledJob, scaleTo)
+	operationCtx, cancel := kedautil.KubernetesAPIContext(ctx, e.kubernetesAPITimeout)
+	defer cancel()
+	var createdCount int64
+	var createErrors []error
 	for _, job := range jobs {
-		err := e.client.Create(ctx, job)
+		err := e.client.Create(operationCtx, job)
 		if err != nil {
 			logger.Error(err, "Failed to create a new Job")
 			e.recorder.Eventf(scaledJob, nil, corev1.EventTypeWarning, eventreason.KEDAJobCreateFailed, eventreason.KEDAJobCreateFailed, "Failed to create job %s: %v", job.GenerateName, err)
+			createErrors = append(createErrors, err)
+			if operationCtx.Err() != nil {
+				break
+			}
+			continue
 		}
+		createdCount++
 	}
 
-	logger.Info("Created jobs", "Number of jobs", scaleTo)
-	e.recorder.Eventf(scaledJob, nil, corev1.EventTypeNormal, eventreason.KEDAJobsCreated, eventreason.KEDAJobsCreated, "Created %d jobs", scaleTo)
+	logger.Info("Created jobs", "Number of jobs", createdCount)
+	if createdCount > 0 {
+		e.recorder.Eventf(scaledJob, nil, corev1.EventTypeNormal, eventreason.KEDAJobsCreated, eventreason.KEDAJobsCreated, "Created %d jobs", createdCount)
+	}
+	return createdCount, errors.Join(createErrors...)
 }
 
 func (e *scaleExecutor) generateJobs(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, scaleTo int64) []*batchv1.Job {
@@ -386,12 +404,14 @@ func (e *scaleExecutor) deleteJobsWithHistoryLimit(ctx context.Context, logger l
 	}
 
 	deleteJobLength := len(jobs) - int(historyLimit)
+	operationCtx, cancel := kedautil.KubernetesAPIContext(ctx, e.kubernetesAPITimeout)
+	defer cancel()
 	for _, j := range (jobs)[0:deleteJobLength] {
 		deletePolicy := metav1.DeletePropagationBackground
 		deleteOptions := &client.DeleteOptions{
 			PropagationPolicy: &deletePolicy,
 		}
-		err := e.client.Delete(ctx, j.DeepCopy(), deleteOptions)
+		err := e.client.Delete(operationCtx, j.DeepCopy(), deleteOptions)
 		if err != nil {
 			return err
 		}

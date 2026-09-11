@@ -55,10 +55,12 @@ import (
 // ScaledJobReconciler reconciles a ScaledJob object
 type ScaledJobReconciler struct {
 	client.Client
-	Scheme            *runtime.Scheme
-	GlobalHTTPTimeout time.Duration
-	EventEmitter      eventemitter.EventHandler
-	AuthClientSet     *authentication.AuthClientSet
+	Scheme               *runtime.Scheme
+	GlobalHTTPTimeout    time.Duration
+	KubernetesAPITimeout time.Duration
+
+	EventEmitter  eventemitter.EventHandler
+	AuthClientSet *authentication.AuthClientSet
 
 	scaleHandler scaling.ScaleHandler
 }
@@ -80,7 +82,7 @@ func init() {
 
 // SetupWithManager initializes the ScaledJobReconciler instance and starts a new controller managed by the passed Manager instance.
 func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
-	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), nil, mgr.GetScheme(), r.GlobalHTTPTimeout, mgr.GetEventRecorder("scale-handler"), r.AuthClientSet)
+	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), nil, mgr.GetScheme(), r.GlobalHTTPTimeout, r.KubernetesAPITimeout, mgr.GetEventRecorder("scale-handler"), r.AuthClientSet)
 
 	// WATCH_LABEL_SELECTOR scopes this operator to ScaledJobs matching the selector.
 	labelSelectorPredicate, err := util.WatchLabelSelectorPredicate()
