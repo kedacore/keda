@@ -1086,7 +1086,7 @@ func TestRequestScale_AllHealthy_HPAHealthy(t *testing.T) {
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, 0, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
@@ -1108,7 +1108,7 @@ func TestRequestScale_ScalerError_HPAHealthy(t *testing.T) {
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, 0, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
@@ -1129,7 +1129,7 @@ func TestRequestScale_PartialError_HPAHealthy(t *testing.T) {
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, 0, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
@@ -1150,7 +1150,7 @@ func TestRequestScale_NoError_HPAUnhealthy(t *testing.T) {
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, 0, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
@@ -1178,7 +1178,7 @@ func TestRequestScale_ScalerError_HPAUnhealthy(t *testing.T) {
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, 0, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
@@ -1210,7 +1210,7 @@ func TestRequestScale_TransientHPAGap_ReadyStaysTrue(t *testing.T) {
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, 0, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
@@ -1238,7 +1238,7 @@ func TestRequestScale_HPAHealthy_HPAActiveTrue(t *testing.T) {
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, 0, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
@@ -1262,7 +1262,7 @@ func TestRequestScale_HPAScalingDisabled_HPAActiveTrueWithDistinctReason(t *test
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, 0, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
@@ -1337,7 +1337,7 @@ func TestRequestScale_ScalerErrorWithFallback_HPAHealthy(t *testing.T) {
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, 0, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()

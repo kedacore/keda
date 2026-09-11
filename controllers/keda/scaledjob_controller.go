@@ -58,9 +58,8 @@ type ScaledJobReconciler struct {
 	Scheme               *runtime.Scheme
 	GlobalHTTPTimeout    time.Duration
 	KubernetesAPITimeout time.Duration
-
-	EventEmitter  eventemitter.EventHandler
-	AuthClientSet *authentication.AuthClientSet
+	EventEmitter         eventemitter.EventHandler
+	AuthClientSet        *authentication.AuthClientSet
 
 	scaleHandler scaling.ScaleHandler
 }
