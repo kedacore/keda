@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -37,6 +38,8 @@ import (
 	"github.com/kedacore/keda/v2/pkg/mock/mock_scale"
 )
 
+const kubernetesAPITimeout = 0
+
 func TestScaleToMinReplicasWhenNotActive(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
@@ -44,7 +47,7 @@ func TestScaleToMinReplicasWhenNotActive(t *testing.T) {
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 
-	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	minReplicas := int32(0)
 
@@ -94,6 +97,76 @@ func TestScaleToMinReplicasWhenNotActive(t *testing.T) {
 	assert.Equal(t, true, condition.IsFalse())
 }
 
+func TestUpdateScaleOnScaleTarget_KubernetesAPITimeout(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	client := mock_client.NewMockClient(ctrl)
+	recorder := events.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
+
+	const timeout = 20 * time.Millisecond
+	exec := NewScaleExecutor(client, mockScaleClient, nil, timeout, recorder).(*scaleExecutor)
+	scaledObject := &v1alpha1.ScaledObject{
+		ObjectMeta: v1.ObjectMeta{Name: "name", Namespace: "namespace"},
+		Spec:       v1alpha1.ScaledObjectSpec{ScaleTargetRef: &v1alpha1.ScaleTarget{Name: "name"}},
+		Status: v1alpha1.ScaledObjectStatus{
+			ScaleTargetGVKR: &v1alpha1.GroupVersionKindResource{Group: "apps", Kind: "Deployment"},
+		},
+	}
+
+	mockScaleClient.EXPECT().Scales("namespace").Return(mockScaleInterface)
+	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), "name", gomock.Any()).
+		DoAndReturn(func(ctx context.Context, _ interface{}, _ string, _ interface{}) (*autoscalingv1.Scale, error) {
+			deadline, ok := ctx.Deadline()
+			assert.True(t, ok)
+			assert.WithinDuration(t, time.Now().Add(timeout), deadline, 10*time.Millisecond)
+			<-ctx.Done()
+			return nil, ctx.Err()
+		})
+
+	startedAt := time.Now()
+	_, err := exec.updateScaleOnScaleTarget(context.Background(), scaledObject, 1)
+
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.Less(t, time.Since(startedAt), time.Second)
+}
+
+func TestUpdateScaleOnScaleTarget_KubernetesAPITimeoutDuringUpdate(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	client := mock_client.NewMockClient(ctrl)
+	recorder := events.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
+
+	const timeout = 20 * time.Millisecond
+	exec := NewScaleExecutor(client, mockScaleClient, nil, timeout, recorder).(*scaleExecutor)
+	scaledObject := &v1alpha1.ScaledObject{
+		ObjectMeta: v1.ObjectMeta{Name: "name", Namespace: "namespace"},
+		Spec:       v1alpha1.ScaledObjectSpec{ScaleTargetRef: &v1alpha1.ScaleTarget{Name: "name"}},
+		Status: v1alpha1.ScaledObjectStatus{
+			ScaleTargetGVKR: &v1alpha1.GroupVersionKindResource{Group: "apps", Kind: "Deployment"},
+		},
+	}
+	scale := &autoscalingv1.Scale{Spec: autoscalingv1.ScaleSpec{Replicas: 1}}
+
+	mockScaleClient.EXPECT().Scales("namespace").Return(mockScaleInterface).Times(2)
+	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), "name", gomock.Any()).Return(scale, nil)
+	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, _ interface{}, _ *autoscalingv1.Scale, _ interface{}) (*autoscalingv1.Scale, error) {
+			deadline, ok := ctx.Deadline()
+			assert.True(t, ok)
+			assert.WithinDuration(t, time.Now().Add(timeout), deadline, 10*time.Millisecond)
+			<-ctx.Done()
+			return nil, ctx.Err()
+		})
+
+	startedAt := time.Now()
+	_, err := exec.updateScaleOnScaleTarget(context.Background(), scaledObject, 2)
+
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.Less(t, time.Since(startedAt), time.Second)
+}
+
 func TestScaleToMinReplicasFromLowerInitialReplicaCount(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
@@ -101,7 +174,7 @@ func TestScaleToMinReplicasFromLowerInitialReplicaCount(t *testing.T) {
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 
-	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	minReplicas := int32(5)
 
@@ -158,7 +231,7 @@ func TestScaleFromMinReplicasWhenActive(t *testing.T) {
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 
-	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	minReplicas := int32(0)
 
@@ -216,7 +289,7 @@ func TestScaleToIdleReplicasWhenNotActive(t *testing.T) {
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 
-	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	idleReplicas := int32(0)
 	minReplicas := int32(5)
@@ -275,7 +348,7 @@ func TestScaleFromIdleToMinReplicasWhenActive(t *testing.T) {
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 
-	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	idleReplicas := int32(0)
 	minReplicas := int32(5)
@@ -334,7 +407,7 @@ func TestScaleToPausedReplicasCount(t *testing.T) {
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 
-	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	scaledObject := v1alpha1.ScaledObject{
 		ObjectMeta: v1.ObjectMeta{
@@ -386,7 +459,7 @@ func TestEventWitTriggerInfo(t *testing.T) {
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 
-	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	replicaCount := int32(2)
 	idleReplicas := int32(0)
@@ -441,7 +514,7 @@ func TestNoScaleToMinReplicasWhenNotActiveAndPauseScaleInAnnotationSet(t *testin
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 
-	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	minReplicas := int32(0)
 
@@ -502,7 +575,7 @@ func TestNoScaleToIdleReplicasWhenNotActiveAndPauseScaleInAnnotationSet(t *testi
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 
-	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	idleReplicas := int32(0)
 	minReplicas := int32(5)
@@ -565,7 +638,7 @@ func TestScaleFromMinReplicasWhenActivationForced(t *testing.T) {
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 
-	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	minReplicas := int32(0)
 
@@ -626,7 +699,7 @@ func TestNoScaleFromMinReplicasWhenActiveAndPausedScaleOutAnnotationSet(t *testi
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 
-	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	minReplicas := int32(0)
 
@@ -685,7 +758,7 @@ func TestNoScaleFromIdleReplicasToMinReplicasWhenActiveAndPausedScaleOutAnnotati
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 
-	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, kubernetesAPITimeout, recorder)
 
 	idleReplicaCount := int32(0)
 	minReplicas := int32(5)
@@ -1013,7 +1086,7 @@ func TestRequestScale_AllHealthy_HPAHealthy(t *testing.T) {
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, 0, recorder)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
@@ -1035,7 +1108,7 @@ func TestRequestScale_ScalerError_HPAHealthy(t *testing.T) {
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, 0, recorder)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
@@ -1056,7 +1129,7 @@ func TestRequestScale_PartialError_HPAHealthy(t *testing.T) {
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, 0, recorder)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
@@ -1077,7 +1150,7 @@ func TestRequestScale_NoError_HPAUnhealthy(t *testing.T) {
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, 0, recorder)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
@@ -1105,7 +1178,7 @@ func TestRequestScale_ScalerError_HPAUnhealthy(t *testing.T) {
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, 0, recorder)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
@@ -1137,7 +1210,7 @@ func TestRequestScale_TransientHPAGap_ReadyStaysTrue(t *testing.T) {
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, 0, recorder)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
@@ -1165,7 +1238,7 @@ func TestRequestScale_HPAHealthy_HPAActiveTrue(t *testing.T) {
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, 0, recorder)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
@@ -1189,7 +1262,7 @@ func TestRequestScale_HPAScalingDisabled_HPAActiveTrueWithDistinctReason(t *test
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, 0, recorder)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
@@ -1264,7 +1337,7 @@ func TestRequestScale_ScalerErrorWithFallback_HPAHealthy(t *testing.T) {
 	mockClient := mock_client.NewMockClient(ctrl)
 	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
-	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, recorder)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, 0, recorder)
 
 	so := newSOWithHPA()
 	so.Status.Conditions = *v1alpha1.GetInitializedConditions()

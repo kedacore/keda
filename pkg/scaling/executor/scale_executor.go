@@ -19,6 +19,7 @@ package executor
 import (
 	"context"
 	"maps"
+	"time"
 
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,21 +60,23 @@ type ScaleExecutorOptions struct {
 }
 
 type scaleExecutor struct {
-	client           runtimeclient.Client
-	scaleClient      scale.ScalesGetter
-	reconcilerScheme *runtime.Scheme
-	logger           logr.Logger
-	recorder         events.EventRecorder
+	client               runtimeclient.Client
+	scaleClient          scale.ScalesGetter
+	reconcilerScheme     *runtime.Scheme
+	logger               logr.Logger
+	recorder             events.EventRecorder
+	kubernetesAPITimeout time.Duration
 }
 
 // NewScaleExecutor creates a ScaleExecutor object
-func NewScaleExecutor(client runtimeclient.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, recorder events.EventRecorder) ScaleExecutor {
+func NewScaleExecutor(client runtimeclient.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, kubernetesAPITimeout time.Duration, recorder events.EventRecorder) ScaleExecutor {
 	return &scaleExecutor{
-		client:           client,
-		scaleClient:      scaleClient,
-		reconcilerScheme: reconcilerScheme,
-		logger:           logf.Log.WithName("scaleexecutor"),
-		recorder:         recorder,
+		client:               client,
+		scaleClient:          scaleClient,
+		reconcilerScheme:     reconcilerScheme,
+		logger:               logf.Log.WithName("scaleexecutor"),
+		recorder:             recorder,
+		kubernetesAPITimeout: kubernetesAPITimeout,
 	}
 }
 

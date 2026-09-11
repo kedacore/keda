@@ -18,6 +18,7 @@ package executor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -35,6 +36,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
 )
 
@@ -469,7 +471,91 @@ func TestCreateJobs(t *testing.T) {
 		Return(nil)
 
 	scaledJob := getMockScaledJobWithDefaultStrategyAndMeta("test")
-	scaleExecutor.createJobs(ctx, logger, scaledJob, 2, 2)
+	createdCount, err := scaleExecutor.createJobs(ctx, logger, scaledJob, 2, 2)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(2), createdCount)
+}
+
+func TestCreateJobs_KubernetesAPITimeoutStopsBatch(t *testing.T) {
+	ctx := context.Background()
+	logger := logf.Log.WithName("CreateJobsTimeoutTest")
+	ctrl := gomock.NewController(t)
+	client := mock_client.NewMockClient(ctrl)
+	scaleExecutor := getMockScaleExecutor(client)
+	recorder := events.NewFakeRecorder(10)
+	scaleExecutor.recorder = recorder
+
+	const timeout = 20 * time.Millisecond
+	scaleExecutor.kubernetesAPITimeout = timeout
+	scaledJob := getMockScaledJobWithDefaultStrategyAndMeta("test")
+
+	gomock.InOrder(
+		client.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil),
+		client.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(operationCtx context.Context, _ runtime.Object, _ ...runtimeclient.CreateOption) error {
+				deadline, ok := operationCtx.Deadline()
+				assert.True(t, ok)
+				assert.WithinDuration(t, time.Now().Add(timeout), deadline, 10*time.Millisecond)
+				<-operationCtx.Done()
+				return operationCtx.Err()
+			}),
+	)
+
+	startedAt := time.Now()
+	createdCount, err := scaleExecutor.createJobs(ctx, logger, scaledJob, 3, 3)
+
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.Equal(t, int64(1), createdCount)
+	assert.Less(t, time.Since(startedAt), time.Second)
+	assert.Contains(t, <-recorder.Events, "Failed to create job")
+	assert.Equal(t, "Normal KEDAJobsCreated Created 1 jobs", <-recorder.Events)
+}
+
+func TestRequestJobScale_ReportsJobCreationFailure(t *testing.T) {
+	ctx := context.Background()
+	ctrl := gomock.NewController(t)
+	client := mock_client.NewMockClient(ctrl)
+	scaleExecutor := getMockScaleExecutor(client)
+	scaleExecutor.recorder = events.NewFakeRecorder(10)
+	scaledJob := getMockScaledJobWithDefaultStrategyAndMeta("test")
+	createErr := errors.New("job creation failed")
+
+	client.EXPECT().List(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	client.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).Return(createErr)
+
+	result := scaleExecutor.RequestJobScale(ctx, scaledJob, true, false, 1, 1, ScaleExecutorOptions{})
+
+	assert.ErrorIs(t, result.Error, createErr)
+	readyCondition := result.Conditions.GetReadyCondition()
+	assert.True(t, readyCondition.IsFalse())
+	assert.Equal(t, eventreason.KEDAJobCreateFailed, readyCondition.Reason)
+}
+
+func TestDeleteJobsWithHistoryLimit_KubernetesAPITimeout(t *testing.T) {
+	ctx := context.Background()
+	logger := logf.Log.WithName("DeleteJobsTimeoutTest")
+	ctrl := gomock.NewController(t)
+	client := mock_client.NewMockClient(ctrl)
+	scaleExecutor := getMockScaleExecutor(client)
+
+	const timeout = 20 * time.Millisecond
+	scaleExecutor.kubernetesAPITimeout = timeout
+	jobs := []batchv1.Job{{ObjectMeta: metav1.ObjectMeta{Name: "job-1"}}, {ObjectMeta: metav1.ObjectMeta{Name: "job-2"}}}
+
+	client.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(operationCtx context.Context, _ runtime.Object, _ ...runtimeclient.DeleteOption) error {
+			deadline, ok := operationCtx.Deadline()
+			assert.True(t, ok)
+			assert.WithinDuration(t, time.Now().Add(timeout), deadline, 10*time.Millisecond)
+			<-operationCtx.Done()
+			return operationCtx.Err()
+		})
+
+	startedAt := time.Now()
+	err := scaleExecutor.deleteJobsWithHistoryLimit(ctx, logger, jobs, 0)
+
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.Less(t, time.Since(startedAt), time.Second)
 }
 
 func TestGenerateJobs(t *testing.T) {
