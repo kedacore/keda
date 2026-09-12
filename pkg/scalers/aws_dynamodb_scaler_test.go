@@ -21,6 +21,7 @@ const (
 	testAWSDynamoErrorTable      = "Error"
 	testAWSDynamoNoValueTable    = "NoValue"
 	testAWSDynamoIndexTable      = "Index"
+	testAWSDynamoMultiPageTable  = "MultiPage"
 )
 
 var testAWSDynamoAuthentication = map[string]string{
@@ -405,6 +406,8 @@ type mockDynamoDB struct {
 var result int32 = 4
 var indexResult int32 = 2
 var empty int32
+var multiPageFirst int32 = 4
+var multiPageSecond int32 = 3
 
 func (c *mockDynamoDB) Query(_ context.Context, input *dynamodb.QueryInput, _ ...func(*dynamodb.Options)) (*dynamodb.QueryOutput, error) {
 	switch *input.TableName {
@@ -413,6 +416,19 @@ func (c *mockDynamoDB) Query(_ context.Context, input *dynamodb.QueryInput, _ ..
 	case testAWSDynamoNoValueTable:
 		return &dynamodb.QueryOutput{
 			Count: empty,
+		}, nil
+	case testAWSDynamoMultiPageTable:
+		// Simulate a paginated Query response: the first page carries a
+		// LastEvaluatedKey so the scaler must request the next page and sum
+		// the per-page counts.
+		if input.ExclusiveStartKey == nil {
+			return &dynamodb.QueryOutput{
+				Count:            multiPageFirst,
+				LastEvaluatedKey: map[string]types.AttributeValue{"pk": &types.AttributeValueMemberS{Value: "next"}},
+			}, nil
+		}
+		return &dynamodb.QueryOutput{
+			Count: multiPageSecond,
 		}, nil
 	}
 
@@ -502,6 +518,24 @@ func TestDynamoGetQueryMetrics(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDynamoGetQueryMetricsPaginated(t *testing.T) {
+	meta := awsDynamoDBMetadata{
+		TableName:                 testAWSDynamoMultiPageTable,
+		AwsRegion:                 "eu-west-1",
+		KeyConditionExpression:    "#yr = :yyyy",
+		expressionAttributeNames:  map[string]string{"#yr": year},
+		expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
+		TargetValue:               3,
+	}
+	scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, nil, logr.Discard()}
+
+	value, err := scaler.GetQueryMetrics(context.Background())
+	assert.NoError(t, err)
+	// The mock returns two pages (4 and 3 items). A DynamoDB Query response is
+	// paginated, so the scaler must follow LastEvaluatedKey and sum every page.
+	assert.EqualValues(t, int64(multiPageFirst+multiPageSecond), value)
 }
 
 func TestDynamoIsActive(t *testing.T) {
