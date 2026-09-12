@@ -18,6 +18,7 @@ import (
 	scaling "github.com/kedacore/keda/v2/pkg/scaling"
 	cache "github.com/kedacore/keda/v2/pkg/scaling/cache"
 	gomock "go.uber.org/mock/gomock"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	external_metrics "k8s.io/metrics/pkg/apis/external_metrics"
 	event "sigs.k8s.io/controller-runtime/pkg/event"
 )
@@ -173,4 +174,40 @@ func (m *MockScaleHandler) UnsubscribeMetric(ctx context.Context, subscriber str
 func (mr *MockScaleHandlerMockRecorder) UnsubscribeMetric(ctx, subscriber, metadata any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnsubscribeMetric", reflect.TypeOf((*MockScaleHandler)(nil).UnsubscribeMetric), ctx, subscriber, metadata)
+}
+
+// MockhpaMinReplicaSinceTimeWriter is a mock of hpaMinReplicaSinceTimeWriter interface.
+type MockhpaMinReplicaSinceTimeWriter struct {
+	ctrl     *gomock.Controller
+	recorder *MockhpaMinReplicaSinceTimeWriterMockRecorder
+	isgomock struct{}
+}
+
+// MockhpaMinReplicaSinceTimeWriterMockRecorder is the mock recorder for MockhpaMinReplicaSinceTimeWriter.
+type MockhpaMinReplicaSinceTimeWriterMockRecorder struct {
+	mock *MockhpaMinReplicaSinceTimeWriter
+}
+
+// NewMockhpaMinReplicaSinceTimeWriter creates a new mock instance.
+func NewMockhpaMinReplicaSinceTimeWriter(ctrl *gomock.Controller) *MockhpaMinReplicaSinceTimeWriter {
+	mock := &MockhpaMinReplicaSinceTimeWriter{ctrl: ctrl}
+	mock.recorder = &MockhpaMinReplicaSinceTimeWriterMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockhpaMinReplicaSinceTimeWriter) EXPECT() *MockhpaMinReplicaSinceTimeWriterMockRecorder {
+	return m.recorder
+}
+
+// SetStatusHPAMinReplicaSinceTime mocks base method.
+func (m *MockhpaMinReplicaSinceTimeWriter) SetStatusHPAMinReplicaSinceTime(arg0 *v1.Time) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetStatusHPAMinReplicaSinceTime", arg0)
+}
+
+// SetStatusHPAMinReplicaSinceTime indicates an expected call of SetStatusHPAMinReplicaSinceTime.
+func (mr *MockhpaMinReplicaSinceTimeWriterMockRecorder) SetStatusHPAMinReplicaSinceTime(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusHPAMinReplicaSinceTime", reflect.TypeOf((*MockhpaMinReplicaSinceTimeWriter)(nil).SetStatusHPAMinReplicaSinceTime), arg0)
 }

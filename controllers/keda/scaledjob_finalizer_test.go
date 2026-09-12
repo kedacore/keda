@@ -53,7 +53,7 @@ var _ = Describe("ScaledJobFinalizer", func() {
 		reconciler = ScaledJobReconciler{
 			Client:       client,
 			EventEmitter: eventEmitter,
-			scaleHandler: scaleHandler,
+			ScaleHandler: scaleHandler,
 		}
 	})
 
