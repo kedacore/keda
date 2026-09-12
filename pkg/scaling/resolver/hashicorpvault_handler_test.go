@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	vaultapi "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
@@ -766,4 +767,181 @@ func TestHashicorpVaultHandler_Token_ServiceAccountAuth(t *testing.T) {
 	token, err := vaultHandler.token(client)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
+}
+
+const renewTokenTimeout = 10 * time.Second
+
+var vaultRenewableTokenAuth = vaultapi.SecretAuth{
+	ClientToken:   vaultTestToken,
+	Renewable:     true,
+	LeaseDuration: 3600,
+}
+
+func writeVaultSecret(w http.ResponseWriter, secret vaultapi.Secret) {
+	_ = json.NewEncoder(w).Encode(secret)
+}
+
+func mockVaultRenewal(t *testing.T, renewable bool, renewSelf http.HandlerFunc) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/auth/token/lookup-self":
+			writeVaultSecret(w, vaultapi.Secret{
+				Data: map[string]interface{}{
+					"id":        vaultTestToken,
+					"renewable": renewable,
+				},
+			})
+		case "/v1/auth/token/renew-self":
+			renewSelf(w, r)
+		default:
+			t.Logf("Got request at path %s", r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+}
+
+func signalRenewSelf(renewed chan struct{}) {
+	select {
+	case renewed <- struct{}{}:
+	default:
+	}
+}
+
+func newRenewalVaultHandler(t *testing.T, address string) *HashicorpVaultHandler {
+	t.Helper()
+
+	ctrl := gomock.NewController(t)
+	authClientSet := &authentication.AuthClientSet{
+		CoreV1Interface: mock_serviceaccounts.NewMockCoreV1Interface(ctrl),
+		SecretLister:    mock_secretlister.NewMockSecretLister(ctrl),
+	}
+
+	vault := kedav1alpha1.HashiCorpVault{
+		Address:        address,
+		Authentication: kedav1alpha1.VaultAuthenticationToken,
+		Credential: &kedav1alpha1.Credential{
+			Token: vaultTestToken,
+		},
+	}
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	err := vaultHandler.Initialize(logf.Log.WithName("test"))
+	assert.NoError(t, err)
+
+	return vaultHandler
+}
+
+func startRenewToken(vaultHandler *HashicorpVaultHandler) <-chan struct{} {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		vaultHandler.renewToken(logf.Log.WithName("test"))
+	}()
+
+	return done
+}
+
+func awaitSignal(t *testing.T, signal <-chan struct{}, message string) {
+	t.Helper()
+
+	select {
+	case <-signal:
+	case <-time.After(renewTokenTimeout):
+		t.Fatal(message)
+	}
+}
+
+type renewTokenFailureTestData struct {
+	name      string
+	renewSelf http.HandlerFunc
+}
+
+var renewTokenFailureTestDataSet = []renewTokenFailureTestData{
+	{
+		name: "renew-self is rejected",
+		renewSelf: func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+		},
+	},
+	{
+		name: "renew-self returns no secret",
+		renewSelf: func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		},
+	},
+}
+
+func TestHashicorpVaultHandler_renewToken_ExitsWhenSetupFails(t *testing.T) {
+	for _, testData := range renewTokenFailureTestDataSet {
+		t.Run(testData.name, func(t *testing.T) {
+			server := mockVaultRenewal(t, false, testData.renewSelf)
+			defer server.Close()
+
+			vaultHandler := newRenewalVaultHandler(t, server.URL)
+			defer vaultHandler.Stop()
+
+			done := startRenewToken(vaultHandler)
+			awaitSignal(t, done, "renewToken kept running after the renewal setup failed")
+		})
+	}
+}
+
+func TestHashicorpVaultHandler_Stop_EndsTokenRenewal(t *testing.T) {
+	renewed := make(chan struct{}, 1)
+	server := mockVaultRenewal(t, false, func(w http.ResponseWriter, _ *http.Request) {
+		signalRenewSelf(renewed)
+		writeVaultSecret(w, vaultapi.Secret{Auth: &vaultRenewableTokenAuth})
+	})
+	defer server.Close()
+
+	vaultHandler := newRenewalVaultHandler(t, server.URL)
+	vaultHandler.stopCh = make(chan struct{})
+
+	done := startRenewToken(vaultHandler)
+	awaitSignal(t, renewed, "renewToken never renewed the token")
+
+	vaultHandler.Stop()
+	awaitSignal(t, done, "renewToken kept running after Stop")
+}
+
+func TestHashicorpVaultHandler_Stop_AfterTokenRenewalEnded(t *testing.T) {
+	server := mockVaultRenewal(t, false, func(w http.ResponseWriter, _ *http.Request) {
+		writeVaultSecret(w, vaultapi.Secret{Data: kvV1SecretDataKeda})
+	})
+	defer server.Close()
+
+	vaultHandler := newRenewalVaultHandler(t, server.URL)
+	vaultHandler.stopCh = make(chan struct{})
+
+	done := startRenewToken(vaultHandler)
+	awaitSignal(t, done, "renewToken kept running for a token that cannot be renewed")
+
+	assert.NotPanics(t, vaultHandler.Stop)
+}
+
+func TestHashicorpVaultHandler_Initialize_StartsRenewalForRenewableToken(t *testing.T) {
+	renewed := make(chan struct{}, 1)
+	server := mockVaultRenewal(t, true, func(w http.ResponseWriter, _ *http.Request) {
+		signalRenewSelf(renewed)
+		writeVaultSecret(w, vaultapi.Secret{Auth: &vaultRenewableTokenAuth})
+	})
+	defer server.Close()
+
+	vaultHandler := newRenewalVaultHandler(t, server.URL)
+	defer vaultHandler.Stop()
+
+	assert.NotNil(t, vaultHandler.client)
+	assert.NotNil(t, vaultHandler.stopCh)
+	awaitSignal(t, renewed, "Initialize did not start the token renewal")
+}
+
+func TestHashicorpVaultHandler_Initialize_SkipsRenewalForNonRenewableToken(t *testing.T) {
+	server := mockVaultRenewal(t, false, func(_ http.ResponseWriter, _ *http.Request) {
+		t.Error("renew-self was called for a token that is not renewable")
+	})
+	defer server.Close()
+
+	vaultHandler := newRenewalVaultHandler(t, server.URL)
+	defer vaultHandler.Stop()
+
+	assert.Nil(t, vaultHandler.stopCh)
 }
