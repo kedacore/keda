@@ -15,8 +15,22 @@
   commitMessagePrefix: "Dependencies:",
   ignorePaths: ["**/vendor/**"],
   labels: ["dependencies", "kind/dependencies"],
+  // Give malware scanners and the community time to flag a bad release before
+  // we pull it in. vulnerabilityAlerts defaults to minimumReleaseAge: null, so
+  // security fixes are not delayed by this.
+  minimumReleaseAge: "3 days",
   osvVulnerabilityAlerts: true,
   packageRules: [
+    // Registries rarely expose a release timestamp for a tag, and the default
+    // minimumReleaseAgeBehaviour (timestamp-required) treats a missing one as
+    // "not old enough" and blocks the update outright. Fail open for docker so
+    // kindest/node, vishnubijukumar/** and our base images keep updating; every
+    // other datasource here does report timestamps, so it stays fail-closed.
+    {
+      matchDatasources: ["docker"],
+      minimumReleaseAgeBehaviour: "timestamp-optional",
+    },
+
     // --- GitHub Actions ---
     {
       matchManagers: ["github-actions"],
@@ -142,6 +156,16 @@
     },
 
     // --- Custom regex ---
+    // config:best-practices pins digests for every docker datasource, but the
+    // custom managers below only capture a version (no currentDigest group and
+    // no digest in the file), so Renovate cannot write the pin back and the
+    // whole branch update fails. These versions are also interpolated into
+    // non-image fields (e.g. kubernetesVersion), where a digest is invalid.
+    {
+      matchManagers: ["custom.regex"],
+      matchDatasources: ["docker"],
+      pinDigests: false,
+    },
     // Deps annotated with @only-patch should only receive patch updates.
     {
       matchManagers: ["custom.regex"],

@@ -9,7 +9,9 @@
                     "name": "managementEndpoint",
                     "type": "string",
                     "optional": true,
-                    "metadataVariableReadable": true
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "destinationName",
@@ -4031,6 +4033,17 @@
             "type": "mssql",
             "parameters": [
                 {
+                    "name": "driverName",
+                    "type": "string",
+                    "default": "sqlserver",
+                    "allowedValue": [
+                        "sqlserver",
+                        "azuresql"
+                    ],
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
                     "name": "connectionString",
                     "type": "string",
                     "optional": true,
@@ -7123,6 +7136,12 @@
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "includeOngoingSessions",
+                    "type": "string",
+                    "default": "true",
+                    "metadataVariableReadable": true
                 }
             ]
         },
@@ -7738,7 +7757,7 @@
                     "name": "buildId",
                     "type": "string",
                     "optional": true,
-                    "deprecatedAnnounce": "The 'buildId' setting is DEPRECATED and will be removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead",
+                    "deprecated": "The 'buildId' setting is DEPRECATED and is removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead",
                     "metadataVariableReadable": true,
                     "envVariableReadable": true
                 },
@@ -7760,14 +7779,14 @@
                     "name": "selectAllActive",
                     "type": "string",
                     "default": "false",
-                    "deprecatedAnnounce": "The 'selectAllActive' setting is DEPRECATED and will be removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead",
+                    "deprecated": "The 'selectAllActive' setting is DEPRECATED and is removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead",
                     "metadataVariableReadable": true
                 },
                 {
                     "name": "selectUnversioned",
                     "type": "string",
                     "default": "false",
-                    "deprecatedAnnounce": "The 'selectUnversioned' setting is DEPRECATED and will be removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Remove it if your workers are unversioned. Or use 'workerDeploymentName' and 'workerDeploymentBuildId' if you're migrating to Worker Deployment Versioning",
+                    "deprecated": "The 'selectUnversioned' setting is DEPRECATED and is removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Remove it if your workers are unversioned. Or use 'workerDeploymentName' and 'workerDeploymentBuildId' if you're migrating to Worker Deployment Versioning",
                     "metadataVariableReadable": true
                 },
                 {

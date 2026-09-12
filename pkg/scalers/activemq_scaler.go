@@ -31,7 +31,7 @@ type activeMQMetadata struct {
 	metricName   string
 	triggerIndex int
 
-	ManagementEndpoint string `keda:"name=managementEndpoint, order=triggerMetadata, optional"`
+	ManagementEndpoint string `keda:"name=managementEndpoint, order=triggerMetadata;authParams;resolvedEnv, optional"`
 	DestinationName    string `keda:"name=destinationName,    order=triggerMetadata, optional"`
 	BrokerName         string `keda:"name=brokerName,         order=triggerMetadata, optional"`
 

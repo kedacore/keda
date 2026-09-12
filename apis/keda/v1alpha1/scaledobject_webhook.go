@@ -363,26 +363,18 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 		minReplicas = *incomingSo.Spec.MinReplicaCount
 	}
 
-	// Check if any trigger uses cached metrics
-	usesCachedMetrics := false
-	for _, trigger := range incomingSo.Spec.Triggers {
-		if trigger.UseCachedMetrics {
-			usesCachedMetrics = true
-			break
-		}
-	}
-
-	// PollingInterval warning: if minReplicaCount > 0 AND idleReplicaCount is not set (idle mode disabled) AND NOT useCachedMetrics.
-	// When idle mode is enabled (idleReplicaCount is set to any value), the scale loop is what detects the
-	// idle<->active transitions, so pollingInterval stays relevant regardless of the idle value.
-	if incomingSo.Spec.PollingInterval != nil {
-		idleModeDisabled := incomingSo.Spec.IdleReplicaCount == nil
-		if minReplicas > 0 && idleModeDisabled && !usesCachedMetrics {
-			msg := "PollingInterval is configured but is not relevant. PollingInterval is only relevant when minReplicaCount = 0, idleReplicaCount is set, or useCachedMetrics is enabled"
-			warnings = append(warnings, msg)
-			if eventRecorder != nil {
-				eventRecorder.Eventf(incomingSo, nil, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", msg)
-			}
+	// PollingInterval warning: warn when pollingInterval no longer affects scaling because the HPA
+	// drives it all. UsesHPAObservations is the very condition the scale loop evaluates to decide
+	// whether to keep querying the trigger sources itself, so the warning cannot drift away from the
+	// actual behaviour. ScaledObjects using scaling modifiers are excluded, because the scale loop
+	// keeps querying every trigger source on pollingInterval there to evaluate the composite formula,
+	// so the interval still drives the queries. The scale loop also still runs on pollingInterval to
+	// refresh the status, so the message must not claim it does nothing at all.
+	if incomingSo.Spec.PollingInterval != nil && incomingSo.UsesHPAObservations() {
+		msg := "PollingInterval is configured but is not relevant for scaling. It only affects scaling when minReplicaCount = 0, idleReplicaCount is set, or useCachedMetrics is enabled, but it still controls how often KEDA refreshes the ScaledObject status conditions and events"
+		warnings = append(warnings, msg)
+		if eventRecorder != nil {
+			eventRecorder.Eventf(incomingSo, nil, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", msg)
 		}
 	}
 

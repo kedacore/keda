@@ -11,6 +11,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/go-logr/logr"
 	mssql "github.com/microsoft/go-mssqldb"
+	_ "github.com/microsoft/go-mssqldb/azuread" // registers the azuresql driver with database/sql
 	"github.com/microsoft/go-mssqldb/msdsn"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -22,6 +23,12 @@ import (
 
 const (
 	azureDatabaseMSSQLResource = "https://database.windows.net/.default"
+
+	// mssqlDriverSQLServer is the default driver and keeps the historical behaviour.
+	mssqlDriverSQLServer = "sqlserver"
+	// mssqlDriverAzureSQL is registered by the azuread package and understands the
+	// fedauth connection string options for Microsoft Entra ID authentication.
+	mssqlDriverAzureSQL = "azuresql"
 )
 
 type mssqlScaler struct {
@@ -33,6 +40,7 @@ type mssqlScaler struct {
 }
 
 type mssqlMetadata struct {
+	DriverName            string  `keda:"name=driverName,            order=triggerMetadata;authParams, enum=sqlserver;azuresql, default=sqlserver"`
 	ConnectionString      string  `keda:"name=connectionString,      order=authParams;resolvedEnv, optional"`
 	Username              string  `keda:"name=username,              order=authParams;triggerMetadata, optional"`
 	Password              string  `keda:"name=password,              order=authParams;resolvedEnv, optional"`
@@ -111,6 +119,11 @@ func parseMSSQLMetadata(logger logr.Logger, config *scalersconfig.ScalerConfig) 
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		// existing behavior — no changes needed
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		// Workload identity builds its own connector and never goes through
+		// database/sql driver registration, so picking a driver here would be a no-op.
+		if meta.DriverName != mssqlDriverSQLServer {
+			return nil, authPodIdentity, fmt.Errorf("driverName %s cannot be combined with azure-workload pod identity", meta.DriverName)
+		}
 		cred, err := azure.NewChainedCredential(logger, config.PodIdentity)
 		if err != nil {
 			return nil, authPodIdentity, err
@@ -131,7 +144,7 @@ func newMSSQLConnection(ctx context.Context, s *mssqlScaler) (*sql.DB, error) {
 
 	connStr := getMSSQLConnectionString(s)
 
-	db, err := sql.Open("sqlserver", connStr)
+	db, err := sql.Open(s.metadata.DriverName, connStr)
 	if err != nil {
 		s.logger.Error(err, "Found error opening mssql")
 		return nil, err
