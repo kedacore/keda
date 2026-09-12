@@ -35,7 +35,9 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/scalers/kafka"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -87,7 +89,7 @@ type kafkaMetadata struct {
 	Username string `keda:"name=username,order=authParams,optional"`
 	Password string `keda:"name=password,order=authParams,optional"`
 
-	SaslTokenProvider     string `keda:"name=saslTokenProvider,order=triggerMetadata;authParams,optional,enum=bearer;aws_msk_iam"`
+	SaslTokenProvider     string `keda:"name=saslTokenProvider,order=triggerMetadata;authParams,optional,enum=bearer;aws_msk_iam;azure_workload_identity"`
 	ScopesStr             string `keda:"name=scopes,order=authParams,optional"`
 	OAuthTokenEndpointURI string `keda:"name=oauthTokenEndpointUri,order=authParams,optional"`
 	OAuthExtensionsStr    string `keda:"name=oauthExtensions,order=authParams,optional"`
@@ -107,6 +109,7 @@ type kafkaMetadata struct {
 	keytabPath         string
 	kerberosConfigPath string
 	awsAuthorization   awsutils.AuthorizationMetadata
+	podIdentity        v1alpha1.AuthPodIdentity
 	scopes             []string
 	oauthExtensions    map[string]string
 
@@ -259,16 +262,8 @@ func (m *kafkaMetadata) parseOAuthParams() error {
 		if m.OAuthTokenEndpointURI == "" {
 			return errors.New("no oauth token endpoint uri given")
 		}
-		m.scopes = strings.Split(m.ScopesStr, ",")
-		m.oauthExtensions = make(map[string]string)
-		if m.OAuthExtensionsStr != "" {
-			for ext := range strings.SplitSeq(m.OAuthExtensionsStr, ",") {
-				kv := strings.Split(ext, "=")
-				if len(kv) != 2 {
-					return errors.New("invalid OAuthBearer extension, must be of format key=value")
-				}
-				m.oauthExtensions[kv[0]] = kv[1]
-			}
+		if err := m.parseScopesAndExtensions(); err != nil {
+			return err
 		}
 
 	case KafkaSASLOAuthTokenProviderAWSMSKIAM:
@@ -278,9 +273,29 @@ func (m *kafkaMetadata) parseOAuthParams() error {
 		if m.AWSRegion == "" {
 			return errors.New("no awsRegion given")
 		}
+
+	case KafkaSASLOAuthTokenProviderAzureWorkloadIdentity:
+		if err := m.parseScopesAndExtensions(); err != nil {
+			return err
+		}
 	}
 
 	m.tokenProvider = tokenProvider
+	return nil
+}
+
+func (m *kafkaMetadata) parseScopesAndExtensions() error {
+	m.scopes = strings.Split(m.ScopesStr, ",")
+	m.oauthExtensions = make(map[string]string)
+	if m.OAuthExtensionsStr != "" {
+		for ext := range strings.SplitSeq(m.OAuthExtensionsStr, ",") {
+			kv := strings.Split(ext, "=")
+			if len(kv) != 2 {
+				return errors.New("invalid OAuthBearer extension, must be of format key=value")
+			}
+			m.oauthExtensions[kv[0]] = kv[1]
+		}
+	}
 	return nil
 }
 
@@ -323,8 +338,9 @@ type kafkaSaslOAuthTokenProvider string
 
 // supported SASL OAuth token provider types
 const (
-	KafkaSASLOAuthTokenProviderBearer    kafkaSaslOAuthTokenProvider = "bearer"
-	KafkaSASLOAuthTokenProviderAWSMSKIAM kafkaSaslOAuthTokenProvider = "aws_msk_iam"
+	KafkaSASLOAuthTokenProviderBearer                kafkaSaslOAuthTokenProvider = "bearer"
+	KafkaSASLOAuthTokenProviderAWSMSKIAM             kafkaSaslOAuthTokenProvider = "aws_msk_iam"
+	KafkaSASLOAuthTokenProviderAzureWorkloadIdentity kafkaSaslOAuthTokenProvider = "azure_workload_identity"
 )
 
 const (
@@ -351,7 +367,7 @@ func NewKafkaScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Sc
 		return nil, fmt.Errorf("error parsing kafka metadata: %w", err)
 	}
 
-	client, admin, err := getKafkaClients(ctx, kafkaMetadata)
+	client, admin, err := getKafkaClients(ctx, kafkaMetadata, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -411,6 +427,14 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 		meta.awsAuthorization = auth
 	}
 
+	if meta.saslType == KafkaSASLTypeOAuthbearer && meta.tokenProvider == KafkaSASLOAuthTokenProviderAzureWorkloadIdentity {
+		if config.PodIdentity.Provider != v1alpha1.PodIdentityProviderAzureWorkload {
+			return meta, fmt.Errorf("pod identity provider %q is required when using the %q SASL OAuth token provider, got %q",
+				v1alpha1.PodIdentityProviderAzureWorkload, KafkaSASLOAuthTokenProviderAzureWorkloadIdentity, config.PodIdentity.Provider)
+		}
+		meta.podIdentity = config.PodIdentity
+	}
+
 	meta.triggerIndex = config.TriggerIndex
 	return meta, nil
 }
@@ -439,8 +463,8 @@ func saveToFile(content string) (string, error) {
 	return tempFile.Name(), nil
 }
 
-func getKafkaClients(ctx context.Context, metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin, error) {
-	config, err := getKafkaClientConfig(ctx, metadata)
+func getKafkaClients(ctx context.Context, metadata kafkaMetadata, logger logr.Logger) (sarama.Client, sarama.ClusterAdmin, error) {
+	config, err := getKafkaClientConfig(ctx, metadata, logger)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error getting kafka client config: %w", err)
 	}
@@ -470,7 +494,7 @@ func getKafkaClients(ctx context.Context, metadata kafkaMetadata) (sarama.Client
 	return client, admin, nil
 }
 
-func getKafkaClientConfig(ctx context.Context, metadata kafkaMetadata) (*sarama.Config, error) {
+func getKafkaClientConfig(ctx context.Context, metadata kafkaMetadata, logger logr.Logger) (*sarama.Config, error) {
 	config := sarama.NewConfig()
 	config.Version = metadata.version
 	config.Metadata.Full = metadata.FullMetadata
@@ -522,6 +546,12 @@ func getKafkaClientConfig(ctx context.Context, metadata kafkaMetadata) (*sarama.
 				return nil, fmt.Errorf("error getting AWS config: %w", err)
 			}
 			config.Net.SASL.TokenProvider = kafka.OAuthMSKTokenProvider(awsAuth)
+		case KafkaSASLOAuthTokenProviderAzureWorkloadIdentity:
+			cred, err := azure.NewChainedCredential(logger, metadata.podIdentity)
+			if err != nil {
+				return nil, fmt.Errorf("error getting Azure credential: %w", err)
+			}
+			config.Net.SASL.TokenProvider = kafka.OAuthAzureADWorkloadIdentityTokenProvider(cred, metadata.scopes, metadata.oauthExtensions)
 		}
 	}
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/go-logr/logr"
 
+	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kafka_oauth "github.com/kedacore/keda/v2/pkg/scalers/kafka"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -358,6 +360,8 @@ var parseKafkaOAuthbearerAuthParamsTestDataset = []parseKafkaOAuthbearerAuthPara
 	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "aws_msk_iam", "tls": "enable", "awsRegion": ""}, true, true},
 	// failure, SASL OAUTHBEARER MSK + TLS + no credentials
 	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "aws_msk_iam", "tls": "enable", "awsRegion": "eu-west-1"}, true, true},
+	// failure, SASL OAUTHBEARER + TLS bad saslTokenProvider type
+	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "foo", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, true, false},
 }
 
 var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
@@ -607,7 +611,7 @@ func TestKafkaClientsOAuthTokenProvider(t *testing.T) {
 				t.Fatal("Could not parse metadata:", err)
 			}
 
-			cfg, err := getKafkaClientConfig(context.TODO(), meta)
+			cfg, err := getKafkaClientConfig(t.Context(), meta, logr.Discard())
 			if err != nil {
 				t.Error("Expected success but got error", err)
 			}
@@ -623,6 +627,72 @@ func TestKafkaClientsOAuthTokenProvider(t *testing.T) {
 
 			if tokenProvider.String() != tt.expectedTokenProvider {
 				t.Errorf("Expected token provider to be %v but got %v", tt.expectedTokenProvider, tokenProvider.String())
+			}
+		})
+	}
+}
+
+func TestKafkaClientsOAuthTokenProviderAzureWorkloadIdentity(t *testing.T) {
+	tokenFile := filepath.Join(t.TempDir(), "azure-federated-token")
+	if err := os.WriteFile(tokenFile, []byte("dummy-federated-token"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("AZURE_TENANT_ID", "11111111-1111-1111-1111-111111111111")
+	t.Setenv("AZURE_CLIENT_ID", "22222222-2222-2222-2222-222222222222")
+	t.Setenv("AZURE_FEDERATED_TOKEN_FILE", tokenFile)
+
+	metadata := map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitation": "1,2"}
+	authParams := map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "azure_workload_identity", "scopes": "api://example/.default"}
+
+	meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{
+		TriggerMetadata: metadata,
+		AuthParams:      authParams,
+		PodIdentity:     v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAzureWorkload},
+	}, logr.Discard())
+	if err != nil {
+		t.Fatal("Could not parse metadata:", err)
+	}
+
+	cfg, err := getKafkaClientConfig(t.Context(), meta, logr.Discard())
+	if err != nil {
+		t.Fatal("Expected success but got error", err)
+	}
+
+	if !cfg.Net.SASL.Enable {
+		t.Error("Expected SASL to be enabled on client")
+	}
+
+	tokenProvider, ok := cfg.Net.SASL.TokenProvider.(kafka_oauth.TokenProvider)
+	if !ok {
+		t.Fatal("Expected token provider to be set on client")
+	}
+
+	if tokenProvider.String() != "AzureADWorkloadIdentity" {
+		t.Errorf("Expected token provider to be AzureADWorkloadIdentity but got %v", tokenProvider.String())
+	}
+}
+
+func TestKafkaOAuthbearerAzureWorkloadIdentityRequiresMatchingPodIdentity(t *testing.T) {
+	metadata := map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic"}
+	authParams := map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "azure_workload_identity", "scopes": "api://example/.default"}
+
+	testCases := []struct {
+		name        string
+		podIdentity v1alpha1.AuthPodIdentity
+	}{
+		{"no pod identity", v1alpha1.AuthPodIdentity{}},
+		{"mismatched pod identity", v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAwsEKS}},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{
+				TriggerMetadata: metadata,
+				AuthParams:      authParams,
+				PodIdentity:     tc.podIdentity,
+			}, logr.Discard())
+			if err == nil {
+				t.Fatal("Expected error when pod identity is not azure-workload but got success")
 			}
 		})
 	}
@@ -645,7 +715,7 @@ func TestKafkaClientConfigFullMetadata(t *testing.T) {
 				t.Fatal("Could not parse metadata:", err)
 			}
 
-			cfg, err := getKafkaClientConfig(context.TODO(), meta)
+			cfg, err := getKafkaClientConfig(t.Context(), meta, logr.Discard())
 			if err != nil {
 				t.Error("Expected success but got error", err)
 			}
