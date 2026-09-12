@@ -365,10 +365,22 @@ func (e *EventEmitter) enqueueEventData(eventData eventdata.EventData) {
 // 1. If there is a new EventData, call all handlers for emitting.
 // 2. Once there is an error when emitting event, record the handler's key and reqeueu this EventData.
 // 3. If the maximum number of retries has been exceeded, discard this event.
+// getEventHandler looks up a handler under the cache read lock. The map is mutated by
+// createEventHandlers and clearEventHandlersCache on the reconciler goroutines, so an unguarded
+// read here races with them and trips Go's "concurrent map read and map write" fatal error, which
+// no recover() can catch.
+func (e *EventEmitter) getEventHandler(key string) (EventDataHandler, bool) {
+	e.eventHandlersCacheLock.RLock()
+	defer e.eventHandlersCacheLock.RUnlock()
+
+	handler, found := e.eventHandlersCache[key]
+	return handler, found
+}
+
 func (e *EventEmitter) emitEventByHandler(eventData eventdata.EventData) {
 	if eventData.RetryTimes >= maxRetryTimes {
 		e.log.Error(eventData.Err, "Failed to emit Event multiple times. Will drop this event and need to check if event endpoint works well", "CloudEventSource", eventData.ObjectName)
-		handler, found := e.eventHandlersCache[eventData.HandlerKey]
+		handler, found := e.getEventHandler(eventData.HandlerKey)
 		if found {
 			e.log.V(1).Info("Set handler failure status. 1", "handler", eventData.HandlerKey)
 			handler.SetActiveStatus(metav1.ConditionFalse)
@@ -377,9 +389,12 @@ func (e *EventEmitter) emitEventByHandler(eventData eventdata.EventData) {
 	}
 
 	if eventData.HandlerKey == "" {
+		e.eventHandlersCacheLock.RLock()
+		defer e.eventHandlersCacheLock.RUnlock()
+		e.eventFilterCacheLock.RLock()
+		defer e.eventFilterCacheLock.RUnlock()
+
 		for key, handler := range e.eventHandlersCache {
-			e.eventFilterCacheLock.RLock()
-			defer e.eventFilterCacheLock.RUnlock()
 			// Filter Event
 			identifierKey := getPrefixIdentifierFromKey(key)
 
@@ -401,7 +416,7 @@ func (e *EventEmitter) emitEventByHandler(eventData eventdata.EventData) {
 		}
 	} else {
 		e.log.Info("Failed to emit event", "handler", eventData.HandlerKey, "retry times", fmt.Sprintf("%d/%d", eventData.RetryTimes, maxRetryTimes), "error", eventData.Err)
-		handler, found := e.eventHandlersCache[eventData.HandlerKey]
+		handler, found := e.getEventHandler(eventData.HandlerKey)
 		if found && handler.GetActiveStatus() == metav1.ConditionTrue {
 			go handler.EmitEvent(eventData, e.emitErrorHandle)
 		}
@@ -413,7 +428,7 @@ func (e *EventEmitter) emitErrorHandle(eventData eventdata.EventData, err error)
 
 	if eventData.RetryTimes >= maxRetryTimes {
 		e.log.V(1).Info("Failed to emit Event multiple times. Will set handler failure status.", "handler", eventData.HandlerKey, "retry times", eventData.RetryTimes)
-		handler, found := e.eventHandlersCache[eventData.HandlerKey]
+		handler, found := e.getEventHandler(eventData.HandlerKey)
 		if found {
 			handler.SetActiveStatus(metav1.ConditionFalse)
 		}
