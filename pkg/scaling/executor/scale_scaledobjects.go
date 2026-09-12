@@ -32,6 +32,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool, isError bool, options ScaleExecutorOptions) ScaleResult {
@@ -42,7 +43,9 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	result.TriggersActivity = getTriggersActivity(scaledObject, options)
 
 	// get the current replica count
-	currentReplicas, err := resolver.GetCurrentReplicas(ctx, e.client, e.scaleClient, scaledObject)
+	operationCtx, cancel := kedautil.KubernetesAPIContext(ctx, e.kubernetesAPITimeout)
+	currentReplicas, err := resolver.GetCurrentReplicas(operationCtx, e.client, e.scaleClient, scaledObject)
+	cancel()
 	if err != nil {
 		logger.Error(err, "Error getting current replicas count for ScaleTarget")
 		result.Conditions.SetReadyCondition(metav1.ConditionFalse, "ErrorGettingCurrentReplicas", fmt.Sprintf("Error getting current replicas count for ScaleTarget: %v", err))
@@ -294,7 +297,9 @@ func (e *scaleExecutor) getScaleTargetScale(ctx context.Context, scaledObject *k
 }
 
 func (e *scaleExecutor) updateScaleOnScaleTarget(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, replicas int32) (int32, error) {
-	scale, err := e.getScaleTargetScale(ctx, scaledObject)
+	operationCtx, cancel := kedautil.KubernetesAPIContext(ctx, e.kubernetesAPITimeout)
+	defer cancel()
+	scale, err := e.getScaleTargetScale(operationCtx, scaledObject)
 	if err != nil {
 		return -1, err
 	}
@@ -303,7 +308,7 @@ func (e *scaleExecutor) updateScaleOnScaleTarget(ctx context.Context, scaledObje
 	currentReplicas := scale.Spec.Replicas
 	scale.Spec.Replicas = replicas
 
-	_, err = e.scaleClient.Scales(scaledObject.Namespace).Update(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scale, metav1.UpdateOptions{})
+	_, err = e.scaleClient.Scales(scaledObject.Namespace).Update(operationCtx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scale, metav1.UpdateOptions{})
 	return currentReplicas, err
 }
 
