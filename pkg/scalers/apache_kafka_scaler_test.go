@@ -3,11 +3,16 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net"
 	"reflect"
 	"strconv"
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/protocol/listoffsets"
+	"github.com/segmentio/kafka-go/protocol/metadata"
+	"github.com/segmentio/kafka-go/protocol/offsetfetch"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -395,4 +400,112 @@ func parseExpectedLagThreshold(metadata map[string]string) (int64, error) {
 		return 0, nil
 	}
 	return strconv.ParseInt(val, 10, 64)
+}
+
+type apacheKafkaTestTransport func(kafka.Request) (kafka.Response, error)
+
+func (f apacheKafkaTestTransport) RoundTrip(_ context.Context, _ net.Addr, request kafka.Request) (kafka.Response, error) {
+	return f(request)
+}
+
+func TestApacheKafkaGetMetricsAndActivityRetainedLag(t *testing.T) {
+	const topic = "test-topic"
+	tests := []struct {
+		name                       string
+		consumerOffset             int64
+		offsetResetPolicy          offsetResetPolicy
+		scaleToZeroOnInvalidOffset bool
+		earliestOffset             int64
+		earliestError              int16
+		missingEarliest            bool
+		expectedLag                int64
+	}{
+		// Partition 1 always has a committed offset of 75 and a latest offset of 100, adding 25 to the total lag.
+		{name: "retained backlog", consumerOffset: invalidOffset, offsetResetPolicy: earliest, earliestOffset: 50, expectedLag: 75},
+		{name: "empty retained window", consumerOffset: invalidOffset, offsetResetPolicy: earliest, earliestOffset: 100, expectedLag: 25},
+		{name: "advancing log start preserves another partition's backlog", consumerOffset: invalidOffset, offsetResetPolicy: earliest, earliestOffset: 150, expectedLag: 25},
+		{name: "zero earliest offset", consumerOffset: invalidOffset, offsetResetPolicy: earliest, expectedLag: 125},
+		{name: "invalid earliest offset", consumerOffset: invalidOffset, offsetResetPolicy: earliest, earliestOffset: -1, expectedLag: 125},
+		{name: "earliest response error", consumerOffset: invalidOffset, offsetResetPolicy: earliest, earliestOffset: 50, earliestError: int16(kafka.NotLeaderForPartition), expectedLag: 125},
+		{name: "missing earliest response", consumerOffset: invalidOffset, offsetResetPolicy: earliest, missingEarliest: true, expectedLag: 125},
+		{name: "latest policy", consumerOffset: invalidOffset, offsetResetPolicy: latest, earliestOffset: 50, expectedLag: 26},
+		{name: "latest scale to zero", consumerOffset: invalidOffset, offsetResetPolicy: latest, scaleToZeroOnInvalidOffset: true, earliestOffset: 50, expectedLag: 25},
+		{name: "earliest scale to zero", consumerOffset: invalidOffset, offsetResetPolicy: earliest, scaleToZeroOnInvalidOffset: true, earliestOffset: 50, expectedLag: 25},
+		{name: "committed offset", consumerOffset: 40, offsetResetPolicy: earliest, earliestOffset: 50, expectedLag: 85},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			offsetRequests := 0
+			scaler := &apacheKafkaScaler{
+				metadata: apacheKafkaMetadata{
+					Topic:                      []string{topic},
+					Group:                      "test-group",
+					LagThreshold:               10,
+					AllowIdleConsumers:         true,
+					OffsetResetPolicy:          tt.offsetResetPolicy,
+					ScaleToZeroOnInvalidOffset: tt.scaleToZeroOnInvalidOffset,
+				},
+				logger: logr.Discard(),
+				client: &kafka.Client{
+					Addr: kafka.TCP("localhost:9092"),
+					Transport: apacheKafkaTestTransport(func(request kafka.Request) (kafka.Response, error) {
+						switch req := request.(type) {
+						case *metadata.Request:
+							return &metadata.Response{Topics: []metadata.ResponseTopic{{
+								Name: topic, Partitions: []metadata.ResponsePartition{{PartitionIndex: 0}, {PartitionIndex: 1}},
+							}}}, nil
+						case *offsetfetch.Request:
+							return &offsetfetch.Response{Topics: []offsetfetch.ResponseTopic{{
+								Name: topic, Partitions: []offsetfetch.ResponsePartition{
+									{PartitionIndex: 0, CommittedOffset: tt.consumerOffset},
+									{PartitionIndex: 1, CommittedOffset: 75},
+								},
+							}}}, nil
+						case *listoffsets.Request:
+							offsetRequests++
+							want := []listoffsets.RequestTopic{{Topic: topic, Partitions: []listoffsets.RequestPartition{
+								{Partition: 0, CurrentLeaderEpoch: -1, Timestamp: kafka.FirstOffset},
+								{Partition: 0, CurrentLeaderEpoch: -1, Timestamp: kafka.LastOffset},
+								{Partition: 1, CurrentLeaderEpoch: -1, Timestamp: kafka.FirstOffset},
+								{Partition: 1, CurrentLeaderEpoch: -1, Timestamp: kafka.LastOffset},
+							}}}
+							if !reflect.DeepEqual(req.Topics, want) {
+								t.Errorf("Expected first and last offset requests, got %+v", req.Topics)
+							}
+							partitions := []listoffsets.ResponsePartition{
+								{Partition: 0, Timestamp: kafka.LastOffset, Offset: 100},
+								{Partition: 1, Timestamp: kafka.FirstOffset, Offset: 50},
+								{Partition: 1, Timestamp: kafka.LastOffset, Offset: 100},
+							}
+							if !tt.missingEarliest {
+								partitions = append(partitions, listoffsets.ResponsePartition{
+									Partition: 0, Timestamp: kafka.FirstOffset, Offset: tt.earliestOffset, ErrorCode: tt.earliestError,
+								})
+							}
+							return &listoffsets.Response{Topics: []listoffsets.ResponseTopic{{Topic: topic, Partitions: partitions}}}, nil
+						default:
+							return nil, fmt.Errorf("unexpected Kafka request %T", request)
+						}
+					}),
+				},
+			}
+			metrics, active, err := scaler.GetMetricsAndActivity(context.Background(), "kafka-lag")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(metrics) != 1 {
+				t.Fatalf("Expected one metric, got %d", len(metrics))
+			}
+			if got := metrics[0].Value.MilliValue(); got != tt.expectedLag*1000 {
+				t.Errorf("Expected lag %d, got %s", tt.expectedLag, metrics[0].Value.String())
+			}
+			if !active {
+				t.Error("Expected active scaler because partition 1 has 25 messages of backlog")
+			}
+			if offsetRequests != 1 {
+				t.Errorf("Expected one ListOffsets call, got %d", offsetRequests)
+			}
+		})
+	}
 }

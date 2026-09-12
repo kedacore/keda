@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/go-logr/logr"
@@ -865,7 +866,8 @@ func TestGetNextFactor(t *testing.T) {
 var _ sarama.ClusterAdmin = (*MockClusterAdmin)(nil)
 
 type MockClusterAdmin struct {
-	partitionIds []int32
+	partitionIds    []int32
+	consumerOffsets *sarama.OffsetFetchResponse
 }
 
 func (m *MockClusterAdmin) CreateTopic(_ string, _ *sarama.TopicDetail, _ bool) error {
@@ -954,7 +956,7 @@ func (m *MockClusterAdmin) DescribeConsumerGroups(_ []string) ([]*sarama.GroupDe
 }
 
 func (m *MockClusterAdmin) ListConsumerGroupOffsets(_ string, _ map[string][]int32) (*sarama.OffsetFetchResponse, error) {
-	return nil, nil
+	return m.consumerOffsets, nil
 }
 
 func (m *MockClusterAdmin) ListConsumerGroupOffsetsBatch(_ map[string]map[string][]int32) (map[string]*sarama.OffsetFetchResponseGroup, error) {
@@ -1029,7 +1031,7 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 	tests := []struct {
 		name                       string
 		consumerOffset             int64
-		topicPartitionOffsets      map[string]map[int32]int64
+		topicPartitionOffsets      map[string]map[int32]partitionOffsets
 		offsetResetPolicy          offsetResetPolicy
 		scaleToZeroOnInvalidOffset bool
 		expectedLag                int64
@@ -1040,7 +1042,7 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 		{
 			name:           "Scenario 1: scaleToZeroOnInvalidOffset true, invalid consumer offset, missing partition",
 			consumerOffset: invalidOffset,
-			topicPartitionOffsets: map[string]map[int32]int64{
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
 				"test-topic": {
 					// Partition 0 is missing - simulates Azure Event Hub not returning it
 				},
@@ -1055,7 +1057,7 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 		{
 			name:           "Scenario 2: scaleToZeroOnInvalidOffset false, invalid consumer offset, missing partition",
 			consumerOffset: invalidOffset,
-			topicPartitionOffsets: map[string]map[int32]int64{
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
 				"test-topic": {
 					// Partition 0 is missing
 				},
@@ -1070,7 +1072,7 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 		{
 			name:           "Scenario 3: Valid consumer offset, missing partition in topicPartitionOffsets",
 			consumerOffset: 100,
-			topicPartitionOffsets: map[string]map[int32]int64{
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
 				"test-topic": {
 					// Partition 0 is missing - consumer has offset 100 but we can't get latestOffset
 				},
@@ -1085,9 +1087,9 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 		{
 			name:           "Control: Valid offsets, no missing partition",
 			consumerOffset: 100,
-			topicPartitionOffsets: map[string]map[int32]int64{
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
 				"test-topic": {
-					0: 150, // Latest offset exists
+					0: {latestOffset: 150}, // Latest offset exists
 				},
 			},
 			offsetResetPolicy:          earliest,
@@ -1098,11 +1100,71 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 			description:                "Normal case: both offsets exist, lag calculated correctly",
 		},
 		{
+			name:           "Control: Invalid consumer offset with earliest policy uses retained log window",
+			consumerOffset: invalidOffset,
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
+				"test-topic": {
+					0: {earliestOffset: 100, earliestOffsetFound: true, latestOffset: 150},
+				},
+			},
+			offsetResetPolicy:          earliest,
+			scaleToZeroOnInvalidOffset: false,
+			expectedLag:                50,
+			expectedLagWithPersistent:  50,
+			expectedError:              false,
+			description:                "Invalid offset with earliest policy should return retained lag from log start to log end",
+		},
+		{
+			name:           "Control: Invalid consumer offset with earliest policy and empty retained window",
+			consumerOffset: invalidOffset,
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
+				"test-topic": {
+					0: {earliestOffset: 150, earliestOffsetFound: true, latestOffset: 150},
+				},
+			},
+			offsetResetPolicy:          earliest,
+			scaleToZeroOnInvalidOffset: false,
+			expectedLag:                0,
+			expectedLagWithPersistent:  0,
+			expectedError:              false,
+			description:                "An empty retained window should contribute no lag or activity",
+		},
+		{
+			name:           "Control: Invalid consumer offset with earliest policy and log start past sampled end",
+			consumerOffset: invalidOffset,
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
+				"test-topic": {
+					0: {earliestOffset: 150, earliestOffsetFound: true, latestOffset: 100},
+				},
+			},
+			offsetResetPolicy:          earliest,
+			scaleToZeroOnInvalidOffset: false,
+			expectedLag:                0,
+			expectedLagWithPersistent:  0,
+			expectedError:              false,
+			description:                "Retention advancing between offset reads must not produce negative lag",
+		},
+		{
+			name:           "Control: Invalid consumer offset with earliest policy falls back to latest offset when earliest offset is unavailable",
+			consumerOffset: invalidOffset,
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
+				"test-topic": {
+					0: {latestOffset: 150},
+				},
+			},
+			offsetResetPolicy:          earliest,
+			scaleToZeroOnInvalidOffset: false,
+			expectedLag:                150,
+			expectedLagWithPersistent:  150,
+			expectedError:              false,
+			description:                "Invalid offset with earliest policy and no earliest offset should fall back to latest offset",
+		},
+		{
 			name:           "Control: Invalid consumer offset with latest policy and scaleToZeroOnInvalidOffset true",
 			consumerOffset: invalidOffset,
-			topicPartitionOffsets: map[string]map[int32]int64{
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
 				"test-topic": {
-					0: 150,
+					0: {latestOffset: 150},
 				},
 			},
 			offsetResetPolicy:          latest,
@@ -1160,6 +1222,145 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 
 			if lagWithPersistent != tt.expectedLagWithPersistent {
 				t.Errorf("Expected lagWithPersistent %d but got %d. %s", tt.expectedLagWithPersistent, lagWithPersistent, tt.description)
+			}
+		})
+	}
+}
+
+type kafkaOffsetTestClient struct {
+	sarama.Client
+	config *sarama.Config
+	broker *sarama.Broker
+}
+
+func (c *kafkaOffsetTestClient) Config() *sarama.Config {
+	return c.config
+}
+
+func (c *kafkaOffsetTestClient) Leader(_ string, _ int32) (*sarama.Broker, error) {
+	return c.broker, nil
+}
+
+func TestKafkaGetMetricsAndActivityRetainedLag(t *testing.T) {
+	const topic = "test-topic"
+	tests := []struct {
+		name                       string
+		consumerOffset             int64
+		offsetResetPolicy          offsetResetPolicy
+		scaleToZeroOnInvalidOffset bool
+		earliestOffset             int64
+		earliestError              sarama.KError
+		missingEarliest            bool
+		expectedLag                int64
+		expectedRequests           int
+	}{
+		{
+			name: "retained backlog", consumerOffset: invalidOffset, offsetResetPolicy: earliest,
+			earliestOffset: 50, expectedLag: 75, expectedRequests: 2,
+		},
+		{
+			name: "empty retained window", consumerOffset: invalidOffset, offsetResetPolicy: earliest,
+			earliestOffset: 100, expectedLag: 25, expectedRequests: 2,
+		},
+		{
+			name: "advancing log start preserves another partition's backlog", consumerOffset: invalidOffset, offsetResetPolicy: earliest,
+			earliestOffset: 150, expectedLag: 25, expectedRequests: 2,
+		},
+		{
+			name: "earliest request error falls back to latest offset", consumerOffset: invalidOffset, offsetResetPolicy: earliest,
+			earliestError: sarama.ErrNotLeaderForPartition, expectedLag: 125, expectedRequests: 2,
+		},
+		{
+			name: "missing earliest response falls back to latest offset", consumerOffset: invalidOffset, offsetResetPolicy: earliest,
+			missingEarliest: true, expectedLag: 125, expectedRequests: 2,
+		},
+		{
+			name: "latest policy skips earliest request", consumerOffset: invalidOffset, offsetResetPolicy: latest,
+			expectedLag: 26, expectedRequests: 1,
+		},
+		{
+			name: "scale to zero on invalid offset skips earliest request", consumerOffset: invalidOffset, offsetResetPolicy: earliest,
+			scaleToZeroOnInvalidOffset: true, expectedLag: 25, expectedRequests: 1,
+		},
+		{
+			name: "committed offsets skip earliest request", consumerOffset: 40, offsetResetPolicy: earliest,
+			expectedLag: 85, expectedRequests: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := sarama.NewMockBroker(t, 0)
+			t.Cleanup(server.Close)
+			latestResponse := sarama.NewMockOffsetResponse(t).
+				SetOffset(topic, 0, sarama.OffsetNewest, 100).
+				SetOffset(topic, 1, sarama.OffsetNewest, 100)
+			// Partition 1 has a committed offset and must not be requested here.
+			var earliestResponse sarama.MockResponse = sarama.NewMockOffsetResponse(t).
+				SetOffset(topic, 0, sarama.OffsetOldest, tt.earliestOffset)
+			if tt.earliestError != sarama.ErrNoError {
+				earliestResponse = sarama.NewMockWrapper(&sarama.OffsetResponse{
+					Version: 1,
+					Blocks: map[string]map[int32]*sarama.OffsetResponseBlock{
+						topic: {0: {Err: tt.earliestError}},
+					},
+				})
+			} else if tt.missingEarliest {
+				earliestResponse = sarama.NewMockWrapper(&sarama.OffsetResponse{Version: 1})
+			}
+			server.SetHandlerByMap(map[string]sarama.MockResponse{
+				"OffsetRequest": sarama.NewMockSequence(latestResponse, earliestResponse),
+			})
+
+			config := sarama.NewConfig()
+			config.Version = sarama.V0_10_1_0
+			config.ApiVersionsRequest = false
+			config.Net.ReadTimeout = 5 * time.Second
+			config.Net.WriteTimeout = 5 * time.Second
+			broker := sarama.NewBroker(server.Addr())
+			if err := broker.Open(config); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := broker.Close(); err != nil {
+					t.Error(err)
+				}
+			})
+
+			scaler := &kafkaScaler{
+				metadata: kafkaMetadata{
+					Topic: topic, ConsumerGroup: "test-group", LagThreshold: 10,
+					OffsetResetPolicy:          tt.offsetResetPolicy,
+					ScaleToZeroOnInvalidOffset: tt.scaleToZeroOnInvalidOffset,
+					AllowIdleConsumers:         true,
+				},
+				client: &kafkaOffsetTestClient{config: config, broker: broker},
+				admin: &MockClusterAdmin{
+					partitionIds: []int32{0, 1},
+					consumerOffsets: &sarama.OffsetFetchResponse{
+						Blocks: map[string]map[int32]*sarama.OffsetFetchResponseBlock{
+							topic: {0: {Offset: tt.consumerOffset}, 1: {Offset: 75}},
+						},
+					},
+				},
+				logger: logr.Discard(),
+			}
+
+			metrics, active, err := scaler.GetMetricsAndActivity(context.Background(), "kafka-lag")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(metrics) != 1 {
+				t.Fatalf("Expected one metric, got %d", len(metrics))
+			}
+			if got := metrics[0].Value.MilliValue(); got != tt.expectedLag*1000 {
+				t.Errorf("Expected lag %d, got %s", tt.expectedLag, metrics[0].Value.String())
+			}
+			if !active {
+				t.Error("Expected active scaler because partition 1 has 25 messages of backlog")
+			}
+			if got := len(server.History()); got != tt.expectedRequests {
+				t.Errorf("Expected %d offset requests, got %d", tt.expectedRequests, got)
 			}
 		})
 	}
