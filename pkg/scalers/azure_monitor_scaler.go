@@ -40,6 +40,9 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
+// fullInterval asks Azure Monitor for a single datapoint covering the whole timespan
+const fullInterval = "FULL"
+
 // monitorInfo to create metric request
 type azureMonitorMetadata struct {
 	triggerIndex                 int
@@ -264,11 +267,12 @@ func (s *azureMonitorScaler) requestMetric(ctx context.Context) (float64, error)
 	if err != nil {
 		return -1, err
 	}
+	interval := fullInterval
 	opts := &azquery.MetricsClientQueryResourceOptions{
 		MetricNames:     &s.metadata.Name,
 		MetricNamespace: s.metadata.NamespaceRef,
 		Filter:          s.metadata.FilterRef,
-		Interval:        nil,
+		Interval:        &interval,
 		Top:             nil,
 		ResultType:      nil,
 		OrderBy:         nil,
@@ -306,7 +310,7 @@ func (s *azureMonitorScaler) requestMetric(ctx context.Context) (float64, error)
 	return val, nil
 }
 
-// formatTimeSpan defaults to a 5 minute timespan if the user does not provide one
+// formatTimeSpan defaults to a 5 minute timespan if the user does not provide one.
 func formatTimeSpan(timeSpan string) (*azquery.TimeInterval, error) {
 	endtime := time.Now().UTC()
 	starttime := time.Now().Add(-(5 * time.Minute)).UTC()
@@ -322,8 +326,8 @@ func formatTimeSpan(timeSpan string) (*azquery.TimeInterval, error) {
 
 		starttime = time.Now().Add(-(time.Duration(hours)*time.Hour + time.Duration(minutes)*time.Minute + time.Duration(seconds)*time.Second)).UTC()
 	}
-	interval := azquery.NewTimeInterval(starttime, endtime)
-	return &interval, nil
+	timeInterval := azquery.NewTimeInterval(starttime, endtime)
+	return &timeInterval, nil
 }
 
 func verifyAggregationTypeIsSupported(aggregationType azquery.AggregationType, data []*azquery.MetricValue) (float64, error) {
