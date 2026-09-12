@@ -5007,6 +5007,14 @@ scalers:
           metadataVariableReadable: true
         - name: queryAggregator
           type: string
+          default: avg
+          allowedValue:
+            - min
+            - max
+            - avg
+            - sum
+            - count
+            - latest
           metadataVariableReadable: true
         - name: activationTargetValue
           type: string

@@ -57,10 +57,12 @@ var testSplunkObservabilityMetadata = []parseSplunkObservabilityMetadataTestData
 	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "targetValue": "200.0", "queryAggregator": "avg", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
 	// Missing 'targetValue' field, fail
 	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "queryAggregator": "avg", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
-	// Missing 'queryAggregator' field, fail
-	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
+	// Missing 'queryAggregator' field defaults to avg, pass
+	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, false},
 	// Missing 'activationTargetValue' field, fail
 	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "queryAggregator": "avg"}, validSplunkObservabilityAuthParams, true},
+	// Unsupported 'queryAggregator' value, fail
+	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "queryAggregator": "median", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
 	// Empty 'accessToken' field
 	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "queryAggregator": "avg"}, invalidSplunkObservabilityAuthParams, true},
 }
@@ -78,6 +80,24 @@ func TestSplunkObservabilityParseMetadata(t *testing.T) {
 		} else if testData.isError && err == nil {
 			t.Error("Expected error but got success")
 		}
+	}
+}
+
+func TestSplunkObservabilityQueryAggregatorDefault(t *testing.T) {
+	meta, err := parseSplunkObservabilityMetadata(&scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"query":                 "data('demo.trans.latency').max().publish()",
+			"duration":              "10",
+			"targetValue":           "200.0",
+			"activationTargetValue": "1.1",
+		},
+		AuthParams: validSplunkObservabilityAuthParams,
+	})
+	if err != nil {
+		t.Fatal("expected omitted queryAggregator to parse:", err)
+	}
+	if meta.QueryAggregator != "avg" {
+		t.Errorf("expected default queryAggregator %q, got %q", "avg", meta.QueryAggregator)
 	}
 }
 
@@ -152,5 +172,47 @@ func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testin
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("getQueryResult did not return after parent context was cancelled; it is hanging")
+	}
+}
+
+func TestSplunkObservabilityRollup(t *testing.T) {
+	tests := []struct {
+		name       string
+		aggregator string
+		maxValue   float64
+		minValue   float64
+		valueSum   float64
+		valueCount int
+		latest     float64
+		want       float64
+		wantErr    bool
+	}{
+		{name: "max", aggregator: "max", maxValue: 30, minValue: 10, valueSum: 60, valueCount: 3, latest: 30, want: 30},
+		{name: "min", aggregator: "min", maxValue: 30, minValue: 10, valueSum: 60, valueCount: 3, latest: 30, want: 10},
+		{name: "avg", aggregator: "avg", maxValue: 30, minValue: 10, valueSum: 60, valueCount: 3, latest: 30, want: 20},
+		{name: "sum", aggregator: "sum", maxValue: 30, minValue: 10, valueSum: 60, valueCount: 3, latest: 30, want: 60},
+		{name: "count", aggregator: "count", maxValue: 30, minValue: 10, valueSum: 60, valueCount: 3, latest: 30, want: 3},
+		{name: "latest", aggregator: "latest", maxValue: 30, minValue: 10, valueSum: 60, valueCount: 3, latest: 25, want: 25},
+		{name: "single series empty aggregator", aggregator: "", maxValue: 42, minValue: 42, valueSum: 42, valueCount: 1, latest: 42, wantErr: true},
+		{name: "multi series empty aggregator", aggregator: "", maxValue: 30, minValue: 10, valueSum: 60, valueCount: 3, latest: 30, wantErr: true},
+		{name: "invalid", aggregator: "median", maxValue: 30, minValue: 10, valueSum: 60, valueCount: 3, latest: 30, wantErr: true},
+		{name: "no data", aggregator: "max", valueCount: 0, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := splunkObservabilityRollup(tt.aggregator, tt.maxValue, tt.minValue, tt.valueSum, tt.valueCount, tt.latest)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tt.want {
+				t.Errorf("got %v want %v", got, tt.want)
+			}
+		})
 	}
 }

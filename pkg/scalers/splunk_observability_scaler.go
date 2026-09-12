@@ -30,7 +30,7 @@ type splunkObservabilityMetadata struct {
 	Query                 string  `keda:"name=query,                 order=triggerMetadata"`
 	Duration              int     `keda:"name=duration,              order=triggerMetadata"`
 	TargetValue           float64 `keda:"name=targetValue,   	     order=triggerMetadata"`
-	QueryAggregator       string  `keda:"name=queryAggregator,       order=triggerMetadata"`
+	QueryAggregator       string  `keda:"name=queryAggregator,       order=triggerMetadata, enum=min;max;avg;sum;count;latest, default=avg"`
 	ActivationTargetValue float64 `keda:"name=activationTargetValue, order=triggerMetadata"`
 }
 
@@ -146,6 +146,7 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 	minValue := math.Inf(1)
 	valueSum := 0.0
 	valueCount := 0
+	latestValue := 0.0
 
 	process := func(msg *messages.DataMessage) error {
 		if len(msg.Payloads) == 0 {
@@ -162,6 +163,7 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 			minValue = math.Min(minValue, value)
 			valueSum += value
 			valueCount++
+			latestValue = value
 		}
 		return nil
 	}
@@ -208,27 +210,36 @@ loop:
 		}
 	}
 
+	result, err := splunkObservabilityRollup(s.metadata.QueryAggregator, maxValue, minValue, valueSum, valueCount, latestValue)
+	if err != nil {
+		return result, err
+	}
+	s.logger.V(1).Info(fmt.Sprintf("Returning %s value: %.4f\n", s.metadata.QueryAggregator, result))
+	return result, nil
+}
+
+func splunkObservabilityRollup(aggregator string, maxValue, minValue, valueSum float64, valueCount int, latestValue float64) (float64, error) {
 	if valueCount == 0 {
 		return 0, fmt.Errorf("query returned no data points")
 	}
-
-	if valueCount > 1 && s.metadata.QueryAggregator == "" {
+	if valueCount > 1 && aggregator == "" {
 		return 0, fmt.Errorf("query returned more than 1 series; modify the query to return only 1 series or add a queryAggregator")
 	}
-
-	switch s.metadata.QueryAggregator {
+	switch aggregator {
 	case "max":
-		s.logger.V(1).Info(fmt.Sprintf("Returning max value: %.4f\n", maxValue))
 		return maxValue, nil
 	case "min":
-		s.logger.V(1).Info(fmt.Sprintf("Returning min value: %.4f\n", minValue))
 		return minValue, nil
 	case "avg":
-		avg := valueSum / float64(valueCount)
-		s.logger.V(1).Info(fmt.Sprintf("Returning avg value: %.4f\n", avg))
-		return avg, nil
+		return valueSum / float64(valueCount), nil
+	case "sum":
+		return valueSum, nil
+	case "count":
+		return float64(valueCount), nil
+	case "latest":
+		return latestValue, nil
 	default:
-		return 0, fmt.Errorf("invalid queryAggregator: %q", s.metadata.QueryAggregator)
+		return 0, fmt.Errorf("invalid queryAggregator: %q", aggregator)
 	}
 }
 
