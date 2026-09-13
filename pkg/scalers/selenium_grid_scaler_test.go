@@ -1,6 +1,9 @@
 package scalers
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
 
@@ -3210,6 +3213,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				URL:                    "http://selenium-hub:4444/graphql",
 				BrowserName:            "chrome",
 				SessionBrowserName:     "chrome",
+				IncludeOngoingSessions: true,
 				TargetValue:            1,
 				BrowserVersion:         "",
 				PlatformName:           "",
@@ -3234,6 +3238,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				URL:                    "http://selenium-hub:4444/graphql",
 				BrowserName:            "MicrosoftEdge",
 				SessionBrowserName:     "msedge",
+				IncludeOngoingSessions: true,
 				TargetValue:            1,
 				BrowserVersion:         "",
 				PlatformName:           "",
@@ -3257,6 +3262,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				URL:                    "http://selenium-hub:4444/graphql",
 				BrowserName:            "",
 				SessionBrowserName:     "",
+				IncludeOngoingSessions: true,
 				TargetValue:            1,
 				BrowserVersion:         "",
 				PlatformName:           "",
@@ -3287,6 +3293,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				Password:               "password",
 				BrowserName:            "MicrosoftEdge",
 				SessionBrowserName:     "msedge",
+				IncludeOngoingSessions: true,
 				TargetValue:            1,
 				BrowserVersion:         "",
 				PlatformName:           "",
@@ -3315,6 +3322,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				URL:                    "http://selenium-hub:4444/graphql",
 				BrowserName:            "MicrosoftEdge",
 				SessionBrowserName:     "msedge",
+				IncludeOngoingSessions: true,
 				TargetValue:            1,
 				BrowserVersion:         "",
 				PlatformName:           "",
@@ -3347,6 +3355,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				URL:                    "http://selenium-hub:4444/graphql",
 				BrowserName:            "MicrosoftEdge",
 				SessionBrowserName:     "msedge",
+				IncludeOngoingSessions: true,
 				TargetValue:            1,
 				BrowserVersion:         "",
 				PlatformName:           "",
@@ -3374,6 +3383,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				URL:                    "http://selenium-hub:4444/graphql",
 				BrowserName:            "chrome",
 				SessionBrowserName:     "chrome",
+				IncludeOngoingSessions: true,
 				TargetValue:            1,
 				BrowserVersion:         "91.0",
 				UnsafeSsl:              false,
@@ -3401,6 +3411,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				URL:                    "http://selenium-hub:4444/graphql",
 				BrowserName:            "chrome",
 				SessionBrowserName:     "chrome",
+				IncludeOngoingSessions: true,
 				TargetValue:            1,
 				ActivationThreshold:    10,
 				BrowserVersion:         "91.0",
@@ -3444,6 +3455,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				URL:                    "http://selenium-hub:4444/graphql",
 				BrowserName:            "chrome",
 				SessionBrowserName:     "chrome",
+				IncludeOngoingSessions: true,
 				TargetValue:            1,
 				ActivationThreshold:    10,
 				BrowserVersion:         "91.0",
@@ -3473,6 +3485,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				URL:                    "http://selenium-hub:4444/graphql",
 				BrowserName:            "chrome",
 				SessionBrowserName:     "chrome",
+				IncludeOngoingSessions: true,
 				TargetValue:            1,
 				ActivationThreshold:    10,
 				BrowserVersion:         "91.0",
@@ -3509,6 +3522,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				Password:               "password",
 				BrowserName:            "chrome",
 				SessionBrowserName:     "chrome",
+				IncludeOngoingSessions: true,
 				TargetValue:            1,
 				ActivationThreshold:    10,
 				BrowserVersion:         "91.0",
@@ -3546,6 +3560,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				Password:               "password",
 				BrowserName:            "chrome",
 				SessionBrowserName:     "chrome",
+				IncludeOngoingSessions: true,
 				TargetValue:            1,
 				ActivationThreshold:    10,
 				BrowserVersion:         "91.0",
@@ -3583,6 +3598,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				AccessToken:            "my-access-token",
 				BrowserName:            "chrome",
 				SessionBrowserName:     "chrome",
+				IncludeOngoingSessions: true,
 				TargetValue:            1,
 				ActivationThreshold:    10,
 				BrowserVersion:         "91.0",
@@ -3619,6 +3635,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				AccessToken:            "my-access-token",
 				BrowserName:            "chrome",
 				SessionBrowserName:     "chrome",
+				IncludeOngoingSessions: true,
 				TargetValue:            1,
 				ActivationThreshold:    10,
 				BrowserVersion:         "91.0",
@@ -3639,6 +3656,106 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("parseSeleniumGridScalerMetadata() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_GetMetricsAndActivity_IncludeOngoingSessions(t *testing.T) {
+	// Grid with 2 queued chrome requests and 1 on-going chrome session on a fully
+	// occupied Node. getCountFromSeleniumResponse yields newRequestNodes=2, onGoingSessions=1.
+	response := []byte(`{
+		"data": {
+			"grid": { "sessionCount": 1, "maxSession": 1, "totalSlots": 1 },
+			"nodesInfo": {
+				"nodes": [
+					{
+						"id": "node-1",
+						"status": "UP",
+						"sessionCount": 1,
+						"maxSession": 1,
+						"slotCount": 1,
+						"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\"}}]",
+						"sessions": [
+							{
+								"id": "session-1",
+								"capabilities": "{\"browserName\": \"chrome\"}",
+								"slot": { "id": "slot-1", "stereotype": "{\"browserName\": \"chrome\"}" }
+							}
+						]
+					}
+				]
+			},
+			"sessionsInfo": {
+				"sessionQueueRequests": [
+					"{\"browserName\": \"chrome\"}",
+					"{\"browserName\": \"chrome\"}"
+				]
+			}
+		}
+	}`)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		// nosemgrep: no-direct-write-to-responsewriter
+		_, _ = w.Write(response)
+	}))
+	defer server.Close()
+
+	tests := []struct {
+		name                   string
+		includeOngoingSessions string
+		wantMetric             int64
+	}{
+		{
+			name:                   "omitted defaults to including on-going sessions",
+			includeOngoingSessions: "",
+			wantMetric:             3,
+		},
+		{
+			name:                   "explicit true includes on-going sessions",
+			includeOngoingSessions: "true",
+			wantMetric:             3,
+		},
+		{
+			name:                   "false excludes on-going sessions",
+			includeOngoingSessions: "false",
+			wantMetric:             2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			triggerMetadata := map[string]string{
+				"url":         server.URL,
+				"browserName": "chrome",
+			}
+			if tt.includeOngoingSessions != "" {
+				triggerMetadata["includeOngoingSessions"] = tt.includeOngoingSessions
+			}
+
+			meta, err := parseSeleniumGridScalerMetadata(&scalersconfig.ScalerConfig{
+				TriggerMetadata: triggerMetadata,
+			})
+			if err != nil {
+				t.Fatalf("parseSeleniumGridScalerMetadata() error = %v", err)
+			}
+
+			s := &seleniumGridScaler{
+				metadata:   meta,
+				httpClient: http.DefaultClient,
+				logger:     logr.Discard(),
+			}
+
+			metrics, active, err := s.GetMetricsAndActivity(context.Background(), "s0-selenium-grid-chrome")
+			if err != nil {
+				t.Fatalf("GetMetricsAndActivity() error = %v", err)
+			}
+			if !active {
+				t.Errorf("GetMetricsAndActivity() active = false, want true")
+			}
+			if got := metrics[0].Value.MilliValue() / 1000; got != tt.wantMetric {
+				t.Errorf("GetMetricsAndActivity() metric = %v, want %v", got, tt.wantMetric)
 			}
 		})
 	}

@@ -49,7 +49,7 @@ var testStackdriverMetadata = []parseStackdriverMetadataTestData{
 			Filter:                sdFilter,
 			TargetValue:           7,
 			ActivationTargetValue: 5,
-			Credentials:           "{}",
+			AuthMetadata:          gcp.AuthMetadata{Credentials: "{}"},
 			metricName:            "s0-gcp-stackdriver-myProject",
 			aggregation:           nil,
 			gcpAuthorization: &gcp.AuthorizationMetadata{
@@ -72,7 +72,7 @@ var testStackdriverMetadata = []parseStackdriverMetadataTestData{
 			Filter:                sdFilter,
 			TargetValue:           5,
 			ActivationTargetValue: 0,
-			Credentials:           "{}",
+			AuthMetadata:          gcp.AuthMetadata{Credentials: "{}"},
 			metricName:            "s0-gcp-stackdriver-myProject",
 			aggregation:           nil,
 			gcpAuthorization: &gcp.AuthorizationMetadata{
@@ -96,7 +96,7 @@ var testStackdriverMetadata = []parseStackdriverMetadataTestData{
 			Filter:                sdFilter,
 			TargetValue:           5,
 			ActivationTargetValue: 0,
-			Credentials:           "{}",
+			AuthMetadata:          gcp.AuthMetadata{Credentials: "{}"},
 			ValueIfNull:           func() *float64 { v := 1.5; return &v }(),
 			metricName:            "s0-gcp-stackdriver-myProject",
 			aggregation:           nil,

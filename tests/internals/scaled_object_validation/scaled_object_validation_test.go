@@ -373,7 +373,8 @@ spec:
 `
 
 	KubectlApplyWithTemplate(t, data, "deploymentTemplate", customDeploymentTemplate)
-	WaitForDeploymentReplicaReadyCount(t, GetKubernetesClient(t), data.DeploymentName, data.TestNamespace, 1, 10, 5)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, GetKubernetesClient(t), data.DeploymentName, data.TestNamespace, 1, 10, 5),
+		"deployment should be ready with the resource limits the checks below rely on")
 
 	t.Log("deployment was updated with resource limits")
 

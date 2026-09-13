@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/v2"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -162,8 +162,8 @@ func (s *azureQueueScaler) getMessageCount(ctx context.Context) (int64, error) {
 	}
 
 	props, err := s.queueClient.GetProperties(ctx, nil)
-	if err != nil {
+	if err != nil || props.ApproximateMessagesCount == nil {
 		return 0, err
 	}
-	return int64(*props.ApproximateMessagesCount), nil
+	return *props.ApproximateMessagesCount, nil
 }

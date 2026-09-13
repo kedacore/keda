@@ -266,18 +266,19 @@ func TestGetLogSearchResult(t *testing.T) {
 
 func TestGetMetricsSearchResult(t *testing.T) {
 	tests := []struct {
-		name           string
-		config         *Config
-		query          string
-		quantization   time.Duration
-		timerange      time.Duration
-		aggregation    string
-		tz             string
-		expectErr      bool
-		response       MetricsQueryResponse
-		statusCode     int
-		expectedResult float64
-		rollup         string
+		name             string
+		config           *Config
+		query            string
+		quantization     time.Duration
+		timerange        time.Duration
+		aggregation      string
+		tz               string
+		ignoreNullValues bool
+		expectErr        bool
+		response         MetricsQueryResponse
+		statusCode       int
+		expectedResult   float64
+		rollup           string
 	}{
 		{
 			name: "Successful Metrics Query - Sum",
@@ -372,6 +373,70 @@ func TestGetMetricsSearchResult(t *testing.T) {
 			statusCode: http.StatusBadRequest,
 			rollup:     "Avg",
 		},
+		{
+			name: "Metrics Query Without Data - Error",
+			config: &Config{
+				Host:      "fake",
+				AccessID:  "fake",
+				AccessKey: "fake",
+				UnsafeSsl: true,
+			},
+			query:        "test query",
+			quantization: 1 * time.Minute,
+			timerange:    10 * time.Minute,
+			aggregation:  "Sum",
+			tz:           "UTC",
+			expectErr:    true,
+			response:     MetricsQueryResponse{},
+			statusCode:   http.StatusOK,
+			rollup:       "Avg",
+		},
+		{
+			name: "Metrics Query Without Data - IgnoreNullValues",
+			config: &Config{
+				Host:      "fake",
+				AccessID:  "fake",
+				AccessKey: "fake",
+				UnsafeSsl: true,
+			},
+			query:            "test query",
+			quantization:     1 * time.Minute,
+			timerange:        10 * time.Minute,
+			aggregation:      "Sum",
+			tz:               "UTC",
+			ignoreNullValues: true,
+			response:         MetricsQueryResponse{},
+			statusCode:       http.StatusOK,
+			expectedResult:   0,
+			rollup:           "Avg",
+		},
+		{
+			name: "Metrics Query Without Time Series - IgnoreNullValues",
+			config: &Config{
+				Host:      "fake",
+				AccessID:  "fake",
+				AccessKey: "fake",
+				UnsafeSsl: true,
+			},
+			query:            "test query",
+			quantization:     1 * time.Minute,
+			timerange:        10 * time.Minute,
+			aggregation:      "Sum",
+			tz:               "UTC",
+			ignoreNullValues: true,
+			response: MetricsQueryResponse{
+				QueryResult: []QueryResult{
+					{
+						TimeSeriesList: TimeSeriesList{
+							TimeSeries: []TimeSeries{},
+						},
+					},
+				},
+			},
+			statusCode:     http.StatusOK,
+			expectedResult: 0,
+			rollup:         "Avg",
+		},
 	}
 
 	for _, test := range tests {
@@ -404,6 +469,7 @@ func TestGetMetricsSearchResult(t *testing.T) {
 				TimeRange(test.timerange).
 				Timezone(test.tz).
 				Aggregator(test.aggregation).
+				IgnoreNullValues(test.ignoreNullValues).
 				Build()
 
 			result, err := client.GetMetricsSearchResult(query)
@@ -442,6 +508,7 @@ func TestGetMultiMetricsSearchResult(t *testing.T) {
 		timerange        time.Duration
 		tz               string
 		aggregation      string
+		ignoreNullValues bool
 		expectErr        bool
 		response         MetricsQueryResponse
 		statusCode       int
@@ -557,6 +624,59 @@ func TestGetMultiMetricsSearchResult(t *testing.T) {
 			statusCode:       http.StatusOK,
 			expectErr:        true,
 		},
+		{
+			name: "Multi-Metrics Query Without Data - IgnoreNullValues",
+			config: &Config{
+				Host:      "fake",
+				AccessID:  "fake",
+				AccessKey: "fake",
+				UnsafeSsl: true,
+			},
+			queries: map[string]string{
+				"A": "query1",
+			},
+			resultQueryRowID: "A",
+			quantization:     1 * time.Minute,
+			rollup:           "Avg",
+			timerange:        10 * time.Minute,
+			tz:               "UTC",
+			aggregation:      "Sum",
+			ignoreNullValues: true,
+			response:         MetricsQueryResponse{},
+			statusCode:       http.StatusOK,
+			expectedResult:   0,
+		},
+		{
+			name: "Multi-Metrics Query Without Time Series - IgnoreNullValues",
+			config: &Config{
+				Host:      "fake",
+				AccessID:  "fake",
+				AccessKey: "fake",
+				UnsafeSsl: true,
+			},
+			queries: map[string]string{
+				"A": "query1",
+			},
+			resultQueryRowID: "A",
+			quantization:     1 * time.Minute,
+			rollup:           "Avg",
+			timerange:        10 * time.Minute,
+			tz:               "UTC",
+			aggregation:      "Sum",
+			ignoreNullValues: true,
+			response: MetricsQueryResponse{
+				QueryResult: []QueryResult{
+					{
+						RowID: "A",
+						TimeSeriesList: TimeSeriesList{
+							TimeSeries: []TimeSeries{},
+						},
+					},
+				},
+			},
+			statusCode:     http.StatusOK,
+			expectedResult: 0,
+		},
 	}
 
 	for _, test := range tests {
@@ -590,6 +710,7 @@ func TestGetMultiMetricsSearchResult(t *testing.T) {
 				TimeRange(test.timerange).
 				Timezone(test.tz).
 				Aggregator(test.aggregation).
+				IgnoreNullValues(test.ignoreNullValues).
 				Build()
 
 			result, err := client.GetMultiMetricsSearchResult(query)

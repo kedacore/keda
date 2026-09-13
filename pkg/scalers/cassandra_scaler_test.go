@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
+	gocql "github.com/apache/cassandra-gocql-driver/v2"
 	"github.com/go-logr/logr"
-	"github.com/gocql/gocql"
 	"github.com/stretchr/testify/assert"
 	v2 "k8s.io/api/autoscaling/v2"
 

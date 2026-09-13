@@ -11,11 +11,10 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/google/go-github/v50/github"
+	"github.com/google/go-github/v91/github"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/oauth2"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -276,13 +275,9 @@ spec:
 )
 
 // getGitHub Client
-func getGitHubClient() *github.Client {
-	ctx := context.Background()
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: personalAccessToken},
-	)
-	tc := oauth2.NewClient(ctx, ts)
-	client := github.NewClient(tc)
+func getGitHubClient(t *testing.T) *github.Client {
+	client, err := github.NewClient(github.WithAuthToken(personalAccessToken))
+	require.NoErrorf(t, err, "cannot create the github client - %s", err)
 	return client
 }
 
@@ -300,7 +295,7 @@ func TestScaler(t *testing.T) {
 	require.NotEmpty(t, instID, "GH_INSTALLATION_ID env variable is required for github runner test")
 	require.NotEmpty(t, appKey, "GH_APP_KEY env variable is required for github runner test")
 
-	client := getGitHubClient()
+	client := getGitHubClient(t)
 	cancelAllRuns(t, client, repos, workflowID)
 	cancelAllRuns(t, client, repos, soWorkflowID)
 	cancelAllRuns(t, client, repos, ghaWorkflowID)
@@ -310,7 +305,8 @@ func TestScaler(t *testing.T) {
 	data, templates := getTemplateData()
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	WaitForPodCountInNamespace(t, kc, testNamespace, minReplicaCount, 60, 2)
+	assert.True(t, WaitForPodCountInNamespace(t, kc, testNamespace, minReplicaCount, 60, 2),
+		"pod count should be %d before scaling is exercised", minReplicaCount)
 
 	// test scaling Scaled Job with App
 	KubectlApplyWithTemplate(t, data, "scaledGhaJobTemplate", scaledGhaJobTemplate)
@@ -342,7 +338,7 @@ func queueRun(t *testing.T, ghClient *github.Client, flowID string) {
 		t.Log(err)
 	}
 
-	resp, err := ghClient.Actions.CreateWorkflowDispatchEventByID(context.Background(), owner, repos, wID, *b)
+	_, resp, err := ghClient.Actions.CreateWorkflowDispatchEventByID(context.Background(), owner, repos, wID, *b)
 	if err != nil {
 		status := 0
 		if resp != nil {

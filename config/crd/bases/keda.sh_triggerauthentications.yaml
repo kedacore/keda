@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.1
+    controller-gen.kubebuilder.io/version: v0.21.0
   name: triggerauthentications.keda.sh
 spec:
   group: keda.sh
@@ -314,6 +314,96 @@ spec:
                 required:
                 - secrets
                 - vaultUri
+                type: object
+              azureServicePrincipal:
+                description: |-
+                  AzureServicePrincipal defines Microsoft Entra service principal credentials
+                  that can be shared by Azure scalers.
+                properties:
+                  activeDirectoryEndpoint:
+                    description: ActiveDirectoryEndpoint is required when cloud is
+                      set to Private.
+                    type: string
+                  clientCertificate:
+                    description: |-
+                      AzureServicePrincipalCredential references credential data stored in a
+                      Kubernetes Secret.
+                    properties:
+                      valueFrom:
+                        properties:
+                          secretKeyRef:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                        required:
+                        - secretKeyRef
+                        type: object
+                    required:
+                    - valueFrom
+                    type: object
+                  clientCertificatePassword:
+                    description: |-
+                      AzureServicePrincipalCredential references credential data stored in a
+                      Kubernetes Secret.
+                    properties:
+                      valueFrom:
+                        properties:
+                          secretKeyRef:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                        required:
+                        - secretKeyRef
+                        type: object
+                    required:
+                    - valueFrom
+                    type: object
+                  clientId:
+                    type: string
+                  clientSecret:
+                    description: |-
+                      AzureServicePrincipalCredential references credential data stored in a
+                      Kubernetes Secret.
+                    properties:
+                      valueFrom:
+                        properties:
+                          secretKeyRef:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                        required:
+                        - secretKeyRef
+                        type: object
+                    required:
+                    - valueFrom
+                    type: object
+                  cloud:
+                    description: Cloud specifies the Azure cloud environment. Defaults
+                      to AzurePublicCloud.
+                    type: string
+                  tenantId:
+                    type: string
+                required:
+                - clientId
+                - tenantId
                 type: object
               boundServiceAccountToken:
                 items:

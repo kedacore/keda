@@ -97,6 +97,10 @@ var testSumologicMetadata = []parseSumologicMetadataTestData{
 	{map[string]string{"host": "https://api.sumologic.com", "query": "fakeQuery", "queryType": "metrics", "timerange": "5"}, validSumologicAuthParams, true},
 	// Invalid rollup for metrics query, fail.
 	{map[string]string{"host": "https://api.sumologic.com", "query": "fakeQuery", "queryType": "metrics", "quantization": "1", "timerange": "5", "rollup": "fake"}, validSumologicAuthParams, true},
+	// Valid ignoreNullValues for metrics query, pass.
+	{map[string]string{"host": "https://api.sumologic.com", "query": "fakeQuery", "queryType": "metrics", "quantization": "1", "timerange": "5", "threshold": "1", "ignoreNullValues": "true"}, validSumologicAuthParams, false},
+	// Invalid ignoreNullValues, fail.
+	{map[string]string{"host": "https://api.sumologic.com", "query": "fakeQuery", "queryType": "metrics", "quantization": "1", "timerange": "5", "threshold": "1", "ignoreNullValues": "invalid"}, validSumologicAuthParams, true},
 }
 
 var sumologicMetricIdentifiers = []sumologicMetricIdentifier{
