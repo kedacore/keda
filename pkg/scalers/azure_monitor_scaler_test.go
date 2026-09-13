@@ -18,12 +18,11 @@ package scalers
 
 import (
 	"context"
-	"fmt"
-	"strings"
+	"maps"
 	"testing"
-	"time"
 
 	"github.com/go-logr/logr"
+	"k8s.io/utils/ptr"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -98,6 +97,8 @@ var testParseAzMonitorMetadata = []parseAzMonitorMetadataTestData{
 	// private cloud
 	{map[string]string{"resourceURI": "test/resource/uri", "tenantId": "123", "subscriptionId": "456", "resourceGroupName": "test", "metricName": "metric", "metricAggregationInterval": "0:15:0", "metricAggregationType": "Average", "activeDirectoryClientId": "CLIENT_ID", "activeDirectoryClientPasswordFromEnv": "CLIENT_PASSWORD", "targetValue": "5", "metricNamespace": "namespace", "cloud": "private",
 		"azureResourceManagerEndpoint": testAzureResourceManagerEndpoint}, false, testAzMonitorResolvedEnv, map[string]string{}, ""},
+	// metricInterval included
+	{map[string]string{"resourceURI": "test/resource/uri", "tenantId": "123", "subscriptionId": "456", "resourceGroupName": "test", "metricName": "metric", "metricAggregationInterval": "0:15:0", "metricInterval": "FULL", "metricAggregationType": "Average", "activeDirectoryClientId": "CLIENT_ID", "activeDirectoryClientPasswordFromEnv": "CLIENT_PASSWORD", "targetValue": "5"}, false, testAzMonitorResolvedEnv, map[string]string{}, ""},
 }
 
 var azMonitorMetricIdentifiers = []azMonitorMetricIdentifier{
@@ -118,54 +119,43 @@ func TestAzMonitorParseMetadata(t *testing.T) {
 	}
 }
 
-func TestFormatTimeSpan(t *testing.T) {
+func TestAzMonitorMetricInterval(t *testing.T) {
+	metadata := map[string]string{"resourceURI": "test/resource/uri", "tenantId": "123", "subscriptionId": "456",
+		"resourceGroupName": "test", "metricName": "metric", "metricAggregationType": "Average",
+		"activeDirectoryClientId": "CLIENT_ID", "activeDirectoryClientPasswordFromEnv": "CLIENT_PASSWORD", "targetValue": "5"}
+
 	tests := []struct {
 		name     string
-		timeSpan string
-		expected time.Duration
+		interval string
+		expected *string
 	}{
-		{"default is 5 minutes", "", 5 * time.Minute},
-		{"custom minutes", "0:15:0", 15 * time.Minute},
-		{"custom hours and minutes", "1:30:0", 90 * time.Minute},
-		{"unsupported timegrain is still honoured as a window", "0:3:0", 3 * time.Minute},
+		{"omitted leaves the interval unset", "", nil},
+		{"FULL is passed through", "FULL", ptr.To("FULL")},
+		{"timegrain is passed through", "PT5M", ptr.To("PT5M")},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			timespan, err := formatTimeSpan(tt.timeSpan)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
+			triggerMetadata := maps.Clone(metadata)
+			if tt.interval != "" {
+				triggerMetadata["metricInterval"] = tt.interval
 			}
-			start, end, err := parseTimeInterval(string(*timespan))
+
+			meta, err := parseAzureMonitorMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: triggerMetadata, ResolvedEnv: testAzMonitorResolvedEnv})
 			if err != nil {
-				t.Fatalf("parsing timespan %q: %v", string(*timespan), err)
+				t.Fatal("Could not parse metadata:", err)
 			}
-			// the window is built from time.Now() twice, so allow a small skew
-			if got := end.Sub(start); (got - tt.expected).Abs() > time.Second {
-				t.Errorf("timespan window = %v, expected %v", got, tt.expected)
+
+			switch {
+			case tt.expected == nil && meta.IntervalRef != nil:
+				t.Errorf("IntervalRef = %q, expected nil", *meta.IntervalRef)
+			case tt.expected != nil && meta.IntervalRef == nil:
+				t.Errorf("IntervalRef = nil, expected %q", *tt.expected)
+			case tt.expected != nil && *meta.IntervalRef != *tt.expected:
+				t.Errorf("IntervalRef = %q, expected %q", *meta.IntervalRef, *tt.expected)
 			}
 		})
 	}
-
-	if _, err := formatTimeSpan("a:b:c"); err == nil {
-		t.Error("expected error for invalid timespan values")
-	}
-}
-
-func parseTimeInterval(interval string) (time.Time, time.Time, error) {
-	parts := strings.Split(interval, "/")
-	if len(parts) != 2 {
-		return time.Time{}, time.Time{}, fmt.Errorf("expected start/end, got %q", interval)
-	}
-	start, err := time.Parse(time.RFC3339, parts[0])
-	if err != nil {
-		return time.Time{}, time.Time{}, err
-	}
-	end, err := time.Parse(time.RFC3339, parts[1])
-	if err != nil {
-		return time.Time{}, time.Time{}, err
-	}
-	return start, end, nil
 }
 
 func TestAzMonitorGetMetricSpecForScaling(t *testing.T) {
