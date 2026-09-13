@@ -2602,3 +2602,71 @@ func TestGetScaledObjectMetrics_StoresRecordsForTheScaleLoop(t *testing.T) {
 		})
 	}
 }
+
+func TestResolvePushScalerMetricName(t *testing.T) {
+	ctx := t.Context()
+
+	t.Run("prefers the name from persisted status when present", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		// no GetMetricSpecForScaling expectation on this scaler: falling back to it would fail the test
+		scaler := mock_scalers.NewMockScaler(ctrl)
+		scalersCache := &cache.ScalersCache{
+			Scalers: []cache.ScalerBuilder{{Scaler: scaler}},
+		}
+
+		metricName := resolvePushScalerMetricName(ctx, scalersCache, []string{"s0-from-status"}, 0)
+
+		assert.Equal(t, "s0-from-status", metricName)
+	})
+
+	t.Run("falls back to the scaler itself when status doesn't have this trigger's name", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		scaler := mock_scalers.NewMockScaler(ctrl)
+		scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{createMetricSpec(10, "s0-from-scaler")})
+		scalersCache := &cache.ScalersCache{
+			Scalers: []cache.ScalerBuilder{{Scaler: scaler}},
+		}
+
+		// status only carries a different trigger's name (e.g. persisted by a discovery cycle in which
+		// trigger 0 - this one - failed to report, but some other trigger succeeded)
+		metricName := resolvePushScalerMetricName(ctx, scalersCache, []string{"s1-other-trigger"}, 0)
+
+		assert.Equal(t, "s0-from-scaler", metricName)
+	})
+
+	t.Run("returns empty when both status and the scaler itself have nothing to offer", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		scaler := mock_scalers.NewMockScaler(ctrl)
+		// called twice: once directly, once more by GetMetricSpecForScalingForScaler's own
+		// refresh-and-retry fallback when the first call comes back empty
+		scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{}).Times(2)
+		// the refresh-and-retry fallback closes the old scaler instance once it builds a new one
+		scaler.EXPECT().Close(gomock.Any()).Return(nil)
+		scalersCache := &cache.ScalersCache{
+			Scalers: []cache.ScalerBuilder{{
+				Scaler: scaler,
+				Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+					return scaler, &scalersconfig.ScalerConfig{}, nil
+				},
+			}},
+		}
+
+		metricName := resolvePushScalerMetricName(ctx, scalersCache, nil, 0)
+
+		assert.Equal(t, "", metricName)
+	})
+
+	t.Run("does not let one trigger's status entry satisfy a different trigger's index", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		scaler := mock_scalers.NewMockScaler(ctrl)
+		scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{createMetricSpec(10, "s1-from-scaler")})
+		scalersCache := &cache.ScalersCache{
+			// two scalers in the cache; we're resolving for index 1
+			Scalers: []cache.ScalerBuilder{{Scaler: mock_scalers.NewMockScaler(ctrl)}, {Scaler: scaler}},
+		}
+
+		metricName := resolvePushScalerMetricName(ctx, scalersCache, []string{"s0-someone-elses-metric"}, 1)
+
+		assert.Equal(t, "s1-from-scaler", metricName)
+	})
+}
