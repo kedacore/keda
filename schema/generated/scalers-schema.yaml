@@ -827,6 +827,10 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
+        - name: metricInterval
+          type: string
+          optional: true
+          metadataVariableReadable: true
         - name: metricAggregationInterval
           type: string
           optional: true
