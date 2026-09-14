@@ -19,6 +19,16 @@ var (
 	ErrGoogleApplicationCrendentialsNotFound = errors.New("google application credentials not found")
 )
 
+// AuthMetadata holds the typed-config fields for GCP credential parameters.
+// It is embedded in every GCP scaler metadata struct so that TypedConfig
+// registers "credentials" and "credentialsFromEnvFile" as known parameters,
+// preventing spurious "unmatched input property" warnings when
+// KEDA_CHECK_UNEXPECTED_SCALERS_PARAMS is enabled.
+type AuthMetadata struct {
+	Credentials            string `keda:"name=credentials,            order=triggerMetadata;resolvedEnv, optional"`
+	CredentialsFromEnvFile string `keda:"name=credentialsFromEnvFile, order=triggerMetadata;resolvedEnv, optional"`
+}
+
 type AuthorizationMetadata struct {
 	GoogleApplicationCredentials     string
 	GoogleApplicationCredentialsFile string

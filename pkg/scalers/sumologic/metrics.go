@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 const (
@@ -111,6 +113,17 @@ func (c *Client) parseMetricsQueryResponse(response []byte) (*MetricsQueryRespon
 	}
 
 	return &metricsResponse, nil
+}
+
+// handleNullMetricsResult returns a zero value instead of the given error when
+// the query is configured to ignore null/empty metrics query results.
+func (c *Client) handleNullMetricsResult(query Query, err error) (*float64, error) {
+	if query.IgnoreNullValues {
+		c.logger.Debug("ignoring null metrics query result", zap.Error(err))
+		zero := float64(0)
+		return &zero, nil
+	}
+	return nil, err
 }
 
 func (c *Client) metricsStats(values []float64, dimension string) (*float64, error) {

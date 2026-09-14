@@ -81,7 +81,10 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
+- **Azure Pipelines Scaler**: Add service principal authentication through a reusable Azure authentication provider ([#4853](https://github.com/kedacore/keda/issues/4853))
+- **Datadog Scaler**: Migrate Datadog to authentication.Config ([#7766](https://github.com/kedacore/keda/issues/7766))
 - **Kafka Scaler**: Add optional `fullMetadata` trigger metadata field to control Sarama's full cluster metadata refresh, reducing operator memory for topic scoped triggers ([#7453](https://github.com/kedacore/keda/issues/7453))
+- **MSSQL Scaler**: Add `driverName` to select the `azuresql` driver, which enables the Microsoft Entra ID authentication methods offered by the driver ([#7412](https://github.com/kedacore/keda/issues/7412))
 - **Temporal Scaler**: Add `enableTLS` parameter to allow disabling TLS when using API key authentication (e.g. plaintext gRPC endpoints) ([#7854](https://github.com/kedacore/keda/pull/7854))
 - **Temporal Scaler**: Add opt-in `includeRunningWorkflowCount` (with optional `workflowTaskQueueForCount`) to block premature scale-down when the backlog is momentarily zero but Workflow workers are still busy. Worker Deployment Version scalers short-circuit on Version status (`DRAINING` stays active, `DRAINED`/`INACTIVE` scale down); other modes issue a scoped `CountWorkflow` visibility query — including `TemporalWorkerDeploymentVersion is null` for unversioned workers. ([#7459](https://github.com/kedacore/keda/issues/7459))
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
@@ -107,7 +110,7 @@ New deprecation(s):
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Temporal Scaler**: Remove deprecated `buildId`, `selectAllActive` and `selectUnversioned` settings; use `workerDeploymentName` and `workerDeploymentBuildId` instead ([#7718](https://github.com/kedacore/keda/issues/7718))
 
 ### Other
 

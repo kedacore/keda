@@ -41,6 +41,7 @@ import (
 	mock_v1 "github.com/kedacore/keda/v2/pkg/mock/mock_secretlister"
 	mock_serviceaccounts "github.com/kedacore/keda/v2/pkg/mock/mock_serviceaccounts"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 )
 
 var (
@@ -338,6 +339,50 @@ func TestResolveAuthRef(t *testing.T) {
 			},
 			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName},
 			expected:            map[string]string{"host": secretData},
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+		},
+		{
+			name: "triggerauth exists with azure service principal client secret",
+			existing: []runtime.Object{
+				&kedav1alpha1.TriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      triggerAuthenticationName,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						AzureServicePrincipal: &kedav1alpha1.AzureServicePrincipal{
+							TenantID:                "tenant-id",
+							ClientID:                "client-id",
+							Cloud:                   "Private",
+							ActiveDirectoryEndpoint: "https://login.private.example",
+							ClientSecret: &kedav1alpha1.AzureServicePrincipalCredential{
+								ValueFrom: kedav1alpha1.ValueFromSecret{
+									SecretKeyRef: kedav1alpha1.SecretKeyRef{
+										Name: secretName,
+										Key:  secretKey,
+									},
+								},
+							},
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      secretName,
+					},
+					Data: map[string][]byte{secretKey: []byte(secretData)},
+				},
+			},
+			soar: &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName},
+			expected: map[string]string{
+				azure.ServicePrincipalAuthKey:                    "true",
+				azure.ServicePrincipalTenantIDKey:                "tenant-id",
+				azure.ServicePrincipalClientIDKey:                "client-id",
+				azure.ServicePrincipalCloudKey:                   "Private",
+				azure.ServicePrincipalActiveDirectoryEndpointKey: "https://login.private.example",
+				azure.ServicePrincipalClientSecretKey:            secretData,
+			},
 			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
 		{

@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/go-logr/logr"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 

@@ -10,6 +10,7 @@ import (
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
@@ -433,11 +434,15 @@ func TestGetDatadogClusterAgentHTTPRequest(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			meta := &datadogMetadata{}
+			if tc.enableBearerAuth {
+				meta.AuthConfig = &authentication.Config{
+					Modes:       []authentication.Type{authentication.BearerAuthType},
+					BearerToken: tc.bearerToken,
+				}
+			}
 			scaler := &datadogScaler{
-				metadata: &datadogMetadata{
-					EnableBearerAuth: tc.enableBearerAuth,
-					BearerToken:      tc.bearerToken,
-				},
+				metadata: meta,
 			}
 
 			req, err := scaler.getDatadogClusterAgentHTTPRequest(

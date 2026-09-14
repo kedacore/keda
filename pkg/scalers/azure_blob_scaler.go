@@ -58,7 +58,7 @@ type azureBlobMetadata struct {
 	AccountName string `keda:"name=accountName,                  order=triggerMetadata,                        optional"`
 
 	// Internal fields
-	compiledGlobPattern glob.Glob
+	compiledGlobPattern *glob.Pattern
 }
 
 func (m *azureBlobMetadata) Validate() error {
