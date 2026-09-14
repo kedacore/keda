@@ -7,6 +7,8 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: destinationName
           type: string
           optional: true
@@ -5005,6 +5007,14 @@ scalers:
           metadataVariableReadable: true
         - name: queryAggregator
           type: string
+          default: avg
+          allowedValue:
+            - min
+            - max
+            - avg
+            - sum
+            - count
+            - latest
           metadataVariableReadable: true
         - name: activationTargetValue
           type: string
