@@ -28,6 +28,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -170,9 +171,25 @@ func staticTLSCredentials(t *testing.T, dir string, server bool) credentials.Tra
 	return credentials.NewTLS(config)
 }
 
+func generateTestCertAndKeyWithCA(t *testing.T, dir string) (credentials.TransportCredentials, credentials.TransportCredentials) {
+	t.Helper()
+	caPath := generateTestCertAndKey(t, dir)
+	_ = caPath
+	return staticTLSCredentials(t, dir, false), staticTLSCredentials(t, dir, true)
+}
+
+func triggerRotation(t *testing.T, dir string) (credentials.TransportCredentials, credentials.TransportCredentials) {
+	t.Helper()
+	client, server := generateTestCertAndKeyWithCA(t, dir)
+	dataDir := filepath.Join(dir, "..data")
+	_ = os.RemoveAll(dataDir)
+	require.NoError(t, os.Mkdir(dataDir, 0700))
+	return client, server
+}
+
 func TestLoadGrpcTLSCredentialsConcurrentRotationRace(t *testing.T) {
 	dir := t.TempDir()
-	generateTestCertAndKey(t, dir)
+	oldClient, oldServer := generateTestCertAndKeyWithCA(t, dir)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -182,17 +199,66 @@ func TestLoadGrpcTLSCredentialsConcurrentRotationRace(t *testing.T) {
 	clientCreds, err := LoadGrpcTLSCredentials(ctx, dir, false)
 	require.NoError(t, err)
 	require.NoError(t, handshake(clientCreds, serverCreds))
+	require.NoError(t, handshake(oldClient, serverCreds))
+	require.NoError(t, handshake(clientCreds, oldServer))
 
-	generateTestCertAndKey(t, dir)
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "..data"), 0700))
-	freshClient := staticTLSCredentials(t, dir, false)
-	freshServer := staticTLSCredentials(t, dir, true)
+	// Rotate credentials to a new CA
+	freshClient, freshServer := triggerRotation(t, dir)
+
+	// Verify that dynamic credentials pick up the new CA material
 	require.Eventually(t, func() bool {
 		clientErr := handshake(clientCreds, freshServer)
 		serverErr := handshake(freshClient, serverCreds)
-		if clientErr != nil || serverErr != nil {
-			t.Logf("waiting for rotated credentials: client=%v server=%v", clientErr, serverErr)
-		}
 		return clientErr == nil && serverErr == nil
-	}, 5*time.Second, 50*time.Millisecond, "client and server should use the rotated certificate material")
+	}, 5*time.Second, 50*time.Millisecond, "client and server should accept the rotated certificate material")
+
+	// Assert that old trust material is evicted and rejected after rotation
+	require.Eventually(t, func() bool {
+		oldClientErr := handshake(oldClient, serverCreds)
+		oldServerErr := handshake(clientCreds, oldServer)
+		return oldClientErr != nil && oldServerErr != nil
+	}, 5*time.Second, 50*time.Millisecond, "stale CA material must be evicted and handshakes rejected")
+
+	// Run concurrent handshakes while actively rotating to verify race-free synchronization
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
+
+	// Goroutine performing active rotations
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+				_, _ = triggerRotation(t, dir)
+				time.Sleep(15 * time.Millisecond)
+			}
+		}
+	}()
+
+	// Multiple worker goroutines performing concurrent handshakes
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					// Dynamic client <-> Dynamic server handshake should not panic or race
+					_ = handshake(clientCreds, serverCreds)
+					time.Sleep(5 * time.Millisecond)
+				}
+			}
+		}()
+	}
+
+	time.Sleep(300 * time.Millisecond)
+	close(stop)
+	wg.Wait()
 }
+
+
