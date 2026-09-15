@@ -241,3 +241,32 @@ func (s *mqttScaler) Run(ctx context.Context, active chan<- bool) {
 
 	<-ctx.Done()
 }
+
+func (s *mqttScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex,
+				kedautil.NormalizeString(fmt.Sprintf("mqtt-%s", s.metadata.Topic))),
+		},
+		Target: GetMetricTarget(s.metricType, s.metadata.QueryValue),
+	}
+	return []v2.MetricSpec{{External: externalMetric, Type: mqttMetricType}}
+}
+
+// GetMetricsAndActivity is what KEDA (and, separately, the metrics
+// adapter serving the HPA) calls on its own polling schedule. All the
+// real work already happened asynchronously in Run — this just reads
+// the current window state.
+func (s *mqttScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	count, retained := s.window.count()
+	metric := GenerateMetricInMili(metricName, float64(count))
+	isActive := count > 0 || retained
+	return []external_metrics.ExternalMetricValue{metric}, isActive, nil
+}
+
+func (s *mqttScaler) Close(context.Context) error {
+	if s.client != nil && s.client.IsConnected() {
+		s.client.Disconnect(250)
+	}
+	return nil
+}
