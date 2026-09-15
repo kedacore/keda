@@ -34,9 +34,11 @@ type spyLogSink struct {
 	infoCalls  []string
 }
 
-func (s *spyLogSink) Init(logr.RuntimeInfo)               {}
-func (s *spyLogSink) Enabled(int) bool                    { return true }
-func (s *spyLogSink) Info(_ int, msg string, _ ...interface{}) { s.infoCalls = append(s.infoCalls, msg) }
+func (s *spyLogSink) Init(logr.RuntimeInfo) {}
+func (s *spyLogSink) Enabled(int) bool      { return true }
+func (s *spyLogSink) Info(_ int, msg string, _ ...interface{}) {
+	s.infoCalls = append(s.infoCalls, msg)
+}
 func (s *spyLogSink) Error(_ error, msg string, _ ...interface{}) {
 	s.errorCalls = append(s.errorCalls, msg)
 }
