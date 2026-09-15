@@ -226,6 +226,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewMetricsAPIScaler(config, client)
 	case "mongodb":
 		return scalers.NewMongoDBScaler(ctx, config)
+	case "mqtt":
+		return scalers.NewMqttScaler(config)
 	case "mssql":
 		return scalers.NewMSSQLScaler(ctx, config)
 	case "mysql":
