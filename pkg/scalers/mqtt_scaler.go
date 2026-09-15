@@ -66,3 +66,55 @@ func parseMqttScalerMetadata(config *scalersconfig.ScalerConfig) (mqttScalerMeta
 	}
 	return meta, nil
 }
+
+// messageWindow is a thread-safe sliding window over recent MQTT
+// message arrivals, plus a time-bounded "retained message seen" signal.
+//
+// It is written to from the MQTT client's own callback goroutine and
+// read from GetMetricsAndActivity, which KEDA calls independently and
+// concurrently (both the KEDA operator's own polling loop and the
+// Kubernetes metrics adapter serving the HPA call this on their own
+// schedules) — hence the mutex.
+type messageWindow struct {
+	mu             sync.Mutex
+	timestamps     []time.Time
+	window         time.Duration
+	lastRetainedAt time.Time // zero value means "never seen"
+}
+
+func newMessageWindow(window time.Duration) *messageWindow {
+	return &messageWindow{window: window}
+}
+
+func (w *messageWindow) record() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.timestamps = append(w.timestamps, time.Now())
+}
+
+func (w *messageWindow) markRetained() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.lastRetainedAt = time.Now()
+}
+
+// count prunes timestamps older than the window and returns the current
+// message count, plus whether a retained message has been seen within
+// the window. Both values are derived from wall-clock time rather than
+// being consumed on read, so multiple independent, concurrent callers
+// all get a consistent answer regardless of call order.
+func (w *messageWindow) count() (int64, bool) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	cutoff := time.Now().Add(-w.window)
+
+	i := 0
+	for i < len(w.timestamps) && w.timestamps[i].Before(cutoff) {
+		i++
+	}
+	w.timestamps = w.timestamps[i:]
+
+	retainedActive := !w.lastRetainedAt.IsZero() && w.lastRetainedAt.After(cutoff)
+	return int64(len(w.timestamps)), retainedActive
+}
