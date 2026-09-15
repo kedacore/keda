@@ -118,3 +118,126 @@ func (w *messageWindow) count() (int64, bool) {
 	retainedActive := !w.lastRetainedAt.IsZero() && w.lastRetainedAt.After(cutoff)
 	return int64(len(w.timestamps)), retainedActive
 }
+
+type mqttScaler struct {
+	metricType v2.MetricTargetType
+	metadata   mqttScalerMetadata
+	client     mqtt.Client
+	window     *messageWindow
+	logger     logr.Logger
+
+	// newClient constructs the MQTT client. Defaults to mqtt.NewClient in
+	// production; tests override this to inject a fake, so Run can be
+	// exercised without a real network connection.
+	newClient func(*mqtt.ClientOptions) mqtt.Client
+}
+
+// NewMqttScaler creates a new MQTT scaler. It implements PushScaler
+// (via Run) rather than being purely poll-based: MQTT brokers don't
+// expose a queryable queue-depth the way most other trigger sources do,
+// so this scaler must already be subscribed and counting before KEDA
+// asks for a metric, not query on demand.
+func NewMqttScaler(config *scalersconfig.ScalerConfig) (PushScaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting mqtt scaler metric type: %w", err)
+	}
+
+	meta, err := parseMqttScalerMetadata(config)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing mqtt scaler metadata: %w", err)
+	}
+
+	return &mqttScaler{
+		metricType: metricType,
+		metadata:   meta,
+		window:     newMessageWindow(time.Duration(meta.WindowSeconds) * time.Second),
+		logger:     InitializeLogger(config, "mqtt_scaler"),
+		newClient:  mqtt.NewClient,
+	}, nil
+}
+
+func (s *mqttScaler) buildClientOptions() (*mqtt.ClientOptions, error) {
+	opts := mqtt.NewClientOptions().
+		AddBroker(s.metadata.BrokerAddress).
+		SetConnectRetry(true).
+		SetConnectRetryInterval(time.Duration(s.metadata.ConnectRetryIntervalSeconds) * time.Second).
+		SetAutoReconnect(true).
+		SetMaxReconnectInterval(time.Duration(s.metadata.MaxReconnectIntervalSeconds) * time.Second)
+
+	if s.metadata.Username != "" {
+		opts.SetUsername(s.metadata.Username)
+		opts.SetPassword(s.metadata.Password)
+	}
+
+	if s.metadata.EnableTLS {
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(
+			s.metadata.Cert, s.metadata.Key, s.metadata.KeyPassword, s.metadata.Ca, s.metadata.UnsafeSsl)
+		if err != nil {
+			return nil, fmt.Errorf("error building TLS config for mqtt scaler: %w", err)
+		}
+		opts.SetTLSConfig(tlsConfig)
+	}
+
+	return opts, nil
+}
+
+// Run opens the MQTT connection and subscribes for the lifetime of the
+// scaler. This is the "live" half of the scaler: GetMetricsAndActivity
+// only ever reads state this maintains, it does no querying of its own.
+func (s *mqttScaler) Run(ctx context.Context, active chan<- bool) {
+	defer close(active)
+
+	opts, err := s.buildClientOptions()
+	if err != nil {
+		s.logger.Error(err, "failed to build mqtt client options")
+		return
+	}
+
+	opts.SetDefaultPublishHandler(func(_ mqtt.Client, msg mqtt.Message) {
+		if msg.Retained() {
+			s.window.markRetained()
+			// Only ever send `true` here. Confirmed against KEDA's
+			// pkg/scaling/scale_handler.go: inactivation events sent on
+			// this channel are explicitly ignored — deactivation always
+			// happens through the normal polled GetMetricsAndActivity
+			// path instead, which already recomputes activity correctly
+			// via messageWindow.count().
+			select {
+			case active <- true:
+			case <-ctx.Done():
+			}
+			return
+		}
+		s.window.record()
+	})
+
+	// Fires on every successful connect, including reconnects, so
+	// resubscription after a dropped connection is automatic.
+	opts.SetOnConnectHandler(func(c mqtt.Client) {
+		s.logger.Info("connected to broker, subscribing", "topic", s.metadata.Topic)
+		if token := c.Subscribe(s.metadata.Topic, byte(s.metadata.QoS), nil); token.Wait() && token.Error() != nil {
+			s.logger.Error(token.Error(), "failed to subscribe to topic", "topic", s.metadata.Topic)
+		}
+	})
+	opts.SetConnectionLostHandler(func(_ mqtt.Client, err error) {
+		s.logger.Error(err, "lost connection to broker, will reconnect")
+	})
+	opts.SetReconnectingHandler(func(_ mqtt.Client, _ *mqtt.ClientOptions) {
+		s.logger.V(1).Info("attempting to reconnect to broker")
+	})
+
+	s.client = s.newClient(opts)
+
+	// With ConnectRetry enabled, Connect() retries in the background on
+	// its own schedule rather than failing once, so this token reflects
+	// only the first attempt — we don't treat its failure as fatal.
+	token := s.client.Connect()
+	go func() {
+		if token.Wait() && token.Error() != nil {
+			s.logger.Error(token.Error(), "initial connect attempt failed, will keep retrying")
+		}
+	}()
+
+	<-ctx.Done()
+}
