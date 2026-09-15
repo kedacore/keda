@@ -153,8 +153,6 @@ func (s *couchDBScaler) getQueryResult(ctx context.Context) (int64, error) {
 	}
 
 	rows := db.Find(ctx, request)
-	// Close releases the underlying HTTP response body. Exhausting the iterator
-	// closes it implicitly, but an early return below would otherwise leak it.
 	defer rows.Close()
 
 	var count int64
