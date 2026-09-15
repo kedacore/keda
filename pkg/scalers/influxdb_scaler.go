@@ -163,6 +163,12 @@ func queryInfluxDB(ctx context.Context, queryAPI api.QueryAPI, query string) (fl
 
 	valueExists := result.Next()
 	if !valueExists {
+		// Next() returns false both when the result set is empty and when the
+		// query response could not be parsed (e.g. an error surfaced by the
+		// server). Surface the latter instead of masking it as "no results".
+		if err := result.Err(); err != nil {
+			return 0, fmt.Errorf("error parsing influxdb query result: %w", err)
+		}
 		return 0, fmt.Errorf("no results found from query")
 	}
 
@@ -199,12 +205,27 @@ func queryInfluxDBV3(ctx context.Context, client *influxdb3.Client, metadata inf
 		return 0, err
 	}
 
+	return readInfluxDBV3Result(result, metadata.MetricKey)
+}
+
+// influxDBV3ResultIterator is the subset of *influxdb3.QueryIterator used to
+// read a query result, so the reading logic can be tested without a Flight server.
+type influxDBV3ResultIterator interface {
+	Next() bool
+	Value() map[string]any
+	Err() error
+}
+
+var _ influxDBV3ResultIterator = (*influxdb3.QueryIterator)(nil)
+
+// readInfluxDBV3Result returns the metric value from the last row of the result
+func readInfluxDBV3Result(result influxDBV3ResultIterator, metricKey string) (float64, error) {
 	var parsedVal float64
 
 	for result.Next() {
 		value := result.Value()
 
-		switch valRaw := value[metadata.MetricKey].(type) {
+		switch valRaw := value[metricKey].(type) {
 		case float64:
 			parsedVal = valRaw
 		case int64:
@@ -212,6 +233,11 @@ func queryInfluxDBV3(ctx context.Context, client *influxdb3.Client, metadata inf
 		default:
 			return 0, fmt.Errorf("value of type %T could not be converted into a float", valRaw)
 		}
+	}
+	// Next() returns false on end of stream as well as on a streaming error;
+	// check Err() so a mid-stream failure is not silently reported as success.
+	if err := result.Err(); err != nil {
+		return 0, fmt.Errorf("error reading influxdb query result: %w", err)
 	}
 	return parsedVal, nil
 }
