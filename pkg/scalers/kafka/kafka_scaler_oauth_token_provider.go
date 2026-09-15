@@ -21,6 +21,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/IBM/sarama"
 	"github.com/aws/aws-msk-iam-sasl-signer-go/signer"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -105,4 +107,47 @@ func (m *mskTokenProvider) Token() (*sarama.AccessToken, error) {
 
 func (m *mskTokenProvider) String() string {
 	return "MSK"
+}
+
+type azureADWorkloadIdentityTokenProvider struct {
+	sync.Mutex
+	expireAt   *time.Time
+	token      string
+	credential azcore.TokenCredential
+	scopes     []string
+	extensions map[string]string
+}
+
+func OAuthAzureADWorkloadIdentityTokenProvider(credential azcore.TokenCredential, scopes []string, extensions map[string]string) TokenProvider {
+	return &azureADWorkloadIdentityTokenProvider{
+		credential: credential,
+		scopes:     scopes,
+		extensions: extensions,
+	}
+}
+
+func (a *azureADWorkloadIdentityTokenProvider) Token() (*sarama.AccessToken, error) {
+	a.Lock()
+	defer a.Unlock()
+
+	if a.expireAt != nil && time.Now().Before(*a.expireAt) {
+		return &sarama.AccessToken{Token: a.token, Extensions: a.extensions}, nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	token, err := a.credential.GetToken(ctx, policy.TokenRequestOptions{Scopes: a.scopes})
+	if err != nil {
+		return nil, err
+	}
+
+	a.expireAt = &token.ExpiresOn
+	a.token = token.Token
+
+	return &sarama.AccessToken{Token: token.Token, Extensions: a.extensions}, nil
+}
+
+func (a *azureADWorkloadIdentityTokenProvider) String() string {
+	return "AzureADWorkloadIdentity"
 }
