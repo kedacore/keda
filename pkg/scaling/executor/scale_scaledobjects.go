@@ -32,7 +32,6 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool, isError bool, options ScaleExecutorOptions) ScaleResult {
@@ -48,7 +47,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		result.Error = err
 		return result
 	}
-	operationCtx, cancel := kedautil.KubernetesAPIContext(ctx, pollingInterval, e.kubernetesAPITimeout)
+	operationCtx, cancel := context.WithTimeout(ctx, pollingInterval+e.kubernetesAPITimeout)
 	currentReplicas, err = resolver.GetCurrentReplicas(operationCtx, e.client, e.scaleClient, scaledObject)
 	cancel()
 	if err != nil {
@@ -306,7 +305,7 @@ func (e *scaleExecutor) updateScaleOnScaleTarget(ctx context.Context, scaledObje
 	if err != nil {
 		return -1, err
 	}
-	operationCtx, cancel := kedautil.KubernetesAPIContext(ctx, pollingInterval, e.kubernetesAPITimeout)
+	operationCtx, cancel := context.WithTimeout(ctx, pollingInterval+e.kubernetesAPITimeout)
 	defer cancel()
 	scale, err := e.getScaleTargetScale(operationCtx, scaledObject)
 	if err != nil {

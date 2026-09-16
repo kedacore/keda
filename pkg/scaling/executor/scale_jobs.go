@@ -34,7 +34,6 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	version "github.com/kedacore/keda/v2/version"
 )
 
@@ -138,7 +137,7 @@ func (e *scaleExecutor) createJobs(ctx context.Context, logger logr.Logger, scal
 	if err != nil {
 		return 0, err
 	}
-	operationCtx, cancel := kedautil.KubernetesAPIContext(ctx, pollingInterval, e.kubernetesAPITimeout)
+	operationCtx, cancel := context.WithTimeout(ctx, pollingInterval+e.kubernetesAPITimeout)
 	defer cancel()
 	var createdCount int64
 	var createErrors []error
@@ -412,7 +411,7 @@ func (e *scaleExecutor) deleteJobsWithHistoryLimit(ctx context.Context, logger l
 	}
 
 	deleteJobLength := len(jobs) - int(historyLimit)
-	operationCtx, cancel := kedautil.KubernetesAPIContext(ctx, pollingInterval, e.kubernetesAPITimeout)
+	operationCtx, cancel := context.WithTimeout(ctx, pollingInterval+e.kubernetesAPITimeout)
 	defer cancel()
 	for _, j := range (jobs)[0:deleteJobLength] {
 		deletePolicy := metav1.DeletePropagationBackground

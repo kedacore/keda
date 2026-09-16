@@ -58,7 +58,6 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scaling/modifiers"
 	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
 	"github.com/kedacore/keda/v2/pkg/scaling/scaledjob"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 var (
@@ -399,7 +398,7 @@ func (h *scaleHandler) handleResult(ctx context.Context, obj kedav1alpha1.Scalab
 		logger.Error(err, "error duck typing object into withTrigger")
 		return
 	}
-	operationCtx, cancel := kedautil.KubernetesAPIContext(ctx, withTriggers.GetPollingInterval(), h.kubernetesAPITimeout)
+	operationCtx, cancel := context.WithTimeout(ctx, withTriggers.GetPollingInterval()+h.kubernetesAPITimeout)
 	defer cancel()
 	if result.Error != nil {
 		logger.Error(result.Error, "error during scaling")
