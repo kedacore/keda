@@ -24,6 +24,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -49,6 +50,47 @@ var k8sClient client.Client
 
 var ctx context.Context
 var cancel context.CancelFunc
+
+const scaledJobKubernetesAPITimeout = 5 * time.Second
+
+type jobCreateContextObservation struct {
+	generateName string
+	deadline     time.Time
+	hasDeadline  bool
+	observedAt   time.Time
+}
+
+type jobCreateObservingClient struct {
+	client.Client
+	observations chan<- jobCreateContextObservation
+}
+
+func (c *jobCreateObservingClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	if job, ok := obj.(*batchv1.Job); ok {
+		deadline, hasDeadline := ctx.Deadline()
+		select {
+		case c.observations <- jobCreateContextObservation{
+			generateName: job.GenerateName,
+			deadline:     deadline,
+			hasDeadline:  hasDeadline,
+			observedAt:   time.Now(),
+		}:
+		default:
+		}
+	}
+	return c.Client.Create(ctx, obj, opts...)
+}
+
+type managerWithClient struct {
+	ctrl.Manager
+	client client.Client
+}
+
+func (m *managerWithClient) GetClient() client.Client {
+	return m.client
+}
+
+var jobCreateContextObservations chan jobCreateContextObservation
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -102,12 +144,23 @@ var _ = BeforeSuite(func() {
 	}).SetupWithManager(k8sManager, controller.Options{})
 	Expect(err).ToNot(HaveOccurred())
 
+	jobCreateContextObservations = make(chan jobCreateContextObservation, 100)
+	scaledJobClient := &jobCreateObservingClient{
+		Client:       k8sManager.GetClient(),
+		observations: jobCreateContextObservations,
+	}
+	scaledJobManager := &managerWithClient{
+		Manager: k8sManager,
+		client:  scaledJobClient,
+	}
+
 	err = (&ScaledJobReconciler{
-		Client:        k8sManager.GetClient(),
-		Scheme:        k8sManager.GetScheme(),
-		EventEmitter:  eventemitter.NewEventEmitter(k8sManager.GetClient(), k8sManager.GetEventRecorder("keda-operator"), "kubernetes-default", nil),
-		AuthClientSet: authClientSet,
-	}).SetupWithManager(k8sManager, controller.Options{})
+		Client:               k8sManager.GetClient(),
+		Scheme:               k8sManager.GetScheme(),
+		KubernetesAPITimeout: scaledJobKubernetesAPITimeout,
+		EventEmitter:         eventemitter.NewEventEmitter(k8sManager.GetClient(), k8sManager.GetEventRecorder("keda-operator"), "kubernetes-default", nil),
+		AuthClientSet:        authClientSet,
+	}).SetupWithManager(scaledJobManager, controller.Options{})
 	Expect(err).ToNot(HaveOccurred())
 
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
