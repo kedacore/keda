@@ -80,6 +80,14 @@ func NewScaleExecutor(client runtimeclient.Client, scaleClient scale.ScalesGette
 	}
 }
 
+func getPollingInterval(scalableObject kedav1alpha1.ScalableObject) (time.Duration, error) {
+	withTriggers, err := kedav1alpha1.AsDuckWithTriggers(scalableObject)
+	if err != nil {
+		return 0, err
+	}
+	return withTriggers.GetPollingInterval(), nil
+}
+
 // getTriggersActivity returns a map of trigger names to their activity status based on the provided active triggers and the triggers defined in the scaled object.
 func getTriggersActivity(object kedav1alpha1.ScalableObject, options ScaleExecutorOptions) map[string]kedav1alpha1.TriggerActivityStatus {
 	activeTriggers := options.ActiveTriggers

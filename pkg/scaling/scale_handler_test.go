@@ -1702,8 +1702,10 @@ func TestHandleResult_KubernetesAPITimeout(t *testing.T) {
 
 	const timeout = 20 * time.Millisecond
 	sh := scaleHandler{client: mockClient, kubernetesAPITimeout: timeout}
+	pollingInterval := int32(0)
 	existingSO := kedav1alpha1.ScaledObject{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "ns"},
+		Spec:       kedav1alpha1.ScaledObjectSpec{PollingInterval: &pollingInterval},
 	}
 
 	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).

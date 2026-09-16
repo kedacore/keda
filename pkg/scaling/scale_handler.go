@@ -393,9 +393,14 @@ func metricNameForTriggerIndex(metricNames []string, triggerIndex int) string {
 // handleResult applies the ScaleResult to the scalable object's status in the API server.
 // It fetches the latest object, merges the result fields, and performs a single status patch with conflict retry.
 func (h *scaleHandler) handleResult(ctx context.Context, obj kedav1alpha1.ScalableObject, result executor.ScaleResult) {
-	operationCtx, cancel := kedautil.KubernetesAPIContext(ctx, h.kubernetesAPITimeout)
-	defer cancel()
 	logger := log.WithValues("namespace", obj.GetNamespace(), "name", obj.GetName())
+	withTriggers, err := kedav1alpha1.AsDuckWithTriggers(obj)
+	if err != nil {
+		logger.Error(err, "error duck typing object into withTrigger")
+		return
+	}
+	operationCtx, cancel := kedautil.KubernetesAPIContext(ctx, withTriggers.GetPollingInterval(), h.kubernetesAPITimeout)
+	defer cancel()
 	if result.Error != nil {
 		logger.Error(result.Error, "error during scaling")
 	}
@@ -420,7 +425,7 @@ func (h *scaleHandler) handleResult(ctx context.Context, obj kedav1alpha1.Scalab
 		}
 	}
 
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		current := reflect.New(reflect.TypeOf(obj).Elem()).Interface().(kedav1alpha1.ScalableObject)
 		if err := h.client.Get(operationCtx, types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, current); err != nil {
 			return err

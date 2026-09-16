@@ -21,11 +21,12 @@ import (
 	"time"
 )
 
-// KubernetesAPIContext returns a child context that bounds a logical Kubernetes API operation.
-// A non-positive timeout preserves the deadline inherited from the parent context.
-func KubernetesAPIContext(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
-	if timeout <= 0 {
+// KubernetesAPIContext returns a child context that bounds a logical Kubernetes API operation
+// to the resource's polling interval plus the configured API timeout.
+func KubernetesAPIContext(ctx context.Context, pollingInterval, timeout time.Duration) (context.Context, context.CancelFunc) {
+	operationTimeout := pollingInterval + timeout
+	if operationTimeout <= 0 {
 		return context.WithCancel(ctx)
 	}
-	return context.WithTimeout(ctx, timeout)
+	return context.WithTimeout(ctx, operationTimeout)
 }

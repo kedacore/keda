@@ -488,6 +488,8 @@ func TestCreateJobs_KubernetesAPITimeoutStopsBatch(t *testing.T) {
 	const timeout = 20 * time.Millisecond
 	scaleExecutor.kubernetesAPITimeout = timeout
 	scaledJob := getMockScaledJobWithDefaultStrategyAndMeta()
+	pollingInterval := int32(0)
+	scaledJob.Spec.PollingInterval = &pollingInterval
 
 	gomock.InOrder(
 		client.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil),
@@ -552,7 +554,7 @@ func TestDeleteJobsWithHistoryLimit_KubernetesAPITimeout(t *testing.T) {
 		})
 
 	startedAt := time.Now()
-	err := scaleExecutor.deleteJobsWithHistoryLimit(ctx, logger, jobs, 0)
+	err := scaleExecutor.deleteJobsWithHistoryLimit(ctx, logger, jobs, 0, 0)
 
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 	assert.Less(t, time.Since(startedAt), time.Second)

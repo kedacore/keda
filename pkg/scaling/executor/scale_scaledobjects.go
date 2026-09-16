@@ -43,8 +43,13 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	result.TriggersActivity = getTriggersActivity(scaledObject, options)
 
 	// get the current replica count
-	operationCtx, cancel := kedautil.KubernetesAPIContext(ctx, e.kubernetesAPITimeout)
-	currentReplicas, err := resolver.GetCurrentReplicas(operationCtx, e.client, e.scaleClient, scaledObject)
+	pollingInterval, err := getPollingInterval(scaledObject)
+	if err != nil {
+		result.Error = err
+		return result
+	}
+	operationCtx, cancel := kedautil.KubernetesAPIContext(ctx, pollingInterval, e.kubernetesAPITimeout)
+	currentReplicas, err = resolver.GetCurrentReplicas(operationCtx, e.client, e.scaleClient, scaledObject)
 	cancel()
 	if err != nil {
 		logger.Error(err, "Error getting current replicas count for ScaleTarget")
@@ -297,7 +302,11 @@ func (e *scaleExecutor) getScaleTargetScale(ctx context.Context, scaledObject *k
 }
 
 func (e *scaleExecutor) updateScaleOnScaleTarget(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, replicas int32) (int32, error) {
-	operationCtx, cancel := kedautil.KubernetesAPIContext(ctx, e.kubernetesAPITimeout)
+	pollingInterval, err := getPollingInterval(scaledObject)
+	if err != nil {
+		return -1, err
+	}
+	operationCtx, cancel := kedautil.KubernetesAPIContext(ctx, pollingInterval, e.kubernetesAPITimeout)
 	defer cancel()
 	scale, err := e.getScaleTargetScale(operationCtx, scaledObject)
 	if err != nil {

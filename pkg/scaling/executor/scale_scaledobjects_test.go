@@ -106,9 +106,10 @@ func TestUpdateScaleOnScaleTarget_KubernetesAPITimeout(t *testing.T) {
 
 	const timeout = 20 * time.Millisecond
 	exec := NewScaleExecutor(client, mockScaleClient, nil, timeout, recorder).(*scaleExecutor)
+	pollingInterval := int32(0)
 	scaledObject := &v1alpha1.ScaledObject{
 		ObjectMeta: v1.ObjectMeta{Name: "name", Namespace: "namespace"},
-		Spec:       v1alpha1.ScaledObjectSpec{ScaleTargetRef: &v1alpha1.ScaleTarget{Name: "name"}},
+		Spec:       v1alpha1.ScaledObjectSpec{PollingInterval: &pollingInterval, ScaleTargetRef: &v1alpha1.ScaleTarget{Name: "name"}},
 		Status: v1alpha1.ScaledObjectStatus{
 			ScaleTargetGVKR: &v1alpha1.GroupVersionKindResource{Group: "apps", Kind: "Deployment"},
 		},
@@ -140,9 +141,10 @@ func TestUpdateScaleOnScaleTarget_KubernetesAPITimeoutDuringUpdate(t *testing.T)
 
 	const timeout = 20 * time.Millisecond
 	exec := NewScaleExecutor(client, mockScaleClient, nil, timeout, recorder).(*scaleExecutor)
+	pollingInterval := int32(0)
 	scaledObject := &v1alpha1.ScaledObject{
 		ObjectMeta: v1.ObjectMeta{Name: "name", Namespace: "namespace"},
-		Spec:       v1alpha1.ScaledObjectSpec{ScaleTargetRef: &v1alpha1.ScaleTarget{Name: "name"}},
+		Spec:       v1alpha1.ScaledObjectSpec{PollingInterval: &pollingInterval, ScaleTargetRef: &v1alpha1.ScaleTarget{Name: "name"}},
 		Status: v1alpha1.ScaledObjectStatus{
 			ScaleTargetGVKR: &v1alpha1.GroupVersionKindResource{Group: "apps", Kind: "Deployment"},
 		},

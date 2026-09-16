@@ -134,7 +134,11 @@ func (e *scaleExecutor) createJobs(ctx context.Context, logger logr.Logger, scal
 	logger.Info("Creating jobs", "Number of jobs", scaleTo)
 
 	jobs := e.generateJobs(logger, scaledJob, scaleTo)
-	operationCtx, cancel := kedautil.KubernetesAPIContext(ctx, e.kubernetesAPITimeout)
+	pollingInterval, err := getPollingInterval(scaledJob)
+	if err != nil {
+		return 0, err
+	}
+	operationCtx, cancel := kedautil.KubernetesAPIContext(ctx, pollingInterval, e.kubernetesAPITimeout)
 	defer cancel()
 	var createdCount int64
 	var createErrors []error
@@ -391,20 +395,24 @@ func (e *scaleExecutor) cleanUp(ctx context.Context, scaledJob *kedav1alpha1.Sca
 		failedJobsHistoryLimit = *scaledJob.Spec.FailedJobsHistoryLimit
 	}
 
-	err = e.deleteJobsWithHistoryLimit(ctx, logger, completedJobs, successfulJobsHistoryLimit)
+	pollingInterval, err := getPollingInterval(scaledJob)
 	if err != nil {
 		return err
 	}
-	return e.deleteJobsWithHistoryLimit(ctx, logger, failedJobs, failedJobsHistoryLimit)
+	err = e.deleteJobsWithHistoryLimit(ctx, logger, completedJobs, successfulJobsHistoryLimit, pollingInterval)
+	if err != nil {
+		return err
+	}
+	return e.deleteJobsWithHistoryLimit(ctx, logger, failedJobs, failedJobsHistoryLimit, pollingInterval)
 }
 
-func (e *scaleExecutor) deleteJobsWithHistoryLimit(ctx context.Context, logger logr.Logger, jobs []batchv1.Job, historyLimit int32) error {
+func (e *scaleExecutor) deleteJobsWithHistoryLimit(ctx context.Context, logger logr.Logger, jobs []batchv1.Job, historyLimit int32, pollingInterval time.Duration) error {
 	if len(jobs) <= int(historyLimit) {
 		return nil
 	}
 
 	deleteJobLength := len(jobs) - int(historyLimit)
-	operationCtx, cancel := kedautil.KubernetesAPIContext(ctx, e.kubernetesAPITimeout)
+	operationCtx, cancel := kedautil.KubernetesAPIContext(ctx, pollingInterval, e.kubernetesAPITimeout)
 	defer cancel()
 	for _, j := range (jobs)[0:deleteJobLength] {
 		deletePolicy := metav1.DeletePropagationBackground
