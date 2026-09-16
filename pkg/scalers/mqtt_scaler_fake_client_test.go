@@ -82,15 +82,27 @@ func newFakeMqttClient() *fakeMqttClient {
 func (c *fakeMqttClient) Connect() mqtt.Token {
 	c.connectCalled = true
 	if c.connectErr != nil {
-		close(c.readyCh)
+		c.signalReady()
 		return &fakeToken{err: c.connectErr}
 	}
 	c.connected = true
 	if c.onConnect != nil {
 		c.onConnect(c)
 	}
-	close(c.readyCh)
+	c.signalReady()
 	return &fakeToken{}
+}
+
+// signalReady closes readyCh if it hasn't been closed yet. Connect() may be
+// called more than once (the reconnect test calls it a second time to simulate
+// paho re-establishing the connection), so a plain close() would panic.
+func (c *fakeMqttClient) signalReady() {
+	select {
+	case <-c.readyCh:
+		// already closed — reconnect path, nothing to do
+	default:
+		close(c.readyCh)
+	}
 }
 
 func (c *fakeMqttClient) Disconnect(uint) {
