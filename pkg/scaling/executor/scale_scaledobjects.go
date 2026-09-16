@@ -113,6 +113,9 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			if err == nil {
 				msg := "Successfully set ScaleTarget replicas count to ScaledObject minReplicaCount"
 				logger.Info(msg, "Original Replicas Count", currentReplicas, "New Replicas Count", *scaledObject.Spec.MinReplicaCount)
+			} else {
+				result.Error = fmt.Errorf("error setting ScaleTarget replicas count to ScaledObject minReplicaCount: %w", err)
+				result.Conditions.SetReadyCondition(metav1.ConditionFalse, "ErrorScalingTarget", result.Error.Error())
 			}
 		default:
 			// there are no active triggers AND nothing needs to be done (eg. deployment is scaled down)
@@ -235,8 +238,10 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 				"Deactivated %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, scaleToReplicas)
 			result.Conditions.SetActiveCondition(metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active")
 		} else {
+			result.Error = fmt.Errorf("error deactivating ScaleTarget: %w", err)
+			result.Conditions.SetReadyCondition(metav1.ConditionFalse, "ErrorScalingTarget", result.Error.Error())
 			e.recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScaleTargetDeactivationFailed, eventreason.KEDAScaleTargetDeactivationFailed,
-				"Failed to deactivate %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, scaleToReplicas)
+				"Failed to deactivate %s %s/%s from %d to %d: %v", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, scaleToReplicas, err)
 		}
 	} else {
 		logger.V(1).Info("ScaleTarget cooling down", "LastActiveTime", scaledObject.Status.LastActiveTime, "CoolDownPeriod", cooldownPeriod)
@@ -292,7 +297,9 @@ func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Log
 		// Scale was successful. Record lastActiveTime in the result for the handler to persist.
 		result.LastActiveTime = &metav1.Time{Time: time.Now()}
 	} else {
-		e.recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScaleTargetActivationFailed, eventreason.KEDAScaleTargetActivationFailed, "Failed to scale %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, replicas)
+		result.Error = fmt.Errorf("error activating ScaleTarget: %w", err)
+		result.Conditions.SetReadyCondition(metav1.ConditionFalse, "ErrorScalingTarget", result.Error.Error())
+		e.recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScaleTargetActivationFailed, eventreason.KEDAScaleTargetActivationFailed, "Failed to scale %s %s/%s from %d to %d: %v", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, replicas, err)
 	}
 }
 
