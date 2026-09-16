@@ -4439,6 +4439,102 @@
             ]
         },
         {
+            "type": "mqtt",
+            "parameters": [
+                {
+                    "name": "brokerAddress",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "topic",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "windowSeconds",
+                    "type": "string",
+                    "optional": true,
+                    "default": "30",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "queryValue",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "qos",
+                    "type": "string",
+                    "optional": true,
+                    "default": "1",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "connectRetryIntervalSeconds",
+                    "type": "string",
+                    "optional": true,
+                    "default": "2",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "maxReconnectIntervalSeconds",
+                    "type": "string",
+                    "optional": true,
+                    "default": "60",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "enableTLS",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "ca",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "cert",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "key",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "keyPassword",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                }
+            ]
+        },
+        {
             "type": "mysql",
             "parameters": [
                 {
