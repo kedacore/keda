@@ -37,7 +37,7 @@ require (
 	github.com/IBM/sarama v1.60.2
 	github.com/InfluxCommunity/influxdb3-go/v2 v2.17.0
 	github.com/apache/cassandra-gocql-driver/v2 v2.1.2
-	github.com/arangodb/go-driver/v2 v2.3.1
+	github.com/arangodb/go-driver/v2 v2.4.0
 	github.com/aws/aws-msk-iam-sasl-signer-go v1.0.4
 	github.com/aws/aws-sdk-go-v2 v1.47.0
 	github.com/aws/aws-sdk-go-v2/config v1.33.4
@@ -77,8 +77,8 @@ require (
 	github.com/microsoft/azure-devops-go-api/azuredevops v1.0.0-b5
 	github.com/mitchellh/hashstructure/v2 v2.0.2
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/newrelic/newrelic-client-go/v2 v2.93.3
-	github.com/onsi/ginkgo/v2 v2.32.1
+	github.com/newrelic/newrelic-client-go/v2 v2.93.4
+	github.com/onsi/ginkgo/v2 v2.32.2
 	github.com/onsi/gomega v1.43.0
 	github.com/open-policy-agent/cert-controller v0.16.0
 	github.com/opensearch-project/opensearch-go/v4 v4.7.3
@@ -102,7 +102,7 @@ require (
 	github.com/xhit/go-str2duration/v2 v2.1.0
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
 	go.etcd.io/etcd/client/v3 v3.7.1
-	go.mongodb.org/mongo-driver/v2 v2.9.0
+	go.mongodb.org/mongo-driver/v2 v2.9.1
 	go.opentelemetry.io/otel v1.46.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.46.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.46.0
@@ -110,8 +110,8 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.46.0
 	go.temporal.io/sdk v1.48.0
 	go.uber.org/mock v0.6.0
-	golang.org/x/oauth2 v0.36.0
-	golang.org/x/sync v0.22.0
+	golang.org/x/oauth2 v0.37.0
+	golang.org/x/sync v0.23.0
 	google.golang.org/api v0.297.0
 	google.golang.org/grpc v1.83.2
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.6.2
