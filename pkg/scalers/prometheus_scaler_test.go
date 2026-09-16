@@ -465,15 +465,14 @@ func TestPrometheusScaler_ExecutePromQuery_WithOAuth(t *testing.T) {
 
 	var tokenRequests atomic.Int64
 	tokenForm := &url.Values{}
+	var basicUsername, basicPassword string
+	var basicAuthPresent bool
 
 	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tokenRequests.Add(1)
 		require.NoError(t, r.ParseForm())
-		*tokenForm = r.Form
-		if username, password, ok := r.BasicAuth(); ok {
-			tokenForm.Set("client_id", username)
-			tokenForm.Set("client_secret", password)
-		}
+		*tokenForm = r.PostForm
+		basicUsername, basicPassword, basicAuthPresent = r.BasicAuth()
 
 		w.Header().Set("Content-Type", "application/json")
 		_, err := w.Write([]byte(`{"access_token":"fake_access_token","token_type":"Bearer","expires_in":3600}`))
@@ -528,8 +527,11 @@ func TestPrometheusScaler_ExecutePromQuery_WithOAuth(t *testing.T) {
 	assert.Equal(t, float64(42), got)
 
 	assert.Equal(t, "client_credentials", tokenForm.Get("grant_type"))
-	assert.Equal(t, "my-client", tokenForm.Get("client_id"))
-	assert.Equal(t, "my-secret", tokenForm.Get("client_secret"))
+	require.True(t, basicAuthPresent, "client credentials must be sent via HTTP Basic")
+	assert.Equal(t, "my-client", basicUsername)
+	assert.Equal(t, "my-secret", basicPassword)
+	assert.False(t, tokenForm.Has("client_id"), "client_id must not be duplicated in the request body")
+	assert.False(t, tokenForm.Has("client_secret"), "client_secret must not be duplicated in the request body")
 	assert.Equal(t, "scope-a scope-b", tokenForm.Get("scope"))
 	assert.Equal(t, "my-audience", tokenForm.Get("audience"))
 	assert.Equal(t, int64(1), tokenRequests.Load())
