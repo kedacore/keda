@@ -144,6 +144,37 @@ spec:
       authenticationRef:
         name: {{.TriggerAuthName}}
 `
+
+	fullIntervalScaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  pollingInterval: 5
+  cooldownPeriod: 5
+  minReplicaCount: {{.MinReplicaCount}}
+  maxReplicaCount: {{.MaxReplicaCount}}
+  triggers:
+    - type: azure-monitor
+      metadata:
+        resourceURI: microsoft.insights/components/{{.ApplicationInsightsName}}
+        subscriptionId: {{.AzureSubscriptionID}}
+        tenantId: {{.AzureADTenantID}}
+        resourceGroupName: {{.AzureResourceGroup}}
+        metricName: "exceptions/count"
+        metricAggregationInterval: "0:3:0"
+        metricInterval: FULL
+        metricAggregationType: Count
+        metricFilter: cloud/roleName eq '{{.ApplicationInsightsRole}}'
+        targetValue: "5"
+        activationTargetValue: "10"
+      authenticationRef:
+        name: {{.TriggerAuthName}}
+`
 )
 
 func TestScaler(t *testing.T) {
@@ -171,6 +202,7 @@ func TestScaler(t *testing.T) {
 	testActivation(t, kc, client)
 	testScaleOut(t, kc, client)
 	testScaleIn(t, kc)
+	testFullInterval(t, kc, client, data)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
@@ -195,6 +227,21 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, client appinsights.Tel
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 5),
+		"replica count should be 0 after 5 minutes")
+}
+
+// same exception rate that leaves the default interval deactivated, but FULL aggregates the whole 3m window over the threshold
+func testFullInterval(t *testing.T, kc *kubernetes.Clientset, client appinsights.TelemetryClient, data templateData) {
+	t.Log("--- testing metricInterval FULL ---")
+	KubectlApplyWithTemplate(t, data, "fullIntervalScaledObjectTemplate", fullIntervalScaledObjectTemplate)
+
+	stopCh := make(chan struct{})
+	go setMetricValue(client, 15, stopCh)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 90, 5),
+		"replica count should be 2 after 7.5 minutes")
+	close(stopCh)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 5),
 		"replica count should be 0 after 5 minutes")
