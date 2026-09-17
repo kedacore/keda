@@ -1145,6 +1145,12 @@
                     "metadataVariableReadable": true
                 },
                 {
+                    "name": "scaleOnInFlight",
+                    "type": "string",
+                    "default": "true",
+                    "metadataVariableReadable": true
+                },
+                {
                     "name": "requireAllDemands",
                     "type": "string",
                     "default": "false",
