@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"maps"
 	"os/exec"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -58,12 +59,17 @@ var (
 	resourceMetricScaledObjectName = fmt.Sprintf("%s-resource-so", testName)
 	resourceMetricScalerName       = fmt.Sprintf("%s-resource-cpu-scaler", testName)
 	httpClientScaledObjectName     = fmt.Sprintf("%s-so-http-client", testName)
+	grpcClientScaledObjectName     = fmt.Sprintf("%s-so-grpc-client", testName)
+	grpcPushScaledObjectName       = fmt.Sprintf("%s-so-grpc-push", testName)
+	grpcExternalScalerName         = fmt.Sprintf("%s-external-scaler", testName)
 	wrongScaledObjectName          = fmt.Sprintf("%s-so-wrong", testName)
 	scaledJobName                  = fmt.Sprintf("%s-sj", testName)
 	wrongScaledJobName             = fmt.Sprintf("%s-sj-wrong", testName)
 	wrongScalerName                = fmt.Sprintf("%s-wrong-scaler", testName)
 	emptyUpstreamScaledObjectName  = fmt.Sprintf("%s-so-empty-upstream", testName)
 	httpClientScalerName           = fmt.Sprintf("%s-http-client-scaler", testName)
+	grpcClientScalerName           = fmt.Sprintf("%s-grpc-client-scaler", testName)
+	grpcPushScalerName             = fmt.Sprintf("%s-grpc-push-scaler", testName)
 	cronScaledJobName              = fmt.Sprintf("%s-cron-sj", testName)
 	clientName                     = fmt.Sprintf("%s-client", testName)
 	cloudEventSourceName           = fmt.Sprintf("%s-ce", testName)
@@ -86,12 +92,17 @@ type templateData struct {
 	ResourceMetricScaledObjectName string
 	ResourceMetricScalerName       string
 	HTTPClientScaledObjectName     string
+	GRPCClientScaledObjectName     string
+	GRPCPushScaledObjectName       string
+	GRPCExternalScalerName         string
 	ScaledJobName                  string
 	WrongScaledObjectName          string
 	WrongScaledJobName             string
 	WrongScalerName                string
 	EmptyUpstreamScaledObjectName  string
 	HTTPClientScalerName           string
+	GRPCClientScalerName           string
+	GRPCPushScalerName             string
 	CronScaledJobName              string
 	MonitoredDeploymentName        string
 	ClientName                     string
@@ -264,6 +275,89 @@ spec:
         metricName: keda_scaler_errors_total
         threshold: '1'
         query: 'keda_scaler_errors_total{namespace="{{.TestNamespace}}",scaledObject="{{.HTTPClientScaledObjectName}}"}'
+`
+
+	grpcExternalScalerServiceTemplate = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{.GRPCExternalScalerName}}
+  namespace: {{.TestNamespace}}
+spec:
+  ports:
+    - port: 6000
+      name: grpc
+      targetPort: 6000
+    - port: 8080
+      name: http
+      targetPort: 8080
+  selector:
+    app: {{.GRPCExternalScalerName}}
+`
+
+	grpcExternalScalerDeploymentTemplate = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.GRPCExternalScalerName}}
+  namespace: {{.TestNamespace}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{.GRPCExternalScalerName}}
+  template:
+    metadata:
+      labels:
+        app: {{.GRPCExternalScalerName}}
+    spec:
+      containers:
+        - name: scaler
+          image: ghcr.io/kedacore/tests-external-scaler:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 6000
+            - containerPort: 8080
+`
+
+	grpcClientScaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.GRPCClientScaledObjectName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  pollingInterval: 2
+  minReplicaCount: 1
+  maxReplicaCount: 2
+  triggers:
+    - type: external
+      name: {{.GRPCClientScalerName}}
+      metadata:
+        scalerAddress: {{.GRPCExternalScalerName}}.{{.TestNamespace}}:6000
+        metricThreshold: "1"
+`
+
+	grpcPushScaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.GRPCPushScaledObjectName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  pollingInterval: 2
+  minReplicaCount: 1
+  maxReplicaCount: 2
+  triggers:
+    - type: external-push
+      name: {{.GRPCPushScalerName}}
+      metadata:
+        scalerAddress: {{.GRPCExternalScalerName}}.{{.TestNamespace}}:6000
+        metricThreshold: "1"
 `
 
 	scaledJobTemplate = `
@@ -637,6 +731,7 @@ func TestPrometheusMetrics(t *testing.T) {
 	testCloudEventEmittedError(t, data)
 	testEmptyUpstreamResponse(t, data)
 	testHTTPClientMetrics(t, kc, data)
+	testGRPCClientMetrics(t, kc, data)
 	testHighCardinalityLabelsDisabled(t, kc, data)
 }
 
@@ -650,12 +745,17 @@ func getTemplateData() (templateData, []Template) {
 			ResourceMetricScaledObjectName: resourceMetricScaledObjectName,
 			ResourceMetricScalerName:       resourceMetricScalerName,
 			HTTPClientScaledObjectName:     httpClientScaledObjectName,
+			GRPCClientScaledObjectName:     grpcClientScaledObjectName,
+			GRPCPushScaledObjectName:       grpcPushScaledObjectName,
+			GRPCExternalScalerName:         grpcExternalScalerName,
 			WrongScaledObjectName:          wrongScaledObjectName,
 			ScaledJobName:                  scaledJobName,
 			WrongScaledJobName:             wrongScaledJobName,
 			WrongScalerName:                wrongScalerName,
 			EmptyUpstreamScaledObjectName:  emptyUpstreamScaledObjectName,
 			HTTPClientScalerName:           httpClientScalerName,
+			GRPCClientScalerName:           grpcClientScalerName,
+			GRPCPushScalerName:             grpcPushScalerName,
 			MonitoredDeploymentName:        monitoredDeploymentName,
 			ClientName:                     clientName,
 			CronScaledJobName:              cronScaledJobName,
@@ -675,6 +775,8 @@ func getTemplateData() (templateData, []Template) {
 			{Name: "authenticatioNTemplate", Config: authenticationTemplate},
 			{Name: "cloudEventHTTPReceiverTemplate", Config: cloudEventHTTPReceiverTemplate},
 			{Name: "cloudEventHTTPServiceTemplate", Config: cloudEventHTTPServiceTemplate},
+			{Name: "grpcExternalScalerServiceTemplate", Config: grpcExternalScalerServiceTemplate},
+			{Name: "grpcExternalScalerDeploymentTemplate", Config: grpcExternalScalerDeploymentTemplate},
 		}
 }
 
@@ -1719,6 +1821,117 @@ func testHTTPClientMetrics(t *testing.T, kc *kubernetes.Clientset, data template
 		}
 		assert.True(t, found, "expected keda_scaler_http_request_duration_seconds histogram for prometheus scaler")
 	}
+}
+
+func testGRPCClientMetrics(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing external scaler gRPC client metrics ---")
+	SetDeploymentContainerArg(t, kc, KEDAOperator, KEDANamespace, KEDAOperator, "--enable-high-cardinality-metrics-labels", "true")
+	defer SetDeploymentContainerArg(t, kc, KEDAOperator, KEDANamespace, KEDAOperator, "--enable-high-cardinality-metrics-labels", "false")
+
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "grpcClientScaledObjectTemplate", grpcClientScaledObjectTemplate)
+	grpcClientScaledObjectCreated := true
+	grpcPushScaledObjectCreated := false
+	defer func() {
+		if grpcClientScaledObjectCreated {
+			KubectlDeleteWithTemplate(t, data, "grpcClientScaledObjectTemplate", grpcClientScaledObjectTemplate)
+		}
+		if grpcPushScaledObjectCreated {
+			KubectlDeleteWithTemplate(t, data, "grpcPushScaledObjectTemplate", grpcPushScaledObjectTemplate)
+		}
+		KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	}()
+
+	families := WaitForPrometheusMetric(t, "keda_grpc_client_handled_total", func(family *prommodel.MetricFamily) bool {
+		for _, metric := range family.GetMetric() {
+			if matchesGRPCPullMetric(metric.GetLabel(), data, "GetMetrics") && metric.GetCounter().GetValue() >= 1 {
+				return true
+			}
+		}
+		return false
+	})
+	for _, method := range []string{"IsActive", "GetMetricSpec"} {
+		WaitForPrometheusMetric(t, "keda_grpc_client_handled_total", func(family *prommodel.MetricFamily) bool {
+			return slices.ContainsFunc(family.GetMetric(), func(metric *prommodel.Metric) bool {
+				return matchesGRPCPullMetric(metric.GetLabel(), data, method) && metric.GetCounter().GetValue() >= 1
+			})
+		})
+	}
+
+	durationFamily, ok := families["keda_grpc_client_handling_seconds"]
+	assert.True(t, ok, "keda_grpc_client_handling_seconds not present")
+	if ok {
+		assert.True(t, slices.ContainsFunc(durationFamily.GetMetric(), func(metric *prommodel.Metric) bool {
+			return matchesGRPCPullResource(metric.GetLabel(), data, "GetMetrics") && metric.GetHistogram().GetSampleCount() > 0
+		}), "expected a GetMetrics duration histogram with external scaler resource labels")
+	}
+
+	KubectlDeleteWithTemplate(t, data, "grpcClientScaledObjectTemplate", grpcClientScaledObjectTemplate)
+	grpcClientScaledObjectCreated = false
+	KubectlApplyWithTemplate(t, data, "grpcPushScaledObjectTemplate", grpcPushScaledObjectTemplate)
+	grpcPushScaledObjectCreated = true
+
+	WaitForPrometheusMetric(t, "keda_grpc_client_msg_sent_total", func(family *prommodel.MetricFamily) bool {
+		return slices.ContainsFunc(family.GetMetric(), func(metric *prommodel.Metric) bool {
+			return matchesGRPCStreamMetric(metric.GetLabel(), data) && metric.GetCounter().GetValue() >= 1
+		})
+	})
+
+	_, _, err := ExecCommandOnSpecificPodWithoutTTY(t, data.ClientName, data.TestNamespace,
+		fmt.Sprintf("curl --fail -X POST http://%s.%s.svc.cluster.local:8080/api/value/10", data.GRPCExternalScalerName, data.TestNamespace))
+	require.NoError(t, err)
+
+	WaitForPrometheusMetric(t, "keda_grpc_client_msg_received_total", func(family *prommodel.MetricFamily) bool {
+		return slices.ContainsFunc(family.GetMetric(), func(metric *prommodel.Metric) bool {
+			return matchesGRPCStreamMetric(metric.GetLabel(), data) && metric.GetCounter().GetValue() >= 1
+		})
+	})
+
+	KubectlDeleteWithTemplate(t, data, "grpcPushScaledObjectTemplate", grpcPushScaledObjectTemplate)
+	grpcPushScaledObjectCreated = false
+	WaitForPrometheusMetric(t, "keda_grpc_client_handled_total", func(family *prommodel.MetricFamily) bool {
+		return slices.ContainsFunc(family.GetMetric(), func(metric *prommodel.Metric) bool {
+			return matchesGRPCStreamLifecycle(metric.GetLabel(), data) && metric.GetCounter().GetValue() >= 1
+		})
+	})
+}
+
+func matchesGRPCPullMetric(labels []*prommodel.LabelPair, data templateData, method string) bool {
+	return matchesGRPCPullResource(labels, data, method) &&
+		ExtractPrometheusLabelValue("grpc_code", labels) == "OK"
+}
+
+func matchesGRPCPullResource(labels []*prommodel.LabelPair, data templateData, method string) bool {
+	metricName := ExtractPrometheusLabelValue("metric_name", labels)
+	metricNameMatches := metricName != ""
+	if method == "GetMetricSpec" {
+		metricNameMatches = metricName == ""
+	}
+	return ExtractPrometheusLabelValue("namespace", labels) == data.TestNamespace &&
+		ExtractPrometheusLabelValue("scaled_resource", labels) == data.GRPCClientScaledObjectName &&
+		ExtractPrometheusLabelValue("scaler", labels) == "external" &&
+		ExtractPrometheusLabelValue("trigger_name", labels) == data.GRPCClientScalerName &&
+		ExtractPrometheusLabelValue("grpc_method", labels) == method &&
+		metricNameMatches
+}
+
+func matchesGRPCStreamMetric(labels []*prommodel.LabelPair, data templateData) bool {
+	return matchesGRPCPushResource(labels, data) &&
+		ExtractPrometheusLabelValue("grpc_method", labels) == "StreamIsActive"
+}
+
+func matchesGRPCStreamLifecycle(labels []*prommodel.LabelPair, data templateData) bool {
+	return matchesGRPCPushResource(labels, data) &&
+		ExtractPrometheusLabelValue("grpc_method", labels) == "StreamIsActive" &&
+		ExtractPrometheusLabelValue("grpc_code", labels) == "Canceled"
+}
+
+func matchesGRPCPushResource(labels []*prommodel.LabelPair, data templateData) bool {
+	return ExtractPrometheusLabelValue("namespace", labels) == data.TestNamespace &&
+		ExtractPrometheusLabelValue("scaled_resource", labels) == data.GRPCPushScaledObjectName &&
+		ExtractPrometheusLabelValue("scaler", labels) == "external-push" &&
+		ExtractPrometheusLabelValue("trigger_name", labels) == data.GRPCPushScalerName &&
+		ExtractPrometheusLabelValue("metric_name", labels) == ""
 }
 
 func testHighCardinalityLabelsDisabled(t *testing.T, kc *kubernetes.Clientset, data templateData) {

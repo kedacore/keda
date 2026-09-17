@@ -21,6 +21,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/util"
@@ -29,6 +30,7 @@ import (
 type externalScaler struct {
 	metricType      v2.MetricTargetType
 	metadata        externalScalerMetadata
+	scalerConfig    scalersconfig.ScalerConfig
 	scaledObjectRef pb.ScaledObjectRef
 	logger          logr.Logger
 	// closeOnce keeps Close releasing this scaler's share of the pooled
@@ -97,8 +99,9 @@ func NewExternalScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 
 	return &externalScaler{
-		metricType: metricType,
-		metadata:   meta,
+		metricType:   metricType,
+		metadata:     meta,
+		scalerConfig: *config,
 		scaledObjectRef: pb.ScaledObjectRef{
 			Name:           config.ScalableObjectName,
 			Namespace:      config.ScalableObjectNamespace,
@@ -126,8 +129,9 @@ func NewExternalPushScaler(config *scalersconfig.ScalerConfig) (PushScaler, erro
 
 	return &externalPushScaler{
 		externalScaler: externalScaler{
-			metricType: metricType,
-			metadata:   meta,
+			metricType:   metricType,
+			metadata:     meta,
+			scalerConfig: *config,
 			scaledObjectRef: pb.ScaledObjectRef{
 				Name:           config.ScalableObjectName,
 				Namespace:      config.ScalableObjectNamespace,
@@ -173,6 +177,7 @@ func (s *externalScaler) Close(context.Context) error {
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
+	ctx = metricscollector.BuildScalerRequestCtx(ctx, s.scalerConfig, "")
 	grpcClient, err := getClientForConnectionPool(s.metadata)
 	if err != nil {
 		s.logger.Error(err, "error building grpc connection")
@@ -214,6 +219,7 @@ func (s *externalScaler) buildMetricSpecs(response *pb.GetMetricSpecResponse) []
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *externalScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	var metrics []external_metrics.ExternalMetricValue
+	ctx = metricscollector.BuildScalerRequestCtx(ctx, s.scalerConfig, metricName)
 	grpcClient, err := getClientForConnectionPool(s.metadata)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, err
@@ -257,6 +263,7 @@ func (s *externalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 // Run starts both the StreamIsActive and StreamMetricSpec stream handlers.
 func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 	defer close(active)
+	ctx = metricscollector.BuildScalerRequestCtx(ctx, s.scalerConfig, "")
 
 	go s.runStreamMetricSpec(ctx)
 	s.runStreamIsActive(ctx, active)
@@ -434,16 +441,17 @@ func buildGRPCConnection(metadata externalScalerMetadata) (*grpc.ClientConn, err
 		return nil, err
 	}
 
+	options := []grpc.DialOption{grpc.WithDefaultServiceConfig(grpcConfig)}
+	options = append(options, metricscollector.GRPCClientDialOptions()...)
 	if metadata.EnableTLS || len(tlsConfig.Certificates) > 0 || metadata.CaCert != "" {
-		// nosemgrep: go.grpc.ssrf.grpc-tainted-url-host.grpc-tainted-url-host
-		return grpc.NewClient(metadata.ScalerAddress,
-			grpc.WithDefaultServiceConfig(grpcConfig),
-			grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+		options = append(options, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+	} else {
+		// nosemgrep: go.grpc.tls.grpc-client-new-insecure-connection.grpc-client-new-insecure-connection
+		options = append(options, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
-	return grpc.NewClient(metadata.ScalerAddress,
-		grpc.WithDefaultServiceConfig(grpcConfig),
-		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// nosemgrep: go.grpc.ssrf.grpc-tainted-url-host.grpc-tainted-url-host
+	return grpc.NewClient(metadata.ScalerAddress, options...)
 }
 
 // acquireConnection records one more scaler sharing the connection for this
