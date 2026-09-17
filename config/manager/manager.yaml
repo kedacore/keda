@@ -71,6 +71,8 @@ spec:
               value: ""
             - name: KEDA_HTTP_DEFAULT_TIMEOUT
               value: ""
+            - name: KEDA_SCALER_SETUP_TIMEOUT
+              value: "30s"
           securityContext:
             runAsNonRoot: true
             capabilities:
