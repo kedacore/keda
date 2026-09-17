@@ -54,6 +54,10 @@ type externalScalerMetadata struct {
 
 type connectionGroup struct {
 	grpcConnection *grpc.ClientConn
+	// refCount is the number of scalers currently sharing this connection. It
+	// is guarded by connectionPoolMutex. The connection is closed and dropped
+	// from the pool when the count reaches zero.
+	refCount int
 }
 
 // a pool of connectionGroup per metadata hash
@@ -83,6 +87,10 @@ func NewExternalScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing external scaler metadata: %w", err)
 	}
 
+	if err := acquireConnection(meta); err != nil {
+		return nil, fmt.Errorf("error acquiring connection for external scaler: %w", err)
+	}
+
 	return &externalScaler{
 		metricType: metricType,
 		metadata:   meta,
@@ -105,6 +113,10 @@ func NewExternalPushScaler(config *scalersconfig.ScalerConfig) (PushScaler, erro
 	meta, err := parseExternalScalerMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing external scaler metadata: %w", err)
+	}
+
+	if err := acquireConnection(meta); err != nil {
+		return nil, fmt.Errorf("error acquiring connection for external push scaler: %w", err)
 	}
 
 	return &externalPushScaler{
@@ -144,8 +156,10 @@ func parseExternalScalerMetadata(config *scalersconfig.ScalerConfig) (externalSc
 	return meta, nil
 }
 
+// Close releases this scaler's share of the pooled gRPC connection. The
+// connection is closed once no scaler is left using it.
 func (s *externalScaler) Close(context.Context) error {
-	return nil
+	return releaseConnection(s.metadata)
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
@@ -405,40 +419,31 @@ func getConnectionPoolKey(metadata externalScalerMetadata) (uint64, error) {
 	return hashstructure.Hash(key, hashstructure.FormatV1, nil)
 }
 
-// getClientForConnectionPool returns a grpcClient and a done() Func. The done() function must be called once the client is no longer
-// in use to clean up the shared grpc.ClientConn
-func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalScalerClient, error) {
-	connectionPoolMutex.Lock()
-	defer connectionPoolMutex.Unlock()
-
-	buildGRPCConnection := func(metadata externalScalerMetadata) (*grpc.ClientConn, error) {
-		tlsConfig, err := util.NewTLSConfig(metadata.TLSClientCert, metadata.TLSClientKey, metadata.CaCert, metadata.UnsafeSsl)
-		if err != nil {
-			return nil, err
-		}
-
-		if metadata.EnableTLS || len(tlsConfig.Certificates) > 0 || metadata.CaCert != "" {
-			// nosemgrep: go.grpc.ssrf.grpc-tainted-url-host.grpc-tainted-url-host
-			return grpc.NewClient(metadata.ScalerAddress,
-				grpc.WithDefaultServiceConfig(grpcConfig),
-				grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
-		}
-
-		return grpc.NewClient(metadata.ScalerAddress,
-			grpc.WithDefaultServiceConfig(grpcConfig),
-			grpc.WithTransportCredentials(insecure.NewCredentials()))
-	}
-
-	// create a unique key per-metadata. If scaledObjects share the same connection properties
-	// in the metadata, they will share the same grpc.ClientConn
-	key, err := getConnectionPoolKey(metadata)
+func buildGRPCConnection(metadata externalScalerMetadata) (*grpc.ClientConn, error) {
+	tlsConfig, err := util.NewTLSConfig(metadata.TLSClientCert, metadata.TLSClientKey, metadata.CaCert, metadata.UnsafeSsl)
 	if err != nil {
 		return nil, err
 	}
 
+	if metadata.EnableTLS || len(tlsConfig.Certificates) > 0 || metadata.CaCert != "" {
+		// nosemgrep: go.grpc.ssrf.grpc-tainted-url-host.grpc-tainted-url-host
+		return grpc.NewClient(metadata.ScalerAddress,
+			grpc.WithDefaultServiceConfig(grpcConfig),
+			grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+	}
+
+	return grpc.NewClient(metadata.ScalerAddress,
+		grpc.WithDefaultServiceConfig(grpcConfig),
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+}
+
+// connectionGroupForKey returns the pooled connection for key, creating it from
+// metadata when the pool does not hold one yet. Callers must hold
+// connectionPoolMutex.
+func connectionGroupForKey(key uint64, metadata externalScalerMetadata) (*connectionGroup, error) {
 	if i, ok := connectionPool.Load(key); ok {
 		if connGroup, ok := i.(*connectionGroup); ok {
-			return pb.NewExternalScalerClient(connGroup.grpcConnection), nil
+			return connGroup, nil
 		}
 	}
 
@@ -447,22 +452,84 @@ func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalSca
 		return nil, err
 	}
 
-	connGroup := &connectionGroup{
-		grpcConnection: conn,
+	connGroup := &connectionGroup{grpcConnection: conn}
+	connectionPool.Store(key, connGroup)
+	return connGroup, nil
+}
+
+// acquireConnection records one more scaler sharing the connection for this
+// metadata, creating the connection if the pool does not hold one yet. Every
+// call must be paired with releaseConnection, which closes the connection once
+// the last scaler using it has gone away.
+//
+// grpc.NewClient connects lazily, so acquiring here costs nothing until the
+// scaler actually issues a request.
+func acquireConnection(metadata externalScalerMetadata) error {
+	connectionPoolMutex.Lock()
+	defer connectionPoolMutex.Unlock()
+
+	key, err := getConnectionPoolKey(metadata)
+	if err != nil {
+		return err
 	}
 
-	connectionPool.Store(key, connGroup)
+	connGroup, err := connectionGroupForKey(key, metadata)
+	if err != nil {
+		return err
+	}
 
-	go func() {
-		// clean up goroutine.
-		// once gRPC client is shutdown, remove the connection from the pool and Close() grpc.ClientConn
-		// nosemgrep: dgryski.semgrep-go.contexttodo.context-todo
-		<-waitForState(context.TODO(), connGroup.grpcConnection, connectivity.Shutdown)
-		connectionPoolMutex.Lock()
-		defer connectionPoolMutex.Unlock()
-		connectionPool.Delete(key)
-		connGroup.grpcConnection.Close()
-	}()
+	connGroup.refCount++
+	return nil
+}
+
+// releaseConnection records that one scaler has stopped using the connection
+// for this metadata. The connection is closed and dropped from the pool once no
+// scaler is left using it.
+func releaseConnection(metadata externalScalerMetadata) error {
+	connectionPoolMutex.Lock()
+	defer connectionPoolMutex.Unlock()
+
+	key, err := getConnectionPoolKey(metadata)
+	if err != nil {
+		return err
+	}
+
+	i, ok := connectionPool.Load(key)
+	if !ok {
+		return nil
+	}
+	connGroup, ok := i.(*connectionGroup)
+	if !ok {
+		return nil
+	}
+
+	connGroup.refCount--
+	if connGroup.refCount > 0 {
+		return nil
+	}
+
+	connectionPool.Delete(key)
+	return connGroup.grpcConnection.Close()
+}
+
+// getClientForConnectionPool returns a client on the connection shared by every
+// scaler with the same connection properties. The connection's lifetime is
+// owned by acquireConnection and releaseConnection rather than by this call.
+func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalScalerClient, error) {
+	connectionPoolMutex.Lock()
+	defer connectionPoolMutex.Unlock()
+
+	// create a unique key per-metadata. If scaledObjects share the same connection properties
+	// in the metadata, they will share the same grpc.ClientConn
+	key, err := getConnectionPoolKey(metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	connGroup, err := connectionGroupForKey(key, metadata)
+	if err != nil {
+		return nil, err
+	}
 
 	return pb.NewExternalScalerClient(connGroup.grpcConnection), nil
 }
