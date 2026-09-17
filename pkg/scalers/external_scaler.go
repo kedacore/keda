@@ -446,30 +446,14 @@ func buildGRPCConnection(metadata externalScalerMetadata) (*grpc.ClientConn, err
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 }
 
-// connectionGroupForKey returns the pooled connection for key, creating it from
-// metadata when the pool does not hold one yet. Callers must hold
-// connectionPoolMutex.
-func connectionGroupForKey(key uint64, metadata externalScalerMetadata) (*connectionGroup, error) {
-	if i, ok := connectionPool.Load(key); ok {
-		if connGroup, ok := i.(*connectionGroup); ok {
-			return connGroup, nil
-		}
-	}
-
-	conn, err := buildGRPCConnection(metadata)
-	if err != nil {
-		return nil, err
-	}
-
-	connGroup := &connectionGroup{grpcConnection: conn}
-	connectionPool.Store(key, connGroup)
-	return connGroup, nil
-}
-
 // acquireConnection records one more scaler sharing the connection for this
 // metadata, creating the connection if the pool does not hold one yet. Every
 // call must be paired with releaseConnection, which closes the connection once
 // the last scaler using it has gone away.
+//
+// This is the only place a pooled connection is created. Lookups never create
+// one, so a request arriving after the owning scaler has closed cannot leave an
+// entry behind that nothing will release.
 //
 // grpc.NewClient connects lazily, so acquiring here costs nothing until the
 // scaler actually issues a request.
@@ -482,12 +466,19 @@ func acquireConnection(metadata externalScalerMetadata) error {
 		return err
 	}
 
-	connGroup, err := connectionGroupForKey(key, metadata)
+	if i, ok := connectionPool.Load(key); ok {
+		if connGroup, ok := i.(*connectionGroup); ok {
+			connGroup.refCount++
+			return nil
+		}
+	}
+
+	conn, err := buildGRPCConnection(metadata)
 	if err != nil {
 		return err
 	}
 
-	connGroup.refCount++
+	connectionPool.Store(key, &connectionGroup{grpcConnection: conn, refCount: 1})
 	return nil
 }
 
@@ -530,22 +521,32 @@ func releaseConnection(metadata externalScalerMetadata) error {
 }
 
 // getClientForConnectionPool returns a client on the connection shared by every
-// scaler with the same connection properties. The connection's lifetime is
-// owned by acquireConnection and releaseConnection rather than by this call.
+// scaler with the same connection properties. The connection's lifetime belongs
+// to acquireConnection and releaseConnection, so this only looks the connection
+// up and reports an error when the pool no longer holds one.
+//
+// Creating here would be unsafe. A request can arrive after the owning scaler
+// has closed, for instance from the retry loop in runStreamIsActive racing the
+// context cancellation, and creating a connection for it would leave an entry
+// with no owner to release it.
 func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalScalerClient, error) {
 	connectionPoolMutex.Lock()
 	defer connectionPoolMutex.Unlock()
 
-	// create a unique key per-metadata. If scaledObjects share the same connection properties
-	// in the metadata, they will share the same grpc.ClientConn
+	// the key is unique per-metadata. ScaledObjects that share the same connection
+	// properties in the metadata share the same grpc.ClientConn
 	key, err := getConnectionPoolKey(metadata)
 	if err != nil {
 		return nil, err
 	}
 
-	connGroup, err := connectionGroupForKey(key, metadata)
-	if err != nil {
-		return nil, err
+	i, ok := connectionPool.Load(key)
+	if !ok {
+		return nil, fmt.Errorf("no pooled connection for scaler address %s, the scaler is closed", metadata.ScalerAddress)
+	}
+	connGroup, ok := i.(*connectionGroup)
+	if !ok {
+		return nil, fmt.Errorf("unexpected entry in the connection pool for scaler address %s", metadata.ScalerAddress)
 	}
 
 	return pb.NewExternalScalerClient(connGroup.grpcConnection), nil

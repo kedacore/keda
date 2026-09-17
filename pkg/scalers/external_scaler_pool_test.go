@@ -128,6 +128,35 @@ func TestExternalScalerCloseIsIdempotent(t *testing.T) {
 	}
 }
 
+// A request can arrive after the owning scaler has closed, for instance from
+// the retry loop in runStreamIsActive racing its context cancellation. Looking
+// the connection up must report an error at that point. Creating one would
+// leave a pool entry with no owner to release it, which is the leak this change
+// exists to remove.
+func TestGetClientForConnectionPoolDoesNotRecreateAfterClose(t *testing.T) {
+	const address = "pool-no-recreate.default.svc.cluster.local:9090"
+
+	before := poolEntries()
+
+	s := newTestExternalScaler(t, address)
+	md := externalScalerMetadata{ScalerAddress: address}
+
+	if _, err := getClientForConnectionPool(md); err != nil {
+		t.Fatalf("looking up the connection while the scaler is open: %v", err)
+	}
+
+	if err := s.Close(context.Background()); err != nil {
+		t.Fatalf("closing the scaler: %v", err)
+	}
+
+	if _, err := getClientForConnectionPool(md); err == nil {
+		t.Error("expected an error looking up the connection after the scaler closed")
+	}
+	if got := poolEntries(); got != before {
+		t.Errorf("pool entries = %d, want %d, the lookup recreated an entry nothing owns", got, before)
+	}
+}
+
 // Scalers pointing at different addresses do not share a connection, and
 // releasing one leaves the other alone.
 func TestExternalScalerConnectionPoolPerAddress(t *testing.T) {
