@@ -356,7 +356,10 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 						}
 						metricName := metricNameForTriggerIndex(freshSO.Status.ExternalMetricNames, triggerIndex)
 						if metricName == "" {
-							logger.V(1).Info("Could not resolve metric name for push scaler, will retry on next activation", "triggerIndex", triggerIndex)
+							// This activation cannot be routed, so ask for a reconcile to
+							// rediscover the metric specs rather than waiting for an unrelated event.
+							logger.Info("Could not resolve metric name for push scaler, requesting a reconcile to repair the metric names", "triggerIndex", triggerIndex)
+							h.enqueueMetricSpecReconcile(ctx, freshSO.Name, freshSO.Namespace)
 							continue
 						}
 						opts := executor.ScaleExecutorOptions{
@@ -624,6 +627,13 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 	defer h.scalerCachesLock.Unlock()
 
 	if oldCache, ok := h.scalerCaches[key]; ok {
+		// The cache is rebuilt on every scaler error, so a failing scaler would lose its
+		// last known specs exactly when they are needed. Only the same generation is
+		// carried over, another generation can have other triggers on the same index.
+		if oldCache.ScalableObjectGeneration == newCache.ScalableObjectGeneration {
+			oldCache.CopyLastKnownMetricSpecsTo(newCache)
+		}
+
 		// Scalers Close() could be impacted by timeouts, blocking the mutex
 		// until the timeout happens. Instead of locking the mutex, we take
 		// the old cache item and we close it in another goroutine, not locking

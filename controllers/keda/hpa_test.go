@@ -105,7 +105,9 @@ var _ = Describe("hpa", func() {
 		}
 
 		ctx := context.Background()
-		emptyScaler.EXPECT().GetMetricSpecForScaling(ctx).Return([]v2.MetricSpec{})
+		// Queried once directly and once more after the cache refreshed the scaler.
+		emptyScaler.EXPECT().GetMetricSpecForScaling(ctx).Return([]v2.MetricSpec{}).Times(2)
+		emptyScaler.EXPECT().Close(ctx).Return(nil)
 		scaleHandler.EXPECT().GetScalersCache(ctx, gomock.Eq(scaledObject)).Return(&scalersCache, nil)
 
 		specs, err := reconciler.getScaledObjectMetricSpecs(ctx, logger, scaledObject)
@@ -135,7 +137,9 @@ var _ = Describe("hpa", func() {
 		}
 
 		ctx := context.Background()
-		emptyScaler.EXPECT().GetMetricSpecForScaling(ctx).Return(nil)
+		// Queried once directly and once more after the cache refreshed the scaler.
+		emptyScaler.EXPECT().GetMetricSpecForScaling(ctx).Return(nil).Times(2)
+		emptyScaler.EXPECT().Close(ctx).Return(nil)
 		scaleHandler.EXPECT().GetScalersCache(ctx, gomock.Eq(scaledObject)).Return(&scalersCache, nil)
 
 		specs, err := reconciler.getScaledObjectMetricSpecs(ctx, logger, scaledObject)

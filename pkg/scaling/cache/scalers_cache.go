@@ -95,6 +95,9 @@ type ScalerBuilder struct {
 	ScalerConfig      scalersconfig.ScalerConfig
 	Factory           func() (scalers.Scaler, *scalersconfig.ScalerConfig, error)
 	CachedMetricSpecs []v2.MetricSpec
+	// LastKnownMetricSpecs holds the specs of the last successful discovery, so a scaler
+	// that discovers over the network (external) survives a transient failure.
+	LastKnownMetricSpecs []v2.MetricSpec
 }
 
 func cloneMetricSpecs(specs []v2.MetricSpec) []v2.MetricSpec {
@@ -186,37 +189,56 @@ func (c *ScalersCache) Close(ctx context.Context) {
 }
 
 // GetMetricSpecForScaling returns metrics specs for all scalers in the cache.
-// If a scaler has cached metric specs from StreamMetricSpec, those take precedence.
-func (c *ScalersCache) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
-	var spec []v2.MetricSpec
-	for _, s := range c.Scalers {
-		if s.CachedMetricSpecs != nil {
-			spec = append(spec, cloneMetricSpecs(s.CachedMetricSpecs)...)
-		} else {
-			spec = append(spec, s.Scaler.GetMetricSpecForScaling(ctx)...)
-		}
-	}
-	return spec
-}
-
-// GetMetricSpecForScalingForScaler returns metrics spec for a scaler identified by the metric name.
-// If the scaler has cached metric specs from StreamMetricSpec, those take precedence.
-func (c *ScalersCache) GetMetricSpecForScalingForScaler(ctx context.Context, index int) ([]v2.MetricSpec, error) {
+// A non-nil error means the list is incomplete and must not be persisted to the
+// ScaledObject: a scaler failed and nothing was known for it before.
+func (c *ScalersCache) GetMetricSpecForScaling(ctx context.Context) ([]v2.MetricSpec, error) {
 	release, err := c.acquireReader()
 	if err != nil {
 		return nil, err
 	}
 	defer release()
 
+	c.mutex.RLock()
+	scalerCount := len(c.Scalers)
+	c.mutex.RUnlock()
+
+	var spec []v2.MetricSpec
+	var failedScalers []int
+	for index := range scalerCount {
+		specs, stale, err := c.resolveMetricSpecs(ctx, index)
+		if errors.Is(err, ErrCacheClosed) {
+			return nil, err
+		}
+		if err != nil {
+			failedScalers = append(failedScalers, index)
+			continue
+		}
+		if stale {
+			log.Info("metric spec discovery failed, using the last known metric specs for the scaler", "scalerIndex", index)
+		}
+		spec = append(spec, specs...)
+	}
+
+	if len(failedScalers) > 0 {
+		return spec, fmt.Errorf("metric spec discovery failed for scaler(s) %v and no previously known metric specs are available", failedScalers)
+	}
+
+	return spec, nil
+}
+
+// resolveMetricSpecs returns the metric specs of a single scaler, in order of
+// precedence: streamed specs (StreamMetricSpec), a live query, the last known specs.
+// The stale return value reports that those last known specs were used.
+func (c *ScalersCache) resolveMetricSpecs(ctx context.Context, index int) ([]v2.MetricSpec, bool, error) {
 	sb, err := c.getScalerBuilder(index)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	if sb.CachedMetricSpecs != nil {
-		return cloneMetricSpecs(sb.CachedMetricSpecs), nil
+		specs := cloneMetricSpecs(sb.CachedMetricSpecs)
+		c.storeLastKnownMetricSpecs(index, specs)
+		return specs, false, nil
 	}
 
 	metricSpecs := sb.Scaler.GetMetricSpecForScaling(ctx)
@@ -225,17 +247,102 @@ func (c *ScalersCache) GetMetricSpecForScalingForScaler(ctx context.Context, ind
 	// usually in case this is an external scaler
 	// let's try to refresh the scaler and query metrics spec again
 	if len(metricSpecs) < 1 {
-		var ns scalers.Scaler
-		ns, err = c.refreshScaler(ctx, index)
-		if err == nil {
+		ns, refreshErr := c.refreshScaler(ctx, index)
+		if errors.Is(refreshErr, ErrCacheClosed) {
+			return nil, false, refreshErr
+		}
+		if refreshErr == nil {
 			metricSpecs = ns.GetMetricSpecForScaling(ctx)
-			if len(metricSpecs) < 1 {
-				err = fmt.Errorf("got empty metric spec")
-			}
 		}
 	}
 
-	return metricSpecs, err
+	if len(metricSpecs) > 0 {
+		specs := cloneMetricSpecs(metricSpecs)
+		c.storeLastKnownMetricSpecs(index, specs)
+		return specs, false, nil
+	}
+
+	// Keep the trigger on the specs it reported last, so it stays in the HPA and its
+	// failures keep being counted through the regular fallback path.
+	if lastKnown := c.lastKnownMetricSpecs(index); lastKnown != nil {
+		return lastKnown, true, nil
+	}
+
+	return nil, false, fmt.Errorf("got empty metric spec")
+}
+
+// storeLastKnownMetricSpecs records the specs of a successful discovery for the scaler.
+func (c *ScalersCache) storeLastKnownMetricSpecs(index int, specs []v2.MetricSpec) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	if c.closed || index < 0 || index >= len(c.Scalers) {
+		return
+	}
+	c.Scalers[index].LastKnownMetricSpecs = cloneMetricSpecs(specs)
+}
+
+// lastKnownMetricSpecs returns the specs of the last successful discovery for the
+// scaler, or nil when it has never reported any.
+func (c *ScalersCache) lastKnownMetricSpecs(index int) []v2.MetricSpec {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	if c.closed || index < 0 || index >= len(c.Scalers) {
+		return nil
+	}
+	return cloneMetricSpecs(c.Scalers[index].LastKnownMetricSpecs)
+}
+
+// CopyLastKnownMetricSpecsTo seeds dst with the last known metric specs of this cache,
+// matched on trigger index. Callers must only copy between caches of the same
+// generation, otherwise the triggers behind the indexes may no longer match.
+func (c *ScalersCache) CopyLastKnownMetricSpecsTo(dst *ScalersCache) {
+	if dst == nil {
+		return
+	}
+
+	c.mutex.RLock()
+	lastKnown := make(map[int][]v2.MetricSpec, len(c.Scalers))
+	for _, sb := range c.Scalers {
+		if sb.LastKnownMetricSpecs != nil {
+			lastKnown[sb.ScalerConfig.TriggerIndex] = cloneMetricSpecs(sb.LastKnownMetricSpecs)
+		}
+	}
+	c.mutex.RUnlock()
+
+	if len(lastKnown) == 0 {
+		return
+	}
+
+	dst.mutex.Lock()
+	defer dst.mutex.Unlock()
+	for i := range dst.Scalers {
+		if specs, ok := lastKnown[dst.Scalers[i].ScalerConfig.TriggerIndex]; ok {
+			dst.Scalers[i].LastKnownMetricSpecs = specs
+		}
+	}
+}
+
+// GetMetricSpecForScalingForScaler returns metrics spec for a scaler identified by the metric name.
+// See resolveMetricSpecs for the order the specs are resolved in.
+func (c *ScalersCache) GetMetricSpecForScalingForScaler(ctx context.Context, index int) ([]v2.MetricSpec, error) {
+	release, err := c.acquireReader()
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+
+	metricSpecs, stale, err := c.resolveMetricSpecs(ctx, index)
+	if err != nil {
+		return nil, err
+	}
+	if stale {
+		// Low level on purpose, this runs on every metric query.
+		log.V(1).Info("metric spec discovery failed, using the last known metric specs for the scaler", "scalerIndex", index)
+	}
+
+	return metricSpecs, nil
 }
 
 // GetMetricsAndActivityForScaler returns metric value, activity and latency for a scaler identified by the metric name
@@ -321,6 +428,9 @@ func (c *ScalersCache) refreshScaler(ctx context.Context, index int) (scalers.Sc
 	}
 
 	oldSb := c.Scalers[index]
+	if oldSb.Factory == nil {
+		return nil, fmt.Errorf("scaler with id %d cannot be refreshed, it has no factory", index)
+	}
 
 	newScaler, sConfig, err := oldSb.Factory()
 	if err != nil {
@@ -328,10 +438,11 @@ func (c *ScalersCache) refreshScaler(ctx context.Context, index int) (scalers.Sc
 	}
 
 	c.Scalers[index] = ScalerBuilder{
-		Scaler:            newScaler,
-		ScalerConfig:      *sConfig,
-		Factory:           oldSb.Factory,
-		CachedMetricSpecs: cloneMetricSpecs(oldSb.CachedMetricSpecs),
+		Scaler:               newScaler,
+		ScalerConfig:         *sConfig,
+		Factory:              oldSb.Factory,
+		CachedMetricSpecs:    cloneMetricSpecs(oldSb.CachedMetricSpecs),
+		LastKnownMetricSpecs: cloneMetricSpecs(oldSb.LastKnownMetricSpecs),
 	}
 
 	oldSb.Scaler.Close(ctx)
