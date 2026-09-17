@@ -17,6 +17,7 @@ limitations under the License.
 package metricscollector
 
 import (
+	"context"
 	"runtime"
 	"strconv"
 	"time"
@@ -207,6 +208,38 @@ func NewPromMetrics(enableHighCardinalityLabels bool) *PromMetrics {
 	return &PromMetrics{
 		enableHighCardinalityLabels: enableHighCardinalityLabels,
 		httpClientRequestDuration:   httpClientRequestDuration,
+	}
+}
+
+func newPromClientMetrics(enableHighCardinalityLabels bool) *grpcprom.ClientMetrics {
+	contextLabels := []string{"scaler"}
+	if enableHighCardinalityLabels {
+		contextLabels = append(contextLabels, "namespace", "scaled_resource", "trigger_name", "metric_name")
+	}
+
+	clientMetrics := grpcprom.NewClientMetrics(
+		grpcprom.WithClientCounterOptions(grpcprom.WithNamespace(DefaultPromMetricsNamespace)),
+		grpcprom.WithClientHandlingTimeHistogram(
+			grpcprom.WithHistogramNamespace(DefaultPromMetricsNamespace),
+			grpcprom.WithHistogramBuckets([]float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 300, 900, 3600}),
+		),
+		grpcprom.WithClientContextLabels(contextLabels...),
+	)
+	metrics.Registry.MustRegister(clientMetrics)
+	return clientMetrics
+}
+
+func grpcPromLabelsFromContext(ctx context.Context) prometheus.Labels {
+	labels, ok := scalerRequestLabelsFromContext(ctx)
+	if !ok {
+		return nil
+	}
+	return prometheus.Labels{
+		"scaler":          labels.scaler,
+		"namespace":       labels.namespace,
+		"scaled_resource": labels.scaledResource,
+		"trigger_name":    labels.triggerName,
+		"metric_name":     labels.metricName,
 	}
 }
 

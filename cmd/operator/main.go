@@ -101,7 +101,7 @@ func main() {
 	var httpIdleConnTimeout time.Duration
 	pflag.BoolVar(&enablePrometheusMetrics, "enable-prometheus-metrics", true, "Enable the prometheus metric of keda-operator.")
 	pflag.BoolVar(&enableOpenTelemetryMetrics, "enable-opentelemetry-metrics", false, "Enable the opentelemetry metric of keda-operator.")
-	pflag.BoolVar(&enableHighCardinalityLabels, "enable-high-cardinality-metrics-labels", false, "Enable high-cardinality labels for scaler HTTP request duration metrics.")
+	pflag.BoolVar(&enableHighCardinalityLabels, "enable-high-cardinality-metrics-labels", false, "Enable high-cardinality labels for scaler HTTP request duration and external scaler gRPC client metrics.")
 	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the prometheus metric endpoint binds to.")
 	pflag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	pflag.StringVar(&metricsServiceAddr, "metrics-service-bind-address", ":9666", "The address the gRPRC Metrics Service endpoint binds to.")
