@@ -61,21 +61,11 @@ jobs:
             {"summary": "skipped by maintainer"}
 
       - uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
-        name: Enqueue e2e
-        id: create-s390x
+        name: Skip s390x smoke tests during IBM outage
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ github.event.pull_request.head.sha }}
           name: ${{ env.S390X_SMOKE_CHECK_NAME }}
-          status: queued
-
-      - uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
-        name: Skip e2e
-        if: ${{ contains(github.event.pull_request.labels.*.name, env.SKIP_E2E_TAG )}}
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          sha: ${{ github.event.pull_request.head.sha }}
-          check_id: ${{ steps.create-s390x.outputs.check_id }}
-          conclusion: success
+          conclusion: skipped
           output: |
-            {"summary": "skipped by maintainer"}
+            {"summary": "Temporarily disabled while IBM s390x runners are unavailable."}

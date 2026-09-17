@@ -60,14 +60,14 @@ var testTemporalMetadata = []parseTemporalMetadataTestData{
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerDeploymentName": "my-deploy"}, true},
 	// workerDeploymentBuildId without workerDeploymentName
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerDeploymentBuildId": "v1"}, true},
-	// deployment fields combined with buildId
+	// buildId is rejected during parsing, so the combination never reaches Validate()
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerDeploymentName": "my-deploy", "workerDeploymentBuildId": "v1", "buildId": "v1"}, true},
-	// deployment fields combined with selectAllActive
+	// selectAllActive is rejected during parsing, so the combination never reaches Validate()
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerDeploymentName": "my-deploy", "workerDeploymentBuildId": "v1", "selectAllActive": "true"}, true},
 	// valid deployment config
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerDeploymentName": "my-deploy", "workerDeploymentBuildId": "v1"}, false},
-	// valid legacy buildId config
-	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "buildId": "v1"}, false},
+	// legacy buildId is rejected as of v2.21
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "buildId": "v1"}, true},
 	// workflowTaskQueueForCount without includeRunningWorkflowCount
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workflowTaskQueueForCount": "wf-queue"}, true},
 	// includeRunningWorkflowCount alone is valid
@@ -76,6 +76,10 @@ var testTemporalMetadata = []parseTemporalMetadataTestData{
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "includeRunningWorkflowCount": "true", "workflowTaskQueueForCount": "wf-queue"}, false},
 	// includeRunningWorkflowCount rejects unsafe characters in taskQueue
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": "bad queue' OR '1'='1", "namespace": temporalNamespace, "includeRunningWorkflowCount": "true"}, true},
+	// selectAllActive is rejected as of v2.21
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "selectAllActive": "true"}, true},
+	// selectUnversioned is rejected as of v2.21
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "selectUnversioned": "true"}, true},
 }
 
 var temporalMetricIdentifiers = []temporalMetricIdentifier{
@@ -83,8 +87,6 @@ var temporalMetricIdentifiers = []temporalMetricIdentifier{
 	{&testTemporalMetadata[5], 1, "s1-temporal-v2-default"},
 	// deployment version: metric name includes workerDeploymentName + workerDeploymentBuildId
 	{&testTemporalMetadata[11], 0, "s0-temporal-v2-default-my-deploy-v1"},
-	// legacy buildId: metric name is unchanged from unversioned (backward compat)
-	{&testTemporalMetadata[12], 0, "s0-temporal-v2-default"},
 }
 
 func TestTemporalParseMetadata(t *testing.T) {
@@ -144,8 +146,6 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
-				AllActive:                 false,
-				Unversioned:               false,
 				MinConnectTimeout:         5,
 				EnableTLS:                 true,
 			},
@@ -163,8 +163,6 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
-				AllActive:                 false,
-				Unversioned:               false,
 				MinConnectTimeout:         5,
 				EnableTLS:                 true,
 			},
@@ -184,8 +182,6 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 12,
-				AllActive:                 false,
-				Unversioned:               false,
 				MinConnectTimeout:         5,
 				EnableTLS:                 true,
 			},
@@ -204,8 +200,6 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
-				AllActive:                 false,
-				Unversioned:               false,
 				APIKey:                    "test01",
 				MinConnectTimeout:         5,
 				EnableTLS:                 true,
@@ -229,8 +223,6 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
-				AllActive:                 false,
-				Unversioned:               false,
 				QueueTypes:                []string{"workflow", "activity"},
 				MinConnectTimeout:         5,
 				EnableTLS:                 true,
@@ -255,8 +247,6 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
-				AllActive:                 false,
-				Unversioned:               false,
 				APIKey:                    "test01",
 				MinConnectTimeout:         5,
 				EnableTLS:                 true,
@@ -280,8 +270,6 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
-				AllActive:                 false,
-				Unversioned:               false,
 				APIKey:                    "test-api-key",
 				MinConnectTimeout:         5,
 				EnableTLS:                 true,
@@ -308,8 +296,6 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
-				AllActive:                 false,
-				Unversioned:               false,
 				APIKey:                    "test-api-key",
 				MinConnectTimeout:         5,
 				EnableTLS:                 false,
@@ -330,8 +316,6 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
-				AllActive:                 false,
-				Unversioned:               false,
 				MinConnectTimeout:         5,
 				EnableTLS:                 true,
 				TLSServerName:             "my-namespace.tmpr.cloud",
@@ -355,8 +339,6 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
-				AllActive:                 false,
-				Unversioned:               false,
 				APIKey:                    "test01",
 				MinConnectTimeout:         5,
 				EnableTLS:                 true,
@@ -384,8 +366,6 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
-				AllActive:                 false,
-				Unversioned:               false,
 				Cert:                      "cert-data",
 				Key:                       "key-data",
 				KeyPassword:               "password",
@@ -518,10 +498,6 @@ func TestScalerMode(t *testing.T) {
 	}{
 		{"no versioning fields", temporalMetadata{}, "unversioned"},
 		{"workerDeploymentName set", temporalMetadata{WorkerDeploymentName: "d"}, "deployment-version"},
-		{"deployment takes precedence over buildId", temporalMetadata{WorkerDeploymentName: "d", BuildID: "v1"}, "deployment-version"},
-		{"buildId set", temporalMetadata{BuildID: "v1"}, "build-id"},
-		{"selectAllActive set", temporalMetadata{AllActive: true}, "build-id"},
-		{"selectUnversioned set", temporalMetadata{Unversioned: true}, "build-id"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -551,16 +527,6 @@ func TestRunningWorkflowCountQuery(t *testing.T) {
 			name: "workflowTaskQueueForCount overrides taskQueue",
 			meta: temporalMetadata{TaskQueue: "activities", WorkflowTaskQueueForCount: "workflows"},
 			want: "ExecutionStatus = 'Running' AND TaskQueue = 'workflows' AND TemporalWorkerDeploymentVersion is null",
-		},
-		{
-			name: "deprecated buildId omits deployment version predicate",
-			meta: temporalMetadata{TaskQueue: "orders", BuildID: "v1"},
-			want: "ExecutionStatus = 'Running' AND TaskQueue = 'orders'",
-		},
-		{
-			name: "selectUnversioned (deprecated) omits deployment version predicate",
-			meta: temporalMetadata{TaskQueue: "orders", Unversioned: true},
-			want: "ExecutionStatus = 'Running' AND TaskQueue = 'orders'",
 		},
 		{
 			name:    "unsafe task queue is rejected",
