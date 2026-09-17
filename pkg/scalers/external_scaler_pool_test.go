@@ -83,6 +83,51 @@ func TestExternalScalerConnectionPoolReleasedOnClose(t *testing.T) {
 	}
 }
 
+// Close is part of the Scaler interface, so it can be called more than once.
+// A repeated Close must not drop a share another scaler still holds.
+func TestExternalScalerCloseIsIdempotent(t *testing.T) {
+	const address = "pool-double-close.default.svc.cluster.local:9090"
+
+	before := poolEntries()
+
+	first := newTestExternalScaler(t, address)
+	second := newTestExternalScaler(t, address)
+
+	// Close the first scaler repeatedly. Only the first call may release.
+	for range 3 {
+		if err := first.Close(context.Background()); err != nil {
+			t.Fatalf("closing the first scaler: %v", err)
+		}
+	}
+
+	if got := poolEntries(); got != before+1 {
+		t.Fatalf("pool entries = %d, want %d, a repeated Close released a share it did not hold", got, before+1)
+	}
+
+	// The second scaler still has a working connection.
+	var connGroup *connectionGroup
+	connectionPool.Range(func(_, v any) bool {
+		if cg, ok := v.(*connectionGroup); ok && cg.refCount == 1 {
+			connGroup = cg
+			return false
+		}
+		return true
+	})
+	if connGroup == nil {
+		t.Fatal("expected the connection to still be held by one scaler")
+	}
+	if got := connGroup.grpcConnection.GetState(); got == connectivity.Shutdown {
+		t.Error("the connection was closed while a scaler was still using it")
+	}
+
+	if err := second.Close(context.Background()); err != nil {
+		t.Fatalf("closing the second scaler: %v", err)
+	}
+	if got := poolEntries(); got != before {
+		t.Errorf("pool entries = %d, want %d", got, before)
+	}
+}
+
 // Scalers pointing at different addresses do not share a connection, and
 // releasing one leaves the other alone.
 func TestExternalScalerConnectionPoolPerAddress(t *testing.T) {

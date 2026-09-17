@@ -31,6 +31,11 @@ type externalScaler struct {
 	metadata        externalScalerMetadata
 	scaledObjectRef pb.ScaledObjectRef
 	logger          logr.Logger
+	// closeOnce keeps Close releasing this scaler's share of the pooled
+	// connection at most once, so a repeated Close cannot drop a reference
+	// another scaler still holds.
+	closeOnce sync.Once
+	closeErr  error
 }
 
 type externalPushScaler struct {
@@ -157,9 +162,13 @@ func parseExternalScalerMetadata(config *scalersconfig.ScalerConfig) (externalSc
 }
 
 // Close releases this scaler's share of the pooled gRPC connection. The
-// connection is closed once no scaler is left using it.
+// connection is closed once no scaler is left using it. Calling Close more than
+// once releases the share only once.
 func (s *externalScaler) Close(context.Context) error {
-	return releaseConnection(s.metadata)
+	s.closeOnce.Do(func() {
+		s.closeErr = releaseConnection(s.metadata)
+	})
+	return s.closeErr
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
@@ -500,6 +509,14 @@ func releaseConnection(metadata externalScalerMetadata) error {
 	}
 	connGroup, ok := i.(*connectionGroup)
 	if !ok {
+		return nil
+	}
+
+	// Guard against releasing a share that was never taken. The entry under
+	// this key may have been dropped and rebuilt by another scaler since, and
+	// decrementing past zero here would close a connection that scaler is
+	// still using.
+	if connGroup.refCount <= 0 {
 		return nil
 	}
 
