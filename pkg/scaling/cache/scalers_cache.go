@@ -90,10 +90,15 @@ func (c *ScalersCache) acquireReader() (release func(), err error) {
 	}, nil
 }
 
+// ScalerFactory constructs a scaler. setupCtx bounds synchronous setup work;
+// lifecycleCtx may be retained by the scaler and remains valid until refresh or close.
+type ScalerFactory func(setupCtx, lifecycleCtx context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error)
+
 type ScalerBuilder struct {
 	Scaler            scalers.Scaler
 	ScalerConfig      scalersconfig.ScalerConfig
-	Factory           func() (scalers.Scaler, *scalersconfig.ScalerConfig, error)
+	Factory           ScalerFactory
+	CancelContext     context.CancelFunc
 	CachedMetricSpecs []v2.MetricSpec
 }
 
@@ -178,6 +183,9 @@ func (c *ScalersCache) Close(ctx context.Context) {
 	c.mutex.Unlock()
 
 	for _, s := range scalers {
+		if s.CancelContext != nil {
+			s.CancelContext()
+		}
 		err := s.Scaler.Close(ctx)
 		if err != nil {
 			log.Error(err, "error closing scaler", "scaler", s)
@@ -322,8 +330,15 @@ func (c *ScalersCache) refreshScaler(ctx context.Context, index int) (scalers.Sc
 
 	oldSb := c.Scalers[index]
 
-	newScaler, sConfig, err := oldSb.Factory()
+	scalerLifecycleCtx, cancel := context.WithCancel(context.Background())
+	newScaler, sConfig, err := oldSb.Factory(ctx, scalerLifecycleCtx)
 	if err != nil {
+		if cancel != nil {
+			cancel()
+		}
+		if newScaler != nil {
+			_ = newScaler.Close(ctx)
+		}
 		return nil, err
 	}
 
@@ -331,10 +346,14 @@ func (c *ScalersCache) refreshScaler(ctx context.Context, index int) (scalers.Sc
 		Scaler:            newScaler,
 		ScalerConfig:      *sConfig,
 		Factory:           oldSb.Factory,
+		CancelContext:     cancel,
 		CachedMetricSpecs: cloneMetricSpecs(oldSb.CachedMetricSpecs),
 	}
 
-	oldSb.Scaler.Close(ctx)
+	if oldSb.CancelContext != nil {
+		oldSb.CancelContext()
+	}
+	_ = oldSb.Scaler.Close(ctx)
 
 	return newScaler, nil
 }
