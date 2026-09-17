@@ -19,6 +19,7 @@ package executor
 import (
 	"context"
 	"maps"
+	"time"
 
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,22 +60,32 @@ type ScaleExecutorOptions struct {
 }
 
 type scaleExecutor struct {
-	client           runtimeclient.Client
-	scaleClient      scale.ScalesGetter
-	reconcilerScheme *runtime.Scheme
-	logger           logr.Logger
-	recorder         events.EventRecorder
+	client               runtimeclient.Client
+	scaleClient          scale.ScalesGetter
+	reconcilerScheme     *runtime.Scheme
+	logger               logr.Logger
+	recorder             events.EventRecorder
+	kubernetesAPITimeout time.Duration
 }
 
 // NewScaleExecutor creates a ScaleExecutor object
-func NewScaleExecutor(client runtimeclient.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, recorder events.EventRecorder) ScaleExecutor {
+func NewScaleExecutor(client runtimeclient.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, kubernetesAPITimeout time.Duration, recorder events.EventRecorder) ScaleExecutor {
 	return &scaleExecutor{
-		client:           client,
-		scaleClient:      scaleClient,
-		reconcilerScheme: reconcilerScheme,
-		logger:           logf.Log.WithName("scaleexecutor"),
-		recorder:         recorder,
+		client:               client,
+		scaleClient:          scaleClient,
+		reconcilerScheme:     reconcilerScheme,
+		logger:               logf.Log.WithName("scaleexecutor"),
+		recorder:             recorder,
+		kubernetesAPITimeout: kubernetesAPITimeout,
 	}
+}
+
+func getPollingInterval(scalableObject kedav1alpha1.ScalableObject) (time.Duration, error) {
+	withTriggers, err := kedav1alpha1.AsDuckWithTriggers(scalableObject)
+	if err != nil {
+		return 0, err
+	}
+	return withTriggers.GetPollingInterval(), nil
 }
 
 // getTriggersActivity returns a map of trigger names to their activity status based on the provided active triggers and the triggers defined in the scaled object.
