@@ -121,6 +121,10 @@ var testGitHubRunnerMetadata = []parseGitHubRunnerMetadataTestData{
 	{"missing owner Env", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "ownerFromEnv": "EMPTY"}, true, true, "error parsing github runner metadata: missing required parameter \"owner\" in [triggerMetadata resolvedEnv]"},
 	{"wrong applicationID", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationID": "id", "installationID": "1"}, true, true, "error parsing github runner metadata: unable to set param \"applicationID\" value \"id\": unable to unmarshal to field type int64: invalid character 'i' looking for beginning of value\nno applicationID given"},
 	{"wrong installationID", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationID": "1", "installationID": "id"}, true, true, "error parsing github runner metadata: unable to set param \"installationID\" value \"id\": unable to unmarshal to field type int64: invalid character 'i' looking for beginning of value\nno installationID given"},
+	// custom maxPages
+	{"custom maxPages", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": REPO, "owner": "ownername", "targetWorkflowQueueLength": "1", "maxPages": "5"}, true, false, ""},
+	// string for maxPages
+	{"string for maxPages", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": REPO, "owner": "ownername", "targetWorkflowQueueLength": "1", "maxPages": "a"}, true, true, "error parsing github runner metadata: unable to set param \"maxPages\" value \"a\": unable to unmarshal to field type int: invalid character 'a' looking for beginning of value"},
 }
 
 func TestGitHubRunnerParseMetadata(t *testing.T) {
@@ -159,6 +163,34 @@ func TestGitHubRunnerBearerAuthModeWithPersonalAccessToken(t *testing.T) {
 	}
 }
 
+func TestGitHubRunnerParseMetadataMaxPagesDefault(t *testing.T) {
+	meta, err := parseGitHubRunnerMetadata(&scalersconfig.ScalerConfig{
+		ResolvedEnv:     testGitHubRunnerResolvedEnv,
+		TriggerMetadata: map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "targetWorkflowQueueLength": "1"},
+		AuthParams:      testAuthParams,
+	})
+	if err != nil {
+		t.Fatalf("expected no error but got %s", err)
+	}
+	if meta.MaxPages != githubDefaultMaxPages {
+		t.Fatalf("expected default maxPages %d, got %d", githubDefaultMaxPages, meta.MaxPages)
+	}
+}
+
+func TestGitHubRunnerParseMetadataMaxPagesCustom(t *testing.T) {
+	meta, err := parseGitHubRunnerMetadata(&scalersconfig.ScalerConfig{
+		ResolvedEnv:     testGitHubRunnerResolvedEnv,
+		TriggerMetadata: map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "targetWorkflowQueueLength": "1", "maxPages": "3"},
+		AuthParams:      testAuthParams,
+	})
+	if err != nil {
+		t.Fatalf("expected no error but got %s", err)
+	}
+	if meta.MaxPages != 3 {
+		t.Fatalf("expected custom maxPages 3, got %d", meta.MaxPages)
+	}
+}
+
 func getGitHubTestMetaData(url string) *githubRunnerMetadata {
 	testpat := "testpat"
 
@@ -168,6 +200,7 @@ func getGitHubTestMetaData(url string) *githubRunnerMetadata {
 		Owner:                     "testOwner",
 		PersonalAccessToken:       testpat,
 		TargetWorkflowQueueLength: 1,
+		MaxPages:                  githubDefaultMaxPages,
 	}
 
 	return &meta
@@ -1266,7 +1299,7 @@ func TestGetWorkflowRunJobs_PerRunCacheDoesNotConflateConcurrentRuns(t *testing.
 // TestGetWorkflowRunJobs_StopsAtMaxPages guards against unbounded pagination:
 // if GitHub kept returning full pages of jobs forever (e.g. due to a bug on
 // GitHub's side, or an inconsistent/misbehaving API response), getWorkflowRunJobs
-// must stop after githubMaxPages pages rather than looping indefinitely.
+// must stop after githubDefaultMaxPages pages rather than looping indefinitely.
 func TestGetWorkflowRunJobs_StopsAtMaxPages(t *testing.T) {
 	var mu sync.Mutex
 	requestedPages := map[int]bool{}
@@ -1298,21 +1331,70 @@ func TestGetWorkflowRunJobs_StopsAtMaxPages(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	if len(jobs) != githubMaxPages*githubJobsPerPage {
-		t.Fatalf("expected pagination to stop after %d pages (%d jobs), got %d jobs", githubMaxPages, githubMaxPages*githubJobsPerPage, len(jobs))
+	if len(jobs) != githubDefaultMaxPages*githubJobsPerPage {
+		t.Fatalf("expected pagination to stop after %d pages (%d jobs), got %d jobs", githubDefaultMaxPages, githubDefaultMaxPages*githubJobsPerPage, len(jobs))
 	}
 
 	mu.Lock()
 	gotPages := len(requestedPages)
 	mu.Unlock()
-	if gotPages != githubMaxPages {
-		t.Fatalf("expected exactly %d pages to be requested, got %d", githubMaxPages, gotPages)
+	if gotPages != githubDefaultMaxPages {
+		t.Fatalf("expected exactly %d pages to be requested, got %d", githubDefaultMaxPages, gotPages)
+	}
+}
+
+// TestGetWorkflowRunJobs_RespectsCustomMaxPages verifies that a maxPages
+// value lower than the default stops pagination earlier, so operators
+// worried about GitHub API budget can lower it explicitly.
+func TestGetWorkflowRunJobs_RespectsCustomMaxPages(t *testing.T) {
+	const customMaxPages = 3
+
+	var mu sync.Mutex
+	requestedPages := map[int]bool{}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		page := 1
+		if p := r.URL.Query().Get("page"); p != "" {
+			page, _ = strconv.Atoi(p)
+		}
+		mu.Lock()
+		requestedPages[page] = true
+		mu.Unlock()
+
+		// Always return a full page, as if there were unlimited jobs.
+		body, _ := json.Marshal(Jobs{Jobs: buildJobs(githubJobsPerPage, 0)})
+		// nosemgrep: no-direct-write-to-responsewriter
+		_, _ = w.Write(body)
+	}))
+	defer srv.Close()
+
+	meta := getGitHubTestMetaData(srv.URL)
+	meta.MaxPages = customMaxPages
+	s := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	jobs, err := s.getWorkflowRunJobs(context.Background(), 30433642, "Hello-World")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	if len(jobs) != customMaxPages*githubJobsPerPage {
+		t.Fatalf("expected pagination to stop after %d pages (%d jobs), got %d jobs", customMaxPages, customMaxPages*githubJobsPerPage, len(jobs))
+	}
+
+	mu.Lock()
+	gotPages := len(requestedPages)
+	mu.Unlock()
+	if gotPages != customMaxPages {
+		t.Fatalf("expected exactly %d pages to be requested, got %d", customMaxPages, gotPages)
 	}
 }
 
 // TestGetRepositories_StopsAtMaxPages guards against unbounded pagination: if
 // GitHub kept returning full pages of repositories forever, getRepositories
-// must stop after githubMaxPages pages rather than looping indefinitely.
+// must stop after githubDefaultMaxPages pages rather than looping indefinitely.
 func TestGetRepositories_StopsAtMaxPages(t *testing.T) {
 	var mu sync.Mutex
 	requestedPages := map[int]bool{}
@@ -1348,15 +1430,15 @@ func TestGetRepositories_StopsAtMaxPages(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	if len(repos) != githubMaxPages*githubDefaultPerPage {
-		t.Fatalf("expected pagination to stop after %d pages (%d repos), got %d repos", githubMaxPages, githubMaxPages*githubDefaultPerPage, len(repos))
+	if len(repos) != githubDefaultMaxPages*githubDefaultPerPage {
+		t.Fatalf("expected pagination to stop after %d pages (%d repos), got %d repos", githubDefaultMaxPages, githubDefaultMaxPages*githubDefaultPerPage, len(repos))
 	}
 
 	mu.Lock()
 	gotPages := len(requestedPages)
 	mu.Unlock()
-	if gotPages != githubMaxPages {
-		t.Fatalf("expected exactly %d pages to be requested, got %d", githubMaxPages, gotPages)
+	if gotPages != githubDefaultMaxPages {
+		t.Fatalf("expected exactly %d pages to be requested, got %d", githubDefaultMaxPages, gotPages)
 	}
 }
 

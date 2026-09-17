@@ -31,11 +31,7 @@ const (
 	ENT                  = "ent"
 	REPO                 = "repo"
 	githubDefaultPerPage = 30
-	// githubMaxPages caps the number of pages to fetch from the GitHub API. The
-	// API returns a maximum of 100 items per page, so this allows for up to 5000
-	// items to be fetched. This is a safeguard against excessive fetching
-	githubMaxPages    = 50
-	githubJobsPerPage = 100
+	githubJobsPerPage    = 100
 	// githubScalerMaxCacheEntries caps the etags, previousJobPages, and
 	// previousWfrs maps. Without it the etags and previousJobPages maps grow
 	// once per workflow run page for the lifetime of the operator pod (the URL
@@ -84,6 +80,7 @@ type githubRunnerMetadata struct {
 	EnableEtags                            bool     `keda:"name=enableEtags, order=triggerMetadata;resolvedEnv, default=false"`
 	MatchUnlabeledJobsWithUnlabeledRunners bool     `keda:"name=matchUnlabeledJobsWithUnlabeledRunners, order=triggerMetadata;resolvedEnv, default=false"`
 	TargetWorkflowQueueLength              int64    `keda:"name=targetWorkflowQueueLength, order=triggerMetadata;resolvedEnv, default=1"`
+	MaxPages                               int      `keda:"name=maxPages, order=triggerMetadata;resolvedEnv, default=50"`
 	TriggerIndex                           int
 	ApplicationID                          int64  `keda:"name=applicationID, order=triggerMetadata;resolvedEnv, optional"`
 	InstallationID                         int64  `keda:"name=installationID, order=triggerMetadata;resolvedEnv, optional"`
@@ -556,8 +553,8 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 			break
 		}
 
-		if page >= githubMaxPages {
-			s.logger.V(1).Info(fmt.Sprintf("Reached max page limit (%d) while fetching repositories, results may be incomplete", githubMaxPages))
+		if page >= s.metadata.MaxPages {
+			s.logger.Info(fmt.Sprintf("Reached max page limit (%d) while fetching repositories, results may be incomplete", s.metadata.MaxPages))
 			break
 		}
 
@@ -745,7 +742,7 @@ func (s *githubRunnerScaler) fetchWorkflowRunJobsPage(ctx context.Context, workf
 // getWorkflowRunJobs returns a list of jobs for a given workflow run. A workflow
 // run can have more jobs than fit on a single page, so all pages are fetched
 // and combined until GitHub returns a page with fewer than githubJobsPerPage jobs,
-// or until githubMaxPages is reached.
+// or until the maxPages parameter is reached.
 // When ETags are enabled, every page is independently fetched and validated,
 // so a 304 on an earlier page never short-circuits the fetch of later pages.
 func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRunID int64, repoName string) ([]Job, error) {
@@ -765,8 +762,8 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 			break
 		}
 
-		if page >= githubMaxPages {
-			s.logger.V(1).Info(fmt.Sprintf("Reached max page limit (%d) while fetching jobs for workflow run %d in repo %s, results may be incomplete", githubMaxPages, workflowRunID, repoName))
+		if page >= s.metadata.MaxPages {
+			s.logger.Info(fmt.Sprintf("Reached max page limit (%d) while fetching jobs for workflow run %d in repo %s, results may be incomplete", s.metadata.MaxPages, workflowRunID, repoName))
 			break
 		}
 
