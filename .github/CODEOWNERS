@@ -1,3 +1,7 @@
 # These owners will be the default owners for everything in
 # the repo. Unless a later match takes precedence
 *       @kedacore/keda-core-maintainers
+
+# MQTT scaler
+pkg/scalers/mqtt_scaler*.go             @MrMithun101
+tests/scalers/mqtt/                     @MrMithun101
