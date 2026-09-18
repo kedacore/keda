@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 
 
-IMAGE = re.compile(r"\b(golang|ghcr\.io/kedacore/keda-tools):([^\s@\"']+)")
+IMAGE = re.compile(r"\b(golang|ghcr\.io/kedacore/keda-tools)(?::([^\s@\"']+)|@[^\s\"']+)")
 VERSION = re.compile(r"(\d+\.\d+)(?:\.\d+)?(?:-[\w.-]+)?")
 
 
@@ -42,7 +42,8 @@ def verify(root: Path) -> list[str]:
                 continue
             for image in IMAGE.finditer(line):
                 found = True
-                version = VERSION.fullmatch(image.group(2))
+                tag = image.group(2)
+                version = VERSION.fullmatch(tag) if tag is not None else None
                 location = f"{path.relative_to(root)}:{number}"
                 if version is None:
                     errors.append(f"{location}: cannot determine Go release from {image.group(0)}")

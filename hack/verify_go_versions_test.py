@@ -66,6 +66,25 @@ class VerifyGoVersionsTest(unittest.TestCase):
         self.write(".devcontainer/Dockerfile", "FROM golang:1.26.8-bookworm@sha256:abc\n")
         self.assertEqual(verify(self.root), [])
 
+    def test_digest_only_workflow_images_are_rejected(self):
+        for image in ["golang", "ghcr.io/kedacore/keda-tools"]:
+            with self.subTest(image=image):
+                reference = f"{image}@sha256:abc"
+                self.write(".github/workflows/ci.yml", f'container: "{reference}"\n')
+                self.assertEqual(verify(self.root), [
+                    f".github/workflows/ci.yml:1: cannot determine Go release from {reference}"
+                ])
+
+    def test_tagged_and_pinned_workflow_images_are_checked(self):
+        for image in ["golang", "ghcr.io/kedacore/keda-tools"]:
+            for version in ["1.26.8", "1.27.1"]:
+                with self.subTest(image=image, version=version):
+                    self.write(".github/workflows/ci.yml", f"container: {image}:{version}@sha256:abc\n")
+                    expected = [] if version == "1.26.8" else [
+                        f".github/workflows/ci.yml:1: {image}:{version} uses Go 1.27; go.mod requires 1.26"
+                    ]
+                    self.assertEqual(verify(self.root), expected)
+
     def test_comments_and_unrelated_images_are_ignored(self):
         self.write(".github/workflows/extra.yaml", "  # image: golang:1.27.1\ncontainer: ubuntu:24.04\n")
         self.assertEqual(verify(self.root), [])
