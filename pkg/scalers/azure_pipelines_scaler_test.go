@@ -721,7 +721,7 @@ func TestParseAzurePipelinesMetadataScaleOnInFlightDefault(t *testing.T) {
 	}))
 
 	logger := logr.Discard()
-	meta, _, err := parseAzurePipelinesMetadata(context.TODO(), logger, &scalersconfig.ScalerConfig{
+	meta, err := parseAzurePipelinesMetadata(t.Context(), logger, &scalersconfig.ScalerConfig{
 		TriggerMetadata: map[string]string{
 			"organizationURLFromEnv":     "AZP_URL",
 			"personalAccessTokenFromEnv": "AZP_TOKEN",
