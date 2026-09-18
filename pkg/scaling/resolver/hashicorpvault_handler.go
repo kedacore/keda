@@ -83,12 +83,12 @@ func (vh *HashicorpVaultHandler) Initialize(logger logr.Logger) error {
 		return err
 	}
 
+	vh.client = client
+
 	if renew, ok := lookup.Data["renewable"].(bool); ok && renew {
 		vh.stopCh = make(chan struct{})
 		go vh.renewToken(logger)
 	}
-
-	vh.client = client
 
 	return nil
 }
@@ -159,6 +159,7 @@ func (vh *HashicorpVaultHandler) renewToken(logger logr.Logger) {
 	secret, err := vh.client.Auth().Token().RenewSelf(0)
 	if err != nil {
 		logger.Error(err, "Vault renew token: failed to create the payload")
+		return
 	}
 
 	renewer, err := vh.client.NewLifetimeWatcher(&vaultapi.RenewerInput{
@@ -168,13 +169,11 @@ func (vh *HashicorpVaultHandler) renewToken(logger logr.Logger) {
 	})
 	if err != nil {
 		logger.Error(err, "Vault renew token: cannot create the renewer")
+		return
 	}
 
 	go renewer.Renew()
-	defer func() {
-		renewer.Stop()
-		close(vh.stopCh)
-	}()
+	defer renewer.Stop()
 
 RenewWatcherLoop:
 	for {
@@ -203,7 +202,7 @@ func (vh *HashicorpVaultHandler) Write(path string, data map[string]any) (*vault
 // Stop is responsible for stopping the renewal token process
 func (vh *HashicorpVaultHandler) Stop() {
 	if vh.stopCh != nil {
-		vh.stopCh <- struct{}{}
+		close(vh.stopCh)
 	}
 }
 
