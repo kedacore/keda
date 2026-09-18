@@ -17,6 +17,7 @@ limitations under the License.
 package k8s
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -162,4 +163,26 @@ func TestExactGroupMapperNoMatchWhenGroupHasNoSuchResource(t *testing.T) {
 	_, err = m.ResourceFor(schema.GroupVersionResource{Group: "batch", Resource: "jobs"})
 	require.Error(t, err)
 	assert.True(t, meta.IsNoMatchError(err))
+}
+
+// failingMapper answers version-less lookups normally but fails fully qualified ones with a non-NoMatch error,
+// like a discovery call that timed out while loading the group.
+type failingMapper struct {
+	meta.RESTMapper
+	err error
+}
+
+func (f failingMapper) ResourceFor(input schema.GroupVersionResource) (schema.GroupVersionResource, error) {
+	if input.Version != "" {
+		return schema.GroupVersionResource{}, f.err
+	}
+	return f.RESTMapper.ResourceFor(input)
+}
+
+func TestExactGroupMapperPropagatesDiscoveryErrors(t *testing.T) {
+	boom := errors.New("discovery timed out")
+	m := exactGroupMapper{RESTMapper: failingMapper{RESTMapper: discoveryMapper(kruiseGroup()), err: boom}, groupVersions: versionsOf}
+
+	_, err := m.ResourceFor(appsStatefulSets)
+	require.ErrorIs(t, err, boom, "a real error while loading the group must not be reported as NoMatch")
 }
