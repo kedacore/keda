@@ -6,6 +6,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"sync"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -48,6 +49,13 @@ var (
 
 	otelScalerActiveVals []OtelMetricFloat64Val
 	otelScalerPauseVals  []OtelMetricFloat64Val
+	// Readiness observations are kept per resource (keyed by namespace/name) and
+	// re-observed on every collection, because reconciliation is event-driven and
+	// an unchanged resource may never record again. The lock guards the maps
+	// against concurrent reconcile writes and SDK collection reads.
+	otelReadyValsLock         sync.Mutex
+	otelScaledObjectReadyVals = map[string]OtelMetricFloat64Val{}
+	otelScaledJobReadyVals    = map[string]OtelMetricFloat64Val{}
 
 	otHTTPClientRequestsCounter api.Int64Counter
 	otHTTPClientRequestDuration api.Float64Histogram
@@ -231,6 +239,24 @@ func initMeters() {
 		otLog.Error(err, msg)
 	}
 
+	_, err = meter.Float64ObservableGauge(
+		"keda.scaled.object.ready",
+		api.WithDescription("Indicates whether a ScaledObject is ready"),
+		api.WithFloat64Callback(ReadyStatusCallback),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
+	_, err = meter.Float64ObservableGauge(
+		"keda.scaled.job.ready",
+		api.WithDescription("Indicates whether a ScaledJob is ready"),
+		api.WithFloat64Callback(ScaledJobReadyStatusCallback),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
 	otHTTPClientRequestsCounter, err = meter.Int64Counter(
 		"keda.scaler.http.requests.count",
 		api.WithDescription("Total number of outbound HTTP requests issued during scaler metric collection, labeled by HTTP status code."),
@@ -400,6 +426,70 @@ func (o *OtelMetrics) RecordScaledObjectPaused(namespace string, scaledObject st
 	otelScalerPause.val = float64(activeVal)
 	otelScalerPause.measurementOption = opt
 	otelScalerPauseVals = append(otelScalerPauseVals, otelScalerPause)
+}
+
+func ReadyStatusCallback(_ context.Context, obsrv api.Float64Observer) error {
+	otelReadyValsLock.Lock()
+	defer otelReadyValsLock.Unlock()
+	for _, v := range otelScaledObjectReadyVals {
+		obsrv.Observe(v.val, v.measurementOption)
+	}
+	return nil
+}
+
+// RecordScaledObjectReady marks whether the current ScaledObject is ready.
+func (o *OtelMetrics) RecordScaledObjectReady(namespace string, scaledObject string, ready bool) {
+	readyVal := 0
+	if ready {
+		readyVal = 1
+	}
+
+	opt := api.WithAttributes(
+		attribute.Key("namespace").String(namespace),
+		attribute.Key("scaledObject").String(scaledObject))
+
+	otelReadyValsLock.Lock()
+	defer otelReadyValsLock.Unlock()
+	otelScaledObjectReadyVals[namespace+"/"+scaledObject] = OtelMetricFloat64Val{val: float64(readyVal), measurementOption: opt}
+}
+
+// DeleteScaledObjectReady removes the ready observation of a deleted ScaledObject.
+func (o *OtelMetrics) DeleteScaledObjectReady(namespace string, scaledObject string) {
+	otelReadyValsLock.Lock()
+	defer otelReadyValsLock.Unlock()
+	delete(otelScaledObjectReadyVals, namespace+"/"+scaledObject)
+}
+
+func ScaledJobReadyStatusCallback(_ context.Context, obsrv api.Float64Observer) error {
+	otelReadyValsLock.Lock()
+	defer otelReadyValsLock.Unlock()
+	for _, v := range otelScaledJobReadyVals {
+		obsrv.Observe(v.val, v.measurementOption)
+	}
+	return nil
+}
+
+// RecordScaledJobReady marks whether the current ScaledJob is ready.
+func (o *OtelMetrics) RecordScaledJobReady(namespace string, scaledJob string, ready bool) {
+	readyVal := 0
+	if ready {
+		readyVal = 1
+	}
+
+	opt := api.WithAttributes(
+		attribute.Key("namespace").String(namespace),
+		attribute.Key("scaledJob").String(scaledJob))
+
+	otelReadyValsLock.Lock()
+	defer otelReadyValsLock.Unlock()
+	otelScaledJobReadyVals[namespace+"/"+scaledJob] = OtelMetricFloat64Val{val: float64(readyVal), measurementOption: opt}
+}
+
+// DeleteScaledJobReady removes the ready observation of a deleted ScaledJob.
+func (o *OtelMetrics) DeleteScaledJobReady(namespace string, scaledJob string) {
+	otelReadyValsLock.Lock()
+	defer otelReadyValsLock.Unlock()
+	delete(otelScaledJobReadyVals, namespace+"/"+scaledJob)
 }
 
 // RecordScalerError counts the number of errors occurred in trying to get an external metric used by the HPA
