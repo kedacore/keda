@@ -1782,7 +1782,7 @@ func testGRPCClientMetrics(t *testing.T, kc *kubernetes.Clientset, data template
 		KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	}()
 
-	families := waitForCollectorMetric(t, "keda_rpc_client_call_count_total", func(family *prommodel.MetricFamily) bool {
+	waitForCollectorMetric(t, "keda_rpc_client_call_count_total", func(family *prommodel.MetricFamily) bool {
 		return slices.ContainsFunc(family.GetMetric(), func(metric *prommodel.Metric) bool {
 			return matchesGRPCPullMetric(metric.GetLabel(), data, "GetMetrics") && metric.GetCounter().GetValue() >= 1
 		})
@@ -1795,13 +1795,11 @@ func testGRPCClientMetrics(t *testing.T, kc *kubernetes.Clientset, data template
 		})
 	}
 
-	durationFamily, ok := families["keda_rpc_client_call_duration_seconds"]
-	assert.True(t, ok, "keda_rpc_client_call_duration_seconds not present")
-	if ok {
-		assert.True(t, slices.ContainsFunc(durationFamily.GetMetric(), func(metric *prommodel.Metric) bool {
+	waitForCollectorMetric(t, "keda_rpc_client_call_duration_seconds", func(family *prommodel.MetricFamily) bool {
+		return slices.ContainsFunc(family.GetMetric(), func(metric *prommodel.Metric) bool {
 			return matchesGRPCPullMetric(metric.GetLabel(), data, "GetMetrics") && metric.GetHistogram().GetSampleCount() > 0
-		}), "expected a GetMetrics duration histogram with external scaler resource labels")
-	}
+		})
+	})
 
 	KubectlDeleteWithTemplate(t, data, "grpcClientScaledObjectTemplate", grpcClientScaledObjectTemplate)
 	grpcClientScaledObjectCreated = false
