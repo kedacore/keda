@@ -107,8 +107,16 @@ func IsScaledJobActive(scalersMetrics []ScalerMetrics, multipleScalersCalculatio
 	return isActive, ceilToInt64(queueLength), ceilToInt64(maxValue), maxValue
 }
 
-// ceilToInt64 returns the int64 ceil value for the float64 input
+// ceilToInt64 returns the int64 ceil value for the float64 input.
+// Out-of-range values are clamped to math.MaxInt64 / math.MinInt64 to avoid
+// silent truncation overflow (IEEE 754 → CVTTSD2SI returns "integer indefinite").
 func ceilToInt64(x float64) int64 {
+	if x >= float64(math.MaxInt64) {
+		return math.MaxInt64
+	}
+	if x < float64(math.MinInt64) {
+		return math.MinInt64
+	}
 	return int64(math.Ceil(x))
 }
 
