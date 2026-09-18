@@ -51,10 +51,34 @@ func InitScaleClient(mgr ctrl.Manager) (scale.ScalesGetter, kedautil.K8sVersion,
 	}
 
 	return scale.New(
-		clientset.RESTClient(), exactGroupMapper{mgr.GetRESTMapper()},
+		clientset.RESTClient(), exactGroupMapper{RESTMapper: mgr.GetRESTMapper(), groupVersions: groupVersionsFunc(clientset)},
 		dynamic.LegacyAPIPathResolverFunc,
 		scale.NewDiscoveryScaleKindResolver(clientset),
 	), kubeVersion, nil
+}
+
+// groupVersionsFunc returns a lookup of the versions an API group serves, preferred version first.
+// It is only consulted when the RESTMapper has no candidate in the requested group (see exactGroupMapper).
+func groupVersionsFunc(client discovery.ServerGroupsInterface) func(group string) ([]string, error) {
+	return func(group string) ([]string, error) {
+		groups, err := client.ServerGroups()
+		if err != nil {
+			return nil, err
+		}
+		for _, g := range groups.Groups {
+			if g.Name != group {
+				continue
+			}
+			versions := []string{g.PreferredVersion.Version}
+			for _, v := range g.Versions {
+				if v.Version != g.PreferredVersion.Version {
+					versions = append(versions, v.Version)
+				}
+			}
+			return versions, nil
+		}
+		return nil, nil
+	}
 }
 
 // exactGroupMapper makes version-less resource lookups stay in the requested API group.
@@ -69,11 +93,15 @@ func InitScaleClient(mgr ctrl.Manager) (scale.ScalesGetter, kedautil.K8sVersion,
 // apps/statefulsets may resolve to apps.kruise.io/v1beta1 statefulsets and every /scale call for a plain
 // StatefulSet fails with "not found" (https://github.com/kedacore/keda/issues/8182).
 //
-// KEDA always knows the exact group of the scale target, so for version-less lookups we take the first
-// candidate in the requested group (ResourcesFor keeps the preferred version first) and only fall back to
-// the mapper's own answer when the group has no such resource at all. Fully qualified lookups are untouched.
+// KEDA always knows the exact group of the scale target, so version-less lookups only accept candidates from
+// the requested group (ResourcesFor keeps the preferred version first). controller-runtime's lazy mapper only
+// discovers a group when a lookup fails, and a prefix match does not fail, so the requested group may simply
+// not be loaded yet: in that case the group's versions are discovered and the mapper is asked with each of
+// them, which does make it load the group. A group that has no such resource at all yields NoMatch instead
+// of another group's resource. Fully qualified lookups are untouched.
 type exactGroupMapper struct {
 	meta.RESTMapper
+	groupVersions func(group string) ([]string, error)
 }
 
 func (m exactGroupMapper) ResourceFor(input schema.GroupVersionResource) (schema.GroupVersionResource, error) {
@@ -81,7 +109,7 @@ func (m exactGroupMapper) ResourceFor(input schema.GroupVersionResource) (schema
 		return m.RESTMapper.ResourceFor(input)
 	}
 	candidates, err := m.ResourcesFor(input)
-	if err != nil {
+	if err != nil && !meta.IsNoMatchError(err) {
 		return schema.GroupVersionResource{}, err
 	}
 	for _, gvr := range candidates {
@@ -89,5 +117,14 @@ func (m exactGroupMapper) ResourceFor(input schema.GroupVersionResource) (schema
 			return gvr, nil
 		}
 	}
-	return m.RESTMapper.ResourceFor(input)
+	versions, err := m.groupVersions(input.Group)
+	if err != nil {
+		return schema.GroupVersionResource{}, err
+	}
+	for _, version := range versions {
+		if gvr, err := m.RESTMapper.ResourceFor(input.GroupResource().WithVersion(version)); err == nil {
+			return gvr, nil
+		}
+	}
+	return schema.GroupVersionResource{}, &meta.NoResourceMatchError{PartialResource: input}
 }
