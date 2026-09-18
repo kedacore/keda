@@ -50,6 +50,7 @@ type templateData struct {
 	MetricThreshold       string
 	MetricValue           string
 	MaxReplicaCount       string
+	FallbackReplicas      string
 }
 
 const (
@@ -156,6 +157,40 @@ spec:
         metricThreshold: "{{.MetricThreshold}}"
 `
 
+	// Same ScaledObject, now with a fallback and a short polling interval so the failures
+	// of the unreachable trigger are counted quickly.
+	fallbackScaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  pollingInterval: 5
+  cooldownPeriod: 1
+  minReplicaCount: 1
+  maxReplicaCount: {{.MaxReplicaCount}}
+  fallback:
+    failureThreshold: 2
+    replicas: {{.FallbackReplicas}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 1
+  triggers:
+    - type: kubernetes-workload
+      metadata:
+        podSelector: app=no-such-workload
+        value: "1"
+    - type: external-push
+      metadata:
+        scalerAddress: {{.ServiceName}}.{{.TestNamespace}}:6000
+        metricThreshold: "{{.MetricThreshold}}"
+`
+
 	updateMetricTemplate = `apiVersion: batch/v1
 kind: Job
 metadata:
@@ -193,6 +228,7 @@ func TestPartialMetricDiscovery(t *testing.T) {
 	testBothTriggersDiscovered(t)
 	testFailingDiscoveryKeepsTriggers(t, kc, data)
 	testPushActivationAfterRecovery(t, kc, data)
+	testFallbackWhileScalerUnreachable(t, kc, data)
 
 	// cleanup
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
@@ -208,6 +244,7 @@ func getTemplateData() (templateData, []Template) {
 			ScaledObjectName:      scaledObjectName,
 			MetricThreshold:       "10",
 			MaxReplicaCount:       "2",
+			FallbackReplicas:      "4",
 			MetricsServerEndpoint: metricsServerEndpoint,
 		}, []Template{
 			{Name: "scalerTemplate", Config: scalerTemplate},
@@ -281,4 +318,23 @@ func testPushActivationAfterRecovery(t *testing.T, kc *kubernetes.Clientset, dat
 		"replica count should be 1 after 3 minutes")
 
 	KubectlDeleteWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
+}
+
+// Without the last known metric spec the trigger never reaches its value query, so its
+// failures are never counted and fallback cannot engage at all.
+func testFallbackWhileScalerUnreachable(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing fallback while the scaler is unreachable ---")
+
+	// Room for the fallback replicas, the earlier phases cap the deployment below them.
+	data.MaxReplicaCount = "5"
+	KubectlApplyWithTemplate(t, data, "fallbackScaledObjectTemplate", fallbackScaledObjectTemplate)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 2),
+		"replica count should still be 1 before the scaler is taken down")
+
+	KubernetesScaleDeployment(t, kc, scalerName, 0, testNamespace)
+	assert.True(t, WaitForPodsTerminated(t, kc, fmt.Sprintf("app=%s", scalerName), testNamespace, 60, 1),
+		"external scaler pods should be gone after 1 minute")
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 90, 2),
+		"replica count should reach the fallback replicas after 3 minutes")
 }

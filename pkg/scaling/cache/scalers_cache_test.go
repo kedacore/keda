@@ -632,6 +632,7 @@ func newCacheWithScalers(ss ...scalers.Scaler) *ScalersCache {
 			},
 		},
 		ScalableObjectGeneration: testCacheGeneration,
+		LastKnownMetricSpecs:     NewMetricSpecStore(testCacheGeneration),
 	}
 	for i, s := range ss {
 		c.Scalers = append(c.Scalers, ScalerBuilder{
@@ -718,11 +719,12 @@ func TestScalersCache_GetMetricSpecForScalingForScaler_UsesLastKnownSpecs(t *tes
 	}
 }
 
-// The cache is rebuilt on every scaler error, so the last known specs have to survive
-// the rebuild.
-func TestScalersCache_CopyLastKnownMetricSpecsTo(t *testing.T) {
-	oldFlaky := newFlakyScaler("s0-flaky")
-	oldCache := newCacheWithScalers(oldFlaky)
+// The cache is rebuilt on every scaler error, so the store has to outlive it.
+func TestMetricSpecStore_SurvivesCacheRebuild(t *testing.T) {
+	store := NewMetricSpecStore(testCacheGeneration)
+
+	oldCache := newCacheWithScalers(newFlakyScaler("s0-flaky"))
+	oldCache.LastKnownMetricSpecs = store
 	if _, err := oldCache.GetMetricSpecForScaling(context.Background()); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -732,16 +734,16 @@ func TestScalersCache_CopyLastKnownMetricSpecsTo(t *testing.T) {
 	newCache := newCacheWithScalers(newFlaky)
 
 	if _, err := newCache.GetMetricSpecForScaling(context.Background()); err == nil {
-		t.Fatal("expected the fresh cache to report an incomplete discovery result")
+		t.Fatal("expected a cache without the store to report an incomplete discovery result")
 	}
 
-	oldCache.CopyLastKnownMetricSpecsTo(newCache)
+	newCache.LastKnownMetricSpecs = store
 
 	specs, err := newCache.GetMetricSpecForScaling(context.Background())
 	if err != nil {
-		t.Fatalf("unexpected error after carrying the last known specs over: %v", err)
+		t.Fatalf("unexpected error with the store of the previous cache: %v", err)
 	}
 	if got := metricNames(specs); len(got) != 1 || got[0] != "s0-flaky" {
-		t.Fatalf("expected the carried over spec, got %v", got)
+		t.Fatalf("expected the remembered spec, got %v", got)
 	}
 }

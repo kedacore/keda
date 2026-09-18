@@ -85,13 +85,16 @@ type ScaleHandler interface {
 }
 
 type scaleHandler struct {
-	client                   client.Client
-	scaleClient              scale.ScalesGetter
-	scaleLoopContexts        *sync.Map
-	scaleExecutor            executor.ScaleExecutor
-	globalHTTPTimeout        time.Duration
-	recorder                 events.EventRecorder
-	scalerCaches             map[string]*cache.ScalersCache
+	client            client.Client
+	scaleClient       scale.ScalesGetter
+	scaleLoopContexts *sync.Map
+	scaleExecutor     executor.ScaleExecutor
+	globalHTTPTimeout time.Duration
+	recorder          events.EventRecorder
+	scalerCaches      map[string]*cache.ScalersCache
+	// lastKnownMetricSpecs survives the scaler caches, which are rebuilt on every scaler
+	// error. Guarded by scalerCachesLock.
+	lastKnownMetricSpecs     map[string]*cache.MetricSpecStore
 	scalerCachesLock         *sync.RWMutex
 	scaledObjectsMetricCache metricscache.MetricsCache
 	authClientSet            *authentication.AuthClientSet
@@ -114,6 +117,7 @@ func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, recon
 		globalHTTPTimeout:        globalHTTPTimeout,
 		recorder:                 recorder,
 		scalerCaches:             map[string]*cache.ScalersCache{},
+		lastKnownMetricSpecs:     map[string]*cache.MetricSpecStore{},
 		scalerCachesLock:         &sync.RWMutex{},
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
 		authClientSet:            authClientSet,
@@ -265,6 +269,7 @@ func (h *scaleHandler) DeleteScalableObject(ctx context.Context, scalableObject 
 
 	// Cache entries can exist even when HPA creation fails before the scale loop starts.
 	h.scaledObjectsMetricCache.Delete(key)
+	h.deleteLastKnownMetricSpecs(key)
 	if err := h.ClearScalersCache(ctx, scalableObject); err != nil {
 		log.Error(err, "error clearing scalers cache", "scalableObject", scalableObject, "key", key)
 	}
@@ -303,6 +308,7 @@ func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1a
 		case <-ctx.Done():
 			logger.V(1).Info("Context canceled")
 			h.scaledObjectsMetricCache.Delete(withTriggers.GenerateIdentifier())
+			h.deleteLastKnownMetricSpecs(withTriggers.GenerateIdentifier())
 			err := h.ClearScalersCache(ctx, scalableObject)
 			if err != nil {
 				logger.Error(err, "error clearing scalers cache")
@@ -626,14 +632,15 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 	h.scalerCachesLock.Lock()
 	defer h.scalerCachesLock.Unlock()
 
-	if oldCache, ok := h.scalerCaches[key]; ok {
-		// The cache is rebuilt on every scaler error, so a failing scaler would lose its
-		// last known specs exactly when they are needed. Only the same generation is
-		// carried over, another generation can have other triggers on the same index.
-		if oldCache.ScalableObjectGeneration == newCache.ScalableObjectGeneration {
-			oldCache.CopyLastKnownMetricSpecsTo(newCache)
-		}
+	// A store from another generation is dropped, its triggers can sit on other indexes.
+	store, ok := h.lastKnownMetricSpecs[key]
+	if !ok || store.Generation() != newCache.ScalableObjectGeneration {
+		store = cache.NewMetricSpecStore(newCache.ScalableObjectGeneration)
+		h.lastKnownMetricSpecs[key] = store
+	}
+	newCache.LastKnownMetricSpecs = store
 
+	if oldCache, ok := h.scalerCaches[key]; ok {
 		// Scalers Close() could be impacted by timeouts, blocking the mutex
 		// until the timeout happens. Instead of locking the mutex, we take
 		// the old cache item and we close it in another goroutine, not locking
@@ -643,6 +650,15 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 
 	h.scalerCaches[key] = newCache
 	return h.scalerCaches[key], nil
+}
+
+// deleteLastKnownMetricSpecs forgets the discovered metric specs of a scalable object
+// that is no longer handled. Clearing the scalers cache must not do this, the memory is
+// there to survive exactly that.
+func (h *scaleHandler) deleteLastKnownMetricSpecs(key string) {
+	h.scalerCachesLock.Lock()
+	defer h.scalerCachesLock.Unlock()
+	delete(h.lastKnownMetricSpecs, key)
 }
 
 // ClearScalersCache invalidates the scalers cache for the input scalableObject.

@@ -49,9 +49,12 @@ type ScalersCache struct {
 	Recorder                 events.EventRecorder
 	CompiledFormula          *vm.Program
 	ReaderDrainBudget        time.Duration
-	mutex                    sync.RWMutex
-	closed                   bool
-	activeReaders            sync.WaitGroup
+	// LastKnownMetricSpecs outlives this cache, see MetricSpecStore. A nil store simply
+	// means no memory of earlier discoveries.
+	LastKnownMetricSpecs *MetricSpecStore
+	mutex                sync.RWMutex
+	closed               bool
+	activeReaders        sync.WaitGroup
 }
 
 // acquireReader either reserves an activeReaders slot or returns ErrCacheClosed if the cache has been closed. The returned release function should be called by defer statement.
@@ -95,9 +98,40 @@ type ScalerBuilder struct {
 	ScalerConfig      scalersconfig.ScalerConfig
 	Factory           func() (scalers.Scaler, *scalersconfig.ScalerConfig, error)
 	CachedMetricSpecs []v2.MetricSpec
-	// LastKnownMetricSpecs holds the specs of the last successful discovery, so a scaler
-	// that discovers over the network (external) survives a transient failure.
-	LastKnownMetricSpecs []v2.MetricSpec
+}
+
+// MetricSpecStore remembers the specs of the last successful discovery per trigger, so a
+// scaler that discovers over the network (external) survives a transient failure. It is
+// owned by the scale handler rather than by a ScalersCache, because the cache is rebuilt
+// on every scaler error, exactly when the memory is needed. It is only valid for the
+// generation it was created for, another generation can have other triggers on the same
+// index.
+type MetricSpecStore struct {
+	generation int64
+	mutex      sync.RWMutex
+	specs      map[int][]v2.MetricSpec
+}
+
+// NewMetricSpecStore returns an empty store for the given ScalableObject generation.
+func NewMetricSpecStore(generation int64) *MetricSpecStore {
+	return &MetricSpecStore{generation: generation, specs: map[int][]v2.MetricSpec{}}
+}
+
+// Generation returns the ScalableObject generation this store was created for.
+func (s *MetricSpecStore) Generation() int64 {
+	return s.generation
+}
+
+func (s *MetricSpecStore) store(triggerIndex int, specs []v2.MetricSpec) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.specs[triggerIndex] = cloneMetricSpecs(specs)
+}
+
+func (s *MetricSpecStore) load(triggerIndex int) []v2.MetricSpec {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return cloneMetricSpecs(s.specs[triggerIndex])
 }
 
 func cloneMetricSpecs(specs []v2.MetricSpec) []v2.MetricSpec {
@@ -234,10 +268,11 @@ func (c *ScalersCache) resolveMetricSpecs(ctx context.Context, index int) ([]v2.
 	if err != nil {
 		return nil, false, err
 	}
+	triggerIndex := sb.ScalerConfig.TriggerIndex
 
 	if sb.CachedMetricSpecs != nil {
 		specs := cloneMetricSpecs(sb.CachedMetricSpecs)
-		c.storeLastKnownMetricSpecs(index, specs)
+		c.storeLastKnownMetricSpecs(triggerIndex, specs)
 		return specs, false, nil
 	}
 
@@ -258,13 +293,13 @@ func (c *ScalersCache) resolveMetricSpecs(ctx context.Context, index int) ([]v2.
 
 	if len(metricSpecs) > 0 {
 		specs := cloneMetricSpecs(metricSpecs)
-		c.storeLastKnownMetricSpecs(index, specs)
+		c.storeLastKnownMetricSpecs(triggerIndex, specs)
 		return specs, false, nil
 	}
 
 	// Keep the trigger on the specs it reported last, so it stays in the HPA and its
 	// failures keep being counted through the regular fallback path.
-	if lastKnown := c.lastKnownMetricSpecs(index); lastKnown != nil {
+	if lastKnown := c.lastKnownMetricSpecs(triggerIndex); lastKnown != nil {
 		return lastKnown, true, nil
 	}
 
@@ -272,56 +307,20 @@ func (c *ScalersCache) resolveMetricSpecs(ctx context.Context, index int) ([]v2.
 }
 
 // storeLastKnownMetricSpecs records the specs of a successful discovery for the scaler.
-func (c *ScalersCache) storeLastKnownMetricSpecs(index int, specs []v2.MetricSpec) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
-	if c.closed || index < 0 || index >= len(c.Scalers) {
+func (c *ScalersCache) storeLastKnownMetricSpecs(triggerIndex int, specs []v2.MetricSpec) {
+	if c.LastKnownMetricSpecs == nil {
 		return
 	}
-	c.Scalers[index].LastKnownMetricSpecs = cloneMetricSpecs(specs)
+	c.LastKnownMetricSpecs.store(triggerIndex, specs)
 }
 
 // lastKnownMetricSpecs returns the specs of the last successful discovery for the
 // scaler, or nil when it has never reported any.
-func (c *ScalersCache) lastKnownMetricSpecs(index int) []v2.MetricSpec {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
-
-	if c.closed || index < 0 || index >= len(c.Scalers) {
+func (c *ScalersCache) lastKnownMetricSpecs(triggerIndex int) []v2.MetricSpec {
+	if c.LastKnownMetricSpecs == nil {
 		return nil
 	}
-	return cloneMetricSpecs(c.Scalers[index].LastKnownMetricSpecs)
-}
-
-// CopyLastKnownMetricSpecsTo seeds dst with the last known metric specs of this cache,
-// matched on trigger index. Callers must only copy between caches of the same
-// generation, otherwise the triggers behind the indexes may no longer match.
-func (c *ScalersCache) CopyLastKnownMetricSpecsTo(dst *ScalersCache) {
-	if dst == nil {
-		return
-	}
-
-	c.mutex.RLock()
-	lastKnown := make(map[int][]v2.MetricSpec, len(c.Scalers))
-	for _, sb := range c.Scalers {
-		if sb.LastKnownMetricSpecs != nil {
-			lastKnown[sb.ScalerConfig.TriggerIndex] = cloneMetricSpecs(sb.LastKnownMetricSpecs)
-		}
-	}
-	c.mutex.RUnlock()
-
-	if len(lastKnown) == 0 {
-		return
-	}
-
-	dst.mutex.Lock()
-	defer dst.mutex.Unlock()
-	for i := range dst.Scalers {
-		if specs, ok := lastKnown[dst.Scalers[i].ScalerConfig.TriggerIndex]; ok {
-			dst.Scalers[i].LastKnownMetricSpecs = specs
-		}
-	}
+	return c.LastKnownMetricSpecs.load(triggerIndex)
 }
 
 // GetMetricSpecForScalingForScaler returns metrics spec for a scaler identified by the metric name.
@@ -438,11 +437,10 @@ func (c *ScalersCache) refreshScaler(ctx context.Context, index int) (scalers.Sc
 	}
 
 	c.Scalers[index] = ScalerBuilder{
-		Scaler:               newScaler,
-		ScalerConfig:         *sConfig,
-		Factory:              oldSb.Factory,
-		CachedMetricSpecs:    cloneMetricSpecs(oldSb.CachedMetricSpecs),
-		LastKnownMetricSpecs: cloneMetricSpecs(oldSb.LastKnownMetricSpecs),
+		Scaler:            newScaler,
+		ScalerConfig:      *sConfig,
+		Factory:           oldSb.Factory,
+		CachedMetricSpecs: cloneMetricSpecs(oldSb.CachedMetricSpecs),
 	}
 
 	oldSb.Scaler.Close(ctx)

@@ -203,19 +203,22 @@ var _ = Describe("hpa", func() {
 		scalersCache := cache.ScalersCache{
 			Scalers: []cache.ScalerBuilder{
 				{
-					Scaler: scaler,
+					Scaler:       scaler,
+					ScalerConfig: scalersconfig.ScalerConfig{TriggerIndex: 0},
 					Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
-						return scaler, &scalersconfig.ScalerConfig{}, nil
+						return scaler, &scalersconfig.ScalerConfig{TriggerIndex: 0}, nil
 					},
 				},
 				{
-					Scaler: flakyScaler,
+					Scaler:       flakyScaler,
+					ScalerConfig: scalersconfig.ScalerConfig{TriggerIndex: 1},
 					Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 						return flakyScaler, &scalersconfig.ScalerConfig{TriggerIndex: 1}, nil
 					},
 				},
 			},
-			Recorder: nil,
+			Recorder:             nil,
+			LastKnownMetricSpecs: cache.NewMetricSpecStore(0),
 		}
 
 		ctx := context.Background()
