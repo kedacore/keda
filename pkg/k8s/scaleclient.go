@@ -122,8 +122,12 @@ func (m exactGroupMapper) ResourceFor(input schema.GroupVersionResource) (schema
 		return schema.GroupVersionResource{}, err
 	}
 	for _, version := range versions {
-		if gvr, err := m.RESTMapper.ResourceFor(input.GroupResource().WithVersion(version)); err == nil {
+		gvr, err := m.RESTMapper.ResourceFor(input.GroupResource().WithVersion(version))
+		if err == nil {
 			return gvr, nil
+		}
+		if !meta.IsNoMatchError(err) {
+			return schema.GroupVersionResource{}, err
 		}
 	}
 	return schema.GroupVersionResource{}, &meta.NoResourceMatchError{PartialResource: input}
