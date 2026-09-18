@@ -179,14 +179,16 @@ func TestPromGRPCStreamClientMetrics(t *testing.T) {
 	assert.EqualValues(t, 1, sent.GetCounter().GetValue())
 	received := findPromMetric(families, "keda_grpc_client_msg_received_total", labels)
 	require.NotNil(t, received)
-	assert.GreaterOrEqual(t, received.GetCounter().GetValue(), float64(1))
+	// The upstream interceptor counts receive attempts, including the final EOF.
+	assert.EqualValues(t, 2, received.GetCounter().GetValue())
 }
 
-func TestOtelGRPCClientMetrics(t *testing.T) {
+func TestOtelGRPCStreamClientMetrics(t *testing.T) {
 	resetTestOtel(true)
 	handler := newOtelGRPCClientHandler(testOtel)
 	ctx := testGRPCRequestContext(t.Context(), "otel")
-	ctx = handler.TagRPC(ctx, &stats.RPCTagInfo{FullMethodName: testGRPCFullMethod})
+	const streamMethod = "externalscaler.ExternalScaler/StreamIsActive"
+	ctx = handler.TagRPC(ctx, &stats.RPCTagInfo{FullMethodName: "/" + streamMethod})
 	beginTime := time.Now().Add(-200 * time.Millisecond)
 	handler.HandleRPC(ctx, &stats.Begin{
 		Client:         true,
@@ -194,6 +196,7 @@ func TestOtelGRPCClientMetrics(t *testing.T) {
 		IsServerStream: true,
 	})
 	handler.HandleRPC(ctx, &stats.OutPayload{Client: true})
+	handler.HandleRPC(ctx, &stats.InPayload{Client: true})
 	handler.HandleRPC(ctx, &stats.InPayload{Client: true})
 	handler.HandleRPC(ctx, &stats.End{Client: true, BeginTime: beginTime, EndTime: time.Now()})
 
@@ -212,12 +215,69 @@ func TestOtelGRPCClientMetrics(t *testing.T) {
 	callPoint := callCount.Data.(metricdata.Sum[int64]).DataPoints[0]
 	assert.Equal(t, int64(1), callPoint.Value)
 	assertOtelStringAttribute(t, callPoint.Attributes, "rpc.system.name", "grpc")
-	assertOtelStringAttribute(t, callPoint.Attributes, "rpc.method", testGRPCMethod)
+	assertOtelStringAttribute(t, callPoint.Attributes, "rpc.method", streamMethod)
 	assertOtelStringAttribute(t, callPoint.Attributes, "rpc.response.status_code", codes.OK.String())
 
 	messageCount := findOtelMetric(got, "keda.rpc.client.stream.message.count")
 	require.NotNil(t, messageCount)
-	assert.Len(t, messageCount.Data.(metricdata.Sum[int64]).DataPoints, 2)
+	points := messageCount.Data.(metricdata.Sum[int64]).DataPoints
+	require.Len(t, points, 2)
+	counts := make(map[string]int64)
+	for _, point := range points {
+		assertOtelStringAttribute(t, point.Attributes, "rpc.method", streamMethod)
+		assertOtelStringAttribute(t, point.Attributes, "namespace", "namespace-otel")
+		direction, ok := point.Attributes.Value(attribute.Key("rpc.message.type"))
+		require.True(t, ok)
+		counts[direction.AsString()] = point.Value
+	}
+	assert.Equal(t, map[string]int64{"SENT": 1, "RECEIVED": 2}, counts)
+}
+
+func TestOtelGRPCUnaryStatusConsistency(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		code codes.Code
+		want string
+	}{
+		{name: "success", code: codes.OK, want: "OK"},
+		{name: "cancelled", code: codes.Canceled, want: "CANCELLED"},
+		{name: "deadline", code: codes.DeadlineExceeded, want: "DEADLINE_EXCEEDED"},
+		{name: "unavailable", code: codes.Unavailable, want: "UNAVAILABLE"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resetTestOtel(true)
+			handler := newOtelGRPCClientHandler(testOtel)
+			ctx := handler.TagRPC(testGRPCRequestContext(t.Context(), tc.name), &stats.RPCTagInfo{FullMethodName: testGRPCFullMethod})
+			begin := time.Now()
+			handler.HandleRPC(ctx, &stats.Begin{Client: true, BeginTime: begin})
+			handler.HandleRPC(ctx, &stats.OutPayload{Client: true})
+			if tc.code == codes.OK {
+				handler.HandleRPC(ctx, &stats.InPayload{Client: true})
+			}
+			handler.HandleRPC(ctx, &stats.End{
+				Client: true, BeginTime: begin, EndTime: begin.Add(200 * time.Millisecond),
+				Error: status.Error(tc.code, tc.name),
+			})
+
+			var got metricdata.ResourceMetrics
+			require.NoError(t, testReader.Collect(t.Context(), &got))
+			duration := findOtelMetric(got, "keda.rpc.client.call.duration")
+			require.NotNil(t, duration)
+			durations := duration.Data.(metricdata.Histogram[float64]).DataPoints
+			require.Len(t, durations, 1)
+			assert.Equal(t, uint64(1), durations[0].Count)
+			assert.InDelta(t, 0.2, durations[0].Sum, 0.000001)
+			assertOtelStringAttribute(t, durations[0].Attributes, "rpc.response.status_code", tc.want)
+			calls := findOtelMetric(got, "keda.rpc.client.call.count")
+			require.NotNil(t, calls)
+			counts := calls.Data.(metricdata.Sum[int64]).DataPoints
+			require.Len(t, counts, 1)
+			assert.Equal(t, int64(1), counts[0].Value)
+			assertOtelStringAttribute(t, counts[0].Attributes, "rpc.response.status_code", tc.want)
+			assert.Nil(t, findOtelMetric(got, "rpc.client.call.duration"), "the view must rename, not duplicate, the duration metric")
+			assert.Nil(t, findOtelMetric(got, "keda.rpc.client.stream.message.count"), "unary payloads must not count as stream messages")
+		})
+	}
 }
 
 func TestOtelGRPCClientMetricsLimitContextAttributes(t *testing.T) {
@@ -239,6 +299,14 @@ func TestOtelGRPCClientMetricsLimitContextAttributes(t *testing.T) {
 		assert.False(t, ok, "attribute %s should be omitted", key)
 	}
 	assertOtelStringAttribute(t, point.Attributes, "scaler", "external-low-cardinality")
+	duration := findOtelMetric(got, "keda.rpc.client.call.duration")
+	require.NotNil(t, duration)
+	durationPoint := duration.Data.(metricdata.Histogram[float64]).DataPoints[0]
+	for _, key := range []string{"namespace", "scaled_resource", "trigger_name", "metric_name"} {
+		_, ok := durationPoint.Attributes.Value(attribute.Key(key))
+		assert.False(t, ok, "duration attribute %s should be omitted", key)
+	}
+	assertOtelStringAttribute(t, durationPoint.Attributes, "scaler", "external-low-cardinality")
 }
 
 func TestGRPCStatusCode(t *testing.T) {
