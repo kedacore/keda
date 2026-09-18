@@ -370,7 +370,6 @@ func testNormalEvent(t *testing.T, kc *kubernetes.Clientset, data templateData) 
 	KubectlApplyWithTemplate(t, data, "monitoredDeploymentName", monitoredDeploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	// time.Sleep(2 * time.Second)
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 2, testNamespace)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
 		"replica count should be 2 after 1 minute")
