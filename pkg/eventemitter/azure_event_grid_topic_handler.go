@@ -26,7 +26,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/messaging"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/eventgrid/azeventgrid"
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -101,7 +100,7 @@ func (a *AzureEventGridTopicHandler) EmitEvent(eventData eventdata.EventData, fa
 
 	opt := &messaging.CloudEventOptions{
 		Subject:         &subject,
-		DataContentType: to.Ptr("application/json"),
+		DataContentType: new("application/json"),
 		Time:            &eventData.Time,
 	}
 

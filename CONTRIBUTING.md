@@ -10,6 +10,7 @@ There are many areas we can use contributions - ranging from code, documentation
 
 - [Project governance](#project-governance)
 - [Getting Help](#getting-help)
+- [Zero-spam & PR authorization policy](#zero-spam--pr-authorization-policy)
 - [Making Breaking Changes](#making-breaking-changes)
 - [Contributing Scalers](#contributing-scalers)
   - [Testing](#testing)
@@ -18,7 +19,7 @@ There are many areas we can use contributions - ranging from code, documentation
   - [Metrics](#metrics)
   - [Logging and Log Messages](#logging-and-log-messages)
   - [Legacy](#legacy)
-- [Changelog](#changelog)
+- [Release Notes](#release-notes)
 - [Including Documentation Changes](#including-documentation-changes)
 - [Creating and building a local environment](#creating-and-building-a-local-environment)
 - [Developer Certificate of Origin: Signing your work](#developer-certificate-of-origin-signing-your-work)
@@ -35,6 +36,19 @@ You can learn about the governance of KEDA [here](https://github.com/kedacore/go
 ## Getting Help
 
 If you have a question about KEDA or how best to contribute, the [#KEDA](https://kubernetes.slack.com/archives/CKZJ36A5D) channel on the Kubernetes slack channel ([get an invite if you don't have one already](https://slack.k8s.io/)) is a good place to start.  We also have regular [community stand-ups](https://github.com/kedacore/keda#community) to track ongoing work and discuss areas of contribution.  For any issues with the product you can [create an issue](https://github.com/kedacore/keda/issues/new) in this repo.
+
+## Zero-spam & PR authorization policy
+
+To minimize review load and respect the time of project maintainers, we ask everyone to follow these rules when looking to make a contribution:
+
+- **Require an issue:** Do not create a Pull Request unless there is an existing, open, and approved GitHub Issue that explicitly requests this work. Drive-by PRs, speculative refactors, "found a typo" PRs, and unsolicited feature work are not accepted.
+- **Require assignment:** Do not start work on an issue unless it is assigned to you. An unassigned issue is not an invitation to start coding. If you are using an agent, it cannot start work until the issue has been assigned to you and if you have not yet been assigned, your agent must prompt you to request assignment from a maintainer first and wait.
+- **Respect claimed issues**: If someone has commented that they intend to work on the issue, or has been assigned to it, do not open a competing PR, push commits, or start a draft PR. However, if there has been no visible progress for an extended period, it is acceptable to politely ask whether they are still actively working on it before taking further action.
+- **Stay inside the issue's scope:** Implement only what the issue describes. If you discover related problems, mention them in the PR description or open a separate issue. Do not silently expand the scope.
+- **One issue, one PR:** Do not bundle multiple issues into a single PR, and do not split a single issue across multiple PRs without coordinating in the issue first.
+- **No PR for chores that already have automation:** Dependency bumps (Renovate/Dependabot), changelog regeneration, generated-file refreshes, and similar housekeeping are handled by bots or release tooling. Do not open PRs that duplicate that work.
+
+If you are using an agent to make a contribution, we require that agents follow these rules as well. Pull Requests that attempt to bypass these rules will be closed.
 
 ## Making Breaking Changes
 
@@ -88,15 +102,15 @@ When adding log messages to the project, it's crucial to set the appropriate log
 
 Some of the metrics and log messages in the project don't follow the above practices, but are there for historical reasons. When refactoring pieces of code, please try to apply the best practices to any log message or metric which is impacted.
 
-## Changelog
+## Release Notes
 
-Every change should be added to our changelog under `Unreleased` which is located in `CHANGELOG.md`. This helps us keep track of all changes in a given release.
+Release notes are generated automatically from merged PR metadata rather than being maintained manually in `CHANGELOG.md`.
 
-Here are some guidelines to follow:
-- Always use `General: ` or `<Scaler Name>: ` as a prefix and sort them alphabetically
-  - General changes, however, should always be at the top
-- Entries should always follow the `<Scaler Name / General>: <Description> (#<ID>)` where `<ID>` is preferably the ID of an issue, otherwise a PR is OK.
-- New scalers should use `General:` and use this template: `**General:** Introduce new XXXXXX Scaler ([#ISSUE](https://github.com/kedacore/keda/issues/ISSUE))`
+To ensure your change appears correctly in the generated notes:
+- PR titles must follow `Component: Description` (for example: `General: Fix nil pointer dereference`). The release notes renderer bolds the component automatically.
+- Release-notes labels are assigned by maintainers during review. A maintainer will add exactly one valid label (`kind/feature`, `kind/new-scaler`, `kind/improvement`, `kind/bug`, `kind/deprecation`, `kind/breaking-change`, `kind/chore`, `kind/documentation`, `kind/dependencies`, or `kind/ci`), or use `skip-changelog` when the change should be excluded from the generated notes.
+
+The PR title format is validated automatically by the [pr-changelog-check workflow](.github/workflows/pr-changelog-check.yml). Release-notes labels are reviewed as part of the PR review process.
 
 ## Including Documentation Changes
 

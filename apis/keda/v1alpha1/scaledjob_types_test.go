@@ -32,29 +32,29 @@ func TestScaledJob(t *testing.T) {
 			name:        "MaxReplicaCount is set to 10 and MinReplicaCount is set to 0",
 			expectedMax: 10,
 			expectedMin: 0,
-			maxReplicas: int32Ptr(10),
-			minReplicas: int32Ptr(0),
+			maxReplicas: new(int32(10)),
+			minReplicas: new(int32(0)),
 		},
 		{
 			name:        "MaxReplicaCount is set to 10 and MinReplicaCount is nil",
 			expectedMax: 10,
 			expectedMin: defaultScaledJobMinReplicaCount,
-			maxReplicas: int32Ptr(10),
+			maxReplicas: new(int32(10)),
 			minReplicas: nil,
 		},
 		{
 			name:        "MaxReplicaCount is set to 10 and MinReplicaCount is set to 1",
 			expectedMax: 9,
 			expectedMin: 1,
-			maxReplicas: int32Ptr(10),
-			minReplicas: int32Ptr(1),
+			maxReplicas: new(int32(10)),
+			minReplicas: new(int32(1)),
 		},
 		{
 			name:        "MaxReplicaCount is nil and MinReplicaCount is set to 1",
 			expectedMax: defaultScaledJobMaxReplicaCount,
 			expectedMin: 1,
 			maxReplicas: nil,
-			minReplicas: int32Ptr(1),
+			minReplicas: new(int32(1)),
 		},
 		{
 			name:        "MaxReplicaCount is nil and MinReplicaCount nil",
@@ -67,8 +67,8 @@ func TestScaledJob(t *testing.T) {
 			name:        "MaxReplicaCount is set to 1 and MinReplicaCount is set to 10",
 			expectedMax: 1,
 			expectedMin: 1,
-			maxReplicas: int32Ptr(1),
-			minReplicas: int32Ptr(10),
+			maxReplicas: new(int32(1)),
+			minReplicas: new(int32(10)),
 		},
 	}
 
@@ -90,8 +90,4 @@ func TestScaledJob(t *testing.T) {
 			}
 		})
 	}
-}
-
-func int32Ptr(i int32) *int32 {
-	return &i
 }

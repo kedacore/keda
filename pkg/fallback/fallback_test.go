@@ -33,7 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	"k8s.io/utils/ptr"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
@@ -510,7 +509,7 @@ func mockScaleAndDeployment(
 	// Mock Deployment lookup
 	deployment := &appsv1.Deployment{
 		Spec: appsv1.DeploymentSpec{
-			Replicas: ptr.To[int32](replicas),
+			Replicas: new(replicas),
 		},
 	}
 	client.EXPECT().Get(
@@ -529,7 +528,7 @@ type healthStatusMatcher struct {
 	status           kedav1alpha1.HealthStatusType
 }
 
-func (h *healthStatusMatcher) Match(actual interface{}) (success bool, err error) {
+func (h *healthStatusMatcher) Match(actual any) (success bool, err error) {
 	switch v := actual.(type) {
 	case kedav1alpha1.HealthStatus:
 		return *v.NumberOfFailures == int32(h.numberOfFailures) && v.Status == h.status, nil
@@ -538,7 +537,7 @@ func (h *healthStatusMatcher) Match(actual interface{}) (success bool, err error
 	}
 }
 
-func (h *healthStatusMatcher) FailureMessage(actual interface{}) (message string) {
+func (h *healthStatusMatcher) FailureMessage(actual any) (message string) {
 	switch v := actual.(type) {
 	case kedav1alpha1.HealthStatus:
 		return fmt.Sprintf("expected HealthStatus with NumberOfFailures %d and Status %s, but got NumberOfFailures %d and Status %s", h.numberOfFailures, h.status, *v.NumberOfFailures, v.Status)
@@ -547,7 +546,7 @@ func (h *healthStatusMatcher) FailureMessage(actual interface{}) (message string
 	}
 }
 
-func (h *healthStatusMatcher) NegatedFailureMessage(actual interface{}) (message string) {
+func (h *healthStatusMatcher) NegatedFailureMessage(actual any) (message string) {
 	switch v := actual.(type) {
 	case kedav1alpha1.HealthStatus:
 		return fmt.Sprintf("did not expect HealthStatus with NumberOfFailures %d and Status %s, but got NumberOfFailures %d and Status %s", h.numberOfFailures, h.status, *v.NumberOfFailures, v.Status)
@@ -674,7 +673,7 @@ func TestUpdateStatusConcurrency(t *testing.T) {
 	const concurrency = 20
 	var wg sync.WaitGroup
 	wg.Add(concurrency)
-	for i := 0; i < concurrency; i++ {
+	for i := range concurrency {
 		go func(i int) {
 			defer wg.Done()
 			mn := fmt.Sprintf("metric_%d", i)

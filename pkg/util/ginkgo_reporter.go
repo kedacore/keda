@@ -8,10 +8,10 @@ import (
 
 type GinkgoTestReporter struct{}
 
-func (g GinkgoTestReporter) Errorf(format string, args ...interface{}) {
+func (g GinkgoTestReporter) Errorf(format string, args ...any) {
 	ginkgo.Fail(fmt.Sprintf(format, args...))
 }
 
-func (g GinkgoTestReporter) Fatalf(format string, args ...interface{}) {
+func (g GinkgoTestReporter) Fatalf(format string, args ...any) {
 	ginkgo.Fail(fmt.Sprintf(format, args...))
 }

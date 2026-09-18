@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -201,11 +200,14 @@ spec:
             protocol: TCP
             containerPort: 3600
         readinessProbe:
+          # don't use mysqladmin ping over unix socket as this can report premature readiness
+          # instead use mysql over TCP with real query to cover (1) network socket availability and (2) database initialization
           exec:
             command:
             - sh
             - -c
-            - "mysqladmin ping -u root -p{{.MySQLRootPassword}}"
+            - "mysql -h 127.0.0.1 -u{{.MySQLUsername}} -p{{.MySQLPassword}} -e 'SELECT 1' {{.MySQLDatabase}}"
+          periodSeconds: 2
 `
 
 	mysqlServiceTemplate = `
@@ -249,9 +251,9 @@ func setupMySQL(t *testing.T, kc *kubernetes.Clientset, data templateData, templ
 	// Deploy mysql
 	KubectlApplyWithTemplate(t, data, "mysqlDeploymentTemplate", mysqlDeploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "mysqlServiceTemplate", mysqlServiceTemplate)
-	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "mysql", testNamespace, 1, 30, 2), "mysql is not in a ready state")
-	// Wait 30 sec which would be enought for mysql to be accessible
-	time.Sleep(30 * time.Second)
+	// A larger budget than the readiness probe used to need: it now only passes once mysqld has
+	// finished initialising and is serving over TCP, which is what this waits for.
+	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "mysql", testNamespace, 1, 60, 2), "mysql is not in a ready state")
 
 	// Create table that used by the job and the worker
 	createTableSQL := fmt.Sprintf("CREATE TABLE %s.task_instance (id INT AUTO_INCREMENT PRIMARY KEY,state VARCHAR(10));", mySQLDatabase)

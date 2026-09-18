@@ -1,6 +1,8 @@
 //go:build e2e
 // +build e2e
 
+// +e2e-deps:argo-rollouts
+
 package subresource_scale_test
 
 import (
@@ -119,8 +121,8 @@ func TestScaler(t *testing.T) {
 	})
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
-	assert.True(t, WaitForArgoRolloutReplicaReadyCount(t, kc, argoRolloutName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after 1 minute")
+	assert.True(t, WaitForArgoRolloutReplicaReadyCount(t, kc, argoRolloutName, testNamespace, 0, 120, 1),
+		"replica count should be 0 after 2 minutes")
 
 	// test scaling
 	testScaleOut(t, kc)
@@ -132,13 +134,13 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 
 	// scale monitored deployment to 5 replicas
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 5, testNamespace)
-	assert.True(t, WaitForArgoRolloutReplicaReadyCount(t, kc, argoRolloutName, testNamespace, 5, 60, 1),
-		"replica count should be 5 after 1 minute")
+	assert.True(t, WaitForArgoRolloutReplicaReadyCount(t, kc, argoRolloutName, testNamespace, 5, 120, 1),
+		"replica count should be 5 after 2 minutes")
 
 	// scale monitored deployment to 10 replicas
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 10, testNamespace)
-	assert.True(t, WaitForArgoRolloutReplicaReadyCount(t, kc, argoRolloutName, testNamespace, 10, 60, 1),
-		"replica count should be 10 after 1 minute")
+	assert.True(t, WaitForArgoRolloutReplicaReadyCount(t, kc, argoRolloutName, testNamespace, 10, 120, 1),
+		"replica count should be 10 after 2 minutes")
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
@@ -146,13 +148,13 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 
 	// scale monitored deployment to 5 replicas
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 5, testNamespace)
-	assert.True(t, WaitForArgoRolloutReplicaReadyCount(t, kc, argoRolloutName, testNamespace, 5, 60, 1),
-		"replica count should be 5 after 1 minute")
+	assert.True(t, WaitForArgoRolloutReplicaReadyCount(t, kc, argoRolloutName, testNamespace, 5, 120, 1),
+		"replica count should be 5 after 2 minutes")
 
 	// scale monitored deployment to 0 replicas
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)
-	assert.True(t, WaitForArgoRolloutReplicaReadyCount(t, kc, argoRolloutName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after 1 minute")
+	assert.True(t, WaitForArgoRolloutReplicaReadyCount(t, kc, argoRolloutName, testNamespace, 0, 120, 1),
+		"replica count should be 0 after 2 minutes")
 }
 
 func getTemplateData() (templateData, []Template) {

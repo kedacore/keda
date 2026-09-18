@@ -240,11 +240,11 @@ func (c *Client) GetMetricsSearchResult(query Query) (*float64, error) {
 	}
 
 	if parsedResp == nil || len(parsedResp.QueryResult) == 0 {
-		return nil, errors.New("metrics query response is empty")
+		return c.handleNullMetricsResult(query, errors.New("metrics query response is empty"))
 	}
 
 	if len(parsedResp.QueryResult[0].TimeSeriesList.TimeSeries) == 0 {
-		return nil, errors.New("no time series data found in metrics query response")
+		return c.handleNullMetricsResult(query, errors.New("no time series data found in metrics query response"))
 	}
 
 	if len(parsedResp.QueryResult[0].TimeSeriesList.TimeSeries) > 1 {
@@ -253,7 +253,7 @@ func (c *Client) GetMetricsSearchResult(query Query) (*float64, error) {
 
 	timeseries := parsedResp.QueryResult[0].TimeSeriesList.TimeSeries[0].Points
 	if len(timeseries.Timestamps) == 0 || len(timeseries.Values) == 0 {
-		return nil, errors.New("metrics query returned empty timestamps or values")
+		return c.handleNullMetricsResult(query, errors.New("metrics query returned empty timestamps or values"))
 	}
 
 	result, err := c.metricsStats(timeseries.Values, query.Aggregator)
@@ -281,7 +281,7 @@ func (c *Client) GetMultiMetricsSearchResult(query Query) (*float64, error) {
 	}
 
 	if parsedResp == nil || len(parsedResp.QueryResult) == 0 {
-		return nil, errors.New("metrics query response is empty")
+		return c.handleNullMetricsResult(query, errors.New("metrics query response is empty"))
 	}
 
 	var selectedResultSet QueryResult
@@ -294,11 +294,11 @@ func (c *Client) GetMultiMetricsSearchResult(query Query) (*float64, error) {
 	}
 
 	if selectedResultSet.RowID == "" {
-		return nil, fmt.Errorf("no query result with matching resultQueryRowID %s found in metrics query response", query.ResultQueryRowID)
+		return c.handleNullMetricsResult(query, fmt.Errorf("no query result with matching resultQueryRowID %s found in metrics query response", query.ResultQueryRowID))
 	}
 
 	if len(selectedResultSet.TimeSeriesList.TimeSeries) == 0 {
-		return nil, errors.New("no time series data found in metrics query response")
+		return c.handleNullMetricsResult(query, errors.New("no time series data found in metrics query response"))
 	}
 
 	if len(selectedResultSet.TimeSeriesList.TimeSeries) > 1 {
@@ -307,7 +307,7 @@ func (c *Client) GetMultiMetricsSearchResult(query Query) (*float64, error) {
 
 	timeseries := selectedResultSet.TimeSeriesList.TimeSeries[0].Points
 	if len(timeseries.Timestamps) == 0 || len(timeseries.Values) == 0 {
-		return nil, errors.New("metrics query returned empty timestamps or values")
+		return c.handleNullMetricsResult(query, errors.New("metrics query returned empty timestamps or values"))
 	}
 
 	result, err := c.metricsStats(timeseries.Values, query.Aggregator)

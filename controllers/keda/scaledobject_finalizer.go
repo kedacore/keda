@@ -18,6 +18,7 @@ package keda
 
 import (
 	"context"
+	"slices"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -26,7 +27,6 @@ import (
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/common/message"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 )
@@ -38,7 +38,7 @@ const (
 // finalizeScaledObject runs finalization logic on ScaledObject if there's finalizer
 func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject,
 	namespacedName string) error {
-	if util.Contains(scaledObject.GetFinalizers(), scaledObjectFinalizer) {
+	if slices.Contains(scaledObject.GetFinalizers(), scaledObjectFinalizer) {
 		// Run finalization logic for scaledObjectFinalizer. If the
 		// finalization logic fails, don't remove the finalizer so
 		// that we can retry during the next reconciliation.
@@ -75,7 +75,7 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logge
 
 		// Remove scaledObjectFinalizer. Once all finalizers have been
 		// removed, the object will be deleted.
-		scaledObject.SetFinalizers(util.Remove(scaledObject.GetFinalizers(), scaledObjectFinalizer))
+		scaledObject.SetFinalizers(slices.DeleteFunc(scaledObject.GetFinalizers(), func(f string) bool { return f == scaledObjectFinalizer }))
 		if err := r.Client.Update(ctx, scaledObject); err != nil {
 			logger.Error(err, "Failed to update ScaledObject after removing a finalizer", "finalizer", scaledObjectFinalizer)
 			return err
@@ -94,7 +94,7 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logge
 
 // ensureFinalizer check there is finalizer present on the ScaledObject, if not it adds one
 func (r *ScaledObjectReconciler) ensureFinalizer(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
-	if !util.Contains(scaledObject.GetFinalizers(), scaledObjectFinalizer) {
+	if !slices.Contains(scaledObject.GetFinalizers(), scaledObjectFinalizer) {
 		logger.Info("Adding Finalizer for the ScaledObject")
 		scaledObject.SetFinalizers(append(scaledObject.GetFinalizers(), scaledObjectFinalizer))
 

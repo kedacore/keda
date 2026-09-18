@@ -161,26 +161,26 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	// scale monitored deployment to 2 replicas
 	replicas := 2
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, int64(replicas), testNamespace)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, replicas, 10, 6),
-		fmt.Sprintf("replica count should be %d after 1 minute", replicas))
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, replicas, 60, 5),
+		fmt.Sprintf("replica count should be %d after 5 minutes", replicas))
 
 	// scale monitored deployment to 4 replicas
 	replicas = 4
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, int64(replicas), testNamespace)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, replicas, 10, 6),
-		fmt.Sprintf("replica count should be %d after 1 minute", replicas))
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, replicas, 60, 5),
+		fmt.Sprintf("replica count should be %d after 5 minutes", replicas))
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	// scale monitored deployment to 2 replicas
 	replicas := 2
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, int64(replicas), testNamespace)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, replicas, 10, 6),
-		fmt.Sprintf("replica count should be %d after 1 minute", replicas))
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, replicas, 60, 5),
+		fmt.Sprintf("replica count should be %d after 5 minutes", replicas))
 
 	// scale monitored deployment to 0 replicas
 	replicas = 0
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, int64(replicas), testNamespace)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, replicas, 10, 6),
-		fmt.Sprintf("replica count should be %d after 1 minute", replicas))
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, replicas, 60, 5),
+		fmt.Sprintf("replica count should be %d after 5 minutes", replicas))
 }

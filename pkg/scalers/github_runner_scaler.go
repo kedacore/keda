@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -20,6 +21,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/eventreason"
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -33,11 +35,20 @@ const (
 	// previousWfrs maps. Without it the etags map grows once per workflow run
 	// for the lifetime of the operator pod (the URL contains the run ID), and
 	// previousJobs and previousWfrs grow once per distinct repository name
-	// returned by the API.
+	// (previousJobs once per distinct (repository, run ID) pair) returned by
+	// the API.
 	githubScalerMaxCacheEntries = 5000
 )
 
 var reservedLabels = []string{"self-hosted", "linux", "x64"}
+
+// jobCacheKey identifies a single workflow run's job list within
+// previousJobs. A repository can have several runs queued/in_progress at
+// once, so the run ID is required in addition to the repository name.
+type jobCacheKey struct {
+	repo  string
+	runID int64
+}
 
 type githubRunnerScaler struct {
 	metricType              v2.MetricTargetType
@@ -49,7 +60,7 @@ type githubRunnerScaler struct {
 	etags                   map[string]string
 	previousRepos           []string
 	previousWfrs            map[string]map[string]*WorkflowRuns
-	previousJobs            map[string][]Job
+	previousJobs            map[jobCacheKey][]Job
 	rateLimit               RateLimit
 	previousQueueLength     int64
 	previousQueueLengthTime time.Time
@@ -70,6 +81,8 @@ type githubRunnerMetadata struct {
 	ApplicationID                          int64  `keda:"name=applicationID, order=triggerMetadata;resolvedEnv, optional"`
 	InstallationID                         int64  `keda:"name=installationID, order=triggerMetadata;resolvedEnv, optional"`
 	ApplicationKey                         string `keda:"name=appKey, order=authParams, optional"`
+
+	Auth *authentication.Config `keda:"optional"`
 }
 
 type WorkflowRuns struct {
@@ -139,9 +152,9 @@ type WorkflowRun struct {
 		Type              string `json:"type"`
 		SiteAdmin         bool   `json:"site_admin"`
 	} `json:"actor"`
-	RunAttempt          int           `json:"run_attempt"`
-	ReferencedWorkflows []interface{} `json:"referenced_workflows"`
-	RunStartedAt        time.Time     `json:"run_started_at"`
+	RunAttempt          int       `json:"run_attempt"`
+	ReferencedWorkflows []any     `json:"referenced_workflows"`
+	RunStartedAt        time.Time `json:"run_started_at"`
 	TriggeringActor     struct {
 		Login             string `json:"login"`
 		ID                int    `json:"id"`
@@ -217,87 +230,87 @@ type Repo struct {
 		Type              string `json:"type"`
 		SiteAdmin         bool   `json:"site_admin"`
 	} `json:"owner"`
-	Private          bool        `json:"private"`
-	HTMLURL          string      `json:"html_url"`
-	Description      string      `json:"description"`
-	Fork             bool        `json:"fork"`
-	URL              string      `json:"url"`
-	ArchiveURL       string      `json:"archive_url"`
-	AssigneesURL     string      `json:"assignees_url"`
-	BlobsURL         string      `json:"blobs_url"`
-	BranchesURL      string      `json:"branches_url"`
-	CollaboratorsURL string      `json:"collaborators_url"`
-	CommentsURL      string      `json:"comments_url"`
-	CommitsURL       string      `json:"commits_url"`
-	CompareURL       string      `json:"compare_url"`
-	ContentsURL      string      `json:"contents_url"`
-	ContributorsURL  string      `json:"contributors_url"`
-	DeploymentsURL   string      `json:"deployments_url"`
-	DownloadsURL     string      `json:"downloads_url"`
-	EventsURL        string      `json:"events_url"`
-	ForksURL         string      `json:"forks_url"`
-	GitCommitsURL    string      `json:"git_commits_url"`
-	GitRefsURL       string      `json:"git_refs_url"`
-	GitTagsURL       string      `json:"git_tags_url"`
-	GitURL           string      `json:"git_url"`
-	IssueCommentURL  string      `json:"issue_comment_url"`
-	IssueEventsURL   string      `json:"issue_events_url"`
-	IssuesURL        string      `json:"issues_url"`
-	KeysURL          string      `json:"keys_url"`
-	LabelsURL        string      `json:"labels_url"`
-	LanguagesURL     string      `json:"languages_url"`
-	MergesURL        string      `json:"merges_url"`
-	MilestonesURL    string      `json:"milestones_url"`
-	NotificationsURL string      `json:"notifications_url"`
-	PullsURL         string      `json:"pulls_url"`
-	ReleasesURL      string      `json:"releases_url"`
-	SSHURL           string      `json:"ssh_url"`
-	StargazersURL    string      `json:"stargazers_url"`
-	StatusesURL      string      `json:"statuses_url"`
-	SubscribersURL   string      `json:"subscribers_url"`
-	SubscriptionURL  string      `json:"subscription_url"`
-	TagsURL          string      `json:"tags_url"`
-	TeamsURL         string      `json:"teams_url"`
-	TreesURL         string      `json:"trees_url"`
-	CloneURL         string      `json:"clone_url"`
-	MirrorURL        string      `json:"mirror_url"`
-	HooksURL         string      `json:"hooks_url"`
-	SvnURL           string      `json:"svn_url"`
-	Homepage         string      `json:"homepage"`
-	Language         interface{} `json:"language"`
-	ForksCount       int         `json:"forks_count"`
-	StargazersCount  int         `json:"stargazers_count"`
-	WatchersCount    int         `json:"watchers_count"`
-	Size             int         `json:"size"`
-	DefaultBranch    string      `json:"default_branch"`
-	OpenIssuesCount  int         `json:"open_issues_count"`
-	IsTemplate       bool        `json:"is_template"`
-	Topics           []string    `json:"topics"`
-	HasIssues        bool        `json:"has_issues"`
-	HasProjects      bool        `json:"has_projects"`
-	HasWiki          bool        `json:"has_wiki"`
-	HasPages         bool        `json:"has_pages"`
-	HasDownloads     bool        `json:"has_downloads"`
-	Archived         bool        `json:"archived"`
-	Disabled         bool        `json:"disabled"`
-	Visibility       string      `json:"visibility"`
-	PushedAt         time.Time   `json:"pushed_at"`
-	CreatedAt        time.Time   `json:"created_at"`
-	UpdatedAt        time.Time   `json:"updated_at"`
+	Private          bool      `json:"private"`
+	HTMLURL          string    `json:"html_url"`
+	Description      string    `json:"description"`
+	Fork             bool      `json:"fork"`
+	URL              string    `json:"url"`
+	ArchiveURL       string    `json:"archive_url"`
+	AssigneesURL     string    `json:"assignees_url"`
+	BlobsURL         string    `json:"blobs_url"`
+	BranchesURL      string    `json:"branches_url"`
+	CollaboratorsURL string    `json:"collaborators_url"`
+	CommentsURL      string    `json:"comments_url"`
+	CommitsURL       string    `json:"commits_url"`
+	CompareURL       string    `json:"compare_url"`
+	ContentsURL      string    `json:"contents_url"`
+	ContributorsURL  string    `json:"contributors_url"`
+	DeploymentsURL   string    `json:"deployments_url"`
+	DownloadsURL     string    `json:"downloads_url"`
+	EventsURL        string    `json:"events_url"`
+	ForksURL         string    `json:"forks_url"`
+	GitCommitsURL    string    `json:"git_commits_url"`
+	GitRefsURL       string    `json:"git_refs_url"`
+	GitTagsURL       string    `json:"git_tags_url"`
+	GitURL           string    `json:"git_url"`
+	IssueCommentURL  string    `json:"issue_comment_url"`
+	IssueEventsURL   string    `json:"issue_events_url"`
+	IssuesURL        string    `json:"issues_url"`
+	KeysURL          string    `json:"keys_url"`
+	LabelsURL        string    `json:"labels_url"`
+	LanguagesURL     string    `json:"languages_url"`
+	MergesURL        string    `json:"merges_url"`
+	MilestonesURL    string    `json:"milestones_url"`
+	NotificationsURL string    `json:"notifications_url"`
+	PullsURL         string    `json:"pulls_url"`
+	ReleasesURL      string    `json:"releases_url"`
+	SSHURL           string    `json:"ssh_url"`
+	StargazersURL    string    `json:"stargazers_url"`
+	StatusesURL      string    `json:"statuses_url"`
+	SubscribersURL   string    `json:"subscribers_url"`
+	SubscriptionURL  string    `json:"subscription_url"`
+	TagsURL          string    `json:"tags_url"`
+	TeamsURL         string    `json:"teams_url"`
+	TreesURL         string    `json:"trees_url"`
+	CloneURL         string    `json:"clone_url"`
+	MirrorURL        string    `json:"mirror_url"`
+	HooksURL         string    `json:"hooks_url"`
+	SvnURL           string    `json:"svn_url"`
+	Homepage         string    `json:"homepage"`
+	Language         any       `json:"language"`
+	ForksCount       int       `json:"forks_count"`
+	StargazersCount  int       `json:"stargazers_count"`
+	WatchersCount    int       `json:"watchers_count"`
+	Size             int       `json:"size"`
+	DefaultBranch    string    `json:"default_branch"`
+	OpenIssuesCount  int       `json:"open_issues_count"`
+	IsTemplate       bool      `json:"is_template"`
+	Topics           []string  `json:"topics"`
+	HasIssues        bool      `json:"has_issues"`
+	HasProjects      bool      `json:"has_projects"`
+	HasWiki          bool      `json:"has_wiki"`
+	HasPages         bool      `json:"has_pages"`
+	HasDownloads     bool      `json:"has_downloads"`
+	Archived         bool      `json:"archived"`
+	Disabled         bool      `json:"disabled"`
+	Visibility       string    `json:"visibility"`
+	PushedAt         time.Time `json:"pushed_at"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 	Permissions      struct {
 		Admin bool `json:"admin"`
 		Push  bool `json:"push"`
 		Pull  bool `json:"pull"`
 	} `json:"permissions"`
-	AllowRebaseMerge    bool        `json:"allow_rebase_merge"`
-	TemplateRepository  interface{} `json:"template_repository"`
-	TempCloneToken      string      `json:"temp_clone_token"`
-	AllowSquashMerge    bool        `json:"allow_squash_merge"`
-	AllowAutoMerge      bool        `json:"allow_auto_merge"`
-	DeleteBranchOnMerge bool        `json:"delete_branch_on_merge"`
-	AllowMergeCommit    bool        `json:"allow_merge_commit"`
-	SubscribersCount    int         `json:"subscribers_count"`
-	NetworkCount        int         `json:"network_count"`
+	AllowRebaseMerge    bool   `json:"allow_rebase_merge"`
+	TemplateRepository  any    `json:"template_repository"`
+	TempCloneToken      string `json:"temp_clone_token"`
+	AllowSquashMerge    bool   `json:"allow_squash_merge"`
+	AllowAutoMerge      bool   `json:"allow_auto_merge"`
+	DeleteBranchOnMerge bool   `json:"delete_branch_on_merge"`
+	AllowMergeCommit    bool   `json:"allow_merge_commit"`
+	SubscribersCount    int    `json:"subscribers_count"`
+	NetworkCount        int    `json:"network_count"`
 	License             struct {
 		Key     string `json:"key"`
 		Name    string `json:"name"`
@@ -380,7 +393,7 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	etags := make(map[string]string)
 	previousRepos := []string{}
-	previousJobs := make(map[string][]Job)
+	previousJobs := make(map[jobCacheKey][]Job)
 	previousWfrs := make(map[string]map[string]*WorkflowRuns)
 	rateLimit := RateLimit{}
 	previousQueueLength := int64(0)
@@ -404,18 +417,59 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 }
 
 func (meta *githubRunnerMetadata) Validate() error {
-	if meta.ApplicationKey == "" && meta.PersonalAccessToken == "" {
-		return fmt.Errorf("no personalAccessToken or appKey given")
+	if meta.Auth == nil {
+		meta.Auth = &authentication.Config{}
+	}
+	if meta.ApplicationKey == "" && meta.PersonalAccessToken == "" && !meta.Auth.EnabledBearerAuth() {
+		return fmt.Errorf("no personalAccessToken/bearerToken or appKey given")
 	}
 	if meta.ApplicationID != 0 || meta.InstallationID != 0 || meta.ApplicationKey != "" {
 		if err := validateGitHubApp(meta); err != nil {
 			return err
 		}
 	}
-	return nil
+	// Legacy bridge: only map personalAccessToken if no GitHub App is in use and Auth has no mode yet.
+	if meta.Auth.Disabled() && meta.ApplicationID == 0 && meta.PersonalAccessToken != "" {
+		meta.Auth.Modes = []authentication.Type{authentication.BearerAuthType}
+		meta.Auth.BearerToken = meta.PersonalAccessToken
+	}
+	return meta.Auth.ValidateAllowed(authentication.BearerAuthType)
+}
+
+// bridgePersonalAccessTokenToBearer maps personalAccessToken to bearerToken when bearer auth is
+// declared without its own token. This must happen before TypedConfig runs, because the nested
+// authentication.Config validates itself during parsing, before Validate() could bridge the token.
+func bridgePersonalAccessTokenToBearer(config *scalersconfig.ScalerConfig) *scalersconfig.ScalerConfig {
+	pat := config.AuthParams["personalAccessToken"]
+	if pat == "" || config.AuthParams["bearerToken"] != "" || config.AuthParams["token"] != "" {
+		return config
+	}
+	// Mirror the lookup order of authentication.Config.Modes: name authModes;authMode, order triggerMetadata;authParams.
+	var declared string
+	for _, v := range []string{config.TriggerMetadata["authModes"], config.TriggerMetadata["authMode"], config.AuthParams["authModes"], config.AuthParams["authMode"]} {
+		if v != "" {
+			declared = v
+			break
+		}
+	}
+	hasBearer := false
+	for _, m := range strings.Split(declared, ",") {
+		if strings.TrimSpace(m) == string(authentication.BearerAuthType) {
+			hasBearer = true
+			break
+		}
+	}
+	if !hasBearer {
+		return config
+	}
+	bridged := *config
+	bridged.AuthParams = maps.Clone(config.AuthParams)
+	bridged.AuthParams["bearerToken"] = pat
+	return &bridged
 }
 
 func parseGitHubRunnerMetadata(config *scalersconfig.ScalerConfig) (*githubRunnerMetadata, error) {
+	config = bridgePersonalAccessTokenToBearer(config)
 	meta := &githubRunnerMetadata{}
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing github runner metadata: %w", err)
@@ -550,8 +604,8 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, apiURL string
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
-	if metadata.ApplicationID == 0 && metadata.PersonalAccessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+metadata.PersonalAccessToken)
+	if metadata.Auth.EnabledBearerAuth() {
+		req.Header.Set("Authorization", metadata.Auth.GetBearerToken())
 	}
 
 	if s.metadata.EnableEtags {
@@ -620,21 +674,28 @@ func stripDeadRuns(allWfrs []WorkflowRuns) []WorkflowRun {
 	return filtered
 }
 
-// getWorkflowRunJobs returns a list of jobs for a given workflow run
-func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRunID int64, repoName string) ([]Job, error) {
-	apiURL := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=100",
+// jobsAPIURL returns the GitHub API URL for a workflow run's jobs, used both
+// to fetch the jobs and as the etags cache key for that same request.
+func (s *githubRunnerScaler) jobsAPIURL(repoName string, workflowRunID int64) string {
+	return fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=100",
 		s.metadata.GithubAPIURL,
 		url.PathEscape(s.metadata.Owner),
 		url.PathEscape(repoName),
 		workflowRunID)
+}
+
+// getWorkflowRunJobs returns a list of jobs for a given workflow run
+func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRunID int64, repoName string) ([]Job, error) {
+	apiURL := s.jobsAPIURL(repoName, workflowRunID)
 
 	body, statusCode, err := s.getGithubRequest(ctx, apiURL, s.metadata, s.httpClient)
 	if err != nil {
 		return nil, err
 	}
+	key := jobCacheKey{repo: repoName, runID: workflowRunID}
 	if statusCode == 304 && s.metadata.EnableEtags {
-		if s.previousJobs[repoName] != nil {
-			return s.previousJobs[repoName], nil
+		if jobs, ok := s.previousJobs[key]; ok {
+			return jobs, nil
 		}
 		// Stale etag without a paired previousJobs entry, e.g. after pruneCaches
 		// evicted the previous entry. Drop the etag and retry as a cache miss.
@@ -655,7 +716,7 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 	}
 
 	if s.metadata.EnableEtags {
-		s.previousJobs[repoName] = jobs.Jobs
+		s.previousJobs[key] = jobs.Jobs
 	}
 
 	return jobs.Jobs, nil
@@ -767,8 +828,16 @@ func (s *githubRunnerScaler) getCachedQueueLength() (int64, error) {
 	return -1, fmt.Errorf("GitHub API rate limit exceeded. No cached queue length available")
 }
 
-// pruneCaches removes previousWfrs entries for repos missing from currentRepos
-// and caps all three caches to githubScalerMaxCacheEntries.
+// pruneCaches removes previousWfrs entries for repos missing from
+// currentRepos, and caps all three caches to githubScalerMaxCacheEntries.
+//
+// previousJobs is intentionally not pruned by currentRepos here: it is keyed
+// by each workflow run's own repository name (wfr.Repository.Name), which is
+// not guaranteed to be an element of currentRepos (the list used to query
+// workflow runs) — e.g. a run triggered from a fork. Its entries for runs
+// that have left queued/in_progress are removed by pruneCompletedJobs once
+// the current run list is known (see GetWorkflowQueueLength); the
+// evictExcess cap below is a size-based backstop for both.
 func (s *githubRunnerScaler) pruneCaches(currentRepos []string) {
 	repoSet := make(map[string]struct{}, len(currentRepos))
 	for _, r := range currentRepos {
@@ -782,6 +851,22 @@ func (s *githubRunnerScaler) pruneCaches(currentRepos []string) {
 	evictExcess(s.previousWfrs, githubScalerMaxCacheEntries)
 	evictExcess(s.previousJobs, githubScalerMaxCacheEntries)
 	evictExcess(s.etags, githubScalerMaxCacheEntries)
+}
+
+// pruneCompletedJobs removes previousJobs entries for runs that are no
+// longer queued/in_progress, so a completed run's cached job list is not
+// held indefinitely waiting for size-based eviction in pruneCaches.
+func (s *githubRunnerScaler) pruneCompletedJobs(activeWfrs []WorkflowRun) {
+	active := make(map[jobCacheKey]struct{}, len(activeWfrs))
+	for _, wfr := range activeWfrs {
+		active[jobCacheKey{repo: wfr.Repository.Name, runID: wfr.ID}] = struct{}{}
+	}
+	for key := range s.previousJobs {
+		if _, ok := active[key]; !ok {
+			delete(s.previousJobs, key)
+			delete(s.etags, s.jobsAPIURL(key.repo, key.runID))
+		}
+	}
 }
 
 // evictExcess removes arbitrary entries from m until len(m) <= limit. Map
@@ -846,6 +931,11 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 	var queueCount int64
 
 	wfrs := stripDeadRuns(allWfrs)
+
+	if s.metadata.EnableEtags {
+		s.pruneCompletedJobs(wfrs)
+	}
+
 	for _, wfr := range wfrs {
 		jobs, err := s.getWorkflowRunJobs(ctx, wfr.ID, wfr.Repository.Name)
 		if err != nil {

@@ -3,12 +3,13 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
-	driver "github.com/arangodb/go-driver"
-	"github.com/arangodb/go-driver/http"
-	"github.com/arangodb/go-driver/jwt"
+	driver "github.com/arangodb/go-driver/v2/arangodb"
+	"github.com/arangodb/go-driver/v2/connection"
 	"github.com/go-logr/logr"
+	"github.com/golang-jwt/jwt/v5"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -92,37 +93,50 @@ func NewArangoDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
-	var auth driver.Authentication
+// arangodJWTIssuer is the JWT issuer claim expected by arangod for internal authentication.
+const arangodJWTIssuer = "arangodb"
 
-	conn, err := http.NewConnection(http.ConnectionConfig{
-		Endpoints: strings.Split(meta.Endpoints, ","),
-		TLSConfig: util.CreateTLSClientConfig(meta.UnsafeSsl),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create a new http connection, %w", err)
-	}
+func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
+	var auth connection.Authentication
 
 	if meta.ArangoDBAuth.EnabledBasicAuth() {
-		auth = driver.BasicAuthentication(meta.ArangoDBAuth.Username, meta.ArangoDBAuth.Password)
+		auth = connection.NewBasicAuth(meta.ArangoDBAuth.Username, meta.ArangoDBAuth.Password)
 	} else if meta.ArangoDBAuth.EnabledBearerAuth() {
-		hdr, err := jwt.CreateArangodJwtAuthorizationHeader(meta.ArangoDBAuth.BearerToken, meta.serverID)
+		hdr, err := createArangodJWTAuthorizationHeader(meta.ArangoDBAuth.BearerToken, meta.serverID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create bearer token authorization header, %w", err)
 		}
-		auth = driver.RawAuthentication(hdr)
+		auth = connection.NewHeaderAuth("Authorization", hdr)
 	}
 
-	client, err := driver.NewClient(driver.ClientConfig{
-		Connection:     conn,
+	conn := connection.NewHttpConnection(connection.HttpConfiguration{
 		Authentication: auth,
+		Endpoint:       connection.NewRoundRobinEndpoints(strings.Split(meta.Endpoints, ",")),
+		Transport: &http.Transport{
+			TLSClientConfig: util.CreateTLSClientConfig(meta.UnsafeSsl),
+		},
 	})
 
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize a new client, %w", err)
+	return driver.NewClient(conn), nil
+}
+
+// createArangodJWTAuthorizationHeader mirrors the removed go-driver/jwt helper for internal arangod authentication.
+func createArangodJWTAuthorizationHeader(jwtSecret, serverID string) (string, error) {
+	if jwtSecret == "" || serverID == "" {
+		return "", nil
 	}
 
-	return client, nil
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"iss":       arangodJWTIssuer,
+		"server_id": serverID,
+	})
+
+	signedToken, err := token.SignedString([]byte(jwtSecret))
+	if err != nil {
+		return "", err
+	}
+
+	return "bearer " + signedToken, nil
 }
 
 func parseArangoDBMetadata(config *scalersconfig.ScalerConfig) (*arangoDBMetadata, error) {
@@ -154,7 +168,7 @@ func (s *arangoDBScaler) getQueryResult(ctx context.Context) (float64, error) {
 		return -1, fmt.Errorf("%s database not found", s.metadata.DbName)
 	}
 
-	db, err := s.client.Database(ctx, s.metadata.DbName)
+	db, err := s.client.GetDatabase(ctx, s.metadata.DbName, nil)
 	if err != nil {
 		return -1, fmt.Errorf("failed to connect to %s db, %w", s.metadata.DbName, err)
 	}
@@ -168,9 +182,7 @@ func (s *arangoDBScaler) getQueryResult(ctx context.Context) (float64, error) {
 		return -1, fmt.Errorf("%s collection not found in %s database", s.metadata.Collection, s.metadata.DbName)
 	}
 
-	ctx = driver.WithQueryCount(ctx)
-
-	cursor, err := db.Query(ctx, s.metadata.Query, nil)
+	cursor, err := db.Query(ctx, s.metadata.Query, &driver.QueryOptions{Count: true})
 	if err != nil {
 		return -1, fmt.Errorf("failed to execute the query, %w", err)
 	}

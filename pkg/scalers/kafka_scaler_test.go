@@ -3,7 +3,9 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -221,6 +223,14 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	{map[string]string{"sasl": "gssapi", "username": "admin", "kerberosConfig": "<config>", "realm": "tst.com"}, true, false},
 	// failure, SASL GSSAPI provided both password and keytab
 	{map[string]string{"sasl": "gssapi", "username": "admin", "password": "admin", "keytab": "/path/to/keytab", "kerberosConfig": "<config>", "realm": "tst.com"}, true, false},
+	// failure, SASL GSSAPI provided both password and ccacheName
+	{map[string]string{"sasl": "gssapi", "username": "admin", "password": "admin", "ccacheName": "keda.ccache", "kerberosConfig": "<config>", "realm": "tst.com"}, true, false},
+	// failure, SASL GSSAPI provided both keytab and ccacheName
+	{map[string]string{"sasl": "gssapi", "username": "admin", "keytab": "/path/to/keytab", "ccacheName": "keda.ccache", "kerberosConfig": "<config>", "realm": "tst.com"}, true, false},
+	// failure, SASL GSSAPI provided password, keytab and ccacheName
+	{map[string]string{"sasl": "gssapi", "username": "admin", "password": "admin", "keytab": "/path/to/keytab", "ccacheName": "keda.ccache", "kerberosConfig": "<config>", "realm": "tst.com"}, true, false},
+	// failure, SASL GSSAPI ccacheName is a path rather than a file name
+	{map[string]string{"sasl": "gssapi", "username": "admin", "ccacheName": "../../etc/keda.ccache", "kerberosConfig": "<config>", "realm": "tst.com"}, true, false},
 	// failure, SASL GSSAPI/password + TLS missing realm
 	{map[string]string{"sasl": "gssapi", "username": "admin", "password": "admin", "kerberosConfig": "<config>", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
 	// failure, SASL GSSAPI/keytab + TLS missing username
@@ -425,6 +435,78 @@ func getBrokerTestBase(t *testing.T, meta kafkaMetadata, testData parseKafkaMeta
 	}
 }
 
+func TestKafkaGSSAPICcacheAuthParams(t *testing.T) {
+	ccacheAuthParams := func(ccacheName string) map[string]string {
+		return map[string]string{
+			"sasl":           "gssapi",
+			"username":       "admin",
+			"realm":          "tst.com",
+			"kerberosConfig": "<config>",
+			"ccacheName":     ccacheName,
+		}
+	}
+
+	parse := func(ccacheName string) (kafkaMetadata, error) {
+		return parseKafkaMetadata(&scalersconfig.ScalerConfig{
+			TriggerMetadata: validKafkaMetadata,
+			AuthParams:      ccacheAuthParams(ccacheName),
+		}, logr.Discard())
+	}
+
+	t.Run("resolves an existing ccache file", func(t *testing.T) {
+		dir := setupCcacheDir(t)
+		want := filepath.Join(dir, "keda.ccache")
+		if err := os.WriteFile(want, []byte("ccache"), 0600); err != nil {
+			t.Fatalf("cannot write ccache file: %v", err)
+		}
+
+		meta, err := parse("keda.ccache")
+		if err != nil {
+			t.Fatalf("expected success but got error: %v", err)
+		}
+		if meta.ccachePath != want {
+			t.Errorf("expected ccachePath to be %v but got %v", want, meta.ccachePath)
+		}
+	})
+
+	t.Run("fails when the ccache file is missing", func(t *testing.T) {
+		setupCcacheDir(t)
+
+		_, err := parse("keda.ccache")
+		if err == nil {
+			t.Fatal("expected error but got success")
+		}
+		if !strings.Contains(err.Error(), "does not exist") {
+			t.Errorf("expected a missing file error but got %v", err)
+		}
+	})
+
+	t.Run("fails when the ccache name is a directory", func(t *testing.T) {
+		dir := setupCcacheDir(t)
+		if err := os.MkdirAll(filepath.Join(dir, "keda.ccache"), 0700); err != nil {
+			t.Fatalf("cannot create ccache directory: %v", err)
+		}
+
+		_, err := parse("keda.ccache")
+		if err == nil {
+			t.Fatal("expected error but got success")
+		}
+		if !strings.Contains(err.Error(), "is not a regular file") {
+			t.Errorf("expected a non-regular-file error but got %v", err)
+		}
+	})
+}
+
+func setupCcacheDir(t *testing.T) string {
+	t.Setenv("TMPDIR", t.TempDir())
+
+	ccacheDirPath := filepath.Join(os.TempDir(), "kerberos", ccacheDir)
+	if err := os.MkdirAll(ccacheDirPath, 0700); err != nil {
+		t.Fatalf("cannot create ccache directory: %v", err)
+	}
+	return ccacheDirPath
+}
+
 func TestKafkaAuthParamsInTriggerAuthentication(t *testing.T) {
 	for _, testData := range parseKafkaAuthParamsTestDataset {
 		meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
@@ -536,9 +618,7 @@ func testFileContents(testData parseKafkaAuthParamsTestData, meta kafkaMetadata,
 
 func TestKafkaOAuthbearerAuthParams(t *testing.T) {
 	for _, testData := range parseKafkaOAuthbearerAuthParamsTestDataset {
-		for k, v := range validKafkaMetadata {
-			testData.metadata[k] = v
-		}
+		maps.Copy(testData.metadata, validKafkaMetadata)
 
 		meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
 
@@ -914,6 +994,10 @@ func (m *MockClusterAdmin) DescribeConfig(_ sarama.ConfigResource) ([]sarama.Con
 	return nil, nil
 }
 
+func (m *MockClusterAdmin) DescribeConfigs(_ []*sarama.ConfigResource, _ sarama.DescribeConfigsOptions) ([]*sarama.ConfigResourceResult, error) {
+	return nil, nil
+}
+
 func (m *MockClusterAdmin) AlterConfig(_ sarama.ConfigResourceType, _ string, _ map[string]*string, _ bool) error {
 	return nil
 }
@@ -954,6 +1038,10 @@ func (m *MockClusterAdmin) ListConsumerGroupOffsets(_ string, _ map[string][]int
 	return nil, nil
 }
 
+func (m *MockClusterAdmin) ListConsumerGroupOffsetsBatch(_ map[string]map[string][]int32) (map[string]*sarama.OffsetFetchResponseGroup, error) {
+	return nil, nil
+}
+
 func (m *MockClusterAdmin) ListOffsets(_ map[string]map[int32]int64, _ *sarama.ListOffsetsOptions) (map[string]map[int32]*sarama.OffsetResult, error) {
 	return nil, nil
 }
@@ -987,6 +1075,10 @@ func (m *MockClusterAdmin) DeleteUserScramCredentials(_ []sarama.AlterUserScramC
 }
 
 func (m *MockClusterAdmin) UpsertUserScramCredentials(_ []sarama.AlterUserScramCredentialsUpsert) ([]*sarama.AlterUserScramCredentialsResult, error) {
+	return nil, nil
+}
+
+func (m *MockClusterAdmin) UpdateFeatures(_ []sarama.FeatureUpdate) ([]sarama.UpdatableFeatureResult, error) {
 	return nil, nil
 }
 

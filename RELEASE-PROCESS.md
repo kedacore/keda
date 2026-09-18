@@ -11,11 +11,11 @@ Look at the [last release] in the releases page:
 
 [last release]: https://github.com/kedacore/keda/releases/latest
 
-## 1. Changelog
+## 1. Release notes metadata
 
-Add a new section in [CHANGELOG.md](CHANGELOG.md) for the new version that is being released along with the new features, patches and deprecations it introduces.
+Release notes are generated automatically from merged PR metadata using [release-cliff workflow](.github/workflows/release-cliff.yml).
 
-It should not include every single change but solely what matters to our customers, for example issue template that has changed is not important.
+Before the release, make sure PR titles and `kind/*` labels are correct so the generated draft release is grouped and worded as expected.
 
 ## 2. Add the new version to GitHub Bug report template
 
@@ -31,18 +31,71 @@ KEDA Deployment YAML file (eg. keda-2.4.0.yaml) is also automatically created an
 
 > Note 2: Depending on the release type (minor version or hotfix), the tag should be created from main (for minor version releases) or from version branch (for hotfix releases)
 
-### Release template
+### Automated draft release notes (git-cliff)
 
-Every release should use the template provided below to create the GitHub release and ensure that a new GitHub Discussion is created.
+Release draft notes are generated automatically by [release-cliff workflow](.github/workflows/release-cliff.yml) using [git-cliff config](.github/cliff.toml).
+
+How it works:
+
+- The workflow runs on push to `main` and `release/v*` branches, and can also be started manually with a target branch.
+- It computes the next version and the baseline tag for the current branch.
+- It removes any existing draft release targeting the same branch.
+- It generates the changelog with `git-cliff` using PR labels (`kind/*`) to group entries.
+- It creates a new draft release with generated notes and a docs link for the computed version.
+
+Each branch has an independent draft release:
+
+| Branch | Draft tracks | Version bump |
+| --- | --- | --- |
+| `main` | Next minor release | `vX.(Y+1).0` |
+| `release/vX.Y` | Subsequent patch releases for that minor | `vX.Y.(Z+1)` |
+
+Before publishing a release, review and edit the draft body in GitHub to add highlights, upgrade notes, and any extra context for users.
+
+### Release flows with branch-scoped drafts
+
+Minor release flow (`vX.Y.0`):
+
+1. Merge all release-bound PRs into `main`.
+2. Open the generated draft release for the next minor release.
+3. During the `vX.Y.0` release workflow, KEDA automatically creates `release/vX.Y` from the release tag commit when it does not exist yet.
+4. Use that `release/vX.Y` branch for subsequent patch releases (`vX.Y.1`, `vX.Y.2`, and so on).
+5. Review and edit the draft notes, then publish `vX.Y.0` from `main`.
+
+Hotfix flow (`vX.Y.Z`):
+
+1. Merge the fix PR into `main`.
+2. Backport it to the corresponding `release/vX.Y` branch (cherry-pick bot or manual cherry-pick).
+3. Push the backport branch update and open the regenerated draft targeting `release/vX.Y`.
+4. Review, confirm the next patch version, and publish.
+
+### Regenerating draft notes
+
+If draft notes are not categorized correctly, update the source PR with the appropriate `kind/*` label. Then open **Actions > Release Notes (git-cliff) > Run workflow**, select `main` or the relevant `release/vX.Y` branch in GitHub's branch selector, and run it. The existing draft for that branch is replaced.
+
+### PR requirements for generated notes
+
+The generated release notes depend on PR metadata. Keep these requirements in every PR:
+
+- Use exactly one changelog label from `kind/feature`, `kind/new-scaler`, `kind/improvement`, `kind/bug`, `kind/deprecation`, `kind/breaking-change`, `kind/chore`, `kind/documentation`, `kind/dependencies`, or `kind/ci`.
+- Use `skip-changelog` only when the PR should not appear in release notes.
+- Use a PR title in format `Component: Description`. The release notes renderer bolds the component automatically.
+
+These checks are enforced by [pr-changelog-check workflow](.github/workflows/pr-changelog-check.yml).
+
+### Draft review checklist
+
+Every release draft created by [release-cliff workflow](.github/workflows/release-cliff.yml) should be reviewed and completed before publishing.
 
 > ### 💡 IMPORTANT
 >
-> Remember to make the following changes to the template:
+> Remember to review and complete the following before publishing:
 >
-> - Replace `INSERT-CORRECT-VERSION` (there are **two** occurrences in the template) with the new-release ID
-> - Update the list of new contributors
+> - Add release highlights and upgrade notes
+> - Confirm the version, target branch, and docs link are correct
+> - Review the generated changelog for accuracy and wording
 
-Here's the template:
+The draft body follows this structure:
 
 ```markdown
 We are happy to release KEDA INSERT-CORRECT-VERSION 🎉
@@ -76,18 +129,8 @@ Learn how to deploy KEDA by reading [our documentation](https://keda.sh/docs/INS
 
 ### New Contributors
 
-<generated new contributors info>
+<optional contributor highlights>
 ```
-
-### Generating new contributor's info
-
-In order to generate a list of new contributors, use the `Auto-generate release notes` GitHub feature of the release.
-
-<details>
-  <summary>Screenshot</summary>
-
-![image](https://user-images.githubusercontent.com/4345663/148563945-ad75816d-739b-4e8d-a063-aa0e77f6e98d.png)
-</details>
 
 ## 4. Publish documentation for new version
 
@@ -129,7 +172,29 @@ We need to make sure that the current sprint's items are changed from status `Re
 
 Lastly, the `Upcoming Release Cycles` overview in `ROADMAP.md` should be updated with the new cycle.
 
-In case of minor releases, we need to create the version branch (`release/v2.x`) from the release tag which will be used to include any required hotfix in the future.
+In case of minor releases, the version branch (`release/v2.x`) is created automatically from the `v2.x.0` release tag by the release workflow and is then used to include required hotfixes.
+
+### Cherry-picking merged PRs to release branches
+
+When a merged PR needs to be backported to a release branch, add a trigger label to the original PR:
+
+```text
+cherry-pick/vX.Y
+```
+
+For example:
+
+```text
+cherry-pick/v2.20
+```
+
+Behavior:
+
+- The automation runs for merged PRs when the trigger label is added, and also when a PR with `cherry-pick/vX.Y` is merged.
+- KEDA creates (or updates) a cherry-pick branch and opens a cherry-pick PR targeting `release/vX.Y`.
+- KEDA copies `kind/*` labels to the cherry-pick PR.
+- On success, KEDA removes `cherry-pick/vX.Y` and adds `cherry-picked/vX.Y` on the original PR.
+- If the cherry-pick fails because of conflicts, KEDA comments with the manual recovery steps.
 
 ## 10. Tweet! 🐦
 

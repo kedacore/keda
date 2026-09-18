@@ -2,10 +2,19 @@ package scalers
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
+	"math/big"
 	"testing"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	enumspb "go.temporal.io/api/enums/v1"
 	taskqueuepb "go.temporal.io/api/taskqueue/v1"
 	"go.temporal.io/api/workflowservice/v1"
@@ -51,14 +60,26 @@ var testTemporalMetadata = []parseTemporalMetadataTestData{
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerDeploymentName": "my-deploy"}, true},
 	// workerDeploymentBuildId without workerDeploymentName
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerDeploymentBuildId": "v1"}, true},
-	// deployment fields combined with buildId
+	// buildId is rejected during parsing, so the combination never reaches Validate()
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerDeploymentName": "my-deploy", "workerDeploymentBuildId": "v1", "buildId": "v1"}, true},
-	// deployment fields combined with selectAllActive
+	// selectAllActive is rejected during parsing, so the combination never reaches Validate()
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerDeploymentName": "my-deploy", "workerDeploymentBuildId": "v1", "selectAllActive": "true"}, true},
 	// valid deployment config
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workerDeploymentName": "my-deploy", "workerDeploymentBuildId": "v1"}, false},
-	// valid legacy buildId config
-	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "buildId": "v1"}, false},
+	// legacy buildId is rejected as of v2.21
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "buildId": "v1"}, true},
+	// workflowTaskQueueForCount without includeRunningWorkflowCount
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "workflowTaskQueueForCount": "wf-queue"}, true},
+	// includeRunningWorkflowCount alone is valid
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "includeRunningWorkflowCount": "true"}, false},
+	// includeRunningWorkflowCount + workflowTaskQueueForCount is valid
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "includeRunningWorkflowCount": "true", "workflowTaskQueueForCount": "wf-queue"}, false},
+	// includeRunningWorkflowCount rejects unsafe characters in taskQueue
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": "bad queue' OR '1'='1", "namespace": temporalNamespace, "includeRunningWorkflowCount": "true"}, true},
+	// selectAllActive is rejected as of v2.21
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "selectAllActive": "true"}, true},
+	// selectUnversioned is rejected as of v2.21
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "selectUnversioned": "true"}, true},
 }
 
 var temporalMetricIdentifiers = []temporalMetricIdentifier{
@@ -66,8 +87,6 @@ var temporalMetricIdentifiers = []temporalMetricIdentifier{
 	{&testTemporalMetadata[5], 1, "s1-temporal-v2-default"},
 	// deployment version: metric name includes workerDeploymentName + workerDeploymentBuildId
 	{&testTemporalMetadata[11], 0, "s0-temporal-v2-default-my-deploy-v1"},
-	// legacy buildId: metric name is unchanged from unversioned (backward compat)
-	{&testTemporalMetadata[12], 0, "s0-temporal-v2-default"},
 }
 
 func TestTemporalParseMetadata(t *testing.T) {
@@ -127,9 +146,8 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
-				AllActive:                 false,
-				Unversioned:               false,
 				MinConnectTimeout:         5,
+				EnableTLS:                 true,
 			},
 			wantErr: true,
 		},
@@ -145,9 +163,8 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
-				AllActive:                 false,
-				Unversioned:               false,
 				MinConnectTimeout:         5,
+				EnableTLS:                 true,
 			},
 			wantErr: false,
 		},
@@ -165,9 +182,8 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 12,
-				AllActive:                 false,
-				Unversioned:               false,
 				MinConnectTimeout:         5,
+				EnableTLS:                 true,
 			},
 			wantErr: false,
 		},
@@ -184,10 +200,9 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
-				AllActive:                 false,
-				Unversioned:               false,
 				APIKey:                    "test01",
 				MinConnectTimeout:         5,
+				EnableTLS:                 true,
 			},
 			authParams: map[string]string{
 				"apiKey": "test01",
@@ -208,10 +223,9 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
-				AllActive:                 false,
-				Unversioned:               false,
 				QueueTypes:                []string{"workflow", "activity"},
 				MinConnectTimeout:         5,
+				EnableTLS:                 true,
 			},
 			wantErr: false,
 		},
@@ -233,10 +247,9 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
-				AllActive:                 false,
-				Unversioned:               false,
 				APIKey:                    "test01",
 				MinConnectTimeout:         5,
+				EnableTLS:                 true,
 			},
 			authParams: map[string]string{
 				"apiKey": "test01",
@@ -257,13 +270,35 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
-				AllActive:                 false,
-				Unversioned:               false,
 				APIKey:                    "test-api-key",
 				MinConnectTimeout:         5,
+				EnableTLS:                 true,
 			},
 			authParams: map[string]string{
 				"apiKey": "test-api-key",
+			},
+			wantErr: false,
+		},
+		{
+			name: "apiKey with enableTLS false (plaintext gRPC)",
+			metadata: map[string]string{
+				"endpoint":  "test:7233",
+				"namespace": "default",
+				"taskQueue": "testxx",
+				"enableTLS": "false",
+			},
+			authParams: map[string]string{
+				"apiKey": "test-api-key",
+			},
+			wantMeta: &temporalMetadata{
+				Endpoint:                  "test:7233",
+				Namespace:                 "default",
+				TaskQueue:                 "testxx",
+				TargetQueueSize:           5,
+				ActivationTargetQueueSize: 0,
+				APIKey:                    "test-api-key",
+				MinConnectTimeout:         5,
+				EnableTLS:                 false,
 			},
 			wantErr: false,
 		},
@@ -281,9 +316,8 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
-				AllActive:                 false,
-				Unversioned:               false,
 				MinConnectTimeout:         5,
+				EnableTLS:                 true,
 				TLSServerName:             "my-namespace.tmpr.cloud",
 			},
 			wantErr: false,
@@ -305,10 +339,9 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
-				AllActive:                 false,
-				Unversioned:               false,
 				APIKey:                    "test01",
 				MinConnectTimeout:         5,
+				EnableTLS:                 true,
 				TLSServerName:             "my-namespace.tmpr.cloud",
 			},
 			wantErr: false,
@@ -333,13 +366,12 @@ func TestParseTemporalMetadata(t *testing.T) {
 				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
-				AllActive:                 false,
-				Unversioned:               false,
 				Cert:                      "cert-data",
 				Key:                       "key-data",
 				KeyPassword:               "password",
 				CA:                        "ca-data",
 				MinConnectTimeout:         5,
+				EnableTLS:                 true,
 				TLSServerName:             "my-namespace.tmpr.cloud",
 			},
 			wantErr: false,
@@ -466,16 +498,131 @@ func TestScalerMode(t *testing.T) {
 	}{
 		{"no versioning fields", temporalMetadata{}, "unversioned"},
 		{"workerDeploymentName set", temporalMetadata{WorkerDeploymentName: "d"}, "deployment-version"},
-		{"deployment takes precedence over buildId", temporalMetadata{WorkerDeploymentName: "d", BuildID: "v1"}, "deployment-version"},
-		{"buildId set", temporalMetadata{BuildID: "v1"}, "build-id"},
-		{"selectAllActive set", temporalMetadata{AllActive: true}, "build-id"},
-		{"selectUnversioned set", temporalMetadata{Unversioned: true}, "build-id"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert.Equal(t, tc.want, scalerMode(&tc.meta))
 		})
 	}
+}
+
+func TestRunningWorkflowCountQuery(t *testing.T) {
+	cases := []struct {
+		name    string
+		meta    temporalMetadata
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "unversioned scopes with is null",
+			meta: temporalMetadata{TaskQueue: "orders"},
+			want: "ExecutionStatus = 'Running' AND TaskQueue = 'orders' AND TemporalWorkerDeploymentVersion is null",
+		},
+		{
+			name: "deployment version scopes by TemporalWorkerDeploymentVersion using the v1.32+ colon delimiter",
+			meta: temporalMetadata{TaskQueue: "orders", WorkerDeploymentName: "orders-svc", WorkerDeploymentBuildID: "v1"},
+			want: "ExecutionStatus = 'Running' AND TaskQueue = 'orders' AND TemporalWorkerDeploymentVersion = 'orders-svc:v1'",
+		},
+		{
+			name: "workflowTaskQueueForCount overrides taskQueue",
+			meta: temporalMetadata{TaskQueue: "activities", WorkflowTaskQueueForCount: "workflows"},
+			want: "ExecutionStatus = 'Running' AND TaskQueue = 'workflows' AND TemporalWorkerDeploymentVersion is null",
+		},
+		{
+			name:    "unsafe task queue is rejected",
+			meta:    temporalMetadata{TaskQueue: "bad' OR '1"},
+			wantErr: true,
+		},
+		{
+			name:    "unsafe deployment name is rejected",
+			meta:    temporalMetadata{TaskQueue: "orders", WorkerDeploymentName: "bad name", WorkerDeploymentBuildID: "v1"},
+			wantErr: true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &temporalScaler{metadata: &tc.meta}
+			got, err := s.runningWorkflowCountQuery()
+			if tc.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestIsActiveWithoutBacklogVersionStatus(t *testing.T) {
+	cases := []struct {
+		name   string
+		status enumspb.WorkerDeploymentVersionStatus
+		want   bool
+	}{
+		{"draining stays active without hitting visibility", enumspb.WORKER_DEPLOYMENT_VERSION_STATUS_DRAINING, true},
+		{"drained scales down", enumspb.WORKER_DEPLOYMENT_VERSION_STATUS_DRAINED, false},
+		{"inactive scales down", enumspb.WORKER_DEPLOYMENT_VERSION_STATUS_INACTIVE, false},
+		{"unspecified scales down", enumspb.WORKER_DEPLOYMENT_VERSION_STATUS_UNSPECIFIED, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &temporalScaler{
+				metadata: &temporalMetadata{TaskQueue: "orders", WorkerDeploymentName: "orders-svc", WorkerDeploymentBuildID: "v1"},
+				logger:   logger,
+			}
+			got := s.isActiveWithoutBacklog(context.Background(), true, tc.status)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func generateTemporalTestCertAndKey(t *testing.T) (string, string) {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{CommonName: "test"},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(time.Hour),
+	}
+	certDER, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	require.NoError(t, err)
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+	keyDER, err := x509.MarshalECPrivateKey(key)
+	require.NoError(t, err)
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
+	return string(certPEM), string(keyPEM)
+}
+
+func TestBuildTemporalTLSConfig(t *testing.T) {
+	t.Run("apiKey + enableTLS=true produces non-nil TLS config", func(t *testing.T) {
+		meta := &temporalMetadata{APIKey: "secret", EnableTLS: true}
+		tlsCfg, err := buildTemporalTLSConfig(meta, logger)
+		assert.NoError(t, err)
+		assert.NotNil(t, tlsCfg)
+	})
+	t.Run("apiKey + enableTLS=false produces nil TLS config (plaintext)", func(t *testing.T) {
+		meta := &temporalMetadata{APIKey: "secret", EnableTLS: false}
+		tlsCfg, err := buildTemporalTLSConfig(meta, logger)
+		assert.NoError(t, err)
+		assert.Nil(t, tlsCfg)
+	})
+	t.Run("cert+key without apiKey always produces non-nil TLS config", func(t *testing.T) {
+		certPEM, keyPEM := generateTemporalTestCertAndKey(t)
+		meta := &temporalMetadata{Cert: certPEM, Key: keyPEM}
+		tlsCfg, err := buildTemporalTLSConfig(meta, logger)
+		assert.NoError(t, err)
+		assert.NotNil(t, tlsCfg)
+	})
+	t.Run("apiKey + cert+key produces non-nil TLS config with client cert (mTLS + apiKey)", func(t *testing.T) {
+		certPEM, keyPEM := generateTemporalTestCertAndKey(t)
+		meta := &temporalMetadata{APIKey: "secret", EnableTLS: true, Cert: certPEM, Key: keyPEM}
+		tlsCfg, err := buildTemporalTLSConfig(meta, logger)
+		assert.NoError(t, err)
+		assert.NotNil(t, tlsCfg)
+		assert.NotEmpty(t, tlsCfg.Certificates, "client certificate must be present in TLS config")
+	})
 }
 
 func TestAuthType(t *testing.T) {

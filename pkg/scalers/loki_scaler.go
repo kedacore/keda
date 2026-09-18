@@ -50,8 +50,8 @@ type lokiQueryResult struct {
 	Data   struct {
 		ResultType string `json:"resultType"`
 		Result     []struct {
-			Metric struct{}      `json:"metric"`
-			Value  []interface{} `json:"value"`
+			Metric struct{} `json:"metric"`
+			Value  []any    `json:"value"`
 		} `json:"result"`
 	} `json:"data"`
 }

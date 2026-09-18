@@ -120,9 +120,21 @@ func (s *solrScaler) getItemCount(ctx context.Context) (float64, error) {
 		return -1, err
 	}
 
+	// Solr reports failures as JSON when wt=json, and those bodies unmarshal cleanly into
+	// solrResponse leaving numFound at 0. Without this check an auth rejection, a missing
+	// collection or an outage would look like an empty queue and scale the workload to zero.
+	if resp.StatusCode != http.StatusOK {
+		// Redacted() strips any password embedded in the configured host so it cannot reach the
+		// ScaledObject status or the operator log.
+		return -1, fmt.Errorf("the solr API returned error. url: %s status: %d response: %s", baseURL.Redacted(), resp.StatusCode, string(body))
+	}
+
 	err = json.Unmarshal(body, &SolrResponse1)
 	if err != nil {
 		return -1, fmt.Errorf("%w, make sure you enter username, password and collection values correctly in the yaml file", err)
+	}
+	if SolrResponse1 == nil {
+		return -1, fmt.Errorf("the solr API returned a body that decoded to null. url: %s", baseURL.Redacted())
 	}
 	itemCount = float64(SolrResponse1.Response.NumFound)
 	return itemCount, nil

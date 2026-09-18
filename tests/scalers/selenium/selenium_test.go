@@ -4,6 +4,7 @@
 package selenium_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -11,6 +12,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -125,7 +128,7 @@ metadata:
     app.kubernetes.io/component: latest
     helm.sh/chart: latest
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: selenium-chrome-node
@@ -135,6 +138,16 @@ spec:
       annotations:
         checksum/event-bus-configmap: 0e5e9d25a669359a37dd0d684c485f4c05729da5a26a841ad9a2743d99460f73
     spec:
+      # prefer the hub's node so the image pre-pulled during setup stays local
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: selenium-hub
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: selenium-chrome-node
         image: selenium/node-chrome:nightly
@@ -248,7 +261,7 @@ metadata:
     app.kubernetes.io/component: latest
     helm.sh/chart: latest
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: selenium-firefox-node
@@ -258,6 +271,16 @@ spec:
       annotations:
         checksum/event-bus-configmap: 0e5e9d25a669359a37dd0d684c485f4c05729da5a26a841ad9a2743d99460f73
     spec:
+      # prefer the hub's node so the image pre-pulled during setup stays local
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: selenium-hub
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: selenium-firefox-node
         image: selenium/node-firefox:nightly
@@ -344,7 +367,7 @@ metadata:
     app.kubernetes.io/component: latest
     helm.sh/chart: latest
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: selenium-edge-node
@@ -354,6 +377,16 @@ spec:
       annotations:
         checksum/event-bus-configmap: 0e5e9d25a669359a37dd0d684c485f4c05729da5a26a841ad9a2743d99460f73
     spec:
+      # prefer the hub's node so the image pre-pulled during setup stays local
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: selenium-hub
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: selenium-edge-node
         image: selenium/node-edge:nightly
@@ -532,14 +565,28 @@ spec:
 func TestSeleniumScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
+	soTemplates := []Template{
+		{Name: "chromeScaledObjectTemplate", Config: chromeScaledObjectTemplate},
+		{Name: "firefoxScaledObjectTemplate", Config: firefoxScaledObjectTemplate},
+		{Name: "edgeScaledObjectTemplate", Config: edgeScaledObjectTemplate},
+	}
 	t.Cleanup(func() {
-		DeleteKubernetesResources(t, testNamespace, data, templates)
+		DeleteKubernetesResources(t, testNamespace, data, append(templates, soTemplates...))
 	})
 
 	// Create kubernetes resources
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, hubDeploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
+
+	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, chromeDeploymentName, testNamespace, 1, 60, 3),
+		"replica count should be 1 after 3 minutes")
+	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, firefoxDeploymentName, testNamespace, 1, 60, 3),
+		"replica count should be 1 after 3 minutes")
+	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, edgeDeploymentName, testNamespace, 1, 60, 3),
+		"replica count should be 1 after 3 minutes")
+
+	KubectlApplyMultipleWithTemplate(t, data, soTemplates)
 	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, chromeDeploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be 0 after 1 minute")
 	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, firefoxDeploymentName, testNamespace, minReplicaCount, 60, 1),
@@ -558,11 +605,73 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	data.WithVersion = false
 	KubectlApplyWithTemplate(t, data, "jobTemplate", jobTemplate)
 
-	// Instead of waiting a minute with every one, we sleep the time and check them later
-	time.Sleep(time.Second * 60)
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, chromeDeploymentName, testNamespace, minReplicaCount, 5)
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, firefoxDeploymentName, testNamespace, minReplicaCount, 5)
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, edgeDeploymentName, testNamespace, minReplicaCount, 5)
+	// The job's session requests queue at the hub, since no browser node is running, and on their
+	// own they do not exceed activationThreshold, so none of the three ScaledObjects may scale.
+	// Nothing is queued until the job's pod is running, so that is waited for first: a window
+	// that opened before it would be measuring the scaler against an empty queue.
+	require.True(t, waitForJobPodRunning(t, kc, data.JobName), "the %s job's pod should be running", data.JobName)
+	assertNoBrowserScalesDuring(t, kc, activationWindow)
+}
+
+// A minute is twelve of the ScaledObjects' 5s polling intervals, so the scaler has evaluated the
+// queued sessions many times over before the test moves on. It replaces a 60s sleep followed by a 5s
+// check per browser, which could only see the replica count at the end and not whether it had moved
+// and come back in between.
+const activationWindow = time.Minute
+
+// The image is pulled with imagePullPolicy: Always, so this has to absorb a pull on every run.
+const jobPodRunningTimeout = 2 * time.Minute
+
+func waitForJobPodRunning(t *testing.T, kc *kubernetes.Clientset, jobName string) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), jobPodRunningTimeout)
+	defer cancel()
+
+	err := KedaEventually(ctx, func(ctx context.Context) (bool, error) {
+		pods, err := kc.CoreV1().Pods(testNamespace).List(ctx, metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("app=%s", jobName),
+		})
+		if err != nil {
+			return false, fmt.Errorf("cannot list pods of job %s - %w", jobName, err)
+		}
+
+		for _, pod := range pods.Items {
+			if pod.Status.Phase == corev1.PodRunning {
+				return true, nil
+			}
+		}
+		t.Logf("Waiting for a pod of job %s to be running. Pods - %d", jobName, len(pods.Items))
+		return false, nil
+	}, IntervalShort)
+	if err != nil {
+		t.Log(err)
+		return false
+	}
+	return true
+}
+
+func assertNoBrowserScalesDuring(t *testing.T, kc *kubernetes.Clientset, window time.Duration) {
+	deployments := []string{chromeDeploymentName, firefoxDeploymentName, edgeDeploymentName}
+	t.Logf("Asserting that %v stay at %d replicas for %s", deployments, minReplicaCount, window)
+
+	ctx, cancel := context.WithTimeout(context.Background(), window)
+	defer cancel()
+
+	err := KedaConsistently(ctx, func(ctx context.Context) (bool, error) {
+		for _, name := range deployments {
+			deployment, err := kc.AppsV1().Deployments(testNamespace).Get(ctx, name, metav1.GetOptions{})
+			if err != nil {
+				// KedaConsistently fails on a condition error, and a read that could not be made says
+				// nothing about the replicas, so it is logged as an attempt that saw nothing to object to.
+				t.Logf("cannot get deployment %s/%s - %s", testNamespace, name, err)
+				continue
+			}
+			if replicas := deployment.Status.Replicas; replicas != int32(minReplicaCount) {
+				return false, fmt.Errorf("%s replica count has changed from %d to %d", name, minReplicaCount, replicas)
+			}
+		}
+		return true, nil
+	}, IntervalShort)
+	assert.NoErrorf(t, err, "no browser deployment should scale during activation")
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -619,12 +728,9 @@ func getTemplateData() (templateData, []Template) {
 			{Name: "hubServiceTemplate", Config: hubServiceTemplate},
 			{Name: "chromeNodeServiceTemplate", Config: chromeNodeServiceTemplate},
 			{Name: "chromeNodeDeploymentTemplate", Config: chromeNodeDeploymentTemplate},
-			{Name: "chromeScaledObjectTemplate", Config: chromeScaledObjectTemplate},
 			{Name: "firefoxNodeServiceTemplate", Config: firefoxNodeServiceTemplate},
 			{Name: "firefoxNodeDeploymentTemplate", Config: firefoxNodeDeploymentTemplate},
-			{Name: "firefoxScaledObjectTemplate", Config: firefoxScaledObjectTemplate},
 			{Name: "edgeNodeServiceTemplate", Config: edgeNodeServiceTemplate},
 			{Name: "edgeNodeDeploymentTemplate", Config: edgeNodeDeploymentTemplate},
-			{Name: "edgeScaledObjectTemplate", Config: edgeScaledObjectTemplate},
 		}
 }

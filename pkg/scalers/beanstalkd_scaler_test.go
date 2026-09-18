@@ -30,7 +30,7 @@ type beanstalkdMetricIdentifier struct {
 }
 
 type tubeStatsTestData struct {
-	response map[string]interface{}
+	response map[string]any
 	metadata map[string]string
 	isActive bool
 }
@@ -67,7 +67,7 @@ var beanstalkdMetricIdentifiers = []beanstalkdMetricIdentifier{
 
 var testTubeStatsTestData = []tubeStatsTestData{
 	{
-		response: map[string]interface{}{
+		response: map[string]any{
 			"cmd-delete":            18,
 			"cmd-pause-tube":        0,
 			"current-jobs-buried":   6,
@@ -87,7 +87,7 @@ var testTubeStatsTestData = []tubeStatsTestData{
 		isActive: true,
 	},
 	{
-		response: map[string]interface{}{
+		response: map[string]any{
 			"cmd-delete":            18,
 			"cmd-pause-tube":        0,
 			"current-jobs-buried":   0,
@@ -107,7 +107,7 @@ var testTubeStatsTestData = []tubeStatsTestData{
 		isActive: false,
 	},
 	{
-		response: map[string]interface{}{
+		response: map[string]any{
 			"cmd-delete":            18,
 			"cmd-pause-tube":        0,
 			"current-jobs-buried":   0,
@@ -127,7 +127,7 @@ var testTubeStatsTestData = []tubeStatsTestData{
 		isActive: false,
 	},
 	{
-		response: map[string]interface{}{
+		response: map[string]any{
 			"cmd-delete":            18,
 			"cmd-pause-tube":        0,
 			"current-jobs-buried":   0,
@@ -195,7 +195,7 @@ func TestGetTubeStats(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		response := []byte(fmt.Sprintf("OK %d\r\n", len(yamlData)))
+		response := fmt.Appendf(nil, "OK %d\r\n", len(yamlData))
 		response = append(response, yamlData...)
 		response = append(response, []byte("\r\n")...)
 		createTestServer(t, response)

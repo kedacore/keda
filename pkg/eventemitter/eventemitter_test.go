@@ -163,7 +163,7 @@ func TestEventHandler_DirectCall(t *testing.T) {
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-	eventHandler.EXPECT().EmitEvent(gomock.Any(), gomock.Any()).Times(1).Do(func(arg0, arg1 interface{}) {
+	eventHandler.EXPECT().EmitEvent(gomock.Any(), gomock.Any()).Times(1).Do(func(arg0, arg1 any) {
 		defer wg.Done()
 	})
 	eventEmitter.enqueueEventData(eventData)

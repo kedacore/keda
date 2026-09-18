@@ -21,6 +21,7 @@ import (
 	"crypto/x509"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -250,6 +251,53 @@ func TestNewTLSConfig_WithPassword(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestNewTLSConfig_ConcurrentCACertAppend(t *testing.T) {
+	const goroutines = 50
+
+	cas := []string{randomCACert, rsaCertPEM}
+
+	var wg sync.WaitGroup
+	errs := make(chan error, goroutines)
+	for i := range goroutines {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			_, err := NewTLSConfig(rsaCertPEM, rsaKeyPEM, cas[i%len(cas)], false)
+			if err != nil {
+				errs <- err
+			}
+		}(i)
+	}
+	wg.Wait()
+	close(errs)
+
+	for err := range errs {
+		t.Errorf("unexpected error building TLS config: %s", err)
+	}
+}
+
+func TestNewTLSConfig_PerObjectCAIsolation(t *testing.T) {
+	before := getRootCAs().Clone()
+
+	configA, err := NewTLSConfig(rsaCertPEM, rsaKeyPEM, randomCACert, false)
+	if err != nil {
+		t.Fatalf("configA: %s", err)
+	}
+	configB, err := NewTLSConfig(rsaCertPEM, rsaKeyPEM, rsaCertPEM, false)
+	if err != nil {
+		t.Fatalf("configB: %s", err)
+	}
+
+	if configA.RootCAs.Equal(configB.RootCAs) {
+		t.Error("per-object CA certs leaked across configs: RootCAs pools are equal")
+	}
+
+	after := getRootCAs()
+	if !before.Equal(after) {
+		t.Error("shared root CA pool was mutated by per-object caCert append")
 	}
 }
 

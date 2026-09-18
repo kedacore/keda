@@ -21,6 +21,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -66,13 +67,14 @@ const (
 )
 
 type rabbitMQScaler struct {
-	metricType v2.MetricTargetType
-	metadata   *rabbitMQMetadata
-	connection *amqp.Connection
-	channel    *amqp.Channel
-	httpClient *http.Client
-	azureOAuth *azure.ADWorkloadIdentityTokenProvider
-	logger     logr.Logger
+	metricType    v2.MetricTargetType
+	metadata      *rabbitMQMetadata
+	connection    *amqp.Connection
+	channel       *amqp.Channel
+	httpClient    *http.Client
+	httpTransport metricscollector.CloseableRoundTripper
+	azureOAuth    *azure.ADWorkloadIdentityTokenProvider
+	logger        logr.Logger
 }
 
 type rabbitMQMetadata struct {
@@ -122,11 +124,10 @@ type rabbitMQMetadata struct {
 	workloadIdentityTenantID      string
 	workloadIdentityAuthorityHost string
 
-	// OAuth2 authentication (field names match authentication.OAuth, parsed from authParams)
-	authentication.OAuth `keda:"optional"`
+	// OAuth2 via central Config; Modes is inferred so legacy manifests without `authModes` keep working.
+	Auth *authentication.Config `keda:"optional"`
 
 	// Auth method detection flags (computed, not parsed)
-	hasOAuth2           bool
 	hasBasicAuth        bool
 	hasWorkloadIdentity bool
 }
@@ -195,14 +196,27 @@ func (r *rabbitMQMetadata) Validate() error {
 }
 
 func (r *rabbitMQMetadata) validateOAuth2() error {
-	// OAuth2 validation - check if any OAuth2 parameter is present
-	hasAnyOAuth2Param := r.OauthTokenURI != "" || r.ClientID != "" || r.ClientSecret != ""
+	if r.Auth == nil {
+		r.Auth = &authentication.Config{}
+	}
+	// Infer OAuth mode so legacy manifests without `authModes` keep working.
+	hasAnyOAuth2Param := r.Auth.OauthTokenURI != "" || r.Auth.ClientID != "" || r.Auth.ClientSecret != ""
+	if hasAnyOAuth2Param && len(r.Auth.Modes) == 0 {
+		r.Auth.Modes = []authentication.Type{authentication.OAuthType}
+	}
+
+	// Basic and TLS are also allowed as declared modes: the scaler supports both via its own
+	// username/password and ca/cert/key fields, even though only the OAuth mode drives behavior here.
+	if err := r.Auth.ValidateAllowed(authentication.OAuthType, authentication.BasicAuthType, authentication.TLSAuthType); err != nil {
+		return err
+	}
+
 	if !hasAnyOAuth2Param {
 		return nil
 	}
 
-	// Validate required OAuth2 parameters are present
-	if r.OauthTokenURI == "" || r.ClientID == "" || r.ClientSecret == "" {
+	// rabbitmq's client_credentials flow always needs a ClientSecret; Config treats it as optional.
+	if r.Auth.ClientSecret == "" {
 		return fmt.Errorf("OAuth2 requires tokenUrl clientId and clientSecret to be configured in TriggerAuthentication")
 	}
 
@@ -212,8 +226,6 @@ func (r *rabbitMQMetadata) validateOAuth2() error {
 	}
 
 	// OAuth2 is exclusive - don't mix with other auth methods.
-	// Compute directly here rather than relying on hasBasicAuth/hasWorkloadIdentity
-	// because determineAuthMethod() is called after Validate() in parseRabbitMQMetadata.
 	if (r.Username != "" && r.Password != "") || r.WorkloadIdentityResource != "" {
 		return fmt.Errorf("OAuth2 authentication cannot be combined with username/password authentication or Azure Workload Identity")
 	}
@@ -335,7 +347,7 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 
 	// Create HTTP client based on auth method
-	if meta.hasOAuth2 {
+	if meta.Auth.EnabledOAuth() {
 		// OAuth2 client with automatic token management
 		s.httpClient, err = s.createOAuth2HTTPClient(timeout, meta)
 		if err != nil {
@@ -406,9 +418,8 @@ func parseRabbitMQMetadata(config *scalersconfig.ScalerConfig) (*rabbitMQMetadat
 	return meta, nil
 }
 
-// determineAuthMethod sets boolean flags for auth method detection
+// determineAuthMethod sets flags for basic and workload identity; OAuth2 goes via Auth.EnabledOAuth().
 func (r *rabbitMQMetadata) determineAuthMethod() {
-	r.hasOAuth2 = r.OauthTokenURI != "" && r.ClientID != "" && r.ClientSecret != ""
 	r.hasBasicAuth = r.Username != "" && r.Password != ""
 	r.hasWorkloadIdentity = r.WorkloadIdentityResource != ""
 }
@@ -467,6 +478,13 @@ func buildAMQPConfig(meta *rabbitMQMetadata) (amqp.Config, error) {
 
 // Close disposes of RabbitMQ connections
 func (s *rabbitMQScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
+	if s.httpTransport != nil {
+		s.httpTransport.CloseIdleConnections()
+		s.httpTransport = nil
+	}
 	if s.channel != nil {
 		if err := s.channel.Close(); err != nil {
 			s.logger.V(1).Info("Error closing RabbitMQ channel, may already be closed", "error", err)
@@ -480,9 +498,6 @@ func (s *rabbitMQScaler) Close(context.Context) error {
 		}
 		s.connection = nil
 	}
-	if s.httpClient != nil {
-		s.httpClient.CloseIdleConnections()
-	}
 	return nil
 }
 
@@ -490,22 +505,22 @@ func (s *rabbitMQScaler) Close(context.Context) error {
 // The client automatically handles token acquisition, caching, and refresh
 func (s *rabbitMQScaler) createOAuth2HTTPClient(timeout time.Duration, meta *rabbitMQMetadata) (*http.Client, error) {
 	config := clientcredentials.Config{
-		ClientID:     meta.ClientID,
-		ClientSecret: meta.ClientSecret,
-		TokenURL:     meta.OauthTokenURI,
+		ClientID:     meta.Auth.ClientID,
+		ClientSecret: meta.Auth.ClientSecret,
+		TokenURL:     meta.Auth.OauthTokenURI,
 	}
 
 	// Set scopes from the OAuth struct (already parsed as []string)
-	config.Scopes = meta.Scopes
+	config.Scopes = meta.Auth.Scopes
 
 	// Set additional endpoint parameters from the OAuth struct (already parsed as url.Values)
-	if len(meta.EndpointParams) > 0 {
-		config.EndpointParams = meta.EndpointParams
+	if len(meta.Auth.EndpointParams) > 0 {
+		config.EndpointParams = meta.Auth.EndpointParams
 	}
 
 	// Build a base transport using kedautil so that ProxyFromEnvironment and
 	// keep-alive behaviour stay consistent with the non-OAuth2 HTTP path.
-	var baseTransport http.RoundTripper
+	var baseTransport metricscollector.CloseableRoundTripper
 	if meta.EnableTLS == rmqTLSEnable {
 		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.Ca, meta.UnsafeSsl)
 		if err != nil {
@@ -515,6 +530,7 @@ func (s *rabbitMQScaler) createOAuth2HTTPClient(timeout time.Duration, meta *rab
 	} else {
 		baseTransport = kedautil.CreateRTWithTLSConfig(nil)
 	}
+	s.httpTransport = baseTransport
 
 	// Pass the base client via context so the oauth2 library uses it for token
 	// endpoint requests too (applying the same timeout and transport settings).
@@ -712,13 +728,16 @@ func (s *rabbitMQScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 		isActive = (ratio > s.metadata.ActivationValue) || ((publishRate > 0) && (deliverGetRate == 0))
 	case rabbitModeExpectedQueueConsumptionTime:
 		eta := float64(0)
-		if deliverGetRate == 0 {
+		switch {
+		case messages == 0:
+			eta = 0
+		case deliverGetRate == 0:
 			eta = float64(s.metadata.ActivationValue)
-		} else {
+		default:
 			eta = ((publishRate - deliverGetRate) / deliverGetRate) + (float64(messages) / deliverGetRate)
 		}
 		metric = GenerateMetricInMili(metricName, eta)
-		isActive = (eta > s.metadata.ActivationValue) || (deliverGetRate == 0)
+		isActive = (eta > s.metadata.ActivationValue) || (deliverGetRate == 0 && messages > 0)
 	}
 
 	return []external_metrics.ExternalMetricValue{metric}, isActive, nil

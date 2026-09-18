@@ -15,7 +15,6 @@ linters:
     - dogsled
     - dupl
     - errcheck
-    - goconst
     - gocritic
     - gocyclo
     - goprintffuncname
@@ -30,6 +29,9 @@ linters:
     - unused
     - whitespace
   settings:
+    govet:
+      disable:
+        - inline
     depguard:
       rules:
         main:
@@ -50,7 +52,6 @@ linters:
     rules:
       - linters:
           - dupl
-          - goconst
           - mnd
           - revive
         path: _test\.go
@@ -159,7 +160,6 @@ linters:
         path: pkg/scalers/external_mock_scaler.go
       - linters:
           - depguard
-          - goconst
         path: controllers/keda/scaledobject_controller_test.go
       - linters:
           - depguard

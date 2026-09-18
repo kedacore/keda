@@ -23,6 +23,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -277,7 +278,7 @@ func (s *apacheKafkaScaler) getTopicPartitions(ctx context.Context) (map[string]
 			for _, partition := range topic.Partitions {
 				// if no partitions limitations are specified, all partitions are considered
 				if (len(s.metadata.PartitionLimitation) == 0) ||
-					(len(s.metadata.PartitionLimitation) > 0 && kedautil.Contains(s.metadata.PartitionLimitation, partition.ID)) {
+					(len(s.metadata.PartitionLimitation) > 0 && slices.Contains(s.metadata.PartitionLimitation, partition.ID)) {
 					partitions = append(partitions, partition.ID)
 				}
 			}
@@ -288,10 +289,10 @@ func (s *apacheKafkaScaler) getTopicPartitions(ctx context.Context) (map[string]
 	result := make(map[string][]int)
 	for _, topic := range metadata.Topics {
 		partitions := make([]int, 0)
-		if kedautil.Contains(s.metadata.Topic, topic.Name) {
+		if slices.Contains(s.metadata.Topic, topic.Name) {
 			for _, partition := range topic.Partitions {
 				if (len(s.metadata.PartitionLimitation) == 0) ||
-					(len(s.metadata.PartitionLimitation) > 0 && kedautil.Contains(s.metadata.PartitionLimitation, partition.ID)) {
+					(len(s.metadata.PartitionLimitation) > 0 && slices.Contains(s.metadata.PartitionLimitation, partition.ID)) {
 					partitions = append(partitions, partition.ID)
 				}
 			}

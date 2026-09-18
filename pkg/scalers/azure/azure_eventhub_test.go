@@ -270,6 +270,36 @@ func TestShouldParseCheckpointForFunction(t *testing.T) {
 	assert.Equal(t, path, "eventhubnamespace.servicebus.windows.net/hub-test/$Default/0")
 }
 
+func TestHasEventHubEntityPath(t *testing.T) {
+	testCases := []struct {
+		name             string
+		connectionString string
+		expected         bool
+	}{
+		{
+			name:             "connection string with EntityPath",
+			connectionString: "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=secretKey123;EntityPath=hub-test",
+			expected:         true,
+		},
+		{
+			name:             "connection string with lower-case entitypath",
+			connectionString: "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=secretKey123;entitypath=hub-test",
+			expected:         true,
+		},
+		{
+			name:             "connection string value contains EntityPath",
+			connectionString: "Endpoint=sb://EntityPath.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=secretKey123",
+			expected:         false,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			assert.Equal(t, testCase.expected, HasEventHubEntityPath(testCase.connectionString))
+		})
+	}
+}
+
 func TestShouldParseCheckpointForFunctionWithCheckpointStrategy(t *testing.T) {
 	eventHubInfo := EventHubInfo{
 		EventHubConnection:    "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;EntityPath=hub-test",

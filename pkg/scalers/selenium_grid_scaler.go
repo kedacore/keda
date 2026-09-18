@@ -42,6 +42,7 @@ type seleniumGridScalerMetadata struct {
 	NodeMaxSessions        int64  `keda:"name=nodeMaxSessions,          order=triggerMetadata, default=1"`
 	EnableManagedDownloads bool   `keda:"name=enableManagedDownloads,   order=triggerMetadata, default=true"`
 	Capabilities           string `keda:"name=capabilities,             order=triggerMetadata, optional"`
+	IncludeOngoingSessions bool   `keda:"name=includeOngoingSessions,   order=triggerMetadata, default=true"`
 
 	TargetValue int64
 }
@@ -103,8 +104,8 @@ type Slot struct {
 }
 
 type Stereotypes []struct {
-	Slots      int64                  `json:"slots"`
-	Stereotype map[string]interface{} `json:"stereotype"`
+	Slots      int64          `json:"slots"`
+	Stereotype map[string]any `json:"stereotype"`
 }
 
 const EnableManagedDownloadsCapability = "se:downloadsEnabled"
@@ -113,8 +114,8 @@ var ExtensionCapabilitiesPrefixes = []string{"goog:", "moz:", "ms:", "se:"}
 var FunctionCapabilitiesPrefixes = []string{EnableManagedDownloadsCapability}
 
 // Follow pattern in https://github.com/SeleniumHQ/selenium/blob/trunk/java/src/org/openqa/selenium/grid/data/DefaultSlotMatcher.java
-func filterCapabilities(capabilities map[string]interface{}) map[string]interface{} {
-	filteredCapabilities := map[string]interface{}{}
+func filterCapabilities(capabilities map[string]any) map[string]any {
+	filteredCapabilities := map[string]any{}
 
 	for key, value := range capabilities {
 		retain := true
@@ -162,8 +163,8 @@ func NewSeleniumGridScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseCapabilitiesToMap(_capabilities string) (map[string]interface{}, error) {
-	capabilities := map[string]interface{}{}
+func parseCapabilitiesToMap(_capabilities string) (map[string]any, error) {
+	capabilities := map[string]any{}
 	if _capabilities != "" {
 		if err := json.Unmarshal([]byte(_capabilities), &capabilities); err != nil {
 			return nil, err
@@ -204,9 +205,33 @@ func (s *seleniumGridScaler) GetMetricsAndActivity(ctx context.Context, metricNa
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error requesting selenium grid endpoint: %w", err)
 	}
 
-	metric := GenerateMetricInMili(metricName, float64(newRequestNodes+onGoingSessions))
+	// The metric returned to KEDA represents the number of Nodes (Job pods) the Grid needs.
+	// On-going sessions are work the Grid is already serving, so whether they belong in the
+	// metric depends on whether the consumer subtracts already-running work for us:
+	//
+	//   * ScaledObjects (HPA), and ScaledJobs using the "default" or "custom" strategy, deduct
+	//     the running Job count from the desired scale ("custom" deducts
+	//     customScalingRunningJobPercentage of it). On-going sessions are served by running
+	//     Jobs, so they cancel out in that deduction: the metric must report queued requests
+	//     PLUS on-going sessions for the arithmetic to resolve to the number of *new* Nodes to
+	//     create. This is the default.
+	//
+	//   * ScaledJobs using "accurate" deduct the pending Job count, and "eager" deducts the
+	//     running and pending Job counts (bounded by maxScale). These strategies do not re-add
+	//     running work, so counting on-going sessions here double-counts work already in
+	//     progress and causes runaway Job creation that never scales back down (see
+	//     SeleniumHQ/docker-selenium#3167). Set includeOngoingSessions=false for these, so the
+	//     metric reports only the new Nodes required to drain the session queue.
+	//
+	// See pkg/scaling/executor/scale_jobs.go for how the executor computes effective max scale.
+	count := newRequestNodes
+	if s.metadata.IncludeOngoingSessions {
+		count += onGoingSessions
+	}
 
-	return []external_metrics.ExternalMetricValue{metric}, (newRequestNodes + onGoingSessions) > s.metadata.ActivationThreshold, nil
+	metric := GenerateMetricInMili(metricName, float64(count))
+
+	return []external_metrics.ExternalMetricValue{metric}, count > s.metadata.ActivationThreshold, nil
 }
 
 func buildSeleniumGridMetricName(meta *seleniumGridScalerMetadata) string {
@@ -282,7 +307,7 @@ func (s *seleniumGridScaler) getSessionsQueueLength(ctx context.Context, logger 
 	return newRequestNodes, onGoingSession, nil
 }
 
-func getCapability(capability map[string]interface{}, key string) string {
+func getCapability(capability map[string]any, key string) string {
 	value, ok := capability[key]
 	if ok {
 		return value.(string)
@@ -290,19 +315,19 @@ func getCapability(capability map[string]interface{}, key string) string {
 	return ""
 }
 
-func getBrowserName(capability map[string]interface{}) string {
+func getBrowserName(capability map[string]any) string {
 	return getCapability(capability, "browserName")
 }
 
-func getBrowserVersion(capability map[string]interface{}) string {
+func getBrowserVersion(capability map[string]any) string {
 	return getCapability(capability, "browserVersion")
 }
 
-func getPlatformName(capability map[string]interface{}) string {
+func getPlatformName(capability map[string]any) string {
 	return getCapability(capability, "platformName")
 }
 
-func countMatchingSlotsStereotypes(stereotypes Stereotypes, browserName string, browserVersion string, sessionBrowserName string, platformName string, capabilities map[string]interface{}) int64 {
+func countMatchingSlotsStereotypes(stereotypes Stereotypes, browserName string, browserVersion string, sessionBrowserName string, platformName string, capabilities map[string]any) int64 {
 	var matchingSlots int64
 	for _, stereotype := range stereotypes {
 		if checkStereotypeCapabilitiesMatch(stereotype.Stereotype, browserName, browserVersion, sessionBrowserName, platformName, capabilities) {
@@ -312,10 +337,10 @@ func countMatchingSlotsStereotypes(stereotypes Stereotypes, browserName string, 
 	return matchingSlots
 }
 
-func countMatchingSessions(sessions Sessions, browserName string, browserVersion string, sessionBrowserName string, platformName string, capabilities map[string]interface{}, logger logr.Logger) int64 {
+func countMatchingSessions(sessions Sessions, browserName string, browserVersion string, sessionBrowserName string, platformName string, capabilities map[string]any, logger logr.Logger) int64 {
 	var matchingSessions int64
 	for _, session := range sessions {
-		var capability map[string]interface{}
+		var capability map[string]any
 		if err := json.Unmarshal([]byte(session.Slot.Stereotype), &capability); err == nil {
 			if checkStereotypeCapabilitiesMatch(capability, browserName, browserVersion, sessionBrowserName, platformName, capabilities) {
 				matchingSessions++
@@ -327,7 +352,7 @@ func countMatchingSessions(sessions Sessions, browserName string, browserVersion
 	return matchingSessions
 }
 
-func managedDownloadsEnabled(stereotype map[string]interface{}, capabilities map[string]interface{}) bool {
+func managedDownloadsEnabled(stereotype map[string]any, capabilities map[string]any) bool {
 	// First lets check if user wanted a Node with managed downloads enabled
 	value1, ok1 := capabilities[EnableManagedDownloadsCapability]
 	if !ok1 || !value1.(bool) {
@@ -340,7 +365,7 @@ func managedDownloadsEnabled(stereotype map[string]interface{}, capabilities map
 	return ok2 && value2.(bool)
 }
 
-func extensionCapabilitiesMatch(stereotype map[string]interface{}, capabilities map[string]interface{}) bool {
+func extensionCapabilitiesMatch(stereotype map[string]any, capabilities map[string]any) bool {
 	capabilities = filterCapabilities(capabilities)
 	if len(capabilities) == 0 {
 		return true
@@ -357,7 +382,7 @@ func extensionCapabilitiesMatch(stereotype map[string]interface{}, capabilities 
 }
 
 // This function checks if the request capabilities match the scaler metadata
-func checkRequestCapabilitiesMatch(request map[string]interface{}, browserName string, browserVersion string, _ string, platformName string, capabilities map[string]interface{}) bool {
+func checkRequestCapabilitiesMatch(request map[string]any, browserName string, browserVersion string, _ string, platformName string, capabilities map[string]any) bool {
 	// Check if browserName matches
 	_browserName := getBrowserName(request)
 	browserNameMatch := (_browserName == "" && browserName == "") ||
@@ -376,7 +401,7 @@ func checkRequestCapabilitiesMatch(request map[string]interface{}, browserName s
 }
 
 // This function checks if Node stereotypes or ongoing sessions match the scaler metadata
-func checkStereotypeCapabilitiesMatch(capability map[string]interface{}, browserName string, browserVersion string, sessionBrowserName string, platformName string, capabilities map[string]interface{}) bool {
+func checkStereotypeCapabilitiesMatch(capability map[string]any, browserName string, browserVersion string, sessionBrowserName string, platformName string, capabilities map[string]any) bool {
 	// Check if browserName matches
 	_browserName := getBrowserName(capability)
 	browserNameMatch := (_browserName == "" && browserName == "") ||
@@ -444,7 +469,7 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 	var onGoingSessions int64
 	for requestIndex, sessionQueueRequest := range sessionQueueRequests {
 		var isRequestMatched bool
-		var requestCapability map[string]interface{}
+		var requestCapability map[string]any
 		if err := json.Unmarshal([]byte(sessionQueueRequest), &requestCapability); err == nil {
 			if checkRequestCapabilitiesMatch(requestCapability, browserName, browserVersion, sessionBrowserName, platformName, capabilities) {
 				queueSlots++

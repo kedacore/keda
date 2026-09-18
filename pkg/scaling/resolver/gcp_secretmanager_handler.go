@@ -84,7 +84,7 @@ func (vh *GCPSecretManagerHandler) Initialize(ctx context.Context, client client
 			return fmt.Errorf("failed to create secretmanager client, %w", err)
 		}
 
-		gcpCredentialsMap := make(map[string]interface{})
+		gcpCredentialsMap := make(map[string]any)
 		if err := json.Unmarshal([]byte(clientSecret), &gcpCredentialsMap); err != nil {
 			return fmt.Errorf("failed to unmarshal gcp credentials key into a map, %w", err)
 		}

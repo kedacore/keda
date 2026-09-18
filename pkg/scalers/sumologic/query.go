@@ -13,6 +13,7 @@ type Query struct {
 	TimeRange        time.Duration
 	Timezone         string
 	Aggregator       string
+	IgnoreNullValues bool
 }
 
 type QueryBuilder struct {
@@ -72,6 +73,11 @@ func (qb *QueryBuilder) Timezone(timezone string) *QueryBuilder {
 
 func (qb *QueryBuilder) Aggregator(aggregator string) *QueryBuilder {
 	qb.query.Aggregator = aggregator
+	return qb
+}
+
+func (qb *QueryBuilder) IgnoreNullValues(ignoreNullValues bool) *QueryBuilder {
+	qb.query.IgnoreNullValues = ignoreNullValues
 	return qb
 }
 

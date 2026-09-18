@@ -55,8 +55,8 @@ func (tc *TestConfig) Validate() error {
 		}
 		for i, test := range cat.Tests {
 			// check if there's trailing slashes in the path, if so, don't throw an error, just remove them
-			if strings.HasSuffix(test, string(os.PathSeparator)) {
-				cat.Tests[i] = strings.TrimSuffix(test, string(os.PathSeparator))
+			if before, ok := strings.CutSuffix(test, string(os.PathSeparator)); ok {
+				cat.Tests[i] = before
 			}
 		}
 	}

@@ -217,8 +217,10 @@ func testPollingIntervalUp(t *testing.T, kc *kubernetes.Clientset, data template
 	data.MetricValue = 0
 	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
-	// wait some seconds to finish the job
-	WaitForJobCount(t, kc, namespace, 0, 15, 2)
+	// The job posting the metric value sets ttlSecondsAfterFinished: 0, so the count falling back to
+	// zero is what says the new value has been posted rather than merely requested.
+	assert.True(t, WaitForJobCount(t, kc, namespace, 0, 15, 2),
+		"the job posting the metric value should finish within 30 seconds")
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 18, 10),
 		"replica count should be %d after 3 minutes", minReplicas)
@@ -248,8 +250,10 @@ func testPollingIntervalDown(t *testing.T, kc *kubernetes.Clientset, data templa
 	data.MetricValue = 1
 	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
-	// wait some seconds to finish the job
-	WaitForJobCount(t, kc, namespace, 0, 15, 2)
+	// The job posting the metric value sets ttlSecondsAfterFinished: 0, so the count falling back to
+	// zero is what says the new value has been posted rather than merely requested.
+	assert.True(t, WaitForJobCount(t, kc, namespace, 0, 15, 2),
+		"the job posting the metric value should finish within 30 seconds")
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 18, 10),
 		"replica count should be %d after 3 minutes", minReplicas)
@@ -284,8 +288,10 @@ func testCooldownPeriod(t *testing.T, kc *kubernetes.Clientset, data templateDat
 	data.MetricValue = 1
 	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
-	// wait some seconds to finish the job
-	WaitForJobCount(t, kc, namespace, 0, 15, 2)
+	// The job posting the metric value sets ttlSecondsAfterFinished: 0, so the count falling back to
+	// zero is what says the new value has been posted rather than merely requested.
+	assert.True(t, WaitForJobCount(t, kc, namespace, 0, 15, 2),
+		"the job posting the metric value should finish within 30 seconds")
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 18, 10),
 		"replica count should be %d after 3 minutes", 1)

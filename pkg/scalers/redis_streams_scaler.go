@@ -207,7 +207,7 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 			}
 			infoLines := strings.Split(info, "\n")
 			versionFound := false
-			for i := 0; i < len(infoLines); i++ {
+			for i := range infoLines {
 				line := infoLines[i]
 				lineSplit := strings.Split(line, ":")
 				if len(lineSplit) > 1 {
@@ -244,7 +244,7 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 			// If the stream has been created, then we find the consumer group
 			// associated with this scaler and return its lag.
 			numGroups := len(groups)
-			for i := 0; i < numGroups; i++ {
+			for i := range numGroups {
 				group := groups[i]
 				if group.Name == meta.ConsumerGroupName {
 					return group.Lag, nil

@@ -434,6 +434,14 @@ func RMQStopPublishingMessages(namespace, queueName string) {
 	_, _ = helper.ExecuteCommand(fmt.Sprintf("kubectl delete jobs/rabbitmq-publish-%s --namespace %s", queueName, namespace))
 }
 
+// RMQPurgeQueue drops the messages remaining in the queue, so scale-in
+// assertions measure the scaler reacting to an empty queue instead of how fast
+// the consumers drain the backlog.
+func RMQPurgeQueue(t *testing.T, namespace, queueName, vhost string) {
+	out, err := helper.ExecuteCommand(fmt.Sprintf("kubectl exec -n %s deploy/rabbitmq -- rabbitmqctl purge_queue %s -p %s", namespace, queueName, vhost))
+	require.NoErrorf(t, err, "cannot purge queue - %s, %s", err, out)
+}
+
 func RMQConsumeMessages(t *testing.T, namespace, connectionString, queueName string) {
 	data := templateData{
 		Namespace:  namespace,

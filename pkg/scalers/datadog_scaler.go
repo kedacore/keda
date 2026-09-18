@@ -12,7 +12,8 @@ import (
 	"strings"
 	"time"
 
-	datadog "github.com/DataDog/datadog-api-client-go/api/v1/datadog"
+	datadog "github.com/DataDog/datadog-api-client-go/v2/api/datadog"
+	"github.com/DataDog/datadog-api-client-go/v2/api/datadogV1"
 	"github.com/go-logr/logr"
 	"github.com/tidwall/gjson"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -28,6 +29,7 @@ import (
 type datadogScaler struct {
 	metadata             *datadogMetadata
 	apiClient            *datadog.APIClient
+	metricsAPI           *datadogV1.MetricsApi
 	httpClient           *http.Client
 	logger               logr.Logger
 	useClusterAgentProxy bool
@@ -42,10 +44,8 @@ type datadogMetadata struct {
 	DatadogMetricsServicePort int    `keda:"name=datadogMetricsServicePort, order=authParams, default=8443"`
 	UnsafeSsl                 bool   `keda:"name=unsafeSsl,                 order=authParams, default=false"`
 
-	// bearer auth Cluster Agent Proxy
-	AuthMode         string `keda:"name=authMode,  order=authParams, optional"`
-	EnableBearerAuth bool
-	BearerToken      string `keda:"name=token,     order=authParams,      optional"`
+	// auth for Cluster Agent Proxy
+	AuthConfig *authentication.Config `keda:"optional"`
 
 	// TriggerMetadata Cluster Agent Proxy
 	DatadogMetricServiceURL string
@@ -94,6 +94,7 @@ func NewDatadogScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	logger := InitializeLogger(config, "datadog_scaler")
 
 	var apiClient *datadog.APIClient
+	var metricsAPI *datadogV1.MetricsApi
 	var httpClient *http.Client
 
 	meta := &datadogMetadata{}
@@ -116,12 +117,14 @@ func NewDatadogScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 			return nil, err
 		}
 		apiClient = newDatadogAPIClient(meta)
+		metricsAPI = datadogV1.NewMetricsApi(apiClient)
 	}
 
 	return &datadogScaler{
 		metricType:           metricType,
 		metadata:             meta,
 		apiClient:            apiClient,
+		metricsAPI:           metricsAPI,
 		httpClient:           httpClient,
 		logger:               logger,
 		useClusterAgentProxy: meta.UseClusterAgentProxy,
@@ -306,7 +309,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 
 	httpClientTimeout := s.apiClient.GetConfig().HTTPClient.Timeout
 	startTime := time.Now()
-	resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, timeWindowFrom, timeWindowTo, s.metadata.Query) //nolint:bodyclose
+	resp, r, err := s.metricsAPI.QueryMetrics(ctx, timeWindowFrom, timeWindowTo, s.metadata.Query) //nolint:bodyclose
 	elapsed := time.Since(startTime)
 
 	if r != nil {
@@ -384,7 +387,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 
 	// Collect all latest point values from any/all series
 	results := make([]float64, len(series))
-	for i := 0; i < len(series); i++ {
+	for i := range series {
 		points := series[i].GetPointlist()
 		index := len(points) - 1
 		// Find out the last point != nil
@@ -479,8 +482,8 @@ func (s *datadogScaler) getDatadogClusterAgentHTTPRequest(ctx context.Context, u
 		return nil, err
 	}
 
-	if s.metadata.EnableBearerAuth {
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.metadata.BearerToken))
+	if s.metadata.AuthConfig.EnabledBearerAuth() {
+		req.Header.Add("Authorization", s.metadata.AuthConfig.GetBearerToken())
 	}
 
 	return req, nil
@@ -557,17 +560,8 @@ func (s *datadogMetadata) Validate() error {
 			return fmt.Errorf("error in query: %w", err)
 		}
 	}
-	if s.AuthMode != "" {
-		authType := authentication.Type(strings.TrimSpace(s.AuthMode))
-		switch authType {
-		case authentication.BearerAuthType:
-			if s.BearerToken == "" {
-				return fmt.Errorf("BearerToken is required")
-			}
-			s.EnableBearerAuth = true
-		default:
-			return fmt.Errorf("err incorrect value for authMode is given: %s", s.AuthMode)
-		}
+	if err := s.AuthConfig.ValidateAllowed(authentication.BearerAuthType); err != nil {
+		return err
 	}
 	return nil
 }

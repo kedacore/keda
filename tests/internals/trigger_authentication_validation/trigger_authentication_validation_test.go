@@ -142,8 +142,10 @@ func testTriggerAuthenticationWithNilID(t *testing.T, _ *kubernetes.Clientset, d
 
 	KubectlApplyWithTemplate(t, data, "triggerAuthWorkloadNilITemplate", triggerAuthWorkloadNilIDTemplate)
 
-	triggerauthentication, _ := kedaKc.TriggerAuthentications(testNamespace).Get(context.Background(), triggerAuthWorkloadNilIDName, v1.GetOptions{})
-	assert.NotNil(t, triggerauthentication)
+	// Asserting on the error rather than on the returned object: the generated client returns a
+	// non-nil zero value alongside a NotFound, so a nil check passes whether or not it was created.
+	_, err := kedaKc.TriggerAuthentications(testNamespace).Get(context.Background(), triggerAuthWorkloadNilIDName, v1.GetOptions{})
+	assert.NoErrorf(t, err, "TriggerAuthentication %s should have been created without an identity id - %s", triggerAuthWorkloadNilIDName, err)
 }
 
 // expect clustertriggerauthentication should not be created with empty identity id
@@ -161,7 +163,9 @@ func testClusterTriggerAuthenticationWithNilID(t *testing.T, _ *kubernetes.Clien
 	kedaKc := GetKedaKubernetesClient(t)
 
 	KubectlApplyWithTemplate(t, data, "clusterTriggerAuthWorkloadNilIDTemplate", clusterTriggerAuthWorkloadNilIDTemplate)
+	// Cluster-scoped, so deleting the test namespace does not remove it.
+	defer KubectlDeleteWithTemplate(t, data, "clusterTriggerAuthWorkloadNilIDTemplate", clusterTriggerAuthWorkloadNilIDTemplate)
 
-	clustertriggerauthentication, _ := kedaKc.ClusterTriggerAuthentications().Get(context.Background(), clusterTriggerAuthWorkloadNilIDTemplate, v1.GetOptions{})
-	assert.NotNil(t, clustertriggerauthentication)
+	_, err := kedaKc.ClusterTriggerAuthentications().Get(context.Background(), clusterTriggerAuthWorkloadNilIDName, v1.GetOptions{})
+	assert.NoErrorf(t, err, "ClusterTriggerAuthentication %s should have been created without an identity id - %s", clusterTriggerAuthWorkloadNilIDName, err)
 }

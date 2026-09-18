@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -93,7 +93,9 @@ func NewMongoDBScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (
 		return nil, fmt.Errorf("error parsing mongodb metadata: %w", err)
 	}
 
-	client, err := createMongoDBClient(ctx, meta)
+	logger := InitializeLogger(config, "mongodb_scaler")
+
+	client, err := createMongoDBClient(ctx, meta, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error creating mongodb client: %w", err)
 	}
@@ -102,7 +104,7 @@ func NewMongoDBScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (
 		metricType: metricType,
 		metadata:   meta,
 		client:     client,
-		logger:     InitializeLogger(config, "mongodb_scaler"),
+		logger:     logger,
 	}, nil
 }
 
@@ -117,7 +119,7 @@ func parseMongoDBMetadata(config *scalersconfig.ScalerConfig) (mongoDBMetadata, 
 	return meta, nil
 }
 
-func createMongoDBClient(ctx context.Context, meta mongoDBMetadata) (*mongo.Client, error) {
+func createMongoDBClient(ctx context.Context, meta mongoDBMetadata, logger logr.Logger) (*mongo.Client, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -148,13 +150,18 @@ func createMongoDBClient(ctx context.Context, meta mongoDBMetadata) (*mongo.Clie
 		clientOptions.SetTLSConfig(tlsConfig)
 	}
 
-	client, err := mongo.Connect(ctx, clientOptions)
+	client, err := mongo.Connect(clientOptions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create mongodb client: %w", err)
 	}
 
 	err = client.Ping(ctx, readpref.Primary())
 	if err != nil {
+		disconnectCtx, disconnectCancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+		defer disconnectCancel()
+		if disconnectErr := client.Disconnect(disconnectCtx); disconnectErr != nil {
+			logger.Error(disconnectErr, "failed to disconnect mongodb client after ping failure, connection may be leaked")
+		}
 		return nil, fmt.Errorf("failed to ping mongodb: %w", err)
 	}
 

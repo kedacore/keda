@@ -83,12 +83,12 @@ func (vh *HashicorpVaultHandler) Initialize(logger logr.Logger) error {
 		return err
 	}
 
+	vh.client = client
+
 	if renew, ok := lookup.Data["renewable"].(bool); ok && renew {
 		vh.stopCh = make(chan struct{})
 		go vh.renewToken(logger)
 	}
-
-	vh.client = client
 
 	return nil
 }
@@ -140,7 +140,7 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 			}
 		}
 
-		data := map[string]interface{}{"jwt": string(jwt), "role": vh.vault.Role}
+		data := map[string]any{"jwt": string(jwt), "role": vh.vault.Role}
 		secret, err := client.Logical().Write(fmt.Sprintf("auth/%s/login", vh.vault.Mount), data)
 		if err != nil {
 			return token, err
@@ -159,6 +159,7 @@ func (vh *HashicorpVaultHandler) renewToken(logger logr.Logger) {
 	secret, err := vh.client.Auth().Token().RenewSelf(0)
 	if err != nil {
 		logger.Error(err, "Vault renew token: failed to create the payload")
+		return
 	}
 
 	renewer, err := vh.client.NewLifetimeWatcher(&vaultapi.RenewerInput{
@@ -168,13 +169,11 @@ func (vh *HashicorpVaultHandler) renewToken(logger logr.Logger) {
 	})
 	if err != nil {
 		logger.Error(err, "Vault renew token: cannot create the renewer")
+		return
 	}
 
 	go renewer.Renew()
-	defer func() {
-		renewer.Stop()
-		close(vh.stopCh)
-	}()
+	defer renewer.Stop()
 
 RenewWatcherLoop:
 	for {
@@ -196,20 +195,20 @@ func (vh *HashicorpVaultHandler) Read(path string) (*vaultapi.Secret, error) {
 }
 
 // Write is used to get a secret from vault that needs to pass along data and uses the vault Write api. (e.g., pki)
-func (vh *HashicorpVaultHandler) Write(path string, data map[string]interface{}) (*vaultapi.Secret, error) {
+func (vh *HashicorpVaultHandler) Write(path string, data map[string]any) (*vaultapi.Secret, error) {
 	return vh.client.Logical().Write(path, data)
 }
 
 // Stop is responsible for stopping the renewal token process
 func (vh *HashicorpVaultHandler) Stop() {
 	if vh.stopCh != nil {
-		vh.stopCh <- struct{}{}
+		close(vh.stopCh)
 	}
 }
 
 // getPkiRequest format the pkiData in a format that the vault sdk understands.
-func (vh *HashicorpVaultHandler) getPkiRequest(pkiData *kedav1alpha1.VaultPkiData) map[string]interface{} {
-	data := make(map[string]interface{})
+func (vh *HashicorpVaultHandler) getPkiRequest(pkiData *kedav1alpha1.VaultPkiData) map[string]any {
+	data := make(map[string]any)
 	if pkiData.CommonName != "" {
 		data["common_name"] = pkiData.CommonName
 	}
@@ -251,7 +250,7 @@ func (vh *HashicorpVaultHandler) getSecretValue(secret *kedav1alpha1.VaultSecret
 		if vData, ok := vaultSecret.Data[secret.Key]; ok {
 			if secret.Key == "ca_chain" {
 				// Cast the secret to []interface{}
-				if ai, ok := vData.([]interface{}); ok {
+				if ai, ok := vData.([]any); ok {
 					// Cast the secret to []string
 					stringSlice := make([]string, len(ai))
 					for i, v := range ai {
@@ -282,7 +281,7 @@ func (vh *HashicorpVaultHandler) getSecretValue(secret *kedav1alpha1.VaultSecret
 		err := fmt.Errorf("key '%s' not found", secret.Key)
 		return "", err
 	case kedav1alpha1.VaultSecretTypeSecretV2:
-		if v2Data, ok := vaultSecret.Data["data"].(map[string]interface{}); ok {
+		if v2Data, ok := vaultSecret.Data["data"].(map[string]any); ok {
 			if value, ok := v2Data[secret.Key]; ok {
 				if s, ok := value.(string); ok {
 					return s, nil

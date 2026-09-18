@@ -6,12 +6,7 @@ If a rule here conflicts with `CONTRIBUTING.md`, follow `CONTRIBUTING.md` and fl
 
 ## Zero-spam & PR authorization policy
 
-- **Require an issue:** DO NOT create a Pull Request unless there is an existing, open, and approved GitHub Issue that explicitly requests this work. Drive-by PRs, speculative refactors, "found a typo" PRs, and unsolicited feature work are not accepted.
-- **Require assignment:** DO NOT start work on an issue unless it is assigned to the human user driving you. An unassigned issue is not an invitation to start coding. If the human has not been assigned, ask them to request assignment from a maintainer first and wait.
-- **Respect claimed issues**: If someone has commented that they intend to work on the issue, or has been assigned to it, do not open a competing PR, push commits, or start a draft PR. However, if there has been no visible progress for an extended period, it is acceptable to politely ask whether they are still actively working on it before taking further action.
-- **Stay inside the issue's scope:** Implement only what the issue describes. If you discover related problems, mention them in the PR description or open a separate issue. Do not silently expand the scope.
-- **One issue, one PR:** Do not bundle multiple issues into a single PR, and do not split a single issue across multiple PRs without coordinating in the issue first.
-- **No PR for chores that already have automation:** Dependency bumps (Renovate/Dependabot), changelog regeneration, generated-file refreshes, and similar housekeeping are handled by bots or release tooling. Do not open PRs that duplicate that work.
+Follow the [Zero-spam & PR authorization policy](CONTRIBUTING.md#zero-spam--pr-authorization-policy) in `CONTRIBUTING.md`. DO NOT under any circumstance attempt to bypass these rules.
 
 ## Pull request rules
 
@@ -47,20 +42,13 @@ Optionally install [pre-commit](https://pre-commit.com) and run `pre-commit run 
 - Do not delete existing tests to make a build green. If a test is genuinely wrong, explain why in the PR description.
 - Do not weaken assertions (e.g. replacing exact checks with `assert.NotNil`) just to make a flaky test pass.
 
-## Changelog
+## Release notes metadata
 
-Every user-visible change must be added to [`CHANGELOG.md`](CHANGELOG.md) under the `## Unreleased` section. The pre-commit hook [`hack/validate-changelog.sh`](hack/validate-changelog.sh) verifies this.
+Release notes are generated automatically from merged PR metadata via the release-notes workflows.
 
-Rules (from [`CONTRIBUTING.md#Changelog`](CONTRIBUTING.md#changelog)):
+Rules (from [`CONTRIBUTING.md#release-notes`](CONTRIBUTING.md#release-notes)):
 
-- Place the entry under the correct subsection: `### New`, `### Improvements`, `### Fixes`, `### Deprecations`, `### Breaking Changes`, or `### Other`.
-- Format: `- **<Scaler Name>**: <Description> ([#<ID>](https://github.com/kedacore/keda/issues/<ID>))`.
-  - Use `**General**:` for cross-cutting changes; these go at the top of the subsection.
-  - Otherwise use the scaler name (e.g. `**Kafka Scaler**:`).
-- Entries are sorted **alphabetically** within each subsection, with `General` always first.
-- `<ID>` should preferably link to an issue; if none exists, link the PR.
-- New scaler template: `**General**: Introduce new XXXXXX Scaler ([#ISSUE](https://github.com/kedacore/keda/issues/ISSUE))`.
-- Internal-only changes (refactors, test-only changes, CI tweaks) do **not** require a changelog entry.
+- PR titles must follow `Component: Description`. The release notes renderer bolds the component automatically.
 
 ## Commit hygiene
 

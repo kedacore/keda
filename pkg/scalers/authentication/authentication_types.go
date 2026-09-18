@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -93,12 +94,7 @@ func (c *Config) Enabled(mode Type) bool {
 	if c == nil {
 		return false
 	}
-	for _, m := range c.Modes {
-		if m == mode {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(c.Modes, mode)
 }
 
 // helpers for checking enabled auth modes
@@ -140,6 +136,23 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("apiKey is required when apiKey auth is enabled")
 	}
 	return nil
+}
+
+// ValidateAllowed runs Validate and additionally enforces that the configured auth modes are limited to the set of modes a scaler explicitly supports.
+func (c *Config) ValidateAllowed(allowed ...Type) error {
+	if c.Disabled() {
+		return nil
+	}
+	allowedSet := make(map[Type]struct{}, len(allowed))
+	for _, m := range allowed {
+		allowedSet[m] = struct{}{}
+	}
+	for _, m := range c.Modes {
+		if _, ok := allowedSet[m]; !ok {
+			return fmt.Errorf("auth mode %q is not supported by this scaler; supported modes: %v", m, allowed)
+		}
+	}
+	return c.Validate()
 }
 
 // Normalize removes whitespace-only entries from Scopes.

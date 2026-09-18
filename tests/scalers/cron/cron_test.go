@@ -24,9 +24,8 @@ var (
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
 
-	now   = time.Now().Local()
-	start = (now.Minute() + 1) % 60
-	end   = (start + 1) % 60
+	start int
+	end   int
 )
 
 type templateData struct {
@@ -92,6 +91,12 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
+
+	// Compute the cron schedule just before creating resources so the
+	// trigger window does not expire during setup.
+	now := time.Now().Local()
+	start = (now.Minute() + 1) % 60
+	end = (start + 1) % 60
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
