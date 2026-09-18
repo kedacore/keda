@@ -151,7 +151,7 @@ func newCacheWithScaler(s scalers.Scaler) *ScalersCache {
 		Scalers: []ScalerBuilder{{
 			Scaler:       s,
 			ScalerConfig: scalersconfig.ScalerConfig{},
-			Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+			Factory: func(context.Context, context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 				return s, &scalersconfig.ScalerConfig{}, nil
 			},
 		}},
@@ -173,6 +173,92 @@ func TestScalersCache_CloseIsIdempotent(t *testing.T) {
 	if got := scaler.closeCount.Load(); got != 1 {
 		t.Fatalf("Scaler.Close called %d times, want 1", got)
 	}
+}
+
+func TestScalersCache_CloseCancelsScalerContext(t *testing.T) {
+	scaler := newFakeScaler(nil)
+	scalerCtx, cancel := context.WithCancel(context.Background())
+	cache := newCacheWithScaler(scaler)
+	cache.Scalers[0].CancelContext = cancel
+
+	cache.Close(context.Background())
+
+	select {
+	case <-scalerCtx.Done():
+	default:
+		t.Fatal("scaler context was not canceled when the cache closed")
+	}
+}
+
+func TestScalersCache_RefreshReplacesScalerContext(t *testing.T) {
+	oldScaler := newFakeScaler(nil)
+	newScaler := newFakeScaler(nil)
+	oldCtx, oldCancel := context.WithCancel(context.Background())
+	var newCtx context.Context
+
+	cache := newCacheWithScaler(oldScaler)
+	cache.Scalers[0].CancelContext = oldCancel
+	cache.Scalers[0].Factory = func(_ context.Context, ctx context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		newCtx = ctx
+		return newScaler, &scalersconfig.ScalerConfig{}, nil
+	}
+
+	got, err := cache.refreshScaler(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("refreshScaler returned an error: %v", err)
+	}
+	if got != newScaler {
+		t.Fatalf("refreshScaler returned %T, want the replacement scaler", got)
+	}
+
+	select {
+	case <-oldCtx.Done():
+	default:
+		t.Fatal("old scaler context was not canceled during refresh")
+	}
+	select {
+	case <-newCtx.Done():
+		t.Fatal("replacement scaler context was canceled during refresh")
+	default:
+	}
+
+	cache.Close(context.Background())
+	select {
+	case <-newCtx.Done():
+	default:
+		t.Fatal("replacement scaler context was not canceled when the cache closed")
+	}
+}
+
+func TestScalersCache_FailedRefreshCancelsOnlyReplacementContext(t *testing.T) {
+	oldScaler := newFakeScaler(nil)
+	oldCtx, oldCancel := context.WithCancel(context.Background())
+	var replacementCtx context.Context
+
+	cache := newCacheWithScaler(oldScaler)
+	cache.Scalers[0].CancelContext = oldCancel
+	cache.Scalers[0].Factory = func(_ context.Context, ctx context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		replacementCtx = ctx
+		return nil, nil, errors.New("factory failed")
+	}
+
+	_, err := cache.refreshScaler(context.Background(), 0)
+	if err == nil {
+		t.Fatal("refreshScaler returned no error for a failed factory")
+	}
+
+	select {
+	case <-replacementCtx.Done():
+	default:
+		t.Fatal("failed replacement scaler context was not canceled")
+	}
+	select {
+	case <-oldCtx.Done():
+		t.Fatal("old scaler context was canceled after a failed refresh")
+	default:
+	}
+
+	cache.Close(context.Background())
 }
 
 func TestScalersCache_GetMetricsAndActivityForScaler_AfterCloseReturnsErrCacheClosed(t *testing.T) {

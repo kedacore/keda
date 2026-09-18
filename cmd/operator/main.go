@@ -62,6 +62,29 @@ var (
 	setupLog = ctrl.Log.WithName("setup")
 )
 
+func resolveScalerSetupTimeout() (time.Duration, error) {
+	timeoutValue, err := kedautil.ResolveOsEnvDuration("KEDA_SCALER_SETUP_TIMEOUT")
+	if err != nil {
+		return 0, err
+	}
+	if timeoutValue == nil {
+		return scaling.DefaultScalerSetupTimeout, nil
+	}
+	if *timeoutValue <= 0 {
+		return 0, errors.New("must be greater than zero")
+	}
+	return *timeoutValue, nil
+}
+
+func resolveScalerSetupTimeoutOrDie() time.Duration {
+	timeout, err := resolveScalerSetupTimeout()
+	if err != nil {
+		setupLog.Error(err, "invalid KEDA_SCALER_SETUP_TIMEOUT")
+		os.Exit(1)
+	}
+	return timeout
+}
+
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
@@ -251,6 +274,7 @@ func main() {
 	}
 
 	globalHTTPTimeout := time.Duration(globalHTTPTimeoutMS) * time.Millisecond
+	scalerSetupTimeout := resolveScalerSetupTimeoutOrDie()
 	kubernetesAPITimeout, err := resolveKubernetesAPITimeout()
 	if err != nil {
 		setupLog.Error(err, "invalid KEDA_KUBERNETES_API_TIMEOUT")
@@ -284,7 +308,7 @@ func main() {
 		SecretLister:    secretInformer.Lister(),
 	}
 
-	scaledHandler := scaling.NewScaleHandler(mgr.GetClient(), scaleClient, mgr.GetScheme(), globalHTTPTimeout, kubernetesAPITimeout, eventRecorder, authClientSet)
+	scaledHandler := scaling.NewScaleHandler(mgr.GetClient(), scaleClient, mgr.GetScheme(), globalHTTPTimeout, kubernetesAPITimeout, scalerSetupTimeout, eventRecorder, authClientSet)
 	eventEmitter := eventemitter.NewEventEmitter(mgr.GetClient(), eventRecorder, k8sClusterName, authClientSet)
 
 	if err = (&kedacontrollers.ScaledObjectReconciler{
@@ -304,6 +328,7 @@ func main() {
 		Scheme:               mgr.GetScheme(),
 		GlobalHTTPTimeout:    globalHTTPTimeout,
 		KubernetesAPITimeout: kubernetesAPITimeout,
+		ScalerSetupTimeout:   scalerSetupTimeout,
 		EventEmitter:         eventEmitter,
 		AuthClientSet:        authClientSet,
 	}).SetupWithManager(mgr, controller.Options{
