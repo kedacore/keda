@@ -260,5 +260,3 @@ func TestLoadGrpcTLSCredentialsConcurrentRotationRace(t *testing.T) {
 	close(stop)
 	wg.Wait()
 }
-
-
