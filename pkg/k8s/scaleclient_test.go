@@ -85,13 +85,24 @@ func TestPlainDiscoveryMapperPrefersPrefixGroupDependingOnOrder(t *testing.T) {
 	assert.Equal(t, appsV1StatefulSets, gvr, "apps first: exact match wins")
 }
 
+// versionsOf mimics discovery for the two test groups.
+func versionsOf(group string) ([]string, error) {
+	switch group {
+	case "apps":
+		return []string{"v1"}, nil
+	case "apps.kruise.io":
+		return []string{"v1beta1", "v1alpha1"}, nil
+	}
+	return nil, nil
+}
+
 func TestExactGroupMapperResourceFor(t *testing.T) {
 	for name, groups := range map[string][]*restmapper.APIGroupResources{
 		"kruise first": {kruiseGroup(), appsGroup()},
 		"apps first":   {appsGroup(), kruiseGroup()},
 	} {
 		t.Run(name, func(t *testing.T) {
-			m := exactGroupMapper{discoveryMapper(groups...)}
+			m := exactGroupMapper{RESTMapper: discoveryMapper(groups...), groupVersions: versionsOf}
 
 			gvr, err := m.ResourceFor(appsStatefulSets)
 			require.NoError(t, err)
@@ -108,16 +119,46 @@ func TestExactGroupMapperResourceFor(t *testing.T) {
 	}
 }
 
-func TestExactGroupMapperFallsBackWhenNoExactGroupMatch(t *testing.T) {
-	m := exactGroupMapper{discoveryMapper(kruiseGroup())}
+// lazyMapper mimics controller-runtime's lazy mapper: it starts with only some groups loaded and loads the
+// rest when a lookup fails, and a prefix match is not a failure.
+type lazyMapper struct {
+	meta.RESTMapper
+	full meta.RESTMapper
+}
 
-	// No "apps" group at all: keep apimachinery's prefix behaviour rather than inventing a new failure mode.
+func (l *lazyMapper) ResourceFor(input schema.GroupVersionResource) (schema.GroupVersionResource, error) {
+	gvr, err := l.RESTMapper.ResourceFor(input)
+	if meta.IsNoMatchError(err) {
+		l.RESTMapper = l.full
+		return l.full.ResourceFor(input)
+	}
+	return gvr, err
+}
+
+// Only apps.kruise.io is loaded when the scale client asks for apps/statefulsets: the prefix match is the only
+// candidate, so the wrapper must make the mapper discover "apps" instead of settling for the prefix match.
+func TestExactGroupMapperDiscoversRequestedGroupBeforeFallingBack(t *testing.T) {
+	lazy := &lazyMapper{RESTMapper: discoveryMapper(kruiseGroup()), full: discoveryMapper(kruiseGroup(), appsGroup())}
+	m := exactGroupMapper{RESTMapper: lazy, groupVersions: versionsOf}
+
 	gvr, err := m.ResourceFor(appsStatefulSets)
 	require.NoError(t, err)
-	assert.Equal(t, kruiseStatefulSets, gvr)
+	assert.Equal(t, appsV1StatefulSets, gvr)
 
-	// Nothing matches anywhere: the NoMatch error must surface unchanged so callers (and
-	// controller-runtime's lazy discovery) keep seeing it.
+	gvr, err = m.ResourceFor(appsStatefulSets)
+	require.NoError(t, err)
+	assert.Equal(t, appsV1StatefulSets, gvr, "second lookup is served from the now loaded group")
+}
+
+func TestExactGroupMapperNoMatchWhenGroupHasNoSuchResource(t *testing.T) {
+	m := exactGroupMapper{RESTMapper: discoveryMapper(kruiseGroup()), groupVersions: versionsOf}
+
+	// "apps" is not served by this cluster at all: never answer with another group's resource.
+	_, err := m.ResourceFor(appsStatefulSets)
+	require.Error(t, err)
+	assert.True(t, meta.IsNoMatchError(err))
+
+	// Nothing matches anywhere: still NoMatch.
 	_, err = m.ResourceFor(schema.GroupVersionResource{Group: "batch", Resource: "jobs"})
 	require.Error(t, err)
 	assert.True(t, meta.IsNoMatchError(err))
