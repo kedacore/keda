@@ -13,10 +13,13 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"golang.org/x/oauth2"
 	v2 "k8s.io/api/autoscaling/v2"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/aws"
@@ -73,7 +76,7 @@ type promQueryResult struct {
 }
 
 // NewPrometheusScaler creates a new prometheusScaler
-func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
+func NewPrometheusScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -106,6 +109,22 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 				return nil, err
 			}
 			httpClient.Transport = transport
+		}
+
+		if meta.PrometheusAuth.EnabledOAuth() {
+			if msg := meta.PrometheusAuth.InsecureOAuthWarning(); msg != "" {
+				logger.Info(msg)
+				if config.Recorder != nil {
+					config.Recorder.Eventf(config.ScaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", msg)
+				}
+			}
+
+			baseTransport := httpClient.Transport
+			tokenSource := meta.PrometheusAuth.OAuthTokenSource(ctx, &http.Client{
+				Timeout:   httpClientTimeout,
+				Transport: baseTransport,
+			})
+			httpClient.Transport = &oauth2.Transport{Source: tokenSource, Base: baseTransport}
 		}
 	} else {
 		// could be the case of azure managed prometheus. Try and get the round-tripper.

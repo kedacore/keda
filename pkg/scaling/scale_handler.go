@@ -90,6 +90,7 @@ type scaleHandler struct {
 	scaleLoopContexts        *sync.Map
 	scaleExecutor            executor.ScaleExecutor
 	globalHTTPTimeout        time.Duration
+	kubernetesAPITimeout     time.Duration
 	recorder                 events.EventRecorder
 	scalerCaches             map[string]*cache.ScalersCache
 	scalerCachesLock         *sync.RWMutex
@@ -105,13 +106,14 @@ type scaleHandler struct {
 }
 
 // NewScaleHandler creates a ScaleHandler object
-func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration, recorder events.EventRecorder, authClientSet *authentication.AuthClientSet) ScaleHandler {
+func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout, kubernetesAPITimeout time.Duration, recorder events.EventRecorder, authClientSet *authentication.AuthClientSet) ScaleHandler {
 	return &scaleHandler{
 		client:                   client,
 		scaleClient:              scaleClient,
 		scaleLoopContexts:        &sync.Map{},
-		scaleExecutor:            executor.NewScaleExecutor(client, scaleClient, reconcilerScheme, recorder),
+		scaleExecutor:            executor.NewScaleExecutor(client, scaleClient, reconcilerScheme, kubernetesAPITimeout, recorder),
 		globalHTTPTimeout:        globalHTTPTimeout,
+		kubernetesAPITimeout:     kubernetesAPITimeout,
 		recorder:                 recorder,
 		scalerCaches:             map[string]*cache.ScalersCache{},
 		scalerCachesLock:         &sync.RWMutex{},
@@ -177,6 +179,14 @@ func (h *scaleHandler) watchMetricSpecUpdates(ctx context.Context, scaledObjectN
 			// check below is the actual guard against applying stale updates.
 			if ctx.Err() != nil {
 				return
+			}
+
+			// UpdateMetricSpecForScaler also rejects these, but a scaler that
+			// streams no metric specs is a scaler bug worth surfacing rather
+			// than dropping silently.
+			if len(specs) == 0 {
+				logger.V(1).Info("ignoring streamed metric spec update with no metric specs")
+				continue
 			}
 
 			scalersCache, err := h.getScalersCacheForScaledObject(ctx, scaledObjectName, scaledObjectNamespace)
@@ -383,6 +393,13 @@ func metricNameForTriggerIndex(metricNames []string, triggerIndex int) string {
 // It fetches the latest object, merges the result fields, and performs a single status patch with conflict retry.
 func (h *scaleHandler) handleResult(ctx context.Context, obj kedav1alpha1.ScalableObject, result executor.ScaleResult) {
 	logger := log.WithValues("namespace", obj.GetNamespace(), "name", obj.GetName())
+	withTriggers, err := kedav1alpha1.AsDuckWithTriggers(obj)
+	if err != nil {
+		logger.Error(err, "error duck typing object into withTrigger")
+		return
+	}
+	operationCtx, cancel := context.WithTimeout(ctx, withTriggers.GetPollingInterval()+h.kubernetesAPITimeout)
+	defer cancel()
 	if result.Error != nil {
 		logger.Error(result.Error, "error during scaling")
 	}
@@ -407,9 +424,9 @@ func (h *scaleHandler) handleResult(ctx context.Context, obj kedav1alpha1.Scalab
 		}
 	}
 
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		current := reflect.New(reflect.TypeOf(obj).Elem()).Interface().(kedav1alpha1.ScalableObject)
-		if err := h.client.Get(ctx, types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, current); err != nil {
+		if err := h.client.Get(operationCtx, types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, current); err != nil {
 			return err
 		}
 
@@ -446,7 +463,7 @@ func (h *scaleHandler) handleResult(ctx context.Context, obj kedav1alpha1.Scalab
 			return nil
 		}
 
-		return h.client.Status().Patch(ctx, current, client.MergeFrom(original))
+		return h.client.Status().Patch(operationCtx, current, client.MergeFrom(original))
 	})
 	if err != nil {
 		logger.Error(err, "failed to update status")

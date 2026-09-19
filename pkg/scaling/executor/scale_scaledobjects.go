@@ -42,7 +42,14 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	result.TriggersActivity = getTriggersActivity(scaledObject, options)
 
 	// get the current replica count
-	currentReplicas, err := resolver.GetCurrentReplicas(ctx, e.client, e.scaleClient, scaledObject)
+	pollingInterval, err := getPollingInterval(scaledObject)
+	if err != nil {
+		result.Error = err
+		return result
+	}
+	operationCtx, cancel := context.WithTimeout(ctx, pollingInterval+e.kubernetesAPITimeout)
+	currentReplicas, err = resolver.GetCurrentReplicas(operationCtx, e.client, e.scaleClient, scaledObject)
+	cancel()
 	if err != nil {
 		logger.Error(err, "Error getting current replicas count for ScaleTarget")
 		result.Conditions.SetReadyCondition(metav1.ConditionFalse, "ErrorGettingCurrentReplicas", fmt.Sprintf("Error getting current replicas count for ScaleTarget: %v", err))
@@ -106,6 +113,9 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			if err == nil {
 				msg := "Successfully set ScaleTarget replicas count to ScaledObject minReplicaCount"
 				logger.Info(msg, "Original Replicas Count", currentReplicas, "New Replicas Count", *scaledObject.Spec.MinReplicaCount)
+			} else {
+				result.Error = fmt.Errorf("error setting ScaleTarget replicas count to ScaledObject minReplicaCount: %w", err)
+				result.Conditions.SetReadyCondition(metav1.ConditionFalse, "ErrorScalingTarget", result.Error.Error())
 			}
 		default:
 			// there are no active triggers AND nothing needs to be done (eg. deployment is scaled down)
@@ -228,8 +238,10 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 				"Deactivated %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, scaleToReplicas)
 			result.Conditions.SetActiveCondition(metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active")
 		} else {
+			result.Error = fmt.Errorf("error deactivating ScaleTarget: %w", err)
+			result.Conditions.SetReadyCondition(metav1.ConditionFalse, "ErrorScalingTarget", result.Error.Error())
 			e.recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScaleTargetDeactivationFailed, eventreason.KEDAScaleTargetDeactivationFailed,
-				"Failed to deactivate %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, scaleToReplicas)
+				"Failed to deactivate %s %s/%s from %d to %d: %v", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, scaleToReplicas, err)
 		}
 	} else {
 		logger.V(1).Info("ScaleTarget cooling down", "LastActiveTime", scaledObject.Status.LastActiveTime, "CoolDownPeriod", cooldownPeriod)
@@ -285,7 +297,9 @@ func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Log
 		// Scale was successful. Record lastActiveTime in the result for the handler to persist.
 		result.LastActiveTime = &metav1.Time{Time: time.Now()}
 	} else {
-		e.recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScaleTargetActivationFailed, eventreason.KEDAScaleTargetActivationFailed, "Failed to scale %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, replicas)
+		result.Error = fmt.Errorf("error activating ScaleTarget: %w", err)
+		result.Conditions.SetReadyCondition(metav1.ConditionFalse, "ErrorScalingTarget", result.Error.Error())
+		e.recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScaleTargetActivationFailed, eventreason.KEDAScaleTargetActivationFailed, "Failed to scale %s %s/%s from %d to %d: %v", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, replicas, err)
 	}
 }
 
@@ -294,7 +308,13 @@ func (e *scaleExecutor) getScaleTargetScale(ctx context.Context, scaledObject *k
 }
 
 func (e *scaleExecutor) updateScaleOnScaleTarget(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, replicas int32) (int32, error) {
-	scale, err := e.getScaleTargetScale(ctx, scaledObject)
+	pollingInterval, err := getPollingInterval(scaledObject)
+	if err != nil {
+		return -1, err
+	}
+	operationCtx, cancel := context.WithTimeout(ctx, pollingInterval+e.kubernetesAPITimeout)
+	defer cancel()
+	scale, err := e.getScaleTargetScale(operationCtx, scaledObject)
 	if err != nil {
 		return -1, err
 	}
@@ -303,7 +323,7 @@ func (e *scaleExecutor) updateScaleOnScaleTarget(ctx context.Context, scaledObje
 	currentReplicas := scale.Spec.Replicas
 	scale.Spec.Replicas = replicas
 
-	_, err = e.scaleClient.Scales(scaledObject.Namespace).Update(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scale, metav1.UpdateOptions{})
+	_, err = e.scaleClient.Scales(scaledObject.Namespace).Update(operationCtx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scale, metav1.UpdateOptions{})
 	return currentReplicas, err
 }
 

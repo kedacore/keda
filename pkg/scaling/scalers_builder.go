@@ -145,6 +145,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewAzureAppInsightsScaler(config)
 	case "azure-blob":
 		return scalers.NewAzureBlobScaler(config)
+	case "azure-cosmosdb":
+		return scalers.NewAzureCosmosDBScaler(config)
 	case "azure-data-explorer":
 		return scalers.NewAzureDataExplorerScaler(config)
 	case "azure-eventhub":
@@ -247,7 +249,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "predictkube":
 		return scalers.NewPredictKubeScaler(ctx, config)
 	case "prometheus":
-		return scalers.NewPrometheusScaler(config)
+		return scalers.NewPrometheusScaler(ctx, config)
 	case "pulsar":
 		return scalers.NewPulsarScaler(config)
 	case "rabbitmq":

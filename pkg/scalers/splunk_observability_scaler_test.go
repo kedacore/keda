@@ -141,14 +141,14 @@ func countSplunkO11ySignalflowGoroutines() int {
 
 const splunkO11yFakeProgram = "data('demo.trans.latency').max().publish()"
 
-type splunkO11yExecutionObserver struct {
+type splunkO11yLogRecorder struct {
 	started chan struct{}
 	once    sync.Once
 }
 
-func (o *splunkO11yExecutionObserver) Write(p []byte) (int, error) {
+func (r *splunkO11yLogRecorder) Write(p []byte) (int, error) {
 	if strings.Contains(string(p), "Executing SignalFlow program "+splunkO11yFakeProgram) {
-		o.once.Do(func() { close(o.started) })
+		r.once.Do(func() { close(r.started) })
 	}
 	return len(p), nil
 }
@@ -157,8 +157,6 @@ func newFakeSplunkO11yScalerWithBackend(t *testing.T, duration int) (*splunkObse
 	t.Helper()
 
 	fake := signalflow.NewRunningFakeBackend()
-	started := &splunkO11yExecutionObserver{started: make(chan struct{})}
-	fake.SetLogger(log.New(started, "", 0))
 	client, err := fake.Client()
 	if err != nil {
 		fake.Stop()
@@ -179,11 +177,13 @@ func newFakeSplunkO11yScalerWithBackend(t *testing.T, duration int) (*splunkObse
 		logger:    logr.Discard(),
 	}
 
+	recorder := &splunkO11yLogRecorder{started: make(chan struct{})}
+	fake.SetLogger(log.New(recorder, "", 0))
 	cleanup := func() {
 		_ = scaler.Close(context.Background())
 		fake.Stop()
 	}
-	return scaler, fake, started.started, cleanup
+	return scaler, fake, recorder.started, cleanup
 }
 
 // newFakeSplunkO11yScaler wires a scaler to a fake backend that streams indefinitely without closing.
@@ -229,7 +229,7 @@ func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testin
 		if elapsed := time.Since(start); elapsed >= splunkO11yDrainTimeout/2 {
 			t.Fatalf("getQueryResult returned after %v, waited for timeout cleanup", elapsed)
 		}
-	case <-time.After(3 * splunkO11yDrainTimeout):
+	case <-time.After(splunkO11yDrainTimeout):
 		t.Fatal("getQueryResult did not return after parent context was cancelled; it is hanging")
 	}
 }
@@ -279,7 +279,7 @@ func TestSplunkObservabilityCloseCancelsActiveQuery(t *testing.T) {
 func TestSplunkObservabilityCloseReapsClientGoroutines(t *testing.T) {
 	before := countSplunkO11ySignalflowGoroutines()
 
-	scaler, stop := newFakeSplunkO11yScaler(t, 1)
+	scaler, stop := newFakeSplunkO11yScaler(t, 2)
 	defer stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)

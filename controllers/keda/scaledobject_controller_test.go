@@ -91,7 +91,7 @@ var _ = Describe("ScaledObjectController", func() {
 						TriggerIndex:            i,
 					}
 
-					s, err := scalers.NewPrometheusScaler(config)
+					s, err := scalers.NewPrometheusScaler(context.Background(), config)
 					if err != nil {
 						Fail(err.Error())
 					}
@@ -99,7 +99,7 @@ var _ = Describe("ScaledObjectController", func() {
 					testScalers = append(testScalers, cache.ScalerBuilder{
 						Scaler: s,
 						Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
-							scaler, err := scalers.NewPrometheusScaler(config)
+							scaler, err := scalers.NewPrometheusScaler(context.Background(), config)
 							return scaler, config, err
 						},
 					})
@@ -142,7 +142,7 @@ var _ = Describe("ScaledObjectController", func() {
 					AuthParams:              nil,
 				}
 
-				s, err := scalers.NewPrometheusScaler(config)
+				s, err := scalers.NewPrometheusScaler(context.Background(), config)
 				if err != nil {
 					Fail(err.Error())
 				}
@@ -192,7 +192,7 @@ var _ = Describe("ScaledObjectController", func() {
 						AuthParams:              nil,
 					}
 
-					s, err := scalers.NewPrometheusScaler(config)
+					s, err := scalers.NewPrometheusScaler(context.Background(), config)
 					if err != nil {
 						Fail(err.Error())
 					}
