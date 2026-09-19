@@ -356,9 +356,9 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 							logger.Error(err, "error fetching ScaledObject for push scaler")
 							continue
 						}
-						metricName := metricNameForTriggerIndex(freshSO.Status.ExternalMetricNames, triggerIndex)
+						metricName := resolvePushScalerMetricName(ctx, scalersCache, freshSO.Status.ExternalMetricNames, triggerIndex)
 						if metricName == "" {
-							logger.V(1).Info("Could not resolve metric name for push scaler, will retry on next activation", "triggerIndex", triggerIndex)
+							logger.V(1).Info("Could not resolve metric name for push scaler from status or scaler directly, will retry on next activation", "triggerIndex", triggerIndex)
 							continue
 						}
 						opts := executor.ScaleExecutorOptions{
@@ -376,6 +376,28 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 			}
 		}(ps.Scaler, ps.TriggerIndex, i)
 	}
+}
+
+// resolvePushScalerMetricName finds the external metric name for a push trigger, preferring the persisted
+// status but falling back to asking the scaler itself when status doesn't (yet, or currently) have it.
+//
+// status.ExternalMetricNames can be transiently incomplete for a perfectly healthy push trigger - for
+// example, a discovery cycle in which a *different* trigger failed to report can cause the reconciler to
+// persist a partial list that omits this trigger's name, even though this trigger itself is fine. Rather
+// than dropping the activation and waiting for a subsequent discovery cycle to repair the persisted status,
+// ask the scaler directly for its own current metric spec: since scalersCache.Scalers is always ordered to
+// match ScaledObject.Spec.Triggers, triggerIndex reliably identifies which scaler to ask, independent of
+// whatever discovery has or hasn't managed to persist to status.
+func resolvePushScalerMetricName(ctx context.Context, scalersCache *cache.ScalersCache, externalMetricNames []string, triggerIndex int) string {
+	if metricName := metricNameForTriggerIndex(externalMetricNames, triggerIndex); metricName != "" {
+		return metricName
+	}
+
+	specs, err := scalersCache.GetMetricSpecForScalingForScaler(ctx, triggerIndex)
+	if err != nil || len(specs) == 0 || specs[0].External == nil {
+		return ""
+	}
+	return specs[0].External.Metric.Name
 }
 
 // metricNameForTriggerIndex finds the external metric name for the given trigger index from the ExternalMetricNames list. Metric names follow the format "s{index}-{name}".
