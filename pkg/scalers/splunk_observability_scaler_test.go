@@ -574,7 +574,7 @@ func TestSplunkObservabilityPersistentStreamStartupHonorsContext(t *testing.T) {
 		apiClient: client,
 		logger:    logr.Discard(),
 	}
-	defer scaler.Close(context.Background())
+	defer func() { _ = scaler.Close(context.Background()) }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
