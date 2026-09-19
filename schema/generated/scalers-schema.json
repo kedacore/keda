@@ -7575,6 +7575,12 @@
                     "name": "activationTargetValue",
                     "type": "string",
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "persistentStream",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
                 }
             ]
         },
