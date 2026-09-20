@@ -310,7 +310,6 @@ func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1a
 		case <-ctx.Done():
 			logger.V(1).Info("Context canceled")
 			h.scaledObjectsMetricCache.Delete(withTriggers.GenerateIdentifier())
-			h.deleteLastKnownMetricSpecs(withTriggers.GenerateIdentifier())
 			err := h.ClearScalersCache(ctx, scalableObject)
 			if err != nil {
 				logger.Error(err, "error clearing scalers cache")
