@@ -5102,7 +5102,7 @@ scalers:
           metadataVariableReadable: true
         - name: persistentStream
           type: string
-          optional: true
+          default: "false"
           metadataVariableReadable: true
     - type: splunk
       parameters:
