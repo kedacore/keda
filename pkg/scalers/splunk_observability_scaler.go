@@ -36,7 +36,7 @@ type splunkObservabilityMetadata struct {
 	TargetValue           float64 `keda:"name=targetValue,   	     order=triggerMetadata"`
 	QueryAggregator       string  `keda:"name=queryAggregator,       order=triggerMetadata, enum=min;max;avg;sum;count;latest, default=avg"`
 	ActivationTargetValue float64 `keda:"name=activationTargetValue, order=triggerMetadata"`
-	PersistentStream      bool    `keda:"name=persistentStream,      order=triggerMetadata, optional"`
+	PersistentStream      bool    `keda:"name=persistentStream,      order=triggerMetadata, default=false"`
 }
 
 type splunkO11ySample struct {
