@@ -134,7 +134,7 @@ func TestScalingModifierTriggerValue(t *testing.T) {
 		{name: "failures exceed threshold returns nil",
 			so: withHealth(failing(5)), wantNil: true},
 		{name: "healthy (failures reset to 0) returns the metric value",
-			so: withHealth(&kedav1alpha1.HealthStatus{NumberOfFailures: func(v int32) *int32 { return &v }(0), Status: kedav1alpha1.HealthStatusHappy})},
+			so: withHealth(&kedav1alpha1.HealthStatus{NumberOfFailures: new(int32(0)), Status: kedav1alpha1.HealthStatusHappy})
 	}
 
 	for _, tt := range tests {
