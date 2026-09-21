@@ -64,7 +64,7 @@ require (
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/gobwas/glob v1.0.0
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-github/v91 v91.0.0
+	github.com/google/go-github/v92 v92.0.0
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud/v2 v2.14.0
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0
