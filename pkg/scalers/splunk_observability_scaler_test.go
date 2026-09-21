@@ -70,6 +70,12 @@ var testSplunkObservabilityMetadata = []parseSplunkObservabilityMetadataTestData
 	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "queryAggregator": "avg"}, validSplunkObservabilityAuthParams, true},
 	// Unsupported 'queryAggregator' value, fail
 	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "queryAggregator": "median", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
+	// Zero 'duration' with 'persistentStream' enabled, fail
+	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "0", "targetValue": "200.0", "queryAggregator": "avg", "activationTargetValue": "1.1", "persistentStream": "true"}, validSplunkObservabilityAuthParams, true},
+	// Negative 'duration' with 'persistentStream' enabled, fail
+	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "-5", "targetValue": "200.0", "queryAggregator": "avg", "activationTargetValue": "1.1", "persistentStream": "true"}, validSplunkObservabilityAuthParams, true},
+	// Zero 'duration' without 'persistentStream' keeps existing behavior, pass
+	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "0", "targetValue": "200.0", "queryAggregator": "avg", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, false},
 	// Empty 'accessToken' field
 	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "queryAggregator": "avg"}, invalidSplunkObservabilityAuthParams, true},
 }

@@ -73,6 +73,10 @@ func parseSplunkObservabilityMetadata(config *scalersconfig.ScalerConfig) (*splu
 		return nil, fmt.Errorf("error parsing splunk observability metadata: %w", err)
 	}
 
+	if meta.PersistentStream && meta.Duration <= 0 {
+		return nil, fmt.Errorf("duration must be greater than 0 when persistentStream is enabled, got %d", meta.Duration)
+	}
+
 	return meta, nil
 }
 
