@@ -83,7 +83,11 @@ func (c *dynamicTLSCredentials) ServerHandshake(rawConn net.Conn) (net.Conn, cre
 func (c *dynamicTLSCredentials) Info() credentials.ProtocolInfo {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return credentials.ProtocolInfo{SecurityProtocol: "tls"}
+	return credentials.ProtocolInfo{
+		SecurityProtocol: "tls",
+		SecurityVersion:  "1.2",  //nolint:staticcheck // SA1019: intentional use of deprecated field for grpc ProtocolInfo compatibility
+		ServerName:       c.name, //nolint:staticcheck // SA1019: intentional use of deprecated field for grpc ProtocolInfo compatibility
+	}
 }
 
 func (c *dynamicTLSCredentials) Clone() credentials.TransportCredentials {

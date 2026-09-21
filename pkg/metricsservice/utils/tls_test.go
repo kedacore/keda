@@ -34,6 +34,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 )
 
@@ -190,6 +192,8 @@ func triggerRotation(t *testing.T, dir string) (credentials.TransportCredentials
 func TestLoadGrpcTLSCredentialsConcurrentRotationRace(t *testing.T) {
 	dir := t.TempDir()
 	oldClient, oldServer := generateTestCertAndKeyWithCA(t, dir)
+	oldCertificate, err := tls.LoadX509KeyPair(filepath.Join(dir, "tls.crt"), filepath.Join(dir, "tls.key"))
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -212,12 +216,27 @@ func TestLoadGrpcTLSCredentialsConcurrentRotationRace(t *testing.T) {
 		return clientErr == nil && serverErr == nil
 	}, 5*time.Second, 50*time.Millisecond, "client and server should accept the rotated certificate material")
 
-	// Assert that old trust material is evicted and rejected after rotation
-	require.Eventually(t, func() bool {
-		oldClientErr := handshake(oldClient, serverCreds)
-		oldServerErr := handshake(clientCreds, oldServer)
-		return oldClientErr != nil && oldServerErr != nil
-	}, 5*time.Second, 50*time.Millisecond, "stale CA material must be evicted and handshakes rejected")
+	probePool, err := buildCertPool(filepath.Join(dir, "ca.crt"))
+	require.NoError(t, err)
+	oldCA, err := x509.ParseCertificate(oldCertificate.Certificate[0])
+	require.NoError(t, err)
+	probePool.AddCert(oldCA)
+
+	// Each probe trusts both generations but presents its original certificate.
+	// Only the dynamic peer should reject the old certificate.
+	staleClient := credentials.NewTLS(&tls.Config{
+		MinVersion:   tls.VersionTLS12,
+		Certificates: []tls.Certificate{oldCertificate},
+		RootCAs:      probePool,
+	})
+	staleServer := credentials.NewTLS(&tls.Config{
+		MinVersion:   tls.VersionTLS12,
+		Certificates: []tls.Certificate{oldCertificate},
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientCAs:    probePool,
+	})
+	require.Error(t, handshake(staleClient, serverCreds), "rotated server must reject the old client certificate")
+	require.Error(t, handshake(clientCreds, staleServer), "rotated client must reject the old server certificate")
 
 	// Run concurrent handshakes while actively rotating to verify race-free synchronization
 	stop := make(chan struct{})
@@ -259,4 +278,43 @@ func TestLoadGrpcTLSCredentialsConcurrentRotationRace(t *testing.T) {
 	time.Sleep(300 * time.Millisecond)
 	close(stop)
 	wg.Wait()
+}
+
+func TestLoadGrpcTLSCredentialsOverrideServerName(t *testing.T) {
+	dir := t.TempDir()
+	generateTestCertAndKey(t, dir)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	serverCreds, err := LoadGrpcTLSCredentials(ctx, dir, true)
+	require.NoError(t, err)
+
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer lis.Close()
+
+	s := grpc.NewServer(grpc.Creds(serverCreds))
+	go func() {
+		_ = s.Serve(lis)
+	}()
+	defer s.Stop()
+
+	clientCreds, err := LoadGrpcTLSCredentials(ctx, dir, false)
+	require.NoError(t, err)
+	require.NoError(t, clientCreds.OverrideServerName("localhost")) //nolint:staticcheck // SA1019: intentional test coverage of OverrideServerName
+	assert.Equal(t, "localhost", clientCreds.Info().ServerName)     //nolint:staticcheck // SA1019: intentional test coverage of ProtocolInfo.ServerName
+	assert.Equal(t, "1.2", clientCreds.Info().SecurityVersion)      //nolint:staticcheck // SA1019: intentional test coverage of ProtocolInfo.SecurityVersion
+
+	conn, err := grpc.NewClient(
+		lis.Addr().String(),
+		grpc.WithTransportCredentials(clientCreds),
+	)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	conn.Connect()
+	require.Eventually(t, func() bool {
+		return conn.GetState() == connectivity.Ready
+	}, 5*time.Second, 50*time.Millisecond, "connection with OverrideServerName to 127.0.0.1 must succeed")
 }
