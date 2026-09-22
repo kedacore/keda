@@ -91,15 +91,15 @@ var _ = Describe("ScaledObjectController", func() {
 						TriggerIndex:            i,
 					}
 
-					s, err := scalers.NewPrometheusScaler(context.Background(), config)
+					s, err := scalers.NewPrometheusScaler(config)
 					if err != nil {
 						Fail(err.Error())
 					}
 
 					testScalers = append(testScalers, cache.ScalerBuilder{
 						Scaler: s,
-						Factory: func(context.Context, context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
-							scaler, err := scalers.NewPrometheusScaler(context.Background(), config)
+						Factory: func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+							scaler, err := scalers.NewPrometheusScaler(config)
 							return scaler, config, err
 						},
 					})
@@ -142,7 +142,7 @@ var _ = Describe("ScaledObjectController", func() {
 					AuthParams:              nil,
 				}
 
-				s, err := scalers.NewPrometheusScaler(context.Background(), config)
+				s, err := scalers.NewPrometheusScaler(config)
 				if err != nil {
 					Fail(err.Error())
 				}
@@ -155,7 +155,7 @@ var _ = Describe("ScaledObjectController", func() {
 				scalersCache := cache.ScalersCache{
 					Scalers: []cache.ScalerBuilder{{
 						Scaler: s,
-						Factory: func(context.Context, context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+						Factory: func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 							return s, config, nil
 						},
 					}},
@@ -192,14 +192,14 @@ var _ = Describe("ScaledObjectController", func() {
 						AuthParams:              nil,
 					}
 
-					s, err := scalers.NewPrometheusScaler(context.Background(), config)
+					s, err := scalers.NewPrometheusScaler(config)
 					if err != nil {
 						Fail(err.Error())
 					}
 
 					testScalers = append(testScalers, cache.ScalerBuilder{
 						Scaler: s,
-						Factory: func(context.Context, context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+						Factory: func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 							return s, config, nil
 						},
 					})

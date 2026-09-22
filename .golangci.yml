@@ -11,6 +11,7 @@ linters:
   enable:
     - bodyclose
     - copyloopvar
+    - depguard
     - dogsled
     - dupl
     - errcheck
@@ -31,6 +32,13 @@ linters:
     govet:
       disable:
         - inline
+    depguard:
+      rules:
+        main:
+          deny:
+            # https://github.com/kedacore/keda/issues/4980
+            - pkg: sync/atomic
+              desc: use type-safe atomics from go.uber.org/atomic
     funlen:
       lines: 80
       statements: 40
@@ -143,6 +151,19 @@ linters:
       - linters:
           - staticcheck
         path: temporal_scaler.go
+      # Following 3 depguard exceptions are for disabling sync/atomic package where
+      # denying the rule doesnt help (bottom of this file) but this keeps the depguard
+      # linter enabled
+      # https://github.com/kedacore/keda/issues/4980
+      - linters:
+          - depguard
+        path: pkg/scalers/external_mock_scaler.go
+      - linters:
+          - depguard
+        path: controllers/keda/scaledobject_controller_test.go
+      - linters:
+          - depguard
+        path: pkg/scalers/external_scaler_test.go
       # Exclude for scale_resolvers, reason:
       # pkg/scaling/resolver/scale_resolvers.go:236:1: cyclomatic complexity 35 of func `resolveAuthRef` is high (> 30) (gocyclo)
       - linters:

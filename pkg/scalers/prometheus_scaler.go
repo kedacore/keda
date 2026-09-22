@@ -76,7 +76,7 @@ type promQueryResult struct {
 }
 
 // NewPrometheusScaler creates a new prometheusScaler
-func NewPrometheusScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
+func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -120,7 +120,7 @@ func NewPrometheusScaler(ctx context.Context, config *scalersconfig.ScalerConfig
 			}
 
 			baseTransport := httpClient.Transport
-			tokenSource := meta.PrometheusAuth.OAuthTokenSource(ctx, &http.Client{
+			tokenSource := meta.PrometheusAuth.OAuthTokenSource(context.Background(), &http.Client{
 				Timeout:   httpClientTimeout,
 				Transport: baseTransport,
 			})

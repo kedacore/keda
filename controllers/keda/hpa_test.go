@@ -97,7 +97,7 @@ var _ = Describe("hpa", func() {
 		scalersCache := cache.ScalersCache{
 			Scalers: []cache.ScalerBuilder{{
 				Scaler: emptyScaler,
-				Factory: func(context.Context, context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+				Factory: func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 					return emptyScaler, &scalersconfig.ScalerConfig{}, nil
 				},
 			}},
@@ -127,7 +127,7 @@ var _ = Describe("hpa", func() {
 		scalersCache := cache.ScalersCache{
 			Scalers: []cache.ScalerBuilder{{
 				Scaler: emptyScaler,
-				Factory: func(context.Context, context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+				Factory: func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 					return emptyScaler, &scalersconfig.ScalerConfig{}, nil
 				},
 			}},
@@ -194,7 +194,7 @@ func setupTest(health map[string]v1alpha1.HealthStatus, scaler *mock_scalers.Moc
 	scalersCache := cache.ScalersCache{
 		Scalers: []cache.ScalerBuilder{{
 			Scaler: scaler,
-			Factory: func(context.Context, context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+			Factory: func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 				return scaler, &scalersconfig.ScalerConfig{}, nil
 			},
 		}},

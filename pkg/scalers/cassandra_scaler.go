@@ -8,7 +8,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	gocql "github.com/apache/cassandra-gocql-driver/v2"
 	"github.com/go-logr/logr"
@@ -71,7 +70,7 @@ func (m *cassandraMetadata) Validate() error {
 }
 
 // NewCassandraScaler creates a new Cassandra scaler
-func NewCassandraScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
+func NewCassandraScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -82,7 +81,7 @@ func NewCassandraScaler(ctx context.Context, config *scalersconfig.ScalerConfig)
 		return nil, fmt.Errorf("error parsing cassandra metadata: %w", err)
 	}
 
-	session, err := newCassandraSession(ctx, meta, InitializeLogger(config, "cassandra_scaler"))
+	session, err := newCassandraSession(meta, InitializeLogger(config, "cassandra_scaler"))
 	if err != nil {
 		return nil, fmt.Errorf("error establishing cassandra session: %w", err)
 	}
@@ -165,21 +164,8 @@ func parseCassandraTLS(meta *cassandraMetadata) error {
 }
 
 // newCassandraSession returns a new Cassandra session for the provided CassandraMetadata
-func newCassandraSession(ctx context.Context, meta cassandraMetadata, logger logr.Logger) (*gocql.Session, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-
+func newCassandraSession(meta cassandraMetadata, logger logr.Logger) (*gocql.Session, error) {
 	cluster := gocql.NewCluster(meta.ClusterIPAddress)
-	if deadline, ok := ctx.Deadline(); ok {
-		remaining := time.Until(deadline)
-		if remaining <= 0 {
-			return nil, context.DeadlineExceeded
-		}
-		if remaining < cluster.ConnectTimeout {
-			cluster.ConnectTimeout = remaining
-		}
-	}
 	cluster.ProtoVersion = meta.ProtocolVersion
 	cluster.Consistency = gocql.ParseConsistency(meta.Consistency)
 	cluster.Authenticator = gocql.PasswordAuthenticator{

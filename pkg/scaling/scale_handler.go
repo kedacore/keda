@@ -91,7 +91,6 @@ type scaleHandler struct {
 	scaleExecutor            executor.ScaleExecutor
 	globalHTTPTimeout        time.Duration
 	kubernetesAPITimeout     time.Duration
-	scalerSetupTimeout       time.Duration
 	recorder                 events.EventRecorder
 	scalerCaches             map[string]*cache.ScalersCache
 	scalerCachesLock         *sync.RWMutex
@@ -107,7 +106,7 @@ type scaleHandler struct {
 }
 
 // NewScaleHandler creates a ScaleHandler object
-func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout, kubernetesAPITimeout, scalerSetupTimeout time.Duration, recorder events.EventRecorder, authClientSet *authentication.AuthClientSet) ScaleHandler {
+func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout, kubernetesAPITimeout time.Duration, recorder events.EventRecorder, authClientSet *authentication.AuthClientSet) ScaleHandler {
 	return &scaleHandler{
 		client:                   client,
 		scaleClient:              scaleClient,
@@ -115,7 +114,6 @@ func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, recon
 		scaleExecutor:            executor.NewScaleExecutor(client, scaleClient, reconcilerScheme, kubernetesAPITimeout, recorder),
 		globalHTTPTimeout:        globalHTTPTimeout,
 		kubernetesAPITimeout:     kubernetesAPITimeout,
-		scalerSetupTimeout:       scalerSetupTimeout,
 		recorder:                 recorder,
 		scalerCaches:             map[string]*cache.ScalersCache{},
 		scalerCachesLock:         &sync.RWMutex{},
