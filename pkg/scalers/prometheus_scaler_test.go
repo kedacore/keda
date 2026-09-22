@@ -514,7 +514,7 @@ func TestPrometheusScaler_ExecutePromQuery_WithOAuth(t *testing.T) {
 		},
 	}
 
-	scaler, err := NewPrometheusScaler(t.Context(), config)
+	scaler, err := NewPrometheusScaler(config)
 	require.NoError(t, err)
 
 	s, ok := scaler.(*prometheusScaler)
@@ -673,7 +673,7 @@ h+VRH7M7/22LuSxeKoQaRqeBRbvGup/oHGr9Ks/sVi0EQRUqwB45QLNiF1bi
 			require.NotNil(t, tt.config, "you must provide a config generator func")
 			config := tt.config(t, baseConfig)
 
-			scaler, err := NewPrometheusScaler(t.Context(), config)
+			scaler, err := NewPrometheusScaler(config)
 			require.NoError(t, err)
 
 			s, ok := scaler.(*prometheusScaler)
