@@ -180,12 +180,16 @@ func generateTestCertAndKeyWithCA(t *testing.T, dir string) (credentials.Transpo
 	return staticTLSCredentials(t, dir, false), staticTLSCredentials(t, dir, true)
 }
 
+func rotateFiles(dir string) error {
+	dataDir := filepath.Join(dir, "..data")
+	_ = os.RemoveAll(dataDir)
+	return os.Mkdir(dataDir, 0700)
+}
+
 func triggerRotation(t *testing.T, dir string) (credentials.TransportCredentials, credentials.TransportCredentials) {
 	t.Helper()
 	client, server := generateTestCertAndKeyWithCA(t, dir)
-	dataDir := filepath.Join(dir, "..data")
-	_ = os.RemoveAll(dataDir)
-	require.NoError(t, os.Mkdir(dataDir, 0700))
+	require.NoError(t, rotateFiles(dir))
 	return client, server
 }
 
@@ -251,7 +255,10 @@ func TestLoadGrpcTLSCredentialsConcurrentRotationRace(t *testing.T) {
 			case <-stop:
 				return
 			default:
-				_, _ = triggerRotation(t, dir)
+				if err := rotateFiles(dir); err != nil {
+					t.Errorf("rotation failed: %v", err)
+					return
+				}
 				time.Sleep(15 * time.Millisecond)
 			}
 		}

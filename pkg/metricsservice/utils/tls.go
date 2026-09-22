@@ -73,11 +73,11 @@ func (c *dynamicTLSCredentials) ClientHandshake(ctx context.Context, authority s
 	c.mu.RLock()
 	name := c.name
 	c.mu.RUnlock()
-	return credentials.NewTLS(c.material.config(false, name)).ClientHandshake(ctx, authority, rawConn)
+	return credentials.NewTLS(c.material.config(c.server, name)).ClientHandshake(ctx, authority, rawConn)
 }
 
 func (c *dynamicTLSCredentials) ServerHandshake(rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
-	return credentials.NewTLS(c.material.config(true, "")).ServerHandshake(rawConn)
+	return credentials.NewTLS(c.material.config(c.server, "")).ServerHandshake(rawConn)
 }
 
 func (c *dynamicTLSCredentials) Info() credentials.ProtocolInfo {
