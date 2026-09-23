@@ -66,8 +66,8 @@ github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.5.0 h1:aMFO
 github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.5.0/go.mod h1:Oct8bx+g+DXKngU7i/LzFzYt44rmLdMu4uoofIpooVo=
 github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.2.0 h1:nCYfgcSyHZXJI8J0IWE5MsCGlb2xp9fJiXyxWgmOFg4=
 github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.2.0/go.mod h1:ucUjca2JtSZboY8IoUqyQyuuXvwbMBVwFOm0vdQPNhA=
-github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.0 h1:irsmOWwkp0KCTTNS5e2hdFeIvSQClQo2No3IaNmL3Vw=
-github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.0/go.mod h1:GWcBkQj3MqN7ozHKLaCCAuNLiXoIGv2RtanfAwSjY/Y=
+github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.1 h1:gkBLVmB3Z/HnGP/Jo4o12/RDpi0agnKav6sCKsX5Vu0=
+github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.1/go.mod h1:e3/1P5K+jIUi9JevDRklq/tFeTvbBb75bNAjU4xd31w=
 github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/v2 v2.1.0 h1:gXi/Szhrv+GERejSQGd1+2VMKE2lz1SqJ+Px6sx5+XY=
 github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/v2 v2.1.0/go.mod h1:zndd0BC0AUGjy5o0DCrUGj5U5DM0Hekn+1IvHIWdmFY=
 github.com/Azure/go-amqp v1.7.0 h1:9VlH/LEWr386XWWJRNON0eslFqSClYBXP4HewvIqkDQ=
