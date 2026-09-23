@@ -175,8 +175,7 @@ func staticTLSCredentials(t *testing.T, dir string, server bool) credentials.Tra
 
 func generateTestCertAndKeyWithCA(t *testing.T, dir string) (credentials.TransportCredentials, credentials.TransportCredentials) {
 	t.Helper()
-	caPath := generateTestCertAndKey(t, dir)
-	_ = caPath
+	generateTestCertAndKey(t, dir)
 	return staticTLSCredentials(t, dir, false), staticTLSCredentials(t, dir, true)
 }
 
@@ -287,7 +286,7 @@ func TestLoadGrpcTLSCredentialsConcurrentRotationRace(t *testing.T) {
 	wg.Wait()
 }
 
-func TestLoadGrpcTLSCredentialsOverrideServerName(t *testing.T) {
+func TestLoadGrpcTLSCredentialsWithAuthority(t *testing.T) {
 	dir := t.TempDir()
 	generateTestCertAndKey(t, dir)
 
@@ -309,13 +308,11 @@ func TestLoadGrpcTLSCredentialsOverrideServerName(t *testing.T) {
 
 	clientCreds, err := LoadGrpcTLSCredentials(ctx, dir, false)
 	require.NoError(t, err)
-	require.NoError(t, clientCreds.OverrideServerName("localhost")) //nolint:staticcheck // SA1019: intentional test coverage of OverrideServerName
-	assert.Equal(t, "localhost", clientCreds.Info().ServerName)     //nolint:staticcheck // SA1019: intentional test coverage of ProtocolInfo.ServerName
-	assert.Equal(t, "1.2", clientCreds.Info().SecurityVersion)      //nolint:staticcheck // SA1019: intentional test coverage of ProtocolInfo.SecurityVersion
 
 	conn, err := grpc.NewClient(
 		lis.Addr().String(),
 		grpc.WithTransportCredentials(clientCreds),
+		grpc.WithAuthority("localhost"),
 	)
 	require.NoError(t, err)
 	defer conn.Close()
@@ -323,5 +320,5 @@ func TestLoadGrpcTLSCredentialsOverrideServerName(t *testing.T) {
 	conn.Connect()
 	require.Eventually(t, func() bool {
 		return conn.GetState() == connectivity.Ready
-	}, 5*time.Second, 50*time.Millisecond, "connection with OverrideServerName to 127.0.0.1 must succeed")
+	}, 5*time.Second, 50*time.Millisecond, "connection with authority localhost to 127.0.0.1 must succeed")
 }

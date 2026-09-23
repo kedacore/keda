@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -42,14 +43,13 @@ type tlsMaterial struct {
 	certificate tls.Certificate
 }
 
-func (m *tlsMaterial) config(server bool, serverName string) *tls.Config {
+func (m *tlsMaterial) config(server bool) *tls.Config {
 	m.RLock()
 	defer m.RUnlock()
 	config := &tls.Config{
 		MinVersion:   kedautil.GetServiceMinTLSVersion(),
 		CipherSuites: kedautil.GetServiceTLSCipherList(),
 		Certificates: []tls.Certificate{m.certificate},
-		ServerName:   serverName,
 	}
 	if server {
 		config.ClientAuth = tls.RequireAndVerifyClientCert
@@ -65,42 +65,26 @@ func (m *tlsMaterial) config(server bool, serverName string) *tls.Config {
 type dynamicTLSCredentials struct {
 	material *tlsMaterial
 	server   bool
-	mu       sync.RWMutex
-	name     string
 }
 
 func (c *dynamicTLSCredentials) ClientHandshake(ctx context.Context, authority string, rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
-	c.mu.RLock()
-	name := c.name
-	c.mu.RUnlock()
-	return credentials.NewTLS(c.material.config(c.server, name)).ClientHandshake(ctx, authority, rawConn)
+	return credentials.NewTLS(c.material.config(c.server)).ClientHandshake(ctx, authority, rawConn)
 }
 
 func (c *dynamicTLSCredentials) ServerHandshake(rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
-	return credentials.NewTLS(c.material.config(c.server, "")).ServerHandshake(rawConn)
+	return credentials.NewTLS(c.material.config(c.server)).ServerHandshake(rawConn)
 }
 
 func (c *dynamicTLSCredentials) Info() credentials.ProtocolInfo {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return credentials.ProtocolInfo{
-		SecurityProtocol: "tls",
-		SecurityVersion:  "1.2",  //nolint:staticcheck // SA1019: intentional use of deprecated field for grpc ProtocolInfo compatibility
-		ServerName:       c.name, //nolint:staticcheck // SA1019: intentional use of deprecated field for grpc ProtocolInfo compatibility
-	}
+	return credentials.ProtocolInfo{SecurityProtocol: "tls"}
 }
 
 func (c *dynamicTLSCredentials) Clone() credentials.TransportCredentials {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return &dynamicTLSCredentials{material: c.material, server: c.server, name: c.name}
+	return &dynamicTLSCredentials{material: c.material, server: c.server}
 }
 
-func (c *dynamicTLSCredentials) OverrideServerName(name string) error {
-	c.mu.Lock()
-	c.name = name
-	c.mu.Unlock()
-	return nil
+func (c *dynamicTLSCredentials) OverrideServerName(string) error {
+	return errors.New("overriding server name is not supported; use grpc.WithAuthority")
 }
 
 // buildCertPool creates a fresh x509.CertPool seeded from the system pool
