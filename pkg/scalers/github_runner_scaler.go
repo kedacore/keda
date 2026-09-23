@@ -558,11 +558,6 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 			break
 		}
 
-		if page >= s.metadata.MaxPages {
-			s.logger.Info(fmt.Sprintf("Reached max page limit (%d) while fetching repositories, results may be incomplete", s.metadata.MaxPages))
-			break
-		}
-
 		page++
 	}
 

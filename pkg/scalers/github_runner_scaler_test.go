@@ -1405,56 +1405,6 @@ func TestGetWorkflowRunJobs_RespectsCustomMaxPages(t *testing.T) {
 	}
 }
 
-// TestGetRepositories_StopsAtMaxPages guards against unbounded pagination: if
-// GitHub kept returning full pages of repositories forever, getRepositories
-// must stop after githubDefaultMaxPages pages rather than looping indefinitely.
-func TestGetRepositories_StopsAtMaxPages(t *testing.T) {
-	var mu sync.Mutex
-	requestedPages := map[int]bool{}
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		page := 1
-		if p := r.URL.Query().Get("page"); p != "" {
-			page, _ = strconv.Atoi(p)
-		}
-		mu.Lock()
-		requestedPages[page] = true
-		mu.Unlock()
-
-		// Always return a full page of repos, as if there were unlimited repos.
-		repos := make([]Repo, githubDefaultPerPage)
-		for i := range repos {
-			repos[i] = Repo{ID: page*1000 + i, Name: fmt.Sprintf("repo-%d-%d", page, i)}
-		}
-		body, _ := json.Marshal(repos)
-		// nosemgrep: no-direct-write-to-responsewriter
-		_, _ = w.Write(body)
-	}))
-	defer srv.Close()
-
-	meta := getGitHubTestMetaData(srv.URL)
-	s := githubRunnerScaler{
-		metadata:   meta,
-		httpClient: http.DefaultClient,
-	}
-
-	repos, err := s.getRepositories(context.Background())
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-
-	if len(repos) != githubDefaultMaxPages*githubDefaultPerPage {
-		t.Fatalf("expected pagination to stop after %d pages (%d repos), got %d repos", githubDefaultMaxPages, githubDefaultMaxPages*githubDefaultPerPage, len(repos))
-	}
-
-	mu.Lock()
-	gotPages := len(requestedPages)
-	mu.Unlock()
-	if gotPages != githubDefaultMaxPages {
-		t.Fatalf("expected exactly %d pages to be requested, got %d", githubDefaultMaxPages, gotPages)
-	}
-}
-
 func TestGetWorkflowRuns_StaleEtagWithoutPreviousRetries(t *testing.T) {
 	var mu sync.Mutex
 	var sawIfNoneMatch, sawNoIfNoneMatch bool
