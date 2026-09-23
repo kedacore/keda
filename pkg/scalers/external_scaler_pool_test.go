@@ -303,10 +303,9 @@ func TestExternalScalerReportsTLSErrorFromTheConstructor(t *testing.T) {
 		t.Fatal("expected an error for an unparseable client certificate")
 	}
 
-	if entry := poolEntryFor(t, address); entry != nil {
-		t.Error("the failed construction left a connection in the pool")
-	}
+	// The pool key includes the TLS fields, so the entry a failed construction
+	// could leave behind is found by counting rather than by looking it up.
 	if got := poolEntries(); got != before {
-		t.Errorf("pool entries = %d, want %d", got, before)
+		t.Errorf("pool entries = %d, want %d, the failed construction left a connection in the pool", got, before)
 	}
 }
