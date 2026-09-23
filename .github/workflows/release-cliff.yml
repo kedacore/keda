@@ -18,6 +18,7 @@ jobs:
   update-release-draft:
     permissions:
       contents: write
+      pull-requests: read
     runs-on: ubuntu-slim
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -25,20 +26,24 @@ jobs:
           fetch-depth: 0 # git-cliff needs full history to resolve commits
 
       - name: Validate target branch
+        env:
+          BRANCH: ${{ github.ref_name }}
         run: |
-          if [[ "${{ github.ref_name }}" != "main" && ! "${{ github.ref_name }}" =~ ^release/v[0-9]+\.[0-9]+$ ]]; then
-            echo "Unsupported target branch: ${{ github.ref_name }}"
+          if [[ "$BRANCH" != "main" && ! "$BRANCH" =~ ^release/v[0-9]+\.[0-9]+$ ]]; then
+            echo "Unsupported target branch: $BRANCH"
             echo "Use main or release/vX.Y."
             exit 1
           fi
 
       - name: Compute next version and baseline tag
         id: version
+        env:
+          BRANCH: ${{ github.ref_name }}
         run: |
           git fetch --tags
 
-          if [[ "${{ github.ref_name }}" == release/* ]]; then
-            minor_prefix="${{ github.ref_name }}"
+          if [[ "$BRANCH" == release/* ]]; then
+            minor_prefix="$BRANCH"
             minor_prefix="${minor_prefix#release/}"
             latest=$(git tag --list "${minor_prefix}.*" | sort -V | tail -1)
             latest="${latest:-${minor_prefix}.0}"
@@ -77,16 +82,17 @@ jobs:
           START_TAG: ${{ steps.version.outputs.start_tag }}
           BRANCH: ${{ github.ref_name }}
         run: |
+          cliff_args=()
           if git rev-parse "$START_TAG" >/dev/null 2>&1; then
             # Use branch ref instead of HEAD so git-cliff fetches commits from this branch via API.
-            range="${START_TAG}..${BRANCH}"
-          else
-            range=""
+            cliff_args+=("${START_TAG}..${BRANCH}")
           fi
 
-          [[ "${RUNNER_DEBUG}" == "1" ]] && git-cliff $range --config .github/cliff.toml --tag "$VERSION" --ignore-tags '.*' --strip all -vv > /dev/null || true
+          if [[ "${RUNNER_DEBUG:-}" == "1" ]]; then
+            git-cliff "${cliff_args[@]}" --config .github/cliff.toml --tag "$VERSION" --ignore-tags '.*' --strip all -vv > /dev/null || true
+          fi
 
-          git-cliff $range \
+          git-cliff "${cliff_args[@]}" \
             --config .github/cliff.toml \
             --tag "$VERSION" \
             --ignore-tags '.*' \
@@ -102,6 +108,12 @@ jobs:
           minor=$(echo "$VERSION" | sed 's/^v//' | cut -d. -f2)
 
           intro="We are happy to release KEDA ${VERSION#v} 🎉"
+          breaking_changes=""
+          if grep -q '^## Breaking Changes$' release-notes.md; then
+            breaking_changes=$(printf \
+              '> [!IMPORTANT]\n> KEDA %s contains breaking changes. Before upgrading, review the [%s migration guide](https://keda.sh/docs/%s.%s/migration/) and the [versioned documentation](https://keda.sh/docs/%s.%s/).' \
+              "${VERSION#v}" "${major}.${minor}" "$major" "$minor" "$major" "$minor")
+          fi
           highlights=$(printf 'Here are some highlights:\n\n- <list highlights>')
           deprecations=$(printf 'Here are the new deprecation(s) as of this release:\n- <list deprecations>')
           docs="Learn how to deploy KEDA by reading [our documentation](https://keda.sh/docs/${major}.${minor}/deploy/)."
@@ -109,7 +121,11 @@ jobs:
           contributors=$(printf '### New Contributors\n\n<optional contributor highlights>')
 
           {
-            printf '%s\n\n%s\n\n%s\n\n%s\n\n%s\n\n' "$intro" "$highlights" "$deprecations" "$docs" "$roadmap"
+            printf '%s\n\n' "$intro"
+            if [[ -n "$breaking_changes" ]]; then
+              printf '%s\n\n' "$breaking_changes"
+            fi
+            printf '%s\n\n%s\n\n%s\n\n%s\n\n' "$highlights" "$deprecations" "$docs" "$roadmap"
             cat release-notes.md
             printf '\n%s\n' "$contributors"
           } > release-body.md
