@@ -1280,6 +1280,12 @@ func testScaledObjectReadyMetric(t *testing.T, data templateData) {
 	assertReadyMetric(t, families, "keda_scaled_object_ready", labelScaledObject, notReadyScaledObjectName, false)
 
 	KubectlDeleteWithTemplate(t, data, "notReadyScaledObjectTemplate", notReadyScaledObjectTemplate)
+
+	// the deleted ScaledObject's series should be removed from the metric family
+	WaitForPrometheusMetric(t, "keda_scaled_object_ready", func(family *prommodel.MetricFamily) bool {
+		_, found := getReadyMetricValue(family, labelScaledObject, notReadyScaledObjectName)
+		return !found
+	})
 }
 
 func testScaledJobReadyMetric(t *testing.T, data templateData) {
@@ -1302,6 +1308,12 @@ func testScaledJobReadyMetric(t *testing.T, data templateData) {
 	assertReadyMetric(t, families, "keda_scaled_job_ready", labelScaledJob, notReadyScaledJobName, false)
 
 	KubectlDeleteWithTemplate(t, data, "notReadyScaledJobTemplate", notReadyScaledJobTemplate)
+
+	// the deleted ScaledJob's series should be removed from the metric family
+	WaitForPrometheusMetric(t, "keda_scaled_job_ready", func(family *prommodel.MetricFamily) bool {
+		_, found := getReadyMetricValue(family, labelScaledJob, notReadyScaledJobName)
+		return !found
+	})
 }
 
 func testOperatorMetrics(t *testing.T, kc *kubernetes.Clientset, data templateData) {
