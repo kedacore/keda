@@ -28,6 +28,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	"github.com/kedacore/keda/v2/pkg/util/pointer"
 )
 
 const (
@@ -171,7 +173,7 @@ func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 	if spec.PodIdentity != nil {
 		switch spec.PodIdentity.Provider {
 		case PodIdentityProviderAzureWorkload:
-			if spec.PodIdentity.IdentityID != nil && *spec.PodIdentity.IdentityID == "" {
+			if pointer.IsEmpty(spec.PodIdentity.IdentityID) {
 				return nil, fmt.Errorf("identityId of PodIdentity should not be empty. If it's set, identityId has to be different than \"\"")
 			}
 
