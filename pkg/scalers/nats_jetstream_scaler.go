@@ -348,6 +348,12 @@ func getNATSJetStreamMonitoringURL(useHTTPS bool, natsServerEndpoint string, id 
 
 	params := url.Values{}
 	params.Set("acc", id)
+	// accounts=true is required for the NATS server to include the nested
+	// account_details (and therefore stream_detail/consumer_detail) in the
+	// /jsz response at all. Without it, Accounts is always empty regardless
+	// of consumers=true/config=true, so every lookup fails with "consumer
+	// not found in stream" even when the consumer exists.
+	params.Set("accounts", "true")
 	params.Set("consumers", "true")
 	params.Set("config", "true")
 
