@@ -330,7 +330,7 @@ When excludePersistentLag is set to `false` (default), lag will always be equal 
 When excludePersistentLag is set to `true`, if partition is deemed to have persistent lag, lag will be set to 0 and lagWithPersistent will be latestOffset - consumerOffset
 These return values will allow proper scaling from 0 -> 1 replicas by the IsActive func.
 */
-func (s *apacheKafkaScaler) getLagForPartition(topic string, partitionID int, consumerOffsets map[string]map[int]int64, producerOffsets map[string]map[int]int64) (int64, int64, error) {
+func (s *apacheKafkaScaler) getLagForPartition(topic string, partitionID int, consumerOffsets map[string]map[int]int64, producerOffsets map[string]map[int]partitionOffsets) (int64, int64, error) {
 	if len(consumerOffsets) == 0 {
 		return 0, 0, fmt.Errorf("consumerOffsets is empty")
 	}
@@ -354,12 +354,22 @@ func (s *apacheKafkaScaler) getLagForPartition(topic string, partitionID int, co
 	if _, found := producerOffsets[topic]; !found {
 		return 0, 0, fmt.Errorf("error finding partition offset for topic %s", topic)
 	}
-	producerOffset := producerOffsets[topic][partitionID]
+	offsetsForPartition := producerOffsets[topic][partitionID]
+	producerOffset := offsetsForPartition.latestOffset
 	if consumerOffset == invalidOffset && s.metadata.OffsetResetPolicy == earliest {
 		if s.metadata.ScaleToZeroOnInvalidOffset {
 			return 0, 0, nil
 		}
-		return producerOffset, producerOffset, nil
+		if !offsetsForPartition.earliestOffsetFound {
+			s.logger.V(1).Info(fmt.Sprintf("Partition %d in topic %s has no earliest offset, falling back to latest offset as lag", partitionID, topic))
+			return producerOffset, producerOffset, nil
+		}
+		// Retention can advance the start past the end sampled by the earlier request.
+		lag := max(0, producerOffset-offsetsForPartition.earliestOffset)
+		s.logger.V(1).Info(fmt.Sprintf(
+			"invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet. Returning retained lag of %d (latest=%d, earliest=%d)",
+			topic, s.metadata.Group, partitionID, lag, producerOffset, offsetsForPartition.earliestOffset))
+		return lag, lag, nil
 	}
 
 	// This code block tries to prevent KEDA Kafka trigger from scaling the scale target based on erroneous events
@@ -425,12 +435,12 @@ type apacheKafkaConsumerOffsetResult struct {
 }
 
 type apacheKafkaProducerOffsetResult struct {
-	producerOffsets map[string]map[int]int64
+	producerOffsets map[string]map[int]partitionOffsets
 	err             error
 }
 
 // getConsumerAndProducerOffsets returns (consumerOffsets, producerOffsets, error)
-func (s *apacheKafkaScaler) getConsumerAndProducerOffsets(ctx context.Context, topicPartitions map[string][]int) (map[string]map[int]int64, map[string]map[int]int64, error) {
+func (s *apacheKafkaScaler) getConsumerAndProducerOffsets(ctx context.Context, topicPartitions map[string][]int) (map[string]map[int]int64, map[string]map[int]partitionOffsets, error) {
 	consumerChan := make(chan apacheKafkaConsumerOffsetResult, 1)
 	go func() {
 		consumerOffsets, err := s.getConsumerOffsets(ctx, topicPartitions)
@@ -527,8 +537,8 @@ func (s *apacheKafkaScaler) getTotalLag(ctx context.Context) (int64, int64, erro
 	return totalLag, totalLagWithPersistent, nil
 }
 
-// getProducerOffsets returns the latest offsets for the given topic partitions
-func (s *apacheKafkaScaler) getProducerOffsets(ctx context.Context, topicPartitions map[string][]int) (map[string]map[int]int64, error) {
+// getProducerOffsets returns the earliest and latest offsets for the given topic partitions
+func (s *apacheKafkaScaler) getProducerOffsets(ctx context.Context, topicPartitions map[string][]int) (map[string]map[int]partitionOffsets, error) {
 	// Step 1: build one OffsetRequest
 	offsetRequest := make(map[string][]kafka.OffsetRequest)
 
@@ -548,11 +558,15 @@ func (s *apacheKafkaScaler) getProducerOffsets(ctx context.Context, topicPartiti
 	}
 
 	// Step 3: parse response and return
-	producerOffsets := make(map[string]map[int]int64)
+	producerOffsets := make(map[string]map[int]partitionOffsets)
 	for topic, partitionOffset := range res.Topics {
-		producerOffsets[topic] = make(map[int]int64)
+		producerOffsets[topic] = make(map[int]partitionOffsets)
 		for _, partition := range partitionOffset {
-			producerOffsets[topic][partition.Partition] = partition.LastOffset
+			producerOffsets[topic][partition.Partition] = partitionOffsets{
+				earliestOffset:      partition.FirstOffset,
+				earliestOffsetFound: partition.Error == nil && partition.FirstOffset >= 0,
+				latestOffset:        partition.LastOffset,
+			}
 		}
 	}
 

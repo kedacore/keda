@@ -1,11 +1,9 @@
 # Changelog
 
-<!--
-    New changelog entries must be inline with our changelog guidelines.
-    Please refer to https://github.com/kedacore/keda/blob/main/CONTRIBUTING.md#Changelog to learn more.
--->
+Release notes for KEDA v2.21.0 and later are generated from merged pull request metadata
+and published on the [GitHub Releases page](https://github.com/kedacore/keda/releases).
 
-This changelog keeps track of work items that have been completed and are ready to be shipped in the next release.
+This file archives release notes through KEDA v2.20.2.
 
 To learn more about our roadmap, we recommend reading [this document](ROADMAP.md).
 
@@ -15,7 +13,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## History
 
-- [Unreleased](#unreleased)
 - [v2.20.2](#v2202)
 - [v2.20.1](#v2201)
 - [v2.20.0](#v2200)
@@ -66,54 +63,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - [v1.2.0](#v120)
 - [v1.1.0](#v110)
 - [v1.0.0](#v100)
-
-## Unreleased
-
-### New
-
-- **General**: Add optional `StreamMetricSpec` server-streaming RPC to external scaler gRPC proto, allowing external-push scalers to dynamically update HPA target values without modifying the ScaledObject ([#7793](https://github.com/kedacore/keda/issues/7793))
-- **General**: Introduce new ClickHouse Scaler ([#7418](https://github.com/kedacore/keda/issues/7418))
-- **General**: Introduce new GCP Spanner Scaler ([#7891](https://github.com/kedacore/keda/issues/7891))
-
-#### Experimental
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-### Improvements
-
-- **Azure Pipelines Scaler**: Add service principal authentication through a reusable Azure authentication provider ([#4853](https://github.com/kedacore/keda/issues/4853))
-- **Datadog Scaler**: Migrate Datadog to authentication.Config ([#7766](https://github.com/kedacore/keda/issues/7766))
-- **Kafka Scaler**: Add optional `fullMetadata` trigger metadata field to control Sarama's full cluster metadata refresh, reducing operator memory for topic scoped triggers ([#7453](https://github.com/kedacore/keda/issues/7453))
-- **MSSQL Scaler**: Add `driverName` to select the `azuresql` driver, which enables the Microsoft Entra ID authentication methods offered by the driver ([#7412](https://github.com/kedacore/keda/issues/7412))
-- **Temporal Scaler**: Add `enableTLS` parameter to allow disabling TLS when using API key authentication (e.g. plaintext gRPC endpoints) ([#7854](https://github.com/kedacore/keda/pull/7854))
-- **Temporal Scaler**: Add opt-in `includeRunningWorkflowCount` (with optional `workflowTaskQueueForCount`) to block premature scale-down when the backlog is momentarily zero but Workflow workers are still busy. Worker Deployment Version scalers short-circuit on Version status (`DRAINING` stays active, `DRAINED`/`INACTIVE` scale down); other modes issue a scoped `CountWorkflow` visibility query — including `TemporalWorkerDeploymentVersion is null` for unversioned workers. ([#7459](https://github.com/kedacore/keda/issues/7459))
-
-### Fixes
-
-- **General**: Add controller-runtime cache field indexes for ScaledObject admission validation so `verifyScaledObjects` and `verifyHpas` look up duplicate scaleTargetRef and HPA-name conflicts via indexed Lists rather than full-namespace scans, eliminating the webhook OOM under high-scale creation bursts ([#7681](https://github.com/kedacore/keda/pull/7681))
-- **General**: Fix CVE-2026-42151, CVE-2026-42154, CVE-2026-40179 ([#7868](https://github.com/kedacore/keda/issues/7868))
-- **General**: Fix `pollingInterval` and `cooldownPeriod` relevance warnings incorrectly firing when `idleReplicaCount` is set to a value greater than 0, since idle mode keeps both settings relevant ([#7984](https://github.com/kedacore/keda/pull/7984))
-- **General**: Fix `ScaledJob` removal event using `namespace/name` in place of the namespace, which malformed the emitted CloudEvent's subject and the `namespace` label on the CloudEventSource metrics ([#7967](https://github.com/kedacore/keda/issues/7967))
-- **Azure Event Hub Scaler**: Fix authentication failures caused by appending a duplicate `EntityPath` when `eventHubName` is provided ([#7926](https://github.com/kedacore/keda/issues/7926))
-- **Dynatrace Scaler**: Handle all documented DQL query states (`NOT_STARTED`, `FAILED`, `CANCELLED`, `RESULT_GONE`) in both the execute and poll paths; `NOT_STARTED` on either path now triggers a poll retry instead of an immediate error, and terminal error states produce descriptive messages instead of `unknown state: X` ([#7986](https://github.com/kedacore/keda/pull/7986))
-- **Github Runner Scaler**: Fix per-repository ETag job cache returning another concurrent workflow run's jobs, inflating the computed queue length when a repository has multiple simultaneous queued/in_progress runs ([#7949](https://github.com/kedacore/keda/issues/7949))
-- **Solr Scaler**: Fix a non-200 response being reported as a queue length of 0, which scaled the workload to zero during a Solr outage, an auth rejection or a missing collection instead of surfacing the error ([#8036](https://github.com/kedacore/keda/issues/8036))
-
-### Deprecations
-
-You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
-
-New deprecation(s):
-
-- **Liiklus Scaler**: Deprecate scaler support in v2.21 due to the upstream Liiklus project being unmaintained; scaler code is planned for removal in a later release ([#7929](https://github.com/kedacore/keda/issues/7929))
-
-### Breaking Changes
-
-- **Temporal Scaler**: Remove deprecated `buildId`, `selectAllActive` and `selectUnversioned` settings; use `workerDeploymentName` and `workerDeploymentBuildId` instead ([#7718](https://github.com/kedacore/keda/issues/7718))
-
-### Other
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ## v2.20.2
 

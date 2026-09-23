@@ -42,6 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
 	mock_scalers "github.com/kedacore/keda/v2/pkg/mock/mock_scaler"
@@ -84,7 +85,7 @@ func TestGetScaledObjectMetrics_DirectCall(t *testing.T) {
 	scaler := mock_scalers.NewMockScaler(ctrl)
 	// we are going to query metrics directly
 	scalerConfig := scalersconfig.ScalerConfig{TriggerUseCachedMetrics: false}
-	factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+	factory := func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 		return scaler, &scalerConfig, nil
 	}
 
@@ -177,7 +178,7 @@ func TestGetScaledObjectMetrics_FromCache(t *testing.T) {
 	scaler := mock_scalers.NewMockScaler(ctrl)
 	// we are going to use cache for metrics values
 	scalerConfig := scalersconfig.ScalerConfig{TriggerUseCachedMetrics: true}
-	factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+	factory := func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 		return scaler, &scalerConfig, nil
 	}
 
@@ -292,8 +293,8 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 		}
 	}
 
-	scalerFactoryFn := func(index int) func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
-		return func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+	scalerFactoryFn := func(index int) func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		return func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 			return scalerCollection[index], scalerConfigFn(index), nil
 		}
 	}
@@ -400,7 +401,7 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{}, false, errors.New("some error"))
 	scaler.EXPECT().Close(gomock.Any())
 
-	factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+	factory := func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 		scaler := mock_scalers.NewMockScaler(ctrl)
 		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{}, false, errors.New("some error"))
 		scaler.EXPECT().Close(gomock.Any())
@@ -461,7 +462,7 @@ func TestCheckScaledObjectScalersWithTriggerAuthError(t *testing.T) {
 	scaler := mock_scalers.NewMockScaler(ctrl)
 	scaler.EXPECT().Close(gomock.Any())
 
-	factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+	factory := func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 		scaler := mock_scalers.NewMockScaler(ctrl)
 		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{}, false, errors.New("some error"))
 		scaler.EXPECT().Close(gomock.Any())
@@ -588,17 +589,17 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 	metricsSpecs := []v2.MetricSpec{createMetricSpec(1, "metric-name")}
 	metricValue := scalers.GenerateMetricInMili("metric-name", float64(10))
 
-	activeFactory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+	activeFactory := func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 		scaler := mock_scalers.NewMockScaler(ctrl)
 		scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
 		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{metricValue}, true, nil)
 		scaler.EXPECT().Close(gomock.Any())
 		return scaler, &scalersconfig.ScalerConfig{}, nil
 	}
-	activeScaler, _, err := activeFactory()
+	activeScaler, _, err := activeFactory(context.Background())
 	assert.Nil(t, err)
 
-	failingFactory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+	failingFactory := func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 		scaler := mock_scalers.NewMockScaler(ctrl)
 		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{}, false, errors.New("some error"))
 		scaler.EXPECT().Close(gomock.Any())
@@ -675,7 +676,7 @@ func TestClearScalersCache_PreservesMetricsCacheRecords(t *testing.T) {
 		closed <- struct{}{}
 		return nil
 	})
-	factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+	factory := func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 		return scaler, &scalersconfig.ScalerConfig{}, nil
 	}
 
@@ -725,39 +726,115 @@ func TestClearScalersCache_PreservesMetricsCacheRecords(t *testing.T) {
 	}
 }
 
-func TestDeleteScalableObject_DeletesMetricsCacheRecords(t *testing.T) {
-	recorder := events.NewFakeRecorder(1)
-
-	metricName := "some-metric"
-	scaledObject := kedav1alpha1.ScaledObject{
-		ObjectMeta: metav1.ObjectMeta{Name: "delete-test", Namespace: "ns"},
-		Spec: kedav1alpha1.ScaledObjectSpec{
-			ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "target"},
-		},
-	}
-	key := scaledObject.GenerateIdentifier()
-
-	metricCache := metricscache.NewMetricsCache()
-	sh := scaleHandler{
-		scaleLoopContexts:        &sync.Map{},
-		recorder:                 recorder,
-		scalerCaches:             map[string]*cache.ScalersCache{},
-		scalerCachesLock:         &sync.RWMutex{},
-		scaledObjectsMetricCache: metricCache,
+func TestDeleteScalableObject_ClearsCaches(t *testing.T) {
+	tests := []struct {
+		name                 string
+		withScaleLoopContext bool
+	}{
+		{name: "without scale loop context"},
+		{name: "with scale loop context", withScaleLoopContext: true},
 	}
 
-	_, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	sh.scaleLoopContexts.Store(key, cancel)
-	metricCache.StoreRecords(key, map[string]metricscache.MetricsRecord{
-		metricName: {IsMetricActive: true},
-	})
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			recorder := events.NewFakeRecorder(2)
 
-	err := sh.DeleteScalableObject(t.Context(), &scaledObject)
-	assert.NoError(t, err)
+			metricName := "some-metric"
+			scaledObject := kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: "delete-test", Namespace: "ns", Generation: 1},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "target"},
+				},
+			}
+			key := scaledObject.GenerateIdentifier()
 
-	_, found := metricCache.ReadRecord(key, metricName)
-	assert.False(t, found, "metric records must be deleted when the scalable object is deleted")
+			closed := make(chan struct{})
+			scaler := mock_scalers.NewMockScaler(ctrl)
+			scaler.EXPECT().Close(gomock.Any()).DoAndReturn(func(context.Context) error {
+				close(closed)
+				return nil
+			})
+			scalerCache := &cache.ScalersCache{
+				ScaledObject:             &scaledObject,
+				ScalableObjectGeneration: scaledObject.Generation,
+				Scalers:                  []cache.ScalerBuilder{{Scaler: scaler}},
+				Recorder:                 recorder,
+			}
+
+			metricCache := metricscache.NewMetricsCache()
+			sh := scaleHandler{
+				scaleLoopContexts:        &sync.Map{},
+				recorder:                 recorder,
+				scalerCaches:             map[string]*cache.ScalersCache{key: scalerCache},
+				scalerCachesLock:         &sync.RWMutex{},
+				scaledObjectsMetricCache: metricCache,
+			}
+
+			var scaleLoopCtx context.Context
+			if test.withScaleLoopContext {
+				var cancel context.CancelFunc
+				scaleLoopCtx, cancel = context.WithCancel(t.Context())
+				t.Cleanup(cancel)
+				sh.scaleLoopContexts.Store(key, cancel)
+			}
+			metricCache.StoreRecords(key, map[string]metricscache.MetricsRecord{
+				metricName: {IsMetricActive: true},
+			})
+
+			_, found := metricCache.ReadRecord(key, metricName)
+			assert.True(t, found, "metric record must exist before deletion")
+			sh.scalerCachesLock.RLock()
+			_, found = sh.scalerCaches[key]
+			sh.scalerCachesLock.RUnlock()
+			assert.True(t, found, "scalers cache entry must exist before deletion")
+
+			err := sh.DeleteScalableObject(t.Context(), &scaledObject)
+			assert.NoError(t, err)
+
+			sh.scalerCachesLock.RLock()
+			_, found = sh.scalerCaches[key]
+			sh.scalerCachesLock.RUnlock()
+			assert.False(t, found, "scalers cache entry must be removed synchronously")
+			_, found = metricCache.ReadRecord(key, metricName)
+			assert.False(t, found, "metric records must be removed synchronously")
+			_, found = sh.scaleLoopContexts.Load(key)
+			assert.False(t, found, "scale loop context must be absent after deletion")
+
+			if test.withScaleLoopContext {
+				select {
+				case <-scaleLoopCtx.Done():
+				default:
+					t.Fatal("scale loop context was not canceled")
+				}
+				select {
+				case event := <-recorder.Events:
+					assert.Contains(t, event, eventreason.KEDAScalersStopped)
+				default:
+					t.Fatal("expected a scalers stopped event")
+				}
+			} else {
+				select {
+				case event := <-recorder.Events:
+					t.Fatalf("unexpected event: %s", event)
+				default:
+				}
+			}
+
+			select {
+			case <-closed:
+			case <-time.After(5 * time.Second):
+				t.Fatal("timed out waiting for the scaler to be closed")
+			}
+
+			assert.NoError(t, sh.DeleteScalableObject(t.Context(), &scaledObject), "repeated deletion must be safe")
+			select {
+			case event := <-recorder.Events:
+				t.Fatalf("unexpected event after repeated deletion: %s", event)
+			default:
+			}
+		})
+	}
 }
 
 func TestStartScaleLoop_DeletesMetricsCacheRecordsOnShutdown(t *testing.T) {
@@ -817,12 +894,12 @@ func TestGetScaledObjectMetrics_ErrorDoesNotClearOtherTriggersCachedRecord(t *te
 
 	cachedScaler := mock_scalers.NewMockScaler(ctrl)
 	cachedScalerConfig := scalersconfig.ScalerConfig{TriggerUseCachedMetrics: true}
-	cachedFactory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+	cachedFactory := func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 		return cachedScaler, &cachedScalerConfig, nil
 	}
 	failingScaler := mock_scalers.NewMockScaler(ctrl)
 	failingScalerConfig := scalersconfig.ScalerConfig{}
-	failingFactory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+	failingFactory := func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 		return failingScaler, &failingScalerConfig, nil
 	}
 
@@ -1115,7 +1192,7 @@ func TestGetScaledJobState(t *testing.T) {
 	scalerCache := cache.ScalersCache{
 		Scalers: []cache.ScalerBuilder{{
 			Scaler: createScaler(ctrl, int64(20), int64(2), true, metricName),
-			Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+			Factory: func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 				return createScaler(ctrl, int64(20), int64(2), true, metricName), &scalersconfig.ScalerConfig{}, nil
 			},
 		}},
@@ -1157,22 +1234,22 @@ func TestGetScaledJobState(t *testing.T) {
 		scaledJob := createScaledJob(scalerTestData.MinReplicaCount, scalerTestData.MaxReplicaCount, scalerTestData.MultipleScalersCalculation)
 		scalersToTest := []cache.ScalerBuilder{{
 			Scaler: createScaler(ctrl, scalerTestData.Scaler1QueueLength, scalerTestData.Scaler1AverageValue, scalerTestData.Scaler1IsActive, scalerTestData.MetricName),
-			Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+			Factory: func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 				return createScaler(ctrl, scalerTestData.Scaler1QueueLength, scalerTestData.Scaler1AverageValue, scalerTestData.Scaler1IsActive, scalerTestData.MetricName), &scalersconfig.ScalerConfig{}, nil
 			},
 		}, {
 			Scaler: createScaler(ctrl, scalerTestData.Scaler2QueueLength, scalerTestData.Scaler2AverageValue, scalerTestData.Scaler2IsActive, scalerTestData.MetricName),
-			Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+			Factory: func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 				return createScaler(ctrl, scalerTestData.Scaler2QueueLength, scalerTestData.Scaler2AverageValue, scalerTestData.Scaler2IsActive, scalerTestData.MetricName), &scalersconfig.ScalerConfig{}, nil
 			},
 		}, {
 			Scaler: createScaler(ctrl, scalerTestData.Scaler3QueueLength, scalerTestData.Scaler3AverageValue, scalerTestData.Scaler3IsActive, scalerTestData.MetricName),
-			Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+			Factory: func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 				return createScaler(ctrl, scalerTestData.Scaler3QueueLength, scalerTestData.Scaler3AverageValue, scalerTestData.Scaler3IsActive, scalerTestData.MetricName), &scalersconfig.ScalerConfig{}, nil
 			},
 		}, {
 			Scaler: createScaler(ctrl, scalerTestData.Scaler4QueueLength, scalerTestData.Scaler4AverageValue, scalerTestData.Scaler4IsActive, scalerTestData.MetricName),
-			Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+			Factory: func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 				return createScaler(ctrl, scalerTestData.Scaler4QueueLength, scalerTestData.Scaler4AverageValue, scalerTestData.Scaler4IsActive, scalerTestData.MetricName), &scalersconfig.ScalerConfig{}, nil
 			},
 		}}
@@ -1217,7 +1294,7 @@ func TestGetScaledJobStateIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T
 	scaledJobSingle := createScaledJob(1, 100, "") // testing default = max
 	scalerSingle := []cache.ScalerBuilder{{
 		Scaler: createScaler(ctrl, int64(0), int64(1), true, metricName),
-		Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		Factory: func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 			return createScaler(ctrl, int64(0), int64(1), true, metricName), &scalersconfig.ScalerConfig{}, nil
 		},
 	}}
@@ -1408,10 +1485,10 @@ func TestScalingModifiersFormula(t *testing.T) {
 	// dont use cached metrics
 	scalerConfig1 := scalersconfig.ScalerConfig{TriggerUseCachedMetrics: false, TriggerName: triggerName1, TriggerIndex: 0}
 	scalerConfig2 := scalersconfig.ScalerConfig{TriggerUseCachedMetrics: false, TriggerName: triggerName2, TriggerIndex: 1}
-	factory1 := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+	factory1 := func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 		return scaler1, &scalerConfig1, nil
 	}
-	factory2 := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+	factory2 := func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 		return scaler2, &scalerConfig2, nil
 	}
 
@@ -1618,6 +1695,42 @@ func TestHandleResult_SetsLastActiveTime(t *testing.T) {
 	assert.Equal(t, &now, patchedObj.Status.LastActiveTime)
 }
 
+func TestHandleResult_KubernetesAPITimeout(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	const timeout = 20 * time.Millisecond
+	sh := scaleHandler{client: mockClient, kubernetesAPITimeout: timeout}
+	pollingInterval := int32(0)
+	existingSO := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "ns"},
+		Spec:       kedav1alpha1.ScaledObjectSpec{PollingInterval: &pollingInterval},
+	}
+
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
+		DoAndReturn(func(ctx context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...any) error {
+			deadline, ok := ctx.Deadline()
+			assert.True(t, ok)
+			assert.WithinDuration(t, time.Now().Add(timeout), deadline, 10*time.Millisecond)
+			*obj = *existingSO.DeepCopy()
+			return nil
+		})
+	mockClient.EXPECT().Status().Return(statusWriter)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, _ *kedav1alpha1.ScaledObject, _ any, _ ...any) error {
+			<-ctx.Done()
+			return ctx.Err()
+		})
+
+	now := metav1.Now()
+	result := executor.ScaleResult{LastActiveTime: &now}
+	startedAt := time.Now()
+	sh.handleResult(context.Background(), &existingSO, result)
+
+	assert.Less(t, time.Since(startedAt), time.Second)
+}
+
 func TestHandleResult_TriggersActivityUpdatesAndRemovals(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockClient := mock_client.NewMockClient(ctrl)
@@ -1790,7 +1903,7 @@ func TestGetScaledJobMetrics_CacheClosedIsBenign(t *testing.T) {
 
 	scaler := mock_scalers.NewMockScaler(ctrl)
 	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
-	factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+	factory := func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 		return scaler, &scalersconfig.ScalerConfig{}, nil
 	}
 
@@ -1835,7 +1948,7 @@ func TestGetScaledObjectState_CacheClosedIsBenign(t *testing.T) {
 	recorder := events.NewFakeRecorder(10)
 
 	scaler := mock_scalers.NewMockScaler(ctrl)
-	factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+	factory := func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 		return scaler, &scalersconfig.ScalerConfig{}, nil
 	}
 
@@ -2233,7 +2346,7 @@ func newHPAObservationsHandler(ctrl *gomock.Controller, scaledObject *kedav1alph
 		ScaledObject: scaledObject,
 		Scalers: []cache.ScalerBuilder{{
 			Scaler: scaler,
-			Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+			Factory: func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 				return scaler, &scalersconfig.ScalerConfig{}, nil
 			},
 		}},

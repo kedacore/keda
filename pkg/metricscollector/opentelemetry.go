@@ -9,12 +9,15 @@ import (
 	"sync"
 	"time"
 
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	api "go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/metric"
+	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kedacore/keda/v2/version"
@@ -59,6 +62,9 @@ var (
 
 	otHTTPClientRequestsCounter api.Int64Counter
 	otHTTPClientRequestDuration api.Float64Histogram
+
+	otGRPCClientCallsCounter          api.Int64Counter
+	otGRPCClientStreamMessagesCounter api.Int64Counter
 )
 
 type OtelMetrics struct {
@@ -97,6 +103,14 @@ func NewOtelMetrics(enableHighCardinalityLabels bool, options ...metric.Option) 
 		}
 		options = []metric.Option{metric.WithReader(metric.NewPeriodicReader(exporter))}
 	}
+	options = append(options, metric.WithView(metric.NewView(
+		metric.Instrument{
+			Name:  "rpc.client.call.duration",
+			Kind:  metric.InstrumentKindHistogram,
+			Scope: instrumentation.Scope{Name: otelgrpc.ScopeName},
+		},
+		metric.Stream{Name: "keda.rpc.client.call.duration"},
+	)))
 
 	meterProvider = metric.NewMeterProvider(options...)
 	otel.SetMeterProvider(meterProvider)
@@ -269,6 +283,22 @@ func initMeters() {
 		"keda.scaler.http.request.duration.seconds",
 		api.WithDescription("Duration in seconds of outbound HTTP requests issued during scaler metric collection."),
 		api.WithUnit("s"),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
+	otGRPCClientCallsCounter, err = meter.Int64Counter(
+		"keda.rpc.client.call.count",
+		api.WithDescription("Total number of completed outbound gRPC calls issued by KEDA to external scalers."),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
+	otGRPCClientStreamMessagesCounter, err = meter.Int64Counter(
+		"keda.rpc.client.stream.message.count",
+		api.WithDescription("Total number of messages successfully sent or received by external scaler gRPC streams."),
 	)
 	if err != nil {
 		otLog.Error(err, msg)
@@ -642,6 +672,47 @@ func (o *OtelMetrics) RecordHTTPClientRequest(durationSeconds float64, statusCod
 		histOpt := api.WithAttributes(attrs...)
 		otHTTPClientRequestDuration.Record(context.Background(), durationSeconds, histOpt)
 	}
+}
+
+func (o *OtelMetrics) grpcClientAttributes(labels scalerRequestLabels) []attribute.KeyValue {
+	attrs := []attribute.KeyValue{attribute.Key("scaler").String(labels.scaler)}
+	if o.enableHighCardinalityLabels {
+		attrs = append(attrs,
+			attribute.Key("namespace").String(labels.namespace),
+			attribute.Key("scaled_resource").String(labels.scaledResource),
+			attribute.Key("trigger_name").String(labels.triggerName),
+			attribute.Key("metric_name").String(labels.metricName),
+		)
+	}
+	return attrs
+}
+
+func (o *OtelMetrics) grpcClientAttributesFromContext(ctx context.Context) []attribute.KeyValue {
+	labels, ok := scalerRequestLabelsFromContext(ctx)
+	if !ok {
+		return nil
+	}
+	return o.grpcClientAttributes(labels)
+}
+
+// RecordGRPCClientCall records a completed outbound external scaler gRPC call.
+func (o *OtelMetrics) RecordGRPCClientCall(ctx context.Context, statusCode, grpcMethod string, labels scalerRequestLabels) {
+	attrs := append(o.grpcClientAttributes(labels),
+		semconv.RPCSystemNameGRPC,
+		semconv.RPCMethod(grpcMethod),
+		semconv.RPCResponseStatusCode(statusCode),
+	)
+	otGRPCClientCallsCounter.Add(ctx, 1, api.WithAttributes(attrs...))
+}
+
+// RecordGRPCClientStreamMessage records a successfully sent or received external scaler stream message.
+func (o *OtelMetrics) RecordGRPCClientStreamMessage(ctx context.Context, messageType, grpcMethod string, labels scalerRequestLabels) {
+	attrs := append(o.grpcClientAttributes(labels),
+		semconv.RPCSystemNameGRPC,
+		semconv.RPCMethod(grpcMethod),
+		attribute.Key("rpc.message.type").String(messageType),
+	)
+	otGRPCClientStreamMessagesCounter.Add(ctx, 1, api.WithAttributes(attrs...))
 }
 
 // RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting

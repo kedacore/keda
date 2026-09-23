@@ -57,6 +57,16 @@ type metricsAPIScalerMetadata struct {
 	triggerIndex int
 }
 
+// Validate rejects auth modes this scaler does not apply to its requests.
+func (m *metricsAPIScalerMetadata) Validate() error {
+	return m.MetricsAPIAuth.ValidateAllowed(
+		authentication.APIKeyAuthType,
+		authentication.BasicAuthType,
+		authentication.TLSAuthType,
+		authentication.BearerAuthType,
+	)
+}
+
 const (
 	methodValueQuery           = "query"
 	valueLocationWrongErrorMsg = "valueLocation %q must point to a numeric value or a string parseable as a Quantity, got %s"

@@ -153,6 +153,7 @@ func (s *couchDBScaler) getQueryResult(ctx context.Context) (int64, error) {
 	}
 
 	rows := db.Find(ctx, request)
+	defer rows.Close()
 
 	var count int64
 	for rows.Next() {

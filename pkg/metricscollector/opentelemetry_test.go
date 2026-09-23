@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
@@ -26,6 +27,26 @@ func resetTestOtel(enableHighCardinalityLabels bool) {
 	testReader = metric.NewManualReader()
 	options := metric.WithReader(testReader)
 	testOtel = NewOtelMetrics(enableHighCardinalityLabels, options)
+}
+
+func TestNewMetricsCollectorsSkipsFailedOtelInitialization(t *testing.T) {
+	previousCollectors := collectors
+	previousHandler := otelClientHandler
+	previousNewOtelMetrics := newOtelMetrics
+	t.Cleanup(func() {
+		collectors = previousCollectors
+		otelClientHandler = previousHandler
+		newOtelMetrics = previousNewOtelMetrics
+	})
+
+	collectors = nil
+	otelClientHandler = nil
+	newOtelMetrics = func(bool, ...metric.Option) *OtelMetrics { return nil }
+
+	NewMetricsCollectors(Options{EnableOpenTelemetryMetrics: true})
+
+	assert.Empty(t, collectors)
+	assert.Nil(t, otelClientHandler)
 }
 
 func retrieveMetric(metrics []metricdata.Metrics, metricname string) *metricdata.Metrics {
@@ -210,6 +231,13 @@ func TestRecordHTTPClientRequest_DisablesHighCardinalityLabels(t *testing.T) {
 	statusCode, ok := dataPoint.Attributes.Value("status_code")
 	assert.True(t, ok)
 	assert.Equal(t, "200", statusCode.AsString())
+}
+
+func assertOtelStringAttribute(t *testing.T, attributes attribute.Set, key, want string) {
+	t.Helper()
+	value, ok := attributes.Value(attribute.Key(key))
+	require.True(t, ok, "attribute %s is missing", key)
+	assert.Equal(t, want, value.AsString())
 }
 
 func TestContinuousMetrics(t *testing.T) {
