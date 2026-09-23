@@ -19,7 +19,9 @@ package scaling
 import (
 	"context"
 	"testing"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	authenticationv1 "k8s.io/api/authentication/v1"
@@ -33,6 +35,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	mock_serviceaccounts "github.com/kedacore/keda/v2/pkg/mock/mock_serviceaccounts"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
 )
 
 func TestScalerFactoryUsesContextFromCurrentInvocation(t *testing.T) {
@@ -40,8 +43,22 @@ func TestScalerFactoryUsesContextFromCurrentInvocation(t *testing.T) {
 		namespace                 = "default"
 		triggerAuthenticationName = "auth"
 		serviceAccountName        = "scaler"
-		token                     = "bound-service-account-token"
+		audience                  = "metrics"
 	)
+
+	resolver.SetConfig(&resolver.Config{
+		ServiceAccountTokenMode: "enforce-audience",
+		ServiceAccountTokenAudiences: []resolver.ServiceAccountTokenAudience{
+			{Namespace: namespace, ServiceAccountName: serviceAccountName, Audience: audience},
+		},
+	})
+	t.Cleanup(func() { resolver.SetConfig(&resolver.Config{}) })
+	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": "system:serviceaccount:" + namespace + ":" + serviceAccountName,
+		"aud": []string{audience},
+		"exp": time.Now().Add(time.Hour).Unix(),
+	}).SignedString([]byte("test-only"))
+	require.NoError(t, err)
 
 	testScheme := runtime.NewScheme()
 	require.NoError(t, corev1.AddToScheme(testScheme))
@@ -64,7 +81,8 @@ func TestScalerFactoryUsesContextFromCurrentInvocation(t *testing.T) {
 	coreClient := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
 	coreClient.GetServiceAccountInterface().EXPECT().CreateToken(
 		gomock.Any(), serviceAccountName, gomock.Any(), gomock.Any(),
-	).DoAndReturn(func(ctx context.Context, _ string, _ *authenticationv1.TokenRequest, _ metav1.CreateOptions) (*authenticationv1.TokenRequest, error) {
+	).DoAndReturn(func(ctx context.Context, _ string, request *authenticationv1.TokenRequest, _ metav1.CreateOptions) (*authenticationv1.TokenRequest, error) {
+		require.Equal(t, []string{audience}, request.Spec.Audiences)
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
