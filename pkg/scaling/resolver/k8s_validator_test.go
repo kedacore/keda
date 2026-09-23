@@ -141,6 +141,70 @@ func TestReadKubernetesServiceAccountProjectedToken(t *testing.T) {
 	}
 }
 
+func TestValidateK8sSATokenAudiences(t *testing.T) {
+	privateKey, err := generateTestRSAKeyPair()
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		audiences any
+		expected  []string
+		wantError bool
+	}{
+		{name: "single matching audience", audiences: []string{"vault.example"}, expected: []string{"vault.example"}},
+		{name: "string audience", audiences: "vault.example", expected: []string{"vault.example"}},
+		{name: "missing audience", expected: []string{"vault.example"}, wantError: true},
+		{name: "wrong audience", audiences: []string{"kube-apiserver"}, expected: []string{"vault.example"}, wantError: true},
+		{name: "additional audience", audiences: []string{"vault.example", "kube-apiserver"}, expected: []string{"vault.example"}, wantError: true},
+		{name: "no required audience", audiences: []string{"vault.example"}, wantError: true},
+		{name: "subset of approved audiences", audiences: []string{"other.example"}, expected: []string{"vault.example", "other.example"}},
+		{name: "all audiences approved", audiences: []string{"other.example", "vault.example"}, expected: []string{"vault.example", "other.example"}},
+		{name: "duplicates do not expand privileges", audiences: []string{"vault.example", "vault.example"}, expected: []string{"vault.example", "other.example"}},
+		{name: "one approved audience cannot hide another", audiences: []string{"vault.example", "api"}, expected: []string{"vault.example", "other.example"}, wantError: true},
+		{name: "empty audience", audiences: []string{""}, expected: []string{""}, wantError: true},
+		{name: "empty audience list", audiences: []string{}, expected: []string{"vault.example"}, wantError: true},
+		{name: "wrong claim type", audiences: 1, expected: []string{"vault.example"}, wantError: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			claims := jwt.MapClaims{
+				"iss": "kubernetes/serviceaccount",
+				"sub": "system:serviceaccount:default:default",
+				"exp": time.Now().Add(time.Hour).Unix(),
+			}
+			if tt.audiences != nil {
+				claims["aud"] = tt.audiences
+			}
+			token, err := createJWTToken(privateKey, claims)
+			assert.NoError(t, err)
+
+			err = validateK8sSATokenAudiences(token, tt.expected)
+			if tt.wantError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateK8sSATokenLifetime(t *testing.T) {
+	key, err := generateTestRSAKeyPair()
+	assert.NoError(t, err)
+	for _, lifetime := range []jwt.MapClaims{
+		{}, {"exp": time.Now().Add(-time.Minute).Unix()},
+		{"exp": "invalid"},
+		{"exp": time.Now().Add(time.Hour).Unix(), "nbf": time.Now().Add(time.Minute).Unix()},
+	} {
+		lifetime["sub"] = "system:serviceaccount:default:default"
+		lifetime["aud"] = []string{"vault"}
+		token, err := createJWTToken(key, lifetime)
+		assert.NoError(t, err)
+		assert.Error(t, validateK8sSATokenAudiences(token, []string{"vault"}))
+	}
+}
+
 // Helper function to generate RSA key pair for testing
 func generateTestRSAKeyPair() (*rsa.PrivateKey, error) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)

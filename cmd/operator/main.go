@@ -99,6 +99,8 @@ func main() {
 	var httpMaxIdleConns int
 	var httpMaxIdleConnsPerHost int
 	var httpIdleConnTimeout time.Duration
+	var serviceAccountTokenMode string
+	var vaultKubernetesAuthTokenFile string
 	pflag.BoolVar(&enablePrometheusMetrics, "enable-prometheus-metrics", true, "Enable the prometheus metric of keda-operator.")
 	pflag.BoolVar(&enableOpenTelemetryMetrics, "enable-opentelemetry-metrics", false, "Enable the opentelemetry metric of keda-operator.")
 	pflag.BoolVar(&enableHighCardinalityLabels, "enable-high-cardinality-metrics-labels", false, "Enable high-cardinality labels for scaler HTTP request duration and external scaler gRPC client metrics.")
@@ -129,6 +131,8 @@ func main() {
 	pflag.IntVar(&httpMaxIdleConns, "http-max-idle-conns", 0, "Maximum number of idle HTTP connections across all hosts. Zero means no limit.")
 	pflag.IntVar(&httpMaxIdleConnsPerHost, "http-max-idle-conns-per-host", 1000, "Maximum number of idle HTTP connections to keep per host.")
 	pflag.DurationVar(&httpIdleConnTimeout, "http-idle-conn-timeout", 90*time.Second, "Maximum time an idle HTTP connection remains in the pool. Must be greater than zero.")
+	pflag.StringVar(&serviceAccountTokenMode, "service-account-token-mode", "enforce-audience", "Service account token mode for Vault file tokens and all boundServiceAccountToken minting: enforce-audience (default) or legacy (explicit insecure bypass). Legacy may expose Kubernetes API credentials and logs warnings at startup and on use.")
+	pflag.StringVar(&vaultKubernetesAuthTokenFile, "vault-kubernetes-auth-token-file", resolver.DefaultVaultKubernetesAuthTokenFile, "Dedicated projected token for the operator's Vault Kubernetes login. The kubelet mints and rotates this token; KEDA needs no TokenRequest permission for this path.")
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 
@@ -180,11 +184,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	resolver.SetConfig(&resolver.Config{
-		FilePathAuthRootPath: filePathAuthRootPath,
-	})
-
 	cfg := ctrl.GetConfigOrDie()
+	resolverConfig := &resolver.Config{
+		FilePathAuthRootPath:         filePathAuthRootPath,
+		ServiceAccountTokenMode:      serviceAccountTokenMode,
+		VaultKubernetesAuthTokenFile: vaultKubernetesAuthTokenFile,
+	}
+	configureAuthenticationPolicyOrDie(resolverConfig)
+
 	cfg.QPS = adapterClientRequestQPS
 	cfg.Burst = adapterClientRequestBurst
 	cfg.DisableCompression = disableCompression
@@ -458,4 +465,24 @@ func buildWatchLabelSelectorByObjectOrDie() map[client.Object]ctrlcache.ByObject
 	}
 	maps.Copy(byObject, taByObject)
 	return byObject
+}
+
+func configureAuthenticationPolicyOrDie(config *resolver.Config) {
+	if err := config.LoadServiceAccountTokenAudiences(os.Getenv(resolver.ServiceAccountTokenAudiencesEnvVar)); err != nil {
+		setupLog.Error(err, "invalid service account token policy")
+		os.Exit(1)
+	}
+	if err := config.LoadOutboundFilter(os.Getenv(resolver.OutboundFilterEnvVar)); err != nil {
+		setupLog.Error(err, "invalid authentication policy")
+		os.Exit(1)
+	}
+	resolver.SetConfig(config)
+	if config.IsLegacyServiceAccountTokenMode() {
+		setupLog.Info("Warning: legacy service account token mode explicitly disables audience enforcement for Vault and boundServiceAccountToken authentication; Kubernetes API credentials may be sent to tenant-controlled destinations. Configure approved audiences and restore --service-account-token-mode=enforce-audience. Each legacy Vault login and token mint logs a warning")
+	}
+	if config.IsWarnOutboundPolicy() {
+		setupLog.Info("Warning: outbound filter mode warn allows tenant-selected Vault addresses outside the allowlist and logs a warning for each violation. Configure KEDA_OUTBOUND_FILTER.hashiCorpVault with mode enforce and trusted allowedEndpoints to restrict destinations")
+	} else if config.OutboundEndpointPolicy == "off" {
+		setupLog.Info("Outbound filter mode off allows tenant-selected Vault addresses without destination restrictions; allowedEndpoints is ignored. Configure KEDA_OUTBOUND_FILTER.hashiCorpVault with mode enforce and trusted allowedEndpoints to restrict destinations")
+	}
 }
