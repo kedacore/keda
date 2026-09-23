@@ -11,7 +11,7 @@ jobs:
     name: validate - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     container:
-      image: ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c
+      image: ghcr.io/kedacore/keda-tools:1.27.1
       volumes:
         - /usr:/host/usr
         - /opt:/host/opt
@@ -91,7 +91,7 @@ jobs:
 
       - name: Go modules sync
         if: steps.filter.outputs.go == 'true'
-        run: go mod tidy -compat=1.25
+        run: go mod tidy -compat=1.26
 
       - name: Verify generated Clientset is up to date
         if: steps.filter.outputs.go == 'true'
@@ -131,7 +131,7 @@ jobs:
       pull-requests: read # for dorny/paths-filter to read pull requests
     name: validate-dockerfiles - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c
+    container: ghcr.io/kedacore/keda-tools:1.27.1
     strategy:
       matrix:
         include:
@@ -167,7 +167,7 @@ jobs:
       pull-requests: read # for dorny/paths-filter to read pull requests
     name: Validate dev-container - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c
+    container: ghcr.io/kedacore/keda-tools:1.27.1
     strategy:
       matrix:
         include:

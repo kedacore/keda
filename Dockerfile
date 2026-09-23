@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM --platform=$BUILDPLATFORM ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c AS builder
+FROM --platform=$BUILDPLATFORM ghcr.io/kedacore/keda-tools:1.27.1 AS builder
 
 ARG BUILD_VERSION=main
 ARG GIT_COMMIT=HEAD

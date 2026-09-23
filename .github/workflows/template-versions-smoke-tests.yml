@@ -16,9 +16,11 @@ jobs:
           # renovate: datasource=docker depName=kindest/node
           - v1.37.0
           # renovate: datasource=docker depName=kindest/node@only-patch packageName=kindest/node
-          - v1.35.5
+          - v1.36.4
           # renovate: datasource=docker depName=kindest/node@only-patch packageName=kindest/node
-          - v1.34.8
+          - v1.35.8
+          # renovate: datasource=docker depName=kindest/node@only-patch packageName=kindest/node
+          - v1.34.11
         include:
           - arch: AMD64
             runner: ubuntu-latest
