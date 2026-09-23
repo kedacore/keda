@@ -75,6 +75,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Introduce new Azure Cosmos DB Change Feed Scaler ([#7556](https://github.com/kedacore/keda/issues/7556))
 - **General**: Introduce new ClickHouse Scaler ([#7418](https://github.com/kedacore/keda/issues/7418))
 - **General**: Introduce new GCP Spanner Scaler ([#7891](https://github.com/kedacore/keda/issues/7891))
+- **Redis Scaler**: Add support for Microsoft Entra ID authentication via Azure Workload Identity (`podIdentity.provider: azure-workload`) for `redis`, `redis-cluster`, and `redis-streams` triggers against Azure Managed Redis, with automatic token refresh via `go-redis-entraid` ([#7888](https://github.com/kedacore/keda/issues/7888))
 
 #### Experimental
 
