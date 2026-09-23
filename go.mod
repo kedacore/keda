@@ -12,11 +12,11 @@ replace github.com/nexus-rpc/nexus-proto-annotations v0.1.0 => github.com/nexus-
 exclude github.com/go-chi/chi/v5 v5.2.3
 
 require (
-	cloud.google.com/go/compute/metadata v0.9.0
+	cloud.google.com/go/compute/metadata v0.9.1
 	cloud.google.com/go/monitoring v1.30.0
 	cloud.google.com/go/secretmanager v1.21.0
-	cloud.google.com/go/spanner v1.95.0
-	cloud.google.com/go/storage v1.67.0
+	cloud.google.com/go/spanner v1.95.1
+	cloud.google.com/go/storage v1.68.0
 	dario.cat/mergo v1.0.2
 	github.com/Azure/azure-amqp-common-go/v4 v4.2.0
 	github.com/Azure/azure-kusto-go/azkustodata v1.2.2
@@ -37,19 +37,19 @@ require (
 	github.com/IBM/sarama v1.60.2
 	github.com/InfluxCommunity/influxdb3-go/v2 v2.17.0
 	github.com/apache/cassandra-gocql-driver/v2 v2.1.2
-	github.com/arangodb/go-driver/v2 v2.4.0
+	github.com/arangodb/go-driver/v2 v2.4.1
 	github.com/aws/aws-msk-iam-sasl-signer-go v1.0.4
 	github.com/aws/aws-sdk-go-v2 v1.47.0
-	github.com/aws/aws-sdk-go-v2/config v1.33.4
-	github.com/aws/aws-sdk-go-v2/credentials v1.20.4
+	github.com/aws/aws-sdk-go-v2/config v1.33.5
+	github.com/aws/aws-sdk-go-v2/credentials v1.20.5
 	github.com/aws/aws-sdk-go-v2/service/amp v1.54.0
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.72.0
-	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.68.0
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.69.0
 	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.41.0
-	github.com/aws/aws-sdk-go-v2/service/kinesis v1.54.0
-	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.49.0
+	github.com/aws/aws-sdk-go-v2/service/kinesis v1.55.0
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.50.0
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.52.0
-	github.com/aws/aws-sdk-go-v2/service/sts v1.50.0
+	github.com/aws/aws-sdk-go-v2/service/sts v1.51.0
 	github.com/beanstalkd/go-beanstalk v0.2.0
 	github.com/bradleyfalzon/ghinstallation/v2 v2.19.0
 	github.com/cloudevents/sdk-go/v2 v2.16.2
@@ -64,9 +64,9 @@ require (
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/gobwas/glob v1.0.0
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-github/v91 v91.0.0
+	github.com/google/go-github/v92 v92.0.0
 	github.com/google/uuid v1.6.0
-	github.com/gophercloud/gophercloud/v2 v2.14.0
+	github.com/gophercloud/gophercloud/v2 v2.15.0
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0
 	github.com/hashicorp/vault/api v1.23.0
 	github.com/influxdata/influxdb-client-go/v2 v2.14.0
@@ -77,9 +77,9 @@ require (
 	github.com/microsoft/azure-devops-go-api/azuredevops v1.0.0-b5
 	github.com/mitchellh/hashstructure/v2 v2.0.2
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/newrelic/newrelic-client-go/v2 v2.93.4
-	github.com/onsi/ginkgo/v2 v2.32.2
-	github.com/onsi/gomega v1.43.0
+	github.com/newrelic/newrelic-client-go/v2 v2.94.1
+	github.com/onsi/ginkgo/v2 v2.33.0
+	github.com/onsi/gomega v1.43.1
 	github.com/open-policy-agent/cert-controller v0.16.0
 	github.com/opensearch-project/opensearch-go/v4 v4.7.3
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
@@ -87,7 +87,7 @@ require (
 	github.com/prometheus/client_model v0.6.3
 	github.com/prometheus/common v0.71.0
 	github.com/prometheus/prometheus v0.314.0
-	github.com/rabbitmq/amqp091-go v1.14.0
+	github.com/rabbitmq/amqp091-go v1.15.0
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/robfig/cron/v3 v3.0.1
@@ -99,7 +99,7 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/tidwall/gjson v1.19.0
 	github.com/xdg-go/scram v1.2.0
-	github.com/xhit/go-str2duration/v2 v2.1.0
+	github.com/xhit/go-str2duration/v2 v2.2.0
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
 	go.etcd.io/etcd/client/v3 v3.7.1
 	go.mongodb.org/mongo-driver/v2 v2.9.1
@@ -108,12 +108,12 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.46.0
 	go.opentelemetry.io/otel/metric v1.46.0
 	go.opentelemetry.io/otel/sdk/metric v1.46.0
-	go.temporal.io/sdk v1.48.0
+	go.temporal.io/sdk v1.49.0
 	go.uber.org/mock v0.6.0
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sync v0.23.0
-	google.golang.org/api v0.297.0
-	google.golang.org/grpc v1.83.2
+	google.golang.org/api v0.298.0
+	google.golang.org/grpc v1.84.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.6.2
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v3 v3.0.1
@@ -342,8 +342,8 @@ require (
 	go.opentelemetry.io/otel/sdk v1.46.0 // indirect
 	go.opentelemetry.io/otel/trace v1.46.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.11.0 // indirect
-	go.temporal.io/api v1.63.5
-	go.uber.org/atomic v1.11.0
+	go.temporal.io/api v1.63.6
+	go.uber.org/atomic v1.12.0
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0
 	go.yaml.in/yaml/v2 v2.4.4 // indirect

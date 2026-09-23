@@ -254,11 +254,11 @@ func TestGetLogSearchResult(t *testing.T) {
 			}
 
 			if !test.expectErr && err != nil {
-				t.Errorf("Expected no error, got %s", err.Error())
+				t.Fatalf("Expected no error, got %s", err.Error())
 			}
 
 			if !test.expectErr && result == nil {
-				t.Error("Expected records to be not nil")
+				t.Fatal("Expected records to be not nil")
 			}
 		})
 	}
@@ -483,11 +483,11 @@ func TestGetMetricsSearchResult(t *testing.T) {
 			}
 
 			if !test.expectErr && err != nil {
-				t.Errorf("Expected no error, got %s", err.Error())
+				t.Fatalf("Expected no error, got %s", err.Error())
 			}
 
 			if !test.expectErr && result == nil {
-				t.Error("Expected result to be non-nil")
+				t.Fatal("Expected result to be non-nil")
 			}
 
 			if !test.expectErr && *result != test.expectedResult {
@@ -724,11 +724,11 @@ func TestGetMultiMetricsSearchResult(t *testing.T) {
 			}
 
 			if !test.expectErr && err != nil {
-				t.Errorf("Expected no error, got %s", err.Error())
+				t.Fatalf("Expected no error, got %s", err.Error())
 			}
 
 			if !test.expectErr && result == nil {
-				t.Error("Expected result to be non-nil")
+				t.Fatal("Expected result to be non-nil")
 			}
 
 			if !test.expectErr && *result != test.expectedResult {
