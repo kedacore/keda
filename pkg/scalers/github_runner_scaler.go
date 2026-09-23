@@ -27,11 +27,12 @@ import (
 )
 
 const (
-	ORG                  = "org"
-	ENT                  = "ent"
-	REPO                 = "repo"
-	githubDefaultPerPage = 30
-	githubJobsPerPage    = 100
+	ORG                   = "org"
+	ENT                   = "ent"
+	REPO                  = "repo"
+	githubDefaultPerPage  = 30
+	githubJobsPerPage     = 100
+	githubDefaultMaxPages = 50
 	// githubScalerMaxCacheEntries caps the etags, previousJobPages, and
 	// previousWfrs maps. Without it the etags and previousJobPages maps grow
 	// once per workflow run page for the lifetime of the operator pod (the URL
@@ -480,6 +481,10 @@ func parseGitHubRunnerMetadata(config *scalersconfig.ScalerConfig) (*githubRunne
 	}
 
 	meta.TriggerIndex = config.TriggerIndex
+
+	if meta.MaxPages < 1 {
+		return nil, fmt.Errorf("maxPages must be greater than or equal to 1, got %d", meta.MaxPages)
+	}
 
 	return meta, nil
 }

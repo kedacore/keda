@@ -191,6 +191,19 @@ func TestGitHubRunnerParseMetadataMaxPagesCustom(t *testing.T) {
 	}
 }
 
+func TestGitHubRunnerParseMetadataMaxPagesInvalid(t *testing.T) {
+	for _, maxPages := range []string{"0", "-1"} {
+		_, err := parseGitHubRunnerMetadata(&scalersconfig.ScalerConfig{
+			ResolvedEnv:     testGitHubRunnerResolvedEnv,
+			TriggerMetadata: map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "targetWorkflowQueueLength": "1", "maxPages": maxPages},
+			AuthParams:      testAuthParams,
+		})
+		if err == nil {
+			t.Fatalf("expected error for maxPages=%s but got none", maxPages)
+		}
+	}
+}
+
 func getGitHubTestMetaData(url string) *githubRunnerMetadata {
 	testpat := "testpat"
 
