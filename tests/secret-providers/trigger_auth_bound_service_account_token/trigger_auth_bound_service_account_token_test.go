@@ -310,37 +310,37 @@ func TestScaler(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-		TestNamespace:                          testNamespace,
-		ServiceAccountName:                     serviceAccountName,
-		ServiceAccountTokenCreationRole:        serviceAccountTokenCreationRole,
-		ServiceAccountTokenCreationRoleBinding: serviceAccountTokenCreationRoleBinding,
-		MetricsServerDeploymentName:            metricsServerDeploymentName,
-		MetricsServerEndpoint:                  metricsServerEndpoint,
-		MetricsServerServiceName:               metricsServerServiceName,
-		DeploymentName:                         deploymentName,
-		TriggerAuthName:                        triggerAuthName,
-		ScaledObjectName:                       scaledObjectName,
-		MinReplicaCount:                        fmt.Sprintf("%d", minReplicaCount),
-		MaxReplicaCount:                        fmt.Sprintf("%d", maxReplicaCount),
-		MetricValue:                            1,
-	}, []Template{
-		// required for the keda to act as the service account which has the necessary permissions
-		{Name: "serviceAccountTemplate", Config: serviceAccountTemplate},
-		{Name: "serviceAccountClusterRoleTemplate", Config: serviceAccountClusterRoleTemplate},
-		{Name: "serviceAccountClusterRoleBindingTemplate", Config: serviceAccountClusterRoleBindingTemplate},
-		// required for the keda to request token creations for the service account
-		{Name: "serviceAccountTokenCreationRoleTemplate", Config: serviceAccountTokenCreationRoleTemplate},
-		{Name: "serviceAccountTokenCreationRoleBindingTemplate", Config: serviceAccountTokenCreationRoleBindingTemplate},
-		// required for the metrics-api container to delegate authenticate/authorize requests to k8s apiserver
-		{Name: "tokenReviewAndSubjectAccessReviewClusterRoleTemplate", Config: tokenReviewAndSubjectAccessReviewClusterRoleTemplate},
-		{Name: "tokenReviewAndSubjectAccessReviewClusterRoleBindingTemplate", Config: tokenReviewAndSubjectAccessReviewClusterRoleBindingTemplate},
-		{Name: "metricsServerDeploymentTemplate", Config: metricsServerDeploymentTemplate},
-		{Name: "metricsServerService", Config: metricsServerService},
-		// scale target and trigger auths
-		{Name: "deploymentTemplate", Config: deploymentTemplate},
-		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
-		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-	}
+			TestNamespace:                          testNamespace,
+			ServiceAccountName:                     serviceAccountName,
+			ServiceAccountTokenCreationRole:        serviceAccountTokenCreationRole,
+			ServiceAccountTokenCreationRoleBinding: serviceAccountTokenCreationRoleBinding,
+			MetricsServerDeploymentName:            metricsServerDeploymentName,
+			MetricsServerEndpoint:                  metricsServerEndpoint,
+			MetricsServerServiceName:               metricsServerServiceName,
+			DeploymentName:                         deploymentName,
+			TriggerAuthName:                        triggerAuthName,
+			ScaledObjectName:                       scaledObjectName,
+			MinReplicaCount:                        fmt.Sprintf("%d", minReplicaCount),
+			MaxReplicaCount:                        fmt.Sprintf("%d", maxReplicaCount),
+			MetricValue:                            1,
+		}, []Template{
+			// required for the keda to act as the service account which has the necessary permissions
+			{Name: "serviceAccountTemplate", Config: serviceAccountTemplate},
+			{Name: "serviceAccountClusterRoleTemplate", Config: serviceAccountClusterRoleTemplate},
+			{Name: "serviceAccountClusterRoleBindingTemplate", Config: serviceAccountClusterRoleBindingTemplate},
+			// required for the keda to request token creations for the service account
+			{Name: "serviceAccountTokenCreationRoleTemplate", Config: serviceAccountTokenCreationRoleTemplate},
+			{Name: "serviceAccountTokenCreationRoleBindingTemplate", Config: serviceAccountTokenCreationRoleBindingTemplate},
+			// required for the metrics-api container to delegate authenticate/authorize requests to k8s apiserver
+			{Name: "tokenReviewAndSubjectAccessReviewClusterRoleTemplate", Config: tokenReviewAndSubjectAccessReviewClusterRoleTemplate},
+			{Name: "tokenReviewAndSubjectAccessReviewClusterRoleBindingTemplate", Config: tokenReviewAndSubjectAccessReviewClusterRoleBindingTemplate},
+			{Name: "metricsServerDeploymentTemplate", Config: metricsServerDeploymentTemplate},
+			{Name: "metricsServerService", Config: metricsServerService},
+			// scale target and trigger auths
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
