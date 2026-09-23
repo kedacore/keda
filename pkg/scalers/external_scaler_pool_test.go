@@ -18,6 +18,49 @@ func poolEntries() int {
 	return n
 }
 
+// poolEntryFor returns the pooled connection for an address, or nil when the
+// pool holds none. Looking the entry up by its key keeps each test pinned to
+// the connection it created, so a test cannot pass by finding an entry another
+// test left in the shared pool.
+func poolEntryFor(t *testing.T, address string) *connectionGroup {
+	t.Helper()
+	key, err := getConnectionPoolKey(externalScalerMetadata{ScalerAddress: address})
+	if err != nil {
+		t.Fatalf("getConnectionPoolKey: %v", err)
+	}
+	i, ok := connectionPool.Load(key)
+	if !ok {
+		return nil
+	}
+	connGroup, ok := i.(*connectionGroup)
+	if !ok {
+		t.Fatalf("pool entry for %s is a %T, want *connectionGroup", address, i)
+	}
+	return connGroup
+}
+
+// refCountFor returns the number of scalers sharing the connection for an
+// address, and 0 when the pool holds no connection for it.
+func refCountFor(t *testing.T, address string) int {
+	t.Helper()
+	connGroup := poolEntryFor(t, address)
+	if connGroup == nil {
+		return 0
+	}
+	return connGroup.refCount
+}
+
+// closeOnCleanup releases the scaler's share when the test ends, so a test that
+// fails part way through does not leave an entry in the pool for the tests that
+// follow. Close is idempotent, so this is a no-op once a test has closed the
+// scaler itself.
+func closeOnCleanup(t *testing.T, s Scaler) {
+	t.Helper()
+	t.Cleanup(func() {
+		_ = s.Close(context.Background())
+	})
+}
+
 func newTestExternalScaler(t *testing.T, address string) Scaler {
 	t.Helper()
 	s, err := NewExternalScaler(&scalersconfig.ScalerConfig{
@@ -29,6 +72,22 @@ func newTestExternalScaler(t *testing.T, address string) Scaler {
 	if err != nil {
 		t.Fatalf("NewExternalScaler: %v", err)
 	}
+	closeOnCleanup(t, s)
+	return s
+}
+
+func newTestExternalPushScaler(t *testing.T, address string) PushScaler {
+	t.Helper()
+	s, err := NewExternalPushScaler(&scalersconfig.ScalerConfig{
+		ScalableObjectName:      "app",
+		ScalableObjectNamespace: "namespace",
+		TriggerMetadata:         map[string]string{"scalerAddress": address},
+		ResolvedEnv:             map[string]string{},
+	})
+	if err != nil {
+		t.Fatalf("NewExternalPushScaler: %v", err)
+	}
+	closeOnCleanup(t, s)
 	return s
 }
 
@@ -39,33 +98,23 @@ func newTestExternalScaler(t *testing.T, address string) Scaler {
 func TestExternalScalerConnectionPoolReleasedOnClose(t *testing.T) {
 	const address = "pool-release-test.default.svc.cluster.local:9090"
 
-	before := poolEntries()
-
 	first := newTestExternalScaler(t, address)
 	second := newTestExternalScaler(t, address)
 
-	if got := poolEntries(); got != before+1 {
-		t.Fatalf("pool entries = %d, want %d, two scalers should share one connection", got, before+1)
-	}
-
-	var connGroup *connectionGroup
-	connectionPool.Range(func(_, v any) bool {
-		if cg, ok := v.(*connectionGroup); ok && cg.refCount == 2 {
-			connGroup = cg
-			return false
-		}
-		return true
-	})
+	connGroup := poolEntryFor(t, address)
 	if connGroup == nil {
-		t.Fatal("expected a pooled connection with two users")
+		t.Fatal("no pooled connection for the address the scalers were built with")
+	}
+	if got := connGroup.refCount; got != 2 {
+		t.Fatalf("refCount = %d, want 2, two scalers should share one connection", got)
 	}
 
 	// The first scaler goes away. The connection is still in use.
 	if err := first.Close(context.Background()); err != nil {
 		t.Fatalf("closing the first scaler: %v", err)
 	}
-	if got := poolEntries(); got != before+1 {
-		t.Errorf("pool entries = %d, want %d, the connection is still in use", got, before+1)
+	if got := refCountFor(t, address); got != 1 {
+		t.Errorf("refCount = %d, want 1, the connection is still in use", got)
 	}
 	if got := connGroup.grpcConnection.GetState(); got == connectivity.Shutdown {
 		t.Error("the connection was closed while another scaler was still using it")
@@ -75,8 +124,53 @@ func TestExternalScalerConnectionPoolReleasedOnClose(t *testing.T) {
 	if err := second.Close(context.Background()); err != nil {
 		t.Fatalf("closing the second scaler: %v", err)
 	}
-	if got := poolEntries(); got != before {
-		t.Errorf("pool entries = %d, want %d, the connection was not dropped from the pool", got, before)
+	if entry := poolEntryFor(t, address); entry != nil {
+		t.Error("the connection was not dropped from the pool")
+	}
+	if got := connGroup.grpcConnection.GetState(); got != connectivity.Shutdown {
+		t.Errorf("connection state = %v, want %v", got, connectivity.Shutdown)
+	}
+}
+
+// NewExternalPushScaler acquires a share of the same pool, and externalPushScaler
+// takes Close from the externalScaler it embeds. A push scaler must therefore
+// release its share like any other, including when it shares the connection
+// with a plain scaler on the same address.
+func TestExternalPushScalerConnectionPoolReleasedOnClose(t *testing.T) {
+	const address = "pool-push-release.default.svc.cluster.local:9090"
+
+	push := newTestExternalPushScaler(t, address)
+
+	connGroup := poolEntryFor(t, address)
+	if connGroup == nil {
+		t.Fatal("no pooled connection for the address the push scaler was built with")
+	}
+	if got := connGroup.refCount; got != 1 {
+		t.Fatalf("refCount = %d, want 1", got)
+	}
+
+	// A plain scaler on the same address shares the push scaler's connection.
+	plain := newTestExternalScaler(t, address)
+	if got := refCountFor(t, address); got != 2 {
+		t.Fatalf("refCount = %d, want 2, the two scalers should share one connection", got)
+	}
+
+	// Closing the push scaler releases only its own share.
+	if err := push.Close(context.Background()); err != nil {
+		t.Fatalf("closing the push scaler: %v", err)
+	}
+	if got := refCountFor(t, address); got != 1 {
+		t.Errorf("refCount = %d, want 1, the plain scaler is still using the connection", got)
+	}
+	if got := connGroup.grpcConnection.GetState(); got == connectivity.Shutdown {
+		t.Error("the connection was closed while the plain scaler was still using it")
+	}
+
+	if err := plain.Close(context.Background()); err != nil {
+		t.Fatalf("closing the plain scaler: %v", err)
+	}
+	if entry := poolEntryFor(t, address); entry != nil {
+		t.Error("the connection was not dropped from the pool")
 	}
 	if got := connGroup.grpcConnection.GetState(); got != connectivity.Shutdown {
 		t.Errorf("connection state = %v, want %v", got, connectivity.Shutdown)
@@ -88,8 +182,6 @@ func TestExternalScalerConnectionPoolReleasedOnClose(t *testing.T) {
 func TestExternalScalerCloseIsIdempotent(t *testing.T) {
 	const address = "pool-double-close.default.svc.cluster.local:9090"
 
-	before := poolEntries()
-
 	first := newTestExternalScaler(t, address)
 	second := newTestExternalScaler(t, address)
 
@@ -100,21 +192,12 @@ func TestExternalScalerCloseIsIdempotent(t *testing.T) {
 		}
 	}
 
-	if got := poolEntries(); got != before+1 {
-		t.Fatalf("pool entries = %d, want %d, a repeated Close released a share it did not hold", got, before+1)
-	}
-
-	// The second scaler still has a working connection.
-	var connGroup *connectionGroup
-	connectionPool.Range(func(_, v any) bool {
-		if cg, ok := v.(*connectionGroup); ok && cg.refCount == 1 {
-			connGroup = cg
-			return false
-		}
-		return true
-	})
+	connGroup := poolEntryFor(t, address)
 	if connGroup == nil {
-		t.Fatal("expected the connection to still be held by one scaler")
+		t.Fatal("a repeated Close released a share it did not hold")
+	}
+	if got := connGroup.refCount; got != 1 {
+		t.Fatalf("refCount = %d, want 1, a repeated Close released a share it did not hold", got)
 	}
 	if got := connGroup.grpcConnection.GetState(); got == connectivity.Shutdown {
 		t.Error("the connection was closed while a scaler was still using it")
@@ -123,8 +206,8 @@ func TestExternalScalerCloseIsIdempotent(t *testing.T) {
 	if err := second.Close(context.Background()); err != nil {
 		t.Fatalf("closing the second scaler: %v", err)
 	}
-	if got := poolEntries(); got != before {
-		t.Errorf("pool entries = %d, want %d", got, before)
+	if entry := poolEntryFor(t, address); entry != nil {
+		t.Error("the connection was not dropped from the pool")
 	}
 }
 
@@ -135,8 +218,6 @@ func TestExternalScalerCloseIsIdempotent(t *testing.T) {
 // exists to remove.
 func TestGetClientForConnectionPoolDoesNotRecreateAfterClose(t *testing.T) {
 	const address = "pool-no-recreate.default.svc.cluster.local:9090"
-
-	before := poolEntries()
 
 	s := newTestExternalScaler(t, address)
 	md := externalScalerMetadata{ScalerAddress: address}
@@ -152,32 +233,78 @@ func TestGetClientForConnectionPoolDoesNotRecreateAfterClose(t *testing.T) {
 	if _, err := getClientForConnectionPool(md); err == nil {
 		t.Error("expected an error looking up the connection after the scaler closed")
 	}
-	if got := poolEntries(); got != before {
-		t.Errorf("pool entries = %d, want %d, the lookup recreated an entry nothing owns", got, before)
+	if entry := poolEntryFor(t, address); entry != nil {
+		t.Error("the lookup recreated an entry nothing owns")
 	}
 }
 
 // Scalers pointing at different addresses do not share a connection, and
 // releasing one leaves the other alone.
 func TestExternalScalerConnectionPoolPerAddress(t *testing.T) {
+	const (
+		addressA = "pool-a.default.svc.cluster.local:9090"
+		addressB = "pool-b.default.svc.cluster.local:9090"
+	)
+
 	before := poolEntries()
 
-	one := newTestExternalScaler(t, "pool-a.default.svc.cluster.local:9090")
-	two := newTestExternalScaler(t, "pool-b.default.svc.cluster.local:9090")
+	one := newTestExternalScaler(t, addressA)
+	two := newTestExternalScaler(t, addressB)
 
 	if got := poolEntries(); got != before+2 {
-		t.Fatalf("pool entries = %d, want %d", got, before+2)
+		t.Fatalf("pool entries = %d, want %d, the two addresses should not share a connection", got, before+2)
 	}
 
 	if err := one.Close(context.Background()); err != nil {
 		t.Fatalf("closing the first scaler: %v", err)
 	}
-	if got := poolEntries(); got != before+1 {
-		t.Errorf("pool entries = %d, want %d", got, before+1)
+	if entry := poolEntryFor(t, addressA); entry != nil {
+		t.Error("the first connection was not dropped from the pool")
+	}
+	if got := refCountFor(t, addressB); got != 1 {
+		t.Errorf("refCount for the second address = %d, want 1, releasing one address must leave the other alone", got)
 	}
 
 	if err := two.Close(context.Background()); err != nil {
 		t.Fatalf("closing the second scaler: %v", err)
+	}
+	if entry := poolEntryFor(t, addressB); entry != nil {
+		t.Error("the second connection was not dropped from the pool")
+	}
+	if got := poolEntries(); got != before {
+		t.Errorf("pool entries = %d, want %d", got, before)
+	}
+}
+
+// The pooled connection is now built from the scaler constructor, so a client
+// certificate that cannot be parsed is reported there rather than on the first
+// poll. buildScalers turns any constructor error into a failure for the whole
+// ScaledObject, so this moves a malformed certificate from degrading one
+// trigger at poll time to failing every trigger on the object at build time.
+// This test pins that behaviour so a change to it is deliberate. Whichever way
+// the error is reported, the failed construction must leave nothing in the
+// pool.
+func TestExternalScalerReportsTLSErrorFromTheConstructor(t *testing.T) {
+	const address = "pool-bad-tls.default.svc.cluster.local:9090"
+
+	before := poolEntries()
+
+	_, err := NewExternalScaler(&scalersconfig.ScalerConfig{
+		ScalableObjectName:      "app",
+		ScalableObjectNamespace: "namespace",
+		TriggerMetadata:         map[string]string{"scalerAddress": address, "enableTLS": "true"},
+		AuthParams: map[string]string{
+			"tlsClientCert": "not a certificate",
+			"tlsClientKey":  "not a key",
+		},
+		ResolvedEnv: map[string]string{},
+	})
+	if err == nil {
+		t.Fatal("expected an error for an unparseable client certificate")
+	}
+
+	if entry := poolEntryFor(t, address); entry != nil {
+		t.Error("the failed construction left a connection in the pool")
 	}
 	if got := poolEntries(); got != before {
 		t.Errorf("pool entries = %d, want %d", got, before)
