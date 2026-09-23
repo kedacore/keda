@@ -12,7 +12,7 @@ jobs:
   triage:
     runs-on: ubuntu-latest
     name: Comment evaluate
-    container: ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c
+    container: ghcr.io/kedacore/keda-tools:1.27.1
     if: |
       github.event.issue.pull_request != null &&
       (
@@ -77,7 +77,7 @@ jobs:
     needs: triage
     runs-on: ubuntu-24.04-arm
     name: Build images
-    container: ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c
+    container: ghcr.io/kedacore/keda-tools:1.27.1
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
@@ -247,7 +247,7 @@ jobs:
     needs: [triage, build-test-images]
     runs-on: e2e
     name: Execute e2e tests
-    container: ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c
+    container: ghcr.io/kedacore/keda-tools:1.27.1
     if: needs.triage.outputs.run-e2e == 'true'
     outputs:
       test-outcome: ${{ steps.test.outcome }}
@@ -460,8 +460,8 @@ jobs:
       - name: Create k8s ${{ inputs.kubernetesVersion }} Kind Cluster
         uses: helm/kind-action@06c1ae10762d3b9c1644e7fe69596ae519e015a2 # v1.15.0
         env:
-          # renovate: datasource=docker depName=kindest/node
-          NODE_IMAGE_VERSION: v1.37.0
+          # renovate: datasource=docker depName=kindest/node@only-patch packageName=kindest/node
+          NODE_IMAGE_VERSION: v1.36.4
         with:
           node_image: kindest/node:${{ env.NODE_IMAGE_VERSION }}
           cluster_name: arm-smoke-test-${{ github.run_id }}
