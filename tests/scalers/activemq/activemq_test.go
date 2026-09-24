@@ -4,8 +4,8 @@
 package activemq_test
 
 import (
+	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -475,19 +475,35 @@ func setupActiveMQ(t *testing.T, kc *kubernetes.Clientset) {
 	require.NoErrorf(t, err, "%s", err)
 }
 
+// The StatefulSet reports the broker ready as soon as its container is up, which is before the
+// broker has finished starting, so readiness is established by asking the broker's health MBean.
+// Ten minutes is the budget the previous 60 x 10s loop had; the broker usually answers Good well
+// inside the first minute, and the wait ends as soon as it does.
+const (
+	activeMQReadyTimeout  = 10 * time.Minute
+	activeMQReadyInterval = 10 * time.Second
+)
+
 func checkIfActiveMQStatusIsReady(t *testing.T, name string) error {
 	t.Log("--- checking activemq status ---")
-	time.Sleep(time.Second * 10)
-	for i := 0; i < 60; i++ {
-		out, errOut, _ := ExecCommandOnSpecificPod(t, name, testNamespace, fmt.Sprintf("%s query –objname type=Broker,brokerName=localhost,Service=Health", activemqPath))
+
+	ctx, cancel := context.WithTimeout(context.Background(), activeMQReadyTimeout)
+	defer cancel()
+
+	// A failed exec is handed back rather than swallowed, so that a broker which never answers
+	// is reported with the reason instead of as a bare timeout.
+	err := KedaEventually(ctx, func(_ context.Context) (bool, error) {
+		out, errOut, err := ExecCommandOnSpecificPod(t, name, testNamespace, fmt.Sprintf("%s query –objname type=Broker,brokerName=localhost,Service=Health", activemqPath))
 		t.Logf("Output: %s, Error: %s", out, errOut)
-		if !strings.Contains(out, "CurrentStatus = Good") {
-			time.Sleep(time.Second * 10)
-			continue
+		if err != nil {
+			return false, fmt.Errorf("cannot query activemq health: %w", err)
 		}
-		return nil
+		return strings.Contains(out, "CurrentStatus = Good"), nil
+	}, activeMQReadyInterval)
+	if err != nil {
+		return fmt.Errorf("activemq is not ready: %w", err)
 	}
-	return errors.New("activemq is not ready")
+	return nil
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset) {
