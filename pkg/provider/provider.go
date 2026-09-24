@@ -55,13 +55,25 @@ func NewProvider(ctx context.Context, adapterLogger logr.Logger, client client.C
 	logger = adapterLogger.WithName("provider")
 	logger.Info("starting")
 
+	// Continuously monitor the gRPC connection so that reconnection is actively
+	// driven in the background, instead of depending solely on incoming
+	// GetExternalMetric requests (whose request-scoped contexts may not leave
+	// enough time for the connection to recover) to trigger it.
 	go func() {
-		if !grpcClient.WaitForConnectionReady(ctx, logger) {
-			grpcClientConnected = false
-			logger.Error(fmt.Errorf("timeout while waiting to establish gRPC connection to KEDA Metrics Service server"), "timeout", "server", grpcClient.GetServerURL())
-		} else if !grpcClientConnected {
+		for {
+			if !grpcClient.WaitForConnectionReady(ctx, logger) {
+				grpcClientConnected = false
+				logger.Error(fmt.Errorf("timeout while waiting to establish gRPC connection to KEDA Metrics Service server"), "timeout", "server", grpcClient.GetServerURL())
+				return
+			}
 			grpcClientConnected = true
 			logger.Info("Connection to KEDA Metrics Service gRPC server has been successfully established", "server", grpcClient.GetServerURL())
+
+			if !grpcClient.WaitWhileConnectionReady(ctx, logger) {
+				return
+			}
+			grpcClientConnected = false
+			logger.Info("Connection to KEDA Metrics Service gRPC server was lost, attempting to reconnect", "server", grpcClient.GetServerURL())
 		}
 	}()
 

@@ -72,6 +72,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
+- **General**: Continuously monitor and re-establish the metrics service gRPC connection in the background, instead of relying solely on incoming metric requests to trigger reconnection after the connection is lost ([#7874](https://github.com/kedacore/keda/issues/7874))
 - **General**: Fix concurrent map writes panic in the shared root CA `CertPool` ([#7910](https://github.com/kedacore/keda/issues/7910))
 - **General**: Fix nil pointer dereference in AWS Secret Manager `TriggerAuthentication` when `awsSecretManager.credentials` is omitted and no `awsSecretManager.podIdentity` is set ([#7927](https://github.com/kedacore/keda/issues/7927))
 - **General**: Fix nil pointer dereference in `customScalingStrategy.GetEffectiveMaxScale` when `customScalingQueueLengthDeduction` is omitted; the optional field is now treated as zero deduction instead of panicking ([#7798](https://github.com/kedacore/keda/issues/7798))
