@@ -765,6 +765,7 @@ func TestGetTopicPartitions(t *testing.T) {
 		{"success_all_partitions_explicit", map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitation": "1,2"}, []int32{1, 2}, map[string][]int32{"my-topic": {1, 2}}},
 		{"success_partial_partitions_explicit", map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitation": "1,2,3"}, []int32{1, 2, 3, 4, 5, 6}, map[string][]int32{"my-topic": {1, 2, 3}}},
 		{"success_all_partitions_implicit", map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitation": ""}, []int32{1, 2, 3, 4, 5, 6}, map[string][]int32{"my-topic": {1, 2, 3, 4, 5, 6}}},
+		{"success_empty_topic_no_committed_offsets", map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "", "partitionLimitation": ""}, []int32{1, 2}, map[string][]int32{}},
 	}
 
 	for _, tt := range testData {
@@ -773,7 +774,7 @@ func TestGetTopicPartitions(t *testing.T) {
 			if err != nil {
 				t.Fatal("Could not parse metadata:", err)
 			}
-			mockKafkaScaler := kafkaScaler{"", meta, nil, &MockClusterAdmin{partitionIds: tt.partitionIds}, logr.Discard(), make(map[string]map[int32]int64)}
+			mockKafkaScaler := kafkaScaler{"", meta, nil, &MockClusterAdmin{partitionIds: tt.partitionIds, consumerOffsets: &sarama.OffsetFetchResponse{}}, logr.Discard(), make(map[string]map[int32]int64)}
 
 			partitions, err := mockKafkaScaler.getTopicPartitions()
 

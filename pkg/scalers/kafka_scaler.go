@@ -624,6 +624,10 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 		topicsToDescribe = []string{s.metadata.Topic}
 	}
 
+	if len(topicsToDescribe) == 0 {
+		return map[string][]int32{}, nil
+	}
+
 	topicsMetadata, err := s.admin.DescribeTopics(topicsToDescribe)
 	if err != nil {
 		return nil, fmt.Errorf("error describing topics: %w", err)
