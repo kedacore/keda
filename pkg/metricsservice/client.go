@@ -106,6 +106,13 @@ func NewGrpcClient(ctx context.Context, url, certDir, authority, confOptions str
 	return &grpcClient, nil
 }
 
+// GetConnectionState returns the current connectivity state of the underlying
+// gRPC connection to the KEDA metrics service. It is non-blocking and safe to
+// call from a readiness probe.
+func (c *GrpcClient) GetConnectionState() connectivity.State {
+	return c.connection.GetState()
+}
+
 func (c *GrpcClient) GetMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error) {
 	// Fail fast if the gRPC connection has been shut down, rather than
 	// waiting until the context timeout expires.
