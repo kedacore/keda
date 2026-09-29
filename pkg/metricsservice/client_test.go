@@ -18,6 +18,7 @@ package metricsservice
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -42,11 +43,35 @@ func TestGetConnectionState(t *testing.T) {
 
 	c := &GrpcClient{connection: conn}
 
-	// The getter must report exactly what the underlying connection reports,
-	// and must not block.
-	require.Equal(t, conn.GetState(), c.GetConnectionState())
-
 	// A connection that has never dialed is not Ready, so a readiness check
 	// built on this getter would correctly mark the replica NotReady.
 	require.NotEqual(t, connectivity.Ready, c.GetConnectionState())
+}
+
+// TestGetConnectionStateReconnectsWhenIdle guards against the failure mode
+// raised in review on PR #8226: once a non-Ready state removes the replica
+// from the APIService endpoints, no RPCs flow through the client, so an Idle
+// connection would never be woken and the replica could stay NotReady forever.
+// GetConnectionState must therefore trigger a non-blocking reconnect when it
+// observes an Idle connection, moving it off Idle so it can recover on its own.
+func TestGetConnectionStateReconnectsWhenIdle(t *testing.T) {
+	conn, err := grpc.NewClient("passthrough:///127.0.0.1:0",
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	defer conn.Close()
+
+	c := &GrpcClient{connection: conn}
+
+	// A fresh client is parked in Idle until something drives it to connect.
+	require.Equal(t, connectivity.Idle, conn.GetState())
+
+	// Calling the getter on an Idle connection must kick a reconnection
+	// attempt. The reported state is still the pre-nudge Idle, but the
+	// underlying connection then leaves Idle without any RPC being issued.
+	require.Equal(t, connectivity.Idle, c.GetConnectionState())
+
+	require.Eventually(t, func() bool {
+		return conn.GetState() != connectivity.Idle
+	}, 2*time.Second, 10*time.Millisecond,
+		"GetConnectionState should trigger a reconnect that moves the connection off Idle")
 }
