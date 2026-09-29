@@ -123,10 +123,6 @@ type EventSubscription struct {
 	ExcludedEventTypes []CloudEventType `json:"excludedEventTypes,omitempty"`
 }
 
-func init() {
-	SchemeBuilder.Register(&CloudEventSource{}, &CloudEventSourceList{}, &ClusterCloudEventSource{}, &ClusterCloudEventSourceList{})
-}
-
 func (ces *CloudEventSource) GetSpec() *CloudEventSourceSpec {
 	return &ces.Spec
 }

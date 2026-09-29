@@ -23,9 +23,12 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	appsv1 "k8s.io/api/apps/v1"
 	authv1 "k8s.io/api/authentication/v1"
@@ -41,6 +44,7 @@ import (
 	mock_v1 "github.com/kedacore/keda/v2/pkg/mock/mock_secretlister"
 	mock_serviceaccounts "github.com/kedacore/keda/v2/pkg/mock/mock_serviceaccounts"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 )
 
 var (
@@ -53,8 +57,7 @@ var (
 	cmName                    = "supercm"
 	cmKey                     = "mycmkey"
 	cmData                    = "cmDataHere"
-	bsatSAName                = "bsatServiceAccount"
-	bsatData                  = "k8s-bsat-token"
+	bsatSAName                = "bsat-service-account"
 	trueValue                 = true
 	falseValue                = false
 	envKey                    = "test-env-key"
@@ -251,6 +254,17 @@ func TestResolveNonExistingConfigMapsOrSecretsEnv(t *testing.T) {
 }
 
 func TestResolveAuthRef(t *testing.T) {
+	previous := globalConfig
+	t.Cleanup(func() { SetConfig(&previous) })
+	SetConfig(&Config{ServiceAccountTokenAudiences: []ServiceAccountTokenAudience{
+		{ServiceAccountName: bsatSAName, Namespace: namespace, Audience: "metrics"},
+		{ServiceAccountName: bsatSAName, Namespace: clusterNamespace, Audience: "metrics"},
+	}})
+	bsatData, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": "system:serviceaccount:test:test", "aud": []string{"metrics"},
+		"exp": time.Now().Add(time.Hour).Unix(),
+	}).SignedString([]byte("test-only"))
+	require.NoError(t, err)
 	if err := corev1.AddToScheme(scheme.Scheme); err != nil {
 		t.Errorf("Expected Error because: %v", err)
 	}
@@ -338,6 +352,50 @@ func TestResolveAuthRef(t *testing.T) {
 			},
 			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName},
 			expected:            map[string]string{"host": secretData},
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+		},
+		{
+			name: "triggerauth exists with azure service principal client secret",
+			existing: []runtime.Object{
+				&kedav1alpha1.TriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      triggerAuthenticationName,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						AzureServicePrincipal: &kedav1alpha1.AzureServicePrincipal{
+							TenantID:                "tenant-id",
+							ClientID:                "client-id",
+							Cloud:                   "Private",
+							ActiveDirectoryEndpoint: "https://login.private.example",
+							ClientSecret: &kedav1alpha1.AzureServicePrincipalCredential{
+								ValueFrom: kedav1alpha1.ValueFromSecret{
+									SecretKeyRef: kedav1alpha1.SecretKeyRef{
+										Name: secretName,
+										Key:  secretKey,
+									},
+								},
+							},
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      secretName,
+					},
+					Data: map[string][]byte{secretKey: []byte(secretData)},
+				},
+			},
+			soar: &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName},
+			expected: map[string]string{
+				azure.ServicePrincipalAuthKey:                    "true",
+				azure.ServicePrincipalTenantIDKey:                "tenant-id",
+				azure.ServicePrincipalClientIDKey:                "client-id",
+				azure.ServicePrincipalCloudKey:                   "Private",
+				azure.ServicePrincipalActiveDirectoryEndpointKey: "https://login.private.example",
+				azure.ServicePrincipalClientSecretKey:            secretData,
+			},
 			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
 		{
@@ -683,7 +741,8 @@ func TestResolveAuthRef(t *testing.T) {
 			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
 		{
-			name: "clustertriggerauth exists bound service account token but service account in the wrong namespace",
+			name:    "clustertriggerauth exists bound service account token but service account in the wrong namespace",
+			isError: true,
 			existing: []runtime.Object{
 				&kedav1alpha1.ClusterTriggerAuthentication{
 					ObjectMeta: metav1.ObjectMeta{
@@ -709,7 +768,7 @@ func TestResolveAuthRef(t *testing.T) {
 				},
 			},
 			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName, Kind: "ClusterTriggerAuthentication"},
-			expected:            map[string]string{"token": ""},
+			expected:            nil,
 			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
 	}

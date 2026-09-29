@@ -234,12 +234,14 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	data.MetricValue = "0"
 	data.MetricsServerEndpoint = metricsServerEndpointFloat
 	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
-	WaitForJobSuccess(t, kc, "update-metric-value", testNamespace, 60, 2)
+	assert.True(t, WaitForJobSuccess(t, kc, "update-metric-value", testNamespace, 60, 2),
+		"the job setting the metric value should succeed")
 	KubectlDeleteWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 	data.MetricValue = "0"
 	data.MetricsServerEndpoint = metricsServerEndpointInt
 	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
-	WaitForJobSuccess(t, kc, "update-metric-value", testNamespace, 60, 2)
+	assert.True(t, WaitForJobSuccess(t, kc, "update-metric-value", testNamespace, 60, 2),
+		"the job setting the metric value should succeed")
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 2),
 		"replica count should be 0 after 2 minutes")

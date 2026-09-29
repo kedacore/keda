@@ -191,7 +191,8 @@ func TestScaledJobConditions(t *testing.T) {
 	RMQInstall(t, kc, rmqNamespace, user, password, vhost, WithoutOAuth())
 	// Create the existing queue
 	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, 0, 0)
-	WaitForAllJobsSuccess(t, kc, rmqNamespace, 60, 1)
+	assert.True(t, WaitForAllJobsSuccess(t, kc, rmqNamespace, 60, 1),
+		"the RabbitMQ publisher job should succeed, otherwise the queue this test scales on does not exist")
 
 	t.Cleanup(func() {
 		RMQUninstall(t, rmqNamespace, user, password, vhost, WithoutOAuth())
