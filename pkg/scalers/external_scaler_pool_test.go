@@ -289,7 +289,7 @@ func TestExternalScalerReportsTLSErrorFromTheConstructor(t *testing.T) {
 
 	before := poolEntries()
 
-	_, err := NewExternalScaler(&scalersconfig.ScalerConfig{
+	s, err := NewExternalScaler(&scalersconfig.ScalerConfig{
 		ScalableObjectName:      "app",
 		ScalableObjectNamespace: "namespace",
 		TriggerMetadata:         map[string]string{"scalerAddress": address, "enableTLS": "true"},
@@ -300,6 +300,7 @@ func TestExternalScalerReportsTLSErrorFromTheConstructor(t *testing.T) {
 		ResolvedEnv: map[string]string{},
 	})
 	if err == nil {
+		closeOnCleanup(t, s)
 		t.Fatal("expected an error for an unparseable client certificate")
 	}
 
