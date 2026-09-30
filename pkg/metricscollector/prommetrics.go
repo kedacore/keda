@@ -277,6 +277,10 @@ func (p *PromMetrics) DeleteScalerMetrics(namespace string, scaledResource strin
 	scalerMetricsLatency.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
 }
 
+func (p *PromMetrics) DeleteScalerMetric(namespace, scaledResource, scaler string, triggerIndex int, metric string, isScaledObject bool) {
+	scalerMetricsValue.Delete(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject))
+}
+
 // RecordScalerLatency create a measurement of the latency to external metric
 func (p *PromMetrics) RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value time.Duration) {
 	scalerMetricsLatency.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Set(value.Seconds())

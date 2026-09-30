@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
@@ -24,6 +25,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -37,33 +39,45 @@ const (
 )
 
 type azureCosmosDBScaler struct {
-	metricType   v2.MetricTargetType
-	metadata     *azureCosmosDBMetadata
-	cosmosClient *cosmosDBClient
-	logger       logr.Logger
+	metricType           v2.MetricTargetType
+	metadata             *azureCosmosDBMetadata
+	cosmosClient         *cosmosDBClient
+	logger               logr.Logger
+	scalerConfig         *scalersconfig.ScalerConfig
+	diagnosticsMutex     sync.Mutex
+	diagnosticsClosed    bool
+	diagnosticMetricName string
 }
 
 type azureCosmosDBMetadata struct {
-	DatabaseID          string `keda:"name=databaseId,              order=triggerMetadata"`
-	ContainerID         string `keda:"name=containerId,             order=triggerMetadata"`
-	LeaseDatabaseID     string `keda:"name=leaseDatabaseId,         order=triggerMetadata"`
-	LeaseContainerID    string `keda:"name=leaseContainerId,        order=triggerMetadata"`
-	ProcessorName       string `keda:"name=processorName,           order=triggerMetadata"`
-	Endpoint            string `keda:"name=endpoint,                order=authParams;triggerMetadata, optional"`
-	Connection          string `keda:"name=connection,              order=authParams;resolvedEnv;triggerMetadata, optional"`
-	LeaseEndpoint       string `keda:"name=leaseEndpoint,           order=authParams;triggerMetadata, optional"`
-	LeaseConnection     string `keda:"name=leaseConnection,         order=authParams;resolvedEnv;triggerMetadata, optional"`
-	CosmosDBKey         string `keda:"name=cosmosDBKey,             order=authParams;resolvedEnv, optional"`
-	LeaseCosmosDBKey    string `keda:"name=leaseCosmosDBKey,        order=authParams;resolvedEnv, optional"`
-	TenantID            string `keda:"name=tenantId,                order=authParams, optional"`
-	ClientID            string `keda:"name=clientId,                order=authParams, optional"`
-	ClientSecret        string `keda:"name=clientSecret,            order=authParams, optional"`
-	Threshold           int64  `keda:"name=changeFeedLagThreshold,            order=triggerMetadata, default=100"`
-	ActivationThreshold int64  `keda:"name=activationChangeFeedLagThreshold,  order=triggerMetadata, default=0"`
-	TriggerIndex        int
+	DatabaseID                string `keda:"name=databaseId,              order=triggerMetadata"`
+	ContainerID               string `keda:"name=containerId,             order=triggerMetadata"`
+	LeaseDatabaseID           string `keda:"name=leaseDatabaseId,         order=triggerMetadata"`
+	LeaseContainerID          string `keda:"name=leaseContainerId,        order=triggerMetadata"`
+	ProcessorName             string `keda:"name=processorName,           order=triggerMetadata"`
+	Endpoint                  string `keda:"name=endpoint,                order=authParams;triggerMetadata, optional"`
+	Connection                string `keda:"name=connection,              order=authParams;resolvedEnv;triggerMetadata, optional"`
+	LeaseEndpoint             string `keda:"name=leaseEndpoint,           order=authParams;triggerMetadata, optional"`
+	LeaseConnection           string `keda:"name=leaseConnection,         order=authParams;resolvedEnv;triggerMetadata, optional"`
+	CosmosDBKey               string `keda:"name=cosmosDBKey,             order=authParams;resolvedEnv, optional"`
+	LeaseCosmosDBKey          string `keda:"name=leaseCosmosDBKey,        order=authParams;resolvedEnv, optional"`
+	TenantID                  string `keda:"name=tenantId,                order=authParams, optional"`
+	ClientID                  string `keda:"name=clientId,                order=authParams, optional"`
+	ClientSecret              string `keda:"name=clientSecret,            order=authParams, optional"`
+	Threshold                 int64  `keda:"name=changeFeedLagThreshold,            order=triggerMetadata, default=100"`
+	ActivationThreshold       int64  `keda:"name=activationChangeFeedLagThreshold,  order=triggerMetadata, default=0"`
+	MaxActiveLeasesPerReplica int64  `keda:"name=maxActiveLeasesPerReplica, order=triggerMetadata, optional"`
+	EnableHighAvailability    bool   `keda:"name=enableHighAvailability, order=triggerMetadata, default=false"`
+	TriggerIndex              int
 }
 
 func (m *azureCosmosDBMetadata) Validate() error {
+	if m.MaxActiveLeasesPerReplica < 0 {
+		return fmt.Errorf("maxActiveLeasesPerReplica must be greater than zero when configured")
+	}
+	if m.EnableHighAvailability && m.MaxActiveLeasesPerReplica == 0 {
+		return fmt.Errorf("enableHighAvailability requires maxActiveLeasesPerReplica")
+	}
 	if m.Threshold <= 0 {
 		return fmt.Errorf("changeFeedLagThreshold must be greater than zero")
 	}
@@ -104,10 +118,72 @@ type cosmosDBClient struct {
 }
 
 type leaseDocument struct {
-	ID                string `json:"id"`
-	LeaseToken        string `json:"LeaseToken"`
-	ContinuationToken string `json:"ContinuationToken"`
-	Owner             string `json:"Owner,omitempty"`
+	ID                string          `json:"id"`
+	LeaseToken        string          `json:"LeaseToken"`
+	ContinuationToken string          `json:"ContinuationToken"`
+	Owner             string          `json:"Owner,omitempty"`
+	Version           int             `json:"version"`
+	FeedRange         json.RawMessage `json:"FeedRange"`
+	epkRange          *cosmosDBEPKRange
+}
+
+type cosmosDBEPKRange struct {
+	Min string
+	Max string
+}
+
+type cosmosDBPartitionKeyRange struct {
+	ID    string
+	Range cosmosDBEPKRange
+}
+
+func parseCosmosDBEPKRange(raw json.RawMessage) (*cosmosDBEPKRange, error) {
+	var bounds struct {
+		Min            *string `json:"min"`
+		Max            *string `json:"max"`
+		IsMinInclusive *bool   `json:"isMinInclusive"`
+		IsMaxInclusive *bool   `json:"isMaxInclusive"`
+	}
+	if err := json.Unmarshal(raw, &bounds); err != nil {
+		return nil, fmt.Errorf("invalid EPK range: %w", err)
+	}
+	if (bounds.IsMinInclusive != nil && !*bounds.IsMinInclusive) || (bounds.IsMaxInclusive != nil && *bounds.IsMaxInclusive) {
+		return nil, fmt.Errorf("EPK range must be min-inclusive and max-exclusive")
+	}
+	return newCosmosDBEPKRange(bounds.Min, bounds.Max)
+}
+
+func newCosmosDBEPKRange(minInclusive, maxExclusive *string) (*cosmosDBEPKRange, error) {
+	if minInclusive == nil || maxExclusive == nil {
+		return nil, fmt.Errorf("EPK range requires min and max bounds")
+	}
+	minValue, maxValue := *minInclusive, *maxExclusive
+	if strings.Trim(minValue+maxValue, "0123456789ABCDEF") != "" || minValue >= maxValue || maxValue > "FF" {
+		return nil, fmt.Errorf("EPK range must have ordered uppercase hexadecimal bounds within [\"\", \"FF\")")
+	}
+	return &cosmosDBEPKRange{Min: minValue, Max: maxValue}, nil
+}
+
+func (l *leaseDocument) parseFeedRange() error {
+	switch l.Version {
+	case 0:
+		return nil
+	case 1:
+		var feedRange struct {
+			Range json.RawMessage `json:"Range"`
+		}
+		if err := json.Unmarshal(l.FeedRange, &feedRange); err != nil {
+			return fmt.Errorf("invalid FeedRange for lease %q: %w", l.ID, err)
+		}
+		epkRange, err := parseCosmosDBEPKRange(feedRange.Range)
+		if err != nil {
+			return fmt.Errorf("invalid FeedRange for lease %q: %w", l.ID, err)
+		}
+		l.epkRange = epkRange
+		return nil
+	default:
+		return fmt.Errorf("unsupported lease version %d for lease %q", l.Version, l.ID)
+	}
 }
 
 type changeFeedResponse struct {
@@ -130,6 +206,9 @@ func NewAzureCosmosDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) 
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure cosmos db metadata: %w", err)
 	}
+	if meta.MaxActiveLeasesPerReplica > 0 && metricType != v2.AverageValueMetricType {
+		return nil, fmt.Errorf("lease-capacity scaling requires metricType AverageValue")
+	}
 
 	cosmosClient, err := newCosmosDBClient(meta, config.TriggerMetadata, config.PodIdentity, logger, config.GlobalHTTPTimeout)
 	if err != nil {
@@ -141,6 +220,7 @@ func NewAzureCosmosDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) 
 		metadata:     meta,
 		cosmosClient: cosmosClient,
 		logger:       logger,
+		scalerConfig: config,
 	}, nil
 }
 
@@ -148,6 +228,9 @@ func parseAzureCosmosDBMetadata(config *scalersconfig.ScalerConfig) (*azureCosmo
 	meta := &azureCosmosDBMetadata{}
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing metadata: %w", err)
+	}
+	if _, configured := config.TriggerMetadata["maxActiveLeasesPerReplica"]; configured && meta.MaxActiveLeasesPerReplica <= 0 {
+		return nil, fmt.Errorf("maxActiveLeasesPerReplica must be greater than zero when configured")
 	}
 
 	if meta.Endpoint == "" && meta.Connection == "" {
@@ -378,6 +461,22 @@ func generateCosmosDBAuthToken(verb, resourceType, resourceLink, date, key strin
 }
 
 func (c *cosmosDBClient) queryLeases(ctx context.Context) ([]leaseDocument, error) {
+	var leases []leaseDocument
+	continuation := ""
+	for {
+		page, next, err := c.queryLeasesPage(ctx, continuation)
+		if err != nil {
+			return nil, err
+		}
+		leases = append(leases, page...)
+		if next == "" {
+			return leases, nil
+		}
+		continuation = next
+	}
+}
+
+func (c *cosmosDBClient) queryLeasesPage(ctx context.Context, continuation string) ([]leaseDocument, string, error) {
 	resourceLink := fmt.Sprintf("dbs/%s/colls/%s", c.leaseDatabaseID, c.leaseContainerID)
 	reqURL := fmt.Sprintf("%s/%s/docs", strings.TrimRight(c.leaseEndpoint, "/"), resourceLink)
 
@@ -395,12 +494,12 @@ func (c *cosmosDBClient) queryLeases(ctx context.Context) ([]leaseDocument, erro
 	prefix := c.processorName + cosmosDBAccountShortName(c.dataEndpoint) + "."
 	prefixJSON, err := json.Marshal(prefix)
 	if err != nil {
-		return nil, fmt.Errorf("error marshaling processor name prefix: %w", err)
+		return nil, "", fmt.Errorf("error marshaling processor name prefix: %w", err)
 	}
 	body := fmt.Sprintf(`{"query":"SELECT * FROM c WHERE STARTSWITH(c.id, @prefix)","parameters":[{"name":"@prefix","value":%s}]}`, string(prefixJSON))
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqURL, strings.NewReader(body))
 	if err != nil {
-		return nil, fmt.Errorf("error creating request: %w", err)
+		return nil, "", fmt.Errorf("error creating request: %w", err)
 	}
 
 	now := time.Now().UTC().Format(http.TimeFormat)
@@ -409,27 +508,30 @@ func (c *cosmosDBClient) queryLeases(ctx context.Context) ([]leaseDocument, erro
 	req.Header.Set("Content-Type", "application/query+json")
 	req.Header.Set("x-ms-documentdb-isquery", "true")
 	req.Header.Set("x-ms-documentdb-query-enablecrosspartition", "true")
+	if continuation != "" {
+		req.Header.Set("x-ms-continuation", continuation)
+	}
 
 	if err := c.setAuthHeader(req, http.MethodPost, "docs", resourceLink, now, c.leaseKey); err != nil {
-		return nil, fmt.Errorf("error setting auth header: %w", err)
+		return nil, "", fmt.Errorf("error setting auth header: %w", err)
 	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("error executing request: %w", err)
+		return nil, "", fmt.Errorf("error executing request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("query failed with status %d: %s", resp.StatusCode, string(respBody))
+		return nil, "", fmt.Errorf("query failed with status %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	var result struct {
 		Documents []json.RawMessage `json:"Documents"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("error decoding response: %w", err)
+		return nil, "", fmt.Errorf("error decoding response: %w", err)
 	}
 
 	// Parse and filter out non-lease metadata documents (the SDKs also create ".info"/".lock"
@@ -445,17 +547,168 @@ func (c *cosmosDBClient) queryLeases(ctx context.Context) ([]leaseDocument, erro
 	for _, raw := range result.Documents {
 		var doc leaseDocument
 		if err := json.Unmarshal(raw, &doc); err != nil {
-			continue
+			return nil, "", fmt.Errorf("error decoding lease document: %w", err)
 		}
 		if doc.LeaseToken != "" {
+			if err := doc.parseFeedRange(); err != nil {
+				return nil, "", err
+			}
 			leases = append(leases, doc)
 		}
 	}
 
-	return leases, nil
+	return leases, resp.Header.Get("x-ms-continuation"), nil
 }
 
-func (c *cosmosDBClient) readChangeFeed(ctx context.Context, partitionKeyRangeID, continuationToken string) (*changeFeedResponse, error) {
+func (c *cosmosDBClient) readPartitionKeyRanges(ctx context.Context) ([]cosmosDBPartitionKeyRange, error) {
+	var ranges []cosmosDBPartitionKeyRange
+	continuation := ""
+	for {
+		page, next, err := c.readPartitionKeyRangesPage(ctx, continuation)
+		if err != nil {
+			return nil, err
+		}
+		ranges = append(ranges, page...)
+		if next == "" {
+			return ranges, nil
+		}
+		continuation = next
+	}
+}
+
+func (c *cosmosDBClient) readPartitionKeyRangesPage(ctx context.Context, continuation string) ([]cosmosDBPartitionKeyRange, string, error) {
+	resourceLink := fmt.Sprintf("dbs/%s/colls/%s", c.databaseID, c.containerID)
+	reqURL := fmt.Sprintf("%s/%s/pkranges", strings.TrimRight(c.dataEndpoint, "/"), resourceLink)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	if err != nil {
+		return nil, "", fmt.Errorf("error creating partition key ranges request: %w", err)
+	}
+	now := time.Now().UTC().Format(http.TimeFormat)
+	req.Header.Set("x-ms-date", now)
+	req.Header.Set("x-ms-version", cosmosDBRestAPIVersion)
+	if continuation != "" {
+		req.Header.Set("x-ms-continuation", continuation)
+	}
+	if err := c.setAuthHeader(req, http.MethodGet, "pkranges", resourceLink, now, c.dataKey); err != nil {
+		return nil, "", fmt.Errorf("error setting partition key ranges auth header: %w", err)
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, "", fmt.Errorf("error reading partition key ranges: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, "", fmt.Errorf("read partition key ranges failed with status %d", resp.StatusCode)
+	}
+	var result struct {
+		Ranges []struct {
+			ID           string  `json:"id"`
+			MinInclusive *string `json:"minInclusive"`
+			MaxExclusive *string `json:"maxExclusive"`
+		} `json:"PartitionKeyRanges"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, "", fmt.Errorf("error decoding partition key ranges: %w", err)
+	}
+	ranges := make([]cosmosDBPartitionKeyRange, 0, len(result.Ranges))
+	for _, physicalRange := range result.Ranges {
+		if physicalRange.ID == "" {
+			return nil, "", fmt.Errorf("partition key range is missing its ID")
+		}
+		epkRange, err := newCosmosDBEPKRange(physicalRange.MinInclusive, physicalRange.MaxExclusive)
+		if err != nil {
+			return nil, "", fmt.Errorf("invalid partition key range %q: %w", physicalRange.ID, err)
+		}
+		ranges = append(ranges, cosmosDBPartitionKeyRange{ID: physicalRange.ID, Range: *epkRange})
+	}
+	return ranges, resp.Header.Get("x-ms-continuation"), nil
+}
+
+func resolveCosmosDBEPKRange(epkRange cosmosDBEPKRange, ranges []cosmosDBPartitionKeyRange) (*cosmosDBPartitionKeyRange, bool, error) {
+	var match *cosmosDBPartitionKeyRange
+	for i := range ranges {
+		physicalRange := &ranges[i]
+		if epkRange.Min < physicalRange.Range.Max && epkRange.Max > physicalRange.Range.Min {
+			if match != nil {
+				// Match the SDK's synthetic 410/1002 when a lease spans split children.
+				return nil, true, nil
+			}
+			match = physicalRange
+		}
+	}
+	if match == nil || epkRange.Min < match.Range.Min || epkRange.Max > match.Range.Max {
+		return nil, false, fmt.Errorf("no physical partition contains EPK range [%s, %s)", epkRange.Min, epkRange.Max)
+	}
+	return match, false, nil
+}
+
+func decodeCosmosDBContinuation(token string, epkRange cosmosDBEPKRange) (string, error) {
+	// .NET persists the server ETag directly; Java persists Base64 ChangeFeedStateV1.
+	if token == "" || strings.HasPrefix(token, `"`) {
+		return token, nil
+	}
+	var data []byte
+	var err error
+	for _, encoding := range []*base64.Encoding{base64.URLEncoding, base64.StdEncoding, base64.RawURLEncoding, base64.RawStdEncoding} {
+		data, err = encoding.DecodeString(token)
+		if err == nil {
+			break
+		}
+	}
+	if err != nil {
+		return "", fmt.Errorf("invalid Java change feed continuation encoding: %w", err)
+	}
+	var state struct {
+		Version      int    `json:"V"`
+		Mode         string `json:"Mode"`
+		Continuation struct {
+			Version int `json:"V"`
+			Tokens  []struct {
+				Token *string         `json:"token"`
+				Range json.RawMessage `json:"range"`
+			} `json:"Continuation"`
+		} `json:"Continuation"`
+	}
+	if err := json.Unmarshal(data, &state); err != nil {
+		return "", fmt.Errorf("invalid Java change feed continuation state: %w", err)
+	}
+	if state.Version != 1 || state.Mode != "INCREMENTAL" || state.Continuation.Version != 1 || len(state.Continuation.Tokens) != 1 {
+		return "", fmt.Errorf("java ChangeFeedStateV1 requires INCREMENTAL mode and one continuation range")
+	}
+	current := state.Continuation.Tokens[0]
+	tokenRange, err := parseCosmosDBEPKRange(current.Range)
+	if err != nil {
+		return "", fmt.Errorf("invalid Java continuation range: %w", err)
+	}
+	if tokenRange.Min > epkRange.Min || tokenRange.Max < epkRange.Max || current.Token == nil || *current.Token == "" {
+		return "", fmt.Errorf("java continuation must contain a server ETag covering the lease FeedRange")
+	}
+	return *current.Token, nil
+}
+
+func (c *cosmosDBClient) readLeaseChangeFeed(ctx context.Context, lease leaseDocument, ranges []cosmosDBPartitionKeyRange) (*changeFeedResponse, error) {
+	if lease.Version == 0 {
+		return c.readChangeFeed(ctx, lease.LeaseToken, lease.ContinuationToken, nil)
+	}
+	physicalRange, split, err := resolveCosmosDBEPKRange(*lease.epkRange, ranges)
+	if err != nil {
+		return nil, err
+	}
+	if split {
+		return &changeFeedResponse{StatusCode: http.StatusGone, SubStatusCode: cosmosDBPartitionKeyRangeGoneSubStatus}, nil
+	}
+	continuation, err := decodeCosmosDBContinuation(lease.ContinuationToken, *lease.epkRange)
+	if err != nil {
+		return nil, err
+	}
+	var filter *cosmosDBEPKRange
+	if physicalRange.Range != *lease.epkRange {
+		filter = lease.epkRange
+	}
+	return c.readChangeFeed(ctx, physicalRange.ID, continuation, filter)
+}
+
+func (c *cosmosDBClient) readChangeFeed(ctx context.Context, partitionKeyRangeID, continuationToken string, epkRange *cosmosDBEPKRange) (*changeFeedResponse, error) {
 	resourceLink := fmt.Sprintf("dbs/%s/colls/%s", c.databaseID, c.containerID)
 	reqURL := fmt.Sprintf("%s/%s/docs", strings.TrimRight(c.dataEndpoint, "/"), resourceLink)
 
@@ -470,6 +723,11 @@ func (c *cosmosDBClient) readChangeFeed(ctx context.Context, partitionKeyRangeID
 	req.Header.Set("x-ms-documentdb-partitionkeyrangeid", partitionKeyRangeID)
 	req.Header.Set("A-IM", "Incremental feed")
 	req.Header.Set("x-ms-max-item-count", "1")
+	if epkRange != nil {
+		req.Header.Set("x-ms-read-key-type", "EffectivePartitionKeyRange")
+		req.Header.Set("x-ms-start-epk", epkRange.Min)
+		req.Header.Set("x-ms-end-epk", epkRange.Max)
+	}
 
 	if continuationToken != "" {
 		req.Header.Set("If-None-Match", continuationToken)
@@ -511,89 +769,81 @@ func (c *cosmosDBClient) readChangeFeed(ctx context.Context, partitionKeyRangeID
 	return cfResp, nil
 }
 
-// estimateLag estimates the total change feed lag across all partitions and
-// returns the lag, number of partitions with lag, and whether a processor must
-// wake to reconcile a stale parent lease. activePartitionCount is meant for scale-out
-// capping rather than pure observability: partitions that have never checkpointed are
-// collapsed to count as at most one, so a burst of simultaneously-bootstrapping partitions
-// doesn't request an outsized replica count (see estimateOnce).
-// If a partition split (410 Gone) is detected, it retries once to get fresh lease data.
-func (c *cosmosDBClient) estimateLag(ctx context.Context) (totalLag int64, activePartitionCount int64, splitRecoveryRequired bool, err error) {
-	totalLag, activePartitionCount, splitDetected, err := c.estimateOnce(ctx)
-	if err != nil {
-		return 0, 0, false, err
-	}
-	if splitDetected {
-		c.logger.Info("Warning: partition split detected, re-reading leases")
-		totalLag, activePartitionCount, splitDetected, err = c.estimateOnce(ctx)
-		if err != nil {
-			return 0, 0, false, err
-		}
-		if splitDetected {
-			return totalLag, activePartitionCount, true, nil
-		}
-	}
-	return totalLag, activePartitionCount, false, nil
+type cosmosDBLeaseState struct {
+	totalLag               int64
+	activeLeases           int64
+	totalLeases            int64
+	legacyActivePartitions int64
+	splitRecoveryRequired  bool
 }
 
-func (c *cosmosDBClient) estimateOnce(ctx context.Context) (int64, int64, bool, error) {
+// estimateLag refreshes leases and routing once if a partition split is detected.
+func (c *cosmosDBClient) estimateLag(ctx context.Context) (cosmosDBLeaseState, error) {
+	state, err := c.estimateOnce(ctx)
+	if err != nil {
+		return cosmosDBLeaseState{}, err
+	}
+	if state.splitRecoveryRequired {
+		c.logger.Info("Warning: partition split detected, re-reading leases")
+		return c.estimateOnce(ctx)
+	}
+	return state, nil
+}
+
+func (c *cosmosDBClient) estimateOnce(ctx context.Context) (cosmosDBLeaseState, error) {
 	leases, err := c.queryLeases(ctx)
 	if err != nil {
-		return 0, 0, false, fmt.Errorf("error querying leases: %w", err)
+		return cosmosDBLeaseState{}, fmt.Errorf("error querying leases: %w", err)
 	}
 
 	if len(leases) == 0 {
 		c.logger.V(1).Info("no lease documents found in lease container")
-		return 0, 0, false, nil
+		return cosmosDBLeaseState{}, nil
 	}
 
 	c.logger.V(1).Info(fmt.Sprintf("found %d lease documents", len(leases)))
 
-	totalLag := int64(0)
-	activePartitionCount := int64(0)
+	state := cosmosDBLeaseState{totalLeases: int64(len(leases))}
 	neverCheckpointedActiveCount := int64(0)
-	splitDetected := false
 
+	var ranges []cosmosDBPartitionKeyRange
 	for _, lease := range leases {
-		lag, isSplit, err := c.estimatePartitionLag(ctx, lease)
+		if lease.Version == 1 && ranges == nil {
+			ranges, err = c.readPartitionKeyRanges(ctx)
+			if err != nil {
+				return cosmosDBLeaseState{}, fmt.Errorf("error resolving lease FeedRange: %w", err)
+			}
+		}
+		lag, isSplit, err := c.estimatePartitionLag(ctx, lease, ranges)
 		if err != nil {
-			return 0, 0, false, fmt.Errorf("error estimating lag: %w", err)
+			return cosmosDBLeaseState{}, fmt.Errorf("error estimating lag: %w", err)
 		}
 		if isSplit {
 			c.logger.Info(fmt.Sprintf("Warning: partition %s returned 410 Gone (split/merge detected)", lease.LeaseToken))
-			splitDetected = true
+			state.splitRecoveryRequired = true
 			continue
 		}
 		c.logger.V(1).Info(fmt.Sprintf("partition %s: estimated lag = %d, owner = %s", lease.LeaseToken, lag, lease.Owner))
 		if lag > 0 {
-			totalLag += lag
-			activePartitionCount++
+			if lag > math.MaxInt64-state.totalLag {
+				state.totalLag = math.MaxInt64
+			} else {
+				state.totalLag += lag
+			}
+			state.activeLeases++
 			if lease.ContinuationToken == "" {
 				neverCheckpointedActiveCount++
 			}
 		}
 	}
 
-	// Cap to prevent int64 overflow from summing across many partitions
-	if totalLag < 0 {
-		totalLag = math.MaxInt64
-	}
-
-	// Partitions that have never checkpointed are all reading their backlog from the
-	// beginning of the feed, so their lag may reflect a one-time historical backlog rather
-	// than genuine, ongoing accumulation (e.g. many partitions bootstrapping together on a
-	// container that already had data). activePartitionCount feeds the scale-out cap in
-	// getChangeFeedTotalLagRelatedToPartitionAmount, so collapse the combined contribution of
-	// never-checkpointed partitions there to at most one partition's worth, preventing a burst
-	// of simultaneously-bootstrapping partitions from requesting an outsized replica count.
-	// Partitions that have already checkpointed at least once still count individually, since
-	// their lag reflects real, ongoing accumulation. totalLag itself is untouched, so
-	// activation (isActive) still correctly reflects the true backlog.
+	// Preserve the legacy bootstrap cap without hiding real lease counts from capacity scaling.
+	state.legacyActivePartitions = state.activeLeases
 	if neverCheckpointedActiveCount > 1 {
-		activePartitionCount -= neverCheckpointedActiveCount - 1
+		state.legacyActivePartitions -= neverCheckpointedActiveCount - 1
 	}
 
-	return totalLag, activePartitionCount, splitDetected, nil
+	return state, nil
 }
 
 // estimatePartitionLag calculates the lag for a single partition.
@@ -603,8 +853,8 @@ func (c *cosmosDBClient) estimateOnce(ctx context.Context) (int64, int64, bool, 
 //  3. If items present: lag = sessionLSN - firstItem._lsn + 1
 //  4. If no items (304): lag = 0 (caught up)
 //  5. If 410/1002: flag a stale parent lease so the lease store can be refreshed
-func (c *cosmosDBClient) estimatePartitionLag(ctx context.Context, lease leaseDocument) (int64, bool, error) {
-	cfResp, err := c.readChangeFeed(ctx, lease.LeaseToken, lease.ContinuationToken)
+func (c *cosmosDBClient) estimatePartitionLag(ctx context.Context, lease leaseDocument, ranges []cosmosDBPartitionKeyRange) (int64, bool, error) {
+	cfResp, err := c.readLeaseChangeFeed(ctx, lease, ranges)
 	if err != nil {
 		return 0, false, fmt.Errorf("error reading change feed for partition %s: %w", lease.LeaseToken, err)
 	}
@@ -688,11 +938,15 @@ func extractItemLSN(item json.RawMessage) (int64, error) {
 func (s *azureCosmosDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	metricName := kedautil.NormalizeString(fmt.Sprintf("azure-cosmosdb-%s-%s",
 		s.metadata.LeaseContainerID, s.metadata.ProcessorName))
+	target := s.metadata.Threshold
+	if s.metadata.MaxActiveLeasesPerReplica > 0 {
+		target = 1
+	}
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, metricName),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.Threshold),
+		Target: GetMetricTarget(s.metricType, target),
 	}
 	metricSpec := v2.MetricSpec{External: externalMetric, Type: cosmosDBMetricType}
 	return []v2.MetricSpec{metricSpec}
@@ -714,14 +968,26 @@ func getChangeFeedTotalLagRelatedToPartitionAmount(totalLag int64, activePartiti
 
 // GetMetricsAndActivity returns the metric value and activity status.
 func (s *azureCosmosDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	totalLag, activePartitionCount, splitRecoveryRequired, err := s.cosmosClient.estimateLag(ctx)
+	state, err := s.cosmosClient.estimateLag(ctx)
 	if err != nil {
+		s.recordLeaseDiagnostics(metricName, cosmosDBLeaseState{}, true)
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting cosmos db change feed lag: %w", err)
 	}
+	s.recordLeaseDiagnostics(metricName, state, false)
+	if s.metadata.MaxActiveLeasesPerReplica > 0 {
+		lagReplicas, capacityReplicas, eligibleLeases := s.leaseReplicaCounts(state)
+		desired := min(max(lagReplicas, capacityReplicas), eligibleLeases)
+		active := state.totalLag > s.metadata.ActivationThreshold || (s.metadata.EnableHighAvailability && state.totalLeases > 0)
+		if state.splitRecoveryRequired {
+			desired = max(desired, 1)
+			active = true
+		}
+		return []external_metrics.ExternalMetricValue{GenerateMetricInMili(metricName, float64(desired))}, active, nil
+	}
 
-	lagForScaling := totalLag
-	effectiveActivePartitionCount := activePartitionCount
-	if splitRecoveryRequired {
+	lagForScaling := state.totalLag
+	effectiveActivePartitionCount := state.legacyActivePartitions
+	if state.splitRecoveryRequired {
 		if lagForScaling <= s.metadata.ActivationThreshold {
 			lagForScaling = s.metadata.ActivationThreshold + 1
 		}
@@ -734,14 +1000,74 @@ func (s *azureCosmosDBScaler) GetMetricsAndActivity(ctx context.Context, metricN
 	lagRelatedToPartitionCount := getChangeFeedTotalLagRelatedToPartitionAmount(lagForScaling, effectiveActivePartitionCount, s.metadata.Threshold)
 
 	s.logger.V(1).Info(fmt.Sprintf("Cosmos DB change feed total lag: %d, scaling for a lag of %d related to %d active partitions, split recovery required: %t",
-		totalLag, lagRelatedToPartitionCount, effectiveActivePartitionCount, splitRecoveryRequired))
+		state.totalLag, lagRelatedToPartitionCount, effectiveActivePartitionCount, state.splitRecoveryRequired))
 
 	metric := GenerateMetricInMili(metricName, float64(lagRelatedToPartitionCount))
 	return []external_metrics.ExternalMetricValue{metric}, lagForScaling > s.metadata.ActivationThreshold, nil
 }
 
+func cosmosDBCeilDivide(value, divisor int64) int64 {
+	result := value / divisor
+	if value%divisor != 0 {
+		result++
+	}
+	return result
+}
+
+func (s *azureCosmosDBScaler) leaseReplicaCounts(state cosmosDBLeaseState) (int64, int64, int64) {
+	eligibleLeases := state.activeLeases
+	if s.metadata.EnableHighAvailability {
+		eligibleLeases = state.totalLeases
+	}
+	capacityReplicas := int64(0)
+	if s.metadata.MaxActiveLeasesPerReplica > 0 {
+		capacityReplicas = cosmosDBCeilDivide(eligibleLeases, s.metadata.MaxActiveLeasesPerReplica)
+	}
+	return cosmosDBCeilDivide(state.totalLag, s.metadata.Threshold), capacityReplicas, eligibleLeases
+}
+
+func (s *azureCosmosDBScaler) recordLeaseDiagnostics(metricName string, state cosmosDBLeaseState, failed bool) {
+	s.diagnosticsMutex.Lock()
+	defer s.diagnosticsMutex.Unlock()
+	if s.diagnosticsClosed {
+		return
+	}
+	if s.scalerConfig == nil {
+		return
+	}
+	s.diagnosticMetricName = metricName
+	for suffix, value := range s.leaseDiagnosticValues(state) {
+		measurement := float64(value)
+		if failed {
+			measurement = math.NaN()
+		}
+		metricscollector.RecordScalerMetric(s.scalerConfig.ScalableObjectNamespace, s.scalerConfig.ScalableObjectName,
+			"azure-cosmosdb", s.metadata.TriggerIndex, metricName+"_"+suffix, s.scalerConfig.ScalableObjectType == "ScaledObject", measurement)
+	}
+}
+
+func (s *azureCosmosDBScaler) leaseDiagnosticValues(state cosmosDBLeaseState) map[string]int64 {
+	lagReplicas, capacityReplicas, _ := s.leaseReplicaCounts(state)
+	return map[string]int64{
+		"total_lag":                       state.totalLag,
+		"active_leases":                   state.activeLeases,
+		"total_leases":                    state.totalLeases,
+		"lag_desired_replicas":            lagReplicas,
+		"lease_capacity_desired_replicas": capacityReplicas,
+	}
+}
+
 // Close cleans up the scaler resources.
 func (s *azureCosmosDBScaler) Close(context.Context) error {
+	s.diagnosticsMutex.Lock()
+	defer s.diagnosticsMutex.Unlock()
+	if !s.diagnosticsClosed && s.scalerConfig != nil && s.diagnosticMetricName != "" {
+		for suffix := range s.leaseDiagnosticValues(cosmosDBLeaseState{}) {
+			metricscollector.DeleteScalerMetric(s.scalerConfig.ScalableObjectNamespace, s.scalerConfig.ScalableObjectName,
+				"azure-cosmosdb", s.metadata.TriggerIndex, s.diagnosticMetricName+"_"+suffix, s.scalerConfig.ScalableObjectType == "ScaledObject")
+		}
+	}
+	s.diagnosticsClosed = true
 	if s.cosmosClient != nil && s.cosmosClient.httpClient != nil {
 		s.cosmosClient.httpClient.CloseIdleConnections()
 	}
