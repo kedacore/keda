@@ -295,27 +295,43 @@ func TestCosmosDBEPKJavaContinuation(t *testing.T) {
 		assert.True(t, strings.Contains(encoded, "_") || strings.Contains(encoded, "/"))
 		token, err := decodeCosmosDBContinuation(encoded, cosmosDBEPKRange{Min: "20", Max: "40"})
 		require.NoError(t, err)
-		assert.Equal(t, `"500"`, token)
+		assert.Equal(t, cosmosDBChangeFeedStart{etag: `"500"`, checkpointed: true}, token)
 	}
 
 	for _, token := range []string{"", `"750"`} {
 		actual, err := decodeCosmosDBContinuation(token, cosmosDBEPKRange{Min: "", Max: "FF"})
 		require.NoError(t, err)
-		assert.Equal(t, token, actual)
+		assert.Equal(t, cosmosDBChangeFeedStart{etag: token, checkpointed: token != ""}, actual)
 	}
 	tests := []string{
 		`{`, `null`, `{}`, `{"V":"1"}`,
 		strings.Replace(valid, `"V":1`, `"V":2`, 1),
 		strings.ReplaceAll(valid, `"V":1`, `"V":2`),
 		strings.Replace(valid, `"INCREMENTAL"`, `"FULL_FIDELITY"`, 1),
-		strings.Replace(valid, `"token":"\"500\""`, `"token":null`, 1),
 		strings.Replace(valid, `"token":"\"500\""`, `"token":""`, 1),
+		strings.Replace(valid, `"token":"\"500\""`, `"token":42`, 1),
 		strings.Replace(valid, `"max":"FF"`, `"max":"80"`, 1),
 		strings.Replace(valid, `"min":""`, `"min":"80"`, 1),
 		strings.Replace(valid, `"range":{"min":"","max":"FF"}`, `"range":{}`, 1),
 		`{"V":1,"Mode":"INCREMENTAL","Continuation":{"V":1,"Continuation":[]}}`,
 		`{"V":1,"Mode":"INCREMENTAL","Continuation":{"V":1,"Continuation":[{},{}]}}`,
 		`{"V":1,"Mode":"INCREMENTAL","StartFrom":{"Type":"NOW"}}`,
+	}
+	for _, startFrom := range []string{
+		`null`, `{}`, `{"Type":"UNSUPPORTED"}`, `{"Type":42}`,
+		`{"Type":"POINT_IN_TIME"}`, `{"Type":"POINT_IN_TIME","PointInTimeMs":null}`,
+		`{"Type":"POINT_IN_TIME","PointInTimeMs":"1767225600000"}`,
+		`{"Type":"POINT_IN_TIME","PointInTimeMs":1.5}`,
+		`{"Type":"POINT_IN_TIME","PointInTimeMs":9223372036854775807}`,
+		`{"Type":"POINT_IN_TIME","PointInTimeMs":-62135596800001}`,
+		`{"Type":"LEASE"}`, `{"Type":"LEASE","Etag":""}`, `{"Type":"LEASE","Etag":null}`,
+		`{"Type":"LEASE","Etag":"\"100\""}`,
+		`{"Type":"LEASE","Etag":"\"100\"","Range":{"min":"","max":"80"}}`,
+	} {
+		for _, token := range []string{`"\"500\""`, `null`} {
+			state := strings.Replace(valid, `{"Type":"BEGINNING"}`, startFrom, 1)
+			tests = append(tests, strings.Replace(state, `"token":"\"500\""`, `"token":`+token, 1))
+		}
 	}
 	for _, state := range tests {
 		t.Run(state, func(t *testing.T) {
@@ -325,6 +341,117 @@ func TestCosmosDBEPKJavaContinuation(t *testing.T) {
 	}
 	_, err := decodeCosmosDBContinuation("not-base64!", cosmosDBEPKRange{Min: "", Max: "FF"})
 	assert.ErrorContains(t, err, "invalid Java change feed continuation encoding")
+}
+
+func TestCosmosDBJavaInitialLeaseState(t *testing.T) {
+	tests := []struct {
+		name              string
+		startFrom         string
+		token             string
+		noContinuation    bool
+		wantETag          string
+		wantModifiedSince string
+		checkpointed      bool
+	}{
+		{name: "migrated beginning", startFrom: `{"Type":"BEGINNING"}`, token: `null`},
+		{name: "migrated now", startFrom: `{"Type":"NOW"}`, token: `null`, wantETag: "*"},
+		{name: "migrated point in time", startFrom: `{"Type":"POINT_IN_TIME","PointInTimeMs":1767225600123}`, token: `null`, wantModifiedSince: "Thu, 01 Jan 2026 00:00:00 GMT"},
+		{name: "beginning time sentinel", startFrom: `{"Type":"POINT_IN_TIME","PointInTimeMs":-62135596800000}`, token: `null`},
+		{name: "migrated configured lease", startFrom: `{"Type":"LEASE","Etag":"\"100\"","Range":{"min":"","max":"FF"}}`, token: `null`, wantETag: `"100"`, checkpointed: true},
+		{name: "legacy checkpoint start", startFrom: `{"Type":"LEGACY_CHECKPOINT"}`, token: `null`},
+		{name: "initial beginning", startFrom: `{"Type":"BEGINNING"}`, noContinuation: true},
+		{name: "initial now", startFrom: `{"Type":"NOW"}`, noContinuation: true, wantETag: "*"},
+		{name: "checkpoint replaces now", startFrom: `{"Type":"NOW"}`, token: `"\"500\""`, wantETag: `"500"`, checkpointed: true},
+		{name: "checkpoint replaces configured lease", startFrom: `{"Type":"LEASE","Etag":"\"100\"","Range":{"min":"","max":"FF"}}`, token: `"\"500\""`, wantETag: `"500"`, checkpointed: true},
+		{name: "checkpoint retains time filter", startFrom: `{"Type":"POINT_IN_TIME","PointInTimeMs":1767225600000}`, token: `"\"500\""`, wantETag: `"500"`, wantModifiedSince: "Thu, 01 Jan 2026 00:00:00 GMT", checkpointed: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			docs := make([]map[string]interface{}, 0, 2)
+			for _, bounds := range [][2]string{{"", "80"}, {"80", "FF"}} {
+				leaseRange := fmt.Sprintf(`{"min":%q,"max":%q}`, bounds[0], bounds[1])
+				stateRange := `"Range":` + leaseRange
+				if !tt.noContinuation {
+					stateRange = fmt.Sprintf(`"Continuation":{"V":1,"Rid":"q0oIALS6YvQ=","Continuation":[{"token":%s,"range":%s}],"Range":%s}`, tt.token, leaseRange, leaseRange)
+				}
+				state := fmt.Sprintf(`{"V":1,"Rid":"q0oIALS6YvQ=","Mode":"INCREMENTAL","StartFrom":%s,%s}`, tt.startFrom, stateRange)
+				token := bounds[0] + "-" + bounds[1]
+				docs = append(docs, map[string]interface{}{
+					"id":      "testprocessormyaccount.documents.azure.com_q0oIAA==_q0oIALS6YvQ=.." + token,
+					"version": 1, "LeaseToken": token, "Owner": "java-host",
+					"feedRange":         json.RawMessage(`{"Range":` + leaseRange + `}`),
+					"ContinuationToken": base64.URLEncoding.EncodeToString([]byte(state)),
+				})
+			}
+			feedRequests := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/dbs/testdb/colls/leases/docs":
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{"Documents": docs})
+				case "/dbs/testdb/colls/data/pkranges":
+					_, _ = w.Write([]byte(`{"PartitionKeyRanges":[{"id":"6","minInclusive":"","maxExclusive":"80"},{"id":"9","minInclusive":"80","maxExclusive":"FF"}]}`))
+				case "/dbs/testdb/colls/data/docs":
+					feedRequests++
+					assert.Contains(t, []string{"6", "9"}, r.Header.Get("x-ms-documentdb-partitionkeyrangeid"))
+					assert.Equal(t, tt.wantETag, r.Header.Get("If-None-Match"))
+					assert.Equal(t, tt.wantModifiedSince, r.Header.Get("If-Modified-Since"))
+					if tt.wantETag == "" {
+						assert.NotContains(t, r.Header, "If-None-Match")
+					}
+					if tt.wantModifiedSince == "" {
+						assert.NotContains(t, r.Header, "If-Modified-Since")
+					}
+					if tt.wantETag == "*" {
+						w.WriteHeader(http.StatusNotModified)
+						return
+					}
+					w.Header().Set("x-ms-session-token", "6:0#200")
+					_, _ = w.Write([]byte(`{"Documents":[{"_lsn":1}]}`))
+				default:
+					t.Errorf("unexpected request: %s", r.URL)
+					w.WriteHeader(http.StatusBadRequest)
+				}
+			}))
+			defer server.Close()
+			state, err := newCosmosDBEPKTestClient(server).estimateLag(context.Background())
+			require.NoError(t, err)
+			assert.Equal(t, int64(2), state.totalLeases)
+			wantCap := int64(1)
+			if tt.checkpointed {
+				wantCap = 2
+			}
+			if tt.wantETag == "*" {
+				wantCap = 0
+				assert.Zero(t, state.activeLeases)
+				assert.Zero(t, state.totalLag)
+			} else {
+				assert.Equal(t, int64(2), state.activeLeases)
+				assert.Equal(t, int64(400), state.totalLag)
+			}
+			assert.Equal(t, wantCap, state.legacyActivePartitions)
+
+			for _, capacity := range []string{"", "1"} {
+				config := cosmosDBCapacityConfig(server.URL)
+				if capacity != "" {
+					config.TriggerMetadata["maxActiveLeasesPerReplica"] = capacity
+				}
+				scaler, err := NewAzureCosmosDBScaler(config)
+				require.NoError(t, err)
+				spec := scaler.GetMetricSpecForScaling(context.Background())[0]
+				metrics, active, err := scaler.GetMetricsAndActivity(context.Background(), spec.External.Metric.Name)
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantETag != "*", active)
+				require.Len(t, metrics, 1)
+				wantMetric := wantCap * 100
+				if capacity != "" {
+					wantMetric = state.activeLeases
+				}
+				assert.Equal(t, wantMetric, metrics[0].Value.Value())
+				require.NoError(t, scaler.Close(context.Background()))
+			}
+			assert.Equal(t, 6, feedRequests)
+		})
+	}
 }
 
 func TestCosmosDBLegacyContinuationIsUnchanged(t *testing.T) {

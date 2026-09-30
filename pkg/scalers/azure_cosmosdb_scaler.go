@@ -39,15 +39,29 @@ const (
 )
 
 type azureCosmosDBScaler struct {
-	metricType           v2.MetricTargetType
-	metadata             *azureCosmosDBMetadata
-	cosmosClient         *cosmosDBClient
-	logger               logr.Logger
-	scalerConfig         *scalersconfig.ScalerConfig
-	diagnosticsMutex     sync.Mutex
-	diagnosticsClosed    bool
-	diagnosticMetricName string
+	metricType       v2.MetricTargetType
+	metadata         *azureCosmosDBMetadata
+	cosmosClient     *cosmosDBClient
+	logger           logr.Logger
+	diagnosticsOwner *cosmosDBDiagnosticsOwner
 }
+
+type cosmosDBDiagnosticsKey struct {
+	namespace      string
+	resource       string
+	triggerIndex   int
+	metricName     string
+	isScaledObject bool
+}
+
+type cosmosDBDiagnosticsOwner struct {
+	key cosmosDBDiagnosticsKey
+}
+
+var cosmosDBDiagnostics = struct {
+	sync.Mutex
+	owners map[cosmosDBDiagnosticsKey]*cosmosDBDiagnosticsOwner
+}{owners: make(map[cosmosDBDiagnosticsKey]*cosmosDBDiagnosticsOwner)}
 
 type azureCosmosDBMetadata struct {
 	DatabaseID                string `keda:"name=databaseId,              order=triggerMetadata"`
@@ -125,6 +139,13 @@ type leaseDocument struct {
 	Version           int             `json:"version"`
 	FeedRange         json.RawMessage `json:"FeedRange"`
 	epkRange          *cosmosDBEPKRange
+	startFrom         cosmosDBChangeFeedStart
+}
+
+type cosmosDBChangeFeedStart struct {
+	etag          string
+	modifiedSince string
+	checkpointed  bool
 }
 
 type cosmosDBEPKRange struct {
@@ -215,13 +236,22 @@ func NewAzureCosmosDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) 
 		return nil, fmt.Errorf("error creating cosmos db client: %w", err)
 	}
 
-	return &azureCosmosDBScaler{
+	scaler := &azureCosmosDBScaler{
 		metricType:   metricType,
 		metadata:     meta,
 		cosmosClient: cosmosClient,
 		logger:       logger,
-		scalerConfig: config,
-	}, nil
+	}
+	scaler.diagnosticsOwner = &cosmosDBDiagnosticsOwner{key: cosmosDBDiagnosticsKey{
+		namespace: config.ScalableObjectNamespace, resource: config.ScalableObjectName,
+		triggerIndex: meta.TriggerIndex, metricName: scaler.metricName(),
+		isScaledObject: config.ScalableObjectType == "ScaledObject",
+	}}
+	// Cache replacement can overlap old polls and Close; only the latest instance owns these labels.
+	cosmosDBDiagnostics.Lock()
+	cosmosDBDiagnostics.owners[scaler.diagnosticsOwner.key] = scaler.diagnosticsOwner
+	cosmosDBDiagnostics.Unlock()
+	return scaler, nil
 }
 
 func parseAzureCosmosDBMetadata(config *scalersconfig.ScalerConfig) (*azureCosmosDBMetadata, error) {
@@ -534,15 +564,8 @@ func (c *cosmosDBClient) queryLeasesPage(ctx context.Context, continuation strin
 		return nil, "", fmt.Errorf("error decoding response: %w", err)
 	}
 
-	// Parse and filter out non-lease metadata documents (the SDKs also create ".info"/".lock"
-	// bookkeeping documents in the lease container, which never have a LeaseToken field).
-	// A lease's ContinuationToken is intentionally NOT required here: a freshly created lease
-	// that has never checkpointed yet (CreateLeaseIfNotExistAsync's initial state) legitimately
-	// has an empty ContinuationToken - readChangeFeed/estimatePartitionLag already handle that
-	// correctly by reading from the beginning of the feed, which is exactly what's needed to
-	// detect a real customer's very first backlog. Requiring ContinuationToken here would
-	// permanently hide that backlog, since nothing else ever populates it while the deployment
-	// stays at 0 replicas.
+	// Bookkeeping documents lack LeaseToken. Fresh leases may lack checkpoints and must
+	// remain visible so their initial backlog can activate a deployment at zero replicas.
 	var leases []leaseDocument
 	for _, raw := range result.Documents {
 		var doc leaseDocument
@@ -552,6 +575,13 @@ func (c *cosmosDBClient) queryLeasesPage(ctx context.Context, continuation strin
 		if doc.LeaseToken != "" {
 			if err := doc.parseFeedRange(); err != nil {
 				return nil, "", err
+			}
+			doc.startFrom = cosmosDBChangeFeedStart{etag: doc.ContinuationToken, checkpointed: doc.ContinuationToken != ""}
+			if doc.Version == 1 {
+				doc.startFrom, err = decodeCosmosDBContinuation(doc.ContinuationToken, *doc.epkRange)
+				if err != nil {
+					return nil, "", fmt.Errorf("invalid continuation for lease %q: %w", doc.ID, err)
+				}
 			}
 			leases = append(leases, doc)
 		}
@@ -642,10 +672,10 @@ func resolveCosmosDBEPKRange(epkRange cosmosDBEPKRange, ranges []cosmosDBPartiti
 	return match, false, nil
 }
 
-func decodeCosmosDBContinuation(token string, epkRange cosmosDBEPKRange) (string, error) {
+func decodeCosmosDBContinuation(token string, epkRange cosmosDBEPKRange) (cosmosDBChangeFeedStart, error) {
 	// .NET persists the server ETag directly; Java persists Base64 ChangeFeedStateV1.
 	if token == "" || strings.HasPrefix(token, `"`) {
-		return token, nil
+		return cosmosDBChangeFeedStart{etag: token, checkpointed: token != ""}, nil
 	}
 	var data []byte
 	var err error
@@ -656,12 +686,14 @@ func decodeCosmosDBContinuation(token string, epkRange cosmosDBEPKRange) (string
 		}
 	}
 	if err != nil {
-		return "", fmt.Errorf("invalid Java change feed continuation encoding: %w", err)
+		return cosmosDBChangeFeedStart{}, fmt.Errorf("invalid Java change feed continuation encoding: %w", err)
 	}
 	var state struct {
-		Version      int    `json:"V"`
-		Mode         string `json:"Mode"`
-		Continuation struct {
+		Version      int                   `json:"V"`
+		Mode         string                `json:"Mode"`
+		StartFrom    cosmosDBJavaStartFrom `json:"StartFrom"`
+		Range        json.RawMessage       `json:"Range"`
+		Continuation *struct {
 			Version int `json:"V"`
 			Tokens  []struct {
 				Token *string         `json:"token"`
@@ -670,25 +702,90 @@ func decodeCosmosDBContinuation(token string, epkRange cosmosDBEPKRange) (string
 		} `json:"Continuation"`
 	}
 	if err := json.Unmarshal(data, &state); err != nil {
-		return "", fmt.Errorf("invalid Java change feed continuation state: %w", err)
+		return cosmosDBChangeFeedStart{}, fmt.Errorf("invalid Java change feed continuation state: %w", err)
 	}
-	if state.Version != 1 || state.Mode != "INCREMENTAL" || state.Continuation.Version != 1 || len(state.Continuation.Tokens) != 1 {
-		return "", fmt.Errorf("java ChangeFeedStateV1 requires INCREMENTAL mode and one continuation range")
+	if state.Version != 1 || state.Mode != "INCREMENTAL" {
+		return cosmosDBChangeFeedStart{}, fmt.Errorf("java ChangeFeedStateV1 requires INCREMENTAL mode")
 	}
-	current := state.Continuation.Tokens[0]
-	tokenRange, err := parseCosmosDBEPKRange(current.Range)
+	start, err := state.StartFrom.decode(epkRange)
 	if err != nil {
-		return "", fmt.Errorf("invalid Java continuation range: %w", err)
+		return cosmosDBChangeFeedStart{}, err
 	}
-	if tokenRange.Min > epkRange.Min || tokenRange.Max < epkRange.Max || current.Token == nil || *current.Token == "" {
-		return "", fmt.Errorf("java continuation must contain a server ETag covering the lease FeedRange")
+	rawRange := state.Range
+	var checkpoint *string
+	if state.Continuation != nil {
+		if state.Continuation.Version != 1 || len(state.Continuation.Tokens) != 1 {
+			return cosmosDBChangeFeedStart{}, fmt.Errorf("java continuation requires version 1 and one continuation range")
+		}
+		rawRange = state.Continuation.Tokens[0].Range
+		checkpoint = state.Continuation.Tokens[0].Token
 	}
-	return *current.Token, nil
+	if err := validateCosmosDBContinuationRange(rawRange, epkRange); err != nil {
+		return cosmosDBChangeFeedStart{}, err
+	}
+	if checkpoint != nil {
+		if strings.TrimSpace(*checkpoint) == "" {
+			return cosmosDBChangeFeedStart{}, fmt.Errorf("java continuation server ETag must not be empty")
+		}
+		// A checkpoint overrides the initial ETag, but Java retains the time filter across merges.
+		start.etag = *checkpoint
+		start.checkpointed = true
+	}
+	return start, nil
+}
+
+type cosmosDBJavaStartFrom struct {
+	Type          string          `json:"Type"`
+	PointInTimeMs *int64          `json:"PointInTimeMs"`
+	ETag          *string         `json:"Etag"`
+	Range         json.RawMessage `json:"Range"`
+}
+
+func (s cosmosDBJavaStartFrom) decode(epkRange cosmosDBEPKRange) (cosmosDBChangeFeedStart, error) {
+	switch strings.ToUpper(s.Type) {
+	case "BEGINNING", "LEGACY_CHECKPOINT":
+		return cosmosDBChangeFeedStart{}, nil
+	case "NOW":
+		return cosmosDBChangeFeedStart{etag: "*"}, nil
+	case "POINT_IN_TIME":
+		if s.PointInTimeMs == nil {
+			return cosmosDBChangeFeedStart{}, fmt.Errorf("java POINT_IN_TIME requires PointInTimeMs")
+		}
+		instant := time.UnixMilli(*s.PointInTimeMs).UTC()
+		if instant.Year() < 1 || instant.Year() > 9999 {
+			return cosmosDBChangeFeedStart{}, fmt.Errorf("java PointInTimeMs is outside the HTTP date range")
+		}
+		if *s.PointInTimeMs == -62135596800000 {
+			return cosmosDBChangeFeedStart{}, nil
+		}
+		return cosmosDBChangeFeedStart{modifiedSince: instant.Format(http.TimeFormat)}, nil
+	case "LEASE":
+		if s.ETag == nil || strings.TrimSpace(*s.ETag) == "" {
+			return cosmosDBChangeFeedStart{}, fmt.Errorf("java LEASE StartFrom requires Etag")
+		}
+		if err := validateCosmosDBContinuationRange(s.Range, epkRange); err != nil {
+			return cosmosDBChangeFeedStart{}, err
+		}
+		return cosmosDBChangeFeedStart{etag: *s.ETag, checkpointed: true}, nil
+	default:
+		return cosmosDBChangeFeedStart{}, fmt.Errorf("unsupported Java StartFrom type %q", s.Type)
+	}
+}
+
+func validateCosmosDBContinuationRange(raw json.RawMessage, epkRange cosmosDBEPKRange) error {
+	tokenRange, err := parseCosmosDBEPKRange(raw)
+	if err != nil {
+		return fmt.Errorf("invalid Java continuation range: %w", err)
+	}
+	if tokenRange.Min > epkRange.Min || tokenRange.Max < epkRange.Max {
+		return fmt.Errorf("java continuation range must cover the lease FeedRange")
+	}
+	return nil
 }
 
 func (c *cosmosDBClient) readLeaseChangeFeed(ctx context.Context, lease leaseDocument, ranges []cosmosDBPartitionKeyRange) (*changeFeedResponse, error) {
 	if lease.Version == 0 {
-		return c.readChangeFeed(ctx, lease.LeaseToken, lease.ContinuationToken, nil)
+		return c.readChangeFeed(ctx, lease.LeaseToken, lease.startFrom, nil)
 	}
 	physicalRange, split, err := resolveCosmosDBEPKRange(*lease.epkRange, ranges)
 	if err != nil {
@@ -697,18 +794,14 @@ func (c *cosmosDBClient) readLeaseChangeFeed(ctx context.Context, lease leaseDoc
 	if split {
 		return &changeFeedResponse{StatusCode: http.StatusGone, SubStatusCode: cosmosDBPartitionKeyRangeGoneSubStatus}, nil
 	}
-	continuation, err := decodeCosmosDBContinuation(lease.ContinuationToken, *lease.epkRange)
-	if err != nil {
-		return nil, err
-	}
 	var filter *cosmosDBEPKRange
 	if physicalRange.Range != *lease.epkRange {
 		filter = lease.epkRange
 	}
-	return c.readChangeFeed(ctx, physicalRange.ID, continuation, filter)
+	return c.readChangeFeed(ctx, physicalRange.ID, lease.startFrom, filter)
 }
 
-func (c *cosmosDBClient) readChangeFeed(ctx context.Context, partitionKeyRangeID, continuationToken string, epkRange *cosmosDBEPKRange) (*changeFeedResponse, error) {
+func (c *cosmosDBClient) readChangeFeed(ctx context.Context, partitionKeyRangeID string, start cosmosDBChangeFeedStart, epkRange *cosmosDBEPKRange) (*changeFeedResponse, error) {
 	resourceLink := fmt.Sprintf("dbs/%s/colls/%s", c.databaseID, c.containerID)
 	reqURL := fmt.Sprintf("%s/%s/docs", strings.TrimRight(c.dataEndpoint, "/"), resourceLink)
 
@@ -729,8 +822,11 @@ func (c *cosmosDBClient) readChangeFeed(ctx context.Context, partitionKeyRangeID
 		req.Header.Set("x-ms-end-epk", epkRange.Max)
 	}
 
-	if continuationToken != "" {
-		req.Header.Set("If-None-Match", continuationToken)
+	if start.etag != "" {
+		req.Header.Set("If-None-Match", start.etag)
+	}
+	if start.modifiedSince != "" {
+		req.Header.Set("If-Modified-Since", start.modifiedSince)
 	}
 
 	if err := c.setAuthHeader(req, http.MethodGet, "docs", resourceLink, now, c.dataKey); err != nil {
@@ -831,7 +927,7 @@ func (c *cosmosDBClient) estimateOnce(ctx context.Context) (cosmosDBLeaseState, 
 				state.totalLag += lag
 			}
 			state.activeLeases++
-			if lease.ContinuationToken == "" {
+			if !lease.startFrom.checkpointed {
 				neverCheckpointedActiveCount++
 			}
 		}
@@ -934,17 +1030,21 @@ func extractItemLSN(item json.RawMessage) (int64, error) {
 	return doc.LSN.Int64()
 }
 
-// GetMetricSpecForScaling returns the metric spec for scaling.
-func (s *azureCosmosDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+func (s *azureCosmosDBScaler) metricName() string {
 	metricName := kedautil.NormalizeString(fmt.Sprintf("azure-cosmosdb-%s-%s",
 		s.metadata.LeaseContainerID, s.metadata.ProcessorName))
+	return GenerateMetricNameWithIndex(s.metadata.TriggerIndex, metricName)
+}
+
+// GetMetricSpecForScaling returns the metric spec for scaling.
+func (s *azureCosmosDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	target := s.metadata.Threshold
 	if s.metadata.MaxActiveLeasesPerReplica > 0 {
 		target = 1
 	}
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, metricName),
+			Name: s.metricName(),
 		},
 		Target: GetMetricTarget(s.metricType, target),
 	}
@@ -970,10 +1070,10 @@ func getChangeFeedTotalLagRelatedToPartitionAmount(totalLag int64, activePartiti
 func (s *azureCosmosDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	state, err := s.cosmosClient.estimateLag(ctx)
 	if err != nil {
-		s.recordLeaseDiagnostics(metricName, cosmosDBLeaseState{}, true)
+		s.recordLeaseDiagnostics(cosmosDBLeaseState{}, true)
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting cosmos db change feed lag: %w", err)
 	}
-	s.recordLeaseDiagnostics(metricName, state, false)
+	s.recordLeaseDiagnostics(state, false)
 	if s.metadata.MaxActiveLeasesPerReplica > 0 {
 		lagReplicas, capacityReplicas, eligibleLeases := s.leaseReplicaCounts(state)
 		desired := min(max(lagReplicas, capacityReplicas), eligibleLeases)
@@ -1026,23 +1126,20 @@ func (s *azureCosmosDBScaler) leaseReplicaCounts(state cosmosDBLeaseState) (int6
 	return cosmosDBCeilDivide(state.totalLag, s.metadata.Threshold), capacityReplicas, eligibleLeases
 }
 
-func (s *azureCosmosDBScaler) recordLeaseDiagnostics(metricName string, state cosmosDBLeaseState, failed bool) {
-	s.diagnosticsMutex.Lock()
-	defer s.diagnosticsMutex.Unlock()
-	if s.diagnosticsClosed {
+func (s *azureCosmosDBScaler) recordLeaseDiagnostics(state cosmosDBLeaseState, failed bool) {
+	cosmosDBDiagnostics.Lock()
+	defer cosmosDBDiagnostics.Unlock()
+	if s.diagnosticsOwner == nil || cosmosDBDiagnostics.owners[s.diagnosticsOwner.key] != s.diagnosticsOwner {
 		return
 	}
-	if s.scalerConfig == nil {
-		return
-	}
-	s.diagnosticMetricName = metricName
+	key := s.diagnosticsOwner.key
 	for suffix, value := range s.leaseDiagnosticValues(state) {
 		measurement := float64(value)
 		if failed {
 			measurement = math.NaN()
 		}
-		metricscollector.RecordScalerMetric(s.scalerConfig.ScalableObjectNamespace, s.scalerConfig.ScalableObjectName,
-			"azure-cosmosdb", s.metadata.TriggerIndex, metricName+"_"+suffix, s.scalerConfig.ScalableObjectType == "ScaledObject", measurement)
+		metricscollector.RecordScalerMetric(key.namespace, key.resource,
+			"azure-cosmosdb", key.triggerIndex, key.metricName+"_"+suffix, key.isScaledObject, measurement)
 	}
 }
 
@@ -1059,15 +1156,16 @@ func (s *azureCosmosDBScaler) leaseDiagnosticValues(state cosmosDBLeaseState) ma
 
 // Close cleans up the scaler resources.
 func (s *azureCosmosDBScaler) Close(context.Context) error {
-	s.diagnosticsMutex.Lock()
-	defer s.diagnosticsMutex.Unlock()
-	if !s.diagnosticsClosed && s.scalerConfig != nil && s.diagnosticMetricName != "" {
+	cosmosDBDiagnostics.Lock()
+	if s.diagnosticsOwner != nil && cosmosDBDiagnostics.owners[s.diagnosticsOwner.key] == s.diagnosticsOwner {
+		key := s.diagnosticsOwner.key
 		for suffix := range s.leaseDiagnosticValues(cosmosDBLeaseState{}) {
-			metricscollector.DeleteScalerMetric(s.scalerConfig.ScalableObjectNamespace, s.scalerConfig.ScalableObjectName,
-				"azure-cosmosdb", s.metadata.TriggerIndex, s.diagnosticMetricName+"_"+suffix, s.scalerConfig.ScalableObjectType == "ScaledObject")
+			metricscollector.DeleteScalerMetric(key.namespace, key.resource,
+				"azure-cosmosdb", key.triggerIndex, key.metricName+"_"+suffix, key.isScaledObject)
 		}
+		delete(cosmosDBDiagnostics.owners, key)
 	}
-	s.diagnosticsClosed = true
+	cosmosDBDiagnostics.Unlock()
 	if s.cosmosClient != nil && s.cosmosClient.httpClient != nil {
 		s.cosmosClient.httpClient.CloseIdleConnections()
 	}

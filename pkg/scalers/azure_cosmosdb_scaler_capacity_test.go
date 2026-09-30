@@ -359,6 +359,79 @@ func TestCosmosDBLeaseDiagnosticsAndFallback(t *testing.T) {
 	assert.Empty(t, cosmosDBDiagnosticValues(t, config))
 }
 
+func TestCosmosDBDiagnosticsAcrossScalerGenerations(t *testing.T) {
+	cosmosDBMetricsOnce.Do(func() {
+		metricscollector.NewMetricsCollectors(metricscollector.Options{EnablePrometheusMetrics: true})
+	})
+	for _, resourceType := range []string{"ScaledObject", "ScaledJob"} {
+		t.Run(resourceType, func(t *testing.T) {
+			block := atomic.NewBool(false)
+			entered := make(chan struct{})
+			release := make(chan struct{})
+			oldServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/dbs/testdb/colls/leases/docs" {
+					if block.Load() {
+						close(entered)
+						<-release
+					}
+					_, _ = w.Write([]byte(`{"Documents":[{"id":"a","LeaseToken":"0","ContinuationToken":"\"0\""}]}`))
+				} else {
+					w.Header().Set("x-ms-session-token", "0:0#10")
+					_, _ = w.Write([]byte(`{"Documents":[{"_lsn":1}]}`))
+				}
+			}))
+			defer oldServer.Close()
+			var releaseOnce sync.Once
+			defer releaseOnce.Do(func() { close(release) })
+			newServer := newCosmosDBCapacityServer(t, cosmosDBCapacityScenario{2, 3, 100, true})
+			defer newServer.Close()
+			oldConfig := cosmosDBCapacityConfig(oldServer.URL)
+			oldConfig.ScalableObjectType = resourceType
+			oldScaler, err := NewAzureCosmosDBScaler(oldConfig)
+			require.NoError(t, err)
+			defer oldScaler.Close(context.Background())
+			metricName := oldScaler.GetMetricSpecForScaling(context.Background())[0].External.Metric.Name
+			_, _, err = oldScaler.GetMetricsAndActivity(context.Background(), metricName)
+			require.NoError(t, err)
+			assert.Equal(t, float64(10), cosmosDBDiagnosticValues(t, oldConfig)[metricName+"_total_lag"])
+			block.Store(true)
+			done := make(chan error, 1)
+			go func() {
+				_, _, err := oldScaler.GetMetricsAndActivity(context.Background(), metricName)
+				done <- err
+			}()
+			<-entered
+
+			config := cosmosDBCapacityConfig(newServer.URL)
+			config.ScalableObjectType = resourceType
+			replacement, err := NewAzureCosmosDBScaler(config)
+			require.NoError(t, err)
+			defer replacement.Close(context.Background())
+			_, _, err = replacement.GetMetricsAndActivity(context.Background(), metricName)
+			require.NoError(t, err)
+			want := cosmosDBDiagnosticValues(t, config)
+			require.Len(t, want, 5)
+			assert.Equal(t, float64(200), want[metricName+"_total_lag"])
+
+			releaseOnce.Do(func() { close(release) })
+			require.NoError(t, <-done)
+			assert.Equal(t, want, cosmosDBDiagnosticValues(t, config), "retiring polls must not overwrite replacement data")
+			require.NoError(t, oldScaler.Close(context.Background()))
+			assert.Equal(t, want, cosmosDBDiagnosticValues(t, config), "retiring Close must not delete replacement series")
+
+			next, err := NewAzureCosmosDBScaler(config)
+			require.NoError(t, err)
+			defer next.Close(context.Background())
+			require.NoError(t, next.Close(context.Background()))
+			assert.Empty(t, cosmosDBDiagnosticValues(t, config))
+			_, _, err = replacement.GetMetricsAndActivity(context.Background(), metricName)
+			require.NoError(t, err)
+			assert.Empty(t, cosmosDBDiagnosticValues(t, config), "a superseded generation must not resurrect deleted diagnostics")
+			require.NoError(t, replacement.Close(context.Background()))
+		})
+	}
+}
+
 func TestCosmosDBCloseClearsOnlyOwnedDiagnostics(t *testing.T) {
 	cosmosDBMetricsOnce.Do(func() {
 		metricscollector.NewMetricsCollectors(metricscollector.Options{EnablePrometheusMetrics: true})
