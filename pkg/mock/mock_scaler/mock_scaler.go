@@ -203,3 +203,51 @@ func (mr *MockMetricSpecStreamerMockRecorder) MetricSpecChan() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MetricSpecChan", reflect.TypeOf((*MockMetricSpecStreamer)(nil).MetricSpecChan))
 }
+
+// MockDiagnosticsLifecycle is a mock of DiagnosticsLifecycle interface.
+type MockDiagnosticsLifecycle struct {
+	ctrl     *gomock.Controller
+	recorder *MockDiagnosticsLifecycleMockRecorder
+	isgomock struct{}
+}
+
+// MockDiagnosticsLifecycleMockRecorder is the mock recorder for MockDiagnosticsLifecycle.
+type MockDiagnosticsLifecycleMockRecorder struct {
+	mock *MockDiagnosticsLifecycle
+}
+
+// NewMockDiagnosticsLifecycle creates a new mock instance.
+func NewMockDiagnosticsLifecycle(ctrl *gomock.Controller) *MockDiagnosticsLifecycle {
+	mock := &MockDiagnosticsLifecycle{ctrl: ctrl}
+	mock.recorder = &MockDiagnosticsLifecycleMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockDiagnosticsLifecycle) EXPECT() *MockDiagnosticsLifecycleMockRecorder {
+	return m.recorder
+}
+
+// ActivateDiagnostics mocks base method.
+func (m *MockDiagnosticsLifecycle) ActivateDiagnostics() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "ActivateDiagnostics")
+}
+
+// ActivateDiagnostics indicates an expected call of ActivateDiagnostics.
+func (mr *MockDiagnosticsLifecycleMockRecorder) ActivateDiagnostics() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActivateDiagnostics", reflect.TypeOf((*MockDiagnosticsLifecycle)(nil).ActivateDiagnostics))
+}
+
+// DeactivateDiagnostics mocks base method.
+func (m *MockDiagnosticsLifecycle) DeactivateDiagnostics() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "DeactivateDiagnostics")
+}
+
+// DeactivateDiagnostics indicates an expected call of DeactivateDiagnostics.
+func (mr *MockDiagnosticsLifecycleMockRecorder) DeactivateDiagnostics() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeactivateDiagnostics", reflect.TypeOf((*MockDiagnosticsLifecycle)(nil).DeactivateDiagnostics))
+}
