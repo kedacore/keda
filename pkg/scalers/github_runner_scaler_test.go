@@ -584,7 +584,7 @@ func TestNewGitHubRunnerScaler_BadConnection(t *testing.T) {
 		t.Fail()
 	}
 
-	if !strings.HasSuffix(err.Error(), "connect: connection refused") {
+	if !strings.HasSuffix(err.Error(), "connect: connection refused") && !strings.Contains(err.Error(), "actively refused it") {
 		fmt.Println(err.Error())
 		t.Fail()
 	}
