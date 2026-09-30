@@ -44,9 +44,10 @@ func testCosmosDBEPKLeaseFixture(t *testing.T, fixture string, etags []string) {
 		t.Run(fmt.Sprintf("subrange=%t", subrange), func(t *testing.T) {
 			rangeRequests, feedRequests := 0, 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
 				case "/dbs/testdb/colls/leases/docs":
-					_, _ = w.Write(data)
+					assert.NoError(t, json.NewEncoder(w).Encode(json.RawMessage(data)))
 				case "/dbs/testdb/colls/data/pkranges":
 					rangeRequests++
 					assert.Equal(t, http.MethodGet, r.Method)
@@ -60,10 +61,14 @@ func testCosmosDBEPKLeaseFixture(t *testing.T, fixture string, etags []string) {
 					case rangeRequests == 1:
 						assert.Empty(t, r.Header.Get("x-ms-continuation"))
 						w.Header().Set("x-ms-continuation", "next-page")
-						_, _ = fmt.Fprintf(w, `{"PartitionKeyRanges":[{"id":"6","minInclusive":"","maxExclusive":"%s"}]}`, cosmosDBTestEPKBoundary)
+						assert.NoError(t, json.NewEncoder(w).Encode(map[string]interface{}{
+							"PartitionKeyRanges": []map[string]string{{"id": "6", "minInclusive": "", "maxExclusive": cosmosDBTestEPKBoundary}},
+						}))
 					default:
 						assert.Equal(t, "next-page", r.Header.Get("x-ms-continuation"))
-						_, _ = fmt.Fprintf(w, `{"PartitionKeyRanges":[{"id":"9","minInclusive":"%s","maxExclusive":"FF"}]}`, cosmosDBTestEPKBoundary)
+						assert.NoError(t, json.NewEncoder(w).Encode(map[string]interface{}{
+							"PartitionKeyRanges": []map[string]string{{"id": "9", "minInclusive": cosmosDBTestEPKBoundary, "maxExclusive": "FF"}},
+						}))
 					}
 				case "/dbs/testdb/colls/data/docs":
 					index := feedRequests
@@ -173,6 +178,7 @@ func TestCosmosDBEPKSplitRecovery(t *testing.T) {
 			leaseRequests, rangeRequests := 0, 0
 			feedRequests := map[string]int{}
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
 				case "/dbs/testdb/colls/leases/docs":
 					leaseRequests++
@@ -180,7 +186,9 @@ func TestCosmosDBEPKSplitRecovery(t *testing.T) {
 					if tt.refreshLease && leaseRequests > 1 {
 						leases = children
 					}
-					_, _ = fmt.Fprintf(w, `{"Documents":[%s,{"id":"legacy","LeaseToken":"9","ContinuationToken":"\"200\""}]}`, leases)
+					assert.NoError(t, json.NewEncoder(w).Encode(json.RawMessage(
+						fmt.Sprintf(`{"Documents":[%s,{"id":"legacy","LeaseToken":"9","ContinuationToken":"\"200\""}]}`, leases),
+					)))
 				case "/dbs/testdb/colls/data/pkranges":
 					rangeRequests++
 					if tt.serverSplit && rangeRequests == 1 {
@@ -273,8 +281,13 @@ func TestCosmosDBEPKMalformedFeedRange(t *testing.T) {
 		} {
 			t.Run(field+"/"+feedRange, func(t *testing.T) {
 				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
 					assert.Equal(t, "/dbs/testdb/colls/leases/docs", r.URL.Path)
-					_, _ = fmt.Fprintf(w, `{"Documents":[{"id":"bad","version":1,"LeaseToken":"-FF",%q:%s}]}`, field, feedRange)
+					assert.NoError(t, json.NewEncoder(w).Encode(map[string]interface{}{
+						"Documents": []map[string]interface{}{{
+							"id": "bad", "version": 1, "LeaseToken": "-FF", field: json.RawMessage(feedRange),
+						}},
+					}))
 				}))
 				defer server.Close()
 				_, _, _, err := estimateCosmosDBLegacyLag(newCosmosDBEPKTestClient(server))
@@ -459,9 +472,12 @@ func TestCosmosDBLegacyContinuationIsUnchanged(t *testing.T) {
 		t.Run(version, func(t *testing.T) {
 			feedRequests := 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
 				case "/dbs/testdb/colls/leases/docs":
-					_, _ = fmt.Fprintf(w, `{"Documents":[{"id":"legacy",%s"LeaseToken":"42","ContinuationToken":"opaque-server-token","FeedRange":{"Range":{"min":"","max":"FF"}}}]}`, version)
+					assert.NoError(t, json.NewEncoder(w).Encode(json.RawMessage(
+						fmt.Sprintf(`{"Documents":[{"id":"legacy",%s"LeaseToken":"42","ContinuationToken":"opaque-server-token","FeedRange":{"Range":{"min":"","max":"FF"}}}]}`, version),
+					)))
 				case "/dbs/testdb/colls/data/docs":
 					feedRequests++
 					assert.Equal(t, "42", r.Header.Get("x-ms-documentdb-partitionkeyrangeid"))
@@ -504,12 +520,18 @@ func TestCosmosDBEPKRangeReadErrors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
 				case "/dbs/testdb/colls/leases/docs":
 					_, _ = w.Write([]byte(`{"Documents":[{"id":"epk","version":1,"LeaseToken":"-80","FeedRange":{"Range":{"min":"","max":"80"}}}]}`))
 				case "/dbs/testdb/colls/data/pkranges":
 					w.WriteHeader(tt.status)
-					_, _ = w.Write([]byte(tt.body))
+					if tt.body == "{" {
+						_, err := w.Write([]byte("{"))
+						assert.NoError(t, err)
+					} else if tt.body != "" {
+						assert.NoError(t, json.NewEncoder(w).Encode(json.RawMessage(tt.body)))
+					}
 				default:
 					t.Errorf("unexpected feed request: %s", r.URL)
 					w.WriteHeader(http.StatusBadRequest)
