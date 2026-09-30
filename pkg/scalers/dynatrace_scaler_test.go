@@ -87,16 +87,19 @@ func TestDynatraceGetMetricSpecForScaling(t *testing.T) {
 
 func TestDynatraceGetMetricByQuery(t *testing.T) {
 	testCases := []struct {
-		name                  string
-		executeResponseFail   bool
-		executeState          string
-		pollResponseFail      bool
-		pollResponseAfter     int
-		pollIntermediateState string
-		pollTerminalState     string
-		pollNotificationType  string
-		metricValue           float64
-		isError               bool
+		name                           string
+		executeResponseFail            bool
+		executeState                   string
+		pollResponseFail               bool
+		pollResponseAfter              int
+		pollIntermediateState          string
+		pollTerminalState              string
+		pollNotificationType           string
+		pollNotificationMessage        string
+		pollNotificationMessagePresent bool
+		expectedError                  string
+		metricValue                    float64
+		isError                        bool
 	}{
 		{
 			name:                "value returned successfully on first poll",
@@ -174,12 +177,32 @@ func TestDynatraceGetMetricByQuery(t *testing.T) {
 			isError:             true,
 		},
 		{
-			name:                 "poll returns missing bucket permissions notification",
-			executeResponseFail:  false,
-			pollTerminalState:    "SUCCEEDED",
+			name:                           "poll returns missing bucket permissions notification with message",
+			pollNotificationType:           "MISSING_BUCKET_PERMISSIONS",
+			pollNotificationMessage:        "No bucket permissions for table metrics.",
+			pollNotificationMessagePresent: true,
+			isError:                        true,
+			expectedError:                  "error executing DQL query: No bucket permissions for table metrics.",
+		},
+		{
+			name:                 "poll returns missing bucket permissions notification without message",
 			pollNotificationType: "MISSING_BUCKET_PERMISSIONS",
-			metricValue:          0,
 			isError:              true,
+			expectedError:        "error executing DQL query: missing bucket permissions",
+		},
+		{
+			name:                           "poll returns missing bucket permissions notification with empty message",
+			pollNotificationType:           "MISSING_BUCKET_PERMISSIONS",
+			pollNotificationMessagePresent: true,
+			isError:                        true,
+			expectedError:                  "error executing DQL query: missing bucket permissions",
+		},
+		{
+			name:                           "poll accepts metric for another notification type with permission message",
+			pollNotificationType:           "OTHER_NOTIFICATION",
+			pollNotificationMessage:        "No bucket permissions for table metrics.",
+			pollNotificationMessagePresent: true,
+			metricValue:                    100.1,
 		},
 	}
 	for _, tt := range testCases {
@@ -232,17 +255,20 @@ func TestDynatraceGetMetricByQuery(t *testing.T) {
 							}{{R: tt.metricValue}}
 							var response any = queryResponse
 							if tt.pollNotificationType != "" {
+								notification := map[string]any{
+									"notificationType": tt.pollNotificationType,
+									"severity":         "WARNING",
+								}
+								if tt.pollNotificationMessagePresent {
+									notification["message"] = tt.pollNotificationMessage
+								}
 								response = map[string]any{
 									"state": pollTerminalState,
 									"result": map[string]any{
 										"records": []map[string]any{{"r": tt.metricValue}},
 										"metadata": map[string]any{
 											"grail": map[string]any{
-												"notifications": []map[string]any{{
-													"message":          "No bucket permissions for table metrics.",
-													"notificationType": tt.pollNotificationType,
-													"severity":         "WARNING",
-												}},
+												"notifications": []map[string]any{notification},
 											},
 										},
 									},
@@ -276,6 +302,9 @@ func TestDynatraceGetMetricByQuery(t *testing.T) {
 			metric, _, err := scaler.GetMetricsAndActivity(t.Context(), "dummy")
 			if tt.isError {
 				assert.Error(t, err)
+				if tt.expectedError != "" {
+					assert.EqualError(t, err, tt.expectedError)
+				}
 			} else {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.metricValue, metric[0].Value.AsFloat64Slow())
