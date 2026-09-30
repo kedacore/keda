@@ -300,6 +300,7 @@ func TestCosmosDBLeaseDiagnosticsAndFallback(t *testing.T) {
 	config.TriggerMetadata["enableHighAvailability"] = "true"
 	scaler, err := NewAzureCosmosDBScaler(config)
 	require.NoError(t, err)
+	scaler.(DiagnosticsLifecycle).ActivateDiagnostics()
 	t.Cleanup(func() {
 		require.NoError(t, scaler.Close(context.Background()))
 		metricscollector.DeleteScalerMetrics("default", "cosmos-capacity", true)
@@ -389,6 +390,7 @@ func TestCosmosDBDiagnosticsAcrossScalerGenerations(t *testing.T) {
 			oldConfig.ScalableObjectType = resourceType
 			oldScaler, err := NewAzureCosmosDBScaler(oldConfig)
 			require.NoError(t, err)
+			oldScaler.(DiagnosticsLifecycle).ActivateDiagnostics()
 			defer oldScaler.Close(context.Background())
 			metricName := oldScaler.GetMetricSpecForScaling(context.Background())[0].External.Metric.Name
 			_, _, err = oldScaler.GetMetricsAndActivity(context.Background(), metricName)
@@ -406,6 +408,8 @@ func TestCosmosDBDiagnosticsAcrossScalerGenerations(t *testing.T) {
 			config.ScalableObjectType = resourceType
 			replacement, err := NewAzureCosmosDBScaler(config)
 			require.NoError(t, err)
+			oldScaler.(DiagnosticsLifecycle).DeactivateDiagnostics()
+			replacement.(DiagnosticsLifecycle).ActivateDiagnostics()
 			defer replacement.Close(context.Background())
 			_, _, err = replacement.GetMetricsAndActivity(context.Background(), metricName)
 			require.NoError(t, err)
@@ -421,6 +425,8 @@ func TestCosmosDBDiagnosticsAcrossScalerGenerations(t *testing.T) {
 
 			next, err := NewAzureCosmosDBScaler(config)
 			require.NoError(t, err)
+			replacement.(DiagnosticsLifecycle).DeactivateDiagnostics()
+			next.(DiagnosticsLifecycle).ActivateDiagnostics()
 			defer next.Close(context.Background())
 			require.NoError(t, next.Close(context.Background()))
 			assert.Empty(t, cosmosDBDiagnosticValues(t, config))
@@ -463,12 +469,14 @@ func TestCosmosDBCloseClearsOnlyOwnedDiagnostics(t *testing.T) {
 			config.ScalableObjectType = resourceType
 			scaler, err := NewAzureCosmosDBScaler(config)
 			require.NoError(t, err)
+			scaler.(DiagnosticsLifecycle).ActivateDiagnostics()
 			defer scaler.Close(context.Background())
 			otherConfig := cosmosDBCapacityConfig(server.URL)
 			otherConfig.ScalableObjectType = resourceType
 			otherConfig.TriggerIndex = 1
 			other, err := NewAzureCosmosDBScaler(otherConfig)
 			require.NoError(t, err)
+			other.(DiagnosticsLifecycle).ActivateDiagnostics()
 			defer other.Close(context.Background())
 			metricName := scaler.GetMetricSpecForScaling(context.Background())[0].External.Metric.Name
 			otherName := other.GetMetricSpecForScaling(context.Background())[0].External.Metric.Name

@@ -55,7 +55,8 @@ type cosmosDBDiagnosticsKey struct {
 }
 
 type cosmosDBDiagnosticsOwner struct {
-	key cosmosDBDiagnosticsKey
+	key     cosmosDBDiagnosticsKey
+	retired bool
 }
 
 var cosmosDBDiagnostics = struct {
@@ -247,10 +248,6 @@ func NewAzureCosmosDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) 
 		triggerIndex: meta.TriggerIndex, metricName: scaler.metricName(),
 		isScaledObject: config.ScalableObjectType == "ScaledObject",
 	}}
-	// Cache replacement can overlap old polls and Close; only the latest instance owns these labels.
-	cosmosDBDiagnostics.Lock()
-	cosmosDBDiagnostics.owners[scaler.diagnosticsOwner.key] = scaler.diagnosticsOwner
-	cosmosDBDiagnostics.Unlock()
 	return scaler, nil
 }
 
@@ -1126,10 +1123,26 @@ func (s *azureCosmosDBScaler) leaseReplicaCounts(state cosmosDBLeaseState) (int6
 	return cosmosDBCeilDivide(state.totalLag, s.metadata.Threshold), capacityReplicas, eligibleLeases
 }
 
+func (s *azureCosmosDBScaler) ActivateDiagnostics() {
+	cosmosDBDiagnostics.Lock()
+	defer cosmosDBDiagnostics.Unlock()
+	if s.diagnosticsOwner != nil && !s.diagnosticsOwner.retired {
+		cosmosDBDiagnostics.owners[s.diagnosticsOwner.key] = s.diagnosticsOwner
+	}
+}
+
+func (s *azureCosmosDBScaler) DeactivateDiagnostics() {
+	cosmosDBDiagnostics.Lock()
+	defer cosmosDBDiagnostics.Unlock()
+	if s.diagnosticsOwner != nil {
+		s.diagnosticsOwner.retired = true
+	}
+}
+
 func (s *azureCosmosDBScaler) recordLeaseDiagnostics(state cosmosDBLeaseState, failed bool) {
 	cosmosDBDiagnostics.Lock()
 	defer cosmosDBDiagnostics.Unlock()
-	if s.diagnosticsOwner == nil || cosmosDBDiagnostics.owners[s.diagnosticsOwner.key] != s.diagnosticsOwner {
+	if s.diagnosticsOwner == nil || s.diagnosticsOwner.retired || cosmosDBDiagnostics.owners[s.diagnosticsOwner.key] != s.diagnosticsOwner {
 		return
 	}
 	key := s.diagnosticsOwner.key
@@ -1157,6 +1170,9 @@ func (s *azureCosmosDBScaler) leaseDiagnosticValues(state cosmosDBLeaseState) ma
 // Close cleans up the scaler resources.
 func (s *azureCosmosDBScaler) Close(context.Context) error {
 	cosmosDBDiagnostics.Lock()
+	if s.diagnosticsOwner != nil {
+		s.diagnosticsOwner.retired = true
+	}
 	if s.diagnosticsOwner != nil && cosmosDBDiagnostics.owners[s.diagnosticsOwner.key] == s.diagnosticsOwner {
 		key := s.diagnosticsOwner.key
 		for suffix := range s.leaseDiagnosticValues(cosmosDBLeaseState{}) {

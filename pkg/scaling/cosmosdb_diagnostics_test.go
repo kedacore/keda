@@ -42,7 +42,9 @@ func TestDeleteScalableObjectRemovesCosmosDBDiagnostics(t *testing.T) {
 			}
 			scaler, err := scalers.NewAzureCosmosDBScaler(config)
 			require.NoError(t, err)
-			t.Cleanup(func() { require.NoError(t, scaler.Close(context.Background())) })
+			scalerCache := &cache.ScalersCache{Scalers: []cache.ScalerBuilder{{Scaler: scaler}}}
+			scalerCache.ActivateDiagnostics()
+			t.Cleanup(func() { scalerCache.Close(context.Background()) })
 			name := scaler.GetMetricSpecForScaling(t.Context())[0].External.Metric.Name
 			_, _, err = scaler.GetMetricsAndActivity(t.Context(), name)
 			require.NoError(t, err)
@@ -76,7 +78,7 @@ func TestDeleteScalableObjectRemovesCosmosDBDiagnostics(t *testing.T) {
 				scaleLoopContexts: &sync.Map{},
 				scalerCachesLock:  &sync.RWMutex{},
 				scalerCaches: map[string]*cache.ScalersCache{
-					withTriggers.GenerateIdentifier(): {Scalers: []cache.ScalerBuilder{{Scaler: scaler}}},
+					withTriggers.GenerateIdentifier(): scalerCache,
 				},
 				scaledObjectsMetricCache: metricscache.NewMetricsCache(),
 				recorder:                 events.NewFakeRecorder(1),

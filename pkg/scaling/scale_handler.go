@@ -633,6 +633,7 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 	defer h.scalerCachesLock.Unlock()
 
 	if oldCache, ok := h.scalerCaches[key]; ok {
+		oldCache.DeactivateDiagnostics()
 		// Scalers Close() could be impacted by timeouts, blocking the mutex
 		// until the timeout happens. Instead of locking the mutex, we take
 		// the old cache item and we close it in another goroutine, not locking
@@ -640,6 +641,7 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 		go oldCache.Close(ctx)
 	}
 
+	newCache.ActivateDiagnostics()
 	h.scalerCaches[key] = newCache
 	return h.scalerCaches[key], nil
 }
@@ -658,6 +660,7 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject ked
 	defer h.scalerCachesLock.Unlock()
 	if cache, ok := h.scalerCaches[key]; ok {
 		log.V(1).WithValues("key", key).Info("Removing entry from ScalersCache; scaler close runs asynchronously")
+		cache.DeactivateDiagnostics()
 		delete(h.scalerCaches, key)
 		go cache.Close(ctx)
 	}
