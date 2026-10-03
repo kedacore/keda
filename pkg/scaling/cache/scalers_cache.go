@@ -52,6 +52,41 @@ type ScalersCache struct {
 	mutex                    sync.RWMutex
 	closed                   bool
 	activeReaders            sync.WaitGroup
+	diagnosticsMutex         sync.Mutex
+	diagnosticsActive        bool
+	diagnosticsRetired       bool
+	diagnosticScalers        map[int]scalers.DiagnosticsLifecycle
+}
+
+// ActivateDiagnostics transfers ownership when this cache is installed.
+func (c *ScalersCache) ActivateDiagnostics() {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+	c.diagnosticsMutex.Lock()
+	defer c.diagnosticsMutex.Unlock()
+	if c.closed || c.diagnosticsActive || c.diagnosticsRetired {
+		return
+	}
+	c.diagnosticsActive = true
+	c.diagnosticScalers = make(map[int]scalers.DiagnosticsLifecycle)
+	for i, builder := range c.Scalers {
+		if lifecycle, ok := builder.Scaler.(scalers.DiagnosticsLifecycle); ok {
+			lifecycle.ActivateDiagnostics()
+			c.diagnosticScalers[i] = lifecycle
+		}
+	}
+}
+
+// DeactivateDiagnostics retires writes without waiting for slow refresh factories or readers.
+func (c *ScalersCache) DeactivateDiagnostics() {
+	c.diagnosticsMutex.Lock()
+	defer c.diagnosticsMutex.Unlock()
+	c.diagnosticsActive = false
+	c.diagnosticsRetired = true
+	for _, lifecycle := range c.diagnosticScalers {
+		lifecycle.DeactivateDiagnostics()
+	}
+	c.diagnosticScalers = nil
 }
 
 // acquireReader either reserves an activeReaders slot or returns ErrCacheClosed if the cache has been closed. The returned release function should be called by defer statement.
@@ -173,6 +208,7 @@ func (c *ScalersCache) Close(ctx context.Context) {
 	c.closed = true
 	c.mutex.Unlock()
 
+	c.DeactivateDiagnostics()
 	c.activeReaders.Wait()
 
 	c.mutex.Lock()
@@ -336,6 +372,20 @@ func (c *ScalersCache) refreshScaler(ctx context.Context, index int) (scalers.Sc
 		Factory:           oldSb.Factory,
 		CachedMetricSpecs: cloneMetricSpecs(oldSb.CachedMetricSpecs),
 	}
+
+	c.diagnosticsMutex.Lock()
+	if c.diagnosticsActive {
+		if previous := c.diagnosticScalers[index]; previous != nil {
+			previous.DeactivateDiagnostics()
+		}
+		if lifecycle, ok := newScaler.(scalers.DiagnosticsLifecycle); ok {
+			lifecycle.ActivateDiagnostics()
+			c.diagnosticScalers[index] = lifecycle
+		} else {
+			delete(c.diagnosticScalers, index)
+		}
+	}
+	c.diagnosticsMutex.Unlock()
 
 	oldSb.Scaler.Close(ctx)
 
