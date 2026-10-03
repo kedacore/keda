@@ -2542,6 +2542,28 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
+    - type: kubernetes-nodes
+      parameters:
+        - name: nodeSelector
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: value
+          type: string
+          default: "1"
+          metadataVariableReadable: true
+        - name: activationValue
+          type: string
+          default: "0"
+          metadataVariableReadable: true
+        - name: levels
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: oddOnly
+          type: string
+          default: "false"
+          metadataVariableReadable: true
     - type: kubernetes-resource
       parameters:
         - name: resourceKind
