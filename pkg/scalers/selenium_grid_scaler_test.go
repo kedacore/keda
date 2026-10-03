@@ -3760,3 +3760,59 @@ func Test_GetMetricsAndActivity_IncludeOngoingSessions(t *testing.T) {
 		})
 	}
 }
+
+func Test_getCapabilityAndManagedDownloadsSafeTypes(t *testing.T) {
+	// Numeric / boolean / nil capabilities should not panic
+	capMap := map[string]any{
+		"browserVersion": float64(128),
+		"browserName":    "chrome",
+		"nilField":       nil,
+		"boolField":      true,
+	}
+
+	if got := getCapability(capMap, "browserVersion"); got != "128" {
+		t.Errorf("getCapability(browserVersion) = %v, want 128", got)
+	}
+	if got := getCapability(capMap, "browserName"); got != "chrome" {
+		t.Errorf("getCapability(browserName) = %v, want chrome", got)
+	}
+	if got := getCapability(capMap, "nilField"); got != "" {
+		t.Errorf("getCapability(nilField) = %v, want empty", got)
+	}
+	if got := getCapability(capMap, "missingField"); got != "" {
+		t.Errorf("getCapability(missingField) = %v, want empty", got)
+	}
+
+	// Non-boolean managed downloads should not panic
+	if got := managedDownloadsEnabled(map[string]any{EnableManagedDownloadsCapability: "invalid"}, map[string]any{}); !got {
+		t.Errorf("managedDownloadsEnabled() = false, want true")
+	}
+	if got := managedDownloadsEnabled(map[string]any{}, map[string]any{EnableManagedDownloadsCapability: "invalid"}); !got {
+		t.Errorf("managedDownloadsEnabled() = false, want true")
+	}
+	if got := managedDownloadsEnabled(map[string]any{EnableManagedDownloadsCapability: "invalid"}, map[string]any{EnableManagedDownloadsCapability: true}); got {
+		t.Errorf("managedDownloadsEnabled() = true, want false")
+	}
+	if got := managedDownloadsEnabled(map[string]any{EnableManagedDownloadsCapability: true}, map[string]any{EnableManagedDownloadsCapability: true}); !got {
+		t.Errorf("managedDownloadsEnabled() = false, want true")
+	}
+}
+
+func Test_getSessionsQueueLengthRejectsOversizedResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		// nosemgrep: no-direct-write-to-responsewriter
+		_, _ = w.Write(make([]byte, maxSeleniumGridResponseSize+2))
+	}))
+	defer server.Close()
+
+	s := &seleniumGridScaler{
+		metadata:   &seleniumGridScalerMetadata{URL: server.URL},
+		httpClient: server.Client(),
+	}
+
+	_, _, err := s.getSessionsQueueLength(context.Background(), logr.Discard())
+	if err == nil {
+		t.Fatal("getSessionsQueueLength() error = nil, want response-size error")
+	}
+}
