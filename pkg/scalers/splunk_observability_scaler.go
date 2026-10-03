@@ -241,7 +241,10 @@ func (s *splunkObservabilityScaler) ingestPersistentMessage(msg *messages.DataMe
 	if len(msg.Payloads) == 0 {
 		return nil
 	}
-	ts := msg.Timestamp()
+	// Freshness is measured against arrival time: SignalFlow logical timestamps
+	// lag wall-clock by resolution + maxDelay, so comparing them against
+	// time.Now() would mark fresh data stale.
+	ts := time.Now()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	cutoff := ts.Add(-time.Duration(s.metadata.Duration) * time.Second)
@@ -288,9 +291,6 @@ func (s *splunkObservabilityScaler) persistentQueryResult() (float64, error) {
 }
 
 func aggregateSplunkO11ySamples(aggregator string, samples []splunkO11ySample) (float64, error) {
-	if len(samples) > 1 && aggregator == "" {
-		return 0, fmt.Errorf("query returned more than 1 series; modify the query to return only 1 series or add a queryAggregator")
-	}
 	maxValue := math.Inf(-1)
 	minValue := math.Inf(1)
 	valueSum := 0.0
@@ -300,24 +300,7 @@ func aggregateSplunkO11ySamples(aggregator string, samples []splunkO11ySample) (
 		minValue = math.Min(minValue, sample.v)
 		valueSum += sample.v
 	}
-	switch aggregator {
-	case "max":
-		return maxValue, nil
-	case "min":
-		return minValue, nil
-	case "avg":
-		return valueSum / float64(len(samples)), nil
-	case "sum":
-		return valueSum, nil
-	case "count":
-		return float64(len(samples)), nil
-	case "latest":
-		return latestValue, nil
-	case "":
-		return samples[0].v, nil
-	default:
-		return 0, fmt.Errorf("invalid queryAggregator: %q", aggregator)
-	}
+	return splunkObservabilityRollup(aggregator, maxValue, minValue, valueSum, len(samples), latestValue)
 }
 
 func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64, error) {

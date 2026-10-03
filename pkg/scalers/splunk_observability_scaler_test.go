@@ -473,7 +473,10 @@ func TestSplunkObservabilityPersistentStreamStale(t *testing.T) {
 	t.Fatalf("expected stale error, got %v", lastErr)
 }
 
-func TestSplunkObservabilityPersistentStreamUsesMessageTimestamp(t *testing.T) {
+// Freshness is measured against arrival time: a datapoint whose SignalFlow
+// logical timestamp lags wall-clock (resolution + maxDelay) must still count
+// as fresh when it arrives.
+func TestSplunkObservabilityPersistentStreamUsesReceiveTime(t *testing.T) {
 	scaler, _, _, stop := newFakeSplunkO11yScalerWithBackend(t, 1)
 	defer stop()
 	scaler.metadata.PersistentStream = true
@@ -494,9 +497,12 @@ func TestSplunkObservabilityPersistentStreamUsesMessageTimestamp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := scaler.getQueryResult(context.Background())
-	if err == nil || !strings.Contains(err.Error(), "persistent stream is stale") {
-		t.Fatalf("expected stale error for an old message, got %v", err)
+	got, err := scaler.getQueryResult(context.Background())
+	if err != nil {
+		t.Fatalf("expected fresh sample despite old logical timestamp, got %v", err)
+	}
+	if got != 42 {
+		t.Fatalf("expected 42, got %v", got)
 	}
 }
 
