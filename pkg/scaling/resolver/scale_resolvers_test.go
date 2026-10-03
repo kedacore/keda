@@ -1330,7 +1330,7 @@ func TestGetCurrentReplicas_NilScaleTargetGVKR(t *testing.T) {
 				},
 			}
 
-			got, err := GetCurrentReplicas(context.Background(), kubeClient, nil, input)
+			got, _, err := GetCurrentReplicas(context.Background(), kubeClient, nil, input)
 
 			if tt.wantErr {
 				assert.Error(t, err, "expected error")
