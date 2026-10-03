@@ -499,7 +499,10 @@ func TestKafkaGSSAPICcacheAuthParams(t *testing.T) {
 }
 
 func setupCcacheDir(t *testing.T) string {
-	t.Setenv("TMPDIR", t.TempDir())
+	tempDir := t.TempDir()
+	t.Setenv("TMPDIR", tempDir)
+	t.Setenv("TMP", tempDir)
+	t.Setenv("TEMP", tempDir)
 
 	ccacheDirPath := filepath.Join(os.TempDir(), "kerberos", ccacheDir)
 	if err := os.MkdirAll(ccacheDirPath, 0700); err != nil {
