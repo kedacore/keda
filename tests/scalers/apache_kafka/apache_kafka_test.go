@@ -719,6 +719,8 @@ func testPersistentLag(t *testing.T, kc *kubernetes.Clientset, data templateData
 
 	// Simulate Consumption from topic by consumer group
 	// To avoid edge case where scaling could be effectively disabled (Consumer never makes a commit)
+	commitPartition(t, persistentLagTopic, persistentLagGroup)
+
 	data.Params = fmt.Sprintf("--topic %s --group %s --from-beginning", persistentLagTopic, persistentLagGroup)
 	data.Commit = StringTrue
 	data.TopicName = persistentLagTopic

@@ -144,6 +144,7 @@ type azurePipelinesMetadata struct {
 	ActivationTargetPipelinesQueueLength int64  `keda:"name=activationTargetPipelinesQueueLength, order=triggerMetadata, default=0"`
 	JobsToFetch                          int64  `keda:"name=jobsToFetch, order=triggerMetadata, default=250"`
 	FetchUnfinishedJobsOnly              bool   `keda:"name=fetchUnfinishedJobsOnly, order=triggerMetadata, default=false"`
+	ScaleOnInFlight                      bool   `keda:"name=scaleOnInFlight, order=triggerMetadata, default=true"`
 	triggerIndex                         int
 	RequireAllDemands                    bool `keda:"name=requireAllDemands, order=triggerMetadata, default=false"`
 	RequireAllDemandsAndIgnoreOthers     bool `keda:"name=requireAllDemandsAndIgnoreOthers, order=triggerMetadata, default=false"`
@@ -419,7 +420,7 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 
 	// for each job check if its parent fulfilled, then demand fulfilled, then finally pool fulfilled
 	var count int64
-	for _, job := range stripDeadJobs(jrs.Value) {
+	for _, job := range stripDeadJobs(jrs.Value, s.metadata.ScaleOnInFlight) {
 		if s.metadata.Parent == "" && s.metadata.Demands == "" {
 			// no plan defined, just add a count
 			count++
@@ -442,15 +443,19 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 }
 
 // stripDeadJobs filters out jobs that should no longer count towards the queue length.
-// A job is considered "dead" (i.e. no longer queued) when:
-//   - it has finished (Result is set), or
-//   - it has already been picked up by an agent (ReceiveTime is set).
-func stripDeadJobs(jobs []JobRequest) []JobRequest {
+// A job is always skipped when it has finished (Result is set).
+// A job that has already been picked up by an agent (ReceiveTime is set) is only
+// skipped when scaleOnInFlight is false.
+func stripDeadJobs(jobs []JobRequest, scaleOnInFlight bool) []JobRequest {
 	var filtered []JobRequest
 	for _, job := range jobs {
-		if job.Result == nil && job.ReceiveTime.IsZero() {
-			filtered = append(filtered, job)
+		if job.Result != nil {
+			continue
 		}
+		if !scaleOnInFlight && !job.ReceiveTime.IsZero() {
+			continue
+		}
+		filtered = append(filtered, job)
 	}
 	return filtered
 }

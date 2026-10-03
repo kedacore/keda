@@ -7,6 +7,8 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: destinationName
           type: string
           optional: true
@@ -657,6 +659,75 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
+    - type: azure-cosmosdb
+      parameters:
+        - name: databaseId
+          type: string
+          metadataVariableReadable: true
+        - name: containerId
+          type: string
+          metadataVariableReadable: true
+        - name: leaseDatabaseId
+          type: string
+          metadataVariableReadable: true
+        - name: leaseContainerId
+          type: string
+          metadataVariableReadable: true
+        - name: processorName
+          type: string
+          metadataVariableReadable: true
+        - name: endpoint
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: connection
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: leaseEndpoint
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: leaseConnection
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: cosmosDBKey
+          type: string
+          optional: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: leaseCosmosDBKey
+          type: string
+          optional: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: tenantId
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: clientId
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: clientSecret
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: changeFeedLagThreshold
+          type: string
+          default: "100"
+          metadataVariableReadable: true
+        - name: activationChangeFeedLagThreshold
+          type: string
+          default: "0"
+          metadataVariableReadable: true
     - type: azure-data-explorer
       parameters:
         - name: databaseName
@@ -825,6 +896,10 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
+        - name: metricInterval
+          type: string
+          optional: true
+          metadataVariableReadable: true
         - name: metricAggregationInterval
           type: string
           optional: true
@@ -895,6 +970,10 @@ scalers:
         - name: fetchUnfinishedJobsOnly
           type: string
           default: "false"
+          metadataVariableReadable: true
+        - name: scaleOnInFlight
+          type: string
+          default: "true"
           metadataVariableReadable: true
         - name: requireAllDemands
           type: string
@@ -2436,6 +2515,10 @@ scalers:
           optional: true
           triggerAuthenticationVariableReadable: true
         - name: keytab
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: ccacheName
           type: string
           optional: true
           triggerAuthenticationVariableReadable: true
@@ -5005,6 +5088,14 @@ scalers:
           metadataVariableReadable: true
         - name: queryAggregator
           type: string
+          default: avg
+          allowedValue:
+            - min
+            - max
+            - avg
+            - sum
+            - count
+            - latest
           metadataVariableReadable: true
         - name: activationTargetValue
           type: string

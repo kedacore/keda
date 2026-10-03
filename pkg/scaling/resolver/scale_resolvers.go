@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -29,7 +30,6 @@ import (
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
-	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -57,6 +57,9 @@ const (
 	deploymentKind        = "Deployment"
 	statefulSetKind       = "StatefulSet"
 	replicaSetKind        = "ReplicaSet"
+	outboundPolicyOff     = "off"
+	outboundPolicyEnforce = "enforce"
+	outboundPolicyWarn    = "warn"
 )
 
 // podSpecable is a local duck type matching the PodSpecable shape used by
@@ -92,6 +95,48 @@ var (
 
 type Config struct {
 	FilePathAuthRootPath string
+
+	// AllowedOutboundEndpoints lists trusted Vault origins for warn and enforce modes.
+	// Other integrations do not yet enforce this option.
+	AllowedOutboundEndpoints []string
+	// OutboundEndpointPolicy is "off" (the default, including when empty), "warn", or "enforce".
+	// In enforce mode, an empty allowlist denies all Vault destinations.
+	OutboundEndpointPolicy string
+
+	// ServiceAccountTokenMode defaults to enforce-audience. Legacy explicitly disables
+	// audience enforcement for both Vault file tokens and all TokenRequest consumers.
+	ServiceAccountTokenMode string
+	// ServiceAccountTokenAudiences permits file-token audiences. Entries with namespace
+	// and serviceAccountName also select the audience for Vault and generic BSAT minting.
+	ServiceAccountTokenAudiences []ServiceAccountTokenAudience
+	// VaultKubernetesAuthTokenFile is the operator's dedicated projected token, read on each login.
+	VaultKubernetesAuthTokenFile string
+}
+
+// IsWarnOutboundPolicy reports whether unlisted destinations log warnings.
+func (cfg *Config) IsWarnOutboundPolicy() bool {
+	return cfg.OutboundEndpointPolicy == outboundPolicyWarn
+}
+
+// Validate rejects invalid policy settings at startup. Missing audiences are checked
+// when service account token authentication is requested, not for unrelated auth methods.
+func (cfg *Config) Validate() error {
+	switch cfg.OutboundEndpointPolicy {
+	case "", outboundPolicyOff, outboundPolicyWarn, outboundPolicyEnforce:
+	default:
+		return fmt.Errorf("unsupported %s.hashiCorpVault.mode %q: expected off, warn, or enforce", OutboundFilterEnvVar, cfg.OutboundEndpointPolicy)
+	}
+	if err := cfg.validateServiceAccountTokenPolicy(); err != nil {
+		return err
+	}
+	for _, endpoint := range cfg.AllowedOutboundEndpoints {
+		origin, err := url.Parse(endpoint)
+		if err != nil || !vaultAddressesEqual(endpoint, endpoint) || strings.Contains(origin.Host, "*") ||
+			(origin.Path != "" && origin.Path != "/") || origin.RawQuery != "" || origin.Fragment != "" {
+			return fmt.Errorf("invalid %s.hashiCorpVault.allowedEndpoints entry: expected an HTTP(S) origin without user information", OutboundFilterEnvVar)
+		}
+	}
+	return nil
 }
 
 // SetConfig sets the global configuration for the resolver package.
@@ -420,7 +465,11 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 			}
 			if triggerAuthSpec.BoundServiceAccountToken != nil {
 				for _, e := range triggerAuthSpec.BoundServiceAccountToken {
-					result[e.Parameter] = resolveBoundServiceAccountToken(ctx, client, logger, triggerNamespace, &e, authClientSet)
+					token, err := resolveBoundServiceAccountToken(ctx, client, triggerNamespace, &e, authClientSet)
+					if err != nil {
+						return nil, podIdentity, err
+					}
+					result[e.Parameter] = token
 				}
 			}
 			if triggerAuthSpec.OAuth2 != nil {
@@ -759,42 +808,16 @@ func readAuthParamsFromFile(relativeFilePath string) (map[string]string, error) 
 	return params, nil
 }
 
-func resolveBoundServiceAccountToken(ctx context.Context, client client.Client, logger logr.Logger, namespace string, bsat *kedav1alpha1.BoundServiceAccountToken, acs *authentication.AuthClientSet) string {
+func resolveBoundServiceAccountToken(ctx context.Context, client client.Client, namespace string, bsat *kedav1alpha1.BoundServiceAccountToken, acs *authentication.AuthClientSet) (string, error) {
 	serviceAccountName := bsat.ServiceAccountName
 	if serviceAccountName == "" {
-		logger.Error(fmt.Errorf("error trying to get token"), "serviceAccountName is required")
-		return ""
+		return "", errors.New("serviceAccountName is required for boundServiceAccountToken")
 	}
-	var err error
-
 	serviceAccount := &corev1.ServiceAccount{}
-	err = client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
-	if err != nil {
-		logger.Error(err, "error trying to get service account from namespace", "ServiceAccount.Namespace", namespace, "ServiceAccount.Name", serviceAccountName)
-		return ""
+	if err := client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount); err != nil {
+		return "", fmt.Errorf("failed to get service account %s/%s: %w", namespace, serviceAccountName, err)
 	}
 	return GenerateBoundServiceAccountToken(ctx, serviceAccountName, namespace, acs)
-}
-
-// GenerateBoundServiceAccountToken creates a Kubernetes token for a namespaced service account with a runtime-configurable expiration time and returns the token string.
-func GenerateBoundServiceAccountToken(ctx context.Context, serviceAccountName, namespace string, acs *authentication.AuthClientSet) string {
-	expirationSeconds := new(int64(boundServiceAccountTokenExpiry.Seconds()))
-	token, err := acs.CoreV1Interface.ServiceAccounts(namespace).CreateToken(
-		ctx,
-		serviceAccountName,
-		&authenticationv1.TokenRequest{
-			Spec: authenticationv1.TokenRequestSpec{
-				ExpirationSeconds: expirationSeconds,
-			},
-		},
-		metav1.CreateOptions{},
-	)
-	if err != nil {
-		log.V(1).Error(err, "error trying to create bound service account token for service account", "ServiceAccount.Name", serviceAccountName)
-		return ""
-	}
-	log.V(1).Info("Bound service account token created successfully", "ServiceAccount.Name", serviceAccountName)
-	return token.Status.Token
 }
 
 // resolveServiceAccountAnnotation retrieves the value of a specific annotation

@@ -72,6 +72,10 @@ var testAzurePipelinesMetadata = []parseAzurePipelinesMetadataTestData{
 	{"jobsToFetch and parent given", map[string]string{"organizationURLFromEnv": "AZP_URL", "personalAccessTokenFromEnv": "AZP_TOKEN", "poolID": "1", "targetPipelinesQueueLength": "1", "parent": "test-agent", "jobsToFetch": "42"}, true, testAzurePipelinesResolvedEnv, map[string]string{}},
 	// parent and fetchUnfinishedJobsOnly given
 	{"parent and fetchUnfinishedJobsOnly given", map[string]string{"organizationURLFromEnv": "AZP_URL", "personalAccessTokenFromEnv": "AZP_TOKEN", "poolID": "1", "targetPipelinesQueueLength": "1", "fetchUnfinishedJobsOnly": "true", "parent": "test-agent"}, false, testAzurePipelinesResolvedEnv, map[string]string{}},
+	// scaleOnInFlight malformed
+	{"scaleOnInFlight malformed", map[string]string{"organizationURLFromEnv": "AZP_URL", "personalAccessTokenFromEnv": "AZP_TOKEN", "poolID": "1", "targetPipelinesQueueLength": "1", "scaleOnInFlight": "notabool"}, true, testAzurePipelinesResolvedEnv, map[string]string{}},
+	// scaleOnInFlight false
+	{"scaleOnInFlight false", map[string]string{"organizationURLFromEnv": "AZP_URL", "personalAccessTokenFromEnv": "AZP_TOKEN", "poolID": "1", "targetPipelinesQueueLength": "1", "scaleOnInFlight": "false"}, false, testAzurePipelinesResolvedEnv, map[string]string{}},
 }
 
 // testJobRequestResponse contains two queued (not yet assigned) job requests.
@@ -562,7 +566,9 @@ func TestAzurePipelinesDemandsComparisonCaseInsensitive(t *testing.T) {
 	}
 }
 
-// TestAzurePipelinesAssignedJobNotCounted verifies that a job which has already been picked up by an agent (receiveTime is set, Result is still nil) is not counted towards the queue length.
+// TestAzurePipelinesAssignedJobNotCounted verifies that with scaleOnInFlight=false,
+// a job which has already been picked up by an agent (receiveTime is set, Result is still nil)
+// is not counted towards the queue length.
 func TestAzurePipelinesAssignedJobNotCounted(t *testing.T) {
 	// Response contains only one job: an assigned-but-not-yet-finished job.
 	// The expected queue length is 0 because the job is already being worked on.
@@ -577,6 +583,7 @@ func TestAzurePipelinesAssignedJobNotCounted(t *testing.T) {
 	meta := getMatchedAgentMetaData(apiStub.URL)
 	// Clear Parent so the scaler counts every non-dead job (no parent/demands filtering).
 	meta.Parent = ""
+	meta.ScaleOnInFlight = false
 
 	mockAzurePipelinesScaler := azurePipelinesScaler{
 		metadata:   meta,
@@ -593,11 +600,40 @@ func TestAzurePipelinesAssignedJobNotCounted(t *testing.T) {
 	}
 }
 
-// TestAzurePipelinesQueuedAndAssignedMixed verifies that when the API returns
-// a mix of queued and already-assigned jobs, only the queued ones are counted.
+// TestAzurePipelinesAssignedJobCountedWhenScaleOnInFlight verifies that with
+// scaleOnInFlight=true (default), assigned-but-not-finished jobs still count.
+func TestAzurePipelinesAssignedJobCountedWhenScaleOnInFlight(t *testing.T) {
+	response := `{"count":1,"value":[` + assignedNotFinishedJob + `]}`
+
+	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		// nosemgrep: no-direct-write-to-responsewriter
+		_, _ = w.Write([]byte(response))
+	}))
+
+	meta := getMatchedAgentMetaData(apiStub.URL)
+	meta.Parent = ""
+	meta.ScaleOnInFlight = true
+
+	mockAzurePipelinesScaler := azurePipelinesScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if queueLen != 1 {
+		t.Fatalf("expected queue length to be 1 (assigned job should be counted when scaleOnInFlight=true), got %d", queueLen)
+	}
+}
+
+// TestAzurePipelinesQueuedAndAssignedMixed verifies that when scaleOnInFlight=false
+// and the API returns a mix of queued and already-assigned jobs, only the queued ones are counted.
 func TestAzurePipelinesQueuedAndAssignedMixed(t *testing.T) {
-	// One queued job (from testJobRequestResponse, the second entry) and one
-	// assigned-but-not-finished job. Expected queue length: 1.
+	// One queued job and one assigned-but-not-finished job. Expected queue length: 1.
 	queuedJob := `{"requestId":890670,"queueTime":"2022-09-28T11:19:49.89Z","demands":["Agent.Version -gtVersion 2.182.1"],"serviceOwner":"xxx","hostId":"xxx","scopeId":"xxx","planType":"Build","planId":"xxx","jobId":"xxx","poolId":44,"orchestrationId":"x","priority":0}`
 	response := `{"count":2,"value":[` + queuedJob + `,` + assignedNotFinishedJob + `]}`
 
@@ -609,6 +645,7 @@ func TestAzurePipelinesQueuedAndAssignedMixed(t *testing.T) {
 
 	meta := getMatchedAgentMetaData(apiStub.URL)
 	meta.Parent = ""
+	meta.ScaleOnInFlight = false
 
 	mockAzurePipelinesScaler := azurePipelinesScaler{
 		metadata:   meta,
@@ -622,6 +659,86 @@ func TestAzurePipelinesQueuedAndAssignedMixed(t *testing.T) {
 
 	if queueLen != 1 {
 		t.Fatalf("expected queue length to be 1 (only the queued job counts), got %d", queueLen)
+	}
+}
+
+// TestAzurePipelinesQueuedAndAssignedMixedScaleOnInFlight verifies that with
+// scaleOnInFlight=true both queued and assigned jobs are counted.
+func TestAzurePipelinesQueuedAndAssignedMixedScaleOnInFlight(t *testing.T) {
+	queuedJob := `{"requestId":890670,"queueTime":"2022-09-28T11:19:49.89Z","demands":["Agent.Version -gtVersion 2.182.1"],"serviceOwner":"xxx","hostId":"xxx","scopeId":"xxx","planType":"Build","planId":"xxx","jobId":"xxx","poolId":44,"orchestrationId":"x","priority":0}`
+	response := `{"count":2,"value":[` + queuedJob + `,` + assignedNotFinishedJob + `]}`
+
+	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		// nosemgrep: no-direct-write-to-responsewriter
+		_, _ = w.Write([]byte(response))
+	}))
+
+	meta := getMatchedAgentMetaData(apiStub.URL)
+	meta.Parent = ""
+	meta.ScaleOnInFlight = true
+
+	mockAzurePipelinesScaler := azurePipelinesScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if queueLen != 2 {
+		t.Fatalf("expected queue length to be 2 (queued + assigned), got %d", queueLen)
+	}
+}
+
+func TestStripDeadJobs(t *testing.T) {
+	result := "succeeded"
+	receiveTime := time.Date(2022, 9, 28, 11, 20, 32, 0, time.UTC)
+
+	queued := JobRequest{RequestID: 1}
+	assigned := JobRequest{RequestID: 2, ReceiveTime: receiveTime}
+	finished := JobRequest{RequestID: 3, Result: &result, ReceiveTime: receiveTime}
+
+	jobs := []JobRequest{queued, assigned, finished}
+
+	got := stripDeadJobs(jobs, true)
+	if len(got) != 2 || got[0].RequestID != 1 || got[1].RequestID != 2 {
+		t.Fatalf("scaleOnInFlight=true: expected queued+assigned, got %+v", got)
+	}
+
+	got = stripDeadJobs(jobs, false)
+	if len(got) != 1 || got[0].RequestID != 1 {
+		t.Fatalf("scaleOnInFlight=false: expected only queued, got %+v", got)
+	}
+}
+
+func TestParseAzurePipelinesMetadataScaleOnInFlightDefault(t *testing.T) {
+	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"count":1,"value":[{"id":1}]}`))
+	}))
+
+	logger := logr.Discard()
+	meta, err := parseAzurePipelinesMetadata(t.Context(), logger, &scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"organizationURLFromEnv":     "AZP_URL",
+			"personalAccessTokenFromEnv": "AZP_TOKEN",
+			"poolID":                     "1",
+			"targetPipelinesQueueLength": "1",
+		},
+		ResolvedEnv: map[string]string{
+			"AZP_URL":   apiStub.URL,
+			"AZP_TOKEN": "sample",
+		},
+		AuthParams: map[string]string{},
+	}, http.DefaultClient)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !meta.ScaleOnInFlight {
+		t.Fatal("expected scaleOnInFlight default to be true")
 	}
 }
 
