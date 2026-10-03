@@ -152,11 +152,11 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 		awsTransport, err := aws.NewSigV4RoundTripper(config, meta.AwsRegion)
 		if err != nil {
-			logger.V(1).Error(err, "failed to get AWS client HTTP transport ")
+			logger.V(1).Error(err, "failed to get AWS client HTTP transport")
 			return nil, err
 		}
 
-		if err == nil && awsTransport != nil {
+		if awsTransport != nil {
 			httpClient.Transport = awsTransport
 		}
 	}
