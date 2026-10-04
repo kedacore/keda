@@ -2,6 +2,7 @@ package scalers
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -337,7 +338,7 @@ func TestParqtelScalerExecuteQuery(t *testing.T) {
 		t.Run(testData.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 				writer.WriteHeader(testData.responseStatus)
-				if _, err := writer.Write([]byte(testData.bodyStr)); err != nil {
+				if _, err := io.WriteString(writer, testData.bodyStr); err != nil {
 					t.Fatal(err)
 				}
 			}))
@@ -377,7 +378,7 @@ func TestParqtelScalerCustomHeaders(t *testing.T) {
 			assert.Equal(t, headerValue, request.Header.Get(headerName))
 		}
 		writer.WriteHeader(http.StatusOK)
-		if _, err := writer.Write([]byte(`{"data":{"result":[]}}`)); err != nil {
+		if _, err := io.WriteString(writer, `{"data":{"result":[]}}`); err != nil {
 			t.Fatal(err)
 		}
 	}))
@@ -410,7 +411,7 @@ func TestParqtelScalerQueryParameters(t *testing.T) {
 		assert.NotEmpty(t, query.Get("query"))
 
 		writer.WriteHeader(http.StatusOK)
-		if _, err := writer.Write([]byte(`{"data":{"result":[]}}`)); err != nil {
+		if _, err := io.WriteString(writer, `{"data":{"result":[]}}`); err != nil {
 			t.Fatal(err)
 		}
 	}))
@@ -440,7 +441,7 @@ func TestParqtelScalerRangeQueryURL(t *testing.T) {
 		assert.NotEmpty(t, query.Get("query"))
 
 		writer.WriteHeader(http.StatusOK)
-		if _, err := writer.Write([]byte(`{"data":{"resultType":"matrix","result":[{"values": [[1, "3"]]}]}}`)); err != nil {
+		if _, err := io.WriteString(writer, `{"data":{"resultType":"matrix","result":[{"values": [[1, "3"]]}]}}`); err != nil {
 			t.Fatal(err)
 		}
 	}))
@@ -460,6 +461,29 @@ func TestParqtelScalerRangeQueryURL(t *testing.T) {
 	value, err := scaler.ExecuteQuery(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, 3.0, value)
+}
+
+func TestParqtelScalerRangeInverted(t *testing.T) {
+	// A range whose start is after its end must be rejected before any request is made.
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+		t.Error("request should not be made for an inverted range")
+	}))
+	defer server.Close()
+
+	scaler := parqtelScaler{
+		metadata: &parqtelMetadata{
+			ServerAddress:    server.URL,
+			Query:            "up",
+			QueryType:        "range",
+			RangeStart:       "2000000000", // year 2033
+			RangeEnd:         "1000000000", // year 2001
+			IgnoreNullValues: true,
+			ParqtelAuth:      &authentication.Config{},
+		},
+		httpClient: http.DefaultClient,
+	}
+	_, err := scaler.ExecuteQuery(context.Background())
+	assert.Error(t, err)
 }
 
 func TestParqtelParseStepDuration(t *testing.T) {
@@ -491,20 +515,29 @@ func TestParqtelParseStepDuration(t *testing.T) {
 	}
 }
 
-func TestParqtelParseTimestamp(t *testing.T) {
+func TestParqtelParseRangeBound(t *testing.T) {
+	now := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	nowSecs := float64(now.Unix())
 	tests := []struct {
 		input    string
 		expected float64
 		isError  bool
 	}{
+		// absolute unix seconds
 		{"1686063687", 1686063687, false},
 		{"1686063687.5", 1686063687.5, false},
+		// absolute RFC3339
 		{"2023-06-05T12:00:00Z", float64(time.Date(2023, 6, 5, 12, 0, 0, 0, time.UTC).Unix()), false},
+		// relative durations are offsets before now
+		{"5m", nowSecs - 300, false},
+		{"60s", nowSecs - 60, false},
+		{"1h", nowSecs - 3600, false},
+		// invalid
 		{"", 0, true},
 		{"not-a-time", 0, true},
 	}
 	for _, tt := range tests {
-		got, err := parseTimestampToUnixSeconds(tt.input)
+		got, err := parseRangeBound(tt.input, now)
 		if tt.isError {
 			assert.Error(t, err, "input=%q", tt.input)
 		} else {
@@ -517,7 +550,7 @@ func TestParqtelParseTimestamp(t *testing.T) {
 func TestParqtelGetMetricsAndActivity(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		writer.WriteHeader(http.StatusOK)
-		_, _ = writer.Write([]byte(`{"data":{"result":[{"value": [1, "42"]}]}}`))
+		_, _ = io.WriteString(writer, `{"data":{"result":[{"value": [1, "42"]}]}}`)
 	}))
 	defer server.Close()
 

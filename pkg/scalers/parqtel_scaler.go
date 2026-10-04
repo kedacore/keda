@@ -318,23 +318,28 @@ func (s *parqtelScaler) buildQueryURL() (string, error) {
 
 	var base string
 	if s.metadata.QueryType == queryTypeRange {
-		nowSecs := float64(time.Now().Unix())
+		now := time.Now()
+		nowSecs := float64(now.Unix())
 		startSecs := nowSecs - defaultRangeWindow.Seconds()
 		endSecs := nowSecs
 
 		if s.metadata.RangeStart != "" {
-			v, err := parseTimestampToUnixSeconds(s.metadata.RangeStart)
+			v, err := parseRangeBound(s.metadata.RangeStart, now)
 			if err != nil {
 				return "", err
 			}
 			startSecs = v
 		}
 		if s.metadata.RangeEnd != "" {
-			v, err := parseTimestampToUnixSeconds(s.metadata.RangeEnd)
+			v, err := parseRangeBound(s.metadata.RangeEnd, now)
 			if err != nil {
 				return "", err
 			}
 			endSecs = v
+		}
+		if startSecs > endSecs {
+			return "", fmt.Errorf("rangeStart (%s) must not be after rangeEnd (%s)",
+				strconv.FormatFloat(startSecs, 'f', -1, 64), strconv.FormatFloat(endSecs, 'f', -1, 64))
 		}
 
 		step := s.metadata.RangeStep
@@ -463,8 +468,11 @@ func parseStepDuration(s string) (time.Duration, error) {
 	return 0, fmt.Errorf("invalid step %q", s)
 }
 
-// parseTimestampToUnixSeconds accepts either a unix-seconds number or an RFC3339 timestamp.
-func parseTimestampToUnixSeconds(s string) (float64, error) {
+// parseRangeBound interprets a range bound as an absolute unix-seconds value. A plain
+// number or an RFC3339 timestamp is used as-is; a duration (e.g. "5m", "60s") is treated
+// as an offset before now, so the window keeps tracking current load instead of freezing
+// on a fixed historical range.
+func parseRangeBound(s string, now time.Time) (float64, error) {
 	s = strings.TrimSpace(s)
 	if s == "" {
 		return 0, fmt.Errorf("empty timestamp")
@@ -475,5 +483,8 @@ func parseTimestampToUnixSeconds(s string) (float64, error) {
 	if t, err := time.Parse(time.RFC3339, s); err == nil {
 		return float64(t.Unix()), nil
 	}
-	return 0, fmt.Errorf("invalid timestamp %q (want unix seconds or RFC3339)", s)
+	if d, err := time.ParseDuration(s); err == nil {
+		return float64(now.Add(-d).Unix()), nil
+	}
+	return 0, fmt.Errorf("invalid timestamp %q (want unix seconds, RFC3339, or a relative duration)", s)
 }

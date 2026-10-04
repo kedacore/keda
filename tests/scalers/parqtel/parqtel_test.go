@@ -180,7 +180,9 @@ func TestParqtelScaler(t *testing.T) {
 		DeleteKubernetesResources(t, testNamespace, data, templates)
 	})
 
-	// Create kubernetes resources for testing (parqtel + target deployment + ScaledObject)
+	// Create the namespace, then the kubernetes resources for testing
+	// (parqtel + target deployment + ScaledObject).
+	CreateNamespace(t, kc, testNamespace)
 	KubectlApplyMultipleWithTemplate(t, data, templates)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, parqtelName, testNamespace, 1, 60, 3),
 		"parqtel replica count should be 1 after 3 minutes")
