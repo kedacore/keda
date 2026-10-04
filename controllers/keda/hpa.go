@@ -269,12 +269,19 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 		return nil, err
 	}
 
-	metricSpecs := cache.GetMetricSpecForScaling(ctx)
+	metricSpecs, discoveryErr := cache.GetMetricSpecForScaling(ctx)
 
 	if len(metricSpecs) == 0 {
 		err := fmt.Errorf("no metric specs returned from scalers for ScaledObject %s/%s", scaledObject.Namespace, scaledObject.Name)
 		logger.Error(err, "Scalers may be unreachable, will retry")
 		return nil, err
+	}
+
+	// Persisting a partial result drops the failing triggers from the HPA and from the
+	// status, taking their health status and the push scaler name lookup with them.
+	if discoveryErr != nil {
+		logger.Error(discoveryErr, "Incomplete metric spec discovery, keeping the existing HPA and ScaledObject status, will retry")
+		return nil, discoveryErr
 	}
 
 	for _, metricSpec := range metricSpecs {

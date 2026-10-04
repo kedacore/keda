@@ -1470,14 +1470,18 @@ var _ = Describe("ScaledObjectController", func() {
 			return k8sClient.Status().Update(ctx, hpa)
 		}).ShouldNot(HaveOccurred())
 
-		// hpa metrics will only left CPU metric
-		Eventually(func() int {
+		// The unreachable trigger keeps its place in the HPA on the metric
+		// spec it reported last, instead of being dropped from the HPA and the status.
+		Consistently(func() int {
 			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: getHPAName(so), Namespace: "default"}, hpa)
 			if err != nil {
 				return -1
 			}
 			return len(hpa.Spec.Metrics)
-		}, 5*time.Second).Should(Equal(1))
+		}, 5*time.Second, 1*time.Second).Should(Equal(2))
+
+		Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)).To(Succeed())
+		Expect(so.Status.ExternalMetricNames).To(HaveLen(1))
 
 		// mock external server online
 		atomic.StoreInt32(&scalers.MockExternalServerStatus, scalers.MockExternalServerStatusOnline)
