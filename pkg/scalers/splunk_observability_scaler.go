@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -63,6 +64,7 @@ type splunkObservabilityScaler struct {
 	activeQueries map[uint64]context.CancelFunc
 	inFlight      sync.WaitGroup
 	closeDone     chan struct{}
+	unhealthy     atomic.Bool
 }
 
 func parseSplunkObservabilityMetadata(config *scalersconfig.ScalerConfig) (*splunkObservabilityMetadata, error) {
@@ -166,13 +168,43 @@ func (s *splunkObservabilityScaler) startPersistentStream() error {
 	return s.startPersistentStreamWithContext(startupCtx)
 }
 
+// executeGuarded runs Client.Execute without letting a wedged client block the
+// caller forever. The SignalFlow client holds its internal lock across channel
+// delivery and leaks it when a message arrives for an unknown channel, so a
+// later Execute can block indefinitely in registerChannel. If ctx expires
+// first, the client is marked unhealthy so Close stops touching it, and the
+// stuck Execute goroutine is abandoned.
+func (s *splunkObservabilityScaler) executeGuarded(ctx context.Context, apiClient *signalflow.Client, req *signalflow.ExecuteRequest) (*signalflow.Computation, error) {
+	type executeResult struct {
+		comp *signalflow.Computation
+		err  error
+	}
+	resCh := make(chan executeResult, 1)
+	go func() {
+		comp, err := apiClient.Execute(ctx, req)
+		resCh <- executeResult{comp: comp, err: err}
+	}()
+	select {
+	case res := <-resCh:
+		return res.comp, res.err
+	case <-ctx.Done():
+		select {
+		case res := <-resCh:
+			return res.comp, res.err
+		default:
+			s.unhealthy.Store(true)
+			return nil, ctx.Err()
+		}
+	}
+}
+
 func (s *splunkObservabilityScaler) startPersistentStreamWithContext(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.closed || s.apiClient == nil {
 		return fmt.Errorf("splunk observability scaler is closed")
 	}
-	comp, err := s.apiClient.Execute(ctx, &signalflow.ExecuteRequest{
+	comp, err := s.executeGuarded(ctx, s.apiClient, &signalflow.ExecuteRequest{
 		Program: s.metadata.Query,
 	})
 	if err != nil {
@@ -214,6 +246,11 @@ func (s *splunkObservabilityScaler) startQuery(ctx context.Context) (*signalflow
 		s.mu.Unlock()
 		cancel()
 		return nil, nil, nil, fmt.Errorf("splunk observability scaler is closed")
+	}
+	if s.unhealthy.Load() {
+		s.mu.Unlock()
+		cancel()
+		return nil, nil, nil, fmt.Errorf("splunk observability signalflow client is unhealthy")
 	}
 
 	queryID := s.nextQueryID
@@ -271,6 +308,9 @@ func (s *splunkObservabilityScaler) persistentQueryResult() (float64, error) {
 	if s.closed || s.apiClient == nil {
 		return -1, fmt.Errorf("splunk observability scaler is closed")
 	}
+	if s.unhealthy.Load() {
+		return -1, fmt.Errorf("splunk observability signalflow client is unhealthy")
+	}
 	cutoff := time.Now().Add(-time.Duration(s.metadata.Duration) * time.Second)
 	var window []splunkO11ySample
 	for _, sample := range s.samples {
@@ -318,7 +358,7 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 		}
 	}()
 
-	comp, err := apiClient.Execute(queryCtx, &signalflow.ExecuteRequest{
+	comp, err := s.executeGuarded(queryCtx, apiClient, &signalflow.ExecuteRequest{
 		Program: s.metadata.Query,
 	})
 	if err != nil {
@@ -496,7 +536,10 @@ func (s *splunkObservabilityScaler) Close(context.Context) error {
 		s.stopPersistentStream(comp)
 	}
 	s.inFlight.Wait()
-	if apiClient != nil {
+	// A client wedged in the SignalFlow library takes its internal lock with
+	// it, so Close must not touch it or Close wedges too. The client is
+	// abandoned instead; its queries already failed fast above.
+	if apiClient != nil && !s.unhealthy.Load() {
 		apiClient.Close()
 	}
 	close(done)
