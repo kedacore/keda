@@ -69,6 +69,12 @@ var testParqtelMetadata = []parseParqtelMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "query": "up", "threshold": "100", "resultAggregation": "bogus"}, true},
 	// valid resultAggregation
 	{map[string]string{"serverAddress": "http://localhost:9090", "query": "up", "threshold": "100", "resultAggregation": "sum"}, false},
+	// valid signal: logs
+	{map[string]string{"serverAddress": "http://localhost:9090", "query": `{service="api"}`, "threshold": "100", "signal": "logs"}, false},
+	// valid signal: traces
+	{map[string]string{"serverAddress": "http://localhost:9090", "query": `service.name="api"`, "threshold": "100", "signal": "traces"}, false},
+	// invalid signal
+	{map[string]string{"serverAddress": "http://localhost:9090", "query": "up", "threshold": "100", "signal": "bogus"}, true},
 }
 
 func TestParqtelParseMetadata(t *testing.T) {
@@ -483,6 +489,69 @@ func TestParqtelScalerRangeInverted(t *testing.T) {
 	}
 	_, err := scaler.ExecuteQuery(context.Background())
 	assert.Error(t, err)
+}
+
+func TestParqtelScalerLogsQuery(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		assert.Equal(t, "/v1/logs/count", request.URL.Path)
+		query := request.URL.Query()
+		assert.Equal(t, `{service="api"}`, query.Get("query"))
+		assert.NotEmpty(t, query.Get("start"))
+		assert.NotEmpty(t, query.Get("end"))
+
+		writer.WriteHeader(http.StatusOK)
+		if _, err := writer.Write([]byte(`{"status":"success","data":[{"start_ns":0,"end_ns":60,"count":5},{"start_ns":60,"end_ns":120,"count":7}]}`)); err != nil { // nosemgrep: no-direct-write-to-responsewriter
+			t.Fatal(err)
+		}
+	}))
+	defer server.Close()
+
+	scaler := parqtelScaler{
+		metadata: &parqtelMetadata{
+			ServerAddress:     server.URL,
+			Signal:            "logs",
+			Query:             `{service="api"}`,
+			ResultAggregation: "sum",
+			IgnoreNullValues:  true,
+			ParqtelAuth:       &authentication.Config{},
+		},
+		httpClient: http.DefaultClient,
+		logger:     logr.Discard(),
+	}
+	value, err := scaler.ExecuteQuery(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, 12.0, value) // 5 + 7 buckets summed
+}
+
+func TestParqtelScalerTracesQuery(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		assert.Equal(t, "/v1/traces/search", request.URL.Path)
+		query := request.URL.Query()
+		assert.Equal(t, `service.name="api"`, query.Get("q"))
+		assert.NotEmpty(t, query.Get("start"))
+		assert.NotEmpty(t, query.Get("end"))
+
+		writer.WriteHeader(http.StatusOK)
+		if _, err := writer.Write([]byte(`{"status":"success","data":{"trace_id":"abc","spans":[],"total_spans_in_range":100,"spans_matched":42,"truncated":false}}`)); err != nil { // nosemgrep: no-direct-write-to-responsewriter
+			t.Fatal(err)
+		}
+	}))
+	defer server.Close()
+
+	scaler := parqtelScaler{
+		metadata: &parqtelMetadata{
+			ServerAddress:    server.URL,
+			Signal:           "traces",
+			Query:            `service.name="api"`,
+			IgnoreNullValues: true,
+			ParqtelAuth:      &authentication.Config{},
+		},
+		httpClient: http.DefaultClient,
+		logger:     logr.Discard(),
+	}
+	value, err := scaler.ExecuteQuery(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, 42.0, value) // spans_matched
 }
 
 func TestParqtelParseStepDuration(t *testing.T) {

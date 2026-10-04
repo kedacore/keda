@@ -3475,6 +3475,14 @@ scalers:
         - name: serverAddress
           type: string
           metadataVariableReadable: true
+        - name: signal
+          type: string
+          default: metrics
+          allowedValue:
+            - metrics
+            - logs
+            - traces
+          metadataVariableReadable: true
         - name: query
           type: string
           metadataVariableReadable: true

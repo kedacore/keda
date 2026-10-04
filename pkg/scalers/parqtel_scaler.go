@@ -25,9 +25,14 @@ import (
 const (
 	parqtelMetricName = "parqtel"
 
-	// query types
+	// query types (metrics signal)
 	queryTypeInstant = "instant"
 	queryTypeRange   = "range"
+
+	// signals
+	signalMetrics = "metrics"
+	signalLogs    = "logs"
+	signalTraces  = "traces"
 
 	// result aggregation modes
 	aggFirst = "first"
@@ -42,8 +47,10 @@ const (
 	defaultRangeWindow = 5 * time.Minute
 )
 
-// parqtelScaler scales a workload based on the result of a PQL/PromQL query
-// executed against a Parqtel instance's Prometheus-compatible query API.
+// parqtelScaler scales a workload based on a query executed against a Parqtel
+// instance. By default it evaluates a PQL/PromQL metric query against the
+// Prometheus-compatible API; it can also scale on ingested log volume
+// (/v1/logs/count) or trace volume (/v1/traces/search).
 type parqtelScaler struct {
 	metricType         v2.MetricTargetType
 	metadata           *parqtelMetadata
@@ -61,6 +68,7 @@ type parqtelMetadata struct {
 	ParqtelAuth *authentication.Config `keda:"optional"`
 
 	ServerAddress       string            `keda:"name=serverAddress,       order=triggerMetadata"`
+	Signal              string            `keda:"name=signal,              order=triggerMetadata, default=metrics, enum=metrics;logs;traces"`
 	Query               string            `keda:"name=query,               order=triggerMetadata"`
 	Threshold           float64           `keda:"name=threshold,           order=triggerMetadata"`
 	ActivationThreshold float64           `keda:"name=activationThreshold, order=triggerMetadata, optional"`
@@ -94,6 +102,12 @@ func (m *parqtelMetadata) Validate() error {
 		authentication.TLSAuthType,
 	); err != nil {
 		return err
+	}
+
+	switch m.Signal {
+	case "", signalMetrics, signalLogs, signalTraces:
+	default:
+		return fmt.Errorf("unsupported signal %q (allowed: %s, %s, %s)", m.Signal, signalMetrics, signalLogs, signalTraces)
 	}
 
 	switch m.QueryType {
@@ -133,6 +147,29 @@ type parqtelQueryResult struct {
 	Data   struct {
 		ResultType string                `json:"resultType"`
 		Result     []parqtelResultSeries `json:"result"`
+	} `json:"data"`
+}
+
+// parqtelLogCountResponse mirrors the /v1/logs/count response shape: a list of
+// time buckets, each carrying the number of matching log lines in that bucket.
+type parqtelLogCountResponse struct {
+	Status string `json:"status"`
+	Data   []struct {
+		StartNs int64  `json:"start_ns"`
+		EndNs   int64  `json:"end_ns"`
+		Count   uint64 `json:"count"`
+	} `json:"data"`
+}
+
+// parqtelTraceSearchResponse mirrors the /v1/traces/search response shape. The
+// scaler reads SpansMatched, the number of spans matching the query in the window.
+type parqtelTraceSearchResponse struct {
+	Status string `json:"status"`
+	Data   struct {
+		TraceID           string `json:"trace_id"`
+		TotalSpansInRange int64  `json:"total_spans_in_range"`
+		SpansMatched      int64  `json:"spans_matched"`
+		Truncated         bool   `json:"truncated"`
 	} `json:"data"`
 }
 
@@ -254,7 +291,20 @@ func (s *parqtelScaler) ExecuteQuery(ctx context.Context) (float64, error) {
 	return s.parseQueryResult(b)
 }
 
+// parseQueryResult dispatches on the configured signal to the matching response
+// parser and returns the reduced metric value.
 func (s *parqtelScaler) parseQueryResult(body []byte) (float64, error) {
+	switch s.metadata.Signal {
+	case signalLogs:
+		return s.parseLogCountResult(body)
+	case signalTraces:
+		return s.parseTraceSearchResult(body)
+	default:
+		return s.parseMetricsResult(body)
+	}
+}
+
+func (s *parqtelScaler) parseMetricsResult(body []byte) (float64, error) {
 	var result parqtelQueryResult
 	if err := json.Unmarshal(body, &result); err != nil {
 		return -1, err
@@ -299,6 +349,52 @@ func (s *parqtelScaler) parseQueryResult(body []byte) (float64, error) {
 	return aggregateValues(values, s.metadata.ResultAggregation)
 }
 
+// parseLogCountResult reduces the /v1/logs/count buckets to a single value using the
+// configured resultAggregation (sum is the natural choice for log volume).
+func (s *parqtelScaler) parseLogCountResult(body []byte) (float64, error) {
+	var result parqtelLogCountResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return -1, err
+	}
+
+	if result.Status != "" && result.Status != "success" {
+		return -1, fmt.Errorf("parqtel log count returned status %q", result.Status)
+	}
+
+	values := make([]float64, 0, len(result.Data))
+	for _, bucket := range result.Data {
+		values = append(values, float64(bucket.Count))
+	}
+
+	if len(values) == 0 {
+		metricscollector.RecordEmptyUpstreamResponse(
+			s.scalableObjectNS, s.scalableObjectName, s.triggerName, s.metricName, s.resourceType, s.metadata.IgnoreNullValues,
+		)
+		if s.metadata.IgnoreNullValues {
+			return 0, nil
+		}
+		return -1, fmt.Errorf("parqtel log count %q returned no buckets", s.metadata.Query)
+	}
+
+	return aggregateValues(values, s.metadata.ResultAggregation)
+}
+
+// parseTraceSearchResult reads the spans_matched count from the /v1/traces/search
+// response. The count is computed before the result cap, so it is accurate even when
+// the returned span list is truncated.
+func (s *parqtelScaler) parseTraceSearchResult(body []byte) (float64, error) {
+	var result parqtelTraceSearchResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return -1, err
+	}
+
+	if result.Status != "" && result.Status != "success" {
+		return -1, fmt.Errorf("parqtel trace search returned status %q", result.Status)
+	}
+
+	return float64(result.Data.SpansMatched), nil
+}
+
 // GetMetricsAndActivity returns the current Parqtel query value and whether the
 // workload should be kept active.
 func (s *parqtelScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
@@ -312,53 +408,60 @@ func (s *parqtelScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.ActivationThreshold, nil
 }
 
-// buildQueryURL assembles the Parqtel query endpoint URL for the configured query type.
+// buildQueryURL assembles the Parqtel endpoint URL for the configured signal and,
+// for the metrics signal, the configured query type.
 func (s *parqtelScaler) buildQueryURL() (string, error) {
 	queryEscaped := url_pkg.QueryEscape(s.metadata.Query)
 
 	var base string
-	if s.metadata.QueryType == queryTypeRange {
-		now := time.Now()
-		nowSecs := float64(now.Unix())
-		startSecs := nowSecs - defaultRangeWindow.Seconds()
-		endSecs := nowSecs
-
-		if s.metadata.RangeStart != "" {
-			v, err := parseRangeBound(s.metadata.RangeStart, now)
-			if err != nil {
-				return "", err
-			}
-			startSecs = v
-		}
-		if s.metadata.RangeEnd != "" {
-			v, err := parseRangeBound(s.metadata.RangeEnd, now)
-			if err != nil {
-				return "", err
-			}
-			endSecs = v
-		}
-		if startSecs > endSecs {
-			return "", fmt.Errorf("rangeStart (%s) must not be after rangeEnd (%s)",
-				strconv.FormatFloat(startSecs, 'f', -1, 64), strconv.FormatFloat(endSecs, 'f', -1, 64))
-		}
-
-		step := s.metadata.RangeStep
-		if step == "" {
-			step = defaultRangeStep
-		}
-		if _, err := parseStepDuration(step); err != nil {
+	switch s.metadata.Signal {
+	case signalLogs:
+		startSecs, endSecs, err := s.resolveTimeWindow()
+		if err != nil {
 			return "", err
 		}
-
-		base = fmt.Sprintf("%s/api/v1/query_range?query=%s&start=%s&end=%s&step=%s",
+		base = fmt.Sprintf("%s/v1/logs/count?query=%s&start=%s&end=%s",
 			s.metadata.ServerAddress,
 			queryEscaped,
 			strconv.FormatFloat(startSecs, 'f', -1, 64),
 			strconv.FormatFloat(endSecs, 'f', -1, 64),
-			url_pkg.QueryEscape(step),
 		)
-	} else {
-		base = fmt.Sprintf("%s/api/v1/query?query=%s", s.metadata.ServerAddress, queryEscaped)
+	case signalTraces:
+		startSecs, endSecs, err := s.resolveTimeWindow()
+		if err != nil {
+			return "", err
+		}
+		base = fmt.Sprintf("%s/v1/traces/search?start=%s&end=%s",
+			s.metadata.ServerAddress,
+			strconv.FormatFloat(startSecs, 'f', -1, 64),
+			strconv.FormatFloat(endSecs, 'f', -1, 64),
+		)
+		if s.metadata.Query != "" {
+			base += "&q=" + queryEscaped
+		}
+	default:
+		if s.metadata.QueryType == queryTypeRange {
+			startSecs, endSecs, err := s.resolveTimeWindow()
+			if err != nil {
+				return "", err
+			}
+			step := s.metadata.RangeStep
+			if step == "" {
+				step = defaultRangeStep
+			}
+			if _, err := parseStepDuration(step); err != nil {
+				return "", err
+			}
+			base = fmt.Sprintf("%s/api/v1/query_range?query=%s&start=%s&end=%s&step=%s",
+				s.metadata.ServerAddress,
+				queryEscaped,
+				strconv.FormatFloat(startSecs, 'f', -1, 64),
+				strconv.FormatFloat(endSecs, 'f', -1, 64),
+				url_pkg.QueryEscape(step),
+			)
+		} else {
+			base = fmt.Sprintf("%s/api/v1/query?query=%s", s.metadata.ServerAddress, queryEscaped)
+		}
 	}
 
 	for queryParameterKey, queryParameterValue := range s.metadata.QueryParameters {
@@ -368,6 +471,34 @@ func (s *parqtelScaler) buildQueryURL() (string, error) {
 	}
 
 	return base, nil
+}
+
+// resolveTimeWindow computes the [start, end] unix-seconds window for range-based
+// queries (metrics range, logs, traces). Relative durations (e.g. "5m") are treated
+// as offsets before now so the window tracks current load; absolute values are used
+// as-is. The default window is the most recent 5 minutes.
+func (s *parqtelScaler) resolveTimeWindow() (startSecs, endSecs float64, err error) {
+	now := time.Now()
+	startSecs = float64(now.Unix()) - defaultRangeWindow.Seconds()
+	endSecs = float64(now.Unix())
+
+	if s.metadata.RangeStart != "" {
+		startSecs, err = parseRangeBound(s.metadata.RangeStart, now)
+		if err != nil {
+			return 0, 0, err
+		}
+	}
+	if s.metadata.RangeEnd != "" {
+		endSecs, err = parseRangeBound(s.metadata.RangeEnd, now)
+		if err != nil {
+			return 0, 0, err
+		}
+	}
+	if startSecs > endSecs {
+		return 0, 0, fmt.Errorf("rangeStart (%s) must not be after rangeEnd (%s)",
+			strconv.FormatFloat(startSecs, 'f', -1, 64), strconv.FormatFloat(endSecs, 'f', -1, 64))
+	}
+	return startSecs, endSecs, nil
 }
 
 // seriesValue extracts the raw string sample value from a series, preferring the
