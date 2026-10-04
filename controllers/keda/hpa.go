@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 	version "github.com/kedacore/keda/v2/version"
 )
@@ -73,6 +74,14 @@ func (r *ScaledObjectReconciler) createAndDeployNewHPA(ctx context.Context, logg
 func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) (*autoscalingv2.HorizontalPodAutoscaler, error) {
 	scaledObjectMetricSpecs, err := r.getScaledObjectMetricSpecs(ctx, logger, scaledObject)
 	if err != nil {
+		return nil, err
+	}
+
+	// Selectors resolve to exactly one object per loop; fixed names pass
+	// through untouched. Failure keeps the existing HPA (fail-closed).
+	targetName, err := resolver.ResolveScaleTargetName(ctx, r.Client, scaledObject.Namespace, gvkr.GroupVersionKind(), scaledObject.Spec.ScaleTargetRef)
+	if err != nil {
+		logger.Error(err, "Failed to resolve scale target for HPA")
 		return nil, err
 	}
 
@@ -168,7 +177,7 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 			Metrics:     scaledObjectMetricSpecs,
 			Behavior:    behavior,
 			ScaleTargetRef: autoscalingv2.CrossVersionObjectReference{
-				Name:       scaledObject.Spec.ScaleTargetRef.Name,
+				Name:       targetName,
 				Kind:       gvkr.Kind,
 				APIVersion: gvkr.GroupVersion().String(),
 			}},
