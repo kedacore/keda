@@ -244,6 +244,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewOpenstackMetricScaler(ctx, config)
 	case "openstack-swift":
 		return scalers.NewOpenstackSwiftScaler(ctx, config)
+	case "parqtel":
+		return scalers.NewParqtelScaler(config)
 	case "postgresql":
 		return scalers.NewPostgreSQLScaler(ctx, config)
 	case "predictkube":
