@@ -187,10 +187,11 @@ func createMockServerWithResponse(statusCode int, response string) http.HandlerF
 func createMockNegotiatingServer(response string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		body := response
 		if r.Header.Get("Accept") != nsqAcceptHeader {
-			response = fmt.Sprintf(`{"status_code":200,"status_txt":"OK","data":%s}`, response)
+			body = fmt.Sprintf(`{"status_code":200,"status_txt":"OK","data":%s}`, response)
 		}
-		http.ServeContent(w, r, "", time.Time{}, strings.NewReader(response))
+		http.ServeContent(w, r, "", time.Time{}, strings.NewReader(body))
 	}
 }
 
