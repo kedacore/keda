@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"math"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/signalfx/signalflow-client-go/v2/signalflow"
 	"github.com/signalfx/signalflow-client-go/v2/signalflow/messages"
+	"go.uber.org/atomic"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
