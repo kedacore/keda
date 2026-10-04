@@ -554,6 +554,37 @@ func TestParqtelScalerTracesQuery(t *testing.T) {
 	assert.Equal(t, 42.0, value) // spans_matched
 }
 
+func TestParqtelScalerTracesQueryMissingSpansMatched(t *testing.T) {
+	// A success response without a spans_matched field must follow the empty-response
+	// path: zero (no error) when ignoring nulls, an error otherwise.
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.WriteHeader(http.StatusOK)
+		if _, err := writer.Write([]byte(`{"status":"success","data":{"trace_id":"abc","spans":[]}}`)); err != nil { // nosemgrep: no-direct-write-to-responsewriter
+			t.Fatal(err)
+		}
+	}))
+	defer server.Close()
+
+	scaler := parqtelScaler{
+		metadata: &parqtelMetadata{
+			ServerAddress:    server.URL,
+			Signal:           "traces",
+			Query:            `service.name="api"`,
+			IgnoreNullValues: true,
+			ParqtelAuth:      &authentication.Config{},
+		},
+		httpClient: http.DefaultClient,
+		logger:     logr.Discard(),
+	}
+	value, err := scaler.ExecuteQuery(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, 0.0, value)
+
+	scaler.metadata.IgnoreNullValues = false
+	_, err = scaler.ExecuteQuery(context.Background())
+	assert.Error(t, err)
+}
+
 func TestParqtelParseStepDuration(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -613,6 +644,15 @@ func TestParqtelParseRangeBound(t *testing.T) {
 			assert.Equal(t, tt.expected, got, "input=%q", tt.input)
 		}
 	}
+}
+
+func TestParqtelParseRangeBoundSubsecond(t *testing.T) {
+	// A clock positioned 800ms into the second: a 500ms relative start must land
+	// 500ms before now rather than collapsing onto the truncated whole-second end.
+	now := time.Date(2025, 1, 1, 0, 0, 0, 800000000, time.UTC)
+	got, err := parseRangeBound("500ms", now)
+	require.NoError(t, err)
+	assert.InDelta(t, 0.5, unixSeconds(now)-got, 1e-6, "500ms window must span 500ms")
 }
 
 func TestParqtelGetMetricsAndActivity(t *testing.T) {

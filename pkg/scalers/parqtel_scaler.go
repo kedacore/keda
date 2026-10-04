@@ -163,12 +163,13 @@ type parqtelLogCountResponse struct {
 
 // parqtelTraceSearchResponse mirrors the /v1/traces/search response shape. The
 // scaler reads SpansMatched, the number of spans matching the query in the window.
+// SpansMatched is a pointer so a missing field can be distinguished from a zero count.
 type parqtelTraceSearchResponse struct {
 	Status string `json:"status"`
 	Data   struct {
 		TraceID           string `json:"trace_id"`
 		TotalSpansInRange int64  `json:"total_spans_in_range"`
-		SpansMatched      int64  `json:"spans_matched"`
+		SpansMatched      *int64 `json:"spans_matched"`
 		Truncated         bool   `json:"truncated"`
 	} `json:"data"`
 }
@@ -381,7 +382,8 @@ func (s *parqtelScaler) parseLogCountResult(body []byte) (float64, error) {
 
 // parseTraceSearchResult reads the spans_matched count from the /v1/traces/search
 // response. The count is computed before the result cap, so it is accurate even when
-// the returned span list is truncated.
+// the returned span list is truncated. A missing spans_matched field is treated as an
+// empty response, consistent with the metrics and logs signals.
 func (s *parqtelScaler) parseTraceSearchResult(body []byte) (float64, error) {
 	var result parqtelTraceSearchResponse
 	if err := json.Unmarshal(body, &result); err != nil {
@@ -392,7 +394,17 @@ func (s *parqtelScaler) parseTraceSearchResult(body []byte) (float64, error) {
 		return -1, fmt.Errorf("parqtel trace search returned status %q", result.Status)
 	}
 
-	return float64(result.Data.SpansMatched), nil
+	if result.Data.SpansMatched == nil {
+		metricscollector.RecordEmptyUpstreamResponse(
+			s.scalableObjectNS, s.scalableObjectName, s.triggerName, s.metricName, s.resourceType, s.metadata.IgnoreNullValues,
+		)
+		if s.metadata.IgnoreNullValues {
+			return 0, nil
+		}
+		return -1, fmt.Errorf("parqtel trace search %q returned no spans_matched", s.metadata.Query)
+	}
+
+	return float64(*result.Data.SpansMatched), nil
 }
 
 // GetMetricsAndActivity returns the current Parqtel query value and whether the
@@ -479,8 +491,8 @@ func (s *parqtelScaler) buildQueryURL() (string, error) {
 // as-is. The default window is the most recent 5 minutes.
 func (s *parqtelScaler) resolveTimeWindow() (startSecs, endSecs float64, err error) {
 	now := time.Now()
-	startSecs = float64(now.Unix()) - defaultRangeWindow.Seconds()
-	endSecs = float64(now.Unix())
+	startSecs = unixSeconds(now) - defaultRangeWindow.Seconds()
+	endSecs = unixSeconds(now)
 
 	if s.metadata.RangeStart != "" {
 		startSecs, err = parseRangeBound(s.metadata.RangeStart, now)
@@ -612,10 +624,17 @@ func parseRangeBound(s string, now time.Time) (float64, error) {
 		return f, nil
 	}
 	if t, err := time.Parse(time.RFC3339, s); err == nil {
-		return float64(t.Unix()), nil
+		return unixSeconds(t), nil
 	}
 	if d, err := time.ParseDuration(s); err == nil {
-		return float64(now.Add(-d).Unix()), nil
+		return unixSeconds(now.Add(-d)), nil
 	}
 	return 0, fmt.Errorf("invalid timestamp %q (want unix seconds, RFC3339, or a relative duration)", s)
+}
+
+// unixSeconds returns t as fractional unix seconds, preserving subsecond precision so
+// short relative windows (e.g. 500ms) do not collapse to zero when truncated to whole
+// seconds.
+func unixSeconds(t time.Time) float64 {
+	return float64(t.UnixNano()) / 1e9
 }
