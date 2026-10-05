@@ -739,6 +739,33 @@ func TestKafkaClientConfigFullMetadata(t *testing.T) {
 	}
 }
 
+func TestGetTopicPartitionsNoTopicNoCommittedOffset(t *testing.T) {
+	meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group"},
+		AuthParams:      validWithAuthParams,
+	}, logr.Discard())
+	if err != nil {
+		t.Fatal("Could not parse metadata:", err)
+	}
+
+	// The consumer group has never committed any offset (empty Blocks), while topics unrelated to
+	// this consumer group exist and are visible to the configured Kafka credentials.
+	mockKafkaScaler := kafkaScaler{"", meta, nil, &MockClusterAdmin{
+		partitionIds:         []int32{0},
+		consumerGroupOffsets: &sarama.OffsetFetchResponse{},
+		allTopics:            []string{"unrelated-topic-a", "unrelated-topic-b"},
+	}, logr.Discard(), make(map[string]map[int32]int64)}
+
+	partitions, err := mockKafkaScaler.getTopicPartitions()
+	if err != nil {
+		t.Error("Expected success but got error", err)
+	}
+
+	if len(partitions) != 0 {
+		t.Errorf("Expected no topics for a consumer group with no committed offsets, got %v", partitions)
+	}
+}
+
 func TestKafkaGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range kafkaMetricIdentifiers {
 		meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams, TriggerIndex: testData.triggerIndex}, logr.Discard())
@@ -947,8 +974,14 @@ func TestGetNextFactor(t *testing.T) {
 var _ sarama.ClusterAdmin = (*MockClusterAdmin)(nil)
 
 type MockClusterAdmin struct {
-	partitionIds    []int32
-	consumerOffsets *sarama.OffsetFetchResponse
+	partitionIds []int32
+	// consumerGroupOffsets, when set, is returned by ListConsumerGroupOffsets. Used to simulate a
+	// consumer group that has (or has not) committed offsets to specific topics.
+	consumerGroupOffsets *sarama.OffsetFetchResponse
+	// allTopics, when set, is what DescribeTopics returns for an empty/nil topics filter, mirroring
+	// the real Kafka wire protocol behavior where a null topics array means "describe every topic
+	// visible to the credentials" rather than "describe nothing".
+	allTopics []string
 }
 
 func (m *MockClusterAdmin) CreateTopic(_ string, _ *sarama.TopicDetail, _ bool) error {
@@ -959,6 +992,10 @@ func (m *MockClusterAdmin) ListTopics() (map[string]sarama.TopicDetail, error) {
 }
 
 func (m *MockClusterAdmin) DescribeTopics(topics []string) (metadata []*sarama.TopicMetadata, err error) {
+	if len(topics) == 0 {
+		topics = m.allTopics
+	}
+
 	metadatas := make([]*sarama.TopicMetadata, len(topics))
 
 	partitionMetadata := make([]*sarama.PartitionMetadata, len(m.partitionIds))
@@ -1037,7 +1074,10 @@ func (m *MockClusterAdmin) DescribeConsumerGroups(_ []string) ([]*sarama.GroupDe
 }
 
 func (m *MockClusterAdmin) ListConsumerGroupOffsets(_ string, _ map[string][]int32) (*sarama.OffsetFetchResponse, error) {
-	return m.consumerOffsets, nil
+	if m.consumerGroupOffsets != nil {
+		return m.consumerGroupOffsets, nil
+	}
+	return &sarama.OffsetFetchResponse{}, nil
 }
 
 func (m *MockClusterAdmin) ListConsumerGroupOffsetsBatch(_ map[string]map[string][]int32) (map[string]*sarama.OffsetFetchResponseGroup, error) {
