@@ -41,7 +41,7 @@ type AppInsightsInfo struct {
 }
 
 type ApplicationInsightsMetric struct {
-	Value map[string]interface{}
+	Value map[string]any
 }
 
 var azureAppInsightsLog = logf.Log.WithName("azure_app_insights_scaler")
@@ -68,7 +68,7 @@ func extractAppInsightValue(info AppInsightsInfo, metric ApplicationInsightsMetr
 	}
 
 	floatVal := 0.0
-	if val, ok := metric.Value[info.MetricID].(map[string]interface{})[info.AggregationType]; ok {
+	if val, ok := metric.Value[info.MetricID].(map[string]any)[info.AggregationType]; ok {
 		if val == nil {
 			return -1, fmt.Errorf("metric %s was nil for aggregation type %s", info.MetricID, info.AggregationType)
 		}
@@ -82,13 +82,13 @@ func extractAppInsightValue(info AppInsightsInfo, metric ApplicationInsightsMetr
 	return floatVal, nil
 }
 
-func queryParamsForAppInsightsRequest(info AppInsightsInfo) (map[string]interface{}, error) {
+func queryParamsForAppInsightsRequest(info AppInsightsInfo) (map[string]any, error) {
 	timespan, err := toISO8601(info.AggregationTimespan)
 	if err != nil {
 		return nil, err
 	}
 
-	queryParams := map[string]interface{}{
+	queryParams := map[string]any{
 		"aggregation": info.AggregationType,
 		"timespan":    timespan,
 	}
@@ -162,7 +162,7 @@ func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, i
 }
 
 // mapToValues method converts map[string]interface{} to url.Values.
-func mapToValues(m map[string]interface{}) url.Values {
+func mapToValues(m map[string]any) url.Values {
 	v := url.Values{}
 	for key, value := range m {
 		x := reflect.ValueOf(value)
@@ -177,7 +177,7 @@ func mapToValues(m map[string]interface{}) url.Values {
 	return v
 }
 
-func ensureValueString(value interface{}) string {
+func ensureValueString(value any) string {
 	if value == nil {
 		return ""
 	}

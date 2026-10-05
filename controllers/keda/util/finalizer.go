@@ -3,6 +3,7 @@ package util
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -33,7 +34,7 @@ func EnsureAuthenticationResourceFinalizer(ctx context.Context, logger logr.Logg
 		authResourceType = "ClusterTriggerAuthentication"
 	}
 
-	if !Contains(authResource.GetFinalizers(), authenticationFinalizer) {
+	if !slices.Contains(authResource.GetFinalizers(), authenticationFinalizer) {
 		logger.Info(fmt.Sprintf("Adding Finalizer for the %s", authResourceType))
 		authResource.SetFinalizers(append(authResource.GetFinalizers(), authenticationFinalizer))
 
@@ -61,8 +62,8 @@ func FinalizeAuthenticationResource(ctx context.Context, logger logr.Logger, rec
 		cloudEventType = eventingv1alpha1.ClusterTriggerAuthenticationRemovedType
 	}
 
-	if Contains(authResource.GetFinalizers(), authenticationFinalizer) {
-		authResource.SetFinalizers(Remove(authResource.GetFinalizers(), authenticationFinalizer))
+	if slices.Contains(authResource.GetFinalizers(), authenticationFinalizer) {
+		authResource.SetFinalizers(slices.DeleteFunc(authResource.GetFinalizers(), func(f string) bool { return f == authenticationFinalizer }))
 		if err := reconciler.Update(ctx, authResource); err != nil {
 			logger.Error(err, fmt.Sprintf("Failed to update %s after removing a finalizer", authResourceType), "finalizer", authenticationFinalizer)
 			return err

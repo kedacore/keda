@@ -17,11 +17,14 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"flag"
+	"maps"
 	"os"
 	"time"
 
 	"github.com/spf13/pflag"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	kubeinformers "k8s.io/client-go/informers"
@@ -32,6 +35,7 @@ import (
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -69,6 +73,7 @@ func init() {
 func main() {
 	var enablePrometheusMetrics bool
 	var enableOpenTelemetryMetrics bool
+	var enableHighCardinalityLabels bool
 	var metricsAddr string
 	var probeAddr string
 	var metricsServiceAddr string
@@ -91,8 +96,14 @@ func main() {
 	var enableWebhookPatching bool
 	var enableAPIServicePatching bool
 	var filePathAuthRootPath string
+	var httpMaxIdleConns int
+	var httpMaxIdleConnsPerHost int
+	var httpIdleConnTimeout time.Duration
+	var serviceAccountTokenMode string
+	var vaultKubernetesAuthTokenFile string
 	pflag.BoolVar(&enablePrometheusMetrics, "enable-prometheus-metrics", true, "Enable the prometheus metric of keda-operator.")
 	pflag.BoolVar(&enableOpenTelemetryMetrics, "enable-opentelemetry-metrics", false, "Enable the opentelemetry metric of keda-operator.")
+	pflag.BoolVar(&enableHighCardinalityLabels, "enable-high-cardinality-metrics-labels", false, "Enable high-cardinality labels for scaler HTTP request duration and external scaler gRPC client metrics.")
 	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the prometheus metric endpoint binds to.")
 	pflag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	pflag.StringVar(&metricsServiceAddr, "metrics-service-bind-address", ":9666", "The address the gRPRC Metrics Service endpoint binds to.")
@@ -117,6 +128,11 @@ func main() {
 	pflag.BoolVar(&enableWebhookPatching, "enable-webhook-patching", true, "Enable patching of webhook resources. Defaults to true.")
 	pflag.BoolVar(&enableAPIServicePatching, "enable-apiservice-patching", true, "Enable patching of APIService resources. Defaults to true.")
 	pflag.StringVar(&filePathAuthRootPath, "filepath-auth-root-path", "", "Allowed filesystem path for KEDA to read auth from.")
+	pflag.IntVar(&httpMaxIdleConns, "http-max-idle-conns", 0, "Maximum number of idle HTTP connections across all hosts. Zero means no limit.")
+	pflag.IntVar(&httpMaxIdleConnsPerHost, "http-max-idle-conns-per-host", 1000, "Maximum number of idle HTTP connections to keep per host.")
+	pflag.DurationVar(&httpIdleConnTimeout, "http-idle-conn-timeout", 90*time.Second, "Maximum time an idle HTTP connection remains in the pool. Must be greater than zero.")
+	pflag.StringVar(&serviceAccountTokenMode, "service-account-token-mode", "enforce-audience", "Service account token mode for Vault file tokens and all boundServiceAccountToken minting: enforce-audience (default) or legacy (explicit insecure bypass). Legacy may expose Kubernetes API credentials and logs warnings at startup and on use.")
+	pflag.StringVar(&vaultKubernetesAuthTokenFile, "vault-kubernetes-auth-token-file", resolver.DefaultVaultKubernetesAuthTokenFile, "Dedicated projected token for the operator's Vault Kubernetes login. The kubelet mints and rotates this token; KEDA needs no TokenRequest permission for this path.")
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 
@@ -138,6 +154,8 @@ func main() {
 	pflag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	configureHTTPTransportOrDie(httpMaxIdleConns, httpMaxIdleConnsPerHost, httpIdleConnTimeout)
+
 	ctx := ctrl.SetupSignalHandler()
 
 	namespaces, err := kedautil.GetWatchNamespaces()
@@ -145,6 +163,8 @@ func main() {
 		setupLog.Error(err, "failed to get watch namespace")
 		os.Exit(1)
 	}
+
+	byObject := buildWatchLabelSelectorByObjectOrDie()
 
 	leaseDuration, err := kedautil.ResolveOsEnvDuration("KEDA_OPERATOR_LEADER_ELECTION_LEASE_DURATION")
 	if err != nil {
@@ -164,11 +184,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	resolver.SetConfig(&resolver.Config{
-		FilePathAuthRootPath: filePathAuthRootPath,
-	})
-
 	cfg := ctrl.GetConfigOrDie()
+	resolverConfig := &resolver.Config{
+		FilePathAuthRootPath:         filePathAuthRootPath,
+		ServiceAccountTokenMode:      serviceAccountTokenMode,
+		VaultKubernetesAuthTokenFile: vaultKubernetesAuthTokenFile,
+	}
+	configureAuthenticationPolicyOrDie(resolverConfig)
+
 	cfg.QPS = adapterClientRequestQPS
 	cfg.Burst = adapterClientRequestBurst
 	cfg.DisableCompression = disableCompression
@@ -176,7 +199,11 @@ func main() {
 	if !enablePrometheusMetrics {
 		metricsAddr = "0"
 	}
-	metricscollector.NewMetricsCollectors(enablePrometheusMetrics, enableOpenTelemetryMetrics)
+	metricscollector.NewMetricsCollectors(metricscollector.Options{
+		EnablePrometheusMetrics:     enablePrometheusMetrics,
+		EnableOpenTelemetryMetrics:  enableOpenTelemetryMetrics,
+		EnableHighCardinalityLabels: enableHighCardinalityLabels,
+	})
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme,
@@ -189,6 +216,7 @@ func main() {
 		Cache: ctrlcache.Options{
 			DefaultNamespaces: namespaces,
 			DefaultTransform:  kedautil.CacheObjectTransform,
+			ByObject:          byObject,
 		},
 		HealthProbeBindAddress:  probeAddr,
 		PprofBindAddress:        profilingAddr,
@@ -230,6 +258,11 @@ func main() {
 	}
 
 	globalHTTPTimeout := time.Duration(globalHTTPTimeoutMS) * time.Millisecond
+	kubernetesAPITimeout, err := resolveKubernetesAPITimeout()
+	if err != nil {
+		setupLog.Error(err, "invalid KEDA_KUBERNETES_API_TIMEOUT")
+		os.Exit(1)
+	}
 	eventRecorder := mgr.GetEventRecorder("keda-operator")
 
 	kubeClientset, err := kubernetes.NewForConfig(cfg)
@@ -258,7 +291,7 @@ func main() {
 		SecretLister:    secretInformer.Lister(),
 	}
 
-	scaledHandler := scaling.NewScaleHandler(mgr.GetClient(), scaleClient, mgr.GetScheme(), globalHTTPTimeout, eventRecorder, authClientSet)
+	scaledHandler := scaling.NewScaleHandler(mgr.GetClient(), scaleClient, mgr.GetScheme(), globalHTTPTimeout, kubernetesAPITimeout, eventRecorder, authClientSet)
 	eventEmitter := eventemitter.NewEventEmitter(mgr.GetClient(), eventRecorder, k8sClusterName, authClientSet)
 
 	if err = (&kedacontrollers.ScaledObjectReconciler{
@@ -274,11 +307,12 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&kedacontrollers.ScaledJobReconciler{
-		Client:            mgr.GetClient(),
-		Scheme:            mgr.GetScheme(),
-		GlobalHTTPTimeout: globalHTTPTimeout,
-		EventEmitter:      eventEmitter,
-		AuthClientSet:     authClientSet,
+		Client:               mgr.GetClient(),
+		Scheme:               mgr.GetScheme(),
+		GlobalHTTPTimeout:    globalHTTPTimeout,
+		KubernetesAPITimeout: kubernetesAPITimeout,
+		EventEmitter:         eventEmitter,
+		AuthClientSet:        authClientSet,
 	}).SetupWithManager(mgr, controller.Options{
 		MaxConcurrentReconciles: scaledJobMaxReconciles,
 	}); err != nil {
@@ -370,5 +404,85 @@ func main() {
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
+	}
+}
+
+func resolveKubernetesAPITimeout() (time.Duration, error) {
+	timeoutValue, err := kedautil.ResolveOsEnvDuration("KEDA_KUBERNETES_API_TIMEOUT")
+	if err != nil {
+		return 0, err
+	}
+	if timeoutValue == nil {
+		return 0, nil
+	}
+	if *timeoutValue < 0 {
+		return 0, errors.New("must not be negative")
+	}
+
+	return *timeoutValue, nil
+}
+
+func configureHTTPTransportOrDie(maxIdleConns, maxIdleConnsPerHost int, idleConnTimeout time.Duration) {
+	if err := kedautil.ConfigureHTTPTransport(kedautil.HTTPTransportConfig{
+		MaxIdleConns:        maxIdleConns,
+		MaxIdleConnsPerHost: maxIdleConnsPerHost,
+		IdleConnTimeout:     idleConnTimeout,
+	}); err != nil {
+		setupLog.Error(err, "invalid HTTP transport configuration")
+		os.Exit(1)
+	}
+}
+
+// buildWatchLabelSelectorByObjectOrDie composes the cache.ByObject filters for
+// both WATCH_LABEL_SELECTOR (SO/SJ/HPA) and WATCH_LABEL_SELECTOR_FOR_TRIGGERAUTH
+// (TA/CTA). Returning nil means no filter is applied at the cache level.
+//
+// The two selectors are independent so a cluster-scoped CTA can be shared
+// across operators scoped to different WATCH_LABEL_SELECTOR values.
+//
+// Follows the fail-fast pattern of ctrl.GetConfigOrDie() used elsewhere in
+// main: malformed env vars exit the process at startup rather than propagate.
+func buildWatchLabelSelectorByObjectOrDie() map[client.Object]ctrlcache.ByObject {
+	byObject, err := kedautil.WatchLabelSelectorByObject(
+		&kedav1alpha1.ScaledObject{},
+		&kedav1alpha1.ScaledJob{},
+		&autoscalingv2.HorizontalPodAutoscaler{},
+	)
+	if err != nil {
+		setupLog.Error(err, "failed to parse WATCH_LABEL_SELECTOR")
+		os.Exit(1)
+	}
+	taByObject, err := kedautil.WatchLabelSelectorForTriggerAuthByObject(
+		&kedav1alpha1.TriggerAuthentication{},
+		&kedav1alpha1.ClusterTriggerAuthentication{},
+	)
+	if err != nil {
+		setupLog.Error(err, "failed to parse WATCH_LABEL_SELECTOR_FOR_TRIGGERAUTH")
+		os.Exit(1)
+	}
+	if byObject == nil {
+		return taByObject
+	}
+	maps.Copy(byObject, taByObject)
+	return byObject
+}
+
+func configureAuthenticationPolicyOrDie(config *resolver.Config) {
+	if err := config.LoadServiceAccountTokenAudiences(os.Getenv(resolver.ServiceAccountTokenAudiencesEnvVar)); err != nil {
+		setupLog.Error(err, "invalid service account token policy")
+		os.Exit(1)
+	}
+	if err := config.LoadOutboundFilter(os.Getenv(resolver.OutboundFilterEnvVar)); err != nil {
+		setupLog.Error(err, "invalid authentication policy")
+		os.Exit(1)
+	}
+	resolver.SetConfig(config)
+	if config.IsLegacyServiceAccountTokenMode() {
+		setupLog.Info("Warning: legacy service account token mode explicitly disables audience enforcement for Vault and boundServiceAccountToken authentication; Kubernetes API credentials may be sent to tenant-controlled destinations. Configure approved audiences and restore --service-account-token-mode=enforce-audience. Each legacy Vault login and token mint logs a warning")
+	}
+	if config.IsWarnOutboundPolicy() {
+		setupLog.Info("Warning: outbound filter mode warn allows tenant-selected Vault addresses outside the allowlist and logs a warning for each violation. Configure KEDA_OUTBOUND_FILTER.hashiCorpVault with mode enforce and trusted allowedEndpoints to restrict destinations")
+	} else if config.OutboundEndpointPolicy == "off" {
+		setupLog.Info("Outbound filter mode off allows tenant-selected Vault addresses without destination restrictions; allowedEndpoints is ignored. Configure KEDA_OUTBOUND_FILTER.hashiCorpVault with mode enforce and trusted allowedEndpoints to restrict destinations")
 	}
 }

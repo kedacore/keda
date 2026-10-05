@@ -30,7 +30,7 @@ type contextKey string
 
 const (
 	// ScalerContextKey is the context key used to attach the scaler type name
-	// (e.g. "prometheus", "redis") to an outbound HTTP request so that metrics
+	// (e.g. "prometheus", "external") to an outbound request so that metrics
 	// observers can include it as a dimension.
 	ScalerContextKey contextKey = "scaler"
 
@@ -51,22 +51,39 @@ const (
 	ScaledResourceContextKey contextKey = "scaled_resource"
 )
 
+// CloseableRoundTripper is an HTTP transport that can close its idle connections.
+type CloseableRoundTripper interface {
+	http.RoundTripper
+	CloseIdleConnections()
+}
+
 // InstrumentedRoundTripper wraps an http.RoundTripper and records outbound
 // HTTP request metrics after every completed round-trip. It reads known
 // context keys from the request context to populate metric dimensions. It
 // does not buffer or inspect the response body.
 type InstrumentedRoundTripper struct {
-	next http.RoundTripper
+	next                 http.RoundTripper
+	closeIdleConnections bool
 }
 
 // NewInstrumentedRoundTripper wraps next with a RoundTripper that records
 // HTTP request metrics after every request. If next is nil,
 // http.DefaultTransport is used.
 func NewInstrumentedRoundTripper(next http.RoundTripper) http.RoundTripper {
+	return newInstrumentedRoundTripper(next, false)
+}
+
+// NewInstrumentedRoundTripperWithCloseIdleConnections wraps next and forwards
+// CloseIdleConnections calls to it when supported.
+func NewInstrumentedRoundTripperWithCloseIdleConnections(next http.RoundTripper) CloseableRoundTripper {
+	return newInstrumentedRoundTripper(next, true)
+}
+
+func newInstrumentedRoundTripper(next http.RoundTripper, closeIdleConnections bool) *InstrumentedRoundTripper {
 	if next == nil {
 		next = http.DefaultTransport
 	}
-	return &InstrumentedRoundTripper{next: next}
+	return &InstrumentedRoundTripper{next: next, closeIdleConnections: closeIdleConnections}
 }
 
 func (r *InstrumentedRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -96,8 +113,18 @@ func (r *InstrumentedRoundTripper) RoundTrip(req *http.Request) (*http.Response,
 	return resp, nil
 }
 
-// BuildScalerRequestCtx attaches scaler metadata used by HTTP client
-// instrumentation to the outbound request context.
+// CloseIdleConnections closes idle connections on the wrapped transport when supported.
+func (r *InstrumentedRoundTripper) CloseIdleConnections() {
+	if !r.closeIdleConnections {
+		return
+	}
+	if transport, ok := r.next.(interface{ CloseIdleConnections() }); ok {
+		transport.CloseIdleConnections()
+	}
+}
+
+// BuildScalerRequestCtx attaches metadata used by scaler client instrumentation
+// to an outbound request context.
 func BuildScalerRequestCtx(ctx context.Context, config scalersconfig.ScalerConfig, metricName string) context.Context {
 	requestCtx := context.WithValue(ctx, ScalerContextKey, config.TriggerType)
 	requestCtx = context.WithValue(requestCtx, TriggerNameContextKey, config.TriggerName)

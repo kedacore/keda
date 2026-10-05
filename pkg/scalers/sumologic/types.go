@@ -61,7 +61,7 @@ type TimeRangeBoundary struct {
 type TimeRange struct {
 	Type string            `json:"type"`
 	From TimeRangeBoundary `json:"from"`
-	To   TimeRangeBoundary `json:"to,omitempty"`
+	To   TimeRangeBoundary `json:"to"`
 }
 
 type MetricsQueryRequest struct {

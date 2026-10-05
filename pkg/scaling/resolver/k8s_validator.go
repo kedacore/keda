@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -58,5 +59,36 @@ func validateK8sSAToken(saToken []byte) error {
 		return fmt.Errorf("error validating token: subject isn't a service account")
 	}
 
+	return nil
+}
+
+// validateK8sSATokenAudiences filters outgoing tokens; the recipient verifies signatures.
+// Configured audiences should not be accepted by kube-apiserver.
+func validateK8sSATokenAudiences(saToken []byte, allowed []string) error {
+	if len(allowed) == 0 {
+		return fmt.Errorf("at least one approved service account token audience is required")
+	}
+	if err := validateK8sSAToken(saToken); err != nil {
+		return err
+	}
+	claims := jwt.MapClaims{}
+	if _, _, err := parser.ParseUnverified(string(saToken), &claims); err != nil {
+		return fmt.Errorf("error parsing token audiences: %w", err)
+	}
+	actual, err := claims.GetAudience()
+	if err != nil {
+		return fmt.Errorf("error getting token audiences: %w", err)
+	}
+	if len(actual) == 0 {
+		return fmt.Errorf("service account token has no audience")
+	}
+	for _, audience := range actual {
+		if audience == "" || !slices.Contains(allowed, audience) {
+			return fmt.Errorf("service account token contains an audience not approved by the allowed audience list")
+		}
+	}
+	if err := jwt.NewValidator(jwt.WithExpirationRequired()).Validate(claims); err != nil {
+		return fmt.Errorf("invalid service account token lifetime: %w", err)
+	}
 	return nil
 }

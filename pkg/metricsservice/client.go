@@ -26,6 +26,7 @@ import (
 	"github.com/go-logr/logr"
 	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/keepalive"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -75,6 +76,7 @@ func NewGrpcClient(ctx context.Context, url, certDir, authority, confOptions str
 			PermitWithoutStream: true,             // Send pings even without active RPCs
 		}),
 		grpc.WithConnectParams(grpc.ConnectParams{
+			Backoff:           backoff.DefaultConfig, // BaseDelay 1s, Multiplier 1.6, Jitter 0.2, MaxDelay 120s
 			MinConnectTimeout: 5 * time.Second,
 		}),
 	}
@@ -102,6 +104,26 @@ func NewGrpcClient(ctx context.Context, url, certDir, authority, confOptions str
 	}
 
 	return &grpcClient, nil
+}
+
+// GetConnectionState returns the current connectivity state of the underlying
+// gRPC connection to the KEDA metrics service.
+//
+// When the connection is Idle it also triggers a non-blocking reconnection
+// attempt (moving it towards Connecting) before returning. This matters for the
+// readiness probe: once a non-Ready state removes the replica from the
+// APIService endpoints, no RPCs flow through this client, so nothing else would
+// ever wake an Idle connection. gRPC parks a connection in Idle after
+// GRPC_CLIENT_IDLE_TIMEOUT_MS (30 minutes by default) without RPCs, so without
+// this nudge the replica could stay NotReady permanently. Connect() is
+// non-blocking and a no-op when the connection is not Idle, so it is safe to
+// call from a readiness probe.
+func (c *GrpcClient) GetConnectionState() connectivity.State {
+	state := c.connection.GetState()
+	if state == connectivity.Idle {
+		c.connection.Connect()
+	}
+	return state
 }
 
 func (c *GrpcClient) GetMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error) {

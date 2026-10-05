@@ -32,8 +32,7 @@ type stackdriverMetadata struct {
 	AlignmentAligner       string   `keda:"name=alignmentAligner, order=triggerMetadata, optional"`
 	AlignmentReducer       string   `keda:"name=alignmentReducer, order=triggerMetadata, optional"`
 
-	Credentials            string `keda:"name=credentials, order=triggerMetadata;resolvedEnv, optional"`
-	CredentialsFromEnvFile string `keda:"name=credentialsFromEnvFile, order=triggerMetadata;resolvedEnv, optional"`
+	gcp.AuthMetadata `keda:"optional"`
 
 	metricName       string
 	TriggerIndex     int

@@ -98,7 +98,7 @@ var _ = Describe("ScaledObjectController", func() {
 
 					testScalers = append(testScalers, cache.ScalerBuilder{
 						Scaler: s,
-						Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+						Factory: func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 							scaler, err := scalers.NewPrometheusScaler(config)
 							return scaler, config, err
 						},
@@ -155,7 +155,7 @@ var _ = Describe("ScaledObjectController", func() {
 				scalersCache := cache.ScalersCache{
 					Scalers: []cache.ScalerBuilder{{
 						Scaler: s,
-						Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+						Factory: func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 							return s, config, nil
 						},
 					}},
@@ -183,7 +183,7 @@ var _ = Describe("ScaledObjectController", func() {
 			It("should pass metric name validation", func() {
 				// Generate test data
 				testScalers := make([]cache.ScalerBuilder, 0)
-				for i := 0; i < 4; i++ {
+				for i := range 4 {
 					config := &scalersconfig.ScalerConfig{
 						ScalableObjectName:      fmt.Sprintf("test.%d", i),
 						ScalableObjectNamespace: "test",
@@ -199,7 +199,7 @@ var _ = Describe("ScaledObjectController", func() {
 
 					testScalers = append(testScalers, cache.ScalerBuilder{
 						Scaler: s,
-						Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+						Factory: func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 							return s, config, nil
 						},
 					})

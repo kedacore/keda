@@ -20,9 +20,9 @@ We aim to release this release in the week of <week range, example March 27-31>.
 
 ## Progress
 
-- [ ] Prepare changelog
-  - [ ] Rename `Unreleased` to the new version and make sure new empty `Unreleased` section with subsections exists
-  - [ ] Best effort changelog cleanup, sometimes the notes can be a little inconsistent, example: [#5398](https://github.com/kedacore/keda/pull/5398)
+- [ ] Review generated draft release notes
+  - [ ] Confirm the computed version and target branch are correct
+  - [ ] Best effort release notes cleanup, sometimes generated notes can be a little inconsistent
 - [ ] Update Kubernetes compatibility (usually 3 versions, bump +1 from previous KEDA version)
   - [ ] [Welcome message supported versions](https://github.com/kedacore/keda/blob/main/pkg/util/welcome.go#L29-L30) are up-to-date
   - [ ] Update KEDA docs, example: [#1633](https://github.com/kedacore/keda-docs/pull/1633)

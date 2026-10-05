@@ -1,11 +1,9 @@
 # Changelog
 
-<!--
-    New changelog entries must be inline with our changelog guidelines.
-    Please refer to https://github.com/kedacore/keda/blob/main/CONTRIBUTING.md#Changelog to learn more.
--->
+Release notes for KEDA v2.21.0 and later are generated from merged pull request metadata
+and published on the [GitHub Releases page](https://github.com/kedacore/keda/releases).
 
-This changelog keeps track of work items that have been completed and are ready to be shipped in the next release.
+This file archives release notes through KEDA v2.20.2.
 
 To learn more about our roadmap, we recommend reading [this document](ROADMAP.md).
 
@@ -15,7 +13,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## History
 
-- [Unreleased](#unreleased)
+- [v2.20.2](#v2202)
 - [v2.20.1](#v2201)
 - [v2.20.0](#v2200)
 - [v2.19.0](#v2190)
@@ -66,40 +64,26 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - [v1.1.0](#v110)
 - [v1.0.0](#v100)
 
-## Unreleased
-
-### New
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-#### Experimental
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+## v2.20.2
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-- **Metrics API Scaler**: Add `zeroOnMissingEndpoints` option for aggregated endpoint scaling ([#7651](https://github.com/kedacore/keda/issues/7651))
+- **General**: Introduce a dedicated `HPAActive` condition on `ScaledObject` mirroring the HPA's own `ScalingActive` status, so transient HPA metric gaps no longer flip the `Ready` condition to `False` ([#7914](https://github.com/kedacore/keda/issues/7914))
 
 ### Fixes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-### Deprecations
-
-You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
-
-New deprecation(s):
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-### Breaking Changes
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-### Other
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Fix concurrent map writes panic in the shared root CA `CertPool` ([#7910](https://github.com/kedacore/keda/issues/7910))
+- **General**: Fix nil pointer dereference in AWS Secret Manager `TriggerAuthentication` when `awsSecretManager.credentials` is omitted and no `awsSecretManager.podIdentity` is set ([#7927](https://github.com/kedacore/keda/issues/7927))
+- **General**: Fix nil pointer dereference in `customScalingStrategy.GetEffectiveMaxScale` when `customScalingQueueLengthDeduction` is omitted; the optional field is now treated as zero deduction instead of panicking ([#7798](https://github.com/kedacore/keda/issues/7798))
+- **General**: Fix nil pointer dereference in `GetCurrentReplicas` when a Deployment/StatefulSet/ReplicaSet is returned from the informer cache with an undefaulted `spec.replicas`; a nil value is now treated as the Kubernetes default of 1 instead of panicking ([#7863](https://github.com/kedacore/keda/issues/7863))
+- **General**: Fix `ScaledJob` CRD validation to include "default" as a valid value for `scalingStrategy.strategy` ([#7855](https://github.com/kedacore/keda/issues/7855))
+- **General**: Guard `GetCurrentReplicas` against nil `Status.ScaleTargetGVKR` to prevent operator panics under the cache race documented in ([#4389](https://github.com/kedacore/keda/issues/4389)) / ([#4955](https://github.com/kedacore/keda/issues/4955))
+- **General**: Restore core `""` API group in events RBAC so that client-go's event broadcaster can write legacy events ([#7922](https://github.com/kedacore/keda/issues/7922))
+- **General**: Restore gRPC reconnect backoff in the metrics service client; an unset `Backoff` in `WithConnectParams` disabled backoff and caused a zero-delay reconnect loop that flooded logs when keda-operator was unreachable ([#7856](https://github.com/kedacore/keda/issues/7856))
+- **General**: Share HTTP transports across scalers to reuse connection pools and avoid re-dial storms at high ScaledObject counts ([#7789](https://github.com/kedacore/keda/issues/7789))
+- **General**: Treat negative external metric values as zero to prevent incorrect HPA scaling ([#7880](https://github.com/kedacore/keda/issues/7880))
+- **Azure Blob Storage Scaler**: Fix `globPattern` never matching when written in path-style with a leading `/`, since blob names never have one ([#6492](https://github.com/kedacore/keda/issues/6492))
+- **MongoDB Scaler**: Disconnect the client when the initial `Ping` fails so the background topology-monitoring connections opened by `mongo.Connect` are not leaked ([#5612](https://github.com/kedacore/keda/issues/5612))
 
 ## v2.20.1
 
@@ -120,10 +104,12 @@ New deprecation(s):
 
 - **General**: Add cooldownPeriod and pollingInterval checks for ScaledObject ([#7271](https://github.com/kedacore/keda/pull/7271))
 - **General**: Add CRD-level validation markers (Minimum, MinLength, MinItems, Enum) for ScaledObject, ScaledJob, ScaleTriggers, and TriggerAuthentication API types ([#7533](https://github.com/kedacore/keda/pull/7533))
+- **General**: Add `--enable-high-cardinality-metrics-labels` to let users enable high-cardinality labels on scaler HTTP request duration metrics ([#7731](https://github.com/kedacore/keda/issues/7731))
 - **General**: Add `--leader-election-id` flag to allow configuring the leader election Lease name ([#7564](https://github.com/kedacore/keda/issues/7564))
 - **General**: Add scaler HTTP request metrics (`keda_scaler_http_requests_total`, `keda_scaler_http_request_duration_seconds`) for outbound HTTP requests made during scaler metric collection ([#6600](https://github.com/kedacore/keda/issues/6600))
 - **General**: Allow more control of TLS versions & ciphers via `KEDA_HTTP_TLS_CIPHER_LIST`, `KEDA_SERVICE_TLS_CIPHER_LIST` and `KEDA_SERVICE_MIN_TLS_VERSION` env vars ([#7617](https://github.com/kedacore/keda/pull/7617))
 - **General**: Cap each scalers-cache reader at a per-reader budget derived from `globalHTTPTimeout` so `ScalersCache.Close` cannot block indefinitely ([#7574](https://github.com/kedacore/keda/issues/7574))
+- **General**: Controller sharding by label selectors ([#7738](https://github.com/kedacore/keda/issues/7738))
 - **General**: Make APIService cert injections optional ([#7559](https://github.com/kedacore/keda/pull/7559))
 - **General**: Remove unconditional `json.MarshalIndent` calls from admission webhook validation hot paths; replace spec-comparison `MarshalIndent`-and-string-compare in `isRemovingFinalizer` variants with `reflect.DeepEqual`. Prevents webhook OOM under sustained admission load at large scale (observed at ~60k ScaledObjects) ([#7670](https://github.com/kedacore/keda/pull/7670))
 - **AWS Scalers**: Add support for AWS External ID in TriggerAuthentication podIdentity for all AWS scalers (SQS, Kinesis, DynamoDB, CloudWatch, etc.) to enable cross-account access scenarios ([#6921](https://github.com/kedacore/keda/issues/6921))

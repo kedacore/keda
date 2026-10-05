@@ -1,0 +1,47 @@
+name: Lint PR
+
+on:
+  pull_request_target:
+    types: [opened, reopened, edited, synchronize]
+
+permissions: {}
+
+# PR updates can happen in quick succession leading to this
+# workflow being triggered several times. This limits it
+# to one run per PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    permissions:
+      contents: read
+      pull-requests: read
+    name: Validate PR Metadata
+    runs-on: ubuntu-slim
+    steps:
+      - name: Check PR title format
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const title = context.payload.pull_request.title || '';
+
+            // KEDA changelog style: Component: Description
+            const titleMatch = title.match(/^([^:]+):\s+(.+)$/);
+
+            if (!titleMatch) {
+              core.setFailed(
+                "PR title must follow KEDA format: Component: Description (example: General: Fix nil pointer dereference)."
+              );
+              return;
+            }
+
+            const component = titleMatch[1].trim();
+            const componentPattern = /^[A-Z][A-Za-z0-9/,&+ .-]*$/;
+
+            if (!componentPattern.test(component)) {
+              core.setFailed(
+                `PR title component '${component}' is invalid. Use a KEDA-style component such as 'General', 'Kafka Scaler', 'CI', or 'ScaledObject/ScaledJob'.`
+              );
+            }

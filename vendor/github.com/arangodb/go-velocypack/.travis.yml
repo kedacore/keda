@@ -1,8 +1,0 @@
-sudo: required
-
-services:
-  - docker
-
-language: go
-
-script: make run-tests

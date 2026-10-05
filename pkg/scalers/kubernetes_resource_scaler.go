@@ -278,7 +278,7 @@ func (s *kubernetesResourceScaler) convertGjsonResultToFloat(result gjson.Result
 }
 
 func (s *kubernetesResourceScaler) parseYAMLValue(value string) (float64, error) {
-	var yamlMap map[string]interface{}
+	var yamlMap map[string]any
 	err := yaml.Unmarshal([]byte(value), &yamlMap)
 	if err != nil {
 		return 0, fmt.Errorf("error parsing YAML: %w", err)
@@ -294,7 +294,7 @@ func (s *kubernetesResourceScaler) parseYAMLValue(value string) (float64, error)
 }
 
 // convertValueToFloat converts various types to float64, similar to metrics-api scaler
-func (s *kubernetesResourceScaler) convertValueToFloat(value interface{}) (float64, error) {
+func (s *kubernetesResourceScaler) convertValueToFloat(value any) (float64, error) {
 	switch v := value.(type) {
 	case int:
 		return float64(v), nil

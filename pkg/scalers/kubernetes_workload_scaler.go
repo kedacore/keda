@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -167,11 +168,5 @@ func getUniqueNodeCount(pods []corev1.Pod) int64 {
 }
 
 func shouldCountPod(pod corev1.Pod) bool {
-	for _, ignore := range phasesCountedAsTerminated {
-		if pod.Status.Phase == ignore {
-			return false
-		}
-	}
-
-	return true
+	return !slices.Contains(phasesCountedAsTerminated, pod.Status.Phase)
 }

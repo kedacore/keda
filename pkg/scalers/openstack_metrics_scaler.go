@@ -55,7 +55,7 @@ type openstackMetricScaler struct {
 }
 
 type measureResult struct {
-	measures [][]interface{}
+	measures [][]any
 }
 
 /*  end of declarations */
@@ -288,7 +288,7 @@ func (s *openstackMetricScaler) readOpenstackMetrics(ctx context.Context) (float
 		return defaultValueWhenError, errUnMarshall
 	}
 
-	var targetMeasure []interface{}
+	var targetMeasure []any
 
 	if len(m.measures) > 0 {
 		targetMeasure = m.measures[len(m.measures)-1]

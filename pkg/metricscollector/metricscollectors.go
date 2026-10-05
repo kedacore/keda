@@ -21,6 +21,7 @@ import (
 	"time"
 
 	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
+	"google.golang.org/grpc/stats"
 )
 
 const (
@@ -36,7 +37,16 @@ const (
 var (
 	collectors        []MetricsCollector
 	promServerMetrics *grpcprom.ServerMetrics
+	promClientMetrics *grpcprom.ClientMetrics
+	otelClientHandler stats.Handler
+	newOtelMetrics    = NewOtelMetrics
 )
+
+type Options struct {
+	EnablePrometheusMetrics     bool
+	EnableOpenTelemetryMetrics  bool
+	EnableHighCardinalityLabels bool
+}
 
 type MetricsCollector interface {
 	RecordScalerMetric(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value float64)
@@ -91,19 +101,25 @@ type MetricsCollector interface {
 	RecordHTTPClientRequest(durationSeconds float64, statusCode int, isError bool, scaler, triggerName, metricName, namespace, scaledResource string)
 }
 
-func NewMetricsCollectors(enablePrometheusMetrics bool, enableOpenTelemetryMetrics bool) {
-	if enablePrometheusMetrics {
-		promometrics := NewPromMetrics()
+func NewMetricsCollectors(options Options) {
+	if options.EnablePrometheusMetrics {
+		promometrics := NewPromMetrics(options.EnableHighCardinalityLabels)
 		collectors = append(collectors, promometrics)
 
 		if promServerMetrics == nil {
 			promServerMetrics = newPromServerMetrics()
 		}
+		if promClientMetrics == nil {
+			promClientMetrics = newPromClientMetrics(options.EnableHighCardinalityLabels)
+		}
 	}
 
-	if enableOpenTelemetryMetrics {
-		otelmetrics := NewOtelMetrics()
-		collectors = append(collectors, otelmetrics)
+	if options.EnableOpenTelemetryMetrics {
+		otelmetrics := newOtelMetrics(options.EnableHighCardinalityLabels)
+		if otelmetrics != nil {
+			collectors = append(collectors, otelmetrics)
+			otelClientHandler = newOtelGRPCClientHandler(otelmetrics)
+		}
 	}
 }
 

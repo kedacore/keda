@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-func TestAppendString(t *testing.T) {
+func TestAppendIntoString(t *testing.T) {
 	testData := []struct {
 		name   string
 		from   string

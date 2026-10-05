@@ -51,26 +51,26 @@ type pulsarMetadata struct {
 }
 
 type pulsarSubscription struct {
-	Msgrateout                       float64       `json:"msgRateOut"`
-	Msgthroughputout                 float64       `json:"msgThroughputOut"`
-	Bytesoutcounter                  int           `json:"bytesOutCounter"`
-	Msgoutcounter                    int           `json:"msgOutCounter"`
-	Msgrateredeliver                 float64       `json:"msgRateRedeliver"`
-	Chuckedmessagerate               int           `json:"chuckedMessageRate"`
-	Msgbacklog                       int64         `json:"msgBacklog"`
-	Msgbacklognodelayed              int           `json:"msgBacklogNoDelayed"`
-	Blockedsubscriptiononunackedmsgs bool          `json:"blockedSubscriptionOnUnackedMsgs"`
-	Msgdelayed                       int           `json:"msgDelayed"`
-	Unackedmessages                  int           `json:"unackedMessages"`
-	Type                             string        `json:"type"`
-	Msgrateexpired                   float64       `json:"msgRateExpired"`
-	Lastexpiretimestamp              int           `json:"lastExpireTimestamp"`
-	Lastconsumedflowtimestamp        int64         `json:"lastConsumedFlowTimestamp"`
-	Lastconsumedtimestamp            int           `json:"lastConsumedTimestamp"`
-	Lastackedtimestamp               int           `json:"lastAckedTimestamp"`
-	Consumers                        []interface{} `json:"consumers"`
-	Isdurable                        bool          `json:"isDurable"`
-	Isreplicated                     bool          `json:"isReplicated"`
+	Msgrateout                       float64 `json:"msgRateOut"`
+	Msgthroughputout                 float64 `json:"msgThroughputOut"`
+	Bytesoutcounter                  int     `json:"bytesOutCounter"`
+	Msgoutcounter                    int     `json:"msgOutCounter"`
+	Msgrateredeliver                 float64 `json:"msgRateRedeliver"`
+	Chuckedmessagerate               int     `json:"chuckedMessageRate"`
+	Msgbacklog                       int64   `json:"msgBacklog"`
+	Msgbacklognodelayed              int     `json:"msgBacklogNoDelayed"`
+	Blockedsubscriptiononunackedmsgs bool    `json:"blockedSubscriptionOnUnackedMsgs"`
+	Msgdelayed                       int     `json:"msgDelayed"`
+	Unackedmessages                  int     `json:"unackedMessages"`
+	Type                             string  `json:"type"`
+	Msgrateexpired                   float64 `json:"msgRateExpired"`
+	Lastexpiretimestamp              int     `json:"lastExpireTimestamp"`
+	Lastconsumedflowtimestamp        int64   `json:"lastConsumedFlowTimestamp"`
+	Lastconsumedtimestamp            int     `json:"lastConsumedTimestamp"`
+	Lastackedtimestamp               int     `json:"lastAckedTimestamp"`
+	Consumers                        []any   `json:"consumers"`
+	Isdurable                        bool    `json:"isDurable"`
+	Isreplicated                     bool    `json:"isReplicated"`
 	Consumersaftermarkdeleteposition struct {
 	} `json:"consumersAfterMarkDeletePosition"`
 }
@@ -88,7 +88,7 @@ type pulsarStats struct {
 	Msgchunkpublished bool                          `json:"msgChunkPublished"`
 	Storagesize       int                           `json:"storageSize"`
 	Backlogsize       int                           `json:"backlogSize"`
-	Publishers        []interface{}                 `json:"publishers"`
+	Publishers        []any                         `json:"publishers"`
 	Subscriptions     map[string]pulsarSubscription `json:"subscriptions"`
 	Replication       struct {
 	} `json:"replication"`
@@ -151,8 +151,7 @@ func NewPulsarScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	client := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
-	if pulsarMetadata.PulsarAuth.EnabledOAuth() && pulsarMetadata.PulsarAuth.ClientSecret == "" && !pulsarMetadata.PulsarAuth.EnabledTLS() {
-		msg := "OAuth is configured without clientSecret and without mTLS (RFC 8705). Add a clientSecret or enable mTLS to ensure secure authentication."
+	if msg := pulsarMetadata.PulsarAuth.InsecureOAuthWarning(); msg != "" {
 		logger.Info(msg)
 		if config.Recorder != nil {
 			config.Recorder.Eventf(config.ScaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", msg)

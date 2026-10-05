@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
@@ -152,7 +151,7 @@ func parseAzureEventHubAuthenticationMetadata(logger logr.Logger, config *scaler
 			return fmt.Errorf("no event hub connection string given")
 		}
 
-		if !strings.Contains(connection, "EntityPath") {
+		if !azure.HasEventHubEntityPath(connection) {
 			eventHubName := meta.EventHubInfo.EventHubName
 
 			if eventHubName == "" {
@@ -298,7 +297,7 @@ func (s *azureEventHubScaler) GetMetricsAndActivity(ctx context.Context, metricN
 
 	partitionIDs := runtimeInfo.PartitionIDs
 
-	for i := 0; i < len(partitionIDs); i++ {
+	for i := range partitionIDs {
 		partitionID := partitionIDs[i]
 		partitionRuntimeInfo, err := s.eventHubClient.GetPartitionProperties(ctx, partitionID, nil)
 		if err != nil {

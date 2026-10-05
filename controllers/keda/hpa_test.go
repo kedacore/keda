@@ -75,7 +75,7 @@ var _ = Describe("hpa", func() {
 
 		var capturedScaledObject v1alpha1.ScaledObject
 		client.EXPECT().Status().Return(statusWriter)
-		statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(arg interface{}, scaledObject *v1alpha1.ScaledObject, anotherArg interface{}, opts ...interface{}) {
+		statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(arg any, scaledObject *v1alpha1.ScaledObject, anotherArg any, opts ...any) {
 			capturedScaledObject = *scaledObject
 		})
 
@@ -97,7 +97,7 @@ var _ = Describe("hpa", func() {
 		scalersCache := cache.ScalersCache{
 			Scalers: []cache.ScalerBuilder{{
 				Scaler: emptyScaler,
-				Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+				Factory: func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 					return emptyScaler, &scalersconfig.ScalerConfig{}, nil
 				},
 			}},
@@ -127,7 +127,7 @@ var _ = Describe("hpa", func() {
 		scalersCache := cache.ScalersCache{
 			Scalers: []cache.ScalerBuilder{{
 				Scaler: emptyScaler,
-				Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+				Factory: func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 					return emptyScaler, &scalersconfig.ScalerConfig{}, nil
 				},
 			}},
@@ -162,7 +162,7 @@ var _ = Describe("hpa", func() {
 
 		var capturedScaledObject v1alpha1.ScaledObject
 		client.EXPECT().Status().Return(statusWriter)
-		statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(arg interface{}, scaledObject *v1alpha1.ScaledObject, anotherArg interface{}, opts ...interface{}) {
+		statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(arg any, scaledObject *v1alpha1.ScaledObject, anotherArg any, opts ...any) {
 			capturedScaledObject = *scaledObject
 		})
 
@@ -194,7 +194,7 @@ func setupTest(health map[string]v1alpha1.HealthStatus, scaler *mock_scalers.Moc
 	scalersCache := cache.ScalersCache{
 		Scalers: []cache.ScalerBuilder{{
 			Scaler: scaler,
-			Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+			Factory: func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 				return scaler, &scalersconfig.ScalerConfig{}, nil
 			},
 		}},

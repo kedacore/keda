@@ -18,6 +18,7 @@ package executor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -35,6 +36,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
 )
 
@@ -126,6 +128,32 @@ func TestCustomScalingStrategy(t *testing.T) {
 	customScalingRunningJobPercentage = "0"
 	strategy = NewScalingStrategy(logger, getMockScaledJobWithStrategy("custom", "custom", customScalingQueueLengthDeduction, customScalingRunningJobPercentage))
 	assert.Equal(t, int64(4), maxScaleValue(strategy.GetEffectiveMaxScale(3, 2, 0, 4, 1)))
+}
+
+// TestCustomScalingStrategyNilQueueLengthDeduction is a regression test for
+// issue #7798: a nil CustomScalingQueueLengthDeduction (an omitempty *int32
+// field) must be treated as zero deduction instead of panicking with a nil
+// pointer dereference.
+func TestCustomScalingStrategyNilQueueLengthDeduction(t *testing.T) {
+	// Direct struct construction: deduction is nil, percentage is set.
+	percentage := 0.5
+	strategy := customScalingStrategy{
+		CustomScalingQueueLengthDeduction: nil,
+		CustomScalingRunningJobPercentage: &percentage,
+	}
+	// maxScale(10) - deduction(0) - int64(float64(2)*0.5) = 9
+	assert.Equal(t, int64(9), maxScaleValue(strategy.GetEffectiveMaxScale(10, 2, 0, 100, 1)))
+	// With no running jobs the deduction being nil should yield maxScale.
+	assert.Equal(t, int64(10), maxScaleValue(strategy.GetEffectiveMaxScale(10, 0, 0, 100, 1)))
+
+	// End-to-end via NewScalingStrategy: a ScaledJob that uses the "custom"
+	// strategy with a valid CustomScalingRunningJobPercentage but omits the
+	// optional CustomScalingQueueLengthDeduction field.
+	logger := logf.Log.WithName("ScaledJobTest")
+	scaledJob := getMockScaledJobWithCustomStrategyNilDeduction("custom", "custom", "0.5")
+	strategyFromFactory := NewScalingStrategy(logger, scaledJob)
+	assert.Equal(t, "executor.customScalingStrategy", fmt.Sprintf("%T", strategyFromFactory))
+	assert.Equal(t, int64(9), maxScaleValue(strategyFromFactory.GetEffectiveMaxScale(10, 2, 0, 100, 1)))
 }
 
 func TestAccurateScalingStrategy(t *testing.T) {
@@ -442,8 +470,94 @@ func TestCreateJobs(t *testing.T) {
 	}).Times(2).
 		Return(nil)
 
-	scaledJob := getMockScaledJobWithDefaultStrategyAndMeta("test")
-	scaleExecutor.createJobs(ctx, logger, scaledJob, 2, 2)
+	scaledJob := getMockScaledJobWithDefaultStrategyAndMeta()
+	createdCount, err := scaleExecutor.createJobs(ctx, logger, scaledJob, 2, 2)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(2), createdCount)
+}
+
+func TestCreateJobs_KubernetesAPITimeoutStopsBatch(t *testing.T) {
+	ctx := context.Background()
+	logger := logf.Log.WithName("CreateJobsTimeoutTest")
+	ctrl := gomock.NewController(t)
+	client := mock_client.NewMockClient(ctrl)
+	scaleExecutor := getMockScaleExecutor(client)
+	recorder := events.NewFakeRecorder(10)
+	scaleExecutor.recorder = recorder
+
+	const timeout = 20 * time.Millisecond
+	scaleExecutor.kubernetesAPITimeout = timeout
+	scaledJob := getMockScaledJobWithDefaultStrategyAndMeta()
+	pollingInterval := int32(0)
+	scaledJob.Spec.PollingInterval = &pollingInterval
+
+	gomock.InOrder(
+		client.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil),
+		client.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(operationCtx context.Context, _ runtime.Object, _ ...runtimeclient.CreateOption) error {
+				deadline, ok := operationCtx.Deadline()
+				assert.True(t, ok)
+				assert.WithinDuration(t, time.Now().Add(timeout), deadline, 10*time.Millisecond)
+				<-operationCtx.Done()
+				return operationCtx.Err()
+			}),
+	)
+
+	startedAt := time.Now()
+	createdCount, err := scaleExecutor.createJobs(ctx, logger, scaledJob, 3, 3)
+
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.Equal(t, int64(1), createdCount)
+	assert.Less(t, time.Since(startedAt), time.Second)
+	assert.Contains(t, <-recorder.Events, "Failed to create job")
+	assert.Equal(t, "Normal KEDAJobsCreated Created 1 jobs", <-recorder.Events)
+}
+
+func TestRequestJobScale_ReportsJobCreationFailure(t *testing.T) {
+	ctx := context.Background()
+	ctrl := gomock.NewController(t)
+	client := mock_client.NewMockClient(ctrl)
+	scaleExecutor := getMockScaleExecutor(client)
+	scaleExecutor.recorder = events.NewFakeRecorder(10)
+	scaledJob := getMockScaledJobWithDefaultStrategyAndMeta()
+	createErr := errors.New("job creation failed")
+
+	client.EXPECT().List(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	client.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).Return(createErr)
+
+	result := scaleExecutor.RequestJobScale(ctx, scaledJob, true, false, 1, 1, ScaleExecutorOptions{})
+
+	assert.ErrorIs(t, result.Error, createErr)
+	readyCondition := result.Conditions.GetReadyCondition()
+	assert.True(t, readyCondition.IsFalse())
+	assert.Equal(t, eventreason.KEDAJobCreateFailed, readyCondition.Reason)
+}
+
+func TestDeleteJobsWithHistoryLimit_KubernetesAPITimeout(t *testing.T) {
+	ctx := context.Background()
+	logger := logf.Log.WithName("DeleteJobsTimeoutTest")
+	ctrl := gomock.NewController(t)
+	client := mock_client.NewMockClient(ctrl)
+	scaleExecutor := getMockScaleExecutor(client)
+
+	const timeout = 20 * time.Millisecond
+	scaleExecutor.kubernetesAPITimeout = timeout
+	jobs := []batchv1.Job{{ObjectMeta: metav1.ObjectMeta{Name: "job-1"}}, {ObjectMeta: metav1.ObjectMeta{Name: "job-2"}}}
+
+	client.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(operationCtx context.Context, _ runtime.Object, _ ...runtimeclient.DeleteOption) error {
+			deadline, ok := operationCtx.Deadline()
+			assert.True(t, ok)
+			assert.WithinDuration(t, time.Now().Add(timeout), deadline, 10*time.Millisecond)
+			<-operationCtx.Done()
+			return operationCtx.Err()
+		})
+
+	startedAt := time.Now()
+	err := scaleExecutor.deleteJobsWithHistoryLimit(ctx, logger, jobs, 0, 0)
+
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.Less(t, time.Since(startedAt), time.Second)
 }
 
 func TestGenerateJobs(t *testing.T) {
@@ -467,7 +581,7 @@ func TestGenerateJobs(t *testing.T) {
 	defer ctrl.Finish()
 	client := mock_client.NewMockClient(ctrl)
 	scaleExecutor := getMockScaleExecutor(client)
-	scaledJob := getMockScaledJobWithDefaultStrategyAndMeta("test")
+	scaledJob := getMockScaledJobWithDefaultStrategyAndMeta()
 
 	jobs := scaleExecutor.generateJobs(logger, scaledJob, 2)
 
@@ -563,6 +677,19 @@ func getMockScaledJobWithCustomStrategyWithNilParameter(name, scalingStrategy st
 	return scaledJob
 }
 
+func getMockScaledJobWithCustomStrategyNilDeduction(name, scalingStrategy, customScalingRunningJobPercentage string) *kedav1alpha1.ScaledJob {
+	scaledJob := &kedav1alpha1.ScaledJob{
+		Spec: kedav1alpha1.ScaledJobSpec{
+			ScalingStrategy: kedav1alpha1.ScalingStrategy{
+				Strategy:                          scalingStrategy,
+				CustomScalingRunningJobPercentage: customScalingRunningJobPercentage,
+			},
+		},
+	}
+	scaledJob.Name = name
+	return scaledJob
+}
+
 func getMockScaledJobWithDefaultStrategy(name string) *kedav1alpha1.ScaledJob {
 	scaledJob := &kedav1alpha1.ScaledJob{
 		Spec: kedav1alpha1.ScaledJobSpec{
@@ -573,8 +700,8 @@ func getMockScaledJobWithDefaultStrategy(name string) *kedav1alpha1.ScaledJob {
 	return scaledJob
 }
 
-func getMockScaledJobWithDefaultStrategyAndMeta(name string) *kedav1alpha1.ScaledJob {
-	sc := getMockScaledJobWithDefaultStrategy(name)
+func getMockScaledJobWithDefaultStrategyAndMeta() *kedav1alpha1.ScaledJob {
+	sc := getMockScaledJobWithDefaultStrategy("test")
 	sc.Namespace = "test"
 	sc.Labels = map[string]string{"test": "test"}
 	sc.Annotations = map[string]string{"test": "test"}

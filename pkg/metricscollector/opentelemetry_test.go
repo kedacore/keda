@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
@@ -18,7 +20,33 @@ var (
 func init() {
 	testReader = metric.NewManualReader()
 	options := metric.WithReader(testReader)
-	testOtel = NewOtelMetrics(options)
+	testOtel = NewOtelMetrics(true, options)
+}
+
+func resetTestOtel(enableHighCardinalityLabels bool) {
+	testReader = metric.NewManualReader()
+	options := metric.WithReader(testReader)
+	testOtel = NewOtelMetrics(enableHighCardinalityLabels, options)
+}
+
+func TestNewMetricsCollectorsSkipsFailedOtelInitialization(t *testing.T) {
+	previousCollectors := collectors
+	previousHandler := otelClientHandler
+	previousNewOtelMetrics := newOtelMetrics
+	t.Cleanup(func() {
+		collectors = previousCollectors
+		otelClientHandler = previousHandler
+		newOtelMetrics = previousNewOtelMetrics
+	})
+
+	collectors = nil
+	otelClientHandler = nil
+	newOtelMetrics = func(bool, ...metric.Option) *OtelMetrics { return nil }
+
+	NewMetricsCollectors(Options{EnableOpenTelemetryMetrics: true})
+
+	assert.Empty(t, collectors)
+	assert.Nil(t, otelClientHandler)
 }
 
 func retrieveMetric(metrics []metricdata.Metrics, metricname string) *metricdata.Metrics {
@@ -31,6 +59,8 @@ func retrieveMetric(metrics []metricdata.Metrics, metricname string) *metricdata
 }
 
 func TestBuildInfo(t *testing.T) {
+	resetTestOtel(true)
+
 	got := metricdata.ResourceMetrics{}
 	err := testReader.Collect(context.Background(), &got)
 
@@ -53,6 +83,8 @@ func TestBuildInfo(t *testing.T) {
 }
 
 func TestIncrementTriggerTotal(t *testing.T) {
+	resetTestOtel(true)
+
 	testOtel.IncrementTriggerTotal("testtrigger")
 	got := metricdata.ResourceMetrics{}
 	err := testReader.Collect(context.Background(), &got)
@@ -82,6 +114,8 @@ func TestIncrementTriggerTotal(t *testing.T) {
 }
 
 func TestLoopLatency(t *testing.T) {
+	resetTestOtel(true)
+
 	testOtel.RecordScalableObjectLatency("namespace", "name", true, 500*time.Millisecond)
 	got := metricdata.ResourceMetrics{}
 	err := testReader.Collect(context.Background(), &got)
@@ -119,6 +153,8 @@ func TestRecordHTTPClientRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			resetTestOtel(true)
+
 			testOtel.RecordHTTPClientRequest(0.1, tt.statusCode, tt.isError, "prometheus", "my-trigger", "my-metric", "default", "my-so")
 			got := metricdata.ResourceMetrics{}
 			err := testReader.Collect(context.Background(), &got)
@@ -152,11 +188,61 @@ func TestRecordHTTPClientRequest(t *testing.T) {
 			requestDuration := retrieveMetric(scopeMetrics.Metrics, "keda.scaler.http.request.duration.seconds")
 			assert.NotNil(t, requestDuration)
 			assert.Equal(t, "s", requestDuration.Unit)
+			histogramDataPoint := requestDuration.Data.(metricdata.Histogram[float64]).DataPoints[0]
+			triggerName, _ := histogramDataPoint.Attributes.Value("trigger_name")
+			assert.Equal(t, "my-trigger", triggerName.AsString())
+			metricName, _ := histogramDataPoint.Attributes.Value("metric_name")
+			assert.Equal(t, "my-metric", metricName.AsString())
+			ns, _ := histogramDataPoint.Attributes.Value("namespace")
+			assert.Equal(t, "default", ns.AsString())
+			sr, _ := histogramDataPoint.Attributes.Value("scaled_resource")
+			assert.Equal(t, "my-so", sr.AsString())
 		})
 	}
 }
 
+func TestRecordHTTPClientRequest_DisablesHighCardinalityLabels(t *testing.T) {
+	resetTestOtel(false)
+
+	testOtel.RecordHTTPClientRequest(0.1, 200, false, "prometheus", "my-trigger", "my-metric", "default", "my-so")
+	got := metricdata.ResourceMetrics{}
+	err := testReader.Collect(context.Background(), &got)
+	assert.Nil(t, err)
+
+	scopeMetrics := got.ScopeMetrics[0]
+	requestCount := retrieveMetric(scopeMetrics.Metrics, "keda.scaler.http.requests.count")
+	assert.NotNil(t, requestCount)
+
+	requestDuration := retrieveMetric(scopeMetrics.Metrics, "keda.scaler.http.request.duration.seconds")
+	assert.NotNil(t, requestDuration)
+
+	dataPoint := requestDuration.Data.(metricdata.Histogram[float64]).DataPoints[0]
+	_, ok := dataPoint.Attributes.Value("namespace")
+	assert.False(t, ok)
+	_, ok = dataPoint.Attributes.Value("scaled_resource")
+	assert.False(t, ok)
+	_, ok = dataPoint.Attributes.Value("trigger_name")
+	assert.False(t, ok)
+	_, ok = dataPoint.Attributes.Value("metric_name")
+	assert.False(t, ok)
+	scaler, ok := dataPoint.Attributes.Value("scaler")
+	assert.True(t, ok)
+	assert.Equal(t, "prometheus", scaler.AsString())
+	statusCode, ok := dataPoint.Attributes.Value("status_code")
+	assert.True(t, ok)
+	assert.Equal(t, "200", statusCode.AsString())
+}
+
+func assertOtelStringAttribute(t *testing.T, attributes attribute.Set, key, want string) {
+	t.Helper()
+	value, ok := attributes.Value(attribute.Key(key))
+	require.True(t, ok, "attribute %s is missing", key)
+	assert.Equal(t, want, value.AsString())
+}
+
 func TestContinuousMetrics(t *testing.T) {
+	resetTestOtel(true)
+
 	testOtel.RecordScalerActive("testnamespace", "testresource", "testscaler", 0, "testmetric", true, true)
 	testOtel.RecordScalerActive("testnamespace2", "testresource2", "testscaler2", 0, "testmetric", false, false)
 	got := metricdata.ResourceMetrics{}

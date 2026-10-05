@@ -305,3 +305,100 @@ func TestConditions_getCondition_NotFound(t *testing.T) {
 		t.Errorf("expected empty condition for missing type, got %+v", got)
 	}
 }
+
+// #7914: HPAActive is ScaledObject-specific and set lazily by checkHPAHealth, so it must never be
+// part of the shared GetInitializedConditions/AreInitialized machinery used by ScaledJob too.
+
+func TestGetInitializedConditions_NoHPAActive(t *testing.T) {
+	conditions := GetInitializedConditions()
+
+	if len(*conditions) != 4 {
+		t.Fatalf("expected exactly 4 base conditions (ScaledJob has no HPA), got %d", len(*conditions))
+	}
+	for _, c := range *conditions {
+		if c.Type == ConditionHPAActive {
+			t.Fatal("HPAActive must not be part of the shared default conditions")
+		}
+	}
+}
+
+func TestConditions_AreInitialized_UnaffectedByHPAActive(t *testing.T) {
+	conditions := *GetInitializedConditions()
+
+	if !conditions.AreInitialized() {
+		t.Fatal("the 4 base conditions alone must already count as initialized")
+	}
+
+	// Explicitly setting HPAActive must not change whether the base set is considered initialized.
+	conditions.SetHPAActiveCondition(metav1.ConditionTrue, ScaledObjectConditionHPAActiveReason, "")
+	if !conditions.AreInitialized() {
+		t.Fatal("AreInitialized() must be unaffected by the presence of HPAActive")
+	}
+}
+
+func TestConditions_SetHPAActiveCondition_LazyAppend(t *testing.T) {
+	conditions := *GetInitializedConditions()
+	if len(conditions) != 4 {
+		t.Fatalf("expected 4 base conditions before HPAActive is ever set, got %d", len(conditions))
+	}
+
+	conditions.SetHPAActiveCondition(metav1.ConditionFalse, ScaledObjectConditionHPAMetricsUnavailableReason, "FailedGetExternalMetric: unable to fetch metrics")
+
+	if len(conditions) != 5 {
+		t.Fatalf("expected HPAActive to be appended as a 5th condition, got %d conditions", len(conditions))
+	}
+
+	got := conditions.GetHPAActiveCondition()
+	if got.Type != ConditionHPAActive {
+		t.Errorf("expected type %s, got %s", ConditionHPAActive, got.Type)
+	}
+	if got.Status != metav1.ConditionFalse {
+		t.Errorf("expected status False, got %s", got.Status)
+	}
+	if got.Reason != ScaledObjectConditionHPAMetricsUnavailableReason {
+		t.Errorf("expected reason %s, got %s", ScaledObjectConditionHPAMetricsUnavailableReason, got.Reason)
+	}
+	if got.Message != "FailedGetExternalMetric: unable to fetch metrics" {
+		t.Errorf("expected message to be preserved, got %q", got.Message)
+	}
+}
+
+func TestConditions_SetHPAActiveCondition_UpdatesInPlace(t *testing.T) {
+	conditions := *GetInitializedConditions()
+
+	conditions.SetHPAActiveCondition(metav1.ConditionFalse, ScaledObjectConditionHPAMetricsUnavailableReason, "first message")
+	conditions.SetHPAActiveCondition(metav1.ConditionTrue, ScaledObjectConditionHPAActiveReason, "second message")
+
+	count := 0
+	for _, c := range conditions {
+		if c.Type == ConditionHPAActive {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("expected exactly one HPAActive condition after setting it twice, got %d", count)
+	}
+
+	got := conditions.GetHPAActiveCondition()
+	if got.Status != metav1.ConditionTrue {
+		t.Errorf("expected status to be updated to True, got %s", got.Status)
+	}
+	if got.Reason != ScaledObjectConditionHPAActiveReason {
+		t.Errorf("expected reason to be updated to %s, got %s", ScaledObjectConditionHPAActiveReason, got.Reason)
+	}
+	if got.Message != "second message" {
+		t.Errorf("expected message to be updated to the latest value, got %q", got.Message)
+	}
+}
+
+func TestConditions_GetHPAActiveCondition_ZeroValueWhenUnset(t *testing.T) {
+	conditions := *GetInitializedConditions()
+
+	got := conditions.GetHPAActiveCondition()
+	if got.Type != "" || got.Status != "" || got.Reason != "" || got.Message != "" {
+		t.Errorf("expected zero-value Condition when HPAActive was never set, got %+v", got)
+	}
+	if got.IsTrue() || got.IsFalse() {
+		t.Errorf("a never-set HPAActive condition should be neither True nor False, got %+v", got)
+	}
+}

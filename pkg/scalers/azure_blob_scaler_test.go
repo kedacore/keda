@@ -107,6 +107,44 @@ func TestAzBlobParseMetadata(t *testing.T) {
 	}
 }
 
+func TestAzBlobGlobPatternLeadingSlash(t *testing.T) {
+	tests := []struct {
+		name        string
+		globPattern string
+		blobName    string
+		wantMatch   bool
+	}{
+		{"leading slash pattern matches blob name without leading slash", "/folderA/subFolderA/*.json", "folderA/subFolderA/part-fileA.json", true},
+		{"leading slash pattern with double star matches nested blob name", "/folderA/**", "folderA/subFolderA/part-fileA.json", true},
+		{"pattern without leading slash still matches as before", "folderA/subFolderA/*.json", "folderA/subFolderA/part-fileA.json", true},
+		{"leading slash pattern does not match unrelated blob name", "/folderA/subFolderA/*.json", "folderB/subFolderC/fileE.txt", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			meta, err := parseAzureBlobMetadata(&scalersconfig.ScalerConfig{
+				TriggerMetadata: map[string]string{
+					"connectionFromEnv": "CONNECTION",
+					"blobContainerName": "sample",
+					"blobCount":         "5",
+					"globPattern":       tt.globPattern,
+				},
+				ResolvedEnv: testAzBlobResolvedEnv,
+			}, logr.Discard())
+			if err != nil {
+				t.Fatal("Could not parse metadata:", err)
+			}
+			if meta.compiledGlobPattern == nil {
+				t.Fatal("expected compiledGlobPattern to be set")
+			}
+			match := meta.compiledGlobPattern.Match(tt.blobName)
+			if match != tt.wantMatch {
+				t.Errorf("pattern %q against blob name %q: got match=%v, want match=%v", tt.globPattern, tt.blobName, match, tt.wantMatch)
+			}
+		})
+	}
+}
+
 func TestAzBlobGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azBlobMetricIdentifiers {
 		ctx := context.Background()

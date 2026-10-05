@@ -58,6 +58,16 @@ type metricsAPIScalerMetadata struct {
 	triggerIndex int
 }
 
+// Validate rejects auth modes this scaler does not apply to its requests.
+func (m *metricsAPIScalerMetadata) Validate() error {
+	return m.MetricsAPIAuth.ValidateAllowed(
+		authentication.APIKeyAuthType,
+		authentication.BasicAuthType,
+		authentication.TLSAuthType,
+		authentication.BearerAuthType,
+	)
+}
+
 const (
 	methodValueQuery           = "query"
 	valueLocationWrongErrorMsg = "valueLocation %q must point to a numeric value or a string parseable as a Quantity, got %s"
@@ -83,6 +93,10 @@ const (
 	SumAggregationType     AggregationType = "sum"
 	MaxAggregationType     AggregationType = "max"
 	MinAggregationType     AggregationType = "min"
+)
+
+var (
+	promQLParser parser.Parser = parser.NewParser(parser.Options{})
 )
 
 // NewMetricsAPIScaler creates a new HTTP scaler
@@ -161,7 +175,7 @@ func GetValueFromResponse(body []byte, valueLocation string, format APIFormat) (
 
 // getValueFromPrometheusResponse uses provided valueLocation to access the numeric value in provided body
 func getValueFromPrometheusResponse(body []byte, valueLocation string) (float64, error) {
-	matchers, err := parser.ParseMetricSelector(valueLocation)
+	matchers, err := promQLParser.ParseMetricSelector(valueLocation)
 	if err != nil {
 		return 0, err
 	}
@@ -253,7 +267,7 @@ func getValueFromJSONResponse(body []byte, valueLocation string) (float64, error
 
 // getValueFromXMLResponse uses provided valueLocation to access the numeric value in provided body
 func getValueFromXMLResponse(body []byte, valueLocation string) (float64, error) {
-	var xmlMap map[string]interface{}
+	var xmlMap map[string]any
 	err := xml.Unmarshal(body, &xmlMap)
 	if err != nil {
 		return 0, err
@@ -285,7 +299,7 @@ func getValueFromXMLResponse(body []byte, valueLocation string) (float64, error)
 // getValueFromYAMLResponse uses provided valueLocation to access the numeric value in provided body
 // using generic ketautil.GetValueByPath
 func getValueFromYAMLResponse(body []byte, valueLocation string) (float64, error) {
-	var yamlMap map[string]interface{}
+	var yamlMap map[string]any
 	err := yaml.Unmarshal(body, &yamlMap)
 	if err != nil {
 		return 0, err

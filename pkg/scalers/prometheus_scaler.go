@@ -13,10 +13,13 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"golang.org/x/oauth2"
 	v2 "k8s.io/api/autoscaling/v2"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/aws"
@@ -66,8 +69,8 @@ type promQueryResult struct {
 	Data struct {
 		ResultType string `json:"resultType"`
 		Result     []struct {
-			Metric struct{}      `json:"metric"`
-			Value  []interface{} `json:"value"`
+			Metric struct{} `json:"metric"`
+			Value  []any    `json:"value"`
 		} `json:"result"`
 	} `json:"data"`
 }
@@ -107,6 +110,22 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 			}
 			httpClient.Transport = transport
 		}
+
+		if meta.PrometheusAuth.EnabledOAuth() {
+			if msg := meta.PrometheusAuth.InsecureOAuthWarning(); msg != "" {
+				logger.Info(msg)
+				if config.Recorder != nil {
+					config.Recorder.Eventf(config.ScaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", msg)
+				}
+			}
+
+			baseTransport := httpClient.Transport
+			tokenSource := meta.PrometheusAuth.OAuthTokenSource(context.Background(), &http.Client{
+				Timeout:   httpClientTimeout,
+				Transport: baseTransport,
+			})
+			httpClient.Transport = &oauth2.Transport{Source: tokenSource, Base: baseTransport}
+		}
 	} else {
 		// could be the case of azure managed prometheus. Try and get the round-tripper.
 		// If it's not the case of azure managed prometheus, we will get both transport and err as nil and proceed assuming no auth.
@@ -133,11 +152,11 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 		awsTransport, err := aws.NewSigV4RoundTripper(config, meta.AwsRegion)
 		if err != nil {
-			logger.V(1).Error(err, "failed to get AWS client HTTP transport ")
+			logger.V(1).Error(err, "failed to get AWS client HTTP transport")
 			return nil, err
 		}
 
-		if err == nil && awsTransport != nil {
+		if awsTransport != nil {
 			httpClient.Transport = awsTransport
 		}
 	}

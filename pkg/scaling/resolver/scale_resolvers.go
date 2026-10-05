@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -29,7 +30,6 @@ import (
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
-	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -42,6 +42,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -56,24 +57,27 @@ const (
 	deploymentKind        = "Deployment"
 	statefulSetKind       = "StatefulSet"
 	replicaSetKind        = "ReplicaSet"
+	outboundPolicyOff     = "off"
+	outboundPolicyEnforce = "enforce"
+	outboundPolicyWarn    = "warn"
 )
 
 // podSpecable is a local duck type matching the PodSpecable shape used by
 // Knative and most Kubernetes workload resources. It allows extracting a
 // PodTemplateSpec from arbitrary custom resources via JSON round-tripping.
 type podSpecable struct {
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.ObjectMeta `json:"metadata"`
 
-	Spec podSpecableSpec `json:"spec,omitempty"`
+	Spec podSpecableSpec `json:"spec"`
 }
 
 type podSpecableSpec struct {
-	Template corev1.PodTemplateSpec `json:"template,omitempty"`
+	Template corev1.PodTemplateSpec `json:"template"`
 }
 
 // fromUnstructured converts an unstructured Kubernetes object into a typed
 // struct by JSON round-tripping.
-func fromUnstructured(obj *unstructured.Unstructured, target interface{}) error {
+func fromUnstructured(obj *unstructured.Unstructured, target any) error {
 	raw, err := obj.MarshalJSON()
 	if err != nil {
 		return err
@@ -91,6 +95,48 @@ var (
 
 type Config struct {
 	FilePathAuthRootPath string
+
+	// AllowedOutboundEndpoints lists trusted Vault origins for warn and enforce modes.
+	// Other integrations do not yet enforce this option.
+	AllowedOutboundEndpoints []string
+	// OutboundEndpointPolicy is "off" (the default, including when empty), "warn", or "enforce".
+	// In enforce mode, an empty allowlist denies all Vault destinations.
+	OutboundEndpointPolicy string
+
+	// ServiceAccountTokenMode defaults to enforce-audience. Legacy explicitly disables
+	// audience enforcement for both Vault file tokens and all TokenRequest consumers.
+	ServiceAccountTokenMode string
+	// ServiceAccountTokenAudiences permits file-token audiences. Entries with namespace
+	// and serviceAccountName also select the audience for Vault and generic BSAT minting.
+	ServiceAccountTokenAudiences []ServiceAccountTokenAudience
+	// VaultKubernetesAuthTokenFile is the operator's dedicated projected token, read on each login.
+	VaultKubernetesAuthTokenFile string
+}
+
+// IsWarnOutboundPolicy reports whether unlisted destinations log warnings.
+func (cfg *Config) IsWarnOutboundPolicy() bool {
+	return cfg.OutboundEndpointPolicy == outboundPolicyWarn
+}
+
+// Validate rejects invalid policy settings at startup. Missing audiences are checked
+// when service account token authentication is requested, not for unrelated auth methods.
+func (cfg *Config) Validate() error {
+	switch cfg.OutboundEndpointPolicy {
+	case "", outboundPolicyOff, outboundPolicyWarn, outboundPolicyEnforce:
+	default:
+		return fmt.Errorf("unsupported %s.hashiCorpVault.mode %q: expected off, warn, or enforce", OutboundFilterEnvVar, cfg.OutboundEndpointPolicy)
+	}
+	if err := cfg.validateServiceAccountTokenPolicy(); err != nil {
+		return err
+	}
+	for _, endpoint := range cfg.AllowedOutboundEndpoints {
+		origin, err := url.Parse(endpoint)
+		if err != nil || !vaultAddressesEqual(endpoint, endpoint) || strings.Contains(origin.Host, "*") ||
+			(origin.Path != "" && origin.Path != "/") || origin.RawQuery != "" || origin.Fragment != "" {
+			return fmt.Errorf("invalid %s.hashiCorpVault.allowedEndpoints entry: expected an HTTP(S) origin without user information", OutboundFilterEnvVar)
+		}
+	}
+	return nil
 }
 
 // SetConfig sets the global configuration for the resolver package.
@@ -112,6 +158,28 @@ func isSecretAccessRestricted(logger logr.Logger) bool {
 	return boolFalse
 }
 
+// ensureScaleTargetGVKR returns scaledObject unchanged if its Status.ScaleTargetGVKR is
+// already populated. If it is nil (informer-cache race, see issues #4389 / #4955) the
+// function re-fetches the object from the API server and returns the fresh copy. If the
+// GVKR is still nil after re-fetch, an error is returned so callers never dereference a
+// nil pointer.
+func ensureScaleTargetGVKR(ctx context.Context, kubeClient client.Client, scaledObject *kedav1alpha1.ScaledObject) (*kedav1alpha1.ScaledObject, error) {
+	if scaledObject.Status.ScaleTargetGVKR != nil {
+		return scaledObject, nil
+	}
+	fresh := &kedav1alpha1.ScaledObject{}
+	if err := kubeClient.Get(ctx, types.NamespacedName{Name: scaledObject.Name, Namespace: scaledObject.Namespace}, fresh); err != nil {
+		log.Error(err, "failed to get ScaledObject", "name", scaledObject.Name, "namespace", scaledObject.Namespace)
+		return nil, err
+	}
+	if fresh.Status.ScaleTargetGVKR == nil {
+		err := fmt.Errorf("failed to get ScaledObject.Status.ScaleTargetGVKR, probably invalid ScaledObject cache")
+		log.Error(err, "ScaleTargetGVKR still nil after re-fetch", "scaledObject.Name", fresh.Name, "scaledObject.Namespace", fresh.Namespace)
+		return nil, err
+	}
+	return fresh, nil
+}
+
 // ResolveScaleTargetPodSpec for given scalableObject inspects the scale target workload,
 // which could be almost any k8s resource (Deployment, StatefulSet, CustomResource...)
 // and for the given resource returns *corev1.PodTemplateSpec and a name of the container
@@ -125,18 +193,9 @@ func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, sc
 		// trying to prevent operator crashes, due to some race condition, sometimes obj.Status.ScaleTargetGVKR is nil
 		// see https://github.com/kedacore/keda/issues/4389
 		// Tracking issue: https://github.com/kedacore/keda/issues/4955
-		if obj.Status.ScaleTargetGVKR == nil {
-			scaledObject := &kedav1alpha1.ScaledObject{}
-			err := kubeClient.Get(ctx, types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, scaledObject)
-			if err != nil {
-				log.Error(err, "failed to get ScaledObject", "name", obj.Name, "namespace", obj.Namespace)
-				return nil, "", err
-			}
-			obj = scaledObject
-		}
-		if obj.Status.ScaleTargetGVKR == nil {
-			err := fmt.Errorf("failed to get ScaledObject.Status.ScaleTargetGVKR, probably invalid ScaledObject cache")
-			log.Error(err, "failed to get ScaledObject.Status.ScaleTargetGVKR, probably invalid ScaledObject cache", "scaledObject.Name", obj.Name, "scaledObject.Namespace", obj.Namespace)
+		var err error
+		obj, err = ensureScaleTargetGVKR(ctx, kubeClient, obj)
+		if err != nil {
 			return nil, "", err
 		}
 
@@ -406,7 +465,11 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 			}
 			if triggerAuthSpec.BoundServiceAccountToken != nil {
 				for _, e := range triggerAuthSpec.BoundServiceAccountToken {
-					result[e.Parameter] = resolveBoundServiceAccountToken(ctx, client, logger, triggerNamespace, &e, authClientSet)
+					token, err := resolveBoundServiceAccountToken(ctx, client, triggerNamespace, &e, authClientSet)
+					if err != nil {
+						return nil, podIdentity, err
+					}
+					result[e.Parameter] = token
 				}
 			}
 			if triggerAuthSpec.OAuth2 != nil {
@@ -434,6 +497,35 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 						endpointParams.Add(k, v)
 					}
 					result["endpointParams"] = endpointParams.Encode()
+				}
+			}
+			if triggerAuthSpec.AzureServicePrincipal != nil {
+				servicePrincipal := triggerAuthSpec.AzureServicePrincipal
+
+				result[azure.ServicePrincipalAuthKey] = "true"
+				result[azure.ServicePrincipalTenantIDKey] = servicePrincipal.TenantID
+				result[azure.ServicePrincipalClientIDKey] = servicePrincipal.ClientID
+				if servicePrincipal.Cloud != "" {
+					result[azure.ServicePrincipalCloudKey] = servicePrincipal.Cloud
+				}
+				if servicePrincipal.ActiveDirectoryEndpoint != "" {
+					result[azure.ServicePrincipalActiveDirectoryEndpointKey] = servicePrincipal.ActiveDirectoryEndpoint
+				}
+
+				if servicePrincipal.ClientSecret != nil {
+					secretRef := servicePrincipal.ClientSecret.ValueFrom.SecretKeyRef
+					result[azure.ServicePrincipalClientSecretKey] = resolveAuthSecret(
+						ctx, client, logger, secretRef.Name, triggerNamespace, secretRef.Key, authClientSet.SecretLister)
+				}
+				if servicePrincipal.ClientCertificate != nil {
+					secretRef := servicePrincipal.ClientCertificate.ValueFrom.SecretKeyRef
+					result[azure.ServicePrincipalClientCertificateKey] = resolveAuthSecret(
+						ctx, client, logger, secretRef.Name, triggerNamespace, secretRef.Key, authClientSet.SecretLister)
+				}
+				if servicePrincipal.ClientCertificatePassword != nil {
+					secretRef := servicePrincipal.ClientCertificatePassword.ValueFrom.SecretKeyRef
+					result[azure.ServicePrincipalClientCertificatePasswordKey] = resolveAuthSecret(
+						ctx, client, logger, secretRef.Name, triggerNamespace, secretRef.Key, authClientSet.SecretLister)
 				}
 			}
 		}
@@ -716,42 +808,16 @@ func readAuthParamsFromFile(relativeFilePath string) (map[string]string, error) 
 	return params, nil
 }
 
-func resolveBoundServiceAccountToken(ctx context.Context, client client.Client, logger logr.Logger, namespace string, bsat *kedav1alpha1.BoundServiceAccountToken, acs *authentication.AuthClientSet) string {
+func resolveBoundServiceAccountToken(ctx context.Context, client client.Client, namespace string, bsat *kedav1alpha1.BoundServiceAccountToken, acs *authentication.AuthClientSet) (string, error) {
 	serviceAccountName := bsat.ServiceAccountName
 	if serviceAccountName == "" {
-		logger.Error(fmt.Errorf("error trying to get token"), "serviceAccountName is required")
-		return ""
+		return "", errors.New("serviceAccountName is required for boundServiceAccountToken")
 	}
-	var err error
-
 	serviceAccount := &corev1.ServiceAccount{}
-	err = client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
-	if err != nil {
-		logger.Error(err, "error trying to get service account from namespace", "ServiceAccount.Namespace", namespace, "ServiceAccount.Name", serviceAccountName)
-		return ""
+	if err := client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount); err != nil {
+		return "", fmt.Errorf("failed to get service account %s/%s: %w", namespace, serviceAccountName, err)
 	}
 	return GenerateBoundServiceAccountToken(ctx, serviceAccountName, namespace, acs)
-}
-
-// GenerateBoundServiceAccountToken creates a Kubernetes token for a namespaced service account with a runtime-configurable expiration time and returns the token string.
-func GenerateBoundServiceAccountToken(ctx context.Context, serviceAccountName, namespace string, acs *authentication.AuthClientSet) string {
-	expirationSeconds := ptr.To(int64(boundServiceAccountTokenExpiry.Seconds()))
-	token, err := acs.CoreV1Interface.ServiceAccounts(namespace).CreateToken(
-		ctx,
-		serviceAccountName,
-		&authenticationv1.TokenRequest{
-			Spec: authenticationv1.TokenRequestSpec{
-				ExpirationSeconds: expirationSeconds,
-			},
-		},
-		metav1.CreateOptions{},
-	)
-	if err != nil {
-		log.V(1).Error(err, "error trying to create bound service account token for service account", "ServiceAccount.Name", serviceAccountName)
-		return ""
-	}
-	log.V(1).Info("Bound service account token created successfully", "ServiceAccount.Name", serviceAccountName)
-	return token.Status.Token
 }
 
 // resolveServiceAccountAnnotation retrieves the value of a specific annotation
@@ -775,6 +841,15 @@ func resolveServiceAccountAnnotation(ctx context.Context, client client.Client, 
 
 // GetCurrentReplicas returns the current replica count for a ScaledObject
 func GetCurrentReplicas(ctx context.Context, client client.Client, scaleClient scale.ScalesGetter, scaledObject *kedav1alpha1.ScaledObject) (int32, error) {
+	// trying to prevent operator crashes, due to some race condition, sometimes scaledObject.Status.ScaleTargetGVKR is nil
+	// see https://github.com/kedacore/keda/issues/4389
+	// Tracking issue: https://github.com/kedacore/keda/issues/4955
+	var err error
+	scaledObject, err = ensureScaleTargetGVKR(ctx, client, scaledObject)
+	if err != nil {
+		return 0, err
+	}
+
 	targetName := scaledObject.Spec.ScaleTargetRef.Name
 	targetGVKR := scaledObject.Status.ScaleTargetGVKR
 
@@ -792,21 +867,21 @@ func GetCurrentReplicas(ctx context.Context, client client.Client, scaleClient s
 			logger.Error(err, "target deployment doesn't exist")
 			return 0, err
 		}
-		return *deployment.Spec.Replicas, nil
+		return ptr.Deref(deployment.Spec.Replicas, 1), nil
 	case targetGVKR.Group == appsGroup && targetGVKR.Kind == statefulSetKind:
 		statefulSet := &appsv1.StatefulSet{}
 		if err := client.Get(ctx, types.NamespacedName{Name: targetName, Namespace: scaledObject.Namespace}, statefulSet); err != nil {
 			logger.Error(err, "target statefulset doesn't exist")
 			return 0, err
 		}
-		return *statefulSet.Spec.Replicas, nil
+		return ptr.Deref(statefulSet.Spec.Replicas, 1), nil
 	case targetGVKR.Group == appsGroup && targetGVKR.Kind == replicaSetKind:
 		replicaSet := &appsv1.ReplicaSet{}
 		if err := client.Get(ctx, types.NamespacedName{Name: targetName, Namespace: scaledObject.Namespace}, replicaSet); err != nil {
 			logger.Error(err, "target replicaset doesn't exist")
 			return 0, err
 		}
-		return *replicaSet.Spec.Replicas, nil
+		return ptr.Deref(replicaSet.Spec.Replicas, 1), nil
 	default:
 		// Try reading from the informer cache via Unstructured to avoid an API call.
 		unstruct := &unstructured.Unstructured{}

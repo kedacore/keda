@@ -23,7 +23,7 @@ type paramsTestData struct {
 	name          string
 	metadata      map[string]string
 	authParams    map[string]string
-	expectedQuery map[string]interface{}
+	expectedQuery map[string]any
 }
 
 type elasticsearchMetricIdentifier struct {
@@ -427,7 +427,7 @@ func TestElasticsearchBuildQuery(t *testing.T) {
 				"username": "admin",
 				"password": "password",
 			},
-			expectedQuery: map[string]interface{}{
+			expectedQuery: map[string]any{
 				"id": "myAwesomeSearch",
 			},
 		},
@@ -445,9 +445,9 @@ func TestElasticsearchBuildQuery(t *testing.T) {
 				"username": "admin",
 				"password": "password",
 			},
-			expectedQuery: map[string]interface{}{
+			expectedQuery: map[string]any{
 				"id": "myAwesomeSearch",
-				"params": map[string]interface{}{
+				"params": map[string]any{
 					"param1": "value1",
 				},
 			},
@@ -466,9 +466,9 @@ func TestElasticsearchBuildQuery(t *testing.T) {
 				"username": "admin",
 				"password": "password",
 			},
-			expectedQuery: map[string]interface{}{
+			expectedQuery: map[string]any{
 				"id": "myAwesomeSearch",
-				"params": map[string]interface{}{
+				"params": map[string]any{
 					"param1": "value1",
 					"param2": "value2",
 				},
@@ -488,9 +488,9 @@ func TestElasticsearchBuildQuery(t *testing.T) {
 				"username": "admin",
 				"password": "password",
 			},
-			expectedQuery: map[string]interface{}{
+			expectedQuery: map[string]any{
 				"id": "myAwesomeSearch",
-				"params": map[string]interface{}{
+				"params": map[string]any{
 					"param1": "value1",
 					"param2": "value2",
 				},

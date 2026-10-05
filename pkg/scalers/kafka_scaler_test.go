@@ -3,11 +3,14 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/go-logr/logr"
@@ -29,6 +32,7 @@ type parseKafkaMetadataTestData struct {
 	excludePersistentLag               bool
 	limitToPartitionsWithLag           bool
 	ensureEvenDistributionOfPartitions bool
+	fullMetadata                       bool
 }
 
 type parseKafkaAuthParamsTestData struct {
@@ -78,71 +82,81 @@ var validWithoutAuthParams = map[string]string{}
 
 var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 	// failure, no bootstrapServers
-	{map[string]string{}, true, 0, nil, "", "", nil, "", false, false, false, false},
+	{map[string]string{}, true, 0, nil, "", "", nil, "", false, false, false, false, true},
 	// failure, no consumer group
-	{map[string]string{"bootstrapServers": "foobar:9092"}, true, 1, []string{"foobar:9092"}, "", "", nil, "latest", false, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092"}, true, 1, []string{"foobar:9092"}, "", "", nil, "latest", false, false, false, false, true},
 	// success, no topic
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group"}, false, 1, []string{"foobar:9092"}, "my-group", "", nil, offsetResetPolicy("latest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group"}, false, 1, []string{"foobar:9092"}, "my-group", "", nil, offsetResetPolicy("latest"), false, false, false, false, true},
 	// success, ignore partitionLimitation if no topic
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "partitionLimitation": "1,2,3,4,5,6"}, false, 1, []string{"foobar:9092"}, "my-group", "", nil, offsetResetPolicy("latest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "partitionLimitation": "1,2,3,4,5,6"}, false, 1, []string{"foobar:9092"}, "my-group", "", nil, offsetResetPolicy("latest"), false, false, false, false, true},
 	// success, no limitation with whitespaced limitation value
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "partitionLimitation": "           "}, false, 1, []string{"foobar:9092"}, "my-group", "", nil, offsetResetPolicy("latest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "partitionLimitation": "           "}, false, 1, []string{"foobar:9092"}, "my-group", "", nil, offsetResetPolicy("latest"), false, false, false, false, true},
 	// success, no limitation
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "partitionLimitation": ""}, false, 1, []string{"foobar:9092"}, "my-group", "", nil, offsetResetPolicy("latest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "partitionLimitation": ""}, false, 1, []string{"foobar:9092"}, "my-group", "", nil, offsetResetPolicy("latest"), false, false, false, false, true},
 	// failure, version not supported
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "version": "1.2.3.4"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "version": "1.2.3.4"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false, true},
 	// failure, lagThreshold is negative value
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "-1"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "-1"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false, true},
 	// failure, lagThreshold is 0
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "0"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "0"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false, true},
 	// success, lagThreshold is 1000000
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "1000000", "activationLagThreshold": "0"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "1000000", "activationLagThreshold": "0"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false, true},
 	// failure, activationLagThreshold is not int
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "10", "activationLagThreshold": "AA"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "10", "activationLagThreshold": "AA"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false, true},
 	// success, activationLagThreshold is 0
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "10", "activationLagThreshold": "0"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "10", "activationLagThreshold": "0"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false, true},
 	// success
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false, true},
 	// success, partitionLimitation as list
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitation": "1,2,3,4"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", []int32{1, 2, 3, 4}, offsetResetPolicy("latest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitation": "1,2,3,4"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", []int32{1, 2, 3, 4}, offsetResetPolicy("latest"), false, false, false, false, true},
 	// success, partitionLimitation as range
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitation": "1-4"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", []int32{1, 2, 3, 4}, offsetResetPolicy("latest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitation": "1-4"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", []int32{1, 2, 3, 4}, offsetResetPolicy("latest"), false, false, false, false, true},
 	// success, partitionLimitation mixed list + ranges
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitation": "1-4,8,10-12"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", []int32{1, 2, 3, 4, 8, 10, 11, 12}, offsetResetPolicy("latest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitation": "1-4,8,10-12"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", []int32{1, 2, 3, 4, 8, 10, 11, 12}, offsetResetPolicy("latest"), false, false, false, false, true},
 	// failure, partitionLimitation wrong data type
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitation": "a,b,c,d"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitation": "a,b,c,d"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false, true},
 	// success, more brokers
-	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, false, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false, true},
 	// success, offsetResetPolicy policy latest
-	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic", "offsetResetPolicy": "latest"}, false, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic", "offsetResetPolicy": "latest"}, false, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false, true},
 	// failure, offsetResetPolicy policy wrong
-	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic", "offsetResetPolicy": "foo"}, true, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic", nil, "", false, false, false, false},
+	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic", "offsetResetPolicy": "foo"}, true, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic", nil, "", false, false, false, false, true},
 	// success, offsetResetPolicy policy earliest
-	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic", "offsetResetPolicy": "earliest"}, false, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("earliest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foo:9092,bar:9092", "consumerGroup": "my-group", "topic": "my-topic", "offsetResetPolicy": "earliest"}, false, 2, []string{"foo:9092", "bar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("earliest"), false, false, false, false, true},
 	// failure, allowIdleConsumers malformed
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "notvalid"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "notvalid"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false, true},
 	// success, allowIdleConsumers is true
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), true, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), true, false, false, false, true},
 	// failure, excludePersistentLag is malformed
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "excludePersistentLag": "notvalid"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "excludePersistentLag": "notvalid"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false, true},
 	// success, excludePersistentLag is true
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "excludePersistentLag": "true"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, true, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "excludePersistentLag": "true"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, true, false, false, true},
 	// success, version supported
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), true, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), true, false, false, false, true},
 	// success, limitToPartitionsWithLag is true
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "limitToPartitionsWithLag": "true"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, true, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "limitToPartitionsWithLag": "true"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, true, false, true},
 	// failure, limitToPartitionsWithLag is malformed
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "limitToPartitionsWithLag": "notvalid"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "limitToPartitionsWithLag": "notvalid"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false, true},
 	// failure, allowIdleConsumers and limitToPartitionsWithLag cannot be set to true simultaneously
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "limitToPartitionsWithLag": "true"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), true, false, true, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "limitToPartitionsWithLag": "true"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), true, false, true, false, true},
 	// success, allowIdleConsumers can be set when limitToPartitionsWithLag is false
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "limitToPartitionsWithLag": "false"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), true, false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "limitToPartitionsWithLag": "false"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), true, false, false, false, true},
 	// failure, topic must be specified when limitToPartitionsWithLag is true
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "limitToPartitionsWithLag": "true"}, true, 1, []string{"foobar:9092"}, "my-group", "", nil, offsetResetPolicy("latest"), false, false, true, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "limitToPartitionsWithLag": "true"}, true, 1, []string{"foobar:9092"}, "my-group", "", nil, offsetResetPolicy("latest"), false, false, true, false, true},
 	// success, ensureEvenDistributionOfPartitions is true
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "ensureEvenDistributionOfPartitions": "true"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, true},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "ensureEvenDistributionOfPartitions": "true"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, true, true},
 	// failure, limitToPartitionsWithLag and ensureEvenDistributionOfPartitions cannot be set to true simultaneously
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "ensureEvenDistributionOfPartitions": "true", "limitToPartitionsWithLag": "true"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, true, true},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "ensureEvenDistributionOfPartitions": "true", "limitToPartitionsWithLag": "true"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, true, true, true},
+	// success, fullMetadata true with topic
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "fullMetadata": "true"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false, true},
+	// success, fullMetadata true without topic
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "fullMetadata": "true"}, false, 1, []string{"foobar:9092"}, "my-group", "", nil, offsetResetPolicy("latest"), false, false, false, false, true},
+	// success, fullMetadata false with topic
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "fullMetadata": "false"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false, false},
+	// failure, fullMetadata false without topic
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "fullMetadata": "false"}, true, 1, []string{"foobar:9092"}, "my-group", "", nil, offsetResetPolicy("latest"), false, false, false, false, false},
+	// failure, fullMetadata malformed
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "fullMetadata": "notabool"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false, false, true},
 }
 
 var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
@@ -210,6 +224,14 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	{map[string]string{"sasl": "gssapi", "username": "admin", "kerberosConfig": "<config>", "realm": "tst.com"}, true, false},
 	// failure, SASL GSSAPI provided both password and keytab
 	{map[string]string{"sasl": "gssapi", "username": "admin", "password": "admin", "keytab": "/path/to/keytab", "kerberosConfig": "<config>", "realm": "tst.com"}, true, false},
+	// failure, SASL GSSAPI provided both password and ccacheName
+	{map[string]string{"sasl": "gssapi", "username": "admin", "password": "admin", "ccacheName": "keda.ccache", "kerberosConfig": "<config>", "realm": "tst.com"}, true, false},
+	// failure, SASL GSSAPI provided both keytab and ccacheName
+	{map[string]string{"sasl": "gssapi", "username": "admin", "keytab": "/path/to/keytab", "ccacheName": "keda.ccache", "kerberosConfig": "<config>", "realm": "tst.com"}, true, false},
+	// failure, SASL GSSAPI provided password, keytab and ccacheName
+	{map[string]string{"sasl": "gssapi", "username": "admin", "password": "admin", "keytab": "/path/to/keytab", "ccacheName": "keda.ccache", "kerberosConfig": "<config>", "realm": "tst.com"}, true, false},
+	// failure, SASL GSSAPI ccacheName is a path rather than a file name
+	{map[string]string{"sasl": "gssapi", "username": "admin", "ccacheName": "../../etc/keda.ccache", "kerberosConfig": "<config>", "realm": "tst.com"}, true, false},
 	// failure, SASL GSSAPI/password + TLS missing realm
 	{map[string]string{"sasl": "gssapi", "username": "admin", "password": "admin", "kerberosConfig": "<config>", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
 	// failure, SASL GSSAPI/keytab + TLS missing username
@@ -401,6 +423,9 @@ func getBrokerTestBase(t *testing.T, meta kafkaMetadata, testData parseKafkaMeta
 	if err == nil && meta.EnsureEvenDistributionOfPartitions != testData.ensureEvenDistributionOfPartitions {
 		t.Errorf("Expected ensureEvenDistributionOfPartitions %t but got %t\n", testData.ensureEvenDistributionOfPartitions, meta.EnsureEvenDistributionOfPartitions)
 	}
+	if err == nil && meta.FullMetadata != testData.fullMetadata {
+		t.Errorf("Expected fullMetadata %t but got %t\n", testData.fullMetadata, meta.FullMetadata)
+	}
 	expectedLagThreshold, er := parseExpectedLagThreshold(testData.metadata)
 	if er != nil {
 		t.Errorf("Unable to convert test data lagThreshold %s to string", testData.metadata["lagThreshold"])
@@ -409,6 +434,78 @@ func getBrokerTestBase(t *testing.T, meta kafkaMetadata, testData parseKafkaMeta
 	if meta.LagThreshold != expectedLagThreshold && meta.LagThreshold != defaultKafkaLagThreshold {
 		t.Errorf("Expected lagThreshold to be either %v or %v got %v ", meta.LagThreshold, defaultKafkaLagThreshold, expectedLagThreshold)
 	}
+}
+
+func TestKafkaGSSAPICcacheAuthParams(t *testing.T) {
+	ccacheAuthParams := func(ccacheName string) map[string]string {
+		return map[string]string{
+			"sasl":           "gssapi",
+			"username":       "admin",
+			"realm":          "tst.com",
+			"kerberosConfig": "<config>",
+			"ccacheName":     ccacheName,
+		}
+	}
+
+	parse := func(ccacheName string) (kafkaMetadata, error) {
+		return parseKafkaMetadata(&scalersconfig.ScalerConfig{
+			TriggerMetadata: validKafkaMetadata,
+			AuthParams:      ccacheAuthParams(ccacheName),
+		}, logr.Discard())
+	}
+
+	t.Run("resolves an existing ccache file", func(t *testing.T) {
+		dir := setupCcacheDir(t)
+		want := filepath.Join(dir, "keda.ccache")
+		if err := os.WriteFile(want, []byte("ccache"), 0600); err != nil {
+			t.Fatalf("cannot write ccache file: %v", err)
+		}
+
+		meta, err := parse("keda.ccache")
+		if err != nil {
+			t.Fatalf("expected success but got error: %v", err)
+		}
+		if meta.ccachePath != want {
+			t.Errorf("expected ccachePath to be %v but got %v", want, meta.ccachePath)
+		}
+	})
+
+	t.Run("fails when the ccache file is missing", func(t *testing.T) {
+		setupCcacheDir(t)
+
+		_, err := parse("keda.ccache")
+		if err == nil {
+			t.Fatal("expected error but got success")
+		}
+		if !strings.Contains(err.Error(), "does not exist") {
+			t.Errorf("expected a missing file error but got %v", err)
+		}
+	})
+
+	t.Run("fails when the ccache name is a directory", func(t *testing.T) {
+		dir := setupCcacheDir(t)
+		if err := os.MkdirAll(filepath.Join(dir, "keda.ccache"), 0700); err != nil {
+			t.Fatalf("cannot create ccache directory: %v", err)
+		}
+
+		_, err := parse("keda.ccache")
+		if err == nil {
+			t.Fatal("expected error but got success")
+		}
+		if !strings.Contains(err.Error(), "is not a regular file") {
+			t.Errorf("expected a non-regular-file error but got %v", err)
+		}
+	})
+}
+
+func setupCcacheDir(t *testing.T) string {
+	t.Setenv("TMPDIR", t.TempDir())
+
+	ccacheDirPath := filepath.Join(os.TempDir(), "kerberos", ccacheDir)
+	if err := os.MkdirAll(ccacheDirPath, 0700); err != nil {
+		t.Fatalf("cannot create ccache directory: %v", err)
+	}
+	return ccacheDirPath
 }
 
 func TestKafkaAuthParamsInTriggerAuthentication(t *testing.T) {
@@ -522,9 +619,7 @@ func testFileContents(testData parseKafkaAuthParamsTestData, meta kafkaMetadata,
 
 func TestKafkaOAuthbearerAuthParams(t *testing.T) {
 	for _, testData := range parseKafkaOAuthbearerAuthParamsTestDataset {
-		for k, v := range validKafkaMetadata {
-			testData.metadata[k] = v
-		}
+		maps.Copy(testData.metadata, validKafkaMetadata)
 
 		meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
 
@@ -610,6 +705,35 @@ func TestKafkaClientsOAuthTokenProvider(t *testing.T) {
 
 			if tokenProvider.String() != tt.expectedTokenProvider {
 				t.Errorf("Expected token provider to be %v but got %v", tt.expectedTokenProvider, tokenProvider.String())
+			}
+		})
+	}
+}
+
+func TestKafkaClientConfigFullMetadata(t *testing.T) {
+	testData := []struct {
+		name                 string
+		metadata             map[string]string
+		expectedFullMetadata bool
+	}{
+		{"default is full metadata", map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic"}, true},
+		{"fullMetadata false is topic-scoped", map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "fullMetadata": "false"}, false},
+	}
+
+	for _, tt := range testData {
+		t.Run(tt.name, func(t *testing.T) {
+			meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: tt.metadata, AuthParams: validWithoutAuthParams}, logr.Discard())
+			if err != nil {
+				t.Fatal("Could not parse metadata:", err)
+			}
+
+			cfg, err := getKafkaClientConfig(context.TODO(), meta)
+			if err != nil {
+				t.Error("Expected success but got error", err)
+			}
+
+			if cfg.Metadata.Full != tt.expectedFullMetadata {
+				t.Errorf("Expected Metadata.Full %t but got %t", tt.expectedFullMetadata, cfg.Metadata.Full)
 			}
 		})
 	}
@@ -823,7 +947,8 @@ func TestGetNextFactor(t *testing.T) {
 var _ sarama.ClusterAdmin = (*MockClusterAdmin)(nil)
 
 type MockClusterAdmin struct {
-	partitionIds []int32
+	partitionIds    []int32
+	consumerOffsets *sarama.OffsetFetchResponse
 }
 
 func (m *MockClusterAdmin) CreateTopic(_ string, _ *sarama.TopicDetail, _ bool) error {
@@ -871,6 +996,10 @@ func (m *MockClusterAdmin) DescribeConfig(_ sarama.ConfigResource) ([]sarama.Con
 	return nil, nil
 }
 
+func (m *MockClusterAdmin) DescribeConfigs(_ []*sarama.ConfigResource, _ sarama.DescribeConfigsOptions) ([]*sarama.ConfigResourceResult, error) {
+	return nil, nil
+}
+
 func (m *MockClusterAdmin) AlterConfig(_ sarama.ConfigResourceType, _ string, _ map[string]*string, _ bool) error {
 	return nil
 }
@@ -908,6 +1037,10 @@ func (m *MockClusterAdmin) DescribeConsumerGroups(_ []string) ([]*sarama.GroupDe
 }
 
 func (m *MockClusterAdmin) ListConsumerGroupOffsets(_ string, _ map[string][]int32) (*sarama.OffsetFetchResponse, error) {
+	return m.consumerOffsets, nil
+}
+
+func (m *MockClusterAdmin) ListConsumerGroupOffsetsBatch(_ map[string]map[string][]int32) (map[string]*sarama.OffsetFetchResponseGroup, error) {
 	return nil, nil
 }
 
@@ -947,6 +1080,10 @@ func (m *MockClusterAdmin) UpsertUserScramCredentials(_ []sarama.AlterUserScramC
 	return nil, nil
 }
 
+func (m *MockClusterAdmin) UpdateFeatures(_ []sarama.FeatureUpdate) ([]sarama.UpdatableFeatureResult, error) {
+	return nil, nil
+}
+
 func (m *MockClusterAdmin) DescribeClientQuotas(_ []sarama.QuotaFilterComponent, _ bool) ([]sarama.DescribeClientQuotasEntry, error) {
 	return nil, nil
 }
@@ -975,7 +1112,7 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 	tests := []struct {
 		name                       string
 		consumerOffset             int64
-		topicPartitionOffsets      map[string]map[int32]int64
+		topicPartitionOffsets      map[string]map[int32]partitionOffsets
 		offsetResetPolicy          offsetResetPolicy
 		scaleToZeroOnInvalidOffset bool
 		expectedLag                int64
@@ -986,7 +1123,7 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 		{
 			name:           "Scenario 1: scaleToZeroOnInvalidOffset true, invalid consumer offset, missing partition",
 			consumerOffset: invalidOffset,
-			topicPartitionOffsets: map[string]map[int32]int64{
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
 				"test-topic": {
 					// Partition 0 is missing - simulates Azure Event Hub not returning it
 				},
@@ -1001,7 +1138,7 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 		{
 			name:           "Scenario 2: scaleToZeroOnInvalidOffset false, invalid consumer offset, missing partition",
 			consumerOffset: invalidOffset,
-			topicPartitionOffsets: map[string]map[int32]int64{
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
 				"test-topic": {
 					// Partition 0 is missing
 				},
@@ -1016,7 +1153,7 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 		{
 			name:           "Scenario 3: Valid consumer offset, missing partition in topicPartitionOffsets",
 			consumerOffset: 100,
-			topicPartitionOffsets: map[string]map[int32]int64{
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
 				"test-topic": {
 					// Partition 0 is missing - consumer has offset 100 but we can't get latestOffset
 				},
@@ -1031,9 +1168,9 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 		{
 			name:           "Control: Valid offsets, no missing partition",
 			consumerOffset: 100,
-			topicPartitionOffsets: map[string]map[int32]int64{
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
 				"test-topic": {
-					0: 150, // Latest offset exists
+					0: {latestOffset: 150}, // Latest offset exists
 				},
 			},
 			offsetResetPolicy:          earliest,
@@ -1044,11 +1181,71 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 			description:                "Normal case: both offsets exist, lag calculated correctly",
 		},
 		{
+			name:           "Control: Invalid consumer offset with earliest policy uses retained log window",
+			consumerOffset: invalidOffset,
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
+				"test-topic": {
+					0: {earliestOffset: 100, earliestOffsetFound: true, latestOffset: 150},
+				},
+			},
+			offsetResetPolicy:          earliest,
+			scaleToZeroOnInvalidOffset: false,
+			expectedLag:                50,
+			expectedLagWithPersistent:  50,
+			expectedError:              false,
+			description:                "Invalid offset with earliest policy should return retained lag from log start to log end",
+		},
+		{
+			name:           "Control: Invalid consumer offset with earliest policy and empty retained window",
+			consumerOffset: invalidOffset,
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
+				"test-topic": {
+					0: {earliestOffset: 150, earliestOffsetFound: true, latestOffset: 150},
+				},
+			},
+			offsetResetPolicy:          earliest,
+			scaleToZeroOnInvalidOffset: false,
+			expectedLag:                0,
+			expectedLagWithPersistent:  0,
+			expectedError:              false,
+			description:                "An empty retained window should contribute no lag or activity",
+		},
+		{
+			name:           "Control: Invalid consumer offset with earliest policy and log start past sampled end",
+			consumerOffset: invalidOffset,
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
+				"test-topic": {
+					0: {earliestOffset: 150, earliestOffsetFound: true, latestOffset: 100},
+				},
+			},
+			offsetResetPolicy:          earliest,
+			scaleToZeroOnInvalidOffset: false,
+			expectedLag:                0,
+			expectedLagWithPersistent:  0,
+			expectedError:              false,
+			description:                "Retention advancing between offset reads must not produce negative lag",
+		},
+		{
+			name:           "Control: Invalid consumer offset with earliest policy falls back to latest offset when earliest offset is unavailable",
+			consumerOffset: invalidOffset,
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
+				"test-topic": {
+					0: {latestOffset: 150},
+				},
+			},
+			offsetResetPolicy:          earliest,
+			scaleToZeroOnInvalidOffset: false,
+			expectedLag:                150,
+			expectedLagWithPersistent:  150,
+			expectedError:              false,
+			description:                "Invalid offset with earliest policy and no earliest offset should fall back to latest offset",
+		},
+		{
 			name:           "Control: Invalid consumer offset with latest policy and scaleToZeroOnInvalidOffset true",
 			consumerOffset: invalidOffset,
-			topicPartitionOffsets: map[string]map[int32]int64{
+			topicPartitionOffsets: map[string]map[int32]partitionOffsets{
 				"test-topic": {
-					0: 150,
+					0: {latestOffset: 150},
 				},
 			},
 			offsetResetPolicy:          latest,
@@ -1106,6 +1303,145 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 
 			if lagWithPersistent != tt.expectedLagWithPersistent {
 				t.Errorf("Expected lagWithPersistent %d but got %d. %s", tt.expectedLagWithPersistent, lagWithPersistent, tt.description)
+			}
+		})
+	}
+}
+
+type kafkaOffsetTestClient struct {
+	sarama.Client
+	config *sarama.Config
+	broker *sarama.Broker
+}
+
+func (c *kafkaOffsetTestClient) Config() *sarama.Config {
+	return c.config
+}
+
+func (c *kafkaOffsetTestClient) Leader(_ string, _ int32) (*sarama.Broker, error) {
+	return c.broker, nil
+}
+
+func TestKafkaGetMetricsAndActivityRetainedLag(t *testing.T) {
+	const topic = "test-topic"
+	tests := []struct {
+		name                       string
+		consumerOffset             int64
+		offsetResetPolicy          offsetResetPolicy
+		scaleToZeroOnInvalidOffset bool
+		earliestOffset             int64
+		earliestError              sarama.KError
+		missingEarliest            bool
+		expectedLag                int64
+		expectedRequests           int
+	}{
+		{
+			name: "retained backlog", consumerOffset: invalidOffset, offsetResetPolicy: earliest,
+			earliestOffset: 50, expectedLag: 75, expectedRequests: 2,
+		},
+		{
+			name: "empty retained window", consumerOffset: invalidOffset, offsetResetPolicy: earliest,
+			earliestOffset: 100, expectedLag: 25, expectedRequests: 2,
+		},
+		{
+			name: "advancing log start preserves another partition's backlog", consumerOffset: invalidOffset, offsetResetPolicy: earliest,
+			earliestOffset: 150, expectedLag: 25, expectedRequests: 2,
+		},
+		{
+			name: "earliest request error falls back to latest offset", consumerOffset: invalidOffset, offsetResetPolicy: earliest,
+			earliestError: sarama.ErrNotLeaderForPartition, expectedLag: 125, expectedRequests: 2,
+		},
+		{
+			name: "missing earliest response falls back to latest offset", consumerOffset: invalidOffset, offsetResetPolicy: earliest,
+			missingEarliest: true, expectedLag: 125, expectedRequests: 2,
+		},
+		{
+			name: "latest policy skips earliest request", consumerOffset: invalidOffset, offsetResetPolicy: latest,
+			expectedLag: 26, expectedRequests: 1,
+		},
+		{
+			name: "scale to zero on invalid offset skips earliest request", consumerOffset: invalidOffset, offsetResetPolicy: earliest,
+			scaleToZeroOnInvalidOffset: true, expectedLag: 25, expectedRequests: 1,
+		},
+		{
+			name: "committed offsets skip earliest request", consumerOffset: 40, offsetResetPolicy: earliest,
+			expectedLag: 85, expectedRequests: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := sarama.NewMockBroker(t, 0)
+			t.Cleanup(server.Close)
+			latestResponse := sarama.NewMockOffsetResponse(t).
+				SetOffset(topic, 0, sarama.OffsetNewest, 100).
+				SetOffset(topic, 1, sarama.OffsetNewest, 100)
+			// Partition 1 has a committed offset and must not be requested here.
+			var earliestResponse sarama.MockResponse = sarama.NewMockOffsetResponse(t).
+				SetOffset(topic, 0, sarama.OffsetOldest, tt.earliestOffset)
+			if tt.earliestError != sarama.ErrNoError {
+				earliestResponse = sarama.NewMockWrapper(&sarama.OffsetResponse{
+					Version: 1,
+					Blocks: map[string]map[int32]*sarama.OffsetResponseBlock{
+						topic: {0: {Err: tt.earliestError}},
+					},
+				})
+			} else if tt.missingEarliest {
+				earliestResponse = sarama.NewMockWrapper(&sarama.OffsetResponse{Version: 1})
+			}
+			server.SetHandlerByMap(map[string]sarama.MockResponse{
+				"OffsetRequest": sarama.NewMockSequence(latestResponse, earliestResponse),
+			})
+
+			config := sarama.NewConfig()
+			config.Version = sarama.V0_10_1_0
+			config.ApiVersionsRequest = false
+			config.Net.ReadTimeout = 5 * time.Second
+			config.Net.WriteTimeout = 5 * time.Second
+			broker := sarama.NewBroker(server.Addr())
+			if err := broker.Open(config); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := broker.Close(); err != nil {
+					t.Error(err)
+				}
+			})
+
+			scaler := &kafkaScaler{
+				metadata: kafkaMetadata{
+					Topic: topic, ConsumerGroup: "test-group", LagThreshold: 10,
+					OffsetResetPolicy:          tt.offsetResetPolicy,
+					ScaleToZeroOnInvalidOffset: tt.scaleToZeroOnInvalidOffset,
+					AllowIdleConsumers:         true,
+				},
+				client: &kafkaOffsetTestClient{config: config, broker: broker},
+				admin: &MockClusterAdmin{
+					partitionIds: []int32{0, 1},
+					consumerOffsets: &sarama.OffsetFetchResponse{
+						Blocks: map[string]map[int32]*sarama.OffsetFetchResponseBlock{
+							topic: {0: {Offset: tt.consumerOffset}, 1: {Offset: 75}},
+						},
+					},
+				},
+				logger: logr.Discard(),
+			}
+
+			metrics, active, err := scaler.GetMetricsAndActivity(context.Background(), "kafka-lag")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(metrics) != 1 {
+				t.Fatalf("Expected one metric, got %d", len(metrics))
+			}
+			if got := metrics[0].Value.MilliValue(); got != tt.expectedLag*1000 {
+				t.Errorf("Expected lag %d, got %s", tt.expectedLag, metrics[0].Value.String())
+			}
+			if !active {
+				t.Error("Expected active scaler because partition 1 has 25 messages of backlog")
+			}
+			if got := len(server.History()); got != tt.expectedRequests {
+				t.Errorf("Expected %d offset requests, got %d", tt.expectedRequests, got)
 			}
 		})
 	}

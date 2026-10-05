@@ -13,6 +13,7 @@ import (
 	vaultapi "github.com/hashicorp/vault/api"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -24,6 +25,8 @@ var _ = godotenv.Load("../../.env")
 
 const (
 	testName = "hashicorp-vault-test"
+	// Must match the projection and named-SA audience mapping in config/e2e/vault.
+	vaultAudience = "keda-vault-e2e"
 )
 
 var (
@@ -137,9 +140,13 @@ spec:
     authentication: {{.HashiCorpAuthentication}}
     role: {{.VaultRole}}
     mount: kubernetes
+    {{- if .VaultServiceAccountName}}
+    credential:
+      serviceAccountName: {{.VaultServiceAccountName}}
+    {{- else if eq .HashiCorpAuthentication "token"}}
     credential:
       token: {{.HashiCorpToken}}
-      serviceAccountName: {{.VaultServiceAccountName}}
+    {{- end}}
     secrets:
     - parameter: connection
       key: connectionString
@@ -350,8 +357,11 @@ spec:
     role: keda
     mount: kubernetes
     credential:
+      {{- if eq .HashiCorpAuthentication "kubernetes"}}
+      serviceAccount: /var/run/secrets/keda-vault/token
+      {{- else}}
       token: {{.HashiCorpToken}}
-      serviceAccount: /var/run/secrets/kubernetes.io/serviceaccount/token
+      {{- end}}
     secrets:
       - key: "ca_chain"
         parameter: "ca"
@@ -441,9 +451,10 @@ rules:
   - ""
   resources:
   - serviceaccounts/token
+  resourceNames:
+  - default
   verbs:
   - create
-  - get
 `
 	serviceAccountTokenCreationRoleBindingTemplate = `
 apiVersion: rbac.authorization.k8s.io/v1
@@ -498,6 +509,7 @@ func TestPkiSecretsEngine(t *testing.T) {
 			// cleanup
 			KubectlDeleteMultipleWithTemplate(t, data, templates)
 			prometheus.Uninstall(t, prometheusServerName, testNamespace, nil)
+			cleanupHashiCorpVault(t)
 		})
 	}
 }
@@ -525,7 +537,14 @@ func TestSecretsEngine(t *testing.T) {
 			useDelegatesSAAuth: false,
 		},
 		{
-			name:               "vault kv engine v2",
+			name:               "vault kv engine v2 with default projected token",
+			vaultEngineVersion: 2,
+			vaultSecretPath:    "secret/data/keda",
+			useKubernetesAuth:  true,
+			useDelegatesSAAuth: false,
+		},
+		{
+			name:               "vault kv engine v2 with delegated service account",
 			vaultEngineVersion: 2,
 			vaultSecretPath:    "secret/data/keda",
 			useKubernetesAuth:  true,
@@ -590,24 +609,24 @@ func setupHashiCorpVaultPki(t *testing.T, podName string, nameSpace string) *pro
 		fmt.Sprintf("vault write pki/roles/%s require_cn=false allowed_domains=%s.svc allow_subdomains=true max_ttl=72h", testNamespace, testNamespace),
 	}
 	for _, vaultCommand := range vaultCommands {
-		_, _, err := ExecCommandOnSpecificPod(
+		out, errOut, err := ExecCommandOnSpecificPod(
 			t,
 			podName,
 			nameSpace,
 			vaultCommand,
 		)
-		assert.NoErrorf(t, err, "cannot set vault pki command %s - %s", vaultCommand, err)
+		require.NoErrorf(t, err, "cannot set vault pki command %s - %s, stdout: %s, stderr: %s", vaultCommand, err, out, errOut)
 	}
-	rawPkiSecret, _, err := ExecCommandOnSpecificPod(
+	rawPkiSecret, errOut, err := ExecCommandOnSpecificPod(
 		t,
 		podName,
 		nameSpace,
 		fmt.Sprintf("vault write pki/issue/%s common_name=%s.%s.svc -format=json", testNamespace, prometheusServerName, testNamespace),
 	)
-	assert.NoErrorf(t, err, "cannot issue certificate - %s", err)
+	require.NoErrorf(t, err, "cannot issue certificate - %s, stdout: %s, stderr: %s", err, rawPkiSecret, errOut)
 	var pkiSecret vaultapi.Secret
 	err = json.Unmarshal([]byte(rawPkiSecret), &pkiSecret)
-	assert.NoErrorf(t, err, "cannot read certificate raw secret - %s", err)
+	require.NoErrorf(t, err, "cannot read certificate raw secret - %s, raw output: %s", err, rawPkiSecret)
 	serverKey := b64.StdEncoding.EncodeToString([]byte(pkiSecret.Data["private_key"].(string)))
 	serverCertificate := b64.StdEncoding.EncodeToString([]byte(pkiSecret.Data["certificate"].(string)))
 	caCertificate := b64.StdEncoding.EncodeToString([]byte((pkiSecret.Data["ca_chain"].([]interface{}))[0].(string)))
@@ -623,54 +642,53 @@ func setupHashiCorpVault(t *testing.T, kc *kubernetes.Clientset, kvVersion uint,
 	CreateNamespace(t, kc, vaultNamespace)
 
 	_, err := ExecuteCommand("helm repo add hashicorp https://helm.releases.hashicorp.com")
-	assert.NoErrorf(t, err, "cannot add hashicorp repo - %s", err)
+	require.NoErrorf(t, err, "cannot add hashicorp repo - %s", err)
 
-	_, err = ExecuteCommand("helm repo update")
-	assert.NoErrorf(t, err, "cannot update repos - %s", err)
+	_, err = ExecuteCommand("helm repo update hashicorp")
+	require.NoErrorf(t, err, "cannot update repos - %s", err)
 
 	var helmValues strings.Builder
-	helmValues.WriteString("--set server.dev.enabled=true")
+	helmValues.WriteString("--set server.dev.enabled=true --set server.authDelegator.enabled=true")
 
 	if kvVersion == 1 {
 		helmValues.WriteString(" --set server.extraArgs=-dev-kv-v1")
 	}
 
 	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install %s --namespace %s --wait vault hashicorp/vault`, helmValues.String(), vaultNamespace))
-	assert.NoErrorf(t, err, "cannot install hashicorp vault - %s", err)
+	require.NoErrorf(t, err, "cannot install hashicorp vault - %s", err)
 
 	podName := "vault-0"
 
+	ready, _, execErrOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, podName, vaultNamespace, "vault status", 12, 5)
+	require.True(t, ready, "vault-0 is not ready - %s, %s", execErrOut, err)
+
 	// Enable Kubernetes auth
 	if useKubernetesAuth {
+		policyName, policy := "secretReadPolicy", secretReadPolicyTemplate
 		if pki {
-			remoteFile := "/tmp/pki_policy.hcl"
-			KubectlCopyToPod(t, pkiPolicyTemplate, remoteFile, podName, vaultNamespace)
-			assert.NoErrorf(t, err, "cannot create policy file in hashicorp vault - %s", err)
-			_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, fmt.Sprintf("vault policy write pkiPolicy %s", remoteFile))
-			assert.NoErrorf(t, err, "cannot create policy in hashicorp vault - %s", err)
+			policyName, policy = "pkiPolicy", pkiPolicyTemplate
 		}
+		remoteFile := "/tmp/keda_policy.hcl"
+		KubectlCopyToPod(t, policy, remoteFile, podName, vaultNamespace)
+		_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, fmt.Sprintf("vault policy write %s %s", policyName, remoteFile))
+		require.NoErrorf(t, err, "cannot create policy in hashicorp vault - %s", err)
 		_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, "vault auth enable kubernetes")
-		assert.NoErrorf(t, err, "cannot enable kubernetes in hashicorp vault - %s", err)
-		_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, "vault write auth/kubernetes/config kubernetes_host=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT")
-		assert.NoErrorf(t, err, "cannot set kubernetes host in hashicorp vault - %s", err)
-		_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, "vault write auth/kubernetes/role/keda bound_service_account_names=keda-operator bound_service_account_namespaces=keda policies=pkiPolicy ttl=1h")
-		assert.NoErrorf(t, err, "cannot cerate keda role in hashicorp vault - %s", err)
+		require.NoErrorf(t, err, "cannot enable kubernetes in hashicorp vault - %s", err)
+		// Vault uses its own API token for TokenReview, not KEDA's audience-bound login token.
+		_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, "vault write auth/kubernetes/config kubernetes_host=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT disable_local_ca_jwt=false")
+		require.NoErrorf(t, err, "cannot set kubernetes host in hashicorp vault - %s", err)
+		_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, fmt.Sprintf("vault write auth/kubernetes/role/keda bound_service_account_names=keda-operator bound_service_account_namespaces=keda audience=%s policies=%s ttl=1h", vaultAudience, policyName))
+		require.NoErrorf(t, err, "cannot create keda role in hashicorp vault - %s", err)
 		if delegatedAuth {
-			remoteFile := "/tmp/secret_read_policy.hcl"
-			KubectlCopyToPod(t, secretReadPolicyTemplate, remoteFile, podName, vaultNamespace)
-			assert.NoErrorf(t, err, "cannot create policy file in hashicorp vault - %s", err)
-			_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, fmt.Sprintf("vault policy write secretReadPolicy %s", remoteFile))
-			assert.NoErrorf(t, err, "cannot create policy in hashicorp vault - %s", err)
-
-			_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, fmt.Sprintf("vault write auth/kubernetes/role/vault-delegated-sa bound_service_account_names=default bound_service_account_namespaces=%s policies=secretReadPolicy ttl=1h", testNamespace))
-			assert.NoErrorf(t, err, "cannot cerate keda role in hashicorp vault - %s", err)
+			_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, fmt.Sprintf("vault write auth/kubernetes/role/vault-delegated-sa bound_service_account_names=default bound_service_account_namespaces=%s audience=%s policies=%s ttl=1h", testNamespace, vaultAudience, policyName))
+			require.NoErrorf(t, err, "cannot create delegated role in hashicorp vault - %s", err)
 		}
 	}
 
 	// Create kv secret
 	if !pki {
 		_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, fmt.Sprintf("vault kv put secret/keda connectionString=%s", postgreSQLConnectionString))
-		assert.NoErrorf(t, err, "cannot put connection string in hashicorp vault - %s", err)
+		require.NoErrorf(t, err, "cannot put connection string in hashicorp vault - %s", err)
 	}
 
 	// Create PKI Backend
@@ -683,7 +701,7 @@ func setupHashiCorpVault(t *testing.T, kc *kubernetes.Clientset, kvVersion uint,
 	token := "INVALID"
 	if !useKubernetesAuth {
 		token, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, "vault token create -field token")
-		assert.NoErrorf(t, err, "cannot create hashicorp vault token - %s", err)
+		require.NoErrorf(t, err, "cannot create hashicorp vault token - %s", err)
 	}
 	return token, pkiData
 }

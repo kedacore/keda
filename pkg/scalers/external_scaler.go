@@ -5,19 +5,23 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/mitchellh/hashstructure"
+	"github.com/mitchellh/hashstructure/v2"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/util"
@@ -26,12 +30,19 @@ import (
 type externalScaler struct {
 	metricType      v2.MetricTargetType
 	metadata        externalScalerMetadata
+	scalerConfig    scalersconfig.ScalerConfig
 	scaledObjectRef pb.ScaledObjectRef
 	logger          logr.Logger
+	// closeOnce keeps Close releasing this scaler's share of the pooled
+	// connection at most once, so a repeated Close cannot drop a reference
+	// another scaler still holds.
+	closeOnce sync.Once
+	closeErr  error
 }
 
 type externalPushScaler struct {
 	externalScaler
+	metricSpecCh chan []v2.MetricSpec
 }
 
 type externalScalerMetadata struct {
@@ -50,6 +61,10 @@ type externalScalerMetadata struct {
 
 type connectionGroup struct {
 	grpcConnection *grpc.ClientConn
+	// refCount is the number of scalers currently sharing this connection. It
+	// is guarded by connectionPoolMutex. The connection is closed and dropped
+	// from the pool when the count reaches zero.
+	refCount int
 }
 
 // a pool of connectionGroup per metadata hash
@@ -79,9 +94,14 @@ func NewExternalScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing external scaler metadata: %w", err)
 	}
 
+	if err := acquireConnection(meta); err != nil {
+		return nil, fmt.Errorf("error acquiring connection for external scaler: %w", err)
+	}
+
 	return &externalScaler{
-		metricType: metricType,
-		metadata:   meta,
+		metricType:   metricType,
+		metadata:     meta,
+		scalerConfig: *config,
 		scaledObjectRef: pb.ScaledObjectRef{
 			Name:           config.ScalableObjectName,
 			Namespace:      config.ScalableObjectNamespace,
@@ -103,10 +123,15 @@ func NewExternalPushScaler(config *scalersconfig.ScalerConfig) (PushScaler, erro
 		return nil, fmt.Errorf("error parsing external scaler metadata: %w", err)
 	}
 
+	if err := acquireConnection(meta); err != nil {
+		return nil, fmt.Errorf("error acquiring connection for external push scaler: %w", err)
+	}
+
 	return &externalPushScaler{
-		externalScaler{
-			metricType: metricType,
-			metadata:   meta,
+		externalScaler: externalScaler{
+			metricType:   metricType,
+			metadata:     meta,
+			scalerConfig: *config,
 			scaledObjectRef: pb.ScaledObjectRef{
 				Name:           config.ScalableObjectName,
 				Namespace:      config.ScalableObjectNamespace,
@@ -114,6 +139,7 @@ func NewExternalPushScaler(config *scalersconfig.ScalerConfig) (PushScaler, erro
 			},
 			logger: InitializeLogger(config, "external_push_scaler"),
 		},
+		metricSpecCh: make(chan []v2.MetricSpec, 1),
 	}, nil
 }
 
@@ -139,18 +165,23 @@ func parseExternalScalerMetadata(config *scalersconfig.ScalerConfig) (externalSc
 	return meta, nil
 }
 
+// Close releases this scaler's share of the pooled gRPC connection. The
+// connection is closed once no scaler is left using it. Calling Close more than
+// once releases the share only once.
 func (s *externalScaler) Close(context.Context) error {
-	return nil
+	s.closeOnce.Do(func() {
+		s.closeErr = releaseConnection(s.metadata)
+	})
+	return s.closeErr
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
-	var result []v2.MetricSpec
-
+	ctx = metricscollector.BuildScalerRequestCtx(ctx, s.scalerConfig, "")
 	grpcClient, err := getClientForConnectionPool(s.metadata)
 	if err != nil {
 		s.logger.Error(err, "error building grpc connection")
-		return result
+		return nil
 	}
 
 	response, err := grpcClient.GetMetricSpec(ctx, &s.scaledObjectRef)
@@ -159,6 +190,13 @@ func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metri
 		return nil
 	}
 
+	return s.buildMetricSpecs(response)
+}
+
+// buildMetricSpecs converts a GetMetricSpecResponse into Kubernetes metric specs.
+// Always returns a non-nil slice (possibly empty).
+func (s *externalScaler) buildMetricSpecs(response *pb.GetMetricSpecResponse) []v2.MetricSpec {
+	result := make([]v2.MetricSpec, 0, len(response.MetricSpecs))
 	for _, spec := range response.MetricSpecs {
 		externalMetric := &v2.ExternalMetricSource{
 			Metric: v2.MetricIdentifier{
@@ -170,22 +208,18 @@ func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metri
 		} else {
 			externalMetric.Target = GetMetricTarget(s.metricType, spec.TargetSize)
 		}
-
-		// Create the metric spec for the HPA
-		metricSpec := v2.MetricSpec{
+		result = append(result, v2.MetricSpec{
 			External: externalMetric,
 			Type:     externalMetricType,
-		}
-
-		result = append(result, metricSpec)
+		})
 	}
-
 	return result
 }
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *externalScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	var metrics []external_metrics.ExternalMetricValue
+	ctx = metricscollector.BuildScalerRequestCtx(ctx, s.scalerConfig, metricName)
 	grpcClient, err := getClientForConnectionPool(s.metadata)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, err
@@ -226,57 +260,143 @@ func (s *externalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 	return metrics, isActiveResponse.Result, nil
 }
 
-// handleIsActiveStream is the only writer to the active channel and will close it on return.
+// Run starts both the StreamIsActive and StreamMetricSpec stream handlers.
 func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 	defer close(active)
+	ctx = metricscollector.BuildScalerRequestCtx(ctx, s.scalerConfig, "")
 
-	// retry on error from runWithLog() starting by 2 sec backing off * 2 with a max of 2 minutes
-	retryDuration := time.Second * 2
+	go s.runStreamMetricSpec(ctx)
+	s.runStreamIsActive(ctx, active)
+}
 
-	// It's possible for the connection to get terminated anytime, we need to run this in a retry loop
-	runWithLog := func() {
+func (s *externalPushScaler) runStreamIsActive(ctx context.Context, active chan<- bool) {
+	retryDuration := 2 * time.Second
+
+	runOnce := func() {
 		grpcClient, err := getClientForConnectionPool(s.metadata)
 		if err != nil {
 			s.logger.Error(err, "unable to get connection from the pool")
 			return
 		}
-		if err := handleIsActiveStream(ctx, &s.scaledObjectRef, grpcClient, active); err != nil {
-			if !errors.Is(err, io.EOF) { // If io.EOF is returned, the stream has terminated with an OK status
-				s.logger.Error(err, "error running internalRun")
-				return
-			}
-			// if the connection is properly closed, we reset the timer
-			retryDuration = time.Second * 2
+		err = handleIsActiveStream(ctx, &s.scaledObjectRef, grpcClient, active)
+		if !errors.Is(err, io.EOF) {
+			s.logger.Error(err, "error running StreamIsActive")
 			return
 		}
+		retryDuration = 2 * time.Second
 	}
 
-	// the caller of this function needs to ensure that they call Stop() on the resulting
-	// timer, to release background resources.
-	retryBackoff := func() *time.Timer {
-		tmr := time.NewTimer(retryDuration)
-		s.logger.V(1).Info("external push retry backoff", "duration", retryDuration)
-		retryDuration *= 2
-		if retryDuration > time.Minute {
-			retryDuration = time.Minute * 1
-		}
-		return tmr
-	}
-
-	// start the first run without delay
-	runWithLog()
+	runOnce()
 
 	for {
-		backoffTimer := retryBackoff()
+		tmr := time.NewTimer(retryDuration)
+		s.logger.V(1).Info("StreamIsActive retry backoff", "duration", retryDuration)
+		retryDuration = min(retryDuration*2, time.Minute)
 		select {
 		case <-ctx.Done():
-			backoffTimer.Stop()
+			tmr.Stop()
 			return
-		case <-backoffTimer.C:
-			backoffTimer.Stop()
-			runWithLog()
+		case <-tmr.C:
+			runOnce()
 		}
 	}
+}
+
+// runStreamMetricSpec opens a StreamMetricSpec stream and forwards updates
+// to metricSpecCh. The channel is closed when this goroutine exits — either
+// because the context was cancelled or because the server returned
+// Unimplemented. In the latter case the channel is permanently closed; if
+// the ScaledObject generation changes, startPushScalers re-creates the
+// externalPushScaler (with a fresh channel) and launches a new watcher.
+func (s *externalPushScaler) runStreamMetricSpec(ctx context.Context) {
+	defer close(s.metricSpecCh)
+
+	retryDuration := 2 * time.Second
+
+	for {
+		shouldStop, resetRetry := s.streamMetricSpecOnce(ctx)
+		if shouldStop {
+			return
+		}
+		if resetRetry {
+			retryDuration = 2 * time.Second
+		}
+		tmr := time.NewTimer(retryDuration)
+		s.logger.V(1).Info("StreamMetricSpec retry backoff", "duration", retryDuration)
+		retryDuration = min(retryDuration*2, time.Minute)
+		select {
+		case <-ctx.Done():
+			tmr.Stop()
+			return
+		case <-tmr.C:
+		}
+	}
+}
+
+// streamMetricSpecOnce opens a StreamMetricSpec stream and processes updates
+// until the stream closes or an error occurs.
+// Returns (shouldStop, resetRetry): shouldStop=true means the caller should
+// exit the retry loop; resetRetry=true means the retry backoff should be
+// reset because the stream terminated cleanly (io.EOF) or delivered at least
+// one update before failing. A stream that opens but errors before delivering
+// anything keeps the growing backoff, so a persistently broken server is not
+// retried in a tight loop.
+func (s *externalPushScaler) streamMetricSpecOnce(ctx context.Context) (bool, bool) {
+	grpcClient, err := getClientForConnectionPool(s.metadata)
+	if err != nil {
+		s.logger.Error(err, "StreamMetricSpec: unable to get gRPC connection")
+		return false, false
+	}
+
+	stream, err := grpcClient.StreamMetricSpec(ctx, &s.scaledObjectRef)
+	if err != nil {
+		if status.Code(err) == codes.Unimplemented {
+			s.logger.V(1).Info("StreamMetricSpec not implemented by scaler, skipping")
+			return true, false
+		}
+		s.logger.Error(err, "StreamMetricSpec: failed to open stream")
+		return false, false
+	}
+
+	received := false
+	for {
+		resp, err := stream.Recv()
+		if err != nil {
+			if status.Code(err) == codes.Unimplemented {
+				s.logger.V(1).Info("StreamMetricSpec not implemented by scaler, skipping")
+				return true, false
+			}
+			if errors.Is(err, io.EOF) {
+				return false, true
+			}
+			s.logger.Error(err, "StreamMetricSpec: stream error")
+			return false, received
+		}
+		received = true
+
+		specs := s.buildMetricSpecs(resp)
+		// Single-producer drain-then-send: safe because only one goroutine
+		// (runStreamMetricSpec) writes to metricSpecCh.
+		select {
+		case s.metricSpecCh <- specs:
+		default:
+			select {
+			case <-s.metricSpecCh:
+			default:
+			}
+			select {
+			case s.metricSpecCh <- specs:
+			case <-ctx.Done():
+				return true, false
+			}
+		}
+	}
+}
+
+// MetricSpecChan returns the channel that receives updated metric specs
+// from the StreamMetricSpec stream.
+func (s *externalPushScaler) MetricSpecChan() <-chan []v2.MetricSpec {
+	return s.metricSpecCh
 }
 
 // handleIsActiveStream calls blocks on a stream call from the GRPC server. It'll only terminate on error, stream completion, or ctx cancellation.
@@ -292,7 +412,11 @@ func handleIsActiveStream(ctx context.Context, scaledObjectRef *pb.ScaledObjectR
 			return err
 		}
 
-		active <- resp.Result
+		select {
+		case active <- resp.Result:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 }
 
@@ -308,67 +432,130 @@ func getConnectionPoolKey(metadata externalScalerMetadata) (uint64, error) {
 		TLSClientKey:  metadata.TLSClientKey,
 	}
 
-	return hashstructure.Hash(key, nil)
+	return hashstructure.Hash(key, hashstructure.FormatV1, nil)
 }
 
-// getClientForConnectionPool returns a grpcClient and a done() Func. The done() function must be called once the client is no longer
-// in use to clean up the shared grpc.ClientConn
-func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalScalerClient, error) {
-	connectionPoolMutex.Lock()
-	defer connectionPoolMutex.Unlock()
-
-	buildGRPCConnection := func(metadata externalScalerMetadata) (*grpc.ClientConn, error) {
-		tlsConfig, err := util.NewTLSConfig(metadata.TLSClientCert, metadata.TLSClientKey, metadata.CaCert, metadata.UnsafeSsl)
-		if err != nil {
-			return nil, err
-		}
-
-		if metadata.EnableTLS || len(tlsConfig.Certificates) > 0 || metadata.CaCert != "" {
-			// nosemgrep: go.grpc.ssrf.grpc-tainted-url-host.grpc-tainted-url-host
-			return grpc.NewClient(metadata.ScalerAddress,
-				grpc.WithDefaultServiceConfig(grpcConfig),
-				grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
-		}
-
-		return grpc.NewClient(metadata.ScalerAddress,
-			grpc.WithDefaultServiceConfig(grpcConfig),
-			grpc.WithTransportCredentials(insecure.NewCredentials()))
-	}
-
-	// create a unique key per-metadata. If scaledObjects share the same connection properties
-	// in the metadata, they will share the same grpc.ClientConn
-	key, err := getConnectionPoolKey(metadata)
+func buildGRPCConnection(metadata externalScalerMetadata) (*grpc.ClientConn, error) {
+	tlsConfig, err := util.NewTLSConfig(metadata.TLSClientCert, metadata.TLSClientKey, metadata.CaCert, metadata.UnsafeSsl)
 	if err != nil {
 		return nil, err
 	}
 
+	options := []grpc.DialOption{grpc.WithDefaultServiceConfig(grpcConfig)}
+	options = append(options, metricscollector.GRPCClientDialOptions()...)
+	if metadata.EnableTLS || len(tlsConfig.Certificates) > 0 || metadata.CaCert != "" {
+		options = append(options, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+	} else {
+		// nosemgrep: go.grpc.tls.grpc-client-new-insecure-connection.grpc-client-new-insecure-connection
+		options = append(options, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	}
+
+	// nosemgrep: go.grpc.ssrf.grpc-tainted-url-host.grpc-tainted-url-host
+	return grpc.NewClient(metadata.ScalerAddress, options...)
+}
+
+// acquireConnection records one more scaler sharing the connection for this
+// metadata, creating the connection if the pool does not hold one yet. Every
+// call must be paired with releaseConnection, which closes the connection once
+// the last scaler using it has gone away.
+//
+// This is the only place a pooled connection is created. Lookups never create
+// one, so a request arriving after the owning scaler has closed cannot leave an
+// entry behind that nothing will release.
+//
+// grpc.NewClient connects lazily, so acquiring here costs nothing until the
+// scaler actually issues a request.
+func acquireConnection(metadata externalScalerMetadata) error {
+	connectionPoolMutex.Lock()
+	defer connectionPoolMutex.Unlock()
+
+	key, err := getConnectionPoolKey(metadata)
+	if err != nil {
+		return err
+	}
+
 	if i, ok := connectionPool.Load(key); ok {
 		if connGroup, ok := i.(*connectionGroup); ok {
-			return pb.NewExternalScalerClient(connGroup.grpcConnection), nil
+			connGroup.refCount++
+			return nil
 		}
 	}
 
 	conn, err := buildGRPCConnection(metadata)
 	if err != nil {
+		return err
+	}
+
+	connectionPool.Store(key, &connectionGroup{grpcConnection: conn, refCount: 1})
+	return nil
+}
+
+// releaseConnection records that one scaler has stopped using the connection
+// for this metadata. The connection is closed and dropped from the pool once no
+// scaler is left using it.
+func releaseConnection(metadata externalScalerMetadata) error {
+	connectionPoolMutex.Lock()
+	defer connectionPoolMutex.Unlock()
+
+	key, err := getConnectionPoolKey(metadata)
+	if err != nil {
+		return err
+	}
+
+	i, ok := connectionPool.Load(key)
+	if !ok {
+		return nil
+	}
+	connGroup, ok := i.(*connectionGroup)
+	if !ok {
+		return nil
+	}
+
+	// Guard against releasing a share that was never taken. The entry under
+	// this key may have been dropped and rebuilt by another scaler since, and
+	// decrementing past zero here would close a connection that scaler is
+	// still using.
+	if connGroup.refCount <= 0 {
+		return nil
+	}
+
+	connGroup.refCount--
+	if connGroup.refCount > 0 {
+		return nil
+	}
+
+	connectionPool.Delete(key)
+	return connGroup.grpcConnection.Close()
+}
+
+// getClientForConnectionPool returns a client on the connection shared by every
+// scaler with the same connection properties. The connection's lifetime belongs
+// to acquireConnection and releaseConnection, so this only looks the connection
+// up and reports an error when the pool no longer holds one.
+//
+// Creating here would be unsafe. A request can arrive after the owning scaler
+// has closed, for instance from the retry loop in runStreamIsActive racing the
+// context cancellation, and creating a connection for it would leave an entry
+// with no owner to release it.
+func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalScalerClient, error) {
+	connectionPoolMutex.Lock()
+	defer connectionPoolMutex.Unlock()
+
+	// the key is unique per-metadata. ScaledObjects that share the same connection
+	// properties in the metadata share the same grpc.ClientConn
+	key, err := getConnectionPoolKey(metadata)
+	if err != nil {
 		return nil, err
 	}
 
-	connGroup := &connectionGroup{
-		grpcConnection: conn,
+	i, ok := connectionPool.Load(key)
+	if !ok {
+		return nil, fmt.Errorf("no pooled connection for scaler address %s, the scaler is closed", metadata.ScalerAddress)
 	}
-
-	connectionPool.Store(key, connGroup)
-
-	go func() {
-		// clean up goroutine.
-		// once gRPC client is shutdown, remove the connection from the pool and Close() grpc.ClientConn
-		// nosemgrep: dgryski.semgrep-go.contexttodo.context-todo
-		<-waitForState(context.TODO(), connGroup.grpcConnection, connectivity.Shutdown)
-		connectionPoolMutex.Lock()
-		defer connectionPoolMutex.Unlock()
-		connectionPool.Delete(key)
-		connGroup.grpcConnection.Close()
-	}()
+	connGroup, ok := i.(*connectionGroup)
+	if !ok {
+		return nil, fmt.Errorf("unexpected entry in the connection pool for scaler address %s", metadata.ScalerAddress)
+	}
 
 	return pb.NewExternalScalerClient(connGroup.grpcConnection), nil
 }
@@ -387,11 +574,9 @@ func waitForState(ctx context.Context, conn *grpc.ClientConn, states ...connecti
 			}
 
 			nowState := conn.GetState()
-			for _, state := range states {
-				if state == nowState {
-					// match one of the state passed return
-					return
-				}
+			if slices.Contains(states, nowState) {
+				// match one of the state passed return
+				return
 			}
 		}
 	}()
