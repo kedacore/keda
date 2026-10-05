@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
@@ -165,8 +164,10 @@ func TestCouchDBScaler(t *testing.T) {
 	data, templates := getTemplateData(t, kc)
 	KubectlApplyMultipleWithTemplate(t, data, templates)
 
-	// wait until client is ready
-	time.Sleep(10 * time.Second)
+	// The database is created through the client pod, which has no readiness probe, so Ready means its
+	// container is running and exec will reach it. A minute covers pulling the curl image on a cold node.
+	require.True(t, WaitForPodReady(t, kc, clientName, testNamespace, 60, 1),
+		"client pod %s should be ready", clientName)
 	// create database
 	_, _, err := ExecCommandOnSpecificPod(t, clientName, testNamespace, fmt.Sprintf("curl -X PUT http://admin:%s@test-release-svc-couchdb.%s.svc.cluster.local:5984/animals", getPassword(t, kc), testNamespace))
 	require.NoErrorf(t, err, "cannot execute command - %s", err)

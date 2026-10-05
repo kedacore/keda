@@ -4,8 +4,8 @@
 package solr_test
 
 import (
+	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -226,19 +226,34 @@ func setupSolr(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- solr is ready ---")
 }
 
+// Solr is asked directly whether it is serving, because the StatefulSet reports ready before the
+// server does, and again after the in-place restart that enables BasicAuth, which the StatefulSet
+// does not see at all. One minute is the budget the previous 12 x 5s loop had.
+const (
+	solrReadyTimeout  = time.Minute
+	solrReadyInterval = 5 * time.Second
+)
+
 func checkIfSolrStatusIsReady(t *testing.T, name string) error {
 	t.Log("--- checking solr status ---")
 
-	for i := 0; i < 12; i++ {
-		out, errOut, _ := ExecCommandOnSpecificPod(t, name, testNamespace, fmt.Sprintf("%s status", solrPath))
+	ctx, cancel := context.WithTimeout(context.Background(), solrReadyTimeout)
+	defer cancel()
+
+	// A failed exec is handed back rather than swallowed, so that a server which never answers
+	// is reported with the reason instead of as a bare timeout.
+	err := KedaEventually(ctx, func(_ context.Context) (bool, error) {
+		out, errOut, err := ExecCommandOnSpecificPod(t, name, testNamespace, fmt.Sprintf("%s status", solrPath))
 		t.Logf("Output: %s, Error: %s", out, errOut)
-		if !strings.Contains(out, "running on port") {
-			time.Sleep(time.Second * 5)
-			continue
+		if err != nil {
+			return false, fmt.Errorf("cannot query solr status: %w", err)
 		}
-		return nil
+		return strings.Contains(out, "running on port"), nil
+	}, solrReadyInterval)
+	if err != nil {
+		return fmt.Errorf("solr is not ready: %w", err)
 	}
-	return errors.New("solr is not ready")
+	return nil
 }
 
 func getTemplateData() (templateData, []Template) {
