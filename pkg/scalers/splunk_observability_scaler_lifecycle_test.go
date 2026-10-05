@@ -93,7 +93,12 @@ func newSplunkO11yLifecycleScaler(t *testing.T, duration int, config splunkO11yL
 }
 
 func (b *splunkO11yLifecycleBackend) serveHTTP(w http.ResponseWriter, r *http.Request) {
-	upgrader := websocket.Upgrader{}
+	upgrader := websocket.Upgrader{
+		// SignalFlow's native client omits Origin; reject browser-origin requests.
+		CheckOrigin: func(r *http.Request) bool {
+			return len(r.Header.Values("Origin")) == 0
+		},
+	}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
@@ -240,6 +245,36 @@ func assertSplunkO11yBuffersReaped(t *testing.T, baseline int) {
 			t.Fatalf("retained %d SignalFlow output goroutines (baseline %d)", got-baseline, baseline)
 		}
 		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func TestSplunkObservabilityLifecycleBackendRejectsBrowserOrigins(t *testing.T) {
+	_, backend := newSplunkO11yLifecycleScaler(t, 3600, splunkO11yLifecycleConfig{})
+	url := "ws" + strings.TrimPrefix(backend.server.URL, "http")
+	for _, test := range []struct {
+		name   string
+		origin string
+	}{
+		{name: "foreign origin", origin: "https://foreign.example"},
+		{name: "same origin", origin: backend.server.URL},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			conn, response, err := websocket.DefaultDialer.Dial(url, http.Header{
+				"Origin": {test.origin},
+			})
+			if conn != nil {
+				_ = conn.Close()
+			}
+			if response != nil && response.Body != nil {
+				defer func() { _ = response.Body.Close() }()
+			}
+			if err == nil {
+				t.Fatal("backend accepted a browser-origin WebSocket handshake")
+			}
+			if response == nil || response.StatusCode != http.StatusForbidden {
+				t.Fatalf("expected HTTP 403 for browser Origin, got response %v, error %v", response, err)
+			}
+		})
 	}
 }
 
