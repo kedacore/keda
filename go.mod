@@ -85,8 +85,8 @@ require (
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/client_model v0.6.3
-	github.com/prometheus/common v0.71.0
-	github.com/prometheus/prometheus v0.314.0
+	github.com/prometheus/common v0.72.0
+	github.com/prometheus/prometheus v0.315.0
 	github.com/rabbitmq/amqp091-go v1.15.0
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9
 	github.com/redis/go-redis/v9 v9.22.0
@@ -118,10 +118,10 @@ require (
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/gotestsum v1.13.0
-	k8s.io/api v0.36.4
-	k8s.io/apimachinery v0.36.4
+	k8s.io/api v0.37.0
+	k8s.io/apimachinery v0.37.0
 	k8s.io/apiserver v0.36.4
-	k8s.io/client-go v0.36.4
+	k8s.io/client-go v0.37.0
 	k8s.io/code-generator v0.36.4
 	k8s.io/component-base v0.36.4
 	k8s.io/klog/v2 v2.140.0
@@ -141,7 +141,7 @@ require (
 	github.com/kkdai/maglev v0.2.0 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
 	golang.org/x/crypto v0.57.0 // indirect
-	k8s.io/streaming v0.36.4 // indirect
+	k8s.io/streaming v0.37.0 // indirect
 )
 
 require (
@@ -244,7 +244,7 @@ require (
 	github.com/google/gnostic-models v0.7.1 // indirect
 	github.com/google/go-github/v88 v88.0.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
-	github.com/google/pprof v0.0.0-20260903180319-d6c3cb2f37ec // indirect
+	github.com/google/pprof v0.0.0-20260906184651-6331bc6350fe // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.21 // indirect
