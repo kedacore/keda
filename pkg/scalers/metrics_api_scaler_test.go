@@ -51,12 +51,12 @@ var testMetricsAPIMetadata = []metricsAPIMetadataTestData{
 	// OK with just aggregateFromKubeServiceEndpoints
 	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric.test", "targetValue": "42",
 		"aggregateFromKubeServiceEndpoints": "true"}, raisesError: false},
-	// OK with aggregateFromKubeServiceEndpoints AND zeroOnMissingEndpoints
+	// OK with aggregateFromKubeServiceEndpoints AND zeroOnNoReadyEndpoints
 	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric.test", "targetValue": "42",
-		"aggregateFromKubeServiceEndpoints": "true", "zeroOnMissingEndpoints": "true"}, raisesError: false},
-	// Invalid configuration: zeroOnMissingEndpoints requires aggregateFromKubeServiceEndpoints
+		"aggregateFromKubeServiceEndpoints": "true", "zeroOnNoReadyEndpoints": "true"}, raisesError: false},
+	// Invalid configuration: zeroOnNoReadyEndpoints requires aggregateFromKubeServiceEndpoints
 	{metadata: map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric.test", "targetValue": "42",
-		"aggregateFromKubeServiceEndpoints": "false", "zeroOnMissingEndpoints": "true"}, raisesError: true},
+		"aggregateFromKubeServiceEndpoints": "false", "zeroOnNoReadyEndpoints": "true"}, raisesError: true},
 }
 
 type metricAPIAuthMetadataTestData struct {
@@ -364,37 +364,37 @@ func newMockTransport() *MockHTTPRoundTripper {
 	return m
 }
 
-func TestGetMetricValueZeroOnMissingEndpoints(t *testing.T) {
+func TestGetMetricValueZeroOnNoReadyEndpoints(t *testing.T) {
 	readyTrue := true
 	readyFalse := false
 	port80 := int32(80)
 
 	tests := []struct {
 		name           string
-		zeroOnMissing  bool
+		zeroOnNoReady  bool
 		endpointSlices []discoveryV1.EndpointSlice
 		wantValue      float64
 		wantErr        bool
 		wantErrMsg     string
 	}{
 		{
-			name:           "no endpoints, zeroOnMissingEndpoints=true returns 0",
-			zeroOnMissing:  true,
+			name:           "no endpoints, zeroOnNoReadyEndpoints=true returns 0",
+			zeroOnNoReady:  true,
 			endpointSlices: nil,
 			wantValue:      0,
 			wantErr:        false,
 		},
 		{
-			name:           "no endpoints, zeroOnMissingEndpoints=false returns error",
-			zeroOnMissing:  false,
+			name:           "no endpoints, zeroOnNoReadyEndpoints=false returns error",
+			zeroOnNoReady:  false,
 			endpointSlices: nil,
 			wantValue:      0,
 			wantErr:        true,
 			wantErrMsg:     "no endpoints URLs were given for the service name",
 		},
 		{
-			name:          "only not-ready endpoints, zeroOnMissingEndpoints=true returns 0",
-			zeroOnMissing: true,
+			name:          "only not-ready endpoints, zeroOnNoReadyEndpoints=true returns 0",
+			zeroOnNoReady: true,
 			endpointSlices: []discoveryV1.EndpointSlice{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -417,8 +417,8 @@ func TestGetMetricValueZeroOnMissingEndpoints(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name:          "only not-ready endpoints, zeroOnMissingEndpoints=false returns error",
-			zeroOnMissing: false,
+			name:          "only not-ready endpoints, zeroOnNoReadyEndpoints=false returns error",
+			zeroOnNoReady: false,
 			endpointSlices: []discoveryV1.EndpointSlice{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -442,8 +442,8 @@ func TestGetMetricValueZeroOnMissingEndpoints(t *testing.T) {
 			wantErrMsg: "no endpoints URLs were given for the service name",
 		},
 		{
-			name:          "endpoints present, zeroOnMissingEndpoints=true fetches metrics normally",
-			zeroOnMissing: true,
+			name:          "endpoints present, zeroOnNoReadyEndpoints=true fetches metrics normally",
+			zeroOnNoReady: true,
 			endpointSlices: []discoveryV1.EndpointSlice{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -481,7 +481,7 @@ func TestGetMetricValueZeroOnMissingEndpoints(t *testing.T) {
 					ValueLocation:                     "metric",
 					Format:                            JSONFormat,
 					AggregateFromKubeServiceEndpoints: true,
-					ZeroOnMissingEndpoints:            tt.zeroOnMissing,
+					ZeroOnNoReadyEndpoints:            tt.zeroOnNoReady,
 				},
 				httpClient: &http.Client{Transport: newMockTransport()},
 				logger:     InitializeLogger(&scalersconfig.ScalerConfig{}, "metrics_api_scaler"),

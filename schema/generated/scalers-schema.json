@@ -4293,7 +4293,7 @@
                     "metadataVariableReadable": true
                 },
                 {
-                    "name": "zeroOnMissingEndpoints",
+                    "name": "zeroOnNoReadyEndpoints",
                     "type": "string",
                     "default": "false",
                     "metadataVariableReadable": true

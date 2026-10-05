@@ -51,15 +51,19 @@ type metricsAPIScalerMetadata struct {
 	AggregateFromKubeServiceEndpoints bool            `keda:"name=aggregateFromKubeServiceEndpoints,order=triggerMetadata,default=false"`
 	AggregationType                   AggregationType `keda:"name=aggregationType,order=triggerMetadata,default=average,enum=average;sum;max;min"`
 	Timeout                           time.Duration   `keda:"name=timeout, order=triggerMetadata, optional"`
-	ZeroOnMissingEndpoints            bool            `keda:"name=zeroOnMissingEndpoints,order=triggerMetadata,default=false"`
+	ZeroOnNoReadyEndpoints            bool            `keda:"name=zeroOnNoReadyEndpoints,order=triggerMetadata,default=false"`
 	// Authentication parameters for connecting to the metrics API
 	MetricsAPIAuth *authentication.Config `keda:"optional"`
 
 	triggerIndex int
 }
 
-// Validate rejects auth modes this scaler does not apply to its requests.
+// Validate checks metadata and supported auth modes.
 func (m *metricsAPIScalerMetadata) Validate() error {
+	if m.ZeroOnNoReadyEndpoints && !m.AggregateFromKubeServiceEndpoints {
+		return fmt.Errorf("zeroOnNoReadyEndpoints requires aggregateFromKubeServiceEndpoints to be true")
+	}
+
 	return m.MetricsAPIAuth.ValidateAllowed(
 		authentication.APIKeyAuthType,
 		authentication.BasicAuthType,
@@ -148,10 +152,6 @@ func parseMetricsAPIMetadata(config *scalersconfig.ScalerConfig) (*metricsAPISca
 	// Special validation for targetValue when not used as metric source
 	if meta.TargetValue == 0 && !config.AsMetricSource {
 		return nil, fmt.Errorf("no targetValue given in metadata")
-	}
-
-	if meta.ZeroOnMissingEndpoints && !meta.AggregateFromKubeServiceEndpoints {
-		return nil, fmt.Errorf("zeroOnMissingEndpoints requires aggregateFromKubeServiceEndpoints to be true")
 	}
 
 	return meta, nil
@@ -405,8 +405,8 @@ func (s *metricsAPIScaler) getMetricValue(ctx context.Context) (float64, error) 
 			return 0, fmt.Errorf("failed to get kubernetes endpoints urls from configured service URL")
 		}
 		if len(endpointsUrls) == 0 {
-			if s.metadata.ZeroOnMissingEndpoints {
-				s.logger.V(1).Info("no endpoints URLs were given for the service name but returning metric value 0 because of zeroOnMissingEndpoints")
+			if s.metadata.ZeroOnNoReadyEndpoints {
+				s.logger.V(1).Info("no endpoints URLs were given for the service name but returning metric value 0 because of zeroOnNoReadyEndpoints")
 				return 0, nil
 			}
 			return 0, fmt.Errorf("no endpoints URLs were given for the service name")
