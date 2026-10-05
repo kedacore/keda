@@ -294,13 +294,13 @@ func TestSplunkObservabilityCloseReapsClientGoroutines(t *testing.T) {
 	var after int
 	for {
 		after = countSplunkO11ySignalflowGoroutines()
-		if after <= before+1 || time.Now().After(deadline) {
+		if after <= before || time.Now().After(deadline) {
 			break
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	if after > before+1 {
-		t.Fatalf("expected at most 1 leftover signalflow goroutine after Close, got %d (baseline %d)", after-before, before)
+	if after > before {
+		t.Fatalf("expected no leftover signalflow goroutines after Close, got %d (baseline %d)", after-before, before)
 	}
 }
 
