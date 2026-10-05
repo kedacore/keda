@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -48,10 +49,13 @@ type splunkO11yLifecycleConfig struct {
 
 type splunkO11yLifecycleBackend struct {
 	splunkO11yLifecycleConfig
-	logger *splunkO11yLifecycleLogSink
-	ready  chan struct{}
-	done   chan struct{}
-	server *httptest.Server
+	logger    *splunkO11yLifecycleLogSink
+	ready     chan struct{}
+	done      chan struct{}
+	server    *httptest.Server
+	mu        sync.Mutex
+	conns     map[*websocket.Conn]struct{}
+	connected chan struct{}
 }
 
 func newSplunkO11yLifecycleScaler(t *testing.T, duration int, config splunkO11yLifecycleConfig) (*splunkObservabilityScaler, *splunkO11yLifecycleBackend) {
@@ -62,7 +66,10 @@ func newSplunkO11yLifecycleScaler(t *testing.T, duration int, config splunkO11yL
 			processed: make(chan struct{}, 1),
 		},
 		splunkO11yLifecycleConfig: config,
-		ready:                     make(chan struct{}, 1), done: make(chan struct{}),
+		ready:                     make(chan struct{}, 1),
+		done:                      make(chan struct{}),
+		conns:                     make(map[*websocket.Conn]struct{}),
+		connected:                 make(chan struct{}, 1),
 	}
 	b.server = httptest.NewServer(http.HandlerFunc(b.serveHTTP))
 	client, err := signalflow.NewClient(signalflow.StreamURL("ws" + strings.TrimPrefix(b.server.URL, "http")))
@@ -79,6 +86,7 @@ func newSplunkO11yLifecycleScaler(t *testing.T, duration int, config splunkO11yL
 	t.Cleanup(func() {
 		close(b.done)
 		_ = scaler.Close(context.Background())
+		b.closeExistingConnections()
 		b.server.Close()
 	})
 	return scaler, b
@@ -90,7 +98,15 @@ func (b *splunkO11yLifecycleBackend) serveHTTP(w http.ResponseWriter, r *http.Re
 	if err != nil {
 		return
 	}
-	defer conn.Close()
+	b.mu.Lock()
+	b.conns[conn] = struct{}{}
+	b.mu.Unlock()
+	defer func() {
+		_ = conn.Close()
+		b.mu.Lock()
+		delete(b.conns, conn)
+		b.mu.Unlock()
+	}()
 	channels := make(map[string]string)
 	for {
 		var request struct {
@@ -105,6 +121,10 @@ func (b *splunkO11yLifecycleBackend) serveHTTP(w http.ResponseWriter, r *http.Re
 		case "authenticate":
 			if err := conn.WriteJSON(map[string]string{"type": "authenticated"}); err != nil {
 				return
+			}
+			select {
+			case b.connected <- struct{}{}:
+			default:
 			}
 		case "execute":
 			select {
@@ -138,6 +158,18 @@ func (b *splunkO11yLifecycleBackend) serveHTTP(w http.ResponseWriter, r *http.Re
 				return
 			}
 		}
+	}
+}
+
+func (b *splunkO11yLifecycleBackend) closeExistingConnections() {
+	b.mu.Lock()
+	conns := make([]*websocket.Conn, 0, len(b.conns))
+	for conn := range b.conns {
+		conns = append(conns, conn)
+	}
+	b.mu.Unlock()
+	for _, conn := range conns {
+		_ = conn.Close()
 	}
 }
 

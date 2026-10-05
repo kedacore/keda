@@ -150,7 +150,7 @@ func (r *splunkO11yLogRecorder) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func newFakeSplunkO11yScalerWithBackend(t *testing.T, duration int) (*splunkObservabilityScaler, *signalflow.FakeBackend, <-chan struct{}, func()) {
+func newFakeSplunkO11yScalerWithBackend(t *testing.T, duration int) (*splunkObservabilityScaler, <-chan struct{}, func()) {
 	t.Helper()
 
 	fake := signalflow.NewRunningFakeBackend()
@@ -180,13 +180,13 @@ func newFakeSplunkO11yScalerWithBackend(t *testing.T, duration int) (*splunkObse
 		_ = scaler.Close(context.Background())
 		fake.Stop()
 	}
-	return scaler, fake, recorder.started, cleanup
+	return scaler, recorder.started, cleanup
 }
 
 // newFakeSplunkO11yScaler wires a scaler to a fake backend that streams indefinitely without closing.
 func newFakeSplunkO11yScaler(t *testing.T, duration int) (*splunkObservabilityScaler, func()) {
 	t.Helper()
-	scaler, _, _, stop := newFakeSplunkO11yScalerWithBackend(t, duration)
+	scaler, _, stop := newFakeSplunkO11yScalerWithBackend(t, duration)
 	return scaler, stop
 }
 
@@ -201,7 +201,7 @@ func waitForSplunkO11yJob(t *testing.T, started <-chan struct{}) {
 
 // Regression guard: a stuck stream must not block getQueryResult past the parent context deadline.
 func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testing.T) {
-	scaler, _, started, stop := newFakeSplunkO11yScalerWithBackend(t, 3600)
+	scaler, started, stop := newFakeSplunkO11yScalerWithBackend(t, 3600)
 	defer stop()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -231,7 +231,7 @@ func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testin
 }
 
 func TestSplunkObservabilityCloseCancelsActiveQuery(t *testing.T) {
-	scaler, _, started, stop := newFakeSplunkO11yScalerWithBackend(t, 3600)
+	scaler, started, stop := newFakeSplunkO11yScalerWithBackend(t, 3600)
 	defer stop()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -336,29 +336,39 @@ func TestSplunkObservabilityCloseIsIdempotent(t *testing.T) {
 }
 
 func TestSplunkObservabilityReconnectsAfterWebsocketDrop(t *testing.T) {
-	scaler, fake, _, stop := newFakeSplunkO11yScalerWithBackend(t, 1)
-	defer stop()
+	baseline := countSplunkO11yBufferGoroutines()
+	scaler, backend := newSplunkO11yLifecycleScaler(t, 3600, splunkO11yLifecycleConfig{})
+	client := scaler.apiClient
+	select {
+	case <-backend.connected:
+	case <-time.After(5 * time.Second):
+		t.Fatal("SignalFlow client did not authenticate")
+	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if _, err := scaler.getQueryResult(ctx); err != nil {
-		t.Fatalf("healthy poll: %v", err)
+	if value, err := scaler.getQueryResult(ctx); err != nil || value != 42 {
+		t.Fatalf("healthy poll: got value %v, error %v", value, err)
 	}
 
-	fake.KillExistingConnections()
+	backend.closeExistingConnections()
 
-	deadline := time.Now().Add(20 * time.Second)
-	var lastErr error
-	for time.Now().Before(deadline) {
-		pctx, pcancel := context.WithTimeout(context.Background(), 20*time.Second)
-		_, lastErr = scaler.getQueryResult(pctx)
-		pcancel()
-		if lastErr == nil {
-			return
-		}
-		time.Sleep(500 * time.Millisecond)
+	reconnectCtx, reconnectCancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer reconnectCancel()
+	// Observe automatic reauthentication before querying again; repeated Execute
+	// requests must not be responsible for reconnecting the client.
+	select {
+	case <-backend.connected:
+	case <-reconnectCtx.Done():
+		t.Fatal("SignalFlow client did not reconnect within 20s")
 	}
-	t.Fatalf("library did not recover on the same client within 20s: %v", lastErr)
+	if value, err := scaler.getQueryResult(reconnectCtx); err != nil || value != 42 {
+		t.Fatalf("poll after reconnect: got value %v, error %v", value, err)
+	}
+	if scaler.apiClient != client {
+		t.Fatal("reconnection replaced the SignalFlow client")
+	}
+	assertSplunkO11yBuffersReaped(t, baseline)
 }
 
 func TestSplunkObservabilityRollup(t *testing.T) {
