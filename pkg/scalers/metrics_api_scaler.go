@@ -406,7 +406,7 @@ func (s *metricsAPIScaler) getMetricValue(ctx context.Context) (float64, error) 
 		}
 		if len(endpointsUrls) == 0 {
 			if s.metadata.ZeroOnNoReadyEndpoints {
-				s.logger.V(1).Info("no endpoints URLs were given for the service name but returning metric value 0 because of zeroOnNoReadyEndpoints")
+				s.logger.V(1).Info("no ready endpoints found; returning 0 because zeroOnNoReadyEndpoints is enabled")
 				return 0, nil
 			}
 			return 0, fmt.Errorf("no endpoints URLs were given for the service name")
