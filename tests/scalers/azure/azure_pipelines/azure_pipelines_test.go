@@ -176,7 +176,8 @@ func TestScaler(t *testing.T) {
 	data, templates := getTemplateData()
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	WaitForPodCountInNamespace(t, kc, testNamespace, minReplicaCount, 60, 2)
+	assert.True(t, WaitForPodCountInNamespace(t, kc, testNamespace, minReplicaCount, 60, 2),
+		"pod count should be %d before scaling is exercised", minReplicaCount)
 
 	// test scaling poolId
 	testActivation(t, kc, connection)

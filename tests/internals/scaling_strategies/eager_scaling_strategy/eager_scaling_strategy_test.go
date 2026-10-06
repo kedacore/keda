@@ -102,7 +102,8 @@ func TestScalingStrategy(t *testing.T) {
 	RMQInstall(t, kc, rmqNamespace, user, password, vhost, WithoutOAuth())
 	// Publish 0 messges but create the queue
 	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, 0, 0)
-	WaitForAllJobsSuccess(t, kc, rmqNamespace, 60, 1)
+	assert.True(t, WaitForAllJobsSuccess(t, kc, rmqNamespace, 60, 1),
+		"the RabbitMQ publisher job should succeed, otherwise the queue this test scales on is not what it expects")
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 	testEagerScaling(t, kc)
@@ -124,17 +125,20 @@ func getTemplateData() (templateData, []Template) {
 func testEagerScaling(t *testing.T, kc *kubernetes.Clientset) {
 	iterationCount := 20
 	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, 4, 0)
-	WaitForAllJobsSuccess(t, kc, rmqNamespace, 60, 1)
+	assert.True(t, WaitForAllJobsSuccess(t, kc, rmqNamespace, 60, 1),
+		"the RabbitMQ publisher job should succeed, otherwise the queue this test scales on is not what it expects")
 	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 4, iterationCount, 1),
 		"job count should be %d after %d iterations", 4, iterationCount)
 
 	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, 4, 0)
-	WaitForAllJobsSuccess(t, kc, rmqNamespace, 60, 1)
+	assert.True(t, WaitForAllJobsSuccess(t, kc, rmqNamespace, 60, 1),
+		"the RabbitMQ publisher job should succeed, otherwise the queue this test scales on is not what it expects")
 	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 8, iterationCount, 1),
 		"job count should be %d after %d iterations", 8, iterationCount)
 
 	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, 8, 0)
-	WaitForAllJobsSuccess(t, kc, rmqNamespace, 60, 1)
+	assert.True(t, WaitForAllJobsSuccess(t, kc, rmqNamespace, 60, 1),
+		"the RabbitMQ publisher job should succeed, otherwise the queue this test scales on is not what it expects")
 	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 10, iterationCount, 1),
 		"job count should be %d after %d iterations", 10, iterationCount)
 }

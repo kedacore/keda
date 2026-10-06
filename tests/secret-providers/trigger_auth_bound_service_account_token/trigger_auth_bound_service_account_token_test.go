@@ -172,6 +172,11 @@ spec:
       - name: k8s-protected-metrics-api
         image: ghcr.io/kedacore/tests-bound-service-account-token:latest
         imagePullPolicy: Always
+        # Requires the test-tools image with audience-aware TokenReview support.
+        # Keep in sync with the operator's mapping in config/e2e/vault.
+        env:
+        - name: TOKEN_AUDIENCE
+          value: keda-metrics-e2e
         securityContext:
           allowPrivilegeEscalation: false
           runAsNonRoot: true

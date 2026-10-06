@@ -42,6 +42,7 @@ type seleniumGridScalerMetadata struct {
 	NodeMaxSessions        int64  `keda:"name=nodeMaxSessions,          order=triggerMetadata, default=1"`
 	EnableManagedDownloads bool   `keda:"name=enableManagedDownloads,   order=triggerMetadata, default=true"`
 	Capabilities           string `keda:"name=capabilities,             order=triggerMetadata, optional"`
+	IncludeOngoingSessions bool   `keda:"name=includeOngoingSessions,   order=triggerMetadata, default=true"`
 
 	TargetValue int64
 }
@@ -204,9 +205,33 @@ func (s *seleniumGridScaler) GetMetricsAndActivity(ctx context.Context, metricNa
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error requesting selenium grid endpoint: %w", err)
 	}
 
-	metric := GenerateMetricInMili(metricName, float64(newRequestNodes+onGoingSessions))
+	// The metric returned to KEDA represents the number of Nodes (Job pods) the Grid needs.
+	// On-going sessions are work the Grid is already serving, so whether they belong in the
+	// metric depends on whether the consumer subtracts already-running work for us:
+	//
+	//   * ScaledObjects (HPA), and ScaledJobs using the "default" or "custom" strategy, deduct
+	//     the running Job count from the desired scale ("custom" deducts
+	//     customScalingRunningJobPercentage of it). On-going sessions are served by running
+	//     Jobs, so they cancel out in that deduction: the metric must report queued requests
+	//     PLUS on-going sessions for the arithmetic to resolve to the number of *new* Nodes to
+	//     create. This is the default.
+	//
+	//   * ScaledJobs using "accurate" deduct the pending Job count, and "eager" deducts the
+	//     running and pending Job counts (bounded by maxScale). These strategies do not re-add
+	//     running work, so counting on-going sessions here double-counts work already in
+	//     progress and causes runaway Job creation that never scales back down (see
+	//     SeleniumHQ/docker-selenium#3167). Set includeOngoingSessions=false for these, so the
+	//     metric reports only the new Nodes required to drain the session queue.
+	//
+	// See pkg/scaling/executor/scale_jobs.go for how the executor computes effective max scale.
+	count := newRequestNodes
+	if s.metadata.IncludeOngoingSessions {
+		count += onGoingSessions
+	}
 
-	return []external_metrics.ExternalMetricValue{metric}, (newRequestNodes + onGoingSessions) > s.metadata.ActivationThreshold, nil
+	metric := GenerateMetricInMili(metricName, float64(count))
+
+	return []external_metrics.ExternalMetricValue{metric}, count > s.metadata.ActivationThreshold, nil
 }
 
 func buildSeleniumGridMetricName(meta *seleniumGridScalerMetadata) string {

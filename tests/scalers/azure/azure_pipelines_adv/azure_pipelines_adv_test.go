@@ -299,7 +299,8 @@ func TestScaler(t *testing.T) {
 	err := preSeedAgentPool(t, data)
 	require.NoError(t, err)
 
-	WaitForPodCountInNamespace(t, kc, testNamespace, minReplicaCount, 60, 2)
+	assert.True(t, WaitForPodCountInNamespace(t, kc, testNamespace, minReplicaCount, 60, 2),
+		"pod count should be %d before scaling is exercised", minReplicaCount)
 	// new demand tests (assumes pre-seeded template)
 
 	KubectlApplyWithTemplate(t, data, "demandScaledJobTemplate", demandScaledJobTemplate)

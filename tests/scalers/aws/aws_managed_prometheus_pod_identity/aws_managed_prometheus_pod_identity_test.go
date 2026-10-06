@@ -123,9 +123,15 @@ func TestScaler(t *testing.T) {
 	t.Log("--- setting up ---")
 
 	ampClient := createAMPClient()
-	workspaceOutput, err := ampClient.CreateWorkspace(context.Background(), nil)
-	assert.NoError(t, err, "aws prometheus workspace creation has failed")
+	workspaceAlias := "keda-e2e-amp-" + testName
+	workspaceOutput, err := ampClient.CreateWorkspace(context.Background(), &amp.CreateWorkspaceInput{Alias: &workspaceAlias})
+	require.NoError(t, err, "aws prometheus workspace creation has failed")
+	require.NotNil(t, workspaceOutput.WorkspaceId, "aws prometheus workspace creation returned no workspace ID")
 	workspaceID = *workspaceOutput.WorkspaceId
+	t.Cleanup(func() {
+		_, err := ampClient.DeleteWorkspace(context.Background(), &amp.DeleteWorkspaceInput{WorkspaceId: &workspaceID})
+		assert.NoError(t, err, "aws prometheus workspace deletion has failed")
+	})
 
 	kc := GetKubernetesClient(t)
 
@@ -134,16 +140,10 @@ func TestScaler(t *testing.T) {
 
 	t.Log("--- assert ---")
 	expectedReplicaCountNumber := 2 // as mentioned above, as the AMP returns 100 and the threshold set to 50, the expected replica count is 100 / 50 = 2
-	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, expectedReplicaCountNumber, 60, 1),
 		"replica count should be %d after 1 minute", expectedReplicaCountNumber)
 
 	t.Log("--- cleaning up ---")
-	deleteWSInput := amp.DeleteWorkspaceInput{
-		WorkspaceId: &workspaceID,
-	}
-	input := &deleteWSInput
-	_, err = ampClient.DeleteWorkspace(context.Background(), input)
-	assert.NoError(t, err, "aws prometheus workspace deletion has failed")
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 

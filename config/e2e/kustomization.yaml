@@ -21,3 +21,9 @@ patches:
     kind: Deployment
     name: keda-operator
     version: v1
+- path: vault/patch_operator.yml
+  target:
+    group: apps
+    kind: Deployment
+    name: keda-operator
+    version: v1

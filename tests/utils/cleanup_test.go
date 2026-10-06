@@ -72,7 +72,7 @@ func TestRemoveArgoRollouts(t *testing.T) {
 		t.Skip("skipping -- Argo Rollouts was not installed for this run")
 	}
 
-	_, err := ExecuteCommand(fmt.Sprintf("kubectl delete -n %s -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml", ArgoRolloutsNamespace))
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl delete -n %s -f https://github.com/argoproj/argo-rollouts/releases/download/%s/install.yaml", ArgoRolloutsNamespace, ArgoRolloutsVersion))
 	require.NoErrorf(t, err, "cannot uninstall argo rollouts - %s", err)
 	DeleteNamespace(t, ArgoRolloutsNamespace)
 }
