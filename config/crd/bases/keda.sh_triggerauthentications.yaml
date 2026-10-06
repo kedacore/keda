@@ -569,7 +569,26 @@ spec:
                       serviceAccountName:
                         type: string
                       token:
+                        description: 'Deprecated: Use tokenFrom instead to read the
+                          token from a secret.'
                         type: string
+                      tokenFrom:
+                        description: TokenFrom reads the Vault token from a secret.
+                          It takes precedence over token.
+                        properties:
+                          secretKeyRef:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                        required:
+                        - secretKeyRef
+                        type: object
                     type: object
                   mount:
                     type: string

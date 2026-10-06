@@ -385,8 +385,14 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 				}
 			}
 			if triggerAuthSpec.HashiCorpVault != nil && len(triggerAuthSpec.HashiCorpVault.Secrets) > 0 {
-				vault := NewHashicorpVaultHandler(triggerAuthSpec.HashiCorpVault, authClientSet, namespace)
-				err := vault.Initialize(logger)
+				vaultToken, err := resolveHashicorpVaultToken(ctx, client, logger, triggerAuthSpec.HashiCorpVault, triggerNamespace, authClientSet.SecretLister)
+				if err != nil {
+					logger.Error(err, "error reading the Vault token", "triggerAuthRef.Name", triggerAuthRef.Name)
+					return result, podIdentity, err
+				}
+
+				vault := NewHashicorpVaultHandler(triggerAuthSpec.HashiCorpVault, authClientSet, namespace, vaultToken)
+				err = vault.Initialize(logger)
 				defer vault.Stop()
 				if err != nil {
 					logger.Error(err, "error authenticating to Vault", "triggerAuthRef.Name", triggerAuthRef.Name)
@@ -532,6 +538,25 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 	}
 
 	return result, podIdentity, err
+}
+
+// resolveHashicorpVaultToken reads the Vault token from the secret referenced
+// by credential.tokenFrom. It returns an empty token when tokenFrom is not
+// used, and hands the token back to the caller instead of storing it in the
+// TriggerAuthentication spec, which may be shared through the client cache.
+func resolveHashicorpVaultToken(ctx context.Context, client client.Client, logger logr.Logger,
+	vault *kedav1alpha1.HashiCorpVault, triggerNamespace string, secretsLister corev1listers.SecretLister,
+) (string, error) {
+	if vault.Authentication != kedav1alpha1.VaultAuthenticationToken || vault.Credential == nil || vault.Credential.TokenFrom == nil {
+		return "", nil
+	}
+
+	secretKeyRef := vault.Credential.TokenFrom.SecretKeyRef
+	token := resolveAuthSecret(ctx, client, logger, secretKeyRef.Name, triggerNamespace, secretKeyRef.Key, secretsLister)
+	if token == "" {
+		return "", fmt.Errorf("could not read the Vault token from key %q of secret %q", secretKeyRef.Key, secretKeyRef.Name)
+	}
+	return token, nil
 }
 
 func getTriggerAuthSpec(ctx context.Context, client client.Client, triggerAuthRef *kedav1alpha1.AuthenticationRef, namespace string) (*kedav1alpha1.TriggerAuthenticationSpec, string, error) {

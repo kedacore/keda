@@ -39,6 +39,7 @@ var (
 	monitoredAppName           = fmt.Sprintf("%s-monitored-app", testName)
 	triggerAuthenticationName  = fmt.Sprintf("%s-ta", testName)
 	secretName                 = fmt.Sprintf("%s-secret", testName)
+	vaultTokenSecretName       = fmt.Sprintf("%s-vault-token", testName)
 	postgreSQLStatefulSetName  = "postgresql"
 	postgresqlPodName          = fmt.Sprintf("%s-0", postgreSQLStatefulSetName)
 	postgreSQLUsername         = "test-user"
@@ -64,6 +65,7 @@ type templateData struct {
 	SecretName                             string
 	HashiCorpAuthentication                string
 	HashiCorpToken                         string
+	VaultTokenSecretName                   string
 	PostgreSQLStatefulSetName              string
 	PostgreSQLConnectionStringBase64       string
 	PostgreSQLUsername                     string
@@ -128,6 +130,17 @@ data:
   postgresql_conn_str: {{.PostgreSQLConnectionStringBase64}}
 `
 
+	vaultTokenSecretTemplate = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.VaultTokenSecretName}}
+  namespace: {{.TestNamespace}}
+type: Opaque
+stringData:
+  token: "{{.HashiCorpToken}}"
+`
+
 	triggerAuthenticationTemplate = `
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
@@ -145,7 +158,10 @@ spec:
       serviceAccountName: {{.VaultServiceAccountName}}
     {{- else if eq .HashiCorpAuthentication "token"}}
     credential:
-      token: {{.HashiCorpToken}}
+      tokenFrom:
+        secretKeyRef:
+          name: {{.VaultTokenSecretName}}
+          key: token
     {{- end}}
     secrets:
     - parameter: connection
@@ -741,6 +757,7 @@ var data = templateData{
 	MaxReplicaCount:                        maxReplicaCount,
 	TriggerAuthenticationName:              triggerAuthenticationName,
 	SecretName:                             secretName,
+	VaultTokenSecretName:                   vaultTokenSecretName,
 	PostgreSQLUsername:                     postgreSQLUsername,
 	PostgreSQLPassword:                     postgreSQLPassword,
 	PostgreSQLDatabase:                     postgreSQLDatabase,
@@ -775,6 +792,7 @@ func getPrometheusTemplateData() (templateData, []Template) {
 func getTemplateData() (templateData, []Template) {
 	return data, []Template{
 		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "vaultTokenSecretTemplate", Config: vaultTokenSecretTemplate},
 		{Name: "deploymentTemplate", Config: deploymentTemplate},
 		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
 		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
