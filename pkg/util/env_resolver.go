@@ -17,6 +17,7 @@ limitations under the License.
 package util
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -27,6 +28,7 @@ import (
 
 const RestrictSecretAccessEnvVar = "KEDA_RESTRICT_SECRET_ACCESS"
 const BoundServiceAccountTokenExpiryEnvVar = "KEDA_BOUND_SERVICE_ACCOUNT_TOKEN_EXPIRY"
+const ScaleLoopJitterMaxEnvVar = "KEDA_SCALE_LOOP_JITTER_MAX"
 
 var clusterObjectNamespaceCache *string
 
@@ -108,4 +110,30 @@ func GetBoundServiceAccountTokenExpiry() (*time.Duration, error) {
 		return nil, fmt.Errorf("invalid value for %s: %s, must be between 1h and 6h", BoundServiceAccountTokenExpiryEnvVar, expiry.String()) // Must be between 1 hour and 6 hours
 	}
 	return expiry, nil
+}
+
+// ResolveScaleLoopJitterMax resolves the maximum jitter duration for the scale loop.
+// If the command-line flag was explicitly specified, the flag value takes precedence.
+// Otherwise, the value is resolved from the KEDA_SCALE_LOOP_JITTER_MAX environment variable.
+// Returns an error if the resolved duration is negative or cannot be parsed.
+func ResolveScaleLoopJitterMax(flagValue time.Duration, flagExplicitlySet bool) (time.Duration, error) {
+	if flagExplicitlySet {
+		if flagValue < 0 {
+			return 0, errors.New("must not be negative")
+		}
+		return flagValue, nil
+	}
+
+	envDuration, err := ResolveOsEnvDuration(ScaleLoopJitterMaxEnvVar)
+	if err != nil {
+		return 0, err
+	}
+	if envDuration == nil {
+		return flagValue, nil
+	}
+	if *envDuration < 0 {
+		return 0, errors.New("must not be negative")
+	}
+
+	return *envDuration, nil
 }

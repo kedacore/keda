@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"maps"
@@ -101,6 +102,7 @@ func main() {
 	var httpIdleConnTimeout time.Duration
 	var serviceAccountTokenMode string
 	var vaultKubernetesAuthTokenFile string
+	var scaleLoopJitterMax time.Duration
 	pflag.BoolVar(&enablePrometheusMetrics, "enable-prometheus-metrics", true, "Enable the prometheus metric of keda-operator.")
 	pflag.BoolVar(&enableOpenTelemetryMetrics, "enable-opentelemetry-metrics", false, "Enable the opentelemetry metric of keda-operator.")
 	pflag.BoolVar(&enableHighCardinalityLabels, "enable-high-cardinality-metrics-labels", false, "Enable high-cardinality labels for scaler HTTP request duration and external scaler gRPC client metrics.")
@@ -133,22 +135,11 @@ func main() {
 	pflag.DurationVar(&httpIdleConnTimeout, "http-idle-conn-timeout", 90*time.Second, "Maximum time an idle HTTP connection remains in the pool. Must be greater than zero.")
 	pflag.StringVar(&serviceAccountTokenMode, "service-account-token-mode", "enforce-audience", "Service account token mode for Vault file tokens and all boundServiceAccountToken minting: enforce-audience (default) or legacy (explicit insecure bypass). Legacy may expose Kubernetes API credentials and logs warnings at startup and on use.")
 	pflag.StringVar(&vaultKubernetesAuthTokenFile, "vault-kubernetes-auth-token-file", resolver.DefaultVaultKubernetesAuthTokenFile, "Dedicated projected token for the operator's Vault Kubernetes login. The kubelet mints and rotates this token; KEDA needs no TokenRequest permission for this path.")
+	pflag.DurationVar(&scaleLoopJitterMax, "scale-loop-jitter-max", 0, "Maximum jitter duration for the first tick of scale loops (disabled by default).")
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 
-	// Register klog flags on flag.CommandLine so they can be set programmatically.
-	klog.InitFlags(nil)
-
-	// Opt into the new klog behavior so that -stderrthreshold is honored even
-	// when -logtostderr=true (the default). Without this, all log levels are
-	// unconditionally sent to stderr and users cannot filter by severity.
-	// Requires klog v2.140.0+ (kubernetes/klog#432).
-	if err := flag.CommandLine.Set("legacy_stderr_threshold_behavior", "false"); err != nil {
-		klog.Fatalf("Failed to set legacy_stderr_threshold_behavior: %v", err)
-	}
-	if err := flag.CommandLine.Set("stderrthreshold", "INFO"); err != nil {
-		klog.Fatalf("Failed to set stderrthreshold: %v", err)
-	}
+	initKlogOrDie()
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
@@ -166,23 +157,7 @@ func main() {
 
 	byObject := buildWatchLabelSelectorByObjectOrDie()
 
-	leaseDuration, err := kedautil.ResolveOsEnvDuration("KEDA_OPERATOR_LEADER_ELECTION_LEASE_DURATION")
-	if err != nil {
-		setupLog.Error(err, "invalid KEDA_OPERATOR_LEADER_ELECTION_LEASE_DURATION")
-		os.Exit(1)
-	}
-
-	renewDeadline, err := kedautil.ResolveOsEnvDuration("KEDA_OPERATOR_LEADER_ELECTION_RENEW_DEADLINE")
-	if err != nil {
-		setupLog.Error(err, "invalid KEDA_OPERATOR_LEADER_ELECTION_RENEW_DEADLINE")
-		os.Exit(1)
-	}
-
-	retryPeriod, err := kedautil.ResolveOsEnvDuration("KEDA_OPERATOR_LEADER_ELECTION_RETRY_PERIOD")
-	if err != nil {
-		setupLog.Error(err, "invalid KEDA_OPERATOR_LEADER_ELECTION_RETRY_PERIOD")
-		os.Exit(1)
-	}
+	leaseDuration, renewDeadline, retryPeriod := resolveLeaderElectionDurationsOrDie()
 
 	cfg := ctrl.GetConfigOrDie()
 	resolverConfig := &resolver.Config{
@@ -263,6 +238,12 @@ func main() {
 		setupLog.Error(err, "invalid KEDA_KUBERNETES_API_TIMEOUT")
 		os.Exit(1)
 	}
+
+	scaleLoopJitterMax, err = kedautil.ResolveScaleLoopJitterMax(scaleLoopJitterMax, pflag.CommandLine.Changed("scale-loop-jitter-max"))
+	if err != nil {
+		setupLog.Error(err, "invalid scale-loop-jitter-max")
+		os.Exit(1)
+	}
 	eventRecorder := mgr.GetEventRecorder("keda-operator")
 
 	kubeClientset, err := kubernetes.NewForConfig(cfg)
@@ -291,7 +272,7 @@ func main() {
 		SecretLister:    secretInformer.Lister(),
 	}
 
-	scaledHandler := scaling.NewScaleHandler(mgr.GetClient(), scaleClient, mgr.GetScheme(), globalHTTPTimeout, kubernetesAPITimeout, eventRecorder, authClientSet)
+	scaledHandler := scaling.NewScaleHandler(mgr.GetClient(), scaleClient, mgr.GetScheme(), globalHTTPTimeout, kubernetesAPITimeout, scaleLoopJitterMax, eventRecorder, authClientSet)
 	eventEmitter := eventemitter.NewEventEmitter(mgr.GetClient(), eventRecorder, k8sClusterName, authClientSet)
 
 	if err = (&kedacontrollers.ScaledObjectReconciler{
@@ -311,6 +292,7 @@ func main() {
 		Scheme:               mgr.GetScheme(),
 		GlobalHTTPTimeout:    globalHTTPTimeout,
 		KubernetesAPITimeout: kubernetesAPITimeout,
+		ScaleLoopJitterMax:   scaleLoopJitterMax,
 		EventEmitter:         eventEmitter,
 		AuthClientSet:        authClientSet,
 	}).SetupWithManager(mgr, controller.Options{
@@ -349,40 +331,23 @@ func main() {
 	}
 	//+kubebuilder:scaffold:builder
 
-	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up health check")
-		os.Exit(1)
-	}
-	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up ready check")
-		os.Exit(1)
-	}
+	setupHealthChecksOrDie(mgr)
 
-	certReady := make(chan struct{})
-	if enableCertRotation {
-		certManager := certificates.CertManager{
-			SecretName:               certSecretName,
-			CertDir:                  certDir,
-			OperatorService:          operatorServiceName,
-			MetricsServerService:     metricsServerServiceName,
-			WebhookService:           webhooksServiceName,
-			K8sClusterDomain:         k8sClusterDomain,
-			CAName:                   "KEDA",
-			CAOrganization:           "KEDAORG",
-			ValidatingWebhookName:    validatingWebhookName,
-			APIServiceName:           "v1beta1.external.metrics.k8s.io",
-			Logger:                   setupLog,
-			Ready:                    certReady,
-			EnableWebhookPatching:    enableWebhookPatching,
-			EnableAPIServicePatching: enableAPIServicePatching,
-		}
-		if err := certManager.AddCertificateRotation(ctx, mgr); err != nil {
-			setupLog.Error(err, "unable to set up cert rotation")
-			os.Exit(1)
-		}
-	} else {
-		close(certReady)
-	}
+	certReady := setupCertRotationOrDie(ctx, mgr, enableCertRotation, certificates.CertManager{
+		SecretName:               certSecretName,
+		CertDir:                  certDir,
+		OperatorService:          operatorServiceName,
+		MetricsServerService:     metricsServerServiceName,
+		WebhookService:           webhooksServiceName,
+		K8sClusterDomain:         k8sClusterDomain,
+		CAName:                   "KEDA",
+		CAOrganization:           "KEDAORG",
+		ValidatingWebhookName:    validatingWebhookName,
+		APIServiceName:           "v1beta1.external.metrics.k8s.io",
+		Logger:                   setupLog,
+		EnableWebhookPatching:    enableWebhookPatching,
+		EnableAPIServicePatching: enableAPIServicePatching,
+	})
 
 	kedautil.SetCACertDirs(caDirs)
 
@@ -485,4 +450,68 @@ func configureAuthenticationPolicyOrDie(config *resolver.Config) {
 	} else if config.OutboundEndpointPolicy == "off" {
 		setupLog.Info("Outbound filter mode off allows tenant-selected Vault addresses without destination restrictions; allowedEndpoints is ignored. Configure KEDA_OUTBOUND_FILTER.hashiCorpVault with mode enforce and trusted allowedEndpoints to restrict destinations")
 	}
+}
+
+func initKlogOrDie() {
+	// Register klog flags on flag.CommandLine so they can be set programmatically.
+	klog.InitFlags(nil)
+
+	// Opt into the new klog behavior so that -stderrthreshold is honored even
+	// when -logtostderr=true (the default). Without this, all log levels are
+	// unconditionally sent to stderr and users cannot filter by severity.
+	// Requires klog v2.140.0+ (kubernetes/klog#432).
+	if err := flag.CommandLine.Set("legacy_stderr_threshold_behavior", "false"); err != nil {
+		klog.Fatalf("Failed to set legacy_stderr_threshold_behavior: %v", err)
+	}
+	if err := flag.CommandLine.Set("stderrthreshold", "INFO"); err != nil {
+		klog.Fatalf("Failed to set stderrthreshold: %v", err)
+	}
+}
+
+func resolveLeaderElectionDurationsOrDie() (*time.Duration, *time.Duration, *time.Duration) {
+	leaseDuration, err := kedautil.ResolveOsEnvDuration("KEDA_OPERATOR_LEADER_ELECTION_LEASE_DURATION")
+	if err != nil {
+		setupLog.Error(err, "invalid KEDA_OPERATOR_LEADER_ELECTION_LEASE_DURATION")
+		os.Exit(1)
+	}
+
+	renewDeadline, err := kedautil.ResolveOsEnvDuration("KEDA_OPERATOR_LEADER_ELECTION_RENEW_DEADLINE")
+	if err != nil {
+		setupLog.Error(err, "invalid KEDA_OPERATOR_LEADER_ELECTION_RENEW_DEADLINE")
+		os.Exit(1)
+	}
+
+	retryPeriod, err := kedautil.ResolveOsEnvDuration("KEDA_OPERATOR_LEADER_ELECTION_RETRY_PERIOD")
+	if err != nil {
+		setupLog.Error(err, "invalid KEDA_OPERATOR_LEADER_ELECTION_RETRY_PERIOD")
+		os.Exit(1)
+	}
+
+	return leaseDuration, renewDeadline, retryPeriod
+}
+
+func setupHealthChecksOrDie(mgr ctrl.Manager) {
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up health check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up ready check")
+		os.Exit(1)
+	}
+}
+
+func setupCertRotationOrDie(ctx context.Context, mgr ctrl.Manager, enableCertRotation bool, certManager certificates.CertManager) chan struct{} {
+	certReady := make(chan struct{})
+	if enableCertRotation {
+		certManager.Ready = certReady
+		if err := certManager.AddCertificateRotation(ctx, mgr); err != nil {
+			setupLog.Error(err, "unable to set up cert rotation")
+			os.Exit(1)
+		}
+	} else {
+		close(certReady)
+	}
+
+	return certReady
 }

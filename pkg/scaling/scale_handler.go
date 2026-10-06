@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"maps"
 	"reflect"
 	"slices"
@@ -91,6 +92,7 @@ type scaleHandler struct {
 	scaleExecutor            executor.ScaleExecutor
 	globalHTTPTimeout        time.Duration
 	kubernetesAPITimeout     time.Duration
+	scaleLoopJitterMax       time.Duration
 	recorder                 events.EventRecorder
 	scalerCaches             map[string]*cache.ScalersCache
 	scalerCachesLock         *sync.RWMutex
@@ -106,7 +108,7 @@ type scaleHandler struct {
 }
 
 // NewScaleHandler creates a ScaleHandler object
-func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout, kubernetesAPITimeout time.Duration, recorder events.EventRecorder, authClientSet *authentication.AuthClientSet) ScaleHandler {
+func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout, kubernetesAPITimeout, scaleLoopJitterMax time.Duration, recorder events.EventRecorder, authClientSet *authentication.AuthClientSet) ScaleHandler {
 	return &scaleHandler{
 		client:                   client,
 		scaleClient:              scaleClient,
@@ -114,6 +116,7 @@ func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, recon
 		scaleExecutor:            executor.NewScaleExecutor(client, scaleClient, reconcilerScheme, kubernetesAPITimeout, recorder),
 		globalHTTPTimeout:        globalHTTPTimeout,
 		kubernetesAPITimeout:     kubernetesAPITimeout,
+		scaleLoopJitterMax:       scaleLoopJitterMax,
 		recorder:                 recorder,
 		scalerCaches:             map[string]*cache.ScalersCache{},
 		scalerCachesLock:         &sync.RWMutex{},
@@ -278,12 +281,50 @@ func (h *scaleHandler) DeleteScalableObject(ctx context.Context, scalableObject 
 	return nil
 }
 
+// calculateScaleLoopJitter calculates a deterministic initial delay for the first tick
+// of the scale loop using FNV-64a hash of the object's UID capped by min(pollingInterval, jitterMax).
+func calculateScaleLoopJitter(uid types.UID, pollingInterval, jitterMax time.Duration) time.Duration {
+	if jitterMax <= 0 || pollingInterval <= 0 {
+		return 0
+	}
+
+	window := min(pollingInterval, jitterMax)
+	if window <= 0 {
+		return 0
+	}
+
+	hasher := fnv.New64a()
+	_, _ = hasher.Write([]byte(uid))
+	hash := hasher.Sum64()
+
+	return time.Duration(hash % uint64(window))
+}
+
 // startScaleLoop blocks forever and checks the scalableObject based on its pollingInterval
 func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject kedav1alpha1.ScalableObject, scalingMutex sync.Locker) {
 	logger := log.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
 
 	pollingInterval := withTriggers.GetPollingInterval()
 	logger.V(1).Info("Watching with pollingInterval", "PollingInterval", pollingInterval)
+
+	jitter := calculateScaleLoopJitter(scalableObject.GetUID(), pollingInterval, h.scaleLoopJitterMax)
+	if jitter > 0 {
+		logger.V(1).Info("Applying first-tick jitter delay", "jitter", jitter)
+		jitterTimer := time.NewTimer(jitter)
+		select {
+		case <-jitterTimer.C:
+			jitterTimer.Stop()
+		case <-ctx.Done():
+			logger.V(1).Info("Context canceled")
+			jitterTimer.Stop()
+			h.scaledObjectsMetricCache.Delete(withTriggers.GenerateIdentifier())
+			err := h.ClearScalersCache(ctx, scalableObject)
+			if err != nil {
+				logger.Error(err, "error clearing scalers cache")
+			}
+			return
+		}
+	}
 
 	_, isScaledObject := scalableObject.(*kedav1alpha1.ScaledObject)
 	next := time.Now()

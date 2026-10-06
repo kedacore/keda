@@ -2638,3 +2638,253 @@ func TestGetScaledObjectMetrics_StoresRecordsForTheScaleLoop(t *testing.T) {
 		})
 	}
 }
+
+func TestCalculateScaleLoopJitter_Disabled(t *testing.T) {
+	// jitterMax = 0
+	jitter := calculateScaleLoopJitter("test-uid", 30*time.Second, 0)
+	assert.Equal(t, time.Duration(0), jitter)
+
+	// Negative jitterMax
+	jitter = calculateScaleLoopJitter("test-uid", 30*time.Second, -10*time.Second)
+	assert.Equal(t, time.Duration(0), jitter)
+
+	// Zero or negative pollingInterval
+	jitter = calculateScaleLoopJitter("test-uid", 0, 10*time.Second)
+	assert.Equal(t, time.Duration(0), jitter)
+
+	jitter = calculateScaleLoopJitter("test-uid", -5*time.Second, 10*time.Second)
+	assert.Equal(t, time.Duration(0), jitter)
+}
+
+func TestCalculateScaleLoopJitter_BoundedByJitterMax(t *testing.T) {
+	pollingInterval := 30 * time.Second
+	jitterMax := 10 * time.Second
+
+	for i := 0; i < 100; i++ {
+		uid := types.UID(fmt.Sprintf("scaledobject-uid-%d", i))
+		jitter := calculateScaleLoopJitter(uid, pollingInterval, jitterMax)
+		assert.GreaterOrEqual(t, jitter, time.Duration(0))
+		assert.Less(t, jitter, jitterMax)
+	}
+}
+
+func TestCalculateScaleLoopJitter_BoundedByPollingInterval(t *testing.T) {
+	pollingInterval := 10 * time.Second
+	jitterMax := 60 * time.Second
+
+	for i := 0; i < 100; i++ {
+		uid := types.UID(fmt.Sprintf("scaledobject-uid-%d", i))
+		jitter := calculateScaleLoopJitter(uid, pollingInterval, jitterMax)
+		assert.GreaterOrEqual(t, jitter, time.Duration(0))
+		assert.Less(t, jitter, pollingInterval)
+	}
+}
+
+func TestCalculateScaleLoopJitter_Deterministic(t *testing.T) {
+	uid := types.UID("static-scaledobject-uid-12345")
+	pollingInterval := 30 * time.Second
+	jitterMax := 10 * time.Second
+
+	first := calculateScaleLoopJitter(uid, pollingInterval, jitterMax)
+	for i := 0; i < 10; i++ {
+		repeat := calculateScaleLoopJitter(uid, pollingInterval, jitterMax)
+		assert.Equal(t, first, repeat)
+	}
+}
+
+func TestCalculateScaleLoopJitter_DifferentUIDs(t *testing.T) {
+	pollingInterval := 30 * time.Second
+	jitterMax := 10 * time.Second
+
+	uniqueJitters := make(map[time.Duration]struct{})
+	for i := 0; i < 50; i++ {
+		uid := types.UID(fmt.Sprintf("test-uid-%d", i))
+		jitter := calculateScaleLoopJitter(uid, pollingInterval, jitterMax)
+		uniqueJitters[jitter] = struct{}{}
+	}
+
+	assert.Greater(t, len(uniqueJitters), 1, "different UIDs should generally produce different offsets across the jitter window")
+}
+
+func TestCalculateScaleLoopJitter_EdgeCases(t *testing.T) {
+	// 1ns duration window
+	jitter := calculateScaleLoopJitter("test-uid", 1*time.Nanosecond, 1*time.Nanosecond)
+	assert.Equal(t, time.Duration(0), jitter)
+
+	// Empty UID
+	jitter = calculateScaleLoopJitter("", 30*time.Second, 10*time.Second)
+	assert.GreaterOrEqual(t, jitter, time.Duration(0))
+	assert.Less(t, jitter, 10*time.Second)
+}
+
+func TestStartScaleLoop_ContextCancellationDuringJitter(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	recorder := events.NewFakeRecorder(10)
+	mockClient := mock_client.NewMockClient(ctrl)
+	metricCache := metricscache.NewMetricsCache()
+
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cancel-jitter-so",
+			Namespace: testNamespaceGlobal,
+			UID:       types.UID("cancellation-during-jitter-uid"),
+		},
+	}
+	withTriggers, err := kedav1alpha1.AsDuckWithTriggers(&scaledObject)
+	assert.NoError(t, err)
+	key := withTriggers.GenerateIdentifier()
+
+	sh := scaleHandler{
+		client:                   mockClient,
+		scaleLoopContexts:        &sync.Map{},
+		recorder:                 recorder,
+		scaleLoopJitterMax:       1 * time.Hour,
+		scalerCaches:             map[string]*cache.ScalersCache{},
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricCache,
+	}
+
+	metricCache.StoreRecords(key, map[string]metricscache.MetricsRecord{
+		"test-metric": {IsMetricActive: true},
+	})
+
+	// checkScalers should never be called because context is canceled during jitter delay
+	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan struct{})
+	go func() {
+		sh.startScaleLoop(ctx, withTriggers, &scaledObject, &sync.Mutex{})
+		close(done)
+	}()
+
+	// Cancel context during jitter
+	cancel()
+
+	select {
+	case <-done:
+		// Succeeded in exiting cleanly
+	case <-time.After(2 * time.Second):
+		t.Fatal("startScaleLoop did not exit cleanly on context cancellation during jitter")
+	}
+
+	_, found := metricCache.ReadRecord(key, "test-metric")
+	assert.False(t, found, "metric records must be cleaned up when scale loop exits during jitter")
+}
+
+func TestStartScaleLoop_JitterDisabledPreservesExistingBehavior(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	recorder := events.NewFakeRecorder(10)
+	mockClient := mock_client.NewMockClient(ctrl)
+	metricCache := metricscache.NewMetricsCache()
+
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "jitter-disabled-so",
+			Namespace: testNamespaceGlobal,
+			UID:       types.UID("jitter-disabled-uid"),
+		},
+	}
+	withTriggers, err := kedav1alpha1.AsDuckWithTriggers(&scaledObject)
+	assert.NoError(t, err)
+
+	sh := scaleHandler{
+		client:                   mockClient,
+		scaleLoopContexts:        &sync.Map{},
+		recorder:                 recorder,
+		scaleLoopJitterMax:       0, // Jitter disabled
+		scalerCaches:             map[string]*cache.ScalersCache{},
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricCache,
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	called := make(chan time.Time, 1)
+	start := time.Now()
+	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, key types.NamespacedName, obj any, opts ...any) error {
+		called <- time.Now()
+		cancel()
+		return errors.New("short circuit")
+	}).Times(1)
+
+	sh.startScaleLoop(ctx, withTriggers, &scaledObject, &sync.Mutex{})
+
+	firstCallTime := <-called
+	assert.Less(t, firstCallTime.Sub(start), 50*time.Millisecond, "first tick must run immediately when jitter is disabled")
+}
+
+func TestStartScaleLoop_FirstTickOnly(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	recorder := events.NewFakeRecorder(10)
+	mockClient := mock_client.NewMockClient(ctrl)
+	metricCache := metricscache.NewMetricsCache()
+
+	pollingInterval := int32(1) // 1 second
+	pollingIntervalDuration := time.Second
+	jitterMax := 100 * time.Millisecond
+
+	// Find a UID that yields a jitter >= 40ms to test timing reliably
+	var testUID types.UID
+	var calculatedJitter time.Duration
+	for i := 0; i < 100; i++ {
+		candidate := types.UID(fmt.Sprintf("first-tick-uid-%d", i))
+		j := calculateScaleLoopJitter(candidate, pollingIntervalDuration, jitterMax)
+		if j >= 40*time.Millisecond && j <= 90*time.Millisecond {
+			testUID = candidate
+			calculatedJitter = j
+			break
+		}
+	}
+	assert.NotEmpty(t, testUID)
+
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "first-tick-so",
+			Namespace: testNamespaceGlobal,
+			UID:       testUID,
+		},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			PollingInterval: &pollingInterval,
+		},
+	}
+	withTriggers, err := kedav1alpha1.AsDuckWithTriggers(&scaledObject)
+	assert.NoError(t, err)
+
+	sh := scaleHandler{
+		client:                   mockClient,
+		scaleLoopContexts:        &sync.Map{},
+		recorder:                 recorder,
+		scaleLoopJitterMax:       jitterMax,
+		scalerCaches:             map[string]*cache.ScalersCache{},
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricCache,
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	callTimes := make(chan time.Time, 2)
+	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, key types.NamespacedName, obj any, opts ...any) error {
+		callTimes <- time.Now()
+		if len(callTimes) == 2 {
+			cancel()
+		}
+		return errors.New("short circuit")
+	}).Times(2)
+
+	start := time.Now()
+	sh.startScaleLoop(ctx, withTriggers, &scaledObject, &sync.Mutex{})
+
+	firstTick := <-callTimes
+	secondTick := <-callTimes
+
+	// First tick was delayed by at least the calculated jitter (allowing small margin for scheduler)
+	firstDelay := firstTick.Sub(start)
+	assert.GreaterOrEqual(t, firstDelay, calculatedJitter-10*time.Millisecond, "first tick should be delayed by jitter")
+
+	// Interval between tick 1 and tick 2 is governed by pollingInterval (1s) and NOT pollingInterval + jitter
+	secondInterval := secondTick.Sub(firstTick)
+	assert.GreaterOrEqual(t, secondInterval, pollingIntervalDuration-50*time.Millisecond, "steady-state interval should match polling interval")
+	// Second interval should not have re-applied jitter delay
+	assert.Less(t, secondInterval, pollingIntervalDuration+calculatedJitter+200*time.Millisecond)
+}
