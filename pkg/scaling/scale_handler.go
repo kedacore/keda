@@ -32,6 +32,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -669,6 +670,60 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject ked
 /// ----------             ScaledObject related methods               --------- ///
 /// --------------------------------------------------------------------------- ///
 
+// fallbackForMetricSpecError feeds the per-metric fallback health counter when a scaler's
+// metric spec cannot be retrieved (for example an external gRPC scaler that has become
+// unreachable). The regular fallback path runs once a metric spec is known and the metric
+// value fetch fails, but when the spec lookup itself fails the per-trigger loop never runs,
+// so the counter is never incremented and fallback can never activate. This is the primary
+// scenario fallback is meant to cover, so the failure is routed through the same
+// fallback.GetMetricsWithFallback machinery here.
+//
+// The metric name is recovered from the ScaledObject status (ExternalMetricNames), which the
+// operator keeps populated for the life of the HPA, so it is still available during the
+// outage. A metric spec is not available from the unreachable scaler, so an AverageValue spec
+// with a unit target is synthesised. The HPA already holds the real target, so once fallback
+// activates the HPA applies its own target to the returned value; the synthesised target only
+// has to be a positive AverageValue so doFallback produces a well-defined replica count.
+func (h *scaleHandler) fallbackForMetricSpecError(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, scalersCache *cache.ScalersCache, triggerIndex int, triggerName string, specErr error, logger logr.Logger) ([]external_metrics.ExternalMetricValue, bool) {
+	metricName := metricNameForTriggerIndex(scaledObject.Status.ExternalMetricNames, triggerIndex)
+	if metricName == "" {
+		// Without a known metric name the health counter has no key to track, so there is
+		// nothing to do beyond the error already surfaced by the caller.
+		logger.V(1).Info("could not resolve metric name for failed scaler, skipping fallback counter", "scaler", triggerName, "triggerIndex", triggerIndex)
+		return nil, false
+	}
+
+	syntheticSpec := v2.MetricSpec{
+		External: &v2.ExternalMetricSource{
+			Metric: v2.MetricIdentifier{Name: metricName},
+			Target: v2.MetricTarget{
+				Type:         v2.AverageValueMetricType,
+				AverageValue: resource.NewQuantity(1, resource.DecimalSI),
+			},
+		},
+	}
+
+	soh := fallback.ScaledObjectHandler{
+		Ctx:          ctx,
+		KubeClient:   h.client,
+		ScaleClient:  h.scaleClient,
+		UpdateLock:   &scalersCache.ScaledObjectUpdateLock,
+		ScaledObject: scaledObject,
+	}
+
+	metrics, fallbackActive, err := fallback.GetMetricsWithFallback(soh, nil, specErr, metricName, syntheticSpec)
+	if err != nil {
+		// Below the failure threshold GetMetricsWithFallback returns the suppressed error,
+		// which is the same error the caller already logged, so keep this quiet.
+		logger.V(1).Info("fallback not active yet for failed metric spec", "scaler", triggerName, "metricName", metricName)
+		return nil, false
+	}
+	if fallbackActive {
+		logger.Info("Fallback activated for unreachable scaler", "scaler", triggerName, "metricName", metricName)
+	}
+	return metrics, fallbackActive
+}
+
 // processMetricsWithFallback processes metrics with fallback support and handles metric recording
 func (h *scaleHandler) processMetricsWithFallback(soh fallback.ScaledObjectHandler, rawMetrics []external_metrics.ExternalMetricValue, rawErr error, metricName string, triggerName string, triggerIndex int, metricSpec v2.MetricSpec, sendRawMetricsCondition bool, isMetricActive bool, logger logr.Logger) ([]external_metrics.ExternalMetricValue, bool, error) {
 	// check if we need to set a fallback
@@ -814,6 +869,14 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 			isScalerError = true
 			logger.Error(err, "error getting metric spec for the scaler", "scaler", triggerName)
 			scalersCache.Recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, eventreason.KEDAScalerFailed, "%s", err.Error())
+
+			// The per-trigger metric loop below never runs when the spec lookup fails, so drive
+			// the fallback health counter here. Otherwise fallback can never activate for a
+			// scaler that is unreachable, which is the main case fallback is meant to cover.
+			if fbMetrics, fbActive := h.fallbackForMetricSpecError(ctx, scaledObject, scalersCache, triggerIndex, triggerName, err, logger); fbActive {
+				isFallbackActive = true
+				fallbackMetrics = append(fallbackMetrics, fbMetrics...)
+			}
 		}
 
 		if len(metricsArray) == 0 {
@@ -1134,6 +1197,15 @@ func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler
 		result.Err = err
 		logger.Error(err, "error getting metric spec for the scaler", "scaler", result.TriggerName)
 		scalersCache.Recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, eventreason.KEDAScalerFailed, "%s", err.Error())
+
+		// The per-trigger metric loop below never runs when the spec lookup fails, so drive the
+		// fallback health counter here so fallback can still activate for an unreachable scaler.
+		if fbMetrics, fbActive := h.fallbackForMetricSpecError(ctx, scaledObject, scalersCache, triggerIndex, result.TriggerName, err, logger); fbActive {
+			result.FallbackActive = true
+			result.FallbackMetrics = append(result.FallbackMetrics, fbMetrics...)
+			result.Metrics = append(result.Metrics, fbMetrics...)
+			result.IsActive = true
+		}
 	}
 
 	for _, spec := range metricSpecs {
