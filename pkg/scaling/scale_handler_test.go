@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/expr-lang/expr"
+	"github.com/go-logr/logr"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -2637,4 +2638,100 @@ func TestGetScaledObjectMetrics_StoresRecordsForTheScaleLoop(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestFallbackForMetricSpecError is a regression test for #8056: when a scaler's metric
+// spec cannot be retrieved (an unreachable external scaler), the per-metric fallback health
+// counter must still increment and fallback must activate once the failure threshold is
+// crossed. Before the fix the metric-spec failure path never touched the counter, so fallback
+// could never fire for an unreachable scaler.
+func TestFallbackForMetricSpecError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+	recorder := events.NewFakeRecorder(10)
+
+	const triggerIndex = 0
+	const metricName = "s0-test-metric"
+	const failureThreshold = int32(3)
+
+	startingFailures := int32(0)
+	scaledObject := &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "unreachable", Namespace: "ns"},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "target"},
+			Fallback: &kedav1alpha1.Fallback{
+				FailureThreshold: failureThreshold,
+				Replicas:         5,
+				Behavior:         kedav1alpha1.FallbackBehaviorStatic,
+			},
+		},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			ExternalMetricNames: []string{metricName},
+			Health: map[string]kedav1alpha1.HealthStatus{
+				metricName: {NumberOfFailures: &startingFailures, Status: kedav1alpha1.HealthStatusHappy},
+			},
+		},
+	}
+
+	// Each failure persists the mutated status back; keep the in-memory ScaledObject as the
+	// source of truth so the failure counter accumulates across calls like it does at runtime.
+	mockClient.EXPECT().Status().Return(statusWriter).AnyTimes()
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ any, _ ...any) error {
+			scaledObject.Status = *obj.Status.DeepCopy()
+			return nil
+		}).AnyTimes()
+
+	scalerCache := &cache.ScalersCache{ScaledObject: scaledObject, Recorder: recorder}
+	key := scaledObject.GenerateIdentifier()
+	sh := scaleHandler{
+		client:           mockClient,
+		scalerCaches:     map[string]*cache.ScalersCache{key: scalerCache},
+		scalerCachesLock: &sync.RWMutex{},
+	}
+
+	specErr := errors.New("rpc error: code = Unavailable desc = connection refused")
+	logger := logr.Discard()
+
+	// Up to and including the threshold the counter rises but fallback stays inactive.
+	for i := int32(1); i <= failureThreshold; i++ {
+		_, active := sh.fallbackForMetricSpecError(context.Background(), scaledObject, scalerCache, triggerIndex, "externalScaler", specErr, logger)
+		assert.False(t, active, "fallback must not activate before the threshold is crossed (iteration %d)", i)
+		assert.Equal(t, i, *scaledObject.Status.Health[metricName].NumberOfFailures)
+	}
+
+	// One more failure crosses the threshold and fallback activates with fallback metrics.
+	metrics, active := sh.fallbackForMetricSpecError(context.Background(), scaledObject, scalerCache, triggerIndex, "externalScaler", specErr, logger)
+	assert.True(t, active, "fallback must activate once failures exceed the threshold")
+	assert.NotEmpty(t, metrics, "activated fallback must return fallback metrics")
+	assert.Equal(t, failureThreshold+1, *scaledObject.Status.Health[metricName].NumberOfFailures)
+}
+
+// TestFallbackForMetricSpecErrorNoMetricName verifies the helper is a safe no-op when the
+// metric name cannot be recovered from the ScaledObject status (nothing to key the counter on).
+func TestFallbackForMetricSpecErrorNoMetricName(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := events.NewFakeRecorder(1)
+
+	scaledObject := &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "unreachable", Namespace: "ns"},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "target"},
+			Fallback:       &kedav1alpha1.Fallback{FailureThreshold: 3, Replicas: 5},
+		},
+		// No ExternalMetricNames: the trigger index cannot be resolved to a metric name.
+	}
+	scalerCache := &cache.ScalersCache{ScaledObject: scaledObject, Recorder: recorder}
+	key := scaledObject.GenerateIdentifier()
+	sh := scaleHandler{
+		client:           mockClient,
+		scalerCaches:     map[string]*cache.ScalersCache{key: scalerCache},
+		scalerCachesLock: &sync.RWMutex{},
+	}
+
+	metrics, active := sh.fallbackForMetricSpecError(context.Background(), scaledObject, scalerCache, 0, "externalScaler", errors.New("boom"), logr.Discard())
+	assert.False(t, active)
+	assert.Nil(t, metrics)
 }
