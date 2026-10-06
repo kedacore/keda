@@ -1127,6 +1127,128 @@ func TestResolveAuthRef_FromFile(t *testing.T) {
 	assert.Contains(t, err.Error(), "filePath is only supported for ClusterTriggerAuthentication")
 }
 
+func TestResolveAuthRefAndPodIdentity_AzureWorkload(t *testing.T) {
+	if err := corev1.AddToScheme(scheme.Scheme); err != nil {
+		t.Errorf("Expected Error because: %v", err)
+	}
+	if err := kedav1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		t.Errorf("Expected Error because: %v", err)
+	}
+	t.Setenv("KEDA_CLUSTER_OBJECT_NAMESPACE", clusterNamespace)
+
+	clientID := "00000000-0000-0000-0000-000000000001"
+	explicitID := "00000000-0000-0000-0000-000000000002"
+	kedaOwner := "keda"
+	workloadOwner := "workload"
+	serviceAccount := func(name string, annotations map[string]string) *corev1.ServiceAccount {
+		return &corev1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, Annotations: annotations},
+		}
+	}
+	annotated := map[string]string{kedav1alpha1.PodIdentityAnnotationAzureWorkload: clientID}
+
+	tests := []struct {
+		name               string
+		kind               string
+		podIdentity        kedav1alpha1.AuthPodIdentity
+		serviceAccountName string
+		existing           []runtime.Object
+		expectedIdentityID *string
+		expectedErr        string
+	}{
+		{
+			name:               "workload owner reads the client id from the service account",
+			podIdentity:        kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload, IdentityOwner: &workloadOwner},
+			serviceAccountName: "workload-sa",
+			existing:           []runtime.Object{serviceAccount("workload-sa", annotated)},
+			expectedIdentityID: &clientID,
+		},
+		{
+			name:               "workload owner uses the default service account",
+			podIdentity:        kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload, IdentityOwner: &workloadOwner},
+			existing:           []runtime.Object{serviceAccount("default", annotated)},
+			expectedIdentityID: &clientID,
+		},
+		{
+			name:               "cluster trigger auth reads the service account from the scaled object namespace",
+			kind:               "ClusterTriggerAuthentication",
+			podIdentity:        kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload, IdentityOwner: &workloadOwner},
+			serviceAccountName: "workload-sa",
+			existing:           []runtime.Object{serviceAccount("workload-sa", annotated)},
+			expectedIdentityID: &clientID,
+		},
+		{
+			name:               "workload owner without the annotation",
+			podIdentity:        kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload, IdentityOwner: &workloadOwner},
+			serviceAccountName: "workload-sa",
+			existing:           []runtime.Object{serviceAccount("workload-sa", nil)},
+			expectedErr:        "annotation 'azure.workload.identity/client-id' not found",
+		},
+		{
+			name:               "workload owner with an empty annotation",
+			podIdentity:        kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload, IdentityOwner: &workloadOwner},
+			serviceAccountName: "workload-sa",
+			existing:           []runtime.Object{serviceAccount("workload-sa", map[string]string{kedav1alpha1.PodIdentityAnnotationAzureWorkload: ""})},
+			expectedErr:        "annotation 'azure.workload.identity/client-id' is empty",
+		},
+		{
+			name:               "workload owner with identityId set",
+			podIdentity:        kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload, IdentityID: &explicitID, IdentityOwner: &workloadOwner},
+			serviceAccountName: "workload-sa",
+			existing:           []runtime.Object{serviceAccount("workload-sa", annotated)},
+			expectedErr:        "identityId can't be set if KEDA isn't identity owner",
+		},
+		{
+			name:               "keda owner keeps identityId",
+			podIdentity:        kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload, IdentityID: &explicitID, IdentityOwner: &kedaOwner},
+			serviceAccountName: "workload-sa",
+			existing:           []runtime.Object{serviceAccount("workload-sa", annotated)},
+			expectedIdentityID: &explicitID,
+		},
+		{
+			name:               "no owner ignores the service account annotation",
+			podIdentity:        kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload},
+			serviceAccountName: "workload-sa",
+			existing:           []runtime.Object{serviceAccount("workload-sa", annotated)},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			podIdentity := test.podIdentity
+			spec := kedav1alpha1.TriggerAuthenticationSpec{PodIdentity: &podIdentity}
+			var authObj runtime.Object = &kedav1alpha1.TriggerAuthentication{
+				ObjectMeta: metav1.ObjectMeta{Name: triggerAuthenticationName, Namespace: namespace},
+				Spec:       spec,
+			}
+			if test.kind == "ClusterTriggerAuthentication" {
+				authObj = &kedav1alpha1.ClusterTriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{Name: triggerAuthenticationName},
+					Spec:       spec,
+				}
+			}
+			existing := append([]runtime.Object{authObj}, test.existing...)
+
+			_, gotPodIdentity, err := ResolveAuthRefAndPodIdentity(
+				context.TODO(),
+				fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(existing...).Build(),
+				logf.Log.WithName("test"),
+				&kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName, Kind: test.kind},
+				&corev1.PodTemplateSpec{Spec: corev1.PodSpec{ServiceAccountName: test.serviceAccountName}},
+				namespace,
+				nil,
+			)
+
+			if test.expectedErr != "" {
+				assert.ErrorContains(t, err, test.expectedErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, test.expectedIdentityID, gotPodIdentity.IdentityID)
+		})
+	}
+}
+
 func TestReadAuthParamsFromFile(t *testing.T) {
 	// Save and reset config
 	oldConfig := globalConfig
