@@ -21,14 +21,15 @@ import (
 )
 
 const (
-	dynatraceMetricDataPointsAPI = "api/v2/metrics/query"
-	dynatraceDQLAPI              = "platform/storage/query/v1/query"
-	dynatraceNotStartedState     = "NOT_STARTED"
-	dynatraceRunningState        = "RUNNING"
-	dynatraceSucceededState      = "SUCCEEDED"
-	dynatraceFailedState         = "FAILED"
-	dynatraceCancelledState      = "CANCELLED"
-	dynatraceResultGoneState     = "RESULT_GONE"
+	dynatraceMetricDataPointsAPI                  = "api/v2/metrics/query"
+	dynatraceDQLAPI                               = "platform/storage/query/v1/query"
+	dynatraceNotStartedState                      = "NOT_STARTED"
+	dynatraceRunningState                         = "RUNNING"
+	dynatraceSucceededState                       = "SUCCEEDED"
+	dynatraceFailedState                          = "FAILED"
+	dynatraceCancelledState                       = "CANCELLED"
+	dynatraceResultGoneState                      = "RESULT_GONE"
+	dynatraceMissingBucketPermissionsNotification = "MISSING_BUCKET_PERMISSIONS"
 )
 
 type dynatraceScaler struct {
@@ -90,6 +91,14 @@ type dynatraceQueryResponse struct {
 		Records []struct {
 			R float64 `json:"r"`
 		} `json:"records"`
+		Metadata struct {
+			Grail struct {
+				Notifications []struct {
+					NotificationType string `json:"notificationType"`
+					Message          string `json:"message"`
+				} `json:"notifications"`
+			} `json:"grail"`
+		} `json:"metadata"`
 	} `json:"result"`
 }
 
@@ -327,6 +336,17 @@ func (s *dynatraceScaler) pollDQLResult(ctx context.Context, url string) (float6
 		return -1, true, nil
 	}
 	if dynatraceResponse.State == dynatraceSucceededState {
+		// A successful query can still contain a missing bucket permissions notification.
+		// In this case, the returned metric value is not valid and must be treated as an error.
+		for _, notification := range dynatraceResponse.Result.Metadata.Grail.Notifications {
+			if notification.NotificationType == dynatraceMissingBucketPermissionsNotification {
+				message := notification.Message
+				if message == "" {
+					message = "missing bucket permissions"
+				}
+				return -1, false, fmt.Errorf("error executing DQL query: %s", message)
+			}
+		}
 		if len(dynatraceResponse.Result.Records) > 0 {
 			return dynatraceResponse.Result.Records[0].R, false, nil
 		}
