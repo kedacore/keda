@@ -557,6 +557,75 @@ func TestIsPollingIntervalRelevant(t *testing.T) {
 	}
 }
 
+func TestIsCooldownPeriodRelevant(t *testing.T) {
+	min0 := int32(0)
+	min2 := int32(2)
+	idle0 := int32(0)
+	idle1 := int32(1)
+
+	tests := []struct {
+		name         string
+		minReplicas  *int32
+		idleReplicas *int32
+		triggers     []ScaleTriggers
+		expectResult bool
+	}{
+		{
+			name:         "minReplicaCount unset (defaults to 0)",
+			minReplicas:  nil,
+			expectResult: true,
+		},
+		{
+			name:         "minReplicaCount = 0 allows scale to zero",
+			minReplicas:  &min0,
+			expectResult: true,
+		},
+		{
+			name:         "minReplicaCount > 0, idle mode disabled",
+			minReplicas:  &min2,
+			idleReplicas: nil,
+			expectResult: false,
+		},
+		{
+			name:         "minReplicaCount > 0, idleReplicaCount = 0 enables idle mode",
+			minReplicas:  &min2,
+			idleReplicas: &idle0,
+			expectResult: true,
+		},
+		{
+			name:         "minReplicaCount > 0, idleReplicaCount > 0 enables idle mode",
+			minReplicas:  &min2,
+			idleReplicas: &idle1,
+			expectResult: true,
+		},
+		{
+			name:         "minReplicaCount > 0, no idle, cached metrics does not make cooldown relevant",
+			minReplicas:  &min2,
+			idleReplicas: nil,
+			triggers: []ScaleTriggers{
+				{Type: "kafka", UseCachedMetrics: true},
+			},
+			expectResult: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			so := &ScaledObject{
+				Spec: ScaledObjectSpec{
+					MinReplicaCount:  test.minReplicas,
+					IdleReplicaCount: test.idleReplicas,
+					Triggers:         test.triggers,
+				},
+			}
+			result := so.IsCooldownPeriodRelevant()
+			if result != test.expectResult {
+				t.Errorf("Expected IsCooldownPeriodRelevant to return %v, got %v", test.expectResult, result)
+			}
+		})
+	}
+}
+
 func TestUsesHPAObservations(t *testing.T) {
 	zero := int32(0)
 	one := int32(1)
