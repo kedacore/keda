@@ -360,12 +360,22 @@ func (s *metricsAPIScaler) getEndpointsUrlsFromServiceURL(ctx context.Context, s
 		return nil, err
 	}
 	var uniqueAddresses []string
+	var uniqueTargets []string
 	for _, endpointSlice := range serviceEndpointsSlices.Items {
 		for _, eps := range endpointSlice.Endpoints {
 			// as suggested in https://github.com/kedacore/keda/pull/6565#discussion_r2395073047, make sure we take endpoint into account
 			// only when it's ready
 			if eps.Conditions.Ready != nil && !*eps.Conditions.Ready {
 				continue
+			}
+			// a dual-stack service has an endpoint slice per IP family, listing the same pod under an address of each family:
+			// deduplicate by target so that each pod is queried once
+			if eps.TargetRef != nil {
+				target := eps.TargetRef.Kind + "/" + eps.TargetRef.Namespace + "/" + eps.TargetRef.Name
+				if slices.Contains(uniqueTargets, target) {
+					continue
+				}
+				uniqueTargets = append(uniqueTargets, target)
 			}
 			for _, address := range eps.Addresses {
 				// deduplicate addresses as suggested in https://github.com/kedacore/keda/pull/6565#discussion_r2395073047

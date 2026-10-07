@@ -14,6 +14,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	corev1 "k8s.io/api/core/v1"
 	discoveryV1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -447,4 +448,60 @@ func TestGetEndpointsUrlsFromServiceURL_IPv6(t *testing.T) {
 	urls, err = s.getEndpointsUrlsFromServiceURL(t.Context(), "http://my-service.my-namespace.svc/metrics")
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"http://[2001:db8::1]/metrics"}, urls)
+}
+
+func TestGetEndpointsUrlsFromServiceURL_DualStack(t *testing.T) {
+	ready := true
+	port8080 := int32(8080)
+
+	endpoint := func(address, pod string) discoveryV1.Endpoint {
+		return discoveryV1.Endpoint{
+			Addresses:  []string{address},
+			Conditions: discoveryV1.EndpointConditions{Ready: &ready},
+			TargetRef:  &corev1.ObjectReference{Kind: "Pod", Namespace: "my-namespace", Name: pod},
+		}
+	}
+	slice := func(name string, addressType discoveryV1.AddressType, endpoints ...discoveryV1.Endpoint) discoveryV1.EndpointSlice {
+		return discoveryV1.EndpointSlice{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: "my-namespace",
+				Labels: map[string]string{
+					discoveryV1.LabelServiceName: "my-service",
+				},
+			},
+			AddressType: addressType,
+			Ports:       []discoveryV1.EndpointPort{{Port: &port8080}},
+			Endpoints:   endpoints,
+		}
+	}
+
+	// a dual-stack service has an endpoint slice per IP family, each listing every pod
+	kubeClient := fake.NewClientBuilder().
+		WithLists(&discoveryV1.EndpointSliceList{Items: []discoveryV1.EndpointSlice{
+			slice("my-service-ipv4", discoveryV1.AddressTypeIPv4, endpoint("10.0.0.1", "pod-a"), endpoint("10.0.0.2", "pod-b")),
+			slice("my-service-ipv6", discoveryV1.AddressTypeIPv6, endpoint("2001:db8::1", "pod-a"), endpoint("2001:db8::2", "pod-b")),
+		}}).
+		Build()
+
+	s := metricsAPIScaler{
+		kubeClient: kubeClient,
+		logger:     logr.Discard(),
+	}
+
+	urls, err := s.getEndpointsUrlsFromServiceURL(t.Context(), "http://my-service.my-namespace.svc:8080/metrics")
+	assert.NoError(t, err)
+
+	// either IP family may be listed first: check that each pod is queried once
+	pods := map[string]string{
+		"http://10.0.0.1:8080/metrics":      "pod-a",
+		"http://[2001:db8::1]:8080/metrics": "pod-a",
+		"http://10.0.0.2:8080/metrics":      "pod-b",
+		"http://[2001:db8::2]:8080/metrics": "pod-b",
+	}
+	var queried []string
+	for _, url := range urls {
+		queried = append(queried, pods[url])
+	}
+	assert.ElementsMatch(t, []string{"pod-a", "pod-b"}, queried, "urls: %v", urls)
 }
