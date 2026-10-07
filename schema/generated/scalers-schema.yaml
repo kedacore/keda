@@ -3707,11 +3707,6 @@ scalers:
           metadataVariableReadable: true
     - type: gcp-pubsub
       parameters:
-        - name: subscriptionSize
-          type: string
-          optional: true
-          deprecated: The 'subscriptionSize' setting is DEPRECATED and is removed in v2.20 - Use 'mode' and 'value' instead
-          metadataVariableReadable: true
         - name: mode
           type: string
           default: SubscriptionSize
