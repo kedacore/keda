@@ -95,3 +95,48 @@ func TestValidateSpecHashiCorpVaultTokenWarnings(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateSpecHashiCorpVaultTokenFrom(t *testing.T) {
+	const emptyRef = "hashiCorpVault.credential.tokenFrom.secretKeyRef requires a non-empty name and key"
+
+	tests := []struct {
+		name         string
+		secretKeyRef SecretKeyRef
+		wantErr      string
+	}{
+		{
+			name:         "name and key",
+			secretKeyRef: SecretKeyRef{Name: "vault-token", Key: "token"},
+		},
+		{
+			name:         "empty name",
+			secretKeyRef: SecretKeyRef{Key: "token"},
+			wantErr:      emptyRef,
+		},
+		{
+			name:         "empty key",
+			secretKeyRef: SecretKeyRef{Name: "vault-token"},
+			wantErr:      emptyRef,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			spec := TriggerAuthenticationSpec{
+				// the pod identity switch returns early for providers it does not validate
+				PodIdentity: &AuthPodIdentity{Provider: PodIdentityProviderNone},
+				HashiCorpVault: &HashiCorpVault{
+					Authentication: VaultAuthenticationToken,
+					Credential:     &Credential{TokenFrom: &ValueFromSecret{SecretKeyRef: test.secretKeyRef}},
+				},
+			}
+
+			_, err := validateSpec(&spec)
+			if test.wantErr != "" {
+				assert.EqualError(t, err, test.wantErr)
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}

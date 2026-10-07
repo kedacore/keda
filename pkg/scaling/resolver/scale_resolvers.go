@@ -29,6 +29,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
+	vaultapi "github.com/hashicorp/vault/api"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -548,6 +549,11 @@ func resolveHashicorpVaultToken(ctx context.Context, client client.Client, logge
 	vault *kedav1alpha1.HashiCorpVault, triggerNamespace string, secretsLister corev1listers.SecretLister,
 ) (string, error) {
 	if vault.Authentication != kedav1alpha1.VaultAuthenticationToken || vault.Credential == nil || vault.Credential.TokenFrom == nil {
+		return "", nil
+	}
+
+	// VAULT_TOKEN takes precedence over any token in the spec, so the secret is not needed
+	if os.Getenv(vaultapi.EnvVaultToken) != "" {
 		return "", nil
 	}
 

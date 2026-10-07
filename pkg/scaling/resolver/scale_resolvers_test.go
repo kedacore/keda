@@ -1468,7 +1468,6 @@ func TestResolveAuthRef_HashicorpVaultTokenFromSecret(t *testing.T) {
 	require.NoError(t, corev1.AddToScheme(scheme.Scheme))
 	require.NoError(t, kedav1alpha1.AddToScheme(scheme.Scheme))
 	t.Setenv("KEDA_CLUSTER_OBJECT_NAMESPACE", clusterNamespace)
-	t.Setenv("VAULT_TOKEN", "")
 
 	origRestrictSecretAccess := restrictSecretAccess
 	defer func() {
@@ -1480,6 +1479,7 @@ func TestResolveAuthRef_HashicorpVaultTokenFromSecret(t *testing.T) {
 		name            string
 		kind            string
 		inlineToken     string
+		envToken        string
 		secretNamespace string
 		wantErr         string
 	}{
@@ -1507,10 +1507,20 @@ func TestResolveAuthRef_HashicorpVaultTokenFromSecret(t *testing.T) {
 			name:    "secret does not exist",
 			wantErr: readError,
 		},
+		{
+			name:     "VAULT_TOKEN is used without reading the secret",
+			envToken: "token-from-env",
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			t.Setenv("VAULT_TOKEN", test.envToken)
+			wantToken := tokenFromSecret
+			if test.envToken != "" {
+				wantToken = test.envToken
+			}
+
 			backend := mockVault(t, true)
 			defer backend.Close()
 
@@ -1578,7 +1588,7 @@ func TestResolveAuthRef_HashicorpVaultTokenFromSecret(t *testing.T) {
 			assert.Equal(t, map[string]string{"test": kedaSecretValue}, gotMap)
 			assert.NotEmpty(t, gotTokens)
 			for _, token := range gotTokens {
-				assert.Equal(t, tokenFromSecret, token)
+				assert.Equal(t, wantToken, token)
 			}
 		})
 	}
