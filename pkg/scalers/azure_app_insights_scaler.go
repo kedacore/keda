@@ -86,8 +86,11 @@ func NewAzureAppInsightsScaler(config *scalersconfig.ScalerConfig) (Scaler, erro
 	}
 
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
+	if config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount {
+		httpClient.CheckRedirect = kedautil.CheckSameOriginRedirect
+	}
 
-	creds, err := getAuthConfig(meta.azureAppInsightsInfo, config.PodIdentity)
+	creds, err := getAuthConfig(meta.azureAppInsightsInfo, config.PodIdentity, config.ServiceAccountTokenProvider)
 	if err != nil {
 		return nil, fmt.Errorf("error getting auth config: %w", err)
 	}
@@ -102,12 +105,14 @@ func NewAzureAppInsightsScaler(config *scalersconfig.ScalerConfig) (Scaler, erro
 	}, nil
 }
 
-func getAuthConfig(info azure.AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity) (azcore.TokenCredential, error) {
+func getAuthConfig(info azure.AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity, providers ...*scalersconfig.ServiceAccountTokenProvider) (azcore.TokenCredential, error) {
 	switch podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		return azidentity.NewClientSecretCredential(info.TenantID, info.ClientID, info.ClientPassword, nil)
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		return azure.NewADWorkloadIdentityCredential(podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID())
+	case kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount:
+		return azure.NewChainedCredential(logr.Discard(), podIdentity, providers...)
 	default:
 		return nil, fmt.Errorf("unknown pod identity provider: %s", podIdentity.Provider)
 	}
@@ -175,7 +180,7 @@ func parsePodIdentityParams(config *scalersconfig.ScalerConfig, meta *azureAppIn
 		if meta.ClientPassword == "" {
 			return fmt.Errorf("no activeDirectoryClientPassword given")
 		}
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload, kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount:
 		// no params required
 	default:
 		return fmt.Errorf("azure Monitor doesn't support pod identity %s", config.PodIdentity.Provider)

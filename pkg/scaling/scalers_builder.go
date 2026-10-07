@@ -85,6 +85,10 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 			}
 			config.AuthParams = authParams
 			config.PodIdentity = podIdentity
+			config.ServiceAccountTokenProvider, err = resolver.ResolveServiceAccountTokenProvider(factoryCtx, h.client, podIdentity, withTriggers.Namespace, h.authClientSet)
+			if err != nil {
+				return nil, nil, err
+			}
 			scaler, err := buildScaler(factoryCtx, h.client, trigger.Type, config)
 			return scaler, config, err
 		}

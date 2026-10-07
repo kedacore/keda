@@ -129,9 +129,16 @@ func (s *gcpCloudTasksScaler) GetMetricsAndActivity(ctx context.Context, metricN
 func (s *gcpCloudTasksScaler) setStackdriverClient(ctx context.Context) error {
 	var client *gcp.StackDriverClient
 	var err error
-	if s.metadata.gcpAuthorization.PodIdentityProviderEnabled {
+	switch {
+	case s.metadata.gcpAuthorization.ServiceAccountTokenProvider != nil:
+		tokenSource, tokenErr := newGCPMonitoringTokenSource(ctx, s.metadata.gcpAuthorization)
+		if tokenErr != nil {
+			return tokenErr
+		}
+		client, err = gcp.NewStackDriverClientWithTokenSource(ctx, tokenSource)
+	case s.metadata.gcpAuthorization.PodIdentityProviderEnabled:
 		client, err = gcp.NewStackDriverClientPodIdentity(ctx)
-	} else {
+	default:
 		client, err = gcp.NewStackDriverClient(ctx, s.metadata.gcpAuthorization.GoogleApplicationCredentials)
 	}
 

@@ -17,6 +17,7 @@ limitations under the License.
 package scalersconfig
 
 import (
+	"context"
 	"time"
 
 	v2 "k8s.io/api/autoscaling/v2"
@@ -25,6 +26,15 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
+
+// ServiceAccountTokenProvider supplies fresh Kubernetes assertions using an
+// audience approved by the operator. It is runtime state, never TA/CTA input.
+type ServiceAccountTokenProvider struct {
+	Namespace          string
+	ServiceAccountName string
+	Audience           string
+	GetToken           func(context.Context) (string, error)
+}
 
 // ScalerConfig contains config fields common for all scalers
 type ScalerConfig struct {
@@ -61,6 +71,10 @@ type ScalerConfig struct {
 
 	// PodIdentity
 	PodIdentity kedav1alpha1.AuthPodIdentity
+
+	// ServiceAccountTokenProvider mints assertions for an explicitly selected
+	// workload service account. Audiences come from operator configuration.
+	ServiceAccountTokenProvider *ServiceAccountTokenProvider
 
 	// TriggerIndex
 	TriggerIndex int
