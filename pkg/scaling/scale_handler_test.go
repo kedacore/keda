@@ -2871,3 +2871,114 @@ func TestFallbackForMetricSpecErrorMultipleMetrics(t *testing.T) {
 	_, tracked := scaledObject.Status.Health[otherMetric]
 	assert.False(t, tracked, "a metric owned by another trigger must not be touched")
 }
+
+// TestGetScaledObjectMetricsScalingModifiersPlaceholderOnSpecError is a regression test for the
+// review follow-up on #8056: when a scaler's metric spec lookup fails under a scalingModifiers
+// fallback, GetScaledObjectMetrics must not short-circuit with the "scaler error under threshold"
+// error. The placeholder has to reach HandleScalingModifiers so the formula evaluates the failed
+// trigger as nil; with the formula then evaluating to nil, the scalingModifiers fallback target is
+// returned (replicas * target) rather than an error.
+func TestGetScaledObjectMetricsScalingModifiersPlaceholderOnSpecError(t *testing.T) {
+	scaledObjectName := testNameGlobal
+	scaledObjectNamespace := testNamespaceGlobal
+	compositeMetricName := compositeMetricNameGlobal
+
+	ctrl := gomock.NewController(t)
+	recorder := events.NewFakeRecorder(10)
+	mockClient := mock_client.NewMockClient(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	failingMetric := "s0-metric_one"
+
+	// A single scalingModifiers trigger whose spec lookup fails. Empty specs on the initial and
+	// refreshed scaler make GetMetricSpecForScalingForScaler return the "got empty metric spec"
+	// error that drives the placeholder path.
+	scaler1 := mock_scalers.NewMockScaler(ctrl)
+	scaler1Refreshed := mock_scalers.NewMockScaler(ctrl)
+
+	scalerConfig1 := scalersconfig.ScalerConfig{TriggerName: triggerName1, TriggerIndex: 0}
+	factory1 := func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		return scaler1Refreshed, &scalerConfig1, nil
+	}
+
+	zeroFailures := int32(0)
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: scaledObjectName, Namespace: scaledObjectNamespace},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "test"},
+			Advanced: &kedav1alpha1.AdvancedConfig{
+				ScalingModifiers: kedav1alpha1.ScalingModifiers{
+					Target:  "2",
+					Formula: triggerName1,
+				},
+			},
+			// scalingModifiers fallback: past the (zero) threshold GetMetricsWithFallback returns a
+			// placeholder with fallbackActive=false, which the formula consumes as nil.
+			Fallback: &kedav1alpha1.Fallback{
+				FailureThreshold: 0,
+				Replicas:         5,
+				Behavior:         kedav1alpha1.FallbackBehaviorScalingModifiers,
+			},
+			Triggers: []kedav1alpha1.ScaleTriggers{
+				{Name: triggerName1, Type: "fake_trig1"},
+			},
+		},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			ScaleTargetGVKR:     &kedav1alpha1.GroupVersionKindResource{Group: "apps", Kind: "Deployment"},
+			ExternalMetricNames: []string{failingMetric},
+			Health: map[string]kedav1alpha1.HealthStatus{
+				failingMetric: {NumberOfFailures: &zeroFailures, Status: kedav1alpha1.HealthStatusHappy},
+			},
+		},
+	}
+
+	compiledFormula, err := expr.Compile(scaledObject.Spec.Advanced.ScalingModifiers.Formula)
+	assert.NoError(t, err)
+
+	scalerCache := cache.ScalersCache{
+		ScaledObject: &scaledObject,
+		Scalers: []cache.ScalerBuilder{
+			{Scaler: scaler1, ScalerConfig: scalerConfig1, Factory: factory1},
+		},
+		Recorder:        recorder,
+		CompiledFormula: compiledFormula,
+	}
+	caches := map[string]*cache.ScalersCache{scaledObject.GenerateIdentifier(): &scalerCache}
+
+	sh := scaleHandler{
+		client:                   mockClient,
+		scaleLoopContexts:        &sync.Map{},
+		globalHTTPTimeout:        time.Duration(1000),
+		recorder:                 recorder,
+		scalerCaches:             caches,
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
+	}
+
+	// Persist health status writes so the failure counter crosses the zero threshold.
+	mockClient.EXPECT().Status().Return(statusWriter).AnyTimes()
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ any, _ ...any) error {
+			scaledObject.Status = *obj.Status.DeepCopy()
+			return nil
+		}).AnyTimes()
+
+	// scaler1 fails its spec lookup on both the initial and the refreshed scaler, and both get
+	// closed during the refresh/cache-clear path.
+	scaler1.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{}).AnyTimes()
+	scaler1Refreshed.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{}).AnyTimes()
+	scaler1.EXPECT().Close(gomock.Any()).Return(nil).AnyTimes()
+	scaler1Refreshed.EXPECT().Close(gomock.Any()).Return(nil).AnyTimes()
+
+	metrics, err := sh.GetScaledObjectMetrics(context.TODO(), scaledObjectName, scaledObjectNamespace, compositeMetricName)
+	// The spec failure must not short-circuit with the "scaler error under threshold" error. The
+	// placeholder reaches HandleScalingModifiers, the formula evaluates the failed trigger as nil,
+	// and the scalingModifiers fallback target (replicas 5 * target 2 = 10) is returned.
+	assert.NoError(t, err)
+	assert.NotNil(t, metrics)
+	assert.NotEmpty(t, metrics.Items)
+	assert.Equal(t, float64(10), metrics.Items[0].Value.AsApproximateFloat64())
+}
