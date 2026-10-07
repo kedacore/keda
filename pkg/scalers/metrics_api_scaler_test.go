@@ -454,11 +454,10 @@ func TestGetEndpointsUrlsFromServiceURL_DualStack(t *testing.T) {
 	ready := true
 	port8080 := int32(8080)
 
-	endpoint := func(address, pod string) discoveryV1.Endpoint {
+	endpoint := func(address string) discoveryV1.Endpoint {
 		return discoveryV1.Endpoint{
 			Addresses:  []string{address},
 			Conditions: discoveryV1.EndpointConditions{Ready: &ready},
-			TargetRef:  &corev1.ObjectReference{Kind: "Pod", Namespace: "my-namespace", Name: pod},
 		}
 	}
 	slice := func(name string, addressType discoveryV1.AddressType, endpoints ...discoveryV1.Endpoint) discoveryV1.EndpointSlice {
@@ -475,33 +474,47 @@ func TestGetEndpointsUrlsFromServiceURL_DualStack(t *testing.T) {
 			Endpoints:   endpoints,
 		}
 	}
-
 	// a dual-stack service has an endpoint slice per IP family, each listing every pod
-	kubeClient := fake.NewClientBuilder().
-		WithLists(&discoveryV1.EndpointSliceList{Items: []discoveryV1.EndpointSlice{
-			slice("my-service-ipv4", discoveryV1.AddressTypeIPv4, endpoint("10.0.0.1", "pod-a"), endpoint("10.0.0.2", "pod-b")),
-			slice("my-service-ipv6", discoveryV1.AddressTypeIPv6, endpoint("2001:db8::1", "pod-a"), endpoint("2001:db8::2", "pod-b")),
-		}}).
-		Build()
+	endpointSlices := &discoveryV1.EndpointSliceList{Items: []discoveryV1.EndpointSlice{
+		slice("my-service-ipv4", discoveryV1.AddressTypeIPv4, endpoint("10.0.0.1"), endpoint("10.0.0.2")),
+		slice("my-service-ipv6", discoveryV1.AddressTypeIPv6, endpoint("2001:db8::1"), endpoint("2001:db8::2")),
+	}}
 
-	s := metricsAPIScaler{
-		kubeClient: kubeClient,
-		logger:     logr.Discard(),
+	tests := []struct {
+		name       string
+		ipFamilies []corev1.IPFamily
+		expected   []string
+	}{
+		{
+			name:       "IPv4 primary",
+			ipFamilies: []corev1.IPFamily{corev1.IPv4Protocol, corev1.IPv6Protocol},
+			expected:   []string{"http://10.0.0.1:8080/metrics", "http://10.0.0.2:8080/metrics"},
+		},
+		{
+			name:       "IPv6 primary",
+			ipFamilies: []corev1.IPFamily{corev1.IPv6Protocol, corev1.IPv4Protocol},
+			expected:   []string{"http://[2001:db8::1]:8080/metrics", "http://[2001:db8::2]:8080/metrics"},
+		},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			service := &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{Name: "my-service", Namespace: "my-namespace"},
+				Spec:       corev1.ServiceSpec{IPFamilies: tt.ipFamilies},
+			}
+			kubeClient := fake.NewClientBuilder().
+				WithObjects(service).
+				WithLists(endpointSlices.DeepCopy()).
+				Build()
 
-	urls, err := s.getEndpointsUrlsFromServiceURL(t.Context(), "http://my-service.my-namespace.svc:8080/metrics")
-	assert.NoError(t, err)
+			s := metricsAPIScaler{
+				kubeClient: kubeClient,
+				logger:     logr.Discard(),
+			}
 
-	// either IP family may be listed first: check that each pod is queried once
-	pods := map[string]string{
-		"http://10.0.0.1:8080/metrics":      "pod-a",
-		"http://[2001:db8::1]:8080/metrics": "pod-a",
-		"http://10.0.0.2:8080/metrics":      "pod-b",
-		"http://[2001:db8::2]:8080/metrics": "pod-b",
+			urls, err := s.getEndpointsUrlsFromServiceURL(t.Context(), "http://my-service.my-namespace.svc:8080/metrics")
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, urls)
+		})
 	}
-	var queried []string
-	for _, url := range urls {
-		queried = append(queried, pods[url])
-	}
-	assert.ElementsMatch(t, []string{"pod-a", "pod-b"}, queried, "urls: %v", urls)
 }
