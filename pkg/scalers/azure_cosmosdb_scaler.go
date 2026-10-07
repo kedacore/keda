@@ -499,6 +499,9 @@ func (c *cosmosDBClient) queryLeases(ctx context.Context) ([]leaseDocument, erro
 		if next == "" {
 			return leases, nil
 		}
+		if next == continuation {
+			return nil, fmt.Errorf("lease query returned an unchanged continuation token")
+		}
 		continuation = next
 	}
 }
@@ -598,6 +601,9 @@ func (c *cosmosDBClient) readPartitionKeyRanges(ctx context.Context) ([]cosmosDB
 		ranges = append(ranges, page...)
 		if next == "" {
 			return ranges, nil
+		}
+		if next == continuation {
+			return nil, fmt.Errorf("partition key range read returned an unchanged continuation token")
 		}
 		continuation = next
 	}

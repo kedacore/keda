@@ -18,6 +18,74 @@ import (
 
 const cosmosDBTestEPKBoundary = "1FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
 
+func TestCosmosDBPaginationProgress(t *testing.T) {
+	for _, resource := range []string{"leases", "ranges"} {
+		for _, repeated := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/repeated=%t", resource, repeated), func(t *testing.T) {
+				requests := 0
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					requests++
+					if requests > 2 {
+						t.Error("pagination requested a third page")
+						w.WriteHeader(http.StatusInternalServerError)
+						return
+					}
+					w.Header().Set("Content-Type", "application/json")
+					if requests == 1 {
+						assert.Empty(t, r.Header.Get("x-ms-continuation"))
+						w.Header().Set("x-ms-continuation", "next-page")
+					} else {
+						assert.Equal(t, "next-page", r.Header.Get("x-ms-continuation"))
+						if repeated {
+							w.Header().Set("x-ms-continuation", "next-page")
+						}
+					}
+					id := fmt.Sprint(requests)
+					if resource == "leases" {
+						assert.Equal(t, "/dbs/testdb/colls/leases/docs", r.URL.Path)
+						assert.NoError(t, json.NewEncoder(w).Encode(map[string]interface{}{
+							"Documents": []map[string]string{{"id": id, "LeaseToken": id}},
+						}))
+					} else {
+						assert.Equal(t, "/dbs/testdb/colls/data/pkranges", r.URL.Path)
+						assert.NoError(t, json.NewEncoder(w).Encode(map[string]interface{}{
+							"PartitionKeyRanges": []map[string]string{{
+								"id": id, "minInclusive": []string{"", "80"}[requests-1], "maxExclusive": []string{"80", "FF"}[requests-1],
+							}},
+						}))
+					}
+				}))
+				defer server.Close()
+				client := newCosmosDBEPKTestClient(server)
+				if resource == "leases" {
+					leases, err := client.queryLeases(context.Background())
+					if repeated {
+						assert.EqualError(t, err, "lease query returned an unchanged continuation token")
+						assert.Nil(t, leases)
+					} else {
+						require.NoError(t, err)
+						require.Len(t, leases, 2)
+						assert.Equal(t, "1", leases[0].ID)
+						assert.Equal(t, "2", leases[1].ID)
+					}
+				} else {
+					ranges, err := client.readPartitionKeyRanges(context.Background())
+					if repeated {
+						assert.EqualError(t, err, "partition key range read returned an unchanged continuation token")
+						assert.Nil(t, ranges)
+					} else {
+						require.NoError(t, err)
+						require.Len(t, ranges, 2)
+						assert.Equal(t, "1", ranges[0].ID)
+						assert.Equal(t, "2", ranges[1].ID)
+					}
+				}
+				assert.Equal(t, 2, requests)
+			})
+		}
+	}
+}
+
 func newCosmosDBEPKTestClient(server *httptest.Server) *cosmosDBClient {
 	return &cosmosDBClient{
 		httpClient:       server.Client(),
