@@ -643,9 +643,6 @@ jobs:
           issue-number: ${{ github.event.issue.number }}
           body: |
             ## E2E test run ${{ (needs.run-e2e-test.outputs.test-outcome == 'success' && needs.run-arm-smoke-test.outputs.test-outcome == 'success' && needs.run-s390x-smoke-test.outputs.test-outcome == 'success') && '✅ passed' || '❌ failed' }}
-
             Triggered by:
             > ${{ github.event.comment.body }}
-
             [View the full run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
-
