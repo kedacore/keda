@@ -915,6 +915,12 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	}
 	metricTriggerPairList := make(map[string]string)
 	isFallbackActive := false
+	// isPlaceholderActive tracks the scalingModifiers case where a metric-spec failure produced
+	// a "nil" placeholder metric (not whole-object fallback). The placeholder must survive to
+	// HandleScalingModifiers so the formula treats the failed trigger as nil, so it has to
+	// bypass the "scaler error under threshold" early return below even though isFallbackActive
+	// stays false.
+	isPlaceholderActive := false
 
 	// let's check metrics for all scalers in a ScaledObject
 	// as we can have multiple metrics in parallel for scaling modifiers
@@ -959,6 +965,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 				// scalingModifiers placeholder metrics are not whole-object fallback: they must
 				// reach the formula engine via matchingMetrics so the failed trigger evaluates
 				// to nil. HandleScalingModifiers runs with isFallbackActive=false in that case.
+				isPlaceholderActive = true
 				matchingMetrics = append(matchingMetrics, fb.metrics...)
 			}
 			maps.Copy(metricTriggerPairList, fb.triggerPairs)
@@ -1052,7 +1059,10 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	}
 
 	// This case happens in failed times under failureThreshold. Report error to HPA directly.
-	if !isFallbackActive && isScalerError {
+	// A scalingModifiers placeholder is not whole-object fallback (isFallbackActive stays false),
+	// but it must still reach HandleScalingModifiers so the formula can evaluate the failed
+	// trigger as nil, so it is excluded from this early error return.
+	if !isFallbackActive && !isPlaceholderActive && isScalerError {
 		return nil, fmt.Errorf("metric:%s encountered error", metricsName)
 	}
 
