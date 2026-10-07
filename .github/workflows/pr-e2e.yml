@@ -636,3 +636,16 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           commentId: ${{ github.event.comment.id }}
           reaction: "-1"
+
+      - name: Post e2e completion comment
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          body: |
+            ## E2E test run ${{ (needs.run-e2e-test.outputs.test-outcome == 'success' && needs.run-arm-smoke-test.outputs.test-outcome == 'success' && needs.run-s390x-smoke-test.outputs.test-outcome == 'success') && '✅ passed' || '❌ failed' }}
+
+            Triggered by:
+            > ${{ github.event.comment.body }}
+
+            [View the full run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
