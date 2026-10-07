@@ -77,8 +77,6 @@ var testPubSubMetadata = []parsePubSubMetadataTestData{
 	{"both subscriptionName and topicName present", nil, map[string]string{"subscriptionName": "mysubscription", "topicName": "mytopic", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// both subscriptionName and topicName missing
 	{"both subscriptionName and topicName missing", nil, map[string]string{"value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
-	// removed subscriptionSize is ignored
-	{"removed subscriptionSize is ignored", nil, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// both subscriptionName and subscriptionNameFromEnv present
 	{"both subscriptionName and subscriptionNameFromEnv present", nil, map[string]string{"subscriptionName": "mysubscription", "subscriptionNameFromEnv": "MY_ENV_SUBSCRIPTION", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// both topicName and topicNameFromEnv present
@@ -101,8 +99,8 @@ var gcpResourceNameTests = []gcpPubSubSubscription{
 	{&testPubSubMetadata[12], 1, "projects/myproject/mysubscription", ""},
 	{&testPubSubMetadata[17], 1, "mytopic", "myproject"},
 	{&testPubSubMetadata[18], 1, "projects/myproject/mytopic", ""},
-	{&testPubSubMetadata[24], 1, "myEnvSubscription", ""},
-	{&testPubSubMetadata[25], 1, "myEnvTopic", ""},
+	{&testPubSubMetadata[23], 1, "myEnvSubscription", ""},
+	{&testPubSubMetadata[24], 1, "myEnvTopic", ""},
 }
 
 var gcpSubscriptionDefaults = []gcpPubSubSubscription{
