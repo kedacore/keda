@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	neturl "net/url"
 	"slices"
@@ -385,7 +386,12 @@ func (s *metricsAPIScaler) getEndpointsUrlsFromServiceURL(ctx context.Context, s
 				if foundPort == "" {
 					s.logger.V(1).Info(fmt.Sprintf("Warning : could not find port %s in endpoint slice for service %s.%s definition. Will infer port from %s scheme", podPort, serviceName, namespace, url.Scheme))
 				}
-				endpointUrls = append(endpointUrls, fmt.Sprintf("%s://%s%s%s", url.Scheme, address, foundPort, url.Path))
+				// an IPv6 address must be bracketed in a URL, with or without a port
+				host := address
+				if ip := net.ParseIP(address); ip != nil && ip.To4() == nil {
+					host = "[" + address + "]"
+				}
+				endpointUrls = append(endpointUrls, fmt.Sprintf("%s://%s%s%s", url.Scheme, host, foundPort, url.Path))
 			}
 		}
 	}

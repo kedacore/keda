@@ -409,3 +409,42 @@ func TestGetEndpointsUrlsFromServiceURL_SelectorFiltersCorrectly(t *testing.T) {
 	assert.Equal(t, []string{"http://10.0.0.1:8080/metrics"}, urls,
 		"should only return endpoints from my-service, not other-service")
 }
+
+func TestGetEndpointsUrlsFromServiceURL_IPv6(t *testing.T) {
+	ready := true
+	port8080 := int32(8080)
+
+	slice := &discoveryV1.EndpointSlice{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-service-abc",
+			Namespace: "my-namespace",
+			Labels: map[string]string{
+				discoveryV1.LabelServiceName: "my-service",
+			},
+		},
+		AddressType: discoveryV1.AddressTypeIPv6,
+		Ports:       []discoveryV1.EndpointPort{{Port: &port8080}},
+		Endpoints: []discoveryV1.Endpoint{{
+			Addresses:  []string{"2001:db8::1"},
+			Conditions: discoveryV1.EndpointConditions{Ready: &ready},
+		}},
+	}
+
+	kubeClient := fake.NewClientBuilder().
+		WithLists(&discoveryV1.EndpointSliceList{Items: []discoveryV1.EndpointSlice{*slice}}).
+		Build()
+
+	s := metricsAPIScaler{
+		kubeClient: kubeClient,
+		logger:     logr.Discard(),
+	}
+
+	urls, err := s.getEndpointsUrlsFromServiceURL(t.Context(), "http://my-service.my-namespace.svc:8080/metrics")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"http://[2001:db8::1]:8080/metrics"}, urls)
+
+	// the port isn't in the endpoint slice: it's inferred from the scheme and left out of the URL
+	urls, err = s.getEndpointsUrlsFromServiceURL(t.Context(), "http://my-service.my-namespace.svc/metrics")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"http://[2001:db8::1]/metrics"}, urls)
+}
