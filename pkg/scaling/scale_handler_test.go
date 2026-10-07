@@ -2696,16 +2696,21 @@ func TestFallbackForMetricSpecError(t *testing.T) {
 
 	// Up to and including the threshold the counter rises but fallback stays inactive.
 	for i := int32(1); i <= failureThreshold; i++ {
-		_, active := sh.fallbackForMetricSpecError(context.Background(), scaledObject, scalerCache, triggerIndex, "externalScaler", specErr, logger)
-		assert.False(t, active, "fallback must not activate before the threshold is crossed (iteration %d)", i)
+		fb := sh.fallbackForMetricSpecError(context.Background(), scaledObject, scalerCache, triggerIndex, "externalScaler", specErr, logger)
+		assert.False(t, fb.fallbackActive, "fallback must not activate before the threshold is crossed (iteration %d)", i)
 		assert.Equal(t, i, *scaledObject.Status.Health[metricName].NumberOfFailures)
 	}
 
 	// One more failure crosses the threshold and fallback activates with fallback metrics.
-	metrics, active := sh.fallbackForMetricSpecError(context.Background(), scaledObject, scalerCache, triggerIndex, "externalScaler", specErr, logger)
-	assert.True(t, active, "fallback must activate once failures exceed the threshold")
-	assert.NotEmpty(t, metrics, "activated fallback must return fallback metrics")
+	fb := sh.fallbackForMetricSpecError(context.Background(), scaledObject, scalerCache, triggerIndex, "externalScaler", specErr, logger)
+	assert.True(t, fb.fallbackActive, "fallback must activate once failures exceed the threshold")
+	assert.NotEmpty(t, fb.metrics, "activated fallback must return fallback metrics")
 	assert.Equal(t, failureThreshold+1, *scaledObject.Status.Health[metricName].NumberOfFailures)
+	// The static fallback value must reflect fallback.replicas against the metric target,
+	// not a synthetic unit target. With a synthesised AverageValue target of 1 and 5 replicas
+	// the value is 5.
+	assert.Equal(t, int64(5), fb.metrics[0].Value.Value(), "fallback value must derive from the metric target and fallback replicas")
+	assert.Equal(t, "externalScaler", fb.triggerPairs[metricName], "fallback must pair the metric with its trigger")
 }
 
 // TestFallbackForMetricSpecErrorNoMetricName verifies the helper is a safe no-op when the
@@ -2731,7 +2736,138 @@ func TestFallbackForMetricSpecErrorNoMetricName(t *testing.T) {
 		scalerCachesLock: &sync.RWMutex{},
 	}
 
-	metrics, active := sh.fallbackForMetricSpecError(context.Background(), scaledObject, scalerCache, 0, "externalScaler", errors.New("boom"), logr.Discard())
-	assert.False(t, active)
-	assert.Nil(t, metrics)
+	fb := sh.fallbackForMetricSpecError(context.Background(), scaledObject, scalerCache, 0, "externalScaler", errors.New("boom"), logr.Discard())
+	assert.False(t, fb.fallbackActive)
+	assert.False(t, fb.placeholderActive)
+	assert.Nil(t, fb.metrics)
+	assert.Empty(t, fb.triggerPairs)
+}
+
+// TestFallbackForMetricSpecErrorUsesCachedTarget verifies the fallback value is derived from the
+// scaler's last-known cached metric target, not a synthetic unit target. With an AverageValue
+// target of 10 and fallback.replicas of 5 the fallback value must be 50, so the HPA (applying its
+// own target of 10) scales to five replicas.
+func TestFallbackForMetricSpecErrorUsesCachedTarget(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+	recorder := events.NewFakeRecorder(10)
+
+	const triggerIndex = 0
+	const metricName = "s0-test-metric"
+	const failureThreshold = int32(0)
+
+	startingFailures := int32(0)
+	scaledObject := &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "unreachable", Namespace: "ns"},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "target"},
+			Fallback: &kedav1alpha1.Fallback{
+				FailureThreshold: failureThreshold,
+				Replicas:         5,
+				Behavior:         kedav1alpha1.FallbackBehaviorStatic,
+			},
+		},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			ExternalMetricNames: []string{metricName},
+			Health: map[string]kedav1alpha1.HealthStatus{
+				metricName: {NumberOfFailures: &startingFailures, Status: kedav1alpha1.HealthStatusHappy},
+			},
+		},
+	}
+
+	mockClient.EXPECT().Status().Return(statusWriter).AnyTimes()
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ any, _ ...any) error {
+			scaledObject.Status = *obj.Status.DeepCopy()
+			return nil
+		}).AnyTimes()
+
+	// Seed the scaler with a cached metric spec carrying the real target (AverageValue 10).
+	scalerCache := &cache.ScalersCache{
+		ScaledObject: scaledObject,
+		Recorder:     recorder,
+		Scalers: []cache.ScalerBuilder{{
+			CachedMetricSpecs: []v2.MetricSpec{{
+				External: &v2.ExternalMetricSource{
+					Metric: v2.MetricIdentifier{Name: metricName},
+					Target: v2.MetricTarget{Type: v2.AverageValueMetricType, AverageValue: resource.NewQuantity(10, resource.DecimalSI)},
+				},
+			}},
+		}},
+	}
+	key := scaledObject.GenerateIdentifier()
+	sh := scaleHandler{
+		client:           mockClient,
+		scalerCaches:     map[string]*cache.ScalersCache{key: scalerCache},
+		scalerCachesLock: &sync.RWMutex{},
+	}
+
+	fb := sh.fallbackForMetricSpecError(context.Background(), scaledObject, scalerCache, triggerIndex, "externalScaler", errors.New("connection refused"), logr.Discard())
+	assert.True(t, fb.fallbackActive)
+	assert.Len(t, fb.metrics, 1)
+	assert.Equal(t, int64(50), fb.metrics[0].Value.Value(), "fallback value must be target(10) * replicas(5)")
+}
+
+// TestFallbackForMetricSpecErrorMultipleMetrics verifies every external metric owned by a failed
+// scaler is driven through fallback, each with its own health key and fallback value, rather than
+// only the first match.
+func TestFallbackForMetricSpecErrorMultipleMetrics(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+	recorder := events.NewFakeRecorder(10)
+
+	const triggerIndex = 0
+	metricA := "s0-metric-a"
+	metricB := "s0-metric-b"
+	// A metric owned by a different trigger must be left untouched.
+	otherMetric := "s1-metric-c"
+
+	zeroA := int32(0)
+	zeroB := int32(0)
+	scaledObject := &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "unreachable", Namespace: "ns"},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "target"},
+			Fallback: &kedav1alpha1.Fallback{
+				FailureThreshold: 0,
+				Replicas:         3,
+				Behavior:         kedav1alpha1.FallbackBehaviorStatic,
+			},
+		},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			ExternalMetricNames: []string{metricA, metricB, otherMetric},
+			Health: map[string]kedav1alpha1.HealthStatus{
+				metricA: {NumberOfFailures: &zeroA, Status: kedav1alpha1.HealthStatusHappy},
+				metricB: {NumberOfFailures: &zeroB, Status: kedav1alpha1.HealthStatusHappy},
+			},
+		},
+	}
+
+	mockClient.EXPECT().Status().Return(statusWriter).AnyTimes()
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ any, _ ...any) error {
+			scaledObject.Status = *obj.Status.DeepCopy()
+			return nil
+		}).AnyTimes()
+
+	scalerCache := &cache.ScalersCache{ScaledObject: scaledObject, Recorder: recorder}
+	key := scaledObject.GenerateIdentifier()
+	sh := scaleHandler{
+		client:           mockClient,
+		scalerCaches:     map[string]*cache.ScalersCache{key: scalerCache},
+		scalerCachesLock: &sync.RWMutex{},
+	}
+
+	fb := sh.fallbackForMetricSpecError(context.Background(), scaledObject, scalerCache, triggerIndex, "externalScaler", errors.New("boom"), logr.Discard())
+	assert.True(t, fb.fallbackActive)
+	assert.Len(t, fb.metrics, 2, "both metrics owned by the failed trigger must get a fallback value")
+	assert.Equal(t, "externalScaler", fb.triggerPairs[metricA])
+	assert.Equal(t, "externalScaler", fb.triggerPairs[metricB])
+	// Both owned metrics incremented their own health counter; the other trigger's metric did not.
+	assert.Equal(t, int32(1), *scaledObject.Status.Health[metricA].NumberOfFailures)
+	assert.Equal(t, int32(1), *scaledObject.Status.Health[metricB].NumberOfFailures)
+	_, tracked := scaledObject.Status.Health[otherMetric]
+	assert.False(t, tracked, "a metric owned by another trigger must not be touched")
 }
