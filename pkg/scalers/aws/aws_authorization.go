@@ -16,6 +16,8 @@ limitations under the License.
 
 package aws
 
+import "github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
+
 type AuthorizationMetadata struct {
 	AwsRoleArn    string
 	AwsExternalID string
@@ -33,6 +35,8 @@ type AuthorizationMetadata struct {
 	// replaces it. For more context:
 	// https://github.com/kedacore/keda/pull/5061/#discussion_r1441016441
 	UsingPodIdentity bool
+
+	ServiceAccountTokenProvider *scalersconfig.ServiceAccountTokenProvider
 
 	TriggerUniqueKey string
 }

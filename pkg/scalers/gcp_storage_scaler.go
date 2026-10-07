@@ -73,6 +73,12 @@ func NewGcsScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	var client *storage.Client
 
 	switch {
+	case meta.gcpAuthorization.ServiceAccountTokenProvider != nil:
+		tokenSource, tokenErr := meta.gcpAuthorization.TokenSource(ctx, storage.ScopeReadOnly)
+		if tokenErr != nil {
+			return nil, tokenErr
+		}
+		client, err = storage.NewClient(ctx, option.WithTokenSource(tokenSource))
 	case meta.gcpAuthorization.PodIdentityProviderEnabled:
 		client, err = storage.NewClient(ctx)
 	case meta.gcpAuthorization.GoogleApplicationCredentialsFile != "":

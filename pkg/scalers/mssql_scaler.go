@@ -124,7 +124,7 @@ func parseMSSQLMetadata(logger logr.Logger, config *scalersconfig.ScalerConfig) 
 		if meta.DriverName != mssqlDriverSQLServer {
 			return nil, authPodIdentity, fmt.Errorf("driverName %s cannot be combined with azure-workload pod identity", meta.DriverName)
 		}
-		cred, err := azure.NewChainedCredential(logger, config.PodIdentity)
+		cred, err := azure.NewChainedCredential(logger, config.PodIdentity, config.ServiceAccountTokenProvider)
 		if err != nil {
 			return nil, authPodIdentity, err
 		}

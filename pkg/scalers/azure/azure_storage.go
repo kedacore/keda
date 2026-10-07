@@ -27,6 +27,7 @@ import (
 	"github.com/go-logr/logr"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -82,7 +83,7 @@ func ParseAzureStorageEndpointSuffix(metadata map[string]string, endpointType St
 }
 
 // GetStorageBlobClient returns storage blob client
-func GetStorageBlobClient(logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix string, timeout time.Duration) (*azblob.Client, error) {
+func GetStorageBlobClient(logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix string, timeout time.Duration, providers ...*scalersconfig.ServiceAccountTokenProvider) (*azblob.Client, error) {
 	opts := &azblob.ClientOptions{
 		ClientOptions: policy.ClientOptions{
 			Transport: kedautil.CreateHTTPClient(timeout, false),
@@ -97,7 +98,7 @@ func GetStorageBlobClient(logger logr.Logger, podIdentity kedav1alpha1.AuthPodId
 		}
 		return blobClient, nil
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		creds, chainedErr := NewChainedCredential(logger, podIdentity)
+		creds, chainedErr := NewChainedCredential(logger, podIdentity, providers...)
 		if chainedErr != nil {
 			return nil, chainedErr
 		}
@@ -109,7 +110,7 @@ func GetStorageBlobClient(logger logr.Logger, podIdentity kedav1alpha1.AuthPodId
 }
 
 // GetStorageQueueClient returns storage queue client
-func GetStorageQueueClient(logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix, queueName string, timeout time.Duration) (*azqueue.QueueClient, error) {
+func GetStorageQueueClient(logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix, queueName string, timeout time.Duration, providers ...*scalersconfig.ServiceAccountTokenProvider) (*azqueue.QueueClient, error) {
 	opts := &azqueue.ClientOptions{
 		ClientOptions: policy.ClientOptions{
 			Transport: kedautil.CreateHTTPClient(timeout, false),
@@ -124,7 +125,7 @@ func GetStorageQueueClient(logger logr.Logger, podIdentity kedav1alpha1.AuthPodI
 		}
 		return queueClient, nil
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		creds, chainedErr := NewChainedCredential(logger, podIdentity)
+		creds, chainedErr := NewChainedCredential(logger, podIdentity, providers...)
 		if chainedErr != nil {
 			return nil, chainedErr
 		}

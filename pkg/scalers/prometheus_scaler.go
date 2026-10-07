@@ -77,6 +77,9 @@ type promQueryResult struct {
 
 // NewPrometheusScaler creates a new prometheusScaler
 func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
+	if err := config.PodIdentity.ValidateServiceAccountName(); err != nil {
+		return nil, err
+	}
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -127,37 +130,43 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 			httpClient.Transport = &oauth2.Transport{Source: tokenSource, Base: baseTransport}
 		}
 	} else {
-		// could be the case of azure managed prometheus. Try and get the round-tripper.
-		// If it's not the case of azure managed prometheus, we will get both transport and err as nil and proceed assuming no auth.
-		azureTransport, err := azure.TryAndGetAzureManagedPrometheusHTTPRoundTripper(logger, config.PodIdentity, config.TriggerMetadata)
-		if err != nil {
-			logger.V(1).Error(err, "error while init Azure Managed Prometheus client http transport")
-			return nil, err
+		if config.PodIdentity.ServiceAccountName == nil || config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
+			// could be the case of azure managed prometheus. Try and get the round-tripper.
+			// If it's not the case of azure managed prometheus, we will get both transport and err as nil and proceed assuming no auth.
+			azureTransport, err := azure.TryAndGetAzureManagedPrometheusHTTPRoundTripper(logger, config.PodIdentity, config.TriggerMetadata, config.ServiceAccountTokenProvider)
+			if err != nil {
+				logger.V(1).Error(err, "error while init Azure Managed Prometheus client http transport")
+				return nil, err
+			}
+
+			// transport should not be nil if its a case of azure managed prometheus
+			if azureTransport != nil {
+				httpClient.Transport = azureTransport
+			}
 		}
 
-		// transport should not be nil if its a case of azure managed prometheus
-		if azureTransport != nil {
-			httpClient.Transport = azureTransport
+		if config.PodIdentity.ServiceAccountName == nil || config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderGCP {
+			gcpTransport, err := gcp.GetGCPOAuth2HTTPTransport(config, httpClient.Transport, gcp.GcpScopeMonitoringRead)
+			if err != nil && !errors.Is(err, gcp.ErrGoogleApplicationCrendentialsNotFound) {
+				logger.V(1).Error(err, "failed to get GCP client HTTP transport (either using Google application credentials or workload identity)")
+				return nil, err
+			}
+
+			if err == nil && gcpTransport != nil {
+				httpClient.Transport = gcpTransport
+			}
 		}
 
-		gcpTransport, err := gcp.GetGCPOAuth2HTTPTransport(config, httpClient.Transport, gcp.GcpScopeMonitoringRead)
-		if err != nil && !errors.Is(err, gcp.ErrGoogleApplicationCrendentialsNotFound) {
-			logger.V(1).Error(err, "failed to get GCP client HTTP transport (either using Google application credentials or workload identity)")
-			return nil, err
-		}
+		if config.PodIdentity.ServiceAccountName == nil || config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderAws {
+			awsTransport, err := aws.NewSigV4RoundTripper(config, meta.AwsRegion)
+			if err != nil {
+				logger.V(1).Error(err, "failed to get AWS client HTTP transport")
+				return nil, err
+			}
 
-		if err == nil && gcpTransport != nil {
-			httpClient.Transport = gcpTransport
-		}
-
-		awsTransport, err := aws.NewSigV4RoundTripper(config, meta.AwsRegion)
-		if err != nil {
-			logger.V(1).Error(err, "failed to get AWS client HTTP transport")
-			return nil, err
-		}
-
-		if awsTransport != nil {
-			httpClient.Transport = awsTransport
+			if awsTransport != nil {
+				httpClient.Transport = awsTransport
+			}
 		}
 	}
 

@@ -1,11 +1,28 @@
 package gcp
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/oauth2"
 )
+
+func TestNewStackDriverClientWithTokenSource(t *testing.T) {
+	t.Setenv("GOOGLE_APPLICATION_CREDENTIALS", filepath.Join(t.TempDir(), "missing-operator-credentials.json"))
+	t.Setenv("CLOUDSDK_CORE_PROJECT", "operator-project")
+
+	client, err := NewStackDriverClientWithTokenSource(t.Context(), oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "tenant-token"}))
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, client.Close()) })
+	assert.Empty(t, client.projectID, "an explicit identity must not inherit the operator's default project")
+	assert.Equal(t, "tenant-project", getActualProjectID(client, "tenant-project"))
+
+	_, err = NewStackDriverClientWithTokenSource(t.Context(), nil)
+	require.ErrorContains(t, err, "a token source is required")
+}
 
 func TestBuildMQLQuery(t *testing.T) {
 	for _, tc := range []struct {

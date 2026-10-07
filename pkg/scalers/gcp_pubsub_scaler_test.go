@@ -5,9 +5,57 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
+
+func TestPubSubServiceAccountRequiresQualifiedResource(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		field    string
+		resource string
+		wantErr  bool
+	}{
+		{name: "subscription", field: "subscriptionName", resource: "projects/tenant-project/subscriptions/subscription"},
+		{name: "topic", field: "topicName", resource: "projects/tenant-project/topics/topic"},
+		{name: "short subscription", field: "subscriptionName", resource: "subscription", wantErr: true},
+		{name: "short topic", field: "topicName", resource: "topic", wantErr: true},
+		{name: "missing project", field: "subscriptionName", resource: "projects//subscriptions/subscription", wantErr: true},
+		{name: "wrong resource type", field: "subscriptionName", resource: "projects/tenant-project/topics/topic", wantErr: true},
+		{name: "extra prefix", field: "subscriptionName", resource: "prefix/projects/tenant-project/subscriptions/subscription", wantErr: true},
+		{name: "extra suffix", field: "subscriptionName", resource: "projects/tenant-project/subscriptions/subscription/extra", wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			config := &scalersconfig.ScalerConfig{
+				TriggerMetadata: map[string]string{tc.field: tc.resource},
+				PodIdentity: kedav1alpha1.AuthPodIdentity{
+					Provider: kedav1alpha1.PodIdentityProviderGCP, ServiceAccountName: new("reader"),
+				},
+				ServiceAccountTokenProvider: &scalersconfig.ServiceAccountTokenProvider{
+					Audience: "https://iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/kubernetes/providers/cluster",
+					GetToken: func(context.Context) (string, error) { return "", nil },
+				},
+			}
+			meta, err := parsePubSubMetadata(config)
+			if tc.wantErr {
+				require.ErrorContains(t, err, "fully qualified Pub/Sub resource name")
+				return
+			}
+			require.NoError(t, err)
+			_, project := getResourceData(&pubsubScaler{metadata: meta})
+			assert.Equal(t, "tenant-project", project)
+		})
+	}
+
+	_, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{"subscriptionName": "subscription"},
+		PodIdentity:     kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderGCP},
+	})
+	require.NoError(t, err, "operator identity retains the existing default-project behavior")
+}
 
 var testPubSubResolvedEnv = map[string]string{
 	"SAMPLE_CREDS":        "{}",

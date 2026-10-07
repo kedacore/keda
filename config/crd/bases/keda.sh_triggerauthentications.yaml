@@ -148,6 +148,8 @@ spec:
                           must also be set
                         type: string
                       identityId:
+                        description: For GCP with serviceAccountName, identityId is
+                          the optional IAM service account email to impersonate.
                         type: string
                       identityOwner:
                         description: IdentityOwner configures which identity has to
@@ -174,6 +176,13 @@ spec:
                       roleArn:
                         description: RoleArn sets the AWS RoleArn to be used. Mutually
                           exclusive with IdentityOwner
+                        type: string
+                      serviceAccountName:
+                        description: |-
+                          ServiceAccountName selects a Kubernetes service account in the ScaledObject or ScaledJob namespace.
+                          Supported for providers gcp, azure-workload and aws in the top-level podIdentity. The operator must be configured
+                          with an approved audience and token-creation RBAC for this service account.
+                        minLength: 1
                         type: string
                     required:
                     - provider
@@ -264,6 +273,8 @@ spec:
                           must also be set
                         type: string
                       identityId:
+                        description: For GCP with serviceAccountName, identityId is
+                          the optional IAM service account email to impersonate.
                         type: string
                       identityOwner:
                         description: IdentityOwner configures which identity has to
@@ -290,6 +301,13 @@ spec:
                       roleArn:
                         description: RoleArn sets the AWS RoleArn to be used. Mutually
                           exclusive with IdentityOwner
+                        type: string
+                      serviceAccountName:
+                        description: |-
+                          ServiceAccountName selects a Kubernetes service account in the ScaledObject or ScaledJob namespace.
+                          Supported for providers gcp, azure-workload and aws in the top-level podIdentity. The operator must be configured
+                          with an approved audience and token-creation RBAC for this service account.
+                        minLength: 1
                         type: string
                     required:
                     - provider
@@ -499,6 +517,8 @@ spec:
                           must also be set
                         type: string
                       identityId:
+                        description: For GCP with serviceAccountName, identityId is
+                          the optional IAM service account email to impersonate.
                         type: string
                       identityOwner:
                         description: IdentityOwner configures which identity has to
@@ -525,6 +545,13 @@ spec:
                       roleArn:
                         description: RoleArn sets the AWS RoleArn to be used. Mutually
                           exclusive with IdentityOwner
+                        type: string
+                      serviceAccountName:
+                        description: |-
+                          ServiceAccountName selects a Kubernetes service account in the ScaledObject or ScaledJob namespace.
+                          Supported for providers gcp, azure-workload and aws in the top-level podIdentity. The operator must be configured
+                          with an approved audience and token-creation RBAC for this service account.
+                        minLength: 1
                         type: string
                     required:
                     - provider
@@ -685,6 +712,8 @@ spec:
                       must also be set
                     type: string
                   identityId:
+                    description: For GCP with serviceAccountName, identityId is the
+                      optional IAM service account email to impersonate.
                     type: string
                   identityOwner:
                     description: IdentityOwner configures which identity has to be
@@ -711,6 +740,13 @@ spec:
                   roleArn:
                     description: RoleArn sets the AWS RoleArn to be used. Mutually
                       exclusive with IdentityOwner
+                    type: string
+                  serviceAccountName:
+                    description: |-
+                      ServiceAccountName selects a Kubernetes service account in the ScaledObject or ScaledJob namespace.
+                      Supported for providers gcp, azure-workload and aws in the top-level podIdentity. The operator must be configured
+                      with an approved audience and token-creation RBAC for this service account.
+                    minLength: 1
                     type: string
                 required:
                 - provider

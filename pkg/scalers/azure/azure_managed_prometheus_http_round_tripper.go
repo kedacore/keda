@@ -12,6 +12,7 @@ import (
 	"github.com/go-logr/logr"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -31,13 +32,13 @@ type azureManagedPrometheusHTTPRoundTripper struct {
 // TryAndGetAzureManagedPrometheusHTTPRoundTripper tries to get a round tripper.
 // If the pod identity represents azure auth, it creates a round tripper and returns that. Returns error if fails to create one.
 // If its not azure auth, then this becomes a no-op. Neither returns round tripper nor error.
-func TryAndGetAzureManagedPrometheusHTTPRoundTripper(logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity, triggerMetadata map[string]string) (http.RoundTripper, error) {
+func TryAndGetAzureManagedPrometheusHTTPRoundTripper(logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity, triggerMetadata map[string]string, providers ...*scalersconfig.ServiceAccountTokenProvider) (http.RoundTripper, error) {
 	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
 		if triggerMetadata == nil {
 			return nil, fmt.Errorf("trigger metadata cannot be nil")
 		}
 
-		chainedCred, err := NewChainedCredential(logger, podIdentity)
+		chainedCred, err := NewChainedCredential(logger, podIdentity, providers...)
 		if err != nil {
 			return nil, err
 		}

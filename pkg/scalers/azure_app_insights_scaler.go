@@ -87,7 +87,7 @@ func NewAzureAppInsightsScaler(config *scalersconfig.ScalerConfig) (Scaler, erro
 
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
-	creds, err := getAuthConfig(meta.azureAppInsightsInfo, config.PodIdentity)
+	creds, err := getAuthConfig(meta.azureAppInsightsInfo, config.PodIdentity, config.ServiceAccountTokenProvider)
 	if err != nil {
 		return nil, fmt.Errorf("error getting auth config: %w", err)
 	}
@@ -102,11 +102,14 @@ func NewAzureAppInsightsScaler(config *scalersconfig.ScalerConfig) (Scaler, erro
 	}, nil
 }
 
-func getAuthConfig(info azure.AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity) (azcore.TokenCredential, error) {
+func getAuthConfig(info azure.AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity, providers ...*scalersconfig.ServiceAccountTokenProvider) (azcore.TokenCredential, error) {
 	switch podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		return azidentity.NewClientSecretCredential(info.TenantID, info.ClientID, info.ClientPassword, nil)
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		if podIdentity.ServiceAccountName != nil {
+			return azure.NewChainedCredential(logr.Discard(), podIdentity, providers...)
+		}
 		return azure.NewADWorkloadIdentityCredential(podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID())
 	default:
 		return nil, fmt.Errorf("unknown pod identity provider: %s", podIdentity.Provider)

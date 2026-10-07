@@ -9,9 +9,21 @@ import (
 	"github.com/go-logr/logr"
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
-func NewChainedCredential(logger logr.Logger, podIdentity v1alpha1.AuthPodIdentity) (*azidentity.ChainedTokenCredential, error) {
+func NewChainedCredential(logger logr.Logger, podIdentity v1alpha1.AuthPodIdentity, providers ...*scalersconfig.ServiceAccountTokenProvider) (*azidentity.ChainedTokenCredential, error) {
+	if podIdentity.ServiceAccountName != nil {
+		var provider *scalersconfig.ServiceAccountTokenProvider
+		if len(providers) > 0 {
+			provider = providers[0]
+		}
+		credential, err := NewServiceAccountWorkloadIdentityCredential(podIdentity, provider)
+		if err != nil {
+			return nil, err
+		}
+		return azidentity.NewChainedTokenCredential([]azcore.TokenCredential{credential}, nil)
+	}
 	var creds []azcore.TokenCredential
 
 	// Used for local debug based on az-cli user
