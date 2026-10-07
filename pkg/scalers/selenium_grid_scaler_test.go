@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -3812,7 +3813,7 @@ func Test_getSessionsQueueLengthRejectsOversizedResponse(t *testing.T) {
 	}
 
 	_, _, err := s.getSessionsQueueLength(context.Background(), logr.Discard())
-	if err == nil {
-		t.Fatal("getSessionsQueueLength() error = nil, want response-size error")
+	if err == nil || !strings.Contains(err.Error(), "exceeds the") {
+		t.Fatalf("getSessionsQueueLength() error = %v, want response-size error", err)
 	}
 }
