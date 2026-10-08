@@ -45,18 +45,25 @@ func (s *spyLogSink) Error(_ error, msg string, _ ...interface{}) {
 func (s *spyLogSink) WithValues(...interface{}) logr.LogSink { return s }
 func (s *spyLogSink) WithName(string) logr.LogSink           { return s }
 
-// subscribingOnConnect mirrors the real OnConnectHandler set up in
-// Run(): on every (re)connect, subscribe and route retained vs. live
-// messages into the scaler's window, exactly as production code does.
-func subscribingOnConnect(s *mqttScaler) func(mqtt.Client) {
-	return func(c mqtt.Client) {
-		c.Subscribe(s.metadata.Topic, byte(s.metadata.QoS), func(_ mqtt.Client, msg mqtt.Message) {
-			if msg.Retained() {
-				s.window.markRetained()
-				return
-			}
-			s.window.record()
-		})
+// expectActive waits briefly for an activation event on active.
+func expectActive(t *testing.T, active <-chan bool) {
+	t.Helper()
+	select {
+	case v := <-active:
+		if !v {
+			t.Error("expected an activation event of true, got false")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for an activation event")
+	}
+}
+
+func waitReady(t *testing.T, fake *fakeMqttClient) {
+	t.Helper()
+	select {
+	case <-fake.readyCh:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for Run to connect")
 	}
 }
 
@@ -68,20 +75,14 @@ func TestMqttScalerRunRecordsMessages(t *testing.T) {
 	}
 
 	fake := newFakeMqttClient()
-	s.newClient = func(*mqtt.ClientOptions) mqtt.Client {
-		fake.onConnect = subscribingOnConnect(s)
-		return fake
-	}
+	s.newClient = fakeClientFactory(fake)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	active := make(chan bool, 1)
 	go s.Run(ctx, active)
 
-	select {
-	case <-fake.readyCh:
-	case <-time.After(time.Second):
-		t.Fatal("timed out waiting for Run to connect")
-	}
+	waitReady(t, fake)
 
 	if !fake.connectCalled {
 		t.Fatal("expected Connect to be called")
@@ -89,10 +90,19 @@ func TestMqttScalerRunRecordsMessages(t *testing.T) {
 	if fake.subscribedTo != "sensors/temp" {
 		t.Errorf("expected subscription to sensors/temp, got %s", fake.subscribedTo)
 	}
+	if fake.subscribedQoS != 1 {
+		t.Errorf("expected subscription qos 1, got %d", fake.subscribedQoS)
+	}
 
+	// Live messages must push an activation event, so a burst shorter
+	// than pollingInterval still activates the workload.
 	fake.deliver(&fakeMqttMessage{topic: "sensors/temp", retained: false})
+	expectActive(t, active)
 	fake.deliver(&fakeMqttMessage{topic: "sensors/temp", retained: false})
+	expectActive(t, active)
+
 	fake.deliver(&fakeMqttMessage{topic: "sensors/temp", retained: true})
+	expectActive(t, active)
 
 	// NOTE: deliver() calls the publish handler synchronously on this
 	// goroutine, not from a separate one the way a real paho callback
@@ -107,8 +117,173 @@ func TestMqttScalerRunRecordsMessages(t *testing.T) {
 	if !retained {
 		t.Error("expected retained flag to be set")
 	}
+}
+
+func TestMqttScalerPublishDoesNotBlockWhenReceiverBusy(t *testing.T) {
+	s := &mqttScaler{
+		metadata: mqttScalerMetadata{Topic: "sensors/temp", QoS: 1},
+		window:   newMessageWindow(time.Minute),
+		logger:   logr.Discard(),
+	}
+
+	fake := newFakeMqttClient()
+	s.newClient = fakeClientFactory(fake)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// Unbuffered and never read, like KEDA's channel while it is busy
+	// scaling: the publish handler must not block paho's delivery.
+	active := make(chan bool)
+	go s.Run(ctx, active)
+	waitReady(t, fake)
+
+	done := make(chan struct{})
+	go func() {
+		for i := 0; i < 10; i++ {
+			fake.deliver(&fakeMqttMessage{topic: "sensors/temp"})
+		}
+		fake.deliver(&fakeMqttMessage{topic: "sensors/temp", retained: true})
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("publish handler blocked on the active channel")
+	}
+
+	count, retained := s.window.count()
+	if count != 10 {
+		t.Errorf("expected 10 counted messages, got %d", count)
+	}
+	if !retained {
+		t.Error("expected retained flag to be set")
+	}
+}
+
+func TestMqttScalerRetriesFailedSubscription(t *testing.T) {
+	s := &mqttScaler{
+		metadata:                  mqttScalerMetadata{Topic: "sensors/temp", QoS: 1},
+		window:                    newMessageWindow(time.Minute),
+		logger:                    logr.Discard(),
+		subscribeRetryInterval:    time.Millisecond,
+		maxSubscribeRetryInterval: 4 * time.Millisecond,
+	}
+
+	fake := newFakeMqttClient()
+	fake.subscribeErrs = []error{errors.New("not authorized"), errors.New("not authorized")}
+	s.newClient = fakeClientFactory(fake)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go s.Run(ctx, make(chan bool, 1))
+
+	waitReady(t, fake)
+
+	if fake.subscribeCalls != 3 {
+		t.Errorf("expected 2 failed subscribe attempts followed by a success, got %d calls", fake.subscribeCalls)
+	}
+	if fake.subscribedTo != "sensors/temp" {
+		t.Errorf("expected subscription to sensors/temp after retrying, got %q", fake.subscribedTo)
+	}
+}
+
+func TestMqttScalerSubscribeRetryStopsOnCancel(t *testing.T) {
+	s := &mqttScaler{
+		metadata:               mqttScalerMetadata{Topic: "sensors/temp", QoS: 1},
+		logger:                 logr.Discard(),
+		subscribeRetryInterval: time.Hour,
+	}
+
+	fake := newFakeMqttClient()
+	fake.connected = true
+	fake.subscribeErrs = []error{errors.New("not authorized")}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		s.subscribe(ctx, fake)
+		close(done)
+	}()
 
 	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("subscribe retry did not stop after context cancellation")
+	}
+}
+
+func TestMqttScalerCloseDisconnectsClient(t *testing.T) {
+	s := &mqttScaler{
+		metadata: mqttScalerMetadata{Topic: "sensors/temp", QoS: 1},
+		window:   newMessageWindow(time.Minute),
+		logger:   logr.Discard(),
+	}
+
+	fake := newFakeMqttClient()
+	s.newClient = fakeClientFactory(fake)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	active := make(chan bool, 1)
+	go s.Run(ctx, active)
+	waitReady(t, fake)
+
+	if err := s.Close(context.Background()); err != nil {
+		t.Fatal("unexpected error from Close", err)
+	}
+	if !fake.disconnectCalled {
+		t.Error("expected Close to disconnect the client")
+	}
+
+	cancel()
+	// drain until Run closes the channel
+	for {
+		if _, open := <-active; !open {
+			break
+		}
+	}
+
+	// A message arriving after Run has returned must not panic by
+	// sending on the closed active channel.
+	fake.deliver(&fakeMqttMessage{topic: "sensors/temp"})
+}
+
+func TestMqttScalerCloseBeforeRunPreventsConnect(t *testing.T) {
+	s := &mqttScaler{
+		metadata: mqttScalerMetadata{Topic: "sensors/temp", QoS: 1},
+		window:   newMessageWindow(time.Minute),
+		logger:   logr.Discard(),
+	}
+
+	created := false
+	s.newClient = func(*mqtt.ClientOptions) mqtt.Client {
+		created = true
+		return newFakeMqttClient()
+	}
+
+	if err := s.Close(context.Background()); err != nil {
+		t.Fatal("unexpected error from Close", err)
+	}
+
+	active := make(chan bool, 1)
+	done := make(chan struct{})
+	go func() {
+		s.Run(context.Background(), active)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("Run did not return after the scaler was closed")
+	}
+	if created {
+		t.Error("expected no client to be created after Close")
+	}
+	if _, open := <-active; open {
+		t.Error("expected the active channel to be closed")
+	}
 }
 
 func TestMqttScalerReconnectResubscribesAndPreservesState(t *testing.T) {
@@ -120,22 +295,15 @@ func TestMqttScalerReconnectResubscribesAndPreservesState(t *testing.T) {
 	}
 
 	fake := newFakeMqttClient()
-	var capturedOpts *mqtt.ClientOptions
-	s.newClient = func(opts *mqtt.ClientOptions) mqtt.Client {
-		capturedOpts = opts
-		fake.onConnect = subscribingOnConnect(s)
-		return fake
-	}
+	s.newClient = fakeClientFactory(fake)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	active := make(chan bool, 1)
 	go s.Run(ctx, active)
 
-	select {
-	case <-fake.readyCh:
-	case <-time.After(time.Second):
-		t.Fatal("timed out waiting for initial connect")
-	}
+	waitReady(t, fake)
+	capturedOpts := fake.opts
 
 	if capturedOpts.OnConnectionLost == nil {
 		t.Fatal("expected OnConnectionLost handler to be set")
@@ -152,13 +320,15 @@ func TestMqttScalerReconnectResubscribesAndPreservesState(t *testing.T) {
 		t.Fatalf("expected 1 message recorded before outage, got %d", countBefore)
 	}
 
+	errorsBefore := len(sink.errorCalls)
 	capturedOpts.OnConnectionLost(fake, errors.New("simulated broker outage"))
-	if len(sink.errorCalls) != 1 {
-		t.Errorf("expected connection-lost to be logged once, got %d calls", len(sink.errorCalls))
+	if len(sink.errorCalls) != errorsBefore+1 {
+		t.Errorf("expected connection-lost to be logged once, got %d calls", len(sink.errorCalls)-errorsBefore)
 	}
 
+	infoBefore := len(sink.infoCalls)
 	capturedOpts.OnReconnecting(fake, capturedOpts)
-	if len(sink.infoCalls) == 0 {
+	if len(sink.infoCalls) == infoBefore {
 		t.Error("expected reconnect attempt to be logged")
 	}
 
@@ -177,6 +347,4 @@ func TestMqttScalerReconnectResubscribesAndPreservesState(t *testing.T) {
 	if countAfter != 1 {
 		t.Errorf("expected pre-outage message count to survive reconnect, got %d", countAfter)
 	}
-
-	cancel()
 }

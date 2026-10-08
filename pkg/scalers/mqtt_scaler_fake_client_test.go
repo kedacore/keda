@@ -56,18 +56,23 @@ func (m *fakeMqttMessage) Ack()              {}
 
 // fakeMqttClient implements mqtt.Client (already an interface in paho,
 // not a concrete struct, which is what makes this fake possible without
-// any extra abstraction layer of our own). It records what was called
-// on it and lets a test manually fire the connect/publish handlers
-// instead of going over a real network connection.
+// any extra abstraction layer of our own). It is built from the options
+// Run passes to newClient, so Connect and deliver drive the scaler's real
+// OnConnect and default publish handlers rather than test-local copies.
 type fakeMqttClient struct {
-	connected     bool
-	connectCalled bool
-	subscribedTo  string
-	subscribedQoS byte
-	connectErr    error
+	opts *mqtt.ClientOptions
 
-	onConnect      func(mqtt.Client)
-	publishHandler mqtt.MessageHandler
+	connected        bool
+	connectCalled    bool
+	disconnectCalled bool
+	subscribedTo     string
+	subscribedQoS    byte
+	subscribeCalls   int
+	connectErr       error
+
+	// subscribeErrs is consumed one entry per Subscribe call; a non-nil
+	// entry makes that call fail, simulating a rejected subscription.
+	subscribeErrs []error
 
 	// readyCh is closed once Connect() finishes running onConnect (i.e.
 	// once subscription has happened). Tests wait on this instead of
@@ -79,6 +84,15 @@ func newFakeMqttClient() *fakeMqttClient {
 	return &fakeMqttClient{readyCh: make(chan struct{})}
 }
 
+// fakeClientFactory returns a newClient func that hands out fake, after
+// recording the options Run built for it.
+func fakeClientFactory(fake *fakeMqttClient) func(*mqtt.ClientOptions) mqtt.Client {
+	return func(opts *mqtt.ClientOptions) mqtt.Client {
+		fake.opts = opts
+		return fake
+	}
+}
+
 func (c *fakeMqttClient) Connect() mqtt.Token {
 	c.connectCalled = true
 	if c.connectErr != nil {
@@ -86,8 +100,8 @@ func (c *fakeMqttClient) Connect() mqtt.Token {
 		return &fakeToken{err: c.connectErr}
 	}
 	c.connected = true
-	if c.onConnect != nil {
-		c.onConnect(c)
+	if c.opts != nil && c.opts.OnConnect != nil {
+		c.opts.OnConnect(c)
 	}
 	c.signalReady()
 	return &fakeToken{}
@@ -106,18 +120,24 @@ func (c *fakeMqttClient) signalReady() {
 }
 
 func (c *fakeMqttClient) Disconnect(uint) {
+	c.disconnectCalled = true
 	c.connected = false
 }
 
 func (c *fakeMqttClient) IsConnected() bool      { return c.connected }
 func (c *fakeMqttClient) IsConnectionOpen() bool { return c.connected }
 
-func (c *fakeMqttClient) Subscribe(topic string, qos byte, callback mqtt.MessageHandler) mqtt.Token {
+func (c *fakeMqttClient) Subscribe(topic string, qos byte, _ mqtt.MessageHandler) mqtt.Token {
+	c.subscribeCalls++
+	if len(c.subscribeErrs) > 0 {
+		err := c.subscribeErrs[0]
+		c.subscribeErrs = c.subscribeErrs[1:]
+		if err != nil {
+			return &fakeToken{err: err}
+		}
+	}
 	c.subscribedTo = topic
 	c.subscribedQoS = qos
-	if callback != nil {
-		c.publishHandler = callback
-	}
 	return &fakeToken{}
 }
 
@@ -134,10 +154,11 @@ func (c *fakeMqttClient) OptionsReader() mqtt.ClientOptionsReader {
 	return mqtt.ClientOptionsReader{} // unused by mqttScaler; stubbed to satisfy the interface
 }
 
-// deliver simulates an incoming message, exactly as paho would invoke
-// the registered publish handler when a real message arrives.
+// deliver simulates an incoming message. The scaler subscribes with a nil
+// callback, so paho routes every message to the default publish handler
+// registered in Run -- this invokes exactly that handler.
 func (c *fakeMqttClient) deliver(msg *fakeMqttMessage) {
-	if c.publishHandler != nil {
-		c.publishHandler(c, msg)
+	if c.opts != nil && c.opts.DefaultPublishHandler != nil {
+		c.opts.DefaultPublishHandler(c, msg)
 	}
 }

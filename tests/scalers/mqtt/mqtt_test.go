@@ -139,12 +139,18 @@ spec:
       windowSeconds: "15"
 `
 
+	// The publisher sends one message per second for MessageCount
+	// seconds rather than a single burst. The scaler subscribes
+	// asynchronously after the ScaledObject is created, so a one-shot
+	// burst could be delivered before the subscription exists and never
+	// be counted; a steady stream is observed as soon as it does.
 	publishJobTemplate = `apiVersion: batch/v1
 kind: Job
 metadata:
   name: mqtt-publisher-{{.JobSuffix}}
   namespace: {{.TestNamespace}}
 spec:
+  backoffLimit: 0
   template:
     spec:
       restartPolicy: Never
@@ -157,6 +163,7 @@ spec:
         - |
           for i in $(seq 1 {{.MessageCount}}); do
             mosquitto_pub -h mosquitto.{{.TestNamespace}} -t {{.MqttTopic}} -m "msg-$i"
+            sleep 1
           done
 `
 )
@@ -182,9 +189,15 @@ func TestMqttScaler(t *testing.T) {
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out: publishing messages ---")
-	publishMessages(t, kc, "scaleout", 20)
+	// ~15 messages per 15s window against queryValue 5 asks for 3
+	// replicas, capped at maxReplicaCount.
+	jobData := publishJobData("scaleout", 300)
+	KubectlApplyWithTemplate(t, jobData, "publishJobTemplate", publishJobTemplate)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
+
+	// Stop publishing so the window can drain for the scale-in phase.
+	KubectlDeleteWithTemplate(t, jobData, "publishJobTemplate", publishJobTemplate)
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
@@ -195,13 +208,14 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 		"replica count should be %d after 6 minutes", minReplicaCount)
 }
 
-func publishMessages(t *testing.T, kc *kubernetes.Clientset, suffix string, count int) {
-	t.Helper()
-	jobData := struct {
-		templateData
-		JobSuffix    string
-		MessageCount int
-	}{
+type publishJobTemplateData struct {
+	templateData
+	JobSuffix    string
+	MessageCount int
+}
+
+func publishJobData(suffix string, count int) publishJobTemplateData {
+	return publishJobTemplateData{
 		templateData: templateData{
 			TestNamespace: testNamespace,
 			MqttTopic:     mqttTopic,
@@ -209,8 +223,6 @@ func publishMessages(t *testing.T, kc *kubernetes.Clientset, suffix string, coun
 		JobSuffix:    suffix,
 		MessageCount: count,
 	}
-	KubectlApplyWithTemplate(t, jobData, "publishJobTemplate", publishJobTemplate)
-	WaitForJobSuccess(t, kc, fmt.Sprintf("mqtt-publisher-%s", suffix), testNamespace, 60, 3)
 }
 
 func getTemplateData() (templateData, []Template) {

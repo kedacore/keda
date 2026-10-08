@@ -24,9 +24,24 @@ import (
 )
 
 type parseMqttScalerMetadataTestData struct {
-	name     string
-	metadata map[string]string
-	isError  bool
+	name       string
+	metadata   map[string]string
+	authParams map[string]string
+	isError    bool
+}
+
+// mqttTestMetadata returns a valid base trigger metadata map with the
+// given overrides applied.
+func mqttTestMetadata(overrides map[string]string) map[string]string {
+	metadata := map[string]string{
+		"brokerAddress": "tcp://localhost:1883",
+		"topic":         "sensors/temp",
+		"queryValue":    "10",
+	}
+	for k, v := range overrides {
+		metadata[k] = v
+	}
+	return metadata
 }
 
 var testMqttScalerMetadata = []parseMqttScalerMetadataTestData{
@@ -67,6 +82,90 @@ var testMqttScalerMetadata = []parseMqttScalerMetadataTestData{
 		},
 		isError: false,
 	},
+	{
+		name:     "queryValue=0 is rejected",
+		metadata: mqttTestMetadata(map[string]string{"queryValue": "0"}),
+		isError:  true,
+	},
+	{
+		name:     "windowSeconds=0 is rejected",
+		metadata: mqttTestMetadata(map[string]string{"windowSeconds": "0"}),
+		isError:  true,
+	},
+	{
+		name:     "negative windowSeconds is rejected",
+		metadata: mqttTestMetadata(map[string]string{"windowSeconds": "-5"}),
+		isError:  true,
+	},
+	{
+		name:     "qos=3 is rejected",
+		metadata: mqttTestMetadata(map[string]string{"qos": "3"}),
+		isError:  true,
+	},
+	{
+		name:     "negative qos is rejected",
+		metadata: mqttTestMetadata(map[string]string{"qos": "-1"}),
+		isError:  true,
+	},
+	{
+		name:     "connectRetryIntervalSeconds=0 is rejected",
+		metadata: mqttTestMetadata(map[string]string{"connectRetryIntervalSeconds": "0"}),
+		isError:  true,
+	},
+	{
+		name:     "maxReconnectIntervalSeconds=0 is rejected",
+		metadata: mqttTestMetadata(map[string]string{"maxReconnectIntervalSeconds": "0"}),
+		isError:  true,
+	},
+	{
+		name:     "brokerAddress without scheme is rejected",
+		metadata: mqttTestMetadata(map[string]string{"brokerAddress": "localhost:1883"}),
+		isError:  true,
+	},
+	{
+		name:     "enableTLS with plaintext tcp scheme is rejected",
+		metadata: mqttTestMetadata(map[string]string{"enableTLS": "true"}),
+		isError:  true,
+	},
+	{
+		name:     "enableTLS with ws scheme is rejected",
+		metadata: mqttTestMetadata(map[string]string{"brokerAddress": "ws://localhost:8080", "enableTLS": "true"}),
+		isError:  true,
+	},
+	{
+		name:     "enableTLS with ssl scheme is accepted",
+		metadata: mqttTestMetadata(map[string]string{"brokerAddress": "ssl://localhost:8883", "enableTLS": "true"}),
+		isError:  false,
+	},
+	{
+		name:     "enableTLS with mqtts scheme is accepted",
+		metadata: mqttTestMetadata(map[string]string{"brokerAddress": "mqtts://localhost:8883", "enableTLS": "true"}),
+		isError:  false,
+	},
+	{
+		name:       "credentials over plaintext tcp scheme are rejected",
+		metadata:   mqttTestMetadata(nil),
+		authParams: map[string]string{"username": "user", "password": "pass"},
+		isError:    true,
+	},
+	{
+		name:       "credentials over plaintext ws scheme are rejected",
+		metadata:   mqttTestMetadata(map[string]string{"brokerAddress": "ws://localhost:8080"}),
+		authParams: map[string]string{"username": "user", "password": "pass"},
+		isError:    true,
+	},
+	{
+		name:       "credentials over ssl scheme are accepted",
+		metadata:   mqttTestMetadata(map[string]string{"brokerAddress": "ssl://localhost:8883"}),
+		authParams: map[string]string{"username": "user", "password": "pass"},
+		isError:    false,
+	},
+	{
+		name:       "credentials over wss scheme are accepted",
+		metadata:   mqttTestMetadata(map[string]string{"brokerAddress": "wss://localhost:8443"}),
+		authParams: map[string]string{"username": "user", "password": "pass"},
+		isError:    false,
+	},
 }
 
 func TestMqttParseMetadata(t *testing.T) {
@@ -74,6 +173,7 @@ func TestMqttParseMetadata(t *testing.T) {
 		t.Run(testData.name, func(t *testing.T) {
 			meta, err := parseMqttScalerMetadata(&scalersconfig.ScalerConfig{
 				TriggerMetadata: testData.metadata,
+				AuthParams:      testData.authParams,
 				ResolvedEnv:     map[string]string{},
 			})
 
