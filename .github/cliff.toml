@@ -9,13 +9,14 @@ body = """
 {% for group, commits in commits | group_by(attribute="group") -%}
 {% set group_name = group | striptags | trim -%}
 ## {{ group_name }}
-{% if group_name == "Dependencies" -%}
+{% if group_name == "CI" or group_name == "Dependencies" -%}
 <details>
 <summary>Show</summary>
 
 {% endif -%}
-{% for commit in commits | sort(attribute="remote.pr_title") -%}
-{% set title = commit.remote.pr_title | default(value=commit.message | split(pat="\n") | first) | trim -%}
+{% for commit in commits | sort(attribute="message") -%}
+{% set fallback_title = commit.remote.pr_title | default(value=commit.message | split(pat="\n") | first, boolean=true) -%}
+{% set title = fallback_title | trim -%}
 {% set title_parts = title | split(pat=":") -%}
 {% set component = title_parts | first | trim -%}
 {% set display_component = component | replace(from="**", to="") -%}
@@ -24,8 +25,9 @@ body = """
 - [`{{ commit.id | truncate(length=7, end="") }}`](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/commit/{{ commit.id }}) : **{{ display_component }}**{% if description %}: {{ description }}{% endif %}{% if commit.remote.pr_number %} ([#{{ commit.remote.pr_number }}](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/pull/{{ commit.remote.pr_number }})){% endif %}{% if commit.remote.username %} (@{{ commit.remote.username }}){% endif %}
 {% endif -%}
 {% endfor -%}
-{% for commit in commits | sort(attribute="remote.pr_title") -%}
-{% set title = commit.remote.pr_title | default(value=commit.message | split(pat="\n") | first) | trim -%}
+{% for commit in commits | sort(attribute="message") -%}
+{% set fallback_title = commit.remote.pr_title | default(value=commit.message | split(pat="\n") | first, boolean=true) -%}
+{% set title = fallback_title | trim -%}
 {% set title_parts = title | split(pat=":") -%}
 {% set component = title_parts | first | trim -%}
 {% set display_component = component | replace(from="**", to="") -%}
@@ -34,7 +36,7 @@ body = """
 - [`{{ commit.id | truncate(length=7, end="") }}`](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/commit/{{ commit.id }}) : **{{ display_component }}**{% if description %}: {{ description }}{% endif %}{% if commit.remote.pr_number %} ([#{{ commit.remote.pr_number }}](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/pull/{{ commit.remote.pr_number }})){% endif %}{% if commit.remote.username %} (@{{ commit.remote.username }}){% endif %}
 {% endif -%}
 {% endfor %}
-{% if group_name == "Dependencies" -%}
+{% if group_name == "CI" or group_name == "Dependencies" -%}
 </details>{{ "\n" }}
 {% endif -%}
 {% endfor -%}
@@ -56,8 +58,8 @@ commit_parsers = [
   { field = "remote.pr_labels", pattern = "kind/bug",             group = "<!-- 4 -->Fixes" },
   { field = "remote.pr_labels", pattern = "kind/chore",           group = "<!-- 5 -->Other" },
   { field = "remote.pr_labels", pattern = "kind/documentation",   group = "<!-- 5 -->Other" },
-  { field = "remote.pr_labels", pattern = "kind/ci",              group = "<!-- 5 -->Other" },
-  { field = "remote.pr_labels", pattern = "kind/dependencies",    group = "<!-- 6 -->Dependencies" },
+  { field = "remote.pr_labels", pattern = "kind/ci",                group = "<!-- 6 -->CI" },
+  { field = "remote.pr_labels", pattern = "kind/dependencies",      group = "<!-- 7 -->Dependencies" },
   # fallback for cherry-picks and commits where GitHub PR label lookup fails
-  { message = ".*", group = "<!-- 7 -->Unlabeled" },
+  { message = ".*", group = "<!-- 8 -->Unlabeled" },
 ]

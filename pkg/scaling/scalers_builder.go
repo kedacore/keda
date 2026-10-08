@@ -39,16 +39,16 @@ import (
 // buildScalers returns list of Scalers for the specified triggers
 func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, podTemplateSpec *corev1.PodTemplateSpec, containerName string, asMetricSource bool) ([]cache.ScalerBuilder, error) {
 	logger := log.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
-	var err error
-	resolvedEnv := make(map[string]string)
 	result := make([]cache.ScalerBuilder, 0, len(withTriggers.Spec.Triggers))
 
 	for i, t := range withTriggers.Spec.Triggers {
 		triggerIndex, trigger := i, t
 
-		factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		factory := func(factoryCtx context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+			resolvedEnv := make(map[string]string)
 			if podTemplateSpec != nil {
-				resolvedEnv, err = resolver.ResolveContainerEnv(ctx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace, h.authClientSet.SecretLister)
+				var err error
+				resolvedEnv, err = resolver.ResolveContainerEnv(factoryCtx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace, h.authClientSet.SecretLister)
 				if err != nil {
 					return nil, nil, fmt.Errorf("error resolving secrets for ScaleTarget: %w", err)
 				}
@@ -72,7 +72,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 				TriggerUniqueKey:        fmt.Sprintf("%s-%s-%s-%d", withTriggers.Kind, withTriggers.Namespace, withTriggers.Name, triggerIndex),
 			}
 
-			authParams, podIdentity, err := resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace, h.authClientSet)
+			authParams, podIdentity, err := resolver.ResolveAuthRefAndPodIdentity(factoryCtx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace, h.authClientSet)
 			switch podIdentity.Provider {
 			case kedav1alpha1.PodIdentityProviderAwsEKS:
 				// FIXME: Delete this for v3
@@ -85,12 +85,12 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 			}
 			config.AuthParams = authParams
 			config.PodIdentity = podIdentity
-			scaler, err := buildScaler(ctx, h.client, trigger.Type, config)
+			scaler, err := buildScaler(factoryCtx, h.client, trigger.Type, config)
 			return scaler, config, err
 		}
 
 		// nosemgrep: invalid-usage-of-modified-variable
-		scaler, config, err := factory()
+		scaler, config, err := factory(ctx)
 		if err != nil {
 			h.recorder.Eventf(withTriggers, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, eventreason.KEDAScalerFailed, "%s", err.Error())
 			logger.Error(err, "error resolving auth params", "triggerIndex", triggerIndex)
@@ -145,6 +145,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewAzureAppInsightsScaler(config)
 	case "azure-blob":
 		return scalers.NewAzureBlobScaler(config)
+	case "azure-cosmosdb":
+		return scalers.NewAzureCosmosDBScaler(config)
 	case "azure-data-explorer":
 		return scalers.NewAzureDataExplorerScaler(config)
 	case "azure-eventhub":
@@ -158,7 +160,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "azure-queue":
 		return scalers.NewAzureQueueScaler(config)
 	case "azure-servicebus":
-		return scalers.NewAzureServiceBusScaler(ctx, config)
+		return scalers.NewAzureServiceBusScaler(config)
 	case "beanstalkd":
 		return scalers.NewBeanstalkdScaler(config)
 	case "cassandra":

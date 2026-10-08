@@ -3,7 +3,7 @@
 # Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM golang:1.26.6
+FROM golang:1.27.1
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
@@ -17,7 +17,7 @@ ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 
 # renovate: datasource=github-releases depName=protocolbuffers/protobuf
-ENV PROTOC_VERSION=v36.1
+ENV PROTOC_VERSION=v36.2
 
 # Configure apt, install packages and tools
 RUN apt-get update \

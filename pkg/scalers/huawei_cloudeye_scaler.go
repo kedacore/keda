@@ -33,7 +33,6 @@ type huaweiCloudeyeMetadata struct {
 
 	TargetMetricValue           float64 `keda:"name=targetMetricValue,           order=triggerMetadata"`
 	ActivationTargetMetricValue float64 `keda:"name=activationTargetMetricValue, order=triggerMetadata, default=0"`
-	MinMetricValue              float64 `keda:"name=minMetricValue,              order=triggerMetadata, optional, deprecated=The 'minMetricValue' setting is DEPRECATED and is removed in v2.20 - Use 'activationTargetMetricValue' instead"`
 
 	MetricCollectionTime int64  `keda:"name=metricCollectionTime, order=triggerMetadata, default=300"`
 	MetricFilter         string `keda:"name=metricFilter,         order=triggerMetadata, enum=average;max;min;sum, default=average"`
