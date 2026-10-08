@@ -1695,6 +1695,32 @@ func TestHandleResult_SetsLastActiveTime(t *testing.T) {
 	assert.Equal(t, &now, patchedObj.Status.LastActiveTime)
 }
 
+func TestHandleResult_SkipsPatchWhenLastActiveTimeNil(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+
+	sh := scaleHandler{client: mockClient}
+
+	now := metav1.Now()
+	existingSO := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "ns"},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			LastActiveTime: &now,
+		},
+	}
+
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test", Namespace: "ns"}, gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj *kedav1alpha1.ScaledObject, _ ...any) error {
+			*obj = *existingSO.DeepCopy()
+			return nil
+		})
+
+	result := executor.ScaleResult{
+		LastActiveTime: nil,
+	}
+	sh.handleResult(context.TODO(), &existingSO, result)
+}
+
 func TestHandleResult_KubernetesAPITimeout(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockClient := mock_client.NewMockClient(ctrl)
