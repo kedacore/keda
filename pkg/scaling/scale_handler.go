@@ -915,12 +915,12 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	}
 	metricTriggerPairList := make(map[string]string)
 	isFallbackActive := false
-	// isPlaceholderActive tracks the scalingModifiers case where a metric-spec failure produced
-	// a "nil" placeholder metric (not whole-object fallback). The placeholder must survive to
-	// HandleScalingModifiers so the formula treats the failed trigger as nil, so it has to
-	// bypass the "scaler error under threshold" early return below even though isFallbackActive
-	// stays false.
-	isPlaceholderActive := false
+	// hasUnhandledScalerError records whether any scaler error was left unhandled, i.e. not
+	// absorbed by whole-object fallback or by a scalingModifiers placeholder. It is tracked per
+	// trigger rather than globally so that a scalingModifiers placeholder on one trigger does not
+	// mask a genuine below-threshold failure on another: the early error return below must still
+	// fire when a real failure went unhandled, even if some other trigger produced a placeholder.
+	hasUnhandledScalerError := false
 
 	// let's check metrics for all scalers in a ScaledObject
 	// as we can have multiple metrics in parallel for scaling modifiers
@@ -958,15 +958,20 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 			// the fallback health counter here. Otherwise fallback can never activate for a
 			// scaler that is unreachable, which is the main case fallback is meant to cover.
 			fb := h.fallbackForMetricSpecError(ctx, scaledObject, scalersCache, triggerIndex, triggerName, err, logger)
-			if fb.fallbackActive {
+			switch {
+			case fb.fallbackActive:
 				isFallbackActive = true
 				fallbackMetrics = append(fallbackMetrics, fb.metrics...)
-			} else if fb.placeholderActive {
+			case fb.placeholderActive:
 				// scalingModifiers placeholder metrics are not whole-object fallback: they must
 				// reach the formula engine via matchingMetrics so the failed trigger evaluates
 				// to nil. HandleScalingModifiers runs with isFallbackActive=false in that case.
-				isPlaceholderActive = true
 				matchingMetrics = append(matchingMetrics, fb.metrics...)
+			default:
+				// This trigger's failure was not absorbed by fallback or a placeholder (for
+				// example a below-threshold failure, or no fallback configured), so it is a
+				// genuine unhandled error that must still be reported to the HPA.
+				hasUnhandledScalerError = true
 			}
 			maps.Copy(metricTriggerPairList, fb.triggerPairs)
 		}
@@ -1039,6 +1044,11 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 
 		if result.record.ScalerError != nil {
 			isScalerError = true
+			// A metric error that reaches here without fallback active for this result was not
+			// absorbed, so it is an unhandled error that must be reported to the HPA.
+			if !result.record.FallbackActive {
+				hasUnhandledScalerError = true
+			}
 		}
 
 		if storeRecordsForState && result.observed {
@@ -1059,10 +1069,12 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	}
 
 	// This case happens in failed times under failureThreshold. Report error to HPA directly.
-	// A scalingModifiers placeholder is not whole-object fallback (isFallbackActive stays false),
-	// but it must still reach HandleScalingModifiers so the formula can evaluate the failed
-	// trigger as nil, so it is excluded from this early error return.
-	if !isFallbackActive && !isPlaceholderActive && isScalerError {
+	// Only a genuinely unhandled error short-circuits here: a scalingModifiers placeholder is not
+	// whole-object fallback (isFallbackActive stays false) but handles its trigger's failure, so
+	// it does not count as unhandled. Tracking this per trigger (rather than a single global
+	// "placeholder active" flag) ensures a placeholder on one trigger cannot mask a real
+	// below-threshold failure on another, which must still reach the HPA.
+	if !isFallbackActive && hasUnhandledScalerError {
 		return nil, fmt.Errorf("metric:%s encountered error", metricsName)
 	}
 

@@ -2982,3 +2982,123 @@ func TestGetScaledObjectMetricsScalingModifiersPlaceholderOnSpecError(t *testing
 	assert.NotEmpty(t, metrics.Items)
 	assert.Equal(t, float64(10), metrics.Items[0].Value.AsApproximateFloat64())
 }
+
+// TestGetScaledObjectMetricsPlaceholderDoesNotMaskUnhandledError is a regression test for the
+// review follow-up: a scalingModifiers placeholder on one trigger must not suppress a genuine
+// below-threshold failure on another trigger. The unhandled failure has to be reported to the HPA
+// rather than being hidden behind a formula result. isPlaceholderActive used to be a single
+// function-scoped flag, so any placeholder bypassed the error return for every trigger; the fix
+// tracks unhandled errors per trigger.
+func TestGetScaledObjectMetricsPlaceholderDoesNotMaskUnhandledError(t *testing.T) {
+	scaledObjectName := testNameGlobal
+	scaledObjectNamespace := testNamespaceGlobal
+	compositeMetricName := compositeMetricNameGlobal
+
+	ctrl := gomock.NewController(t)
+	recorder := events.NewFakeRecorder(10)
+	mockClient := mock_client.NewMockClient(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	placeholderMetric := "s0-metric_one" // trigger 0: past threshold -> placeholder (handled)
+	unhandledMetric := "s1-metric_two"   // trigger 1: below threshold -> unhandled error
+
+	scaler1 := mock_scalers.NewMockScaler(ctrl)
+	scaler1Refreshed := mock_scalers.NewMockScaler(ctrl)
+	scaler2 := mock_scalers.NewMockScaler(ctrl)
+	scaler2Refreshed := mock_scalers.NewMockScaler(ctrl)
+
+	scalerConfig1 := scalersconfig.ScalerConfig{TriggerName: triggerName1, TriggerIndex: 0}
+	scalerConfig2 := scalersconfig.ScalerConfig{TriggerName: triggerName2, TriggerIndex: 1}
+	factory1 := func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		return scaler1Refreshed, &scalerConfig1, nil
+	}
+	factory2 := func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		return scaler2Refreshed, &scalerConfig2, nil
+	}
+
+	// Shared threshold of 2. Trigger 0 is pre-seeded at 2 failures, so the next increment (3)
+	// crosses the threshold and yields a placeholder. Trigger 1 starts at 0, so its increment (1)
+	// stays below the threshold and is an unhandled error.
+	placeholderStart := int32(2)
+	unhandledStart := int32(0)
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: scaledObjectName, Namespace: scaledObjectNamespace},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "test"},
+			Advanced: &kedav1alpha1.AdvancedConfig{
+				ScalingModifiers: kedav1alpha1.ScalingModifiers{
+					Target:  "2",
+					Formula: fmt.Sprintf("%s + %s", triggerName1, triggerName2),
+				},
+			},
+			Fallback: &kedav1alpha1.Fallback{
+				FailureThreshold: 2,
+				Replicas:         5,
+				Behavior:         kedav1alpha1.FallbackBehaviorScalingModifiers,
+			},
+			Triggers: []kedav1alpha1.ScaleTriggers{
+				{Name: triggerName1, Type: "fake_trig1"},
+				{Name: triggerName2, Type: "fake_trig2"},
+			},
+		},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			ScaleTargetGVKR:     &kedav1alpha1.GroupVersionKindResource{Group: "apps", Kind: "Deployment"},
+			ExternalMetricNames: []string{placeholderMetric, unhandledMetric},
+			Health: map[string]kedav1alpha1.HealthStatus{
+				placeholderMetric: {NumberOfFailures: &placeholderStart, Status: kedav1alpha1.HealthStatusFailing},
+				unhandledMetric:   {NumberOfFailures: &unhandledStart, Status: kedav1alpha1.HealthStatusHappy},
+			},
+		},
+	}
+
+	compiledFormula, err := expr.Compile(scaledObject.Spec.Advanced.ScalingModifiers.Formula)
+	assert.NoError(t, err)
+
+	scalerCache := cache.ScalersCache{
+		ScaledObject: &scaledObject,
+		Scalers: []cache.ScalerBuilder{
+			{Scaler: scaler1, ScalerConfig: scalerConfig1, Factory: factory1},
+			{Scaler: scaler2, ScalerConfig: scalerConfig2, Factory: factory2},
+		},
+		Recorder:        recorder,
+		CompiledFormula: compiledFormula,
+	}
+	caches := map[string]*cache.ScalersCache{scaledObject.GenerateIdentifier(): &scalerCache}
+
+	sh := scaleHandler{
+		client:                   mockClient,
+		scaleLoopContexts:        &sync.Map{},
+		globalHTTPTimeout:        time.Duration(1000),
+		recorder:                 recorder,
+		scalerCaches:             caches,
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
+	}
+
+	mockClient.EXPECT().Status().Return(statusWriter).AnyTimes()
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, obj *kedav1alpha1.ScaledObject, _ any, _ ...any) error {
+			scaledObject.Status = *obj.Status.DeepCopy()
+			return nil
+		}).AnyTimes()
+
+	// Both triggers fail their spec lookup (empty specs on initial and refreshed scalers).
+	scaler1.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{}).AnyTimes()
+	scaler1Refreshed.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{}).AnyTimes()
+	scaler2.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{}).AnyTimes()
+	scaler2Refreshed.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{}).AnyTimes()
+	scaler1.EXPECT().Close(gomock.Any()).Return(nil).AnyTimes()
+	scaler1Refreshed.EXPECT().Close(gomock.Any()).Return(nil).AnyTimes()
+	scaler2.EXPECT().Close(gomock.Any()).Return(nil).AnyTimes()
+	scaler2Refreshed.EXPECT().Close(gomock.Any()).Return(nil).AnyTimes()
+
+	metrics, err := sh.GetScaledObjectMetrics(t.Context(), scaledObjectName, scaledObjectNamespace, compositeMetricName)
+	// Trigger 1's below-threshold failure is unhandled, so the call must surface an error rather
+	// than returning a formula result that silently hides it, even though trigger 0 produced a
+	// placeholder.
+	assert.Error(t, err)
+	assert.Nil(t, metrics)
+}
