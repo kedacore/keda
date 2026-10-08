@@ -51,14 +51,19 @@ type metricsAPIScalerMetadata struct {
 	AggregateFromKubeServiceEndpoints bool            `keda:"name=aggregateFromKubeServiceEndpoints,order=triggerMetadata,default=false"`
 	AggregationType                   AggregationType `keda:"name=aggregationType,order=triggerMetadata,default=average,enum=average;sum;max;min"`
 	Timeout                           time.Duration   `keda:"name=timeout, order=triggerMetadata, optional"`
+	ZeroOnNoReadyEndpoints            bool            `keda:"name=zeroOnNoReadyEndpoints,order=triggerMetadata,default=false"`
 	// Authentication parameters for connecting to the metrics API
 	MetricsAPIAuth *authentication.Config `keda:"optional"`
 
 	triggerIndex int
 }
 
-// Validate rejects auth modes this scaler does not apply to its requests.
+// Validate checks metadata and supported auth modes.
 func (m *metricsAPIScalerMetadata) Validate() error {
+	if m.ZeroOnNoReadyEndpoints && !m.AggregateFromKubeServiceEndpoints {
+		return fmt.Errorf("zeroOnNoReadyEndpoints requires aggregateFromKubeServiceEndpoints to be true")
+	}
+
 	return m.MetricsAPIAuth.ValidateAllowed(
 		authentication.APIKeyAuthType,
 		authentication.BasicAuthType,
@@ -400,6 +405,10 @@ func (s *metricsAPIScaler) getMetricValue(ctx context.Context) (float64, error) 
 			return 0, fmt.Errorf("failed to get kubernetes endpoints urls from configured service URL")
 		}
 		if len(endpointsUrls) == 0 {
+			if s.metadata.ZeroOnNoReadyEndpoints {
+				s.logger.V(1).Info("no ready endpoints found; returning 0 because zeroOnNoReadyEndpoints is enabled")
+				return 0, nil
+			}
 			return 0, fmt.Errorf("no endpoints URLs were given for the service name")
 		}
 		return s.aggregateMetricsFromMultipleEndpoints(ctx, endpointsUrls)

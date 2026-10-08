@@ -2858,6 +2858,10 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
+        - name: zeroOnNoReadyEndpoints
+          type: string
+          default: "false"
+          metadataVariableReadable: true
         - name: authModes
           type: string
           optional: true
