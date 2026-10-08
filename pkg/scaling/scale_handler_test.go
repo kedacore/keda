@@ -525,7 +525,7 @@ func TestCheckScaledObjectScalersWithTriggerAuthError(t *testing.T) {
 				Address:        "invalid-vault-address",
 				Authentication: "token",
 				Credential: &kedav1alpha1.Credential{
-					Token: "my-token",
+					Token: "my-token", //nolint:staticcheck // SA1019: the inline token is deprecated but still supported
 				},
 				Mount: "kubernetes",
 				Role:  "my-role",
