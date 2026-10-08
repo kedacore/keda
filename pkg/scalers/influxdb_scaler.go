@@ -31,7 +31,6 @@ type influxDBScalerV3 struct {
 }
 
 type influxDBMetadata struct {
-	AuthTokenOld             string  `keda:"name=authToken,                order=triggerMetadata,                        optional,        deprecated=The 'authToken' setting from triggerMetadata is DEPRECATED and is removed in v2.20 - Use 'authToken' from resolvedEnv or authParams instead"`
 	AuthToken                string  `keda:"name=authToken,                order=resolvedEnv;authParams,                 optional"`
 	OrganizationName         string  `keda:"name=organizationName,         order=triggerMetadata;resolvedEnv;authParams, optional"`
 	Query                    string  `keda:"name=query,                    order=triggerMetadata"`
