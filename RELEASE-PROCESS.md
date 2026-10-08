@@ -15,6 +15,8 @@ Look at the [last release] in the releases page:
 
 Release notes are generated automatically from merged PR metadata using [release-cliff workflow](.github/workflows/release-cliff.yml).
 
+The root `CHANGELOG.md` is an archive through v2.20.2. Release notes for v2.21.0 and later are published on the [GitHub Releases page](https://github.com/kedacore/keda/releases).
+
 Before the release, make sure PR titles and `kind/*` labels are correct so the generated draft release is grouped and worded as expected.
 
 ## 2. Add the new version to GitHub Bug report template
@@ -72,6 +74,8 @@ Hotfix flow (`vX.Y.Z`):
 ### Regenerating draft notes
 
 If draft notes are not categorized correctly, update the source PR with the appropriate `kind/*` label. Then open **Actions > Release Notes (git-cliff) > Run workflow**, select `main` or the relevant `release/vX.Y` branch in GitHub's branch selector, and run it. The existing draft for that branch is replaced.
+
+Regeneration replaces the complete draft body. Add manual highlights, upgrade notes, and contributor acknowledgements only after all release-bound changes have merged and the final regeneration has completed.
 
 ### PR requirements for generated notes
 
