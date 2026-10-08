@@ -32,6 +32,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -389,6 +390,20 @@ func metricNameForTriggerIndex(metricNames []string, triggerIndex int) string {
 	return ""
 }
 
+// metricNamesForTriggerIndex returns every external metric name owned by the given trigger index.
+// A single scaler can expose more than one external metric, so the metric-spec failure path has to
+// drive fallback for all of them, not just the first match.
+func metricNamesForTriggerIndex(metricNames []string, triggerIndex int) []string {
+	prefix := fmt.Sprintf("s%d-", triggerIndex)
+	var owned []string
+	for _, name := range metricNames {
+		if strings.HasPrefix(name, prefix) {
+			owned = append(owned, name)
+		}
+	}
+	return owned
+}
+
 // handleResult applies the ScaleResult to the scalable object's status in the API server.
 // It fetches the latest object, merges the result fields, and performs a single status patch with conflict retry.
 func (h *scaleHandler) handleResult(ctx context.Context, obj kedav1alpha1.ScalableObject, result executor.ScaleResult) {
@@ -669,6 +684,124 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject ked
 /// ----------             ScaledObject related methods               --------- ///
 /// --------------------------------------------------------------------------- ///
 
+// metricSpecError holds the fallback outcome for a scaler whose metric spec could not be
+// retrieved. A single scaler can own more than one external metric, so the fallback is
+// resolved per metric and the results are aggregated here.
+type metricSpecErrorFallback struct {
+	// metrics holds the fallback values produced for the failed scaler. For the static /
+	// current-replicas behaviors these are real fallback metrics; for the scalingModifiers
+	// behavior they are the "nil" placeholder metrics the formula engine consumes.
+	metrics []external_metrics.ExternalMetricValue
+	// triggerPairs maps each produced metric name to its trigger name, so the scalingModifiers
+	// formula can pair the placeholder with the failed trigger.
+	triggerPairs map[string]string
+	// fallbackActive is true when whole-object fallback metrics were produced (non-modifier
+	// behaviors). It must drive the ScaledObject fallback condition and HPA response.
+	fallbackActive bool
+	// placeholderActive is true when scalingModifiers produced placeholder metrics past the
+	// threshold. GetMetricsWithFallback intentionally reports fallbackActive=false in that
+	// case so the formula still runs, so this is tracked separately and must not be confused
+	// with whole-object fallback.
+	placeholderActive bool
+}
+
+// fallbackForMetricSpecError feeds the per-metric fallback health counter when a scaler's
+// metric spec cannot be retrieved (for example an external gRPC scaler that has become
+// unreachable). The regular fallback path runs once a metric spec is known and the metric
+// value fetch fails, but when the spec lookup itself fails the per-trigger loop never runs,
+// so the counter is never incremented and fallback can never activate. This is the primary
+// scenario fallback is meant to cover, so the failure is routed through the same
+// fallback.GetMetricsWithFallback machinery here.
+//
+// The metric names are recovered from the ScaledObject status (ExternalMetricNames), which the
+// operator keeps populated for the life of the HPA, so they are still available during the
+// outage. Every metric owned by the failed trigger is processed, each with its own health key
+// and fallback value. The real metric target (type and value) is recovered from the scaler's
+// last-known cached metric specs when available so doFallback computes the correct value; when
+// no cached spec exists a positive AverageValue target is synthesised so doFallback still
+// produces a well-defined replica count.
+func (h *scaleHandler) fallbackForMetricSpecError(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, scalersCache *cache.ScalersCache, triggerIndex int, triggerName string, specErr error, logger logr.Logger) metricSpecErrorFallback {
+	result := metricSpecErrorFallback{triggerPairs: map[string]string{}}
+
+	metricNames := metricNamesForTriggerIndex(scaledObject.Status.ExternalMetricNames, triggerIndex)
+	if len(metricNames) == 0 {
+		// Without a known metric name the health counter has no key to track, so there is
+		// nothing to do beyond the error already surfaced by the caller.
+		logger.V(1).Info("could not resolve metric name for failed scaler, skipping fallback counter", "scaler", triggerName, "triggerIndex", triggerIndex)
+		return result
+	}
+
+	// Recover the last-known metric specs so the real target (type and value) can be reused.
+	// doFallback multiplies the target by fallback.replicas, so using a synthetic unit target
+	// would return a value the HPA then rescales against its own target, yielding the wrong
+	// replica count. cachedSpecs is nil when the scaler never streamed a spec, in which case a
+	// synthetic AverageValue target is used as a last resort.
+	cachedSpecs := scalersCache.CachedMetricSpecsForScaler(triggerIndex)
+
+	soh := fallback.ScaledObjectHandler{
+		Ctx:          ctx,
+		KubeClient:   h.client,
+		ScaleClient:  h.scaleClient,
+		UpdateLock:   &scalersCache.ScaledObjectUpdateLock,
+		ScaledObject: scaledObject,
+	}
+
+	for _, metricName := range metricNames {
+		metricSpec := metricSpecForFallback(metricName, cachedSpecs)
+
+		metrics, fallbackActive, err := fallback.GetMetricsWithFallback(soh, nil, specErr, metricName, metricSpec)
+		if err != nil {
+			// Below the failure threshold GetMetricsWithFallback returns the suppressed error,
+			// which is the same error the caller already logged, so keep this quiet.
+			logger.V(1).Info("fallback not active yet for failed metric spec", "scaler", triggerName, "metricName", metricName)
+			continue
+		}
+
+		if len(metrics) == 0 {
+			continue
+		}
+
+		result.metrics = append(result.metrics, metrics...)
+		result.triggerPairs[metricName] = triggerName
+
+		// scalingModifiers past the threshold returns a placeholder metric with
+		// fallbackActive=false, on purpose, so the formula still runs and treats the trigger
+		// as nil. That placeholder must be retained and paired with its trigger, but it must
+		// not flip the whole-object fallback flag.
+		if fallbackActive {
+			result.fallbackActive = true
+			logger.Info("Fallback activated for unreachable scaler", "scaler", triggerName, "metricName", metricName)
+		} else {
+			result.placeholderActive = true
+			logger.V(1).Info("Fallback placeholder produced for unreachable scaler with scalingModifiers", "scaler", triggerName, "metricName", metricName)
+		}
+	}
+
+	return result
+}
+
+// metricSpecForFallback returns the metric spec to use when driving fallback for a metric whose
+// live spec could not be retrieved. It reuses the metric's last-known cached spec (preserving
+// the real target type and value) when one is available, otherwise it synthesises a positive
+// AverageValue target so doFallback can still compute a replica count.
+func metricSpecForFallback(metricName string, cachedSpecs []v2.MetricSpec) v2.MetricSpec {
+	for i := range cachedSpecs {
+		if cachedSpecs[i].External != nil && cachedSpecs[i].External.Metric.Name == metricName {
+			return cachedSpecs[i]
+		}
+	}
+
+	return v2.MetricSpec{
+		External: &v2.ExternalMetricSource{
+			Metric: v2.MetricIdentifier{Name: metricName},
+			Target: v2.MetricTarget{
+				Type:         v2.AverageValueMetricType,
+				AverageValue: resource.NewQuantity(1, resource.DecimalSI),
+			},
+		},
+	}
+}
+
 // processMetricsWithFallback processes metrics with fallback support and handles metric recording
 func (h *scaleHandler) processMetricsWithFallback(soh fallback.ScaledObjectHandler, rawMetrics []external_metrics.ExternalMetricValue, rawErr error, metricName string, triggerName string, triggerIndex int, metricSpec v2.MetricSpec, sendRawMetricsCondition bool, isMetricActive bool, logger logr.Logger) ([]external_metrics.ExternalMetricValue, bool, error) {
 	// check if we need to set a fallback
@@ -782,6 +915,12 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	}
 	metricTriggerPairList := make(map[string]string)
 	isFallbackActive := false
+	// hasUnhandledScalerError records whether any scaler error was left unhandled, i.e. not
+	// absorbed by whole-object fallback or by a scalingModifiers placeholder. It is tracked per
+	// trigger rather than globally so that a scalingModifiers placeholder on one trigger does not
+	// mask a genuine below-threshold failure on another: the early error return below must still
+	// fire when a real failure went unhandled, even if some other trigger produced a placeholder.
+	hasUnhandledScalerError := false
 
 	// let's check metrics for all scalers in a ScaledObject
 	// as we can have multiple metrics in parallel for scaling modifiers
@@ -814,6 +953,27 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 			isScalerError = true
 			logger.Error(err, "error getting metric spec for the scaler", "scaler", triggerName)
 			scalersCache.Recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, eventreason.KEDAScalerFailed, "%s", err.Error())
+
+			// The per-trigger metric loop below never runs when the spec lookup fails, so drive
+			// the fallback health counter here. Otherwise fallback can never activate for a
+			// scaler that is unreachable, which is the main case fallback is meant to cover.
+			fb := h.fallbackForMetricSpecError(ctx, scaledObject, scalersCache, triggerIndex, triggerName, err, logger)
+			switch {
+			case fb.fallbackActive:
+				isFallbackActive = true
+				fallbackMetrics = append(fallbackMetrics, fb.metrics...)
+			case fb.placeholderActive:
+				// scalingModifiers placeholder metrics are not whole-object fallback: they must
+				// reach the formula engine via matchingMetrics so the failed trigger evaluates
+				// to nil. HandleScalingModifiers runs with isFallbackActive=false in that case.
+				matchingMetrics = append(matchingMetrics, fb.metrics...)
+			default:
+				// This trigger's failure was not absorbed by fallback or a placeholder (for
+				// example a below-threshold failure, or no fallback configured), so it is a
+				// genuine unhandled error that must still be reported to the HPA.
+				hasUnhandledScalerError = true
+			}
+			maps.Copy(metricTriggerPairList, fb.triggerPairs)
 		}
 
 		if len(metricsArray) == 0 {
@@ -884,6 +1044,11 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 
 		if result.record.ScalerError != nil {
 			isScalerError = true
+			// A metric error that reaches here without fallback active for this result was not
+			// absorbed, so it is an unhandled error that must be reported to the HPA.
+			if !result.record.FallbackActive {
+				hasUnhandledScalerError = true
+			}
 		}
 
 		if storeRecordsForState && result.observed {
@@ -904,19 +1069,57 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	}
 
 	// This case happens in failed times under failureThreshold. Report error to HPA directly.
-	if !isFallbackActive && isScalerError {
+	// Only a genuinely unhandled error short-circuits here: a scalingModifiers placeholder is not
+	// whole-object fallback (isFallbackActive stays false) but handles its trigger's failure, so
+	// it does not count as unhandled. Tracking this per trigger (rather than a single global
+	// "placeholder active" flag) ensures a placeholder on one trigger cannot mask a real
+	// below-threshold failure on another, which must still reach the HPA.
+	if !isFallbackActive && hasUnhandledScalerError {
 		return nil, fmt.Errorf("metric:%s encountered error", metricsName)
 	}
+
+	// When a metric-spec lookup fails for the only scaler the fallback value lives in
+	// fallbackMetrics (non-modifier behavior) rather than matchingMetrics, so recover it before
+	// the empty-result check would otherwise short-circuit the fallback response.
+	matchingMetrics, err = recoverMatchingMetricsFromFallback(scaledObject, metricsName, matchingMetrics, fallbackMetrics, isFallbackActive)
+	if err != nil {
+		return nil, err
+	}
+
+	// handle scalingModifiers here and simply return the matchingMetrics
+	matchingMetrics = modifiers.HandleScalingModifiers(scaledObject, matchingMetrics, metricTriggerPairList, isFallbackActive, fallbackMetrics, scalersCache, logger)
 
 	if len(matchingMetrics) == 0 {
 		return nil, fmt.Errorf("no matching metrics found for %s", metricsName)
 	}
 
-	// handle scalingModifiers here and simply return the matchingMetrics
-	matchingMetrics = modifiers.HandleScalingModifiers(scaledObject, matchingMetrics, metricTriggerPairList, isFallbackActive, fallbackMetrics, scalersCache, logger)
 	return &external_metrics.ExternalMetricValueList{
 		Items: matchingMetrics,
 	}, nil
+}
+
+// recoverMatchingMetricsFromFallback keeps an active fallback from being swallowed by the
+// empty-result check. When no live metric was produced but fallback is active, a direct
+// (non-modifier) request pulls in the fallback values matching the requested metric name so they
+// reach the response; a modifier request leaves matchingMetrics empty so HandleScalingModifiers
+// can build the composite response from fallbackMetrics. When fallback is not active an empty
+// result is a genuine error.
+func recoverMatchingMetricsFromFallback(scaledObject *kedav1alpha1.ScaledObject, metricsName string, matchingMetrics, fallbackMetrics []external_metrics.ExternalMetricValue, isFallbackActive bool) ([]external_metrics.ExternalMetricValue, error) {
+	if len(matchingMetrics) > 0 {
+		return matchingMetrics, nil
+	}
+	if !isFallbackActive {
+		return nil, fmt.Errorf("no matching metrics found for %s", metricsName)
+	}
+	if scaledObject.IsUsingModifiers() {
+		return matchingMetrics, nil
+	}
+	for _, fallbackMetric := range fallbackMetrics {
+		if fallbackMetric.MetricName == metricsName {
+			matchingMetrics = append(matchingMetrics, fallbackMetric)
+		}
+	}
+	return matchingMetrics, nil
 }
 
 // scalerState is used as return
@@ -1134,6 +1337,24 @@ func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler
 		result.Err = err
 		logger.Error(err, "error getting metric spec for the scaler", "scaler", result.TriggerName)
 		scalersCache.Recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, eventreason.KEDAScalerFailed, "%s", err.Error())
+
+		// The per-trigger metric loop below never runs when the spec lookup fails, so drive the
+		// fallback health counter here so fallback can still activate for an unreachable scaler.
+		fb := h.fallbackForMetricSpecError(ctx, scaledObject, scalersCache, triggerIndex, result.TriggerName, err, logger)
+		if fb.fallbackActive {
+			result.FallbackActive = true
+			result.FallbackMetrics = append(result.FallbackMetrics, fb.metrics...)
+			result.Metrics = append(result.Metrics, fb.metrics...)
+			result.IsActive = true
+		} else if fb.placeholderActive {
+			// scalingModifiers placeholder metrics must reach the formula engine via the regular
+			// metric list so the failed trigger evaluates to nil, without flipping FallbackActive.
+			result.Metrics = append(result.Metrics, fb.metrics...)
+		}
+		if result.Pairs == nil {
+			result.Pairs = map[string]string{}
+		}
+		maps.Copy(result.Pairs, fb.triggerPairs)
 	}
 
 	for _, spec := range metricSpecs {

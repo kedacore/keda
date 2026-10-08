@@ -241,6 +241,22 @@ func (c *ScalersCache) GetMetricSpecForScalingForScaler(ctx context.Context, ind
 	return metricSpecs, err
 }
 
+// CachedMetricSpecsForScaler returns the last-known cached metric specs for the scaler at the
+// given index, if any were captured (e.g. via StreamMetricSpec for a streaming external scaler).
+// Unlike GetMetricSpecForScalingForScaler it never queries the live scaler and never triggers a
+// refresh, so it is safe to call on the fallback path after a spec lookup has already failed.
+// It returns nil when no cached specs are available for the scaler.
+func (c *ScalersCache) CachedMetricSpecsForScaler(index int) []v2.MetricSpec {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	if c.closed || index < 0 || index >= len(c.Scalers) {
+		return nil
+	}
+
+	return cloneMetricSpecs(c.Scalers[index].CachedMetricSpecs)
+}
+
 // GetMetricsAndActivityForScaler returns metric value, activity and latency for a scaler identified by the metric name
 // and by the input index (from the list of scalers in this ScaledObject)
 func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index int, metricName string) ([]external_metrics.ExternalMetricValue, bool, time.Duration, error) {
