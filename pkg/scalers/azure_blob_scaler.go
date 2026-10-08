@@ -109,6 +109,7 @@ func NewAzureBlobScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		meta.AccountName,
 		meta.EndpointSuffix,
 		config.GlobalHTTPTimeout,
+		config.ServiceAccountTokenProvider,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating azure blob client: %w", err)

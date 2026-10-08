@@ -146,7 +146,7 @@ func CreateAzureLogsClient(config *scalersconfig.ScalerConfig, meta *azureLogAna
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		creds, err = azidentity.NewClientSecretCredential(meta.TenantID, meta.ClientID, meta.ClientSecret, nil)
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		creds, err = azure.NewChainedCredential(logger, config.PodIdentity)
+		creds, err = azure.NewChainedCredential(logger, config.PodIdentity, config.ServiceAccountTokenProvider)
 	default:
 		return nil, fmt.Errorf("azure monitor does not support pod identity provider - %s", config.PodIdentity.Provider)
 	}

@@ -26,6 +26,7 @@ package aws
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -33,6 +34,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 // ErrAwsNoAccessKey is returned when awsAccessKeyID is missing.
@@ -48,7 +50,7 @@ var awsSharedCredentialsCache = newSharedConfigsCache()
 // we recover the *aws.Config from the shared cache. If not, we generate
 // a new entry on each request
 func GetAwsConfig(ctx context.Context, awsAuthorization AuthorizationMetadata) (*aws.Config, error) {
-	if awsAuthorization.UsingPodIdentity ||
+	if awsAuthorization.ServiceAccountTokenProvider != nil || awsAuthorization.UsingPodIdentity ||
 		(awsAuthorization.AwsAccessKeyID != "" && awsAuthorization.AwsSecretAccessKey != "") {
 		return awsSharedCredentialsCache.GetCredentials(ctx, awsAuthorization)
 	}
@@ -79,10 +81,29 @@ func GetAwsConfig(ctx context.Context, awsAuthorization AuthorizationMetadata) (
 }
 
 // GetAwsAuthorization returns an AuthorizationMetadata based on trigger information
-func GetAwsAuthorization(uniqueKey, awsRegion string, podIdentity kedav1alpha1.AuthPodIdentity, triggerMetadata, authParams, resolvedEnv map[string]string) (AuthorizationMetadata, error) {
+func GetAwsAuthorization(uniqueKey, awsRegion string, podIdentity kedav1alpha1.AuthPodIdentity, triggerMetadata, authParams, resolvedEnv map[string]string, tokenProvider *scalersconfig.ServiceAccountTokenProvider) (AuthorizationMetadata, error) {
 	meta := AuthorizationMetadata{
 		TriggerUniqueKey: uniqueKey,
 		AwsRegion:        awsRegion,
+	}
+
+	if podIdentity.ServiceAccountName != nil {
+		if err := podIdentity.ValidateServiceAccountName(); err != nil {
+			return meta, err
+		}
+		if podIdentity.Provider != kedav1alpha1.PodIdentityProviderAws {
+			return meta, fmt.Errorf("AWS service account authentication requires provider aws")
+		}
+		if tokenProvider == nil || tokenProvider.ServiceAccountName != *podIdentity.ServiceAccountName {
+			return meta, fmt.Errorf("AWS service account authentication requires a resolved token provider for the selected service account")
+		}
+		meta.UsingPodIdentity = true
+		meta.ServiceAccountTokenProvider = tokenProvider
+		meta.AwsRoleArn = *podIdentity.RoleArn
+		if err := validateServiceAccountAuthorization(meta); err != nil {
+			return meta, err
+		}
+		return meta, nil
 	}
 
 	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAws {

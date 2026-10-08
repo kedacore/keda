@@ -131,7 +131,7 @@ func NewAzureCosmosDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) 
 		return nil, fmt.Errorf("error parsing azure cosmos db metadata: %w", err)
 	}
 
-	cosmosClient, err := newCosmosDBClient(meta, config.TriggerMetadata, config.PodIdentity, logger, config.GlobalHTTPTimeout)
+	cosmosClient, err := newCosmosDBClient(meta, config.TriggerMetadata, config.PodIdentity, logger, config.GlobalHTTPTimeout, config.ServiceAccountTokenProvider)
 	if err != nil {
 		return nil, fmt.Errorf("error creating cosmos db client: %w", err)
 	}
@@ -184,7 +184,10 @@ func parseAzureCosmosDBMetadata(config *scalersconfig.ScalerConfig) (*azureCosmo
 	return meta, nil
 }
 
-func newCosmosDBClient(meta *azureCosmosDBMetadata, triggerMetadata map[string]string, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger, httpTimeout time.Duration) (*cosmosDBClient, error) {
+func newCosmosDBClient(meta *azureCosmosDBMetadata, triggerMetadata map[string]string, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger, httpTimeout time.Duration, providers ...*scalersconfig.ServiceAccountTokenProvider) (*cosmosDBClient, error) {
+	if podIdentity.ServiceAccountName != nil && (meta.Connection != "" || meta.LeaseConnection != "" || meta.CosmosDBKey != "" || meta.LeaseCosmosDBKey != "") {
+		return nil, fmt.Errorf("connection strings and account keys cannot be combined with serviceAccountName")
+	}
 	if httpTimeout == 0 {
 		httpTimeout = 30 * time.Second
 	}
@@ -230,7 +233,7 @@ func newCosmosDBClient(meta *azureCosmosDBMetadata, triggerMetadata map[string]s
 	}
 
 	if client.dataKey == "" || client.leaseKey == "" {
-		credential, resourceURL, err := newCosmosDBTokenCredential(meta, triggerMetadata, podIdentity, logger, client.httpClient)
+		credential, resourceURL, err := newCosmosDBTokenCredential(meta, triggerMetadata, podIdentity, logger, client.httpClient, providers...)
 		if err != nil {
 			return nil, err
 		}
@@ -241,7 +244,7 @@ func newCosmosDBClient(meta *azureCosmosDBMetadata, triggerMetadata map[string]s
 	return client, nil
 }
 
-func newCosmosDBTokenCredential(meta *azureCosmosDBMetadata, triggerMetadata map[string]string, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger, transport policy.Transporter) (azcore.TokenCredential, string, error) {
+func newCosmosDBTokenCredential(meta *azureCosmosDBMetadata, triggerMetadata map[string]string, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger, transport policy.Transporter, providers ...*scalersconfig.ServiceAccountTokenProvider) (azcore.TokenCredential, string, error) {
 	switch podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		cosmosDBResourceURL, credentialCloud, disableInstanceDiscovery, err := resolveCosmosDBServicePrincipalCloud(triggerMetadata)
@@ -264,7 +267,7 @@ func newCosmosDBTokenCredential(meta *azureCosmosDBMetadata, triggerMetadata map
 		if err != nil {
 			return nil, "", fmt.Errorf("error resolving cosmos db resource URL: %w", err)
 		}
-		credential, err := azure.NewChainedCredential(logger, podIdentity)
+		credential, err := azure.NewChainedCredential(logger, podIdentity, providers...)
 		if err != nil {
 			return nil, "", fmt.Errorf("error creating azure credential for workload identity: %w", err)
 		}

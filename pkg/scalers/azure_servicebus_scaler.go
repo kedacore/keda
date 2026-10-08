@@ -46,11 +46,12 @@ const (
 )
 
 type azureServiceBusScaler struct {
-	metricType  v2.MetricTargetType
-	metadata    *azureServiceBusMetadata
-	podIdentity kedav1alpha1.AuthPodIdentity
-	client      *admin.Client
-	logger      logr.Logger
+	metricType                  v2.MetricTargetType
+	metadata                    *azureServiceBusMetadata
+	podIdentity                 kedav1alpha1.AuthPodIdentity
+	serviceAccountTokenProvider *scalersconfig.ServiceAccountTokenProvider
+	client                      *admin.Client
+	logger                      logr.Logger
 }
 
 type azureServiceBusMetadata struct {
@@ -134,10 +135,11 @@ func NewAzureServiceBusScaler(config *scalersconfig.ScalerConfig) (Scaler, error
 	}
 
 	return &azureServiceBusScaler{
-		metricType:  metricType,
-		metadata:    meta,
-		podIdentity: config.PodIdentity,
-		logger:      logger,
+		metricType:                  metricType,
+		metadata:                    meta,
+		podIdentity:                 config.PodIdentity,
+		serviceAccountTokenProvider: config.ServiceAccountTokenProvider,
+		logger:                      logger,
 	}, nil
 }
 
@@ -260,7 +262,7 @@ func (s *azureServiceBusScaler) getServiceBusAdminClient() (*admin.Client, error
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		client, err = admin.NewClientFromConnectionString(s.metadata.Connection, opts)
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		creds, chainedErr := azure.NewChainedCredential(s.logger, s.podIdentity)
+		creds, chainedErr := azure.NewChainedCredential(s.logger, s.podIdentity, s.serviceAccountTokenProvider)
 		if chainedErr != nil {
 			return nil, chainedErr
 		}

@@ -138,7 +138,7 @@ func parsePostgreSQLMetadata(logger logr.Logger, config *scalersconfig.ScalerCon
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		params := buildConnArray(meta)
 
-		cred, err := azure.NewChainedCredential(logger, config.PodIdentity)
+		cred, err := azure.NewChainedCredential(logger, config.PodIdentity, config.ServiceAccountTokenProvider)
 		if err != nil {
 			return nil, authPodIdentity, err
 		}

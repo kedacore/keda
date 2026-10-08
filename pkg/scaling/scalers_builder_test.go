@@ -18,6 +18,7 @@ package scaling
 
 import (
 	"context"
+	"crypto/rand"
 	"testing"
 	"time"
 
@@ -57,7 +58,7 @@ func TestScalerFactoryUsesContextFromCurrentInvocation(t *testing.T) {
 		"sub": "system:serviceaccount:" + namespace + ":" + serviceAccountName,
 		"aud": []string{audience},
 		"exp": time.Now().Add(time.Hour).Unix(),
-	}).SignedString([]byte("test-only"))
+	}).SignedString(newTestJWTSigningKey(t))
 	require.NoError(t, err)
 
 	testScheme := runtime.NewScheme()
@@ -121,4 +122,114 @@ func TestScalerFactoryUsesContextFromCurrentInvocation(t *testing.T) {
 	require.Equal(t, token, config.AuthParams["token"])
 	require.NoError(t, refreshedScaler.Close(refreshCtx))
 	require.NoError(t, builders[0].Scaler.Close(refreshCtx))
+}
+
+func TestCloudServiceAccountUsesScaledObjectNamespace(t *testing.T) {
+	for _, tt := range []struct {
+		identity kedav1alpha1.AuthPodIdentity
+		audience string
+	}{
+		{
+			identity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderGCP, ServiceAccountName: new("reader")},
+			audience: "https://iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/kubernetes/providers/cluster",
+		},
+		{
+			identity: kedav1alpha1.AuthPodIdentity{
+				Provider: kedav1alpha1.PodIdentityProviderAzureWorkload, ServiceAccountName: new("reader"),
+				IdentityID: new("client-id"), IdentityTenantID: new("tenant-id"),
+			},
+			audience: "api://AzureADTokenExchange",
+		},
+		{
+			identity: kedav1alpha1.AuthPodIdentity{
+				Provider: kedav1alpha1.PodIdentityProviderAws, ServiceAccountName: new("reader"),
+				RoleArn: new("arn:aws:iam::123456789012:role/reader"),
+			},
+			audience: "sts.amazonaws.com",
+		},
+	} {
+		t.Run(string(tt.identity.Provider), func(t *testing.T) {
+			testCloudServiceAccountNamespace(t, tt.identity, tt.audience)
+		})
+	}
+}
+
+func testCloudServiceAccountNamespace(t *testing.T, identity kedav1alpha1.AuthPodIdentity, audience string) {
+	t.Helper()
+	t.Setenv("KEDA_CLUSTER_OBJECT_NAMESPACE", "keda")
+	t.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "/nonexistent/operator-credentials.json")
+	resolver.SetConfig(&resolver.Config{ServiceAccountTokenAudiences: []resolver.ServiceAccountTokenAudience{
+		{Namespace: "tenant", ServiceAccountName: "reader", Audience: audience},
+	}})
+	t.Cleanup(func() { resolver.SetConfig(&resolver.Config{}) })
+	scheme := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(scheme))
+	require.NoError(t, kedav1alpha1.AddToScheme(scheme))
+	spec := kedav1alpha1.TriggerAuthenticationSpec{PodIdentity: &identity}
+	for _, kind := range []string{"TriggerAuthentication", "ClusterTriggerAuthentication"} {
+		t.Run(kind, func(t *testing.T) {
+			kubeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
+				&kedav1alpha1.TriggerAuthentication{ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "tenant"}, Spec: spec},
+				&kedav1alpha1.ClusterTriggerAuthentication{ObjectMeta: metav1.ObjectMeta{Name: "auth"}, Spec: spec},
+				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "reader", Namespace: "tenant"}},
+				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "reader", Namespace: "keda"}},
+			).Build()
+			coreClient := mock_serviceaccounts.NewMockCoreV1Interface(gomock.NewController(t))
+			coreClient.GetServiceAccountInterface().EXPECT().CreateToken(
+				gomock.Any(), "reader", gomock.Any(), gomock.Any(),
+			).DoAndReturn(func(ctx context.Context, _ string, request *authenticationv1.TokenRequest, _ metav1.CreateOptions) (*authenticationv1.TokenRequest, error) {
+				require.NoError(t, ctx.Err())
+				require.Equal(t, []string{audience}, request.Spec.Audiences)
+				token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+					"sub": "system:serviceaccount:tenant:reader", "aud": []string{audience},
+					"exp": time.Now().Add(time.Hour).Unix(),
+				}).SignedString(newTestJWTSigningKey(t))
+				require.NoError(t, err)
+				return &authenticationv1.TokenRequest{Status: authenticationv1.TokenRequestStatus{Token: token}}, nil
+			}).Times(1)
+			handler := &scaleHandler{
+				client: kubeClient, recorder: events.NewFakeRecorder(4),
+				authClientSet: &authentication.AuthClientSet{CoreV1Interface: coreClient},
+			}
+			object := &kedav1alpha1.WithTriggers{
+				ObjectMeta: metav1.ObjectMeta{Name: "workload", Namespace: "tenant"}, InternalKind: "ScaledObject",
+				Spec: kedav1alpha1.WithTriggersSpec{Triggers: []kedav1alpha1.ScaleTriggers{{
+					Type: "prometheus",
+					Metadata: map[string]string{
+						"serverAddress": "https://metrics.example.com", "query": "up", "threshold": "1", "awsRegion": "us-east-1",
+					},
+					AuthenticationRef: &kedav1alpha1.AuthenticationRef{Kind: kind, Name: "auth"},
+				}}},
+			}
+			ctx, cancel := context.WithCancel(t.Context())
+			builders, err := handler.buildScalers(ctx, object, nil, "", false)
+			require.NoError(t, err)
+			cancel()
+			require.Len(t, builders, 1)
+			t.Cleanup(func() { require.NoError(t, builders[0].Scaler.Close(t.Context())) })
+			config := builders[0].ScalerConfig
+			require.Empty(t, config.AuthParams, "Kubernetes assertions must not become generic scaler auth parameters")
+			require.NotNil(t, config.ServiceAccountTokenProvider)
+			require.Equal(t, audience, config.ServiceAccountTokenProvider.Audience)
+			require.Equal(t, "tenant", config.ServiceAccountTokenProvider.Namespace)
+			require.Equal(t, "reader", config.ServiceAccountTokenProvider.ServiceAccountName)
+			_, err = config.ServiceAccountTokenProvider.GetToken(t.Context())
+			require.NoError(t, err)
+			// This namespace has neither a TA nor an audience mapping, but can
+			// reference the same CTA. It must not inherit tenant's delegation.
+			if kind == "ClusterTriggerAuthentication" {
+				object.Namespace = "other-tenant"
+				_, err = handler.buildScalers(t.Context(), object, nil, "", false)
+				require.ErrorContains(t, err, "no configured token audience")
+			}
+		})
+	}
+}
+
+func newTestJWTSigningKey(t *testing.T) []byte {
+	t.Helper()
+	key := make([]byte, 32)
+	_, err := rand.Read(key)
+	require.NoError(t, err)
+	return key
 }

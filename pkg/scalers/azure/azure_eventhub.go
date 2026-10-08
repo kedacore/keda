@@ -9,22 +9,24 @@ import (
 	"github.com/go-logr/logr"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 // EventHubInfo to keep event hub connection and resources
 type EventHubInfo struct {
-	EventHubConnection       string `keda:"name=connection,                order=authParams;resolvedEnv, optional"`
-	EventHubConsumerGroup    string `keda:"name=consumerGroup,             order=triggerMetadata, default=$Default"`
-	StorageConnection        string `keda:"name=storageConnection,         order=authParams;resolvedEnv, optional"`
-	StorageAccountName       string `keda:"name=storageAccountName,        order=triggerMetadata, optional"`
-	BlobStorageEndpoint      string
-	BlobContainer            string `keda:"name=blobContainer,             order=triggerMetadata, optional"`
-	Namespace                string `keda:"name=eventHubNamespace,         order=triggerMetadata;resolvedEnv, optional"`
-	EventHubName             string `keda:"name=eventHubName,              order=triggerMetadata;resolvedEnv, optional"`
-	CheckpointStrategy       string `keda:"name=checkpointStrategy,        order=triggerMetadata, optional"`
-	ServiceBusEndpointSuffix string
-	PodIdentity              kedav1alpha1.AuthPodIdentity
+	EventHubConnection          string `keda:"name=connection,                order=authParams;resolvedEnv, optional"`
+	EventHubConsumerGroup       string `keda:"name=consumerGroup,             order=triggerMetadata, default=$Default"`
+	StorageConnection           string `keda:"name=storageConnection,         order=authParams;resolvedEnv, optional"`
+	StorageAccountName          string `keda:"name=storageAccountName,        order=triggerMetadata, optional"`
+	BlobStorageEndpoint         string
+	BlobContainer               string `keda:"name=blobContainer,             order=triggerMetadata, optional"`
+	Namespace                   string `keda:"name=eventHubNamespace,         order=triggerMetadata;resolvedEnv, optional"`
+	EventHubName                string `keda:"name=eventHubName,              order=triggerMetadata;resolvedEnv, optional"`
+	CheckpointStrategy          string `keda:"name=checkpointStrategy,        order=triggerMetadata, optional"`
+	ServiceBusEndpointSuffix    string
+	PodIdentity                 kedav1alpha1.AuthPodIdentity
+	ServiceAccountTokenProvider *scalersconfig.ServiceAccountTokenProvider
 }
 
 // GetEventHubClient returns eventhub client
@@ -43,7 +45,7 @@ func GetEventHubClient(info EventHubInfo, logger logr.Logger) (*azeventhubs.Prod
 		}
 		return hub, nil
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		creds, chainedErr := NewChainedCredential(logger, info.PodIdentity)
+		creds, chainedErr := NewChainedCredential(logger, info.PodIdentity, info.ServiceAccountTokenProvider)
 		if chainedErr != nil {
 			return nil, chainedErr
 		}

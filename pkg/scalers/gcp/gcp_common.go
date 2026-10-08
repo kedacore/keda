@@ -33,9 +33,15 @@ type AuthorizationMetadata struct {
 	GoogleApplicationCredentials     string
 	GoogleApplicationCredentialsFile string
 	PodIdentityProviderEnabled       bool
+	ServiceAccountTokenProvider      *scalersconfig.ServiceAccountTokenProvider
+	IdentityID                       string
 }
 
-func (a *AuthorizationMetadata) tokenSource(ctx context.Context, scopes ...string) (oauth2.TokenSource, error) {
+// TokenSource returns credentials for the configured authentication method.
+func (a *AuthorizationMetadata) TokenSource(ctx context.Context, scopes ...string) (oauth2.TokenSource, error) {
+	if a.ServiceAccountTokenProvider != nil {
+		return a.workloadIdentityTokenSource(ctx, scopes...)
+	}
 	if a.PodIdentityProviderEnabled {
 		return google.DefaultTokenSource(ctx, scopes...)
 	}
@@ -67,8 +73,25 @@ func (a *AuthorizationMetadata) tokenSource(ctx context.Context, scopes ...strin
 }
 
 func GetGCPAuthorization(config *scalersconfig.ScalerConfig) (*AuthorizationMetadata, error) {
+	if err := config.PodIdentity.ValidateServiceAccountName(); err != nil {
+		return nil, err
+	}
+	if config.PodIdentity.ServiceAccountName != nil && config.PodIdentity.Provider != kedav1alpha1.PodIdentityProviderGCP {
+		return nil, errors.New("GCP service account authentication requires provider gcp")
+	}
 	if config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderGCP {
-		return &AuthorizationMetadata{PodIdentityProviderEnabled: true}, nil
+		auth := &AuthorizationMetadata{PodIdentityProviderEnabled: true}
+		if config.PodIdentity.ServiceAccountName != nil {
+			if config.ServiceAccountTokenProvider == nil || config.ServiceAccountTokenProvider.GetToken == nil {
+				return nil, errors.New("serviceAccountName requires a resolved service account token provider")
+			}
+			auth.ServiceAccountTokenProvider = config.ServiceAccountTokenProvider
+			auth.IdentityID = config.PodIdentity.GetIdentityID()
+			if _, err := auth.workloadIdentityConfig(); err != nil {
+				return nil, err
+			}
+		}
+		return auth, nil
 	}
 
 	if creds := config.AuthParams["GoogleApplicationCredentials"]; creds != "" {
@@ -92,7 +115,7 @@ func GetGCPOAuth2HTTPTransport(config *scalersconfig.ScalerConfig, base http.Rou
 		return nil, err
 	}
 
-	ts, err := a.tokenSource(context.Background(), scopes...)
+	ts, err := a.TokenSource(context.Background(), scopes...)
 	if err != nil {
 		return nil, err
 	}

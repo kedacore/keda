@@ -31,20 +31,22 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type DataExplorerMetadata struct {
-	ClientID                string
-	ClientSecret            string
-	DatabaseName            string
-	Endpoint                string
-	MetricName              string
-	PodIdentity             kedav1alpha1.AuthPodIdentity
-	Query                   string
-	TenantID                string
-	Threshold               float64
-	ActivationThreshold     float64
-	ActiveDirectoryEndpoint string
+	ClientID                    string
+	ClientSecret                string
+	DatabaseName                string
+	Endpoint                    string
+	MetricName                  string
+	PodIdentity                 kedav1alpha1.AuthPodIdentity
+	ServiceAccountTokenProvider *scalersconfig.ServiceAccountTokenProvider
+	Query                       string
+	TenantID                    string
+	Threshold                   float64
+	ActivationThreshold         float64
+	ActiveDirectoryEndpoint     string
 }
 
 var azureDataExplorerLogger = logf.Log.WithName("azure_data_explorer_scaler")
@@ -91,7 +93,7 @@ func getDataExplorerAuthConfig(metadata *DataExplorerMetadata) (*azkustodata.Con
 
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		azureDataExplorerLogger.V(1).Info(fmt.Sprintf("Creating Azure Data Explorer Client using podIdentity %s", metadata.PodIdentity.Provider))
-		creds, chainedErr := NewChainedCredential(azureDataExplorerLogger, metadata.PodIdentity)
+		creds, chainedErr := NewChainedCredential(azureDataExplorerLogger, metadata.PodIdentity, metadata.ServiceAccountTokenProvider)
 		if chainedErr != nil {
 			return nil, chainedErr
 		}

@@ -85,7 +85,7 @@ func NewAzureEventHubScaler(config *scalersconfig.ScalerConfig) (Scaler, error) 
 		return nil, fmt.Errorf("unable to get eventhub client: %w", err)
 	}
 
-	blobStorageClient, err := azure.GetStorageBlobClient(logger, config.PodIdentity, parsedMetadata.EventHubInfo.StorageConnection, parsedMetadata.EventHubInfo.StorageAccountName, parsedMetadata.EventHubInfo.BlobStorageEndpoint, config.GlobalHTTPTimeout)
+	blobStorageClient, err := azure.GetStorageBlobClient(logger, config.PodIdentity, parsedMetadata.EventHubInfo.StorageConnection, parsedMetadata.EventHubInfo.StorageAccountName, parsedMetadata.EventHubInfo.BlobStorageEndpoint, config.GlobalHTTPTimeout, config.ServiceAccountTokenProvider)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get eventhub client: %w", err)
 	}
@@ -139,6 +139,7 @@ func parseCommonAzureEventHubMetadata(config *scalersconfig.ScalerConfig, meta *
 
 func parseAzureEventHubAuthenticationMetadata(logger logr.Logger, config *scalersconfig.ScalerConfig, meta *eventHubMetadata) error {
 	meta.EventHubInfo.PodIdentity = config.PodIdentity
+	meta.EventHubInfo.ServiceAccountTokenProvider = config.ServiceAccountTokenProvider
 
 	switch config.PodIdentity.Provider {
 	case "", v1alpha1.PodIdentityProviderNone:

@@ -33,6 +33,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/amp"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	httputils "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -69,7 +70,7 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 
 // parseAwsAMPMetadata parses the data to get the AWS specific auth info and metadata
 func parseAwsAMPMetadata(config *scalersconfig.ScalerConfig, awsRegion string) (*AuthorizationMetadata, error) {
-	auth, err := GetAwsAuthorization(config.TriggerUniqueKey, awsRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+	auth, err := GetAwsAuthorization(config.TriggerUniqueKey, awsRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv, config.ServiceAccountTokenProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -81,15 +82,18 @@ func parseAwsAMPMetadata(config *scalersconfig.ScalerConfig, awsRegion string) (
 // then be handed off to the next RoundTripper provided by next. If next is nil,
 // http.DefaultTransport will be used.
 //
-// Credentials for signing are retrieving used the default AWS credential chain.
-// If credentials could not be found, an error will be returned.
+// Credentials for signing use the configured AWS authentication, including
+// explicit service account selection. Missing credentials return an error.
 func NewSigV4RoundTripper(config *scalersconfig.ScalerConfig, awsRegion string) (http.RoundTripper, error) {
 	// parseAwsAMPMetadata can return an error if AWS info is missing
 	// but this can happen if we check for them on not AWS scalers
 	// which is probably the reason to create a SigV4RoundTripper.
 	// To prevent failures we check if the metadata is nil
 	// (missing AWS info) and we hide the error
-	awsAuthorization, _ := parseAwsAMPMetadata(config, awsRegion)
+	awsAuthorization, err := parseAwsAMPMetadata(config, awsRegion)
+	if err != nil && config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderAws && config.PodIdentity.ServiceAccountName != nil {
+		return nil, err
+	}
 	if awsAuthorization == nil {
 		return nil, nil
 	}

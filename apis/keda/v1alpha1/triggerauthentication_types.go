@@ -17,7 +17,11 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
+	"strings"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -153,8 +157,16 @@ type AuthPodIdentity struct {
 	// +kubebuilder:validation:Enum=azure-workload;gcp;aws;aws-eks;none
 	Provider PodIdentityProvider `json:"provider"`
 
+	// For GCP with serviceAccountName, identityId is the optional IAM service account email to impersonate.
 	// +optional
 	IdentityID *string `json:"identityId,omitempty"`
+
+	// ServiceAccountName selects a Kubernetes service account in the ScaledObject or ScaledJob namespace.
+	// Supported for providers gcp, azure-workload and aws in the top-level podIdentity. The operator must be configured
+	// with an approved audience and token-creation RBAC for this service account.
+	// +optional
+	// +kubebuilder:validation:MinLength=1
+	ServiceAccountName *string `json:"serviceAccountName,omitempty"`
 
 	// +optional
 	// Set identityTenantId to override the default Azure tenant id. If this is set, then the IdentityID must also be set
@@ -176,6 +188,53 @@ type AuthPodIdentity struct {
 	// +optional
 	// IdentityOwner configures which identity has to be used during auto discovery, keda or the scaled workload. Mutually exclusive with roleArn
 	IdentityOwner *string `json:"identityOwner,omitempty"`
+}
+
+// ValidateServiceAccountName validates explicit Kubernetes service account selection.
+func (a *AuthPodIdentity) ValidateServiceAccountName() error {
+	if a == nil || a.ServiceAccountName == nil {
+		return nil
+	}
+	if errs := validation.IsDNS1123Subdomain(*a.ServiceAccountName); len(errs) > 0 {
+		return fmt.Errorf("podIdentity.serviceAccountName must be a valid Kubernetes service account name: %s", strings.Join(errs, "; "))
+	}
+	switch a.Provider {
+	case PodIdentityProviderGCP:
+	case PodIdentityProviderAzureWorkload:
+		if strings.TrimSpace(a.GetIdentityID()) == "" || strings.TrimSpace(a.GetIdentityTenantID()) == "" {
+			return fmt.Errorf("podIdentity.serviceAccountName with provider azure-workload requires explicit identityId and identityTenantId")
+		}
+	case PodIdentityProviderAws:
+		if a.RoleArn == nil || strings.TrimSpace(*a.RoleArn) == "" {
+			return fmt.Errorf("podIdentity.serviceAccountName with provider aws requires an explicit roleArn")
+		}
+		if a.IdentityOwner != nil || a.ExternalID != nil {
+			return fmt.Errorf("podIdentity.serviceAccountName with provider aws cannot be combined with identityOwner or externalID")
+		}
+	default:
+		return fmt.Errorf("podIdentity.serviceAccountName is only supported with providers gcp, azure-workload and aws")
+	}
+	return nil
+}
+
+// ValidateServiceAccountSelection restricts Kubernetes service account selection to top-level cloud pod identity.
+func (s *TriggerAuthenticationSpec) ValidateServiceAccountSelection() error {
+	if err := s.PodIdentity.ValidateServiceAccountName(); err != nil {
+		return err
+	}
+	if s.PodIdentity != nil && s.PodIdentity.ServiceAccountName != nil && s.AzureServicePrincipal != nil {
+		return fmt.Errorf("podIdentity.serviceAccountName cannot be combined with azureServicePrincipal authentication")
+	}
+	if s.AzureKeyVault != nil && s.AzureKeyVault.PodIdentity != nil && s.AzureKeyVault.PodIdentity.ServiceAccountName != nil {
+		return fmt.Errorf("azureKeyVault.podIdentity.serviceAccountName is not supported; configure serviceAccountName only in the top-level podIdentity")
+	}
+	if s.AwsSecretManager != nil && s.AwsSecretManager.PodIdentity != nil && s.AwsSecretManager.PodIdentity.ServiceAccountName != nil {
+		return fmt.Errorf("awsSecretManager.podIdentity.serviceAccountName is not supported; configure serviceAccountName only in the top-level podIdentity")
+	}
+	if s.GCPSecretManager != nil && s.GCPSecretManager.PodIdentity != nil && s.GCPSecretManager.PodIdentity.ServiceAccountName != nil {
+		return fmt.Errorf("gcpSecretManager.podIdentity.serviceAccountName is not supported; configure serviceAccountName only in the top-level podIdentity")
+	}
+	return nil
 }
 
 func (a *AuthPodIdentity) GetIdentityID() string {

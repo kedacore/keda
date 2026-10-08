@@ -86,7 +86,7 @@ func parseAwsDynamoDBStreamsMetadata(config *scalersconfig.ScalerConfig) (*awsDy
 		return nil, fmt.Errorf("error parsing dynamodb stream metadata: %w", err)
 	}
 
-	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, meta.AwsRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, meta.AwsRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv, config.ServiceAccountTokenProvider)
 	if err != nil {
 		return nil, err
 	}

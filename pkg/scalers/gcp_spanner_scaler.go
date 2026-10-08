@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"cloud.google.com/go/spanner"
+	spannerapi "cloud.google.com/go/spanner/apiv1"
 	"github.com/go-logr/logr"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
@@ -115,6 +116,12 @@ func newSpannerClient(ctx context.Context, meta *spannerMetadata) (*spanner.Clie
 	var opts []option.ClientOption
 
 	switch {
+	case meta.gcpAuthorization.ServiceAccountTokenProvider != nil:
+		tokenSource, err := meta.gcpAuthorization.TokenSource(ctx, spannerapi.DefaultAuthScopes()...)
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, option.WithTokenSource(tokenSource))
 	case meta.gcpAuthorization.PodIdentityProviderEnabled:
 		// Workload Identity / ADC — the SDK picks up credentials from the
 		// metadata server automatically; no explicit option is needed.

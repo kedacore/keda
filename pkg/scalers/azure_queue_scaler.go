@@ -70,7 +70,7 @@ func NewAzureQueueScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing azure queue metadata: %w", err)
 	}
 
-	queueClient, err := azure.GetStorageQueueClient(logger, podIdentity, meta.Connection, meta.AccountName, meta.EndpointSuffix, meta.QueueName, config.GlobalHTTPTimeout)
+	queueClient, err := azure.GetStorageQueueClient(logger, podIdentity, meta.Connection, meta.AccountName, meta.EndpointSuffix, meta.QueueName, config.GlobalHTTPTimeout, config.ServiceAccountTokenProvider)
 	if err != nil {
 		return nil, fmt.Errorf("error creating azure queue client: %w", err)
 	}
