@@ -1972,6 +1972,11 @@ scalers:
           default: "1"
           metadataVariableReadable: true
           envVariableReadable: true
+        - name: maxPages
+          type: string
+          default: "50"
+          metadataVariableReadable: true
+          envVariableReadable: true
         - name: applicationID
           type: string
           optional: true
