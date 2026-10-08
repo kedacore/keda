@@ -8,10 +8,14 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
+	entraid "github.com/redis/go-redis-entraid"
+	"github.com/redis/go-redis-entraid/manager"
 	"github.com/redis/go-redis/v9"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
@@ -21,6 +25,7 @@ const (
 	defaultActivationListLength = 0
 	defaultDBIdx                = 0
 	defaultEnableTLS            = false
+	azureManagedRedisScope      = "https://redis.azure.com/.default"
 )
 
 var (
@@ -35,6 +40,11 @@ var (
 
 	// ErrRedisParse is returned when "listName" is missing from the config.
 	ErrRedisParse = errors.New("error parsing redis metadata")
+
+	// ErrRedisEntraIDIncompatibleWithPassword is returned when both types of auth are configured for the same triggerMetadata
+	ErrRedisEntraIDIncompatibleWithPassword = errors.New("cannot set password when podIdentity provider is azure-workload")
+	// ErrRedisEntraIDIncompatibleWithSentinel is returned when Redis Sentinel is configured with Azure Workload Identity
+	ErrRedisEntraIDIncompatibleWithSentinel = errors.New("cannot use redis sentinel when podIdentity provider is azure-workload")
 )
 
 type redisScaler struct {
@@ -71,6 +81,7 @@ type redisMetadata struct {
 	AuthParamEnableTLS   string              `keda:"name=tls,                  order=authParams, optional"`
 	ConnectionInfo       redisConnectionInfo `keda:"optional"`
 	triggerIndex         int
+	podIdentity          kedav1alpha1.AuthPodIdentity
 }
 
 func (rci *redisConnectionInfo) SetEnableTLS(metadataEnableTLS string, authParamEnableTLS string) error {
@@ -107,6 +118,10 @@ func (r *redisMetadata) Validate() error {
 	err := validateRedisAddress(&r.ConnectionInfo)
 
 	if err != nil {
+		return err
+	}
+
+	if err := validateRedisEntraIDCompatibility(r.ConnectionInfo, r.podIdentity); err != nil {
 		return err
 	}
 
@@ -157,7 +172,7 @@ func NewRedisScaler(ctx context.Context, isClustered, isSentinel bool, config *s
 }
 
 func createClusteredRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
-	client, err := getRedisClusterClient(ctx, meta.ConnectionInfo)
+	client, err := getRedisClusterClient(ctx, meta.ConnectionInfo, meta.podIdentity, logger)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis cluster failed: %w", err)
 	}
@@ -198,7 +213,7 @@ func createSentinelRedisScaler(ctx context.Context, meta *redisMetadata, script 
 }
 
 func createRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
-	client, err := getRedisClient(ctx, meta.ConnectionInfo, meta.DatabaseIndex)
+	client, err := getRedisClient(ctx, meta.ConnectionInfo, meta.DatabaseIndex, meta.podIdentity, logger)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis failed: %w", err)
 	}
@@ -240,6 +255,7 @@ func parseRedisMetadata(config *scalersconfig.ScalerConfig) (*redisMetadata, err
 	}
 
 	meta.triggerIndex = config.TriggerIndex
+	meta.podIdentity = config.PodIdentity
 	return meta, nil
 }
 
@@ -293,12 +309,50 @@ func validateRedisAddress(c *redisConnectionInfo) error {
 	return nil
 }
 
-func getRedisClusterClient(ctx context.Context, info redisConnectionInfo) (*redis.ClusterClient, error) {
+func validateRedisEntraIDCompatibility(connectionInfo redisConnectionInfo, podIdentity kedav1alpha1.AuthPodIdentity) error {
+	if podIdentity.Provider != kedav1alpha1.PodIdentityProviderAzureWorkload {
+		return nil
+	}
+
+	if connectionInfo.Password != "" {
+		return ErrRedisEntraIDIncompatibleWithPassword
+	}
+
+	if connectionInfo.SentinelMaster != "" || connectionInfo.SentinelUsername != "" || connectionInfo.SentinelPassword != "" {
+		return ErrRedisEntraIDIncompatibleWithSentinel
+	}
+
+	return nil
+}
+
+func getRedisClusterClient(ctx context.Context, info redisConnectionInfo, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger) (*redis.ClusterClient, error) {
 	options := &redis.ClusterOptions{
 		Addrs:    info.Addresses,
 		Username: info.Username,
 		Password: info.Password,
 	}
+
+	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
+		cred, err := azure.NewChainedCredential(logger, podIdentity)
+		if err != nil {
+			return nil, fmt.Errorf("error creating azure credential: %w", err)
+		}
+
+		idp := azure.NewRedisEntraIDProvider(cred, azureManagedRedisScope)
+
+		tokenManager, err := manager.NewTokenManager(idp, manager.TokenManagerOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("error creating token manager: %w", err)
+		}
+
+		credProvider, err := entraid.NewCredentialsProvider(tokenManager, entraid.CredentialsProviderOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("error creating streaming credentials provider: %w", err)
+		}
+
+		options.StreamingCredentialsProvider = credProvider
+	}
+
 	if info.EnableTLS {
 		tlsConfig, err := util.NewTLSConfigWithPassword(info.Cert, info.Key, info.KeyPassword, info.Ca, info.UnsafeSsl)
 		if err != nil {
@@ -341,13 +395,35 @@ func getRedisSentinelClient(ctx context.Context, info redisConnectionInfo, dbInd
 	return c, nil
 }
 
-func getRedisClient(ctx context.Context, info redisConnectionInfo, dbIndex int) (*redis.Client, error) {
+func getRedisClient(ctx context.Context, info redisConnectionInfo, dbIndex int, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger) (*redis.Client, error) {
 	options := &redis.Options{
 		Addr:     info.Addresses[0],
 		Username: info.Username,
 		Password: info.Password,
 		DB:       dbIndex,
 	}
+
+	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
+		cred, err := azure.NewChainedCredential(logger, podIdentity)
+		if err != nil {
+			return nil, fmt.Errorf("error creating azure credential: %w", err)
+		}
+
+		idp := azure.NewRedisEntraIDProvider(cred, azureManagedRedisScope)
+
+		tokenManager, err := manager.NewTokenManager(idp, manager.TokenManagerOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("error creating token manager: %w", err)
+		}
+
+		credProvider, err := entraid.NewCredentialsProvider(tokenManager, entraid.CredentialsProviderOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("error creating streaming credentials provider: %w", err)
+		}
+
+		options.StreamingCredentialsProvider = credProvider
+	}
+
 	if info.EnableTLS {
 		tlsConfig, err := util.NewTLSConfigWithPassword(info.Cert, info.Key, info.KeyPassword, info.Ca, info.UnsafeSsl)
 		if err != nil {
