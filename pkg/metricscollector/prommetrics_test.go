@@ -127,3 +127,61 @@ func TestNewPromMetrics_DisablesHighCardinalityLabels(t *testing.T) {
 	_, err = p.httpClientRequestDuration.GetMetricWithLabelValues("default", "my-so", "prometheus", "my-trigger", "my-metric", "200")
 	assert.Error(t, err, "high-cardinality labels should not be accepted when disabled")
 }
+
+func gatherGaugeValue(t *testing.T, metricName, labelName, resourceName string) (float64, bool) {
+	t.Helper()
+	families, err := ctrlmetrics.Registry.Gather()
+	require.NoError(t, err)
+	for _, family := range families {
+		if family.GetName() != metricName {
+			continue
+		}
+		for _, metric := range family.GetMetric() {
+			for _, label := range metric.GetLabel() {
+				if label.GetName() == labelName && label.GetValue() == resourceName {
+					return metric.GetGauge().GetValue(), true
+				}
+			}
+		}
+	}
+	return 0, false
+}
+
+func TestPromMetrics_ReadyMetrics(t *testing.T) {
+	previousRegistry := ctrlmetrics.Registry
+	ctrlmetrics.Registry = prometheus.NewRegistry()
+	t.Cleanup(func() {
+		ctrlmetrics.Registry = previousRegistry
+	})
+
+	p := NewPromMetrics(false)
+
+	p.RecordScaledObjectReady("testns", "test-so", true)
+	p.RecordScaledJobReady("testns", "test-sj", false)
+
+	value, found := gatherGaugeValue(t, "keda_scaled_object_ready", "scaledObject", "test-so")
+	assert.True(t, found)
+	assert.Equal(t, 1.0, value)
+
+	value, found = gatherGaugeValue(t, "keda_scaled_job_ready", "scaledJob", "test-sj")
+	assert.True(t, found)
+	assert.Equal(t, 0.0, value)
+
+	// values can flip
+	p.RecordScaledObjectReady("testns", "test-so", false)
+	p.RecordScaledJobReady("testns", "test-sj", true)
+
+	value, _ = gatherGaugeValue(t, "keda_scaled_object_ready", "scaledObject", "test-so")
+	assert.Equal(t, 0.0, value)
+	value, _ = gatherGaugeValue(t, "keda_scaled_job_ready", "scaledJob", "test-sj")
+	assert.Equal(t, 1.0, value)
+
+	// deleted resources must not keep reporting a series
+	p.DeleteScaledObjectReady("testns", "test-so")
+	p.DeleteScaledJobReady("testns", "test-sj")
+
+	_, found = gatherGaugeValue(t, "keda_scaled_object_ready", "scaledObject", "test-so")
+	assert.False(t, found, "keda_scaled_object_ready series should be deleted with its ScaledObject")
+	_, found = gatherGaugeValue(t, "keda_scaled_job_ready", "scaledJob", "test-sj")
+	assert.False(t, found, "keda_scaled_job_ready series should be deleted with its ScaledJob")
+}
