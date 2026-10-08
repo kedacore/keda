@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	neturl "net/url"
 	"slices"
@@ -22,7 +23,9 @@ import (
 	"golang.org/x/sync/semaphore"
 	"gopkg.in/yaml.v3"
 	v2 "k8s.io/api/autoscaling/v2"
+	corev1 "k8s.io/api/core/v1"
 	discoveryV1 "k8s.io/api/discovery/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -358,8 +361,21 @@ func (s *metricsAPIScaler) getEndpointsUrlsFromServiceURL(ctx context.Context, s
 	if err != nil {
 		return nil, err
 	}
+	// a dual-stack service has an endpoint slice per IP family, listing every pod in each:
+	// query the pods on the service's primary IP family only, so that each pod is queried once
+	var primaryIPFamily corev1.IPFamily
+	service := &corev1.Service{}
+	if err := s.kubeClient.Get(ctx, client.ObjectKey{Namespace: namespace, Name: serviceName}, service); err != nil && !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+	if len(service.Spec.IPFamilies) > 0 {
+		primaryIPFamily = service.Spec.IPFamilies[0]
+	}
 	var uniqueAddresses []string
 	for _, endpointSlice := range serviceEndpointsSlices.Items {
+		if primaryIPFamily != "" && endpointSlice.AddressType != discoveryV1.AddressTypeFQDN && string(endpointSlice.AddressType) != string(primaryIPFamily) {
+			continue
+		}
 		for _, eps := range endpointSlice.Endpoints {
 			// as suggested in https://github.com/kedacore/keda/pull/6565#discussion_r2395073047, make sure we take endpoint into account
 			// only when it's ready
@@ -385,7 +401,12 @@ func (s *metricsAPIScaler) getEndpointsUrlsFromServiceURL(ctx context.Context, s
 				if foundPort == "" {
 					s.logger.V(1).Info(fmt.Sprintf("Warning : could not find port %s in endpoint slice for service %s.%s definition. Will infer port from %s scheme", podPort, serviceName, namespace, url.Scheme))
 				}
-				endpointUrls = append(endpointUrls, fmt.Sprintf("%s://%s%s%s", url.Scheme, address, foundPort, url.Path))
+				// an IPv6 address must be bracketed in a URL, with or without a port
+				host := address
+				if ip := net.ParseIP(address); ip != nil && ip.To4() == nil {
+					host = "[" + address + "]"
+				}
+				endpointUrls = append(endpointUrls, fmt.Sprintf("%s://%s%s%s", url.Scheme, host, foundPort, url.Path))
 			}
 		}
 	}
