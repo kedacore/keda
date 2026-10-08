@@ -10,6 +10,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/signalfx/signalflow-client-go/v2/signalflow"
 	"github.com/signalfx/signalflow-client-go/v2/signalflow/messages"
+	"go.uber.org/atomic"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -23,6 +24,9 @@ const splunkO11yStreamMargin = 10 * time.Second
 // splunkO11yDrainTimeout is a short best-effort budget for draining after Stop.
 const splunkO11yDrainTimeout = 2 * time.Second
 
+// splunkO11yStartupTimeout bounds eager persistent-stream startup.
+const splunkO11yStartupTimeout = 30 * time.Second
+
 type splunkObservabilityMetadata struct {
 	TriggerIndex int
 
@@ -33,18 +37,34 @@ type splunkObservabilityMetadata struct {
 	TargetValue           float64 `keda:"name=targetValue,   	     order=triggerMetadata"`
 	QueryAggregator       string  `keda:"name=queryAggregator,       order=triggerMetadata, enum=min;max;avg;sum;count;latest, default=avg"`
 	ActivationTargetValue float64 `keda:"name=activationTargetValue, order=triggerMetadata"`
+	PersistentStream      bool    `keda:"name=persistentStream,      order=triggerMetadata, default=false"`
+}
+
+type splunkO11ySample struct {
+	t time.Time
+	v float64
+}
+
+type splunkO11yComputation interface {
+	Data() <-chan *messages.DataMessage
+	Stop(context.Context) error
 }
 
 type splunkObservabilityScaler struct {
 	metadata      *splunkObservabilityMetadata
 	apiClient     *signalflow.Client
 	logger        logr.Logger
-	mu            sync.Mutex
+	mu            sync.RWMutex
 	closed        bool
+	comp          *signalflow.Computation
+	samples       []splunkO11ySample
+	streamErr     error
+	stopOnce      sync.Once
 	nextQueryID   uint64
 	activeQueries map[uint64]context.CancelFunc
 	inFlight      sync.WaitGroup
 	closeDone     chan struct{}
+	unhealthy     atomic.Bool
 }
 
 func parseSplunkObservabilityMetadata(config *scalersconfig.ScalerConfig) (*splunkObservabilityMetadata, error) {
@@ -53,6 +73,10 @@ func parseSplunkObservabilityMetadata(config *scalersconfig.ScalerConfig) (*splu
 
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing splunk observability metadata: %w", err)
+	}
+
+	if meta.PersistentStream && meta.Duration <= 0 {
+		return nil, fmt.Errorf("duration must be greater than 0 when persistentStream is enabled, got %d", meta.Duration)
 	}
 
 	return meta, nil
@@ -85,18 +109,25 @@ func NewSplunkObservabilityScaler(config *scalersconfig.ScalerConfig) (Scaler, e
 		return nil, fmt.Errorf("error establishing Splunk Observability Cloud connection: %w", err)
 	}
 
-	return &splunkObservabilityScaler{
+	scaler := &splunkObservabilityScaler{
 		metadata:  meta,
 		apiClient: apiClient,
 		logger:    logger,
-	}, nil
+	}
+	if meta.PersistentStream {
+		if err := scaler.startPersistentStream(); err != nil {
+			_ = scaler.Close(context.Background())
+			return nil, err
+		}
+	}
+	return scaler, nil
 }
 
 // stopAndDrain stops the computation and keeps reading Data() until it closes or a
 // short grace period elapses, so the SignalFlow client's goroutines are not left
 // blocked on sends to an unconsumed channel. If process is non-nil, drained messages
 // are passed to it; a process error ends the drain and is returned.
-func (s *splunkObservabilityScaler) stopAndDrain(comp *signalflow.Computation, process func(*messages.DataMessage) error) error {
+func (s *splunkObservabilityScaler) stopAndDrain(comp splunkO11yComputation, process func(*messages.DataMessage) error) error {
 	stopCtx, cancel := context.WithTimeout(context.Background(), splunkO11yDrainTimeout)
 	defer cancel()
 
@@ -131,6 +162,82 @@ func (s *splunkObservabilityScaler) stopAndDrain(comp *signalflow.Computation, p
 	}
 }
 
+func (s *splunkObservabilityScaler) startPersistentStream() error {
+	startupCtx, cancel := context.WithTimeout(context.Background(), splunkO11yStartupTimeout)
+	defer cancel()
+	return s.startPersistentStreamWithContext(startupCtx)
+}
+
+// executeGuarded runs Client.Execute without letting a wedged client block the
+// caller forever. The SignalFlow client holds its internal lock across channel
+// delivery and leaks it when a message arrives for an unknown channel, so a
+// later Execute can block indefinitely in registerChannel. If ctx expires
+// first, the client is marked unhealthy so Close stops touching it, and the
+// stuck Execute goroutine is abandoned.
+func (s *splunkObservabilityScaler) executeGuarded(ctx context.Context, apiClient *signalflow.Client, req *signalflow.ExecuteRequest) (*signalflow.Computation, error) {
+	type executeResult struct {
+		comp *signalflow.Computation
+		err  error
+	}
+	resCh := make(chan executeResult, 1)
+	go func() {
+		comp, err := apiClient.Execute(ctx, req)
+		resCh <- executeResult{comp: comp, err: err}
+	}()
+	select {
+	case res := <-resCh:
+		return res.comp, res.err
+	case <-ctx.Done():
+		select {
+		case res := <-resCh:
+			return res.comp, res.err
+		default:
+			s.unhealthy.Store(true)
+			return nil, ctx.Err()
+		}
+	}
+}
+
+func (s *splunkObservabilityScaler) startPersistentStreamWithContext(ctx context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed || s.apiClient == nil {
+		return fmt.Errorf("splunk observability scaler is closed")
+	}
+	comp, err := s.executeGuarded(ctx, s.apiClient, &signalflow.ExecuteRequest{
+		Program: s.metadata.Query,
+	})
+	if err != nil {
+		return fmt.Errorf("could not execute signalflow query: %w", err)
+	}
+	s.comp = comp
+	go s.readPersistentStream(comp)
+	return nil
+}
+
+func (s *splunkObservabilityScaler) stopPersistentStream(comp splunkO11yComputation) {
+	s.stopOnce.Do(func() {
+		_ = s.stopAndDrain(comp, nil)
+	})
+}
+
+func (s *splunkObservabilityScaler) readPersistentStream(comp splunkO11yComputation) {
+	for msg := range comp.Data() {
+		if err := s.ingestPersistentMessage(msg); err != nil {
+			s.mu.Lock()
+			s.streamErr = err
+			s.mu.Unlock()
+			s.stopPersistentStream(comp)
+			return
+		}
+	}
+	s.mu.Lock()
+	if s.streamErr == nil {
+		s.streamErr = fmt.Errorf("splunk observability persistent stream ended")
+	}
+	s.mu.Unlock()
+}
+
 func (s *splunkObservabilityScaler) startQuery(ctx context.Context) (*signalflow.Client, context.Context, func(), error) {
 	queryCtx, cancel := context.WithCancel(ctx)
 
@@ -139,6 +246,11 @@ func (s *splunkObservabilityScaler) startQuery(ctx context.Context) (*signalflow
 		s.mu.Unlock()
 		cancel()
 		return nil, nil, nil, fmt.Errorf("splunk observability scaler is closed")
+	}
+	if s.unhealthy.Load() {
+		s.mu.Unlock()
+		cancel()
+		return nil, nil, nil, fmt.Errorf("splunk observability signalflow client is unhealthy")
 	}
 
 	queryID := s.nextQueryID
@@ -162,7 +274,79 @@ func (s *splunkObservabilityScaler) startQuery(ctx context.Context) (*signalflow
 	return apiClient, queryCtx, finishQuery, nil
 }
 
+func (s *splunkObservabilityScaler) ingestPersistentMessage(msg *messages.DataMessage) error {
+	if len(msg.Payloads) == 0 {
+		return nil
+	}
+	// Freshness is measured against arrival time: SignalFlow logical timestamps
+	// lag wall-clock by resolution + maxDelay, so comparing them against
+	// time.Now() would mark fresh data stale.
+	ts := time.Now()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cutoff := ts.Add(-time.Duration(s.metadata.Duration) * time.Second)
+	kept := s.samples[:0]
+	for _, sample := range s.samples {
+		if sample.t.After(cutoff) {
+			kept = append(kept, sample)
+		}
+	}
+	s.samples = kept
+	for _, pl := range msg.Payloads {
+		value, ok := pl.Value().(float64)
+		if !ok {
+			return fmt.Errorf("could not convert Splunk Observability metric value to float64")
+		}
+		s.samples = append(s.samples, splunkO11ySample{t: ts, v: value})
+	}
+	return nil
+}
+
+func (s *splunkObservabilityScaler) persistentQueryResult() (float64, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.closed || s.apiClient == nil {
+		return -1, fmt.Errorf("splunk observability scaler is closed")
+	}
+	if s.unhealthy.Load() {
+		return -1, fmt.Errorf("splunk observability signalflow client is unhealthy")
+	}
+	cutoff := time.Now().Add(-time.Duration(s.metadata.Duration) * time.Second)
+	var window []splunkO11ySample
+	for _, sample := range s.samples {
+		if sample.t.After(cutoff) {
+			window = append(window, sample)
+		}
+	}
+	if s.streamErr != nil {
+		return -1, fmt.Errorf("splunk observability persistent stream ended: %w", s.streamErr)
+	}
+	if len(window) == 0 {
+		if len(s.samples) > 0 {
+			return -1, fmt.Errorf("splunk observability persistent stream is stale")
+		}
+		return 0, fmt.Errorf("query returned no data points")
+	}
+	return aggregateSplunkO11ySamples(s.metadata.QueryAggregator, window)
+}
+
+func aggregateSplunkO11ySamples(aggregator string, samples []splunkO11ySample) (float64, error) {
+	maxValue := math.Inf(-1)
+	minValue := math.Inf(1)
+	valueSum := 0.0
+	latestValue := samples[len(samples)-1].v
+	for _, sample := range samples {
+		maxValue = math.Max(maxValue, sample.v)
+		minValue = math.Min(minValue, sample.v)
+		valueSum += sample.v
+	}
+	return splunkObservabilityRollup(aggregator, maxValue, minValue, valueSum, len(samples), latestValue)
+}
+
 func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64, error) {
+	if s.metadata.PersistentStream {
+		return s.persistentQueryResult()
+	}
 	apiClient, queryCtx, finishQuery, err := s.startQuery(ctx)
 	if err != nil {
 		return -1, err
@@ -174,7 +358,7 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 		}
 	}()
 
-	comp, err := apiClient.Execute(queryCtx, &signalflow.ExecuteRequest{
+	comp, err := s.executeGuarded(queryCtx, apiClient, &signalflow.ExecuteRequest{
 		Program: s.metadata.Query,
 	})
 	if err != nil {
@@ -337,6 +521,8 @@ func (s *splunkObservabilityScaler) Close(context.Context) error {
 	done := s.closeDone
 	apiClient := s.apiClient
 	s.apiClient = nil
+	comp := s.comp
+	s.comp = nil
 	cancels := make([]context.CancelFunc, 0, len(s.activeQueries))
 	for _, cancel := range s.activeQueries {
 		cancels = append(cancels, cancel)
@@ -346,8 +532,14 @@ func (s *splunkObservabilityScaler) Close(context.Context) error {
 	for _, cancel := range cancels {
 		cancel()
 	}
+	if comp != nil {
+		s.stopPersistentStream(comp)
+	}
 	s.inFlight.Wait()
-	if apiClient != nil {
+	// A client wedged in the SignalFlow library takes its internal lock with
+	// it, so Close must not touch it or Close wedges too. The client is
+	// abandoned instead; its queries already failed fast above.
+	if apiClient != nil && !s.unhealthy.Load() {
 		apiClient.Close()
 	}
 	close(done)
