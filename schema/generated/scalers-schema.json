@@ -3384,13 +3384,6 @@
                     "metadataVariableReadable": true
                 },
                 {
-                    "name": "minMetricValue",
-                    "type": "string",
-                    "optional": true,
-                    "deprecated": "The 'minMetricValue' setting is DEPRECATED and is removed in v2.20 - Use 'activationTargetMetricValue' instead",
-                    "metadataVariableReadable": true
-                },
-                {
                     "name": "metricCollectionTime",
                     "type": "string",
                     "default": "300",
@@ -5549,13 +5542,6 @@
         {
             "type": "gcp-pubsub",
             "parameters": [
-                {
-                    "name": "subscriptionSize",
-                    "type": "string",
-                    "optional": true,
-                    "deprecated": "The 'subscriptionSize' setting is DEPRECATED and is removed in v2.20 - Use 'mode' and 'value' instead",
-                    "metadataVariableReadable": true
-                },
                 {
                     "name": "mode",
                     "type": "string",
