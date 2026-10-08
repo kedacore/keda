@@ -319,6 +319,10 @@ func (o *OtelMetrics) DeleteScalerMetrics(string, string, bool) {
 	// noop for OTel
 }
 
+func (o *OtelMetrics) DeleteScalerMetric(string, string, string, int, string, bool) {
+	// OTel observations expire after each collection, like DeleteScalerMetrics.
+}
+
 func ScalerMetricsLatencyCallback(_ context.Context, obsrv api.Float64Observer) error {
 	for _, v := range otelScalerMetricsLatencyVals {
 		obsrv.Observe(v.val, v.measurementOption)
