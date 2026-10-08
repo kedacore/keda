@@ -2973,7 +2973,7 @@ func TestGetScaledObjectMetricsScalingModifiersPlaceholderOnSpecError(t *testing
 	scaler1.EXPECT().Close(gomock.Any()).Return(nil).AnyTimes()
 	scaler1Refreshed.EXPECT().Close(gomock.Any()).Return(nil).AnyTimes()
 
-	metrics, err := sh.GetScaledObjectMetrics(context.TODO(), scaledObjectName, scaledObjectNamespace, compositeMetricName)
+	metrics, err := sh.GetScaledObjectMetrics(t.Context(), scaledObjectName, scaledObjectNamespace, compositeMetricName)
 	// The spec failure must not short-circuit with the "scaler error under threshold" error. The
 	// placeholder reaches HandleScalingModifiers, the formula evaluates the failed trigger as nil,
 	// and the scalingModifiers fallback target (replicas 5 * target 2 = 10) is returned.
