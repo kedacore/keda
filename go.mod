@@ -55,6 +55,7 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.16.2
 	github.com/dysnix/predictkube-libs v0.1.0
 	github.com/dysnix/predictkube-proto v0.0.0-20250415003810-aa0af0a0019b
+	github.com/eclipse/paho.mqtt.golang v1.5.1
 	github.com/elastic/elastic-transport-go/v8 v8.11.0
 	github.com/elastic/go-elasticsearch/v9 v9.5.2
 	github.com/expr-lang/expr v1.17.8
