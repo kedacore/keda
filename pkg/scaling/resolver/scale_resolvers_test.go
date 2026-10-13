@@ -1230,7 +1230,7 @@ func TestResolveAuthRefAndPodIdentity_AzureWorkload(t *testing.T) {
 			existing := append([]runtime.Object{authObj}, test.existing...)
 
 			_, gotPodIdentity, err := ResolveAuthRefAndPodIdentity(
-				context.TODO(),
+				context.Background(),
 				fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(existing...).Build(),
 				logf.Log.WithName("test"),
 				&kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName, Kind: test.kind},
