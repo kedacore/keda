@@ -1458,7 +1458,7 @@ func TestKafkaGetMetricsAndActivityRetainedLag(t *testing.T) {
 				client: &kafkaOffsetTestClient{config: config, broker: broker},
 				admin: &MockClusterAdmin{
 					partitionIds: []int32{0, 1},
-					consumerOffsets: &sarama.OffsetFetchResponse{
+					consumerGroupOffsets: &sarama.OffsetFetchResponse{
 						Blocks: map[string]map[int32]*sarama.OffsetFetchResponseBlock{
 							topic: {0: {Offset: tt.consumerOffset}, 1: {Offset: 75}},
 						},

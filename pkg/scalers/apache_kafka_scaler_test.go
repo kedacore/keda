@@ -10,6 +10,9 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/protocol/listoffsets"
+	"github.com/segmentio/kafka-go/protocol/metadata"
+	"github.com/segmentio/kafka-go/protocol/offsetfetch"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
