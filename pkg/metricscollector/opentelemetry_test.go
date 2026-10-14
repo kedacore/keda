@@ -2,6 +2,7 @@ package metricscollector
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -293,4 +294,37 @@ func TestContinuousMetrics(t *testing.T) {
 	attribute, _ = scaledJobMetric.Attributes.Value("metric")
 	assert.Equal(t, attribute.AsString(), "testmetric")
 	assert.Equal(t, scaledJobMetric.Value, 0.0)
+}
+
+// TestOtelRecordAndCollectRace covers #8282: scale loops record OTel metrics
+// from many goroutines while the SDK reader collects (and so runs the
+// observable callbacks) on another goroutine, the same shape as the operator
+// with a PeriodicReader. Run with -race.
+func TestOtelRecordAndCollectRace(t *testing.T) {
+	resetTestOtel(true)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for ctx.Err() == nil {
+				testOtel.RecordScalerActive("ns", "so", "prometheus", 0, "m", true, true)
+				testOtel.RecordScalerLatency("ns", "so", "prometheus", 0, "m", true, time.Millisecond)
+				testOtel.RecordScalableObjectLatency("ns", "so", true, time.Millisecond)
+				testOtel.RecordScaledObjectPaused("ns", "so", false)
+			}
+		}()
+	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for ctx.Err() == nil {
+			var rm metricdata.ResourceMetrics
+			_ = testReader.Collect(context.Background(), &rm)
+		}
+	}()
+	wg.Wait()
 }
