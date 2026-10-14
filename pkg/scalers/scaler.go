@@ -67,13 +67,6 @@ type MetricSpecStreamer interface {
 	MetricSpecChan() <-chan []v2.MetricSpec
 }
 
-// DiagnosticsLifecycle optionally binds per-instance diagnostics to cache installation.
-// Hooks must not block on I/O; deactivation permanently retires an instance's writes.
-type DiagnosticsLifecycle interface {
-	ActivateDiagnostics()
-	DeactivateDiagnostics()
-}
-
 var (
 	// ErrScalerUnsupportedUtilizationMetricType is returned when v2.UtilizationMetricType
 	// is provided as the metric target type for scaler.

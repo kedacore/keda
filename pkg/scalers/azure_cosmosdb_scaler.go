@@ -13,7 +13,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
@@ -25,7 +24,6 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -39,30 +37,11 @@ const (
 )
 
 type azureCosmosDBScaler struct {
-	metricType       v2.MetricTargetType
-	metadata         *azureCosmosDBMetadata
-	cosmosClient     *cosmosDBClient
-	logger           logr.Logger
-	diagnosticsOwner *cosmosDBDiagnosticsOwner
+	metricType   v2.MetricTargetType
+	metadata     *azureCosmosDBMetadata
+	cosmosClient *cosmosDBClient
+	logger       logr.Logger
 }
-
-type cosmosDBDiagnosticsKey struct {
-	namespace      string
-	resource       string
-	triggerIndex   int
-	metricName     string
-	isScaledObject bool
-}
-
-type cosmosDBDiagnosticsOwner struct {
-	key     cosmosDBDiagnosticsKey
-	retired bool
-}
-
-var cosmosDBDiagnostics = struct {
-	sync.Mutex
-	owners map[cosmosDBDiagnosticsKey]*cosmosDBDiagnosticsOwner
-}{owners: make(map[cosmosDBDiagnosticsKey]*cosmosDBDiagnosticsOwner)}
 
 type azureCosmosDBMetadata struct {
 	DatabaseID                string `keda:"name=databaseId,              order=triggerMetadata"`
@@ -237,18 +216,12 @@ func NewAzureCosmosDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) 
 		return nil, fmt.Errorf("error creating cosmos db client: %w", err)
 	}
 
-	scaler := &azureCosmosDBScaler{
+	return &azureCosmosDBScaler{
 		metricType:   metricType,
 		metadata:     meta,
 		cosmosClient: cosmosClient,
 		logger:       logger,
-	}
-	scaler.diagnosticsOwner = &cosmosDBDiagnosticsOwner{key: cosmosDBDiagnosticsKey{
-		namespace: config.ScalableObjectNamespace, resource: config.ScalableObjectName,
-		triggerIndex: meta.TriggerIndex, metricName: scaler.metricName(),
-		isScaledObject: config.ScalableObjectType == "ScaledObject",
-	}}
-	return scaler, nil
+	}, nil
 }
 
 func parseAzureCosmosDBMetadata(config *scalersconfig.ScalerConfig) (*azureCosmosDBMetadata, error) {
@@ -1073,10 +1046,8 @@ func getChangeFeedTotalLagRelatedToPartitionAmount(totalLag int64, activePartiti
 func (s *azureCosmosDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	state, err := s.cosmosClient.estimateLag(ctx)
 	if err != nil {
-		s.recordLeaseDiagnostics(cosmosDBLeaseState{}, true)
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting cosmos db change feed lag: %w", err)
 	}
-	s.recordLeaseDiagnostics(state, false)
 	if s.metadata.MaxActiveLeasesPerReplica > 0 {
 		lagReplicas, capacityReplicas, eligibleLeases := s.leaseReplicaCounts(state)
 		desired := min(max(lagReplicas, capacityReplicas), eligibleLeases)
@@ -1129,65 +1100,8 @@ func (s *azureCosmosDBScaler) leaseReplicaCounts(state cosmosDBLeaseState) (int6
 	return cosmosDBCeilDivide(state.totalLag, s.metadata.Threshold), capacityReplicas, eligibleLeases
 }
 
-func (s *azureCosmosDBScaler) ActivateDiagnostics() {
-	cosmosDBDiagnostics.Lock()
-	defer cosmosDBDiagnostics.Unlock()
-	if s.diagnosticsOwner != nil && !s.diagnosticsOwner.retired {
-		cosmosDBDiagnostics.owners[s.diagnosticsOwner.key] = s.diagnosticsOwner
-	}
-}
-
-func (s *azureCosmosDBScaler) DeactivateDiagnostics() {
-	cosmosDBDiagnostics.Lock()
-	defer cosmosDBDiagnostics.Unlock()
-	if s.diagnosticsOwner != nil {
-		s.diagnosticsOwner.retired = true
-	}
-}
-
-func (s *azureCosmosDBScaler) recordLeaseDiagnostics(state cosmosDBLeaseState, failed bool) {
-	cosmosDBDiagnostics.Lock()
-	defer cosmosDBDiagnostics.Unlock()
-	if s.diagnosticsOwner == nil || s.diagnosticsOwner.retired || cosmosDBDiagnostics.owners[s.diagnosticsOwner.key] != s.diagnosticsOwner {
-		return
-	}
-	key := s.diagnosticsOwner.key
-	for suffix, value := range s.leaseDiagnosticValues(state) {
-		measurement := float64(value)
-		if failed {
-			measurement = math.NaN()
-		}
-		metricscollector.RecordScalerMetric(key.namespace, key.resource,
-			"azure-cosmosdb", key.triggerIndex, key.metricName+"_"+suffix, key.isScaledObject, measurement)
-	}
-}
-
-func (s *azureCosmosDBScaler) leaseDiagnosticValues(state cosmosDBLeaseState) map[string]int64 {
-	lagReplicas, capacityReplicas, _ := s.leaseReplicaCounts(state)
-	return map[string]int64{
-		"total_lag":                       state.totalLag,
-		"active_leases":                   state.activeLeases,
-		"total_leases":                    state.totalLeases,
-		"lag_desired_replicas":            lagReplicas,
-		"lease_capacity_desired_replicas": capacityReplicas,
-	}
-}
-
 // Close cleans up the scaler resources.
 func (s *azureCosmosDBScaler) Close(context.Context) error {
-	cosmosDBDiagnostics.Lock()
-	if s.diagnosticsOwner != nil {
-		s.diagnosticsOwner.retired = true
-	}
-	if s.diagnosticsOwner != nil && cosmosDBDiagnostics.owners[s.diagnosticsOwner.key] == s.diagnosticsOwner {
-		key := s.diagnosticsOwner.key
-		for suffix := range s.leaseDiagnosticValues(cosmosDBLeaseState{}) {
-			metricscollector.DeleteScalerMetric(key.namespace, key.resource,
-				"azure-cosmosdb", key.triggerIndex, key.metricName+"_"+suffix, key.isScaledObject)
-		}
-		delete(cosmosDBDiagnostics.owners, key)
-	}
-	cosmosDBDiagnostics.Unlock()
 	if s.cosmosClient != nil && s.cosmosClient.httpClient != nil {
 		s.cosmosClient.httpClient.CloseIdleConnections()
 	}
