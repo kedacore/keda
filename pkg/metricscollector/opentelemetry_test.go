@@ -315,6 +315,7 @@ func TestOtelRecordAndCollectRace(t *testing.T) {
 				testOtel.RecordScalerLatency("ns", "so", "prometheus", 0, "m", true, time.Millisecond)
 				testOtel.RecordScalableObjectLatency("ns", "so", true, time.Millisecond)
 				testOtel.RecordScaledObjectPaused("ns", "so", false)
+				testOtel.RecordCloudEventQueueStatus("ns", 1)
 			}
 		}()
 	}

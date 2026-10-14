@@ -587,7 +587,10 @@ func (o *OtelMetrics) RecordCloudEventEmittedError(namespace string, cloudevents
 	otCloudEventEmittedCounter.Add(context.Background(), 1, opt)
 }
 
+// CloudeventQueueStatusCallback reports the buffered keda.cloudeventsource.events.queued measurements and clears the buffer.
 func CloudeventQueueStatusCallback(_ context.Context, obsrv api.Float64Observer) error {
+	otelValsMu.Lock()
+	defer otelValsMu.Unlock()
 	for _, v := range otCloudEventQueueStatusVals {
 		obsrv.Observe(v.val, v.measurementOption)
 	}
@@ -670,6 +673,8 @@ func (o *OtelMetrics) RecordGRPCClientStreamMessage(ctx context.Context, message
 
 // RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting
 func (o *OtelMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
+	otelValsMu.Lock()
+	defer otelValsMu.Unlock()
 	opt := api.WithAttributes(
 		attribute.Key("namespace").String(namespace),
 	)
