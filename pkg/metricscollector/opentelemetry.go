@@ -285,6 +285,7 @@ func initMeters() {
 	}
 }
 
+// BuildInfoCallback reports the pending keda.build.info measurement and clears it.
 func BuildInfoCallback(_ context.Context, obsrv api.Int64Observer) error {
 	otelValsMu.Lock()
 	defer otelValsMu.Unlock()
@@ -310,6 +311,7 @@ func (o *OtelMetrics) RecordBuildInfo() {
 	otelBuildInfoVal.measurementOption = opt
 }
 
+// ScalerMetricValueCallback reports the buffered keda.scaler.metrics.value measurements and clears the buffer.
 func ScalerMetricValueCallback(_ context.Context, obsrv api.Float64Observer) error {
 	otelValsMu.Lock()
 	defer otelValsMu.Unlock()
@@ -320,6 +322,7 @@ func ScalerMetricValueCallback(_ context.Context, obsrv api.Float64Observer) err
 	return nil
 }
 
+// RecordScalerMetric buffers a scaler metric value for the next keda.scaler.metrics.value collection.
 func (o *OtelMetrics) RecordScalerMetric(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value float64) {
 	otelValsMu.Lock()
 	defer otelValsMu.Unlock()
@@ -333,6 +336,7 @@ func (o *OtelMetrics) DeleteScalerMetrics(string, string, bool) {
 	// noop for OTel
 }
 
+// ScalerMetricsLatencyCallback reports the buffered keda.scaler.metrics.latency.seconds measurements and clears the buffer.
 func ScalerMetricsLatencyCallback(_ context.Context, obsrv api.Float64Observer) error {
 	otelValsMu.Lock()
 	defer otelValsMu.Unlock()
@@ -343,6 +347,7 @@ func ScalerMetricsLatencyCallback(_ context.Context, obsrv api.Float64Observer) 
 	return nil
 }
 
+// ScalerMetricsLatencyCallbackDeprecated reports the buffered keda.scaler.metrics.latency measurements (milliseconds) and clears the buffer.
 func ScalerMetricsLatencyCallbackDeprecated(_ context.Context, obsrv api.Float64Observer) error {
 	otelValsMu.Lock()
 	defer otelValsMu.Unlock()
@@ -368,6 +373,7 @@ func (o *OtelMetrics) RecordScalerLatency(namespace string, scaledResource strin
 	otelScalerMetricsLatencyValDeprecated = append(otelScalerMetricsLatencyValDeprecated, otelScalerMetricsLatencyValD)
 }
 
+// ScalableObjectLatencyCallback reports the buffered keda.internal.scale.loop.latency.seconds measurements and clears the buffer.
 func ScalableObjectLatencyCallback(_ context.Context, obsrv api.Float64Observer) error {
 	otelValsMu.Lock()
 	defer otelValsMu.Unlock()
@@ -378,6 +384,7 @@ func ScalableObjectLatencyCallback(_ context.Context, obsrv api.Float64Observer)
 	return nil
 }
 
+// ScalableObjectLatencyCallbackDeprecated reports the buffered keda.internal.scale.loop.latency measurements (milliseconds) and clears the buffer.
 func ScalableObjectLatencyCallbackDeprecated(_ context.Context, obsrv api.Float64Observer) error {
 	otelValsMu.Lock()
 	defer otelValsMu.Unlock()
@@ -413,6 +420,7 @@ func (o *OtelMetrics) RecordScalableObjectLatency(namespace string, name string,
 	otelInternalLoopLatencyValDeprecated = append(otelInternalLoopLatencyValDeprecated, otelInternalLoopLatencyD)
 }
 
+// ScalerActiveCallback reports the buffered keda.scaler.active measurements and clears the buffer.
 func ScalerActiveCallback(_ context.Context, obsrv api.Float64Observer) error {
 	otelValsMu.Lock()
 	defer otelValsMu.Unlock()
@@ -437,6 +445,7 @@ func (o *OtelMetrics) RecordScalerActive(namespace string, scaledResource string
 	otelScalerActiveVals = append(otelScalerActiveVals, otelScalerActive)
 }
 
+// PausedStatusCallback reports the buffered keda.scaled.object.paused measurements and clears the buffer.
 func PausedStatusCallback(_ context.Context, obsrv api.Float64Observer) error {
 	otelValsMu.Lock()
 	defer otelValsMu.Unlock()
