@@ -76,22 +76,25 @@ func (m *elasticForecastMetadata) forecastDuration() time.Duration {
 }
 
 func (m *elasticForecastMetadata) Validate() error {
-	cloudMode := m.CloudID != "" || m.APIKey != ""
+	cloudMode := m.CloudID != ""
 	addrMode := len(m.Addresses) > 0
 
 	if cloudMode && addrMode {
 		return fmt.Errorf("cannot provide both cloud config (cloudID/apiKey) and endpoint addresses")
 	}
-	if (m.CloudID != "" && m.APIKey == "") || (m.CloudID == "" && m.APIKey != "") {
+	if m.CloudID != "" && m.APIKey == "" {
 		return fmt.Errorf("cloudID and apiKey must both be provided together")
 	}
 	if !addrMode && (m.Username != "" || m.Password != "") {
 		return fmt.Errorf("username and password provided but no addresses specified")
 	}
+	if m.APIKey != "" && (m.Username != "" || m.Password != "") {
+		return fmt.Errorf("cannot provide both apiKey and username/password")
+	}
 	if !cloudMode && !addrMode {
 		return fmt.Errorf("must provide either cloud config (cloudID + apiKey) or endpoint addresses")
 	}
-	if addrMode && (m.Username == "" || m.Password == "") {
+	if addrMode && m.APIKey == "" && (m.Username == "" || m.Password == "") {
 		return fmt.Errorf("username and password must both be provided when addresses is used")
 	}
 	if m.LookAhead <= 0 {
@@ -204,9 +207,12 @@ func newElasticForecastESClient(meta elasticForecastMetadata, logger logr.Logger
 	opts := []elasticsearch.Option{
 		elasticsearch.WithTransportOptions(elastictransport.WithTransport(util.CreateRT(meta.UnsafeSsl))),
 	}
-	if meta.CloudID != "" {
+	switch {
+	case meta.CloudID != "":
 		opts = append(opts, elasticsearch.WithCloudID(meta.CloudID), elasticsearch.WithAPIKey(meta.APIKey))
-	} else {
+	case meta.APIKey != "":
+		opts = append(opts, elasticsearch.WithAddresses(meta.Addresses...), elasticsearch.WithAPIKey(meta.APIKey))
+	default:
 		opts = append(opts, elasticsearch.WithAddresses(meta.Addresses...), elasticsearch.WithBasicAuth(meta.Username, meta.Password))
 	}
 

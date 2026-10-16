@@ -3,9 +3,12 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -281,6 +284,39 @@ var elasticForecastTestCases = []parseElasticForecastMetadataTestData{
 		},
 		expectedError: nil,
 	},
+	{
+		name: "addresses with apiKey",
+		metadata: map[string]string{
+			"addresses":   "http://localhost:9200",
+			"jobID":       "my-job",
+			"targetValue": "100",
+		},
+		authParams: map[string]string{"apiKey": "c2VjcmV0X2tleVE="},
+		expectedMetadata: &elasticForecastMetadata{
+			Addresses:             []string{"http://localhost:9200"},
+			UnsafeSsl:             false,
+			APIKey:                "c2VjcmV0X2tleVE=",
+			JobID:                 "my-job",
+			LookAhead:             10 * time.Minute,
+			TargetValue:           100,
+			ActivationTargetValue: 0,
+			Index:                 "*",
+			PartitionFieldValue:   "",
+			ByFieldValue:          "",
+			MetricName:            "s0-elastic-forecast-my-job",
+		},
+		expectedError: nil,
+	},
+	{
+		name: "addresses with both apiKey and username/password",
+		metadata: map[string]string{
+			"addresses":   "http://localhost:9200",
+			"jobID":       "my-job",
+			"targetValue": "10",
+		},
+		authParams:    map[string]string{"apiKey": "xxxxxxxxx", "username": "admin", "password": "secret"},
+		expectedError: fmt.Errorf("cannot provide both apiKey and username/password"),
+	},
 }
 
 func TestParseElasticForecastMetadata(t *testing.T) {
@@ -452,4 +488,41 @@ func TestElasticForecastNoForecastAvailableReturnsZero(t *testing.T) {
 	val, err := scaler.getForecastedValue(context.Background())
 	assert.NoError(t, err, "empty forecastID must not produce an error")
 	assert.Equal(t, float64(0), val, "value must be 0 while no forecast is available yet")
+}
+
+func TestElasticForecastClientAuthorizationHeader(t *testing.T) {
+	testCases := []struct {
+		name           string
+		meta           elasticForecastMetadata
+		expectedHeader string
+	}{
+		{
+			name:           "addresses with apiKey sends APIKey header",
+			meta:           elasticForecastMetadata{APIKey: "xxxxxxxxx"},
+			expectedHeader: "APIKey xxxxxxxxx",
+		},
+		{
+			name:           "addresses with username and password sends Basic header",
+			meta:           elasticForecastMetadata{Username: "admin", Password: "password"},
+			expectedHeader: "Basic YWRtaW46cGFzc3dvcmQ=",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var receivedHeader string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				receivedHeader = r.Header.Get("Authorization")
+				w.Header().Set("X-Elastic-Product", "Elasticsearch")
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"version":{"number":"9.0.0"}}`))
+			}))
+			defer server.Close()
+
+			tc.meta.Addresses = []string{server.URL}
+			_, err := newElasticForecastESClient(tc.meta, logr.Discard())
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expectedHeader, receivedHeader)
+		})
+	}
 }
