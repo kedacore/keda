@@ -145,6 +145,10 @@ var testPodIdentityAzureWorkloadPostgreSQLConnectionstring = []postgreSQLConnect
 }
 
 func TestPodIdentityAzureWorkloadPostgreSQLConnectionStringGeneration(t *testing.T) {
+	t.Setenv("AZURE_FEDERATED_TOKEN_FILE", "/dummy/token")
+	t.Setenv("AZURE_CLIENT_ID", "dummy-client")
+	t.Setenv("AZURE_TENANT_ID", "dummy-tenant")
+
 	identityID := "IDENTITY_ID_CORRESPONDING_TO_USERNAME_FIELD"
 	for _, testData := range testPodIdentityAzureWorkloadPostgreSQLConnectionstring {
 		meta, _, err := parsePostgreSQLMetadata(logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload, IdentityID: &identityID}, AuthParams: testData.authParam, TriggerIndex: 0})

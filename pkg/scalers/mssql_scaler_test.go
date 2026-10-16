@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -185,6 +186,10 @@ var testMSSQLMetadata = []parseMSSQLMetadataTestData{
 }
 
 func TestParseMSSQLMetadata(t *testing.T) {
+	t.Setenv("AZURE_FEDERATED_TOKEN_FILE", "/dummy/token")
+	t.Setenv("AZURE_CLIENT_ID", "dummy-client")
+	t.Setenv("AZURE_TENANT_ID", "dummy-tenant")
+
 	for _, testData := range testMSSQLMetadata {
 		t.Run(testData.name, func(t *testing.T) {
 			config := &scalersconfig.ScalerConfig{
@@ -217,6 +222,10 @@ func TestParseMSSQLMetadata(t *testing.T) {
 }
 
 func TestMSSQLGetMetricSpecForScaling(t *testing.T) {
+	t.Setenv("AZURE_FEDERATED_TOKEN_FILE", "/dummy/token")
+	t.Setenv("AZURE_CLIENT_ID", "dummy-client")
+	t.Setenv("AZURE_TENANT_ID", "dummy-tenant")
+
 	for _, testData := range testMSSQLMetadata {
 		t.Run(testData.name, func(t *testing.T) {
 			if testData.expectedError != "" {
@@ -230,7 +239,8 @@ func TestMSSQLGetMetricSpecForScaling(t *testing.T) {
 				PodIdentity:     testData.podIdentity,
 			})
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
+			require.NotNil(t, meta)
 
 			mockMSSQLScaler := mssqlScaler{
 				metadata: meta,
