@@ -27,6 +27,11 @@ var testCosmosDBResolvedEnv = map[string]string{
 	"COSMOS_CONNECTION": "AccountEndpoint=https://test.documents.azure.com:443/;AccountKey=dGVzdGtleQ==",
 }
 
+func estimateCosmosDBLegacyLag(client *cosmosDBClient) (int64, int64, bool, error) {
+	state, err := client.estimateLag(context.Background())
+	return state.totalLag, state.legacyActivePartitions, state.splitRecoveryRequired, err
+}
+
 type recordingTokenCredential struct {
 	scopes []string
 	token  string
@@ -1015,7 +1020,7 @@ func TestCosmosDBLeaseParsingDotNetFormat(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	totalLag, activePartitionCount, _, err := client.estimateLag(context.Background())
+	totalLag, activePartitionCount, _, err := estimateCosmosDBLegacyLag(client)
 	assert.NoError(t, err)
 	// Only partition 6 has lag; partition 3 is caught up; metadata doc is filtered
 	assert.Equal(t, int64(89), totalLag)
@@ -1083,7 +1088,7 @@ func TestCosmosDBLeaseParsingJavaFormat(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	totalLag, activePartitionCount, _, err := client.estimateLag(context.Background())
+	totalLag, activePartitionCount, _, err := estimateCosmosDBLegacyLag(client)
 	assert.NoError(t, err)
 	// Both partitions 2 and 5 have lag; lock doc is filtered out
 	assert.Equal(t, int64(252), totalLag)
@@ -1136,124 +1141,17 @@ func TestCosmosDBLeaseParsingMixedFormats(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	totalLag, _, _, err := client.estimateLag(context.Background())
+	totalLag, _, _, err := estimateCosmosDBLegacyLag(client)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(302), totalLag)
 }
 
 func TestCosmosDBLeaseParsingEPKBasedDotNet(t *testing.T) {
-	// .NET SDK EPK-based leases (version=1) use FeedRange with EPK ranges.
-	// ContinuationToken is still a quoted LSN for incremental feed mode.
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/dbs/testdb/colls/leases/docs":
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"Documents":[
-				{
-					"id": "host1..epk..0-AA",
-					"version": 1,
-					"LeaseToken": "0",
-					"FeedRange": {"Range": {"min": "", "max": "AA"}},
-					"Owner": "dotnet-host1",
-					"ContinuationToken": "\"750\"",
-					"Mode": "LatestVersion"
-				},
-				{
-					"id": "host1..epk..AA-FF",
-					"version": 1,
-					"LeaseToken": "1",
-					"FeedRange": {"Range": {"min": "AA", "max": "FF"}},
-					"Owner": "dotnet-host1",
-					"ContinuationToken": "\"320\"",
-					"Mode": "LatestVersion"
-				}
-			]}`))
-		case "/dbs/testdb/colls/data/docs":
-			pkRangeID := r.Header.Get("x-ms-documentdb-partitionkeyrangeid")
-			switch pkRangeID {
-			case "0":
-				w.Header().Set("x-ms-session-token", "0:0#900")
-				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"Documents":[{"id":"doc1","_lsn":751}]}`))
-			case "1":
-				w.Header().Set("x-ms-session-token", "1:0#320")
-				w.WriteHeader(http.StatusNotModified)
-			}
-		}
-	}))
-	defer server.Close()
-
-	client := &cosmosDBClient{
-		httpClient:       &http.Client{},
-		dataEndpoint:     server.URL,
-		dataKey:          "dGVzdGtleQ==",
-		leaseEndpoint:    server.URL,
-		leaseKey:         "dGVzdGtleQ==",
-		databaseID:       "testdb",
-		containerID:      "data",
-		leaseDatabaseID:  "testdb",
-		leaseContainerID: "leases",
-		processorName:    "testprocessor",
-	}
-
-	totalLag, _, _, err := client.estimateLag(context.Background())
-	assert.NoError(t, err)
-	// Partition 0 has lag (900-751+1=150), partition 1 is caught up
-	assert.Equal(t, int64(150), totalLag)
+	testCosmosDBEPKLeaseFixture(t, "dotnet_v1_leases.json", []string{`"750"`, `"320"`})
 }
 
 func TestCosmosDBLeaseParsingEPKBasedJava(t *testing.T) {
-	// Java SDK EPK-based leases (version=1) may use Base64-encoded ContinuationTokens.
-	// The scaler passes ContinuationToken as-is to If-None-Match, and Cosmos DB
-	// recognizes its own tokens regardless of encoding.
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/dbs/testdb/colls/leases/docs":
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"Documents":[
-				{
-					"id": "java-epk-lease-0",
-					"version": 1,
-					"LeaseToken": "0",
-					"ContinuationToken": "eyJWIjoiMiIsIlJpZCI6ImFiYz0iLCJDb250aW51YXRpb24iOlt7InRva2VuIjoiXCI1MDBcIiIsInJhbmdlIjp7Im1pbiI6IiIsIm1heCI6IkZGIn19XX0=",
-					"Owner": "java-host1",
-					"feedRange": {"min": "", "max": "FF"}
-				},
-				{
-					"id": "java-epk-lease-1",
-					"version": 1,
-					"LeaseToken": "1",
-					"ContinuationToken": "eyJWIjoiMiIsIlJpZCI6ImRlZj0iLCJDb250aW51YXRpb24iOlt7InRva2VuIjoiXCIyMDBcIiIsInJhbmdlIjp7Im1pbiI6IkZGIiwibWF4IjoiRkZGRiJ9fV19",
-					"Owner": "java-host2",
-					"feedRange": {"min": "FF", "max": "FFFF"}
-				}
-			]}`))
-		case "/dbs/testdb/colls/data/docs":
-			// Simulate Cosmos DB accepting Base64 continuation tokens and returning results
-			w.Header().Set("x-ms-session-token", "0:0#600")
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"Documents":[{"id":"doc1","_lsn":501}]}`))
-		}
-	}))
-	defer server.Close()
-
-	client := &cosmosDBClient{
-		httpClient:       &http.Client{},
-		dataEndpoint:     server.URL,
-		dataKey:          "dGVzdGtleQ==",
-		leaseEndpoint:    server.URL,
-		leaseKey:         "dGVzdGtleQ==",
-		databaseID:       "testdb",
-		containerID:      "data",
-		leaseDatabaseID:  "testdb",
-		leaseContainerID: "leases",
-		processorName:    "testprocessor",
-	}
-
-	totalLag, _, _, err := client.estimateLag(context.Background())
-	assert.NoError(t, err)
-	// Both partitions have lag; Base64 tokens are passed through to the server
-	assert.Equal(t, int64(200), totalLag)
+	testCosmosDBEPKLeaseFixture(t, "java_v1_leases.json", []string{`"500"`, `"200"`})
 }
 
 func TestCosmosDBLagEstimation(t *testing.T) {
@@ -1319,7 +1217,7 @@ func TestCosmosDBLagEstimation(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	totalLag, _, _, err := client.estimateLag(context.Background())
+	totalLag, _, _, err := estimateCosmosDBLegacyLag(client)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(51), totalLag)
 }
@@ -1343,7 +1241,7 @@ func TestCosmosDBLagEstimationEmptyLeases(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	totalLag, activePartitionCount, _, err := client.estimateLag(context.Background())
+	totalLag, activePartitionCount, _, err := estimateCosmosDBLegacyLag(client)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(0), totalLag)
 	assert.Equal(t, int64(0), activePartitionCount)
@@ -1404,7 +1302,7 @@ func TestCosmosDBLagEstimationNeverCheckpointedLease(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	totalLag, activePartitionCount, _, err := client.estimateLag(context.Background())
+	totalLag, activePartitionCount, _, err := estimateCosmosDBLegacyLag(client)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(10), totalLag, "backlog behind a never-checkpointed lease must be detected, not silently reported as 0")
 	assert.Equal(t, int64(1), activePartitionCount)
@@ -1455,7 +1353,7 @@ func TestCosmosDBLagEstimationManyBootstrappingPartitionsCollapseForCap(t *testi
 		processorName:    "testprocessor",
 	}
 
-	totalLag, activePartitionCount, _, err := client.estimateLag(context.Background())
+	totalLag, activePartitionCount, _, err := estimateCosmosDBLegacyLag(client)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(30), totalLag, "raw backlog across all 3 bootstrapping partitions must still be fully detected")
 	assert.Equal(t, int64(1), activePartitionCount, "never-checkpointed partitions must collapse to at most one partition's worth for scale-out capping")
@@ -1506,7 +1404,7 @@ func TestCosmosDBLagEstimationMixedCheckpointedAndBootstrappingPartitions(t *tes
 		processorName:    "testprocessor",
 	}
 
-	totalLag, activePartitionCount, _, err := client.estimateLag(context.Background())
+	totalLag, activePartitionCount, _, err := estimateCosmosDBLegacyLag(client)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(50), totalLag, "all 5 partitions contribute their real lag to the total")
 	assert.Equal(t, int64(3), activePartitionCount, "2 checkpointed partitions count individually, plus 1 for the collapsed bootstrapping group")
@@ -1551,7 +1449,7 @@ func TestCosmosDBLagEstimationAllPartitionsLagging(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	totalLag, activePartitionCount, _, err := client.estimateLag(context.Background())
+	totalLag, activePartitionCount, _, err := estimateCosmosDBLegacyLag(client)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(202), totalLag)
 	assert.Equal(t, int64(2), activePartitionCount)
@@ -1606,7 +1504,7 @@ func TestCosmosDBLagEstimationRecoversPartitionSplit(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	totalLag, activePartitionCount, splitRecoveryRequired, err := client.estimateLag(context.Background())
+	totalLag, activePartitionCount, splitRecoveryRequired, err := estimateCosmosDBLegacyLag(client)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(51), totalLag)
 	assert.Equal(t, int64(1), activePartitionCount)
@@ -1727,7 +1625,7 @@ func TestCosmosDBUnrelatedGoneResponseIsError(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	totalLag, activePartitionCount, splitRecoveryRequired, err := client.estimateLag(context.Background())
+	totalLag, activePartitionCount, splitRecoveryRequired, err := estimateCosmosDBLegacyLag(client)
 	assert.ErrorContains(t, err, `status 410 and substatus "1008"`)
 	assert.Zero(t, totalLag)
 	assert.Zero(t, activePartitionCount)
@@ -1769,7 +1667,7 @@ func TestCosmosDBLagEstimationPartitionError(t *testing.T) {
 		processorName:    "testprocessor",
 	}
 
-	totalLag, activePartitionCount, splitRecoveryRequired, err := client.estimateLag(context.Background())
+	totalLag, activePartitionCount, splitRecoveryRequired, err := estimateCosmosDBLegacyLag(client)
 	assert.ErrorContains(t, err, "error estimating lag: error reading change feed for partition 1")
 	assert.Zero(t, totalLag)
 	assert.Zero(t, activePartitionCount)
