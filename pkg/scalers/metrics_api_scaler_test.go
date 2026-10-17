@@ -14,6 +14,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	corev1 "k8s.io/api/core/v1"
 	discoveryV1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -408,4 +409,112 @@ func TestGetEndpointsUrlsFromServiceURL_SelectorFiltersCorrectly(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"http://10.0.0.1:8080/metrics"}, urls,
 		"should only return endpoints from my-service, not other-service")
+}
+
+func TestGetEndpointsUrlsFromServiceURL_IPv6(t *testing.T) {
+	ready := true
+	port8080 := int32(8080)
+
+	slice := &discoveryV1.EndpointSlice{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-service-abc",
+			Namespace: "my-namespace",
+			Labels: map[string]string{
+				discoveryV1.LabelServiceName: "my-service",
+			},
+		},
+		AddressType: discoveryV1.AddressTypeIPv6,
+		Ports:       []discoveryV1.EndpointPort{{Port: &port8080}},
+		Endpoints: []discoveryV1.Endpoint{{
+			Addresses:  []string{"2001:db8::1"},
+			Conditions: discoveryV1.EndpointConditions{Ready: &ready},
+		}},
+	}
+
+	kubeClient := fake.NewClientBuilder().
+		WithLists(&discoveryV1.EndpointSliceList{Items: []discoveryV1.EndpointSlice{*slice}}).
+		Build()
+
+	s := metricsAPIScaler{
+		kubeClient: kubeClient,
+		logger:     logr.Discard(),
+	}
+
+	urls, err := s.getEndpointsUrlsFromServiceURL(t.Context(), "http://my-service.my-namespace.svc:8080/metrics")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"http://[2001:db8::1]:8080/metrics"}, urls)
+
+	// the port isn't in the endpoint slice: it's inferred from the scheme and left out of the URL
+	urls, err = s.getEndpointsUrlsFromServiceURL(t.Context(), "http://my-service.my-namespace.svc/metrics")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"http://[2001:db8::1]/metrics"}, urls)
+}
+
+func TestGetEndpointsUrlsFromServiceURL_DualStack(t *testing.T) {
+	ready := true
+	port8080 := int32(8080)
+
+	endpoint := func(address string) discoveryV1.Endpoint {
+		return discoveryV1.Endpoint{
+			Addresses:  []string{address},
+			Conditions: discoveryV1.EndpointConditions{Ready: &ready},
+		}
+	}
+	slice := func(name string, addressType discoveryV1.AddressType, endpoints ...discoveryV1.Endpoint) discoveryV1.EndpointSlice {
+		return discoveryV1.EndpointSlice{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: "my-namespace",
+				Labels: map[string]string{
+					discoveryV1.LabelServiceName: "my-service",
+				},
+			},
+			AddressType: addressType,
+			Ports:       []discoveryV1.EndpointPort{{Port: &port8080}},
+			Endpoints:   endpoints,
+		}
+	}
+	// a dual-stack service has an endpoint slice per IP family, each listing every pod
+	endpointSlices := &discoveryV1.EndpointSliceList{Items: []discoveryV1.EndpointSlice{
+		slice("my-service-ipv4", discoveryV1.AddressTypeIPv4, endpoint("10.0.0.1"), endpoint("10.0.0.2")),
+		slice("my-service-ipv6", discoveryV1.AddressTypeIPv6, endpoint("2001:db8::1"), endpoint("2001:db8::2")),
+	}}
+
+	tests := []struct {
+		name       string
+		ipFamilies []corev1.IPFamily
+		expected   []string
+	}{
+		{
+			name:       "IPv4 primary",
+			ipFamilies: []corev1.IPFamily{corev1.IPv4Protocol, corev1.IPv6Protocol},
+			expected:   []string{"http://10.0.0.1:8080/metrics", "http://10.0.0.2:8080/metrics"},
+		},
+		{
+			name:       "IPv6 primary",
+			ipFamilies: []corev1.IPFamily{corev1.IPv6Protocol, corev1.IPv4Protocol},
+			expected:   []string{"http://[2001:db8::1]:8080/metrics", "http://[2001:db8::2]:8080/metrics"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			service := &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{Name: "my-service", Namespace: "my-namespace"},
+				Spec:       corev1.ServiceSpec{IPFamilies: tt.ipFamilies},
+			}
+			kubeClient := fake.NewClientBuilder().
+				WithObjects(service).
+				WithLists(endpointSlices.DeepCopy()).
+				Build()
+
+			s := metricsAPIScaler{
+				kubeClient: kubeClient,
+				logger:     logr.Discard(),
+			}
+
+			urls, err := s.getEndpointsUrlsFromServiceURL(t.Context(), "http://my-service.my-namespace.svc:8080/metrics")
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, urls)
+		})
+	}
 }
