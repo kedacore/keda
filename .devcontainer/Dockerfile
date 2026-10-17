@@ -3,7 +3,7 @@
 # Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM golang:1.27.1
+FROM golang:1.26.8
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
@@ -96,3 +96,8 @@ RUN ARCH=$(case $(uname -m) in x86_64) echo -n amd64 ;; aarch64) echo -n arm64 ;
     && mkdir -p /usr/local/bin/ \
     && cp operator-sdk_${OS}_${ARCH} /usr/local/bin/operator-sdk \
     && rm operator-sdk_${OS}_${ARCH}
+
+# Docker seeds new named volumes with this directory's ownership. VS Code needs
+# to write here before postCreateCommand runs, so prepare it in the image.
+RUN install -d -m 0755 -o "$USERNAME" -g "$USERNAME" \
+    "/home/$USERNAME/.vscode-server"
