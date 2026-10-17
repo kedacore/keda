@@ -2130,7 +2130,7 @@ func TestWatchMetricSpecUpdates_UsesLatestCacheAfterInvalidation(t *testing.T) {
 	streamer.specCh <- expectedSpecs
 
 	assert.Eventually(t, func() bool {
-		specs := newCache.GetMetricSpecForScaling(context.Background())
+		specs, _ := newCache.GetMetricSpecForScaling(context.Background())
 		return len(specs) == 1 && specs[0].External != nil && specs[0].External.Metric.Name == "s0-updated"
 	}, time.Second, 10*time.Millisecond)
 
@@ -2185,7 +2185,7 @@ func TestWatchMetricSpecUpdates_IgnoresStaleGeneration(t *testing.T) {
 	// The generation-2 cache must never receive the generation-1 update, and no
 	// reconcile must be enqueued.
 	assert.Never(t, func() bool {
-		specs := newGenCache.GetMetricSpecForScaling(context.Background())
+		specs, _ := newGenCache.GetMetricSpecForScaling(context.Background())
 		return len(specs) == 1 && specs[0].External != nil && specs[0].External.Metric.Name == "s0-stale"
 	}, 200*time.Millisecond, 10*time.Millisecond)
 
@@ -2235,7 +2235,7 @@ func TestWatchMetricSpecUpdates_IgnoresRecreatedObject(t *testing.T) {
 	streamer.specCh <- []v2.MetricSpec{createMetricSpec(42, "s0-stale")}
 
 	assert.Never(t, func() bool {
-		specs := recreatedCache.GetMetricSpecForScaling(context.Background())
+		specs, _ := recreatedCache.GetMetricSpecForScaling(context.Background())
 		return len(specs) == 1 && specs[0].External != nil && specs[0].External.Metric.Name == "s0-stale"
 	}, 200*time.Millisecond, 10*time.Millisecond)
 
