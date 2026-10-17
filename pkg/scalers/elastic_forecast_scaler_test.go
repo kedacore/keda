@@ -317,6 +317,16 @@ var elasticForecastTestCases = []parseElasticForecastMetadataTestData{
 		authParams:    map[string]string{"apiKey": "xxxxxxxxx", "username": "admin", "password": "secret"},
 		expectedError: fmt.Errorf("cannot provide both apiKey and username/password"),
 	},
+	{
+		name: "addresses given without any credentials",
+		metadata: map[string]string{
+			"addresses":   "http://localhost:9200",
+			"jobID":       "my-job",
+			"targetValue": "10",
+		},
+		authParams:    map[string]string{},
+		expectedError: fmt.Errorf("either username and password or apiKey must be provided when addresses is used"),
+	},
 }
 
 func TestParseElasticForecastMetadata(t *testing.T) {

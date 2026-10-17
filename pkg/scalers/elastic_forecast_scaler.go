@@ -82,7 +82,7 @@ func (m *elasticForecastMetadata) Validate() error {
 	if cloudMode && addrMode {
 		return fmt.Errorf("cannot provide both cloud config (cloudID/apiKey) and endpoint addresses")
 	}
-	if m.CloudID != "" && m.APIKey == "" {
+	if cloudMode && m.APIKey == "" {
 		return fmt.Errorf("cloudID and apiKey must both be provided together")
 	}
 	if !addrMode && (m.Username != "" || m.Password != "") {
@@ -94,9 +94,16 @@ func (m *elasticForecastMetadata) Validate() error {
 	if !cloudMode && !addrMode {
 		return fmt.Errorf("must provide either cloud config (cloudID + apiKey) or endpoint addresses")
 	}
-	if addrMode && m.APIKey == "" && (m.Username == "" || m.Password == "") {
-		return fmt.Errorf("username and password must both be provided when addresses is used")
+	if addrMode && m.APIKey == "" {
+		if m.Username == "" && m.Password == "" {
+			return fmt.Errorf("either username and password or apiKey must be provided when addresses is used")
+		}
+		if m.Username == "" || m.Password == "" {
+			return fmt.Errorf("username and password must both be provided when addresses is used")
+		}
 	}
+
+	// Sanity check other options
 	if m.LookAhead <= 0 {
 		return fmt.Errorf("lookAhead must be positive")
 	}
