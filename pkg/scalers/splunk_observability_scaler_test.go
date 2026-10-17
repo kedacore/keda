@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"log"
 	"math"
 	"runtime"
@@ -569,6 +570,153 @@ func TestSplunkObservabilityPersistentStreamStartupHonorsContext(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("persistent stream startup ignored its context")
+	}
+}
+
+func TestSplunkObservabilityCancelledStartupReapsClient(t *testing.T) {
+	previous := runtime.GOMAXPROCS(1)
+	defer runtime.GOMAXPROCS(previous)
+	before := countSplunkO11ySignalflowGoroutines()
+	scaler, stop := newFakeSplunkO11yScaler(t, 2)
+	defer stop()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := scaler.startPersistentStreamWithContext(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected cancelled startup, got %v", err)
+	}
+	if err := scaler.Close(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if countSplunkO11ySignalflowGoroutines() <= before+1 {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("cancelled startup left %d SignalFlow goroutines after Close", countSplunkO11ySignalflowGoroutines()-before)
+}
+
+type splunkO11yDelayedClient struct {
+	splunkO11yClient
+	comp        *signalflow.Computation
+	err         error
+	started     chan struct{}
+	release     chan struct{}
+	closed      chan struct{}
+	jobsAtClose int
+	backend     *signalflow.FakeBackend
+}
+
+func (c *splunkO11yDelayedClient) Execute(context.Context, *signalflow.ExecuteRequest) (*signalflow.Computation, error) {
+	close(c.started)
+	<-c.release
+	return c.comp, c.err
+}
+
+func (c *splunkO11yDelayedClient) Close() {
+	c.jobsAtClose = c.backend.RunningJobsForProgram(splunkO11yFakeProgram)
+	c.splunkO11yClient.Close()
+	close(c.closed)
+}
+
+func newDelayedSplunkO11yClient(t *testing.T, scaler *splunkObservabilityScaler, backend *signalflow.FakeBackend, started <-chan struct{}, resultErr error) *splunkO11yDelayedClient {
+	t.Helper()
+	client := &splunkO11yDelayedClient{
+		splunkO11yClient: scaler.apiClient,
+		err:              resultErr,
+		started:          make(chan struct{}),
+		release:          make(chan struct{}),
+		closed:           make(chan struct{}),
+		backend:          backend,
+	}
+	if resultErr == nil {
+		var err error
+		client.comp, err = scaler.apiClient.Execute(context.Background(), &signalflow.ExecuteRequest{Program: splunkO11yFakeProgram})
+		if err != nil {
+			t.Fatal(err)
+		}
+		waitForSplunkO11yJob(t, started)
+	}
+	scaler.apiClient = client
+	return client
+}
+
+func cancelSplunkO11yQuery(t *testing.T, scaler *splunkObservabilityScaler, started <-chan struct{}, persistent bool) {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	result := make(chan error, 1)
+	go func() {
+		if persistent {
+			result <- scaler.startPersistentStreamWithContext(ctx)
+			return
+		}
+		_, err := scaler.getQueryResult(ctx)
+		result <- err
+	}()
+	waitForSplunkO11yJob(t, started)
+	cancel()
+	select {
+	case err := <-result:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("expected cancellation, got %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("query did not return while Execute was blocked")
+	}
+}
+
+func assertLateSplunkO11yCleanup(t *testing.T, scaler *splunkObservabilityScaler, client *splunkO11yDelayedClient, release func()) {
+	t.Helper()
+	done := make(chan error, 1)
+	go func() { done <- scaler.Close(context.Background()) }()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Close blocked on a pending Execute")
+	}
+	select {
+	case <-client.closed:
+		t.Fatal("client closed before Execute returned")
+	default:
+	}
+	release()
+	select {
+	case <-client.closed:
+		if client.jobsAtClose != 0 {
+			t.Fatalf("client closed before stopping %d late computations", client.jobsAtClose)
+		}
+	case <-time.After(splunkO11yDrainTimeout + time.Second):
+		t.Fatal("client was not closed after Execute returned")
+	}
+}
+
+func TestSplunkObservabilityCancelledExecuteCleansUpClient(t *testing.T) {
+	tests := []struct {
+		name       string
+		persistent bool
+		resultErr  error
+	}{
+		{name: "persistent/computation", persistent: true},
+		{name: "persistent/error", persistent: true, resultErr: context.Canceled},
+		{name: "polling/computation"},
+		{name: "polling/error", resultErr: context.Canceled},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			scaler, backend, started, cleanup := newFakeSplunkO11yScalerWithBackend(t, 2)
+			defer cleanup()
+			client := newDelayedSplunkO11yClient(t, scaler, backend, started, tt.resultErr)
+			var releaseOnce sync.Once
+			release := func() { releaseOnce.Do(func() { close(client.release) }) }
+			defer release()
+			cancelSplunkO11yQuery(t, scaler, client.started, tt.persistent)
+			assertLateSplunkO11yCleanup(t, scaler, client, release)
+		})
 	}
 }
 

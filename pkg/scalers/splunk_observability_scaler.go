@@ -50,9 +50,14 @@ type splunkO11yComputation interface {
 	Stop(context.Context) error
 }
 
+type splunkO11yClient interface {
+	Execute(context.Context, *signalflow.ExecuteRequest) (*signalflow.Computation, error)
+	Close()
+}
+
 type splunkObservabilityScaler struct {
 	metadata      *splunkObservabilityMetadata
-	apiClient     *signalflow.Client
+	apiClient     splunkO11yClient
 	logger        logr.Logger
 	mu            sync.Mutex
 	closed        bool
@@ -63,6 +68,7 @@ type splunkObservabilityScaler struct {
 	nextQueryID   uint64
 	activeQueries map[uint64]context.CancelFunc
 	inFlight      sync.WaitGroup
+	executions    sync.WaitGroup
 	closeDone     chan struct{}
 	unhealthy     atomic.Bool
 }
@@ -150,10 +156,11 @@ func (s *splunkObservabilityScaler) stopAndDrain(comp splunkO11yComputation, pro
 			if !ok {
 				return nil
 			}
-			if process != nil {
-				if err := process(msg); err != nil {
-					return err
-				}
+			if process == nil {
+				continue
+			}
+			if err := process(msg); err != nil {
+				return err
 			}
 		case <-stopCtx.Done():
 			s.logger.V(1).Info("Gave up draining SignalFlow data channel after stop")
@@ -168,33 +175,36 @@ func (s *splunkObservabilityScaler) startPersistentStream() error {
 	return s.startPersistentStreamWithContext(startupCtx)
 }
 
-// executeGuarded runs Client.Execute without letting a wedged client block the
-// caller forever. The SignalFlow client holds its internal lock across channel
-// delivery and leaks it when a message arrives for an unknown channel, so a
-// later Execute can block indefinitely in registerChannel. If ctx expires
-// first, the client is marked unhealthy so Close stops touching it, and the
-// stuck Execute goroutine is abandoned.
-func (s *splunkObservabilityScaler) executeGuarded(ctx context.Context, apiClient *signalflow.Client, req *signalflow.ExecuteRequest) (*signalflow.Computation, error) {
+// executeGuarded bounds the caller's wait even when the SDK ignores ctx.
+// An unbuffered handoff gives either the caller or timeout cleanup ownership
+// of the returned computation, including when Execute returns after cancellation.
+func (s *splunkObservabilityScaler) executeGuarded(ctx context.Context, apiClient splunkO11yClient, req *signalflow.ExecuteRequest) (*signalflow.Computation, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	type executeResult struct {
 		comp *signalflow.Computation
 		err  error
 	}
-	resCh := make(chan executeResult, 1)
+	resCh := make(chan executeResult)
+	s.executions.Add(1)
 	go func() {
+		defer s.executions.Done()
 		comp, err := apiClient.Execute(ctx, req)
-		resCh <- executeResult{comp: comp, err: err}
+		select {
+		case resCh <- executeResult{comp: comp, err: err}:
+		case <-ctx.Done():
+			if comp != nil {
+				_ = s.stopAndDrain(comp, nil)
+			}
+		}
 	}()
 	select {
 	case res := <-resCh:
 		return res.comp, res.err
 	case <-ctx.Done():
-		select {
-		case res := <-resCh:
-			return res.comp, res.err
-		default:
-			s.unhealthy.Store(true)
-			return nil, ctx.Err()
-		}
+		s.unhealthy.Store(true)
+		return nil, ctx.Err()
 	}
 }
 
@@ -238,7 +248,7 @@ func (s *splunkObservabilityScaler) readPersistentStream(comp splunkO11yComputat
 	s.mu.Unlock()
 }
 
-func (s *splunkObservabilityScaler) startQuery(ctx context.Context) (*signalflow.Client, context.Context, func(), error) {
+func (s *splunkObservabilityScaler) startQuery(ctx context.Context) (splunkO11yClient, context.Context, func(), error) {
 	queryCtx, cancel := context.WithCancel(ctx)
 
 	s.mu.Lock()
@@ -347,6 +357,10 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 	if s.metadata.PersistentStream {
 		return s.persistentQueryResult()
 	}
+	return s.getPollingQueryResult(ctx)
+}
+
+func (s *splunkObservabilityScaler) getPollingQueryResult(ctx context.Context) (float64, error) {
 	apiClient, queryCtx, finishQuery, err := s.startQuery(ctx)
 	if err != nil {
 		return -1, err
@@ -403,48 +417,19 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 
 	s.logger.V(1).Info("Now iterating over results.")
 
-	dataCh := comp.Data()
-
 	// timedOut handles the hard-deadline path: stop, drain, and return the timeout error.
-	timedOut := func() (float64, error) {
+	timedOut := func() error {
 		s.logger.V(1).Info("Context done before stream completed; stopping computation.")
 		cleanupStarted = true
 		go func() {
 			_ = s.stopAndDrain(comp, nil)
 			finishQuery()
 		}()
-		return -1, fmt.Errorf("splunk observability query ended before stream completed: %w", streamCtx.Err())
+		return fmt.Errorf("splunk observability query ended before stream completed: %w", streamCtx.Err())
 	}
 
-loop:
-	for {
-		// Give the hard deadline priority: select has no fairness, so a continuously
-		// ready dataCh could otherwise starve the streamCtx.Done() case.
-		select {
-		case <-streamCtx.Done():
-			return timedOut()
-		default:
-		}
-
-		select {
-		case <-streamCtx.Done():
-			return timedOut()
-		case <-stopTimer.C:
-			s.logger.V(1).Info("Stopping MTS stream after duration.")
-			// Stop, but keep processing any remaining buffered messages for this window.
-			if err := s.stopAndDrain(comp, process); err != nil {
-				return -1, err
-			}
-			break loop
-		case msg, ok := <-dataCh:
-			if !ok {
-				break loop
-			}
-			if err := process(msg); err != nil {
-				_ = s.stopAndDrain(comp, nil)
-				return -1, err
-			}
-		}
+	if err := s.readQuery(streamCtx, comp, process, stopTimer.C, timedOut); err != nil {
+		return -1, err
 	}
 
 	result, err := splunkObservabilityRollup(s.metadata.QueryAggregator, maxValue, minValue, valueSum, valueCount, latestValue)
@@ -453,6 +438,36 @@ loop:
 	}
 	s.logger.V(1).Info(fmt.Sprintf("Returning %s value: %.4f\n", s.metadata.QueryAggregator, result))
 	return result, nil
+}
+
+func (s *splunkObservabilityScaler) readQuery(ctx context.Context, comp splunkO11yComputation, process func(*messages.DataMessage) error, stop <-chan time.Time, timedOut func() error) error {
+	dataCh := comp.Data()
+	for {
+		// Give the hard deadline priority: select has no fairness, so a continuously
+		// ready dataCh could otherwise starve the ctx.Done() case.
+		select {
+		case <-ctx.Done():
+			return timedOut()
+		default:
+		}
+
+		select {
+		case <-ctx.Done():
+			return timedOut()
+		case <-stop:
+			s.logger.V(1).Info("Stopping MTS stream after duration.")
+			// Stop, but keep processing any remaining buffered messages for this window.
+			return s.stopAndDrain(comp, process)
+		case msg, ok := <-dataCh:
+			if !ok {
+				return nil
+			}
+			if err := process(msg); err != nil {
+				_ = s.stopAndDrain(comp, nil)
+				return err
+			}
+		}
+	}
 }
 
 func splunkObservabilityRollup(aggregator string, maxValue, minValue, valueSum float64, valueCount int, latestValue float64) (float64, error) {
@@ -506,6 +521,23 @@ func (s *splunkObservabilityScaler) GetMetricSpecForScaling(context.Context) []v
 	return []v2.MetricSpec{metricSpec}
 }
 
+func (s *splunkObservabilityScaler) closeClient(apiClient splunkO11yClient) {
+	if apiClient == nil {
+		return
+	}
+	closeClient := func() {
+		s.executions.Wait()
+		apiClient.Close()
+	}
+	if s.unhealthy.Load() {
+		// Execute may still hold an SDK lock after its caller times out. Defer
+		// closure until it returns and any late computation has been drained.
+		go closeClient()
+		return
+	}
+	closeClient()
+}
+
 func (s *splunkObservabilityScaler) Close(context.Context) error {
 	s.mu.Lock()
 	if s.closed {
@@ -536,12 +568,7 @@ func (s *splunkObservabilityScaler) Close(context.Context) error {
 		s.stopPersistentStream(comp)
 	}
 	s.inFlight.Wait()
-	// A client wedged in the SignalFlow library takes its internal lock with
-	// it, so Close must not touch it or Close wedges too. The client is
-	// abandoned instead; its queries already failed fast above.
-	if apiClient != nil && !s.unhealthy.Load() {
-		apiClient.Close()
-	}
+	s.closeClient(apiClient)
 	close(done)
 	return nil
 }
