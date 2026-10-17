@@ -80,7 +80,7 @@ func (m *elasticForecastMetadata) Validate() error {
 	addrMode := len(m.Addresses) > 0
 
 	if cloudMode && addrMode {
-		return fmt.Errorf("cannot provide both cloud config (cloudID/apiKey) and endpoint addresses")
+		return fmt.Errorf("cannot provide both cloudID and endpoint addresses")
 	}
 	if cloudMode && m.APIKey == "" {
 		return fmt.Errorf("cloudID and apiKey must both be provided together")

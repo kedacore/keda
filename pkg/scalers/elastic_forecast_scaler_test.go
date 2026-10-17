@@ -55,7 +55,7 @@ var elasticForecastTestCases = []parseElasticForecastMetadataTestData{
 			"targetValue": "10",
 		},
 		authParams:    map[string]string{"cloudID": "my-cluster:xxxxxxxxxxx", "apiKey": "xxxxxxxxx"},
-		expectedError: fmt.Errorf("cannot provide both cloud config (cloudID/apiKey) and endpoint addresses"),
+		expectedError: fmt.Errorf("cannot provide both cloudID and endpoint addresses"),
 	},
 	{
 		name: "addresses given without password",
