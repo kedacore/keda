@@ -84,7 +84,12 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			logger.V(1).Info("Some triggers defined in ScaledObject are not working correctly")
 		default:
 			// triggers are active, but we didn't need to scale (replica count > 0)
-			result.LastActiveTime = &metav1.Time{Time: time.Now()}
+			if minReplicas <= 0 || scaledObject.Spec.IdleReplicaCount != nil {
+				cooldownPeriod := getCooldownPeriod(scaledObject)
+				if scaledObject.Status.LastActiveTime == nil || time.Since(scaledObject.Status.LastActiveTime.Time) >= cooldownPeriod/2 {
+					result.LastActiveTime = &metav1.Time{Time: time.Now()}
+				}
+			}
 		}
 	} else {
 		// isActive == false
@@ -211,11 +216,7 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 		initialCooldownPeriod = time.Second * time.Duration(defaultInitialCooldownPeriod)
 	}
 
-	if scaledObject.Spec.CooldownPeriod != nil {
-		cooldownPeriod = time.Second * time.Duration(*scaledObject.Spec.CooldownPeriod)
-	} else {
-		cooldownPeriod = time.Second * time.Duration(defaultCooldownPeriod)
-	}
+	cooldownPeriod = getCooldownPeriod(scaledObject)
 
 	// LastActiveTime can be nil if the ScaleTarget was scaled outside of KEDA.
 	// In this case we will ignore the cooldown period and scale it down
@@ -348,4 +349,14 @@ func getIdleOrMinimumReplicaCount(scaledObject *kedav1alpha1.ScaledObject) (bool
 	}
 
 	return false, *scaledObject.Spec.MinReplicaCount
+}
+
+func getCooldownPeriod(scaledObject *kedav1alpha1.ScaledObject) time.Duration {
+	if scaledObject.Spec.CooldownPeriod != nil {
+		if *scaledObject.Spec.CooldownPeriod < 0 {
+			return 0
+		}
+		return time.Second * time.Duration(*scaledObject.Spec.CooldownPeriod)
+	}
+	return time.Second * time.Duration(defaultCooldownPeriod)
 }
