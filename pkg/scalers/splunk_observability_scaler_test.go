@@ -507,6 +507,88 @@ func TestSplunkObservabilityPersistentStreamUsesReceiveTime(t *testing.T) {
 	}
 }
 
+func splunkO11yEncodedPayload(typ messages.ValType, value interface{}) messages.DataPayload {
+	var encoded [8]byte
+	switch value := value.(type) {
+	case float64:
+		binary.BigEndian.PutUint64(encoded[:], math.Float64bits(value))
+	case int64:
+		binary.BigEndian.PutUint64(encoded[:], uint64(value))
+	case int32:
+		binary.BigEndian.PutUint32(encoded[:4], uint32(value))
+	default:
+		panic("unsupported test value")
+	}
+	return messages.DataPayload{Type: typ, Val: encoded}
+}
+
+func TestSplunkObservabilityPersistentStreamIngestsNumericPayloads(t *testing.T) {
+	tests := []struct {
+		name    string
+		payload messages.DataPayload
+		want    float64
+	}{
+		{name: "double", payload: splunkO11yEncodedPayload(messages.ValTypeDouble, float64(1.5)), want: 1.5},
+		{name: "long", payload: splunkO11yEncodedPayload(messages.ValTypeLong, int64(2)), want: 2},
+		{name: "int", payload: splunkO11yEncodedPayload(messages.ValTypeInt, int32(3)), want: 3},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			scaler := &splunkObservabilityScaler{
+				metadata:  &splunkObservabilityMetadata{Duration: 10, QueryAggregator: "latest"},
+				apiClient: &signalflow.Client{},
+				logger:    logr.Discard(),
+			}
+			if err := scaler.ingestPersistentMessage(&messages.DataMessage{Payloads: []messages.DataPayload{tt.payload}}); err != nil {
+				t.Fatal(err)
+			}
+			got, err := scaler.persistentQueryResult()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tt.want {
+				t.Fatalf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSplunkObservabilityPollingAggregatesNumericPayloads(t *testing.T) {
+	rollup := splunkO11yRollupState{maxValue: math.Inf(-1), minValue: math.Inf(1)}
+	message := &messages.DataMessage{Payloads: []messages.DataPayload{
+		splunkO11yEncodedPayload(messages.ValTypeDouble, float64(1.5)),
+		splunkO11yEncodedPayload(messages.ValTypeLong, int64(2)),
+		splunkO11yEncodedPayload(messages.ValTypeInt, int32(3)),
+	}}
+	if err := rollup.addMessage(message, logr.Discard()); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := splunkObservabilityRollup("sum", rollup.maxValue, rollup.minValue, rollup.valueSum, rollup.valueCount, rollup.latestValue)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != 6.5 {
+		t.Fatalf("got %v, want 6.5", got)
+	}
+}
+
+func TestSplunkObservabilityInvalidPayloadsStillFail(t *testing.T) {
+	message := &messages.DataMessage{Payloads: []messages.DataPayload{{Type: messages.ValType(99)}}}
+	scaler := &splunkObservabilityScaler{
+		metadata: &splunkObservabilityMetadata{Duration: 10},
+		logger:   logr.Discard(),
+	}
+	if err := scaler.ingestPersistentMessage(message); err == nil {
+		t.Fatal("expected persistent ingestion to reject invalid payload")
+	}
+
+	rollup := splunkO11yRollupState{maxValue: math.Inf(-1), minValue: math.Inf(1)}
+	if err := rollup.addMessage(message, logr.Discard()); err == nil {
+		t.Fatal("expected polling aggregation to reject invalid payload")
+	}
+}
+
 type splunkO11yTestComputation struct {
 	data     <-chan *messages.DataMessage
 	stopped  chan struct{}

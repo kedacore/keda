@@ -45,6 +45,43 @@ type splunkO11ySample struct {
 	v float64
 }
 
+type splunkO11yRollupState struct {
+	maxValue    float64
+	minValue    float64
+	valueSum    float64
+	valueCount  int
+	latestValue float64
+}
+
+func (r *splunkO11yRollupState) addMessage(msg *messages.DataMessage, logger logr.Logger) error {
+	for i := range msg.Payloads {
+		value, err := splunkO11yPayloadValue(&msg.Payloads[i])
+		if err != nil {
+			return err
+		}
+		logger.V(1).Info(fmt.Sprintf("Encountering value %.4f\n", value))
+		r.maxValue = math.Max(r.maxValue, value)
+		r.minValue = math.Min(r.minValue, value)
+		r.valueSum += value
+		r.valueCount++
+		r.latestValue = value
+	}
+	return nil
+}
+
+func splunkO11yPayloadValue(payload *messages.DataPayload) (float64, error) {
+	switch value := payload.Value().(type) {
+	case float64:
+		return value, nil
+	case int64:
+		return float64(value), nil
+	case int32:
+		return float64(value), nil
+	default:
+		return 0, fmt.Errorf("could not convert Splunk Observability metric value to float64")
+	}
+}
+
 type splunkO11yComputation interface {
 	Data() <-chan *messages.DataMessage
 	Stop(context.Context) error
@@ -302,10 +339,10 @@ func (s *splunkObservabilityScaler) ingestPersistentMessage(msg *messages.DataMe
 		}
 	}
 	s.samples = kept
-	for _, pl := range msg.Payloads {
-		value, ok := pl.Value().(float64)
-		if !ok {
-			return fmt.Errorf("could not convert Splunk Observability metric value to float64")
+	for i := range msg.Payloads {
+		value, err := splunkO11yPayloadValue(&msg.Payloads[i])
+		if err != nil {
+			return err
 		}
 		s.samples = append(s.samples, splunkO11ySample{t: ts, v: value})
 	}
@@ -389,28 +426,18 @@ func (s *splunkObservabilityScaler) getPollingQueryResult(ctx context.Context) (
 	stopTimer := time.NewTimer(streamDuration)
 	defer stopTimer.Stop()
 
-	maxValue := math.Inf(-1)
-	minValue := math.Inf(1)
-	valueSum := 0.0
-	valueCount := 0
-	latestValue := 0.0
+	rollup := splunkO11yRollupState{
+		maxValue: math.Inf(-1),
+		minValue: math.Inf(1),
+	}
 
 	process := func(msg *messages.DataMessage) error {
 		if len(msg.Payloads) == 0 {
 			s.logger.V(1).Info("No data retrieved.")
 			return nil
 		}
-		for _, pl := range msg.Payloads {
-			value, ok := pl.Value().(float64)
-			if !ok {
-				return fmt.Errorf("could not convert Splunk Observability metric value to float64")
-			}
-			s.logger.V(1).Info(fmt.Sprintf("Encountering value %.4f\n", value))
-			maxValue = math.Max(maxValue, value)
-			minValue = math.Min(minValue, value)
-			valueSum += value
-			valueCount++
-			latestValue = value
+		if err := rollup.addMessage(msg, s.logger); err != nil {
+			return err
 		}
 		return nil
 	}
@@ -432,7 +459,7 @@ func (s *splunkObservabilityScaler) getPollingQueryResult(ctx context.Context) (
 		return -1, err
 	}
 
-	result, err := splunkObservabilityRollup(s.metadata.QueryAggregator, maxValue, minValue, valueSum, valueCount, latestValue)
+	result, err := splunkObservabilityRollup(s.metadata.QueryAggregator, rollup.maxValue, rollup.minValue, rollup.valueSum, rollup.valueCount, rollup.latestValue)
 	if err != nil {
 		return result, err
 	}
