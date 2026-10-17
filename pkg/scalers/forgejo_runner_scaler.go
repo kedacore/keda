@@ -20,7 +20,7 @@ import (
 const (
 	defaultForgejoJobsLen = 1
 
-	adminJobMetricPath = "/api/v1/admin/runners/jobs"
+	adminJobMetricPath = "/api/v1/admin/actions/runners/jobs"
 	orgJobMetricPath   = "/api/v1/orgs/%s/actions/runners/jobs"
 	repoJobMetricPath  = "/api/v1/repos/%s/%s/actions/runners/jobs"
 	userJobMetricPath  = "/api/v1/user/actions/runners/jobs"
