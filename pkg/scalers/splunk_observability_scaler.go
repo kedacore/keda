@@ -54,9 +54,9 @@ type splunkObservabilityScaler struct {
 	metadata      *splunkObservabilityMetadata
 	apiClient     *signalflow.Client
 	logger        logr.Logger
-	mu            sync.RWMutex
+	mu            sync.Mutex
 	closed        bool
-	comp          *signalflow.Computation
+	comp          splunkO11yComputation
 	samples       []splunkO11ySample
 	streamErr     error
 	stopOnce      sync.Once
@@ -303,8 +303,8 @@ func (s *splunkObservabilityScaler) ingestPersistentMessage(msg *messages.DataMe
 }
 
 func (s *splunkObservabilityScaler) persistentQueryResult() (float64, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.closed || s.apiClient == nil {
 		return -1, fmt.Errorf("splunk observability scaler is closed")
 	}
