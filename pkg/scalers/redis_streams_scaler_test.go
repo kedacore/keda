@@ -8,6 +8,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
@@ -1990,6 +1991,7 @@ func TestActivityCount(t *testing.T) {
 		wantMeta    *redisStreamsMetadata
 		wantErr     error
 	}
+
 	c := testCase{
 		name: "sentinelMaster given in metadata from env",
 		metadata: map[string]string{
@@ -2075,4 +2077,37 @@ func TestActivityCount(t *testing.T) {
 
 		assert.Equal(t, isActive, true, "redis scaler should be active when lag is greater than activation")
 	})
+}
+
+func TestRedisStreamsValidateWithAzureWorkloadAndPasswordFails(t *testing.T) {
+	meta := redisStreamsMetadata{
+		ConnectionInfo: redisConnectionInfo{
+			Addresses: []string{"localhost:6379"},
+			Password:  "secret",
+		},
+		StreamName: "mystream",
+		podIdentity: kedav1alpha1.AuthPodIdentity{
+			Provider: kedav1alpha1.PodIdentityProviderAzureWorkload,
+		},
+	}
+
+	err := meta.Validate()
+	assert.ErrorIs(t, err, ErrRedisEntraIDIncompatibleWithPassword)
+}
+
+func TestRedisStreamsValidateWithAzureWorkloadAndSentinelFails(t *testing.T) {
+	meta := redisStreamsMetadata{
+		ConnectionInfo: redisConnectionInfo{
+			Addresses:        []string{"localhost:26379"},
+			SentinelMaster:   "mymaster",
+			SentinelPassword: "sentinel-secret",
+		},
+		StreamName: "mystream",
+		podIdentity: kedav1alpha1.AuthPodIdentity{
+			Provider: kedav1alpha1.PodIdentityProviderAzureWorkload,
+		},
+	}
+
+	err := meta.Validate()
+	assert.ErrorIs(t, err, ErrRedisEntraIDIncompatibleWithSentinel)
 }
