@@ -290,6 +290,121 @@ var _ = Describe("ScaledObjectController", func() {
 			Expect(hpa.Spec.Metrics[0].External.Metric.Name).To(Equal("s0-cron-UTC-0xxxx-1xxxx"))
 		})
 
+		It("creates the HPA when the selector target appears after the ScaledObject", func() {
+			// Create the ScaledObject first: its prefix selector matches
+			// nothing yet, so reconciliation holds with no HPA.
+			so := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: "delayed-target-test", Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						APIVersion: "apps/v1",
+						Kind:       "Deployment",
+						NamePrefix: "delayed-sensor-",
+					},
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			err := k8sClient.Create(context.Background(), so)
+			Expect(err).ToNot(HaveOccurred())
+
+			// No HPA while nothing matches the selector.
+			Consistently(func() bool {
+				hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-delayed-target-test", Namespace: "default"}, hpa)
+				return errors.IsNotFound(err)
+			}, "5s", "500ms").Should(BeTrue())
+
+			// Create the target later: the error retry must converge and
+			// the HPA must point at the resolved workload.
+			err = k8sClient.Create(context.Background(), generateDeployment("delayed-sensor-abc12"))
+			Expect(err).ToNot(HaveOccurred())
+
+			hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+			Eventually(func() error {
+				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-delayed-target-test", Namespace: "default"}, hpa)
+			}, "60s", "1s").ShouldNot(HaveOccurred())
+			Expect(hpa.Spec.ScaleTargetRef.Name).To(Equal("delayed-sensor-abc12"))
+		})
+
+		It("deletes the HPA when a newer selector loses the target to another ScaledObject", func() {
+			// The fixed-name winner is created first, so it is older and
+			// wins the deterministic oldest-first tie-break. The loser
+			// uses a prefix selector converging on the same Deployment.
+			err := k8sClient.Create(context.Background(), generateDeployment("shared-target"))
+			Expect(err).ToNot(HaveOccurred())
+
+			winner := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: "aaa-winner", Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						APIVersion: "apps/v1",
+						Kind:       "Deployment",
+						Name:       "shared-target",
+					},
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), winner)
+			Expect(err).ToNot(HaveOccurred())
+
+			loser := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: "zzz-loser", Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						APIVersion: "apps/v1",
+						Kind:       "Deployment",
+						NamePrefix: "shared-",
+					},
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), loser)
+			Expect(err).ToNot(HaveOccurred())
+
+			// The winner converges normally.
+			winnerHPA := &autoscalingv2.HorizontalPodAutoscaler{}
+			Eventually(func() error {
+				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-aaa-winner", Namespace: "default"}, winnerHPA)
+			}, "60s", "1s").ShouldNot(HaveOccurred())
+
+			// The loser must never hold an HPA for the shared target.
+			Consistently(func() bool {
+				loserHPA := &autoscalingv2.HorizontalPodAutoscaler{}
+				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-zzz-loser", Namespace: "default"}, loserHPA)
+				return errors.IsNotFound(err)
+			}, "10s", "500ms").Should(BeTrue())
+		})
+
 		It("cleans up old hpa when hpa name is updated", func() {
 			// Create the scaling target.
 			deploymentName := "changing-name"

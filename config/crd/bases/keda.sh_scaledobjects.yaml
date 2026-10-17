@@ -319,12 +319,77 @@ spec:
                     type: string
                   kind:
                     type: string
+                  labelSelector:
+                    description: |-
+                      LabelSelector matches objects by label. ANDed with Name/NamePrefix;
+                      resolution requires exactly one survivor (see ResolveScaleTargetName).
+                      Like NamePrefix, resolution lists the target kind and needs list
+                      permission on it.
+                    properties:
+                      matchExpressions:
+                        description: matchExpressions is a list of label selector
+                          requirements. The requirements are ANDed.
+                        items:
+                          description: |-
+                            A label selector requirement is a selector that contains values, a key, and an operator that
+                            relates the key and values.
+                          properties:
+                            key:
+                              description: key is the label key that the selector
+                                applies to.
+                              type: string
+                            operator:
+                              description: |-
+                                operator represents a key's relationship to a set of values.
+                                Valid operators are In, NotIn, Exists and DoesNotExist.
+                              type: string
+                            values:
+                              description: |-
+                                values is an array of string values. If the operator is In or NotIn,
+                                the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                the values array must be empty. This array is replaced during a strategic
+                                merge patch.
+                              items:
+                                type: string
+                              type: array
+                              x-kubernetes-list-type: atomic
+                          required:
+                          - key
+                          - operator
+                          type: object
+                        type: array
+                        x-kubernetes-list-type: atomic
+                      matchLabels:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                          map is equivalent to an element of matchExpressions, whose key field is "key", the
+                          operator is "In", and the values array contains only "value". The requirements are ANDed.
+                        type: object
+                    type: object
+                    x-kubernetes-map-type: atomic
                   name:
-                    minLength: 1
+                    description: |-
+                      Name is the exact object name (today's behavior, unchanged).
+                      Optional when NamePrefix and/or LabelSelector identify the target.
                     type: string
-                required:
-                - name
+                  namePrefix:
+                    description: |-
+                      NamePrefix matches object names by prefix. ANDed with Name (when
+                      set) and LabelSelector (when set); at least one of the three is
+                      required. Exists for controllers that name objects dynamically
+                      (GenerateName), which no fixed name can ever reference. Selector
+                      resolution lists the target kind, so the KEDA operator needs list
+                      permission on that kind (granted for deployments, replicasets and
+                      statefulsets; not for arbitrary custom resources).
+                    type: string
                 type: object
+                x-kubernetes-validations:
+                - message: scaleTargetRef needs a non-empty name, a non-empty namePrefix,
+                    or a labelSelector
+                  rule: (has(self.name) && size(self.name) > 0) || (has(self.namePrefix)
+                    && size(self.namePrefix) > 0) || has(self.labelSelector)
               triggers:
                 items:
                   description: ScaleTriggers reference the scaler that will be used
@@ -435,6 +500,12 @@ spec:
               pausedReplicaCount:
                 format: int32
                 type: integer
+              resolvedTargetName:
+                description: |-
+                  ResolvedTargetName is the object name the selectors currently resolve
+                  to (empty when targeting by fixed name or while unresolved). Operators
+                  can see what KEDA follows; HPA retargets from it.
+                type: string
               resourceMetricNames:
                 items:
                   type: string
