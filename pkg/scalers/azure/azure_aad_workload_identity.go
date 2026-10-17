@@ -25,6 +25,8 @@ import (
 	"time"
 
 	amqpAuth "github.com/Azure/azure-amqp-common-go/v4/auth"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential"
 )
@@ -147,10 +149,19 @@ type ADWorkloadIdentityTokenProvider struct {
 	IdentityAuthorityHost string
 	Resource              string
 	aadToken              AADToken
+	credential            azcore.TokenCredential
+	credentialRequired    bool
+	credentialResource    string
 }
 
 func NewAzureADWorkloadIdentityTokenProvider(ctx context.Context, identityID, identityTenantID, identityAuthorityHost, resource string) *ADWorkloadIdentityTokenProvider {
 	return &ADWorkloadIdentityTokenProvider{ctx: ctx, IdentityID: identityID, IdentityTenantID: identityTenantID, IdentityAuthorityHost: identityAuthorityHost, Resource: resource}
+}
+
+// NewAzureADWorkloadIdentityTokenProviderWithCredential adapts an explicit Azure
+// credential for consumers of the legacy OAuthTokenProvider interface.
+func NewAzureADWorkloadIdentityTokenProviderWithCredential(ctx context.Context, credential azcore.TokenCredential, resource string) *ADWorkloadIdentityTokenProvider {
+	return &ADWorkloadIdentityTokenProvider{ctx: context.WithoutCancel(ctx), credential: credential, credentialRequired: true, Resource: resource}
 }
 
 // OAuthToken is for implementing the adal.OAuthTokenProvider interface. It returns the current access token.
@@ -160,6 +171,27 @@ func (wiTokenProvider *ADWorkloadIdentityTokenProvider) OAuthToken() string {
 
 // Refresh is for implementing the adal.Refresher interface
 func (wiTokenProvider *ADWorkloadIdentityTokenProvider) Refresh() error {
+	if wiTokenProvider.credentialRequired {
+		if wiTokenProvider.credential == nil {
+			return fmt.Errorf("explicit Azure workload identity credential is required")
+		}
+		if wiTokenProvider.credentialResource == wiTokenProvider.Resource && time.Now().Add(time.Minute).Before(wiTokenProvider.aadToken.ExpiresOnTimeObject) {
+			return nil
+		}
+		ctx, cancel := context.WithTimeout(wiTokenProvider.ctx, serviceAccountWorkloadIdentityTimeout)
+		defer cancel()
+		token, err := wiTokenProvider.credential.GetToken(ctx, policy.TokenRequestOptions{Scopes: []string{getScopedResource(wiTokenProvider.Resource)}})
+		if err != nil {
+			return err
+		}
+		wiTokenProvider.aadToken = AADToken{
+			AccessToken:         token.Token,
+			ExpiresOn:           strconv.FormatInt(token.ExpiresOn.Unix(), 10),
+			ExpiresOnTimeObject: token.ExpiresOn,
+		}
+		wiTokenProvider.credentialResource = wiTokenProvider.Resource
+		return nil
+	}
 	if time.Now().Before(wiTokenProvider.aadToken.ExpiresOnTimeObject) {
 		return nil
 	}

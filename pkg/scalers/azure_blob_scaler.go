@@ -109,6 +109,7 @@ func NewAzureBlobScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		meta.AccountName,
 		meta.EndpointSuffix,
 		config.GlobalHTTPTimeout,
+		config.ServiceAccountTokenProvider,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating azure blob client: %w", err)
@@ -146,7 +147,7 @@ func parseAzureBlobMetadata(config *scalersconfig.ScalerConfig, logger logr.Logg
 			logger.Info("accountName is ignored when using connection string authentication")
 		}
 
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload, kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount:
 		if meta.AccountName == "" {
 			return nil, fmt.Errorf("accountName is required when using Azure Workload Identity")
 		}

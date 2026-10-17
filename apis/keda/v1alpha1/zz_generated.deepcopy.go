@@ -85,6 +85,11 @@ func (in *AuthPodIdentity) DeepCopyInto(out *AuthPodIdentity) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.ServiceAccountName != nil {
+		in, out := &in.ServiceAccountName, &out.ServiceAccountName
+		*out = new(string)
+		**out = **in
+	}
 	if in.IdentityTenantID != nil {
 		in, out := &in.IdentityTenantID, &out.IdentityTenantID
 		*out = new(string)
