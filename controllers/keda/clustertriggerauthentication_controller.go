@@ -82,6 +82,7 @@ func (r *ClusterTriggerAuthenticationReconciler) Reconcile(ctx context.Context, 
 		return ctrl.Result{}, err
 	}
 	r.updatePromMetrics(clusterTriggerAuthentication, req.String())
+	logDeprecatedVaultToken(reqLogger, &clusterTriggerAuthentication.Spec)
 
 	if clusterTriggerAuthentication.Generation == 1 {
 		r.Emit(clusterTriggerAuthentication, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ClusterTriggerAuthenticationCreatedType, eventreason.ClusterTriggerAuthenticationAdded, message.ClusterTriggerAuthenticationCreatedMsg)
