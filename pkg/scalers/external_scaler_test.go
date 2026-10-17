@@ -615,7 +615,9 @@ func TestStreamMetricSpecOnce_BackoffReset(t *testing.T) {
 				specsBeforeError: tt.specsBeforeError,
 			})
 			go func() {
-				_ = grpcServer.Serve(lis)
+				if err := grpcServer.Serve(lis); err != nil {
+					t.Error(err)
+				}
 			}()
 			defer grpcServer.GracefulStop()
 
