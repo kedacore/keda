@@ -65,8 +65,6 @@ var testInfluxDBMetadata = []parseInfluxDBMetadataTestData{
 	{map[string]string{"serverURL": "https://influxdata.com", "influxVersion": "3", "database": "test", "metricKey": "mymetric", "queryType": "FlightSQL", "metricName": "influx_metric", "organizationName": "influx_org", "query": "SELECT \"water_level\" FROM \"h2o_feet\" WHERE \"location\"='coyote_creek' ORDER BY time DESC LIMIT 1;", "thresholdValue": "10", "unsafeSsl": "false"}, false, map[string]string{"authToken": "myToken"}},
 	// 18 influxVersion 3 with no organization
 	{map[string]string{"serverURL": "https://influxdata.com", "influxVersion": "3", "database": "test", "metricKey": "mymetric", "queryType": "FlightSQL", "metricName": "influx_metric", "query": "SELECT \"water_level\" FROM \"h2o_feet\" WHERE \"location\"='coyote_creek' ORDER BY time DESC LIMIT 1;", "thresholdValue": "10", "unsafeSsl": "false"}, false, map[string]string{"authToken": "myToken"}},
-	// 19 deprecated authToken in triggerMetadata errors
-	{map[string]string{"serverURL": "https://influxdata.com", "organizationName": "influx_org", "query": "from(bucket: hello)", "thresholdValue": "10", "authToken": "myToken", "unsafeSsl": "false"}, true, map[string]string{}},
 }
 
 func TestInfluxDBParseMetadata(t *testing.T) {

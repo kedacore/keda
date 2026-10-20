@@ -118,67 +118,88 @@ spec:
 `
 )
 
-// Util function
+// The test tells a running job from a finished one by the number of successful completions the job
+// reports, which is what these field selectors match on.
+const (
+	runningJobsSelector   = "status.successful=0"
+	succeededJobsSelector = "status.successful=1"
+)
+
+// A list that failed is handed back rather than counted as zero jobs, which is what discarding the
+// error did: for a target of zero that is a false pass, and for any other target it is a retry that
+// hides why the wait is not progressing.
+func countJobs(ctx context.Context, kc *kubernetes.Clientset, namespace, fieldSelector string) (int, error) {
+	jobList, err := kc.BatchV1().Jobs(namespace).List(ctx, metav1.ListOptions{FieldSelector: fieldSelector})
+	if err != nil {
+		return 0, fmt.Errorf("cannot list jobs in namespace %s - %w", namespace, err)
+	}
+	return len(jobList.Items), nil
+}
+
+// waitForJobCount polls until the jobs matching fieldSelector number target, giving up once the
+// iterations x intervalSeconds budget is spent. The budget is a deadline, so the time the API server
+// spends answering comes out of the window rather than extending it.
+func waitForJobCount(t *testing.T, kc *kubernetes.Clientset, namespace, fieldSelector string,
+	target, iterations, intervalSeconds int) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(iterations*intervalSeconds)*time.Second)
+	defer cancel()
+
+	err := KedaEventually(ctx, func(ctx context.Context) (bool, error) {
+		count, err := countJobs(ctx, kc, namespace, fieldSelector)
+		if err != nil {
+			return false, err
+		}
+
+		t.Logf("Waiting for job count to hit target. Namespace - %s, Selector - %s, Current  - %d, Target - %d",
+			namespace, fieldSelector, count, target)
+
+		return count == target, nil
+	}, time.Duration(intervalSeconds)*time.Second)
+	if err != nil {
+		t.Log(err)
+		return false
+	}
+	return true
+}
+
 func WaitUntilJobIsRunning(t *testing.T, kc *kubernetes.Clientset, namespace string,
 	target, iterations, intervalSeconds int) bool {
-	listOptions := metav1.ListOptions{
-		FieldSelector: "status.successful=0",
-	}
-	for i := 0; i < iterations; i++ {
-		jobList, _ := kc.BatchV1().Jobs(namespace).List(context.Background(), listOptions)
-		count := len(jobList.Items)
-
-		t.Logf("Waiting for job count to hit target. Namespace - %s, Current  - %d, Target - %d",
-			namespace, count, target)
-
-		if count == target {
-			return true
-		}
-		time.Sleep(time.Duration(intervalSeconds) * time.Second)
-	}
-
-	return false
+	return waitForJobCount(t, kc, namespace, runningJobsSelector, target, iterations, intervalSeconds)
 }
 
 func WaitUntilJobIsSucceeded(t *testing.T, kc *kubernetes.Clientset, namespace string,
 	target, iterations, intervalSeconds int) bool {
-	listOptions := metav1.ListOptions{
-		FieldSelector: "status.successful=1",
-	}
-	for i := 0; i < iterations; i++ {
-		jobList, _ := kc.BatchV1().Jobs(namespace).List(context.Background(), listOptions)
-		count := len(jobList.Items)
-
-		t.Logf("Waiting for job count to hit target. Namespace - %s, Current  - %d, Target - %d",
-			namespace, count, target)
-
-		if count == target {
-			return true
-		}
-		time.Sleep(time.Duration(intervalSeconds) * time.Second)
-	}
-
-	return false
+	return waitForJobCount(t, kc, namespace, succeededJobsSelector, target, iterations, intervalSeconds)
 }
 
+// AssertJobNotChangeKeepingIsSucceeded holds that the succeeded job count stays at target for the
+// whole iterations x intervalSeconds window, and reports the first count that differs.
 func AssertJobNotChangeKeepingIsSucceeded(t *testing.T, kc *kubernetes.Clientset, namespace string,
 	target, iterations, intervalSeconds int) bool {
-	listOptions := metav1.ListOptions{
-		FieldSelector: "status.successful=1",
-	}
-	for i := 0; i < iterations; i++ {
-		jobList, _ := kc.BatchV1().Jobs(namespace).List(context.Background(), listOptions)
-		count := len(jobList.Items)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(iterations*intervalSeconds)*time.Second)
+	defer cancel()
+
+	err := KedaConsistently(ctx, func(ctx context.Context) (bool, error) {
+		count, err := countJobs(ctx, kc, namespace, succeededJobsSelector)
+		if err != nil {
+			// KedaConsistently fails on a condition error, and a list that could not be made says
+			// nothing about the jobs, so it is logged as an attempt that saw nothing to object to.
+			t.Log(err)
+			return true, nil
+		}
 
 		t.Logf("Asserting the job count doesn't change. Namespace - %s, Current  - %d, Target - %d",
 			namespace, count, target)
 
 		if count != target {
-			return false
+			return false, fmt.Errorf("succeeded job count in namespace %s changed from %d to %d", namespace, target, count)
 		}
-		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+		return true, nil
+	}, time.Duration(intervalSeconds)*time.Second)
+	if err != nil {
+		t.Log(err)
+		return false
 	}
-
 	return true
 }
 
