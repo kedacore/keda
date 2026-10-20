@@ -4,6 +4,7 @@
 package elastic_forecast_test
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -402,23 +403,29 @@ func activateTrialAndVerify(t *testing.T) {
 // requireDatafeedStopped polls the datafeed status until it reports "stopped", which means the bounded historical run has completed.
 func requireDatafeedStopped(t *testing.T, timeout time.Duration) {
 	t.Helper()
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	// A failed exec is returned rather than skipped, so a datafeed that never reports is failed
+	// with the reason instead of a bare timeout.
+	err := KedaEventually(ctx, func(_ context.Context) (bool, error) {
 		out, err := ExecuteCommand(fmt.Sprintf(
 			"%s -XGET http://127.0.0.1:9200/_ml/datafeeds/datafeed-%s/_stats",
 			forecastKubectlExecCmd, forecastJobID,
 		))
-		if err == nil {
-			body := string(out)
-			if strings.Contains(body, `"state":"stopped"`) {
-				t.Log("[datafeed] state is stopped — historical processing complete")
-				return
-			}
-			t.Logf("[datafeed] not yet stopped, waiting… (body: %s)", body)
+		if err != nil {
+			return false, fmt.Errorf("cannot read datafeed stats: %w", err)
 		}
-		time.Sleep(3 * time.Second)
-	}
-	require.Fail(t, fmt.Sprintf("datafeed-%s did not reach state 'stopped' within %s", forecastJobID, timeout))
+		body := string(out)
+		if strings.Contains(body, `"state":"stopped"`) {
+			t.Log("[datafeed] state is stopped — historical processing complete")
+			return true, nil
+		}
+		t.Logf("[datafeed] not yet stopped, waiting… (body: %s)", body)
+		return false, nil
+	}, 3*time.Second)
+	require.NoErrorf(t, err, "datafeed-%s did not reach state 'stopped' within %s", forecastJobID, timeout)
 }
 
 // requireJobHasBuckets asserts that the ML job has processed enough result buckets for the model to produce a reliable forecast.
@@ -467,26 +474,35 @@ func ingestForecastTrainingData(t *testing.T, count int, window time.Duration) {
 func waitForForecastDocs(t *testing.T) {
 	t.Helper()
 
-	deadline := time.Now().Add(3 * time.Minute)
-	for time.Now().Before(deadline) {
+	const timeout = 3 * time.Minute
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	// A failed exec or an unparseable body is returned rather than skipped, so a count that never
+	// comes back is failed with the reason instead of a bare timeout.
+	err := KedaEventually(ctx, func(_ context.Context) (bool, error) {
 		out, err := ExecuteCommand(fmt.Sprintf(
 			`%s -XGET 'http://127.0.0.1:9200/.ml-anomalies-shared/_count' -d '{"query":{"bool":{"filter":[{"term":{"job_id":"%s"}},{"term":{"result_type":"model_forecast"}}]}}}'`,
 			forecastKubectlExecCmd, forecastJobID,
 		))
-		if err == nil {
-			body := string(out)
-			var countResp struct {
-				Count int64 `json:"count"`
-			}
-			if jsonErr := json.Unmarshal([]byte(body), &countResp); jsonErr == nil && countResp.Count > 0 {
-				t.Logf("[forecast] %d forecast document(s) indexed — proceeding", countResp.Count)
-				return
-			}
-			t.Logf("[forecast] 0 documents yet, waiting... (response: %s)", body)
+		if err != nil {
+			return false, fmt.Errorf("cannot count forecast documents: %w", err)
 		}
-		time.Sleep(5 * time.Second)
-	}
-	require.Fail(t, "forecast documents did not appear in .ml-anomalies-shared within 3 minutes")
+		body := string(out)
+		var countResp struct {
+			Count int64 `json:"count"`
+		}
+		if jsonErr := json.Unmarshal([]byte(body), &countResp); jsonErr != nil {
+			return false, fmt.Errorf("cannot parse count response: %w (body: %s)", jsonErr, body)
+		}
+		if countResp.Count > 0 {
+			t.Logf("[forecast] %d forecast document(s) indexed — proceeding", countResp.Count)
+			return true, nil
+		}
+		t.Logf("[forecast] 0 documents yet, waiting... (response: %s)", body)
+		return false, nil
+	}, 5*time.Second)
+	require.NoErrorf(t, err, "forecast documents did not appear in .ml-anomalies-shared within %s", timeout)
 }
 
 func testElasticForecastScaler(t *testing.T, kc *kubernetes.Clientset) {
