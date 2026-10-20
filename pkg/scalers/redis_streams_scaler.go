@@ -69,15 +69,15 @@ func (r *redisStreamsMetadata) Validate() error {
 		return err
 	}
 
-	if err := validateRedisEntraIDCompatibility(r.ConnectionInfo, r.podIdentity); err != nil {
-		return err
-	}
-
 	err = r.ConnectionInfo.SetEnableTLS(r.MetadataEnableTLS, r.AuthParamEnableTLS)
 	if err != nil {
 		return err
 	}
 	r.MetadataEnableTLS, r.AuthParamEnableTLS = "", ""
+
+	if err := validateRedisEntraIDCompatibility(r.ConnectionInfo, r.podIdentity); err != nil {
+		return err
+	}
 
 	if r.StreamName == "" {
 		return ErrRedisMissingStreamName

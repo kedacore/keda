@@ -292,6 +292,7 @@ jobs:
         env:
           AWS_RUN_IDENTITY_TESTS: true
           AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
+          TF_AZURE_MANAGED_REDIS_HOST: ${{ secrets.TF_AZURE_MANAGED_REDIS_HOST }}
           GCP_RUN_IDENTITY_TESTS: true
           VERSION: ${{ needs.triage.outputs.image_tag }}
           SUFFIX: "-test"

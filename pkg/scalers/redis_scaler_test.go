@@ -142,6 +142,7 @@ func TestRedisValidateWithAzureWorkloadAndPasswordFails(t *testing.T) {
 		ConnectionInfo: redisConnectionInfo{
 			Addresses: []string{"localhost:6379"},
 			Password:  "secret",
+			EnableTLS: true,
 		},
 		podIdentity: kedav1alpha1.AuthPodIdentity{
 			Provider: kedav1alpha1.PodIdentityProviderAzureWorkload,
@@ -157,6 +158,7 @@ func TestRedisValidateWithAzureWorkloadAndSentinelFails(t *testing.T) {
 		ConnectionInfo: redisConnectionInfo{
 			Addresses:      []string{"localhost:26379"},
 			SentinelMaster: "mymaster",
+			EnableTLS:      true,
 		},
 		podIdentity: kedav1alpha1.AuthPodIdentity{
 			Provider: kedav1alpha1.PodIdentityProviderAzureWorkload,
@@ -165,6 +167,42 @@ func TestRedisValidateWithAzureWorkloadAndSentinelFails(t *testing.T) {
 
 	err := meta.Validate()
 	assert.ErrorIs(t, err, ErrRedisEntraIDIncompatibleWithSentinel)
+}
+
+func TestRedisValidateAzureWorkloadTLS(t *testing.T) {
+	tests := []struct {
+		name         string
+		metadataTLS  string
+		authParamTLS string
+		wantErr      error
+	}{
+		{name: "disabled", wantErr: ErrRedisEntraIDRequiresTLS},
+		{name: "enabled by trigger metadata", metadataTLS: "true"},
+		{name: "enabled by auth params", authParamTLS: "enable"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			meta := redisMetadata{
+				MetadataEnableTLS:  tt.metadataTLS,
+				AuthParamEnableTLS: tt.authParamTLS,
+				ConnectionInfo: redisConnectionInfo{
+					Addresses: []string{"localhost:6379"},
+				},
+				ListName: "mylist",
+				podIdentity: kedav1alpha1.AuthPodIdentity{
+					Provider: kedav1alpha1.PodIdentityProviderAzureWorkload,
+				},
+			}
+
+			err := meta.Validate()
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestParseRedisClusterMetadata(t *testing.T) {
