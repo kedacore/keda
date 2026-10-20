@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -30,14 +31,20 @@ type splunkObservabilityMetadata struct {
 	Query                 string  `keda:"name=query,                 order=triggerMetadata"`
 	Duration              int     `keda:"name=duration,              order=triggerMetadata"`
 	TargetValue           float64 `keda:"name=targetValue,   	     order=triggerMetadata"`
-	QueryAggregator       string  `keda:"name=queryAggregator,       order=triggerMetadata"`
+	QueryAggregator       string  `keda:"name=queryAggregator,       order=triggerMetadata, enum=min;max;avg;sum;count;latest, default=avg"`
 	ActivationTargetValue float64 `keda:"name=activationTargetValue, order=triggerMetadata"`
 }
 
 type splunkObservabilityScaler struct {
-	metadata  *splunkObservabilityMetadata
-	apiClient *signalflow.Client
-	logger    logr.Logger
+	metadata      *splunkObservabilityMetadata
+	apiClient     *signalflow.Client
+	logger        logr.Logger
+	mu            sync.Mutex
+	closed        bool
+	nextQueryID   uint64
+	activeQueries map[uint64]context.CancelFunc
+	inFlight      sync.WaitGroup
+	closeDone     chan struct{}
 }
 
 func parseSplunkObservabilityMetadata(config *scalersconfig.ScalerConfig) (*splunkObservabilityMetadata, error) {
@@ -124,8 +131,50 @@ func (s *splunkObservabilityScaler) stopAndDrain(comp *signalflow.Computation, p
 	}
 }
 
+func (s *splunkObservabilityScaler) startQuery(ctx context.Context) (*signalflow.Client, context.Context, func(), error) {
+	queryCtx, cancel := context.WithCancel(ctx)
+
+	s.mu.Lock()
+	if s.closed || s.apiClient == nil {
+		s.mu.Unlock()
+		cancel()
+		return nil, nil, nil, fmt.Errorf("splunk observability scaler is closed")
+	}
+
+	queryID := s.nextQueryID
+	s.nextQueryID++
+	if s.activeQueries == nil {
+		s.activeQueries = make(map[uint64]context.CancelFunc)
+	}
+	s.activeQueries[queryID] = cancel
+	s.inFlight.Add(1)
+	apiClient := s.apiClient
+	s.mu.Unlock()
+
+	finishQuery := func() {
+		s.mu.Lock()
+		delete(s.activeQueries, queryID)
+		s.mu.Unlock()
+		cancel()
+		s.inFlight.Done()
+	}
+
+	return apiClient, queryCtx, finishQuery, nil
+}
+
 func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64, error) {
-	comp, err := s.apiClient.Execute(ctx, &signalflow.ExecuteRequest{
+	apiClient, queryCtx, finishQuery, err := s.startQuery(ctx)
+	if err != nil {
+		return -1, err
+	}
+	cleanupStarted := false
+	defer func() {
+		if !cleanupStarted {
+			finishQuery()
+		}
+	}()
+
+	comp, err := apiClient.Execute(queryCtx, &signalflow.ExecuteRequest{
 		Program: s.metadata.Query,
 	})
 	if err != nil {
@@ -136,7 +185,7 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 
 	streamDuration := time.Duration(s.metadata.Duration) * time.Second
 	// Hard deadline beyond the Duration window so a non-responsive backend cannot block forever.
-	streamCtx, cancel := context.WithTimeout(ctx, streamDuration+splunkO11yStreamMargin)
+	streamCtx, cancel := context.WithTimeout(queryCtx, streamDuration+splunkO11yStreamMargin)
 	defer cancel()
 
 	stopTimer := time.NewTimer(streamDuration)
@@ -146,6 +195,7 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 	minValue := math.Inf(1)
 	valueSum := 0.0
 	valueCount := 0
+	latestValue := 0.0
 
 	process := func(msg *messages.DataMessage) error {
 		if len(msg.Payloads) == 0 {
@@ -162,6 +212,7 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 			minValue = math.Min(minValue, value)
 			valueSum += value
 			valueCount++
+			latestValue = value
 		}
 		return nil
 	}
@@ -173,7 +224,11 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 	// timedOut handles the hard-deadline path: stop, drain, and return the timeout error.
 	timedOut := func() (float64, error) {
 		s.logger.V(1).Info("Context done before stream completed; stopping computation.")
-		go func() { _ = s.stopAndDrain(comp, nil) }()
+		cleanupStarted = true
+		go func() {
+			_ = s.stopAndDrain(comp, nil)
+			finishQuery()
+		}()
 		return -1, fmt.Errorf("splunk observability query ended before stream completed: %w", streamCtx.Err())
 	}
 
@@ -208,27 +263,36 @@ loop:
 		}
 	}
 
+	result, err := splunkObservabilityRollup(s.metadata.QueryAggregator, maxValue, minValue, valueSum, valueCount, latestValue)
+	if err != nil {
+		return result, err
+	}
+	s.logger.V(1).Info(fmt.Sprintf("Returning %s value: %.4f\n", s.metadata.QueryAggregator, result))
+	return result, nil
+}
+
+func splunkObservabilityRollup(aggregator string, maxValue, minValue, valueSum float64, valueCount int, latestValue float64) (float64, error) {
 	if valueCount == 0 {
 		return 0, fmt.Errorf("query returned no data points")
 	}
-
-	if valueCount > 1 && s.metadata.QueryAggregator == "" {
+	if valueCount > 1 && aggregator == "" {
 		return 0, fmt.Errorf("query returned more than 1 series; modify the query to return only 1 series or add a queryAggregator")
 	}
-
-	switch s.metadata.QueryAggregator {
+	switch aggregator {
 	case "max":
-		s.logger.V(1).Info(fmt.Sprintf("Returning max value: %.4f\n", maxValue))
 		return maxValue, nil
 	case "min":
-		s.logger.V(1).Info(fmt.Sprintf("Returning min value: %.4f\n", minValue))
 		return minValue, nil
 	case "avg":
-		avg := valueSum / float64(valueCount)
-		s.logger.V(1).Info(fmt.Sprintf("Returning avg value: %.4f\n", avg))
-		return avg, nil
+		return valueSum / float64(valueCount), nil
+	case "sum":
+		return valueSum, nil
+	case "count":
+		return float64(valueCount), nil
+	case "latest":
+		return latestValue, nil
 	default:
-		return 0, fmt.Errorf("invalid queryAggregator: %q", s.metadata.QueryAggregator)
+		return 0, fmt.Errorf("invalid queryAggregator: %q", aggregator)
 	}
 }
 
@@ -259,5 +323,33 @@ func (s *splunkObservabilityScaler) GetMetricSpecForScaling(context.Context) []v
 }
 
 func (s *splunkObservabilityScaler) Close(context.Context) error {
+	s.mu.Lock()
+	if s.closed {
+		done := s.closeDone
+		s.mu.Unlock()
+		if done != nil {
+			<-done
+		}
+		return nil
+	}
+	s.closed = true
+	s.closeDone = make(chan struct{})
+	done := s.closeDone
+	apiClient := s.apiClient
+	s.apiClient = nil
+	cancels := make([]context.CancelFunc, 0, len(s.activeQueries))
+	for _, cancel := range s.activeQueries {
+		cancels = append(cancels, cancel)
+	}
+	s.mu.Unlock()
+
+	for _, cancel := range cancels {
+		cancel()
+	}
+	s.inFlight.Wait()
+	if apiClient != nil {
+		apiClient.Close()
+	}
+	close(done)
 	return nil
 }

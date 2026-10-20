@@ -23,6 +23,59 @@ var _ = Describe("ScaledJobController", func() {
 	)
 
 	Describe("functional tests", func() {
+		It("propagates KubernetesAPITimeout to ScaledJob operations", func() {
+			jobName := "kubernetes-api-timeout"
+			sjName := "sj-" + jobName
+			pollingInterval := int32(1)
+			maxReplicaCount := int32(1)
+			now := time.Now().UTC()
+			jobTargetRef := generateJobSpec(jobName)
+			jobTargetRef.Selector = nil
+			jobTargetRef.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
+			sj := &kedav1alpha1.ScaledJob{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      sjName,
+					Namespace: "default",
+				},
+				Spec: kedav1alpha1.ScaledJobSpec{
+					PollingInterval: &pollingInterval,
+					MaxReplicaCount: &maxReplicaCount,
+					JobTargetRef:    jobTargetRef,
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           now.Add(-5 * time.Minute).Format("04 15 * * *"),
+								"end":             now.Add(5 * time.Minute).Format("04 15 * * *"),
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(context.Background(), sj)).To(Succeed())
+
+			var observation jobCreateContextObservation
+			Eventually(func() bool {
+				select {
+				case candidate := <-jobCreateContextObservations:
+					if candidate.generateName != sjName+"-" {
+						return false
+					}
+					observation = candidate
+					return true
+				default:
+					return false
+				}
+			}).WithTimeout(30 * time.Second).WithPolling(50 * time.Millisecond).Should(BeTrue())
+
+			Expect(observation.hasDeadline).To(BeTrue())
+			expectedTimeout := time.Duration(pollingInterval)*time.Second + scaledJobKubernetesAPITimeout
+			Expect(observation.deadline.Sub(observation.observedAt)).To(BeNumerically("~", expectedTimeout, time.Second))
+		})
+
 		It("scaledjob paused condition status changes to true on annotation", func() {
 			jobName := "toggled-to-paused-annotation-name"
 			sjName := "sj-" + jobName

@@ -90,10 +90,13 @@ func (c *ScalersCache) acquireReader() (release func(), err error) {
 	}, nil
 }
 
+// ScalerFactory constructs a scaler using the context for the current invocation.
+type ScalerFactory func(ctx context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error)
+
 type ScalerBuilder struct {
 	Scaler            scalers.Scaler
 	ScalerConfig      scalersconfig.ScalerConfig
-	Factory           func() (scalers.Scaler, *scalersconfig.ScalerConfig, error)
+	Factory           ScalerFactory
 	CachedMetricSpecs []v2.MetricSpec
 }
 
@@ -283,9 +286,16 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 //
 // The identity check and the write are performed under the same lock so the
 // validated cache cannot silently become stale between the two operations. It
-// reports whether the update was applied (false if the cache is closed, the
-// index is out of range, or the identity does not match).
+// reports whether the update was applied (false if the update carries no metric
+// specs, the cache is closed, the index is out of range, or the identity does
+// not match).
 func (c *ScalersCache) UpdateMetricSpecForScaler(index int, specs []v2.MetricSpec, uid types.UID, generation int64) bool {
+	// Empty updates are rejected so that CachedMetricSpecs is never a non-nil empty
+	// slice.
+	if len(specs) == 0 {
+		return false
+	}
+
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -315,7 +325,7 @@ func (c *ScalersCache) refreshScaler(ctx context.Context, index int) (scalers.Sc
 
 	oldSb := c.Scalers[index]
 
-	newScaler, sConfig, err := oldSb.Factory()
+	newScaler, sConfig, err := oldSb.Factory(ctx)
 	if err != nil {
 		return nil, err
 	}

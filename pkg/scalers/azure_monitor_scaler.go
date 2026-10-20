@@ -54,6 +54,8 @@ type azureMonitorMetadata struct {
 	NamespaceRef                 *string
 	Filter                       string `keda:"name=metricFilter, order=triggerMetadata, optional"`
 	FilterRef                    *string
+	Interval                     string `keda:"name=metricInterval, order=triggerMetadata, optional"`
+	IntervalRef                  *string
 	AggregationInterval          string                  `keda:"name=metricAggregationInterval, order=triggerMetadata, optional"`
 	AggregationType              azquery.AggregationType `keda:"name=metricAggregationType, order=triggerMetadata"`
 	ClientID                     string                  `keda:"name=activeDirectoryClientId, order=triggerMetadata;resolvedEnv;authParams, optional"`
@@ -70,6 +72,10 @@ func (m *azureMonitorMetadata) Validate() error {
 
 	if m.Filter != "" {
 		m.FilterRef = &m.Filter
+	}
+
+	if m.Interval != "" {
+		m.IntervalRef = &m.Interval
 	}
 
 	resourceURI := strings.Split(m.ResourceURI, "/")
@@ -268,7 +274,7 @@ func (s *azureMonitorScaler) requestMetric(ctx context.Context) (float64, error)
 		MetricNames:     &s.metadata.Name,
 		MetricNamespace: s.metadata.NamespaceRef,
 		Filter:          s.metadata.FilterRef,
-		Interval:        nil,
+		Interval:        s.metadata.IntervalRef,
 		Top:             nil,
 		ResultType:      nil,
 		OrderBy:         nil,

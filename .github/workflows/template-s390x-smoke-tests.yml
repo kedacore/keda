@@ -28,13 +28,13 @@ jobs:
       - name: Install Kubernetes
         env:
           # renovate: datasource=github-releases depName=kubernetes-sigs/kind
-          KIND_VERSION: v0.32.0
+          KIND_VERSION: v0.33.0
           # renovate: datasource=docker depName=vishnubijukumar/kindest-node-s390x
           KINDEST_NODE_S390X_VERSION: v1.35.0
           # renovate: datasource=docker depName=vishnubijukumar/kindnetd
-          KINDNETD_S390X_VERSION: v20250512-s390x
+          KINDNETD_S390X_VERSION: v20250829-s390x
           # renovate: datasource=docker depName=vishnubijukumar/local-path-provisioner
-          LOCAL_PATH_PROVISIONER_S390X_VERSION: v1
+          LOCAL_PATH_PROVISIONER_S390X_VERSION: v2
         run: |
           go install sigs.k8s.io/kind@${KIND_VERSION}
           kind create cluster --name ${{ runner.name }} --image vishnubijukumar/kindest-node-s390x:${KINDEST_NODE_S390X_VERSION}
@@ -51,7 +51,7 @@ jobs:
         run: make smoke-test
 
       - name: Upload test logs
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: ${{ always() }}
         with:
           name: smoke-test-logs ${{ inputs.runs-on }}-${{ inputs.kubernetesVersion }}

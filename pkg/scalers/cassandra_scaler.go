@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	gocql "github.com/apache/cassandra-gocql-driver/v2"
 	"github.com/go-logr/logr"
-	"github.com/gocql/gocql"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -216,11 +216,11 @@ func (s *cassandraScaler) GetMetricsAndActivity(ctx context.Context, metricName 
 // GetQueryResult returns the result of the scaler query
 func (s *cassandraScaler) GetQueryResult(ctx context.Context) (int64, error) {
 	var value int64
-	if err := s.session.Query(s.metadata.Query).WithContext(ctx).Scan(&value); err != nil {
-		if err != gocql.ErrNotFound {
-			s.logger.Error(err, "query failed")
-			return 0, err
-		}
+	iter := s.session.Query(s.metadata.Query).IterContext(ctx)
+	iter.Scan(&value)
+	if err := iter.Close(); err != nil {
+		s.logger.Error(err, "query failed")
+		return 0, err
 	}
 	return value, nil
 }

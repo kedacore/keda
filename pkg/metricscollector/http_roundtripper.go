@@ -30,7 +30,7 @@ type contextKey string
 
 const (
 	// ScalerContextKey is the context key used to attach the scaler type name
-	// (e.g. "prometheus", "redis") to an outbound HTTP request so that metrics
+	// (e.g. "prometheus", "external") to an outbound request so that metrics
 	// observers can include it as a dimension.
 	ScalerContextKey contextKey = "scaler"
 
@@ -123,8 +123,8 @@ func (r *InstrumentedRoundTripper) CloseIdleConnections() {
 	}
 }
 
-// BuildScalerRequestCtx attaches scaler metadata used by HTTP client
-// instrumentation to the outbound request context.
+// BuildScalerRequestCtx attaches metadata used by scaler client instrumentation
+// to an outbound request context.
 func BuildScalerRequestCtx(ctx context.Context, config scalersconfig.ScalerConfig, metricName string) context.Context {
 	requestCtx := context.WithValue(ctx, ScalerContextKey, config.TriggerType)
 	requestCtx = context.WithValue(requestCtx, TriggerNameContextKey, config.TriggerName)

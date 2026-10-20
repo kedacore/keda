@@ -240,6 +240,12 @@ var testRabbitMQAuthParamData = []parseRabbitMQAuthParamTestData{
 	{map[string]string{"queueName": "sample", "host": "http://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"oauthTokenURI": "https://oauth.example.com/token", "clientSecret": "my-secret"}, true, rmqTLSDisable, false},
 	// failure, OAuth2 missing clientSecret
 	{map[string]string{"queueName": "sample", "host": "http://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"oauthTokenURI": "https://oauth.example.com/token", "clientID": "my-client"}, true, rmqTLSDisable, false},
+	// success, explicitly declared authModes basic with username/password
+	{map[string]string{"queueName": "sample", "host": "http://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"authModes": "basic", "username": "user", "password": "pass"}, false, rmqTLSDisable, false},
+	// success, explicitly declared authModes tls with cert/key/ca
+	{map[string]string{"queueName": "sample", "host": "https://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"authModes": "tls", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, rmqTLSEnable, false},
+	// failure, declared authModes bearer is not supported by this scaler
+	{map[string]string{"queueName": "sample", "host": "http://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"authModes": "bearer", "bearerToken": "token"}, true, rmqTLSDisable, false},
 }
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
 	{&testRabbitMQMetadata[1], 0, "s0-rabbitmq-sample"},
@@ -1392,26 +1398,26 @@ func TestOAuth2HTTPClientCreation(t *testing.T) {
 	}
 
 	// Verify OAuth2 metadata was parsed correctly
-	if !scaler.metadata.hasOAuth2 {
-		t.Error("Expected hasOAuth2 to be true")
+	if !scaler.metadata.Auth.EnabledOAuth() {
+		t.Error("Expected Auth.EnabledOAuth() to be true")
 	}
 
-	if scaler.metadata.OauthTokenURI != "https://oauth.example.com/token" {
-		t.Errorf("Expected OauthTokenURI to be 'https://oauth.example.com/token' but got '%s'", scaler.metadata.OauthTokenURI)
+	if scaler.metadata.Auth.OauthTokenURI != "https://oauth.example.com/token" {
+		t.Errorf("Expected OauthTokenURI to be 'https://oauth.example.com/token' but got '%s'", scaler.metadata.Auth.OauthTokenURI)
 	}
 
-	if scaler.metadata.ClientID != "my-client" {
-		t.Errorf("Expected ClientID to be 'my-client' but got '%s'", scaler.metadata.ClientID)
+	if scaler.metadata.Auth.ClientID != "my-client" {
+		t.Errorf("Expected ClientID to be 'my-client' but got '%s'", scaler.metadata.Auth.ClientID)
 	}
 
-	if scaler.metadata.ClientSecret != "my-secret" {
-		t.Errorf("Expected ClientSecret to be 'my-secret' but got '%s'", scaler.metadata.ClientSecret)
+	if scaler.metadata.Auth.ClientSecret != "my-secret" {
+		t.Errorf("Expected ClientSecret to be 'my-secret' but got '%s'", scaler.metadata.Auth.ClientSecret)
 	}
 
-	assert.Equal(t, []string{"rabbitmq.read", "rabbitmq.write"}, scaler.metadata.Scopes)
+	assert.Equal(t, []string{"rabbitmq.read", "rabbitmq.write"}, scaler.metadata.Auth.Scopes)
 
-	if scaler.metadata.EndpointParams.Get("audience") != "rabbitmq" {
-		t.Errorf("Expected EndpointParams[audience] to be 'rabbitmq' but got '%s'", scaler.metadata.EndpointParams.Get("audience"))
+	if scaler.metadata.Auth.EndpointParams.Get("audience") != "rabbitmq" {
+		t.Errorf("Expected EndpointParams[audience] to be 'rabbitmq' but got '%s'", scaler.metadata.Auth.EndpointParams.Get("audience"))
 	}
 
 	// Clean up

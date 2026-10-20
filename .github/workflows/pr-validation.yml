@@ -11,7 +11,7 @@ jobs:
     name: validate - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     container:
-      image: ghcr.io/kedacore/keda-tools:1.26.6@sha256:7db93d7d2720c0ddbc67d35291cf8ba8f34a28c3125d08b0f93fe4c7f2e6debc
+      image: ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c
       volumes:
         - /usr:/host/usr
         - /opt:/host/opt
@@ -131,7 +131,7 @@ jobs:
       pull-requests: read # for dorny/paths-filter to read pull requests
     name: validate-dockerfiles - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.26.6@sha256:7db93d7d2720c0ddbc67d35291cf8ba8f34a28c3125d08b0f93fe4c7f2e6debc
+    container: ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c
     strategy:
       matrix:
         include:
@@ -167,7 +167,7 @@ jobs:
       pull-requests: read # for dorny/paths-filter to read pull requests
     name: Validate dev-container - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.26.6@sha256:7db93d7d2720c0ddbc67d35291cf8ba8f34a28c3125d08b0f93fe4c7f2e6debc
+    container: ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c
     strategy:
       matrix:
         include:

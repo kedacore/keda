@@ -46,7 +46,6 @@ const (
 )
 
 type azureServiceBusScaler struct {
-	ctx         context.Context
 	metricType  v2.MetricTargetType
 	metadata    *azureServiceBusMetadata
 	podIdentity kedav1alpha1.AuthPodIdentity
@@ -55,18 +54,18 @@ type azureServiceBusScaler struct {
 }
 
 type azureServiceBusMetadata struct {
-	TargetLength            int64  `keda:"name=messageCount,          order=triggerMetadata, default=5"`
-	ActivationTargetLength  int64  `keda:"name=activationMessageCount,          order=triggerMetadata, optional"`
-	QueueName               string `keda:"name=queueName,          order=triggerMetadata, optional"`
-	TopicName               string `keda:"name=topicName,          order=triggerMetadata, optional"`
-	SubscriptionName        string `keda:"name=subscriptionName,          order=triggerMetadata, optional"`
-	Connection              string `keda:"name=connection,          order=authParams;resolvedEnv, optional"`
-	Namespace               string `keda:"name=namespace,          order=triggerMetadata, optional"`
+	TargetLength            int64  `keda:"name=messageCount,           order=triggerMetadata, default=5"`
+	ActivationTargetLength  int64  `keda:"name=activationMessageCount, order=triggerMetadata, optional"`
+	QueueName               string `keda:"name=queueName,              order=triggerMetadata, optional"`
+	TopicName               string `keda:"name=topicName,              order=triggerMetadata, optional"`
+	SubscriptionName        string `keda:"name=subscriptionName,       order=triggerMetadata, optional"`
+	Connection              string `keda:"name=connection,             order=authParams;resolvedEnv, optional"`
+	Namespace               string `keda:"name=namespace,              order=triggerMetadata, optional"`
 	EntityType              entityType
 	FullyQualifiedNamespace string
-	UseRegex                bool `keda:"name=useRegex,          order=triggerMetadata, optional"`
+	UseRegex                bool `keda:"name=useRegex, order=triggerMetadata, optional"`
 	EntityNameRegex         *regexp.Regexp
-	Operation               string `keda:"name=operation,          order=triggerMetadata, enum=sum;max;avg, default=sum"`
+	Operation               string `keda:"name=operation, order=triggerMetadata, enum=sum;max;avg, default=sum"`
 	triggerIndex            int
 	timeout                 time.Duration
 }
@@ -121,7 +120,7 @@ func (a *azureServiceBusMetadata) Validate() error {
 }
 
 // NewAzureServiceBusScaler creates a new AzureServiceBusScaler
-func NewAzureServiceBusScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
+func NewAzureServiceBusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -135,7 +134,6 @@ func NewAzureServiceBusScaler(ctx context.Context, config *scalersconfig.ScalerC
 	}
 
 	return &azureServiceBusScaler{
-		ctx:         ctx,
 		metricType:  metricType,
 		metadata:    meta,
 		podIdentity: config.PodIdentity,

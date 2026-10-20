@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack"
-	"github.com/gophercloud/gophercloud/openstack/objectstorage/v1/containers"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack"
+	"github.com/gophercloud/gophercloud/v2/openstack/objectstorage/v1/containers"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -68,7 +68,7 @@ type openstackSwiftScaler struct {
 }
 
 // NewOpenstackSwiftScaler creates a new OpenStack Swift scaler
-func NewOpenstackSwiftScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
+func NewOpenstackSwiftScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	var swiftClient *gophercloud.ServiceClient
 
 	metricType, err := GetMetricTargetType(config)
@@ -105,7 +105,7 @@ func NewOpenstackSwiftScaler(config *scalersconfig.ScalerConfig) (Scaler, error)
 		}
 	}
 
-	provider, err := openstack.AuthenticatedClient(*authOpts)
+	provider, err := openstack.AuthenticatedClient(ctx, *authOpts)
 	if err != nil {
 		return nil, fmt.Errorf("error getting openstack client: %w", err)
 	}
@@ -158,9 +158,9 @@ func (s *openstackSwiftScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *openstackSwiftScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+func (s *openstackSwiftScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	containerName := s.metadata.ContainerName
-	container, err := containers.Get(s.swiftClient, containerName, containers.GetOpts{}).Extract()
+	container, err := containers.Get(ctx, s.swiftClient, containerName, containers.GetOpts{}).Extract()
 	if err != nil {
 		s.logger.Error(err, "error getting container details")
 		return []external_metrics.ExternalMetricValue{}, false, err

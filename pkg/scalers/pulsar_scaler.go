@@ -151,8 +151,7 @@ func NewPulsarScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	client := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
-	if pulsarMetadata.PulsarAuth.EnabledOAuth() && pulsarMetadata.PulsarAuth.ClientSecret == "" && !pulsarMetadata.PulsarAuth.EnabledTLS() {
-		msg := "OAuth is configured without clientSecret and without mTLS (RFC 8705). Add a clientSecret or enable mTLS to ensure secure authentication."
+	if msg := pulsarMetadata.PulsarAuth.InsecureOAuthWarning(); msg != "" {
 		logger.Info(msg)
 		if config.Recorder != nil {
 			config.Recorder.Eventf(config.ScaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", msg)

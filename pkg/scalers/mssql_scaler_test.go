@@ -2,6 +2,7 @@ package scalers
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -20,6 +21,7 @@ type parseMSSQLMetadataTestData struct {
 	expectedError            string
 	expectedConnectionString string
 	expectedMetricName       string
+	expectedDriverName       string
 }
 
 var testMSSQLMetadata = []parseMSSQLMetadataTestData{
@@ -141,6 +143,45 @@ var testMSSQLMetadata = []parseMSSQLMetadataTestData{
 		podIdentity:   kedav1alpha1.AuthPodIdentity{Provider: "gcp"},
 		expectedError: "pod identity gcp is not supported for mssql scaler",
 	},
+	{
+		name:                     "Driver name defaults to sqlserver when not set",
+		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "127.0.0.1"},
+		resolvedEnv:              map[string]string{},
+		authParams:               map[string]string{},
+		expectedConnectionString: "sqlserver://127.0.0.1",
+		expectedDriverName:       "sqlserver",
+	},
+	{
+		name:                     "Azure SQL driver from trigger metadata",
+		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "example.database.windows.net", "database": "AdventureWorks", "driverName": "azuresql"},
+		resolvedEnv:              map[string]string{},
+		authParams:               map[string]string{},
+		expectedConnectionString: "sqlserver://example.database.windows.net?database=AdventureWorks",
+		expectedDriverName:       "azuresql",
+	},
+	{
+		name:                     "Azure SQL driver from auth params",
+		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1"},
+		resolvedEnv:              map[string]string{},
+		authParams:               map[string]string{"driverName": "azuresql", "connectionString": "sqlserver://example.database.windows.net?fedauth=ActiveDirectoryDefault"},
+		expectedConnectionString: "sqlserver://example.database.windows.net?fedauth=ActiveDirectoryDefault",
+		expectedDriverName:       "azuresql",
+	},
+	{
+		name:          "Error: unknown driver name",
+		metadata:      map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "127.0.0.1", "driverName": "postgres"},
+		resolvedEnv:   map[string]string{},
+		authParams:    map[string]string{},
+		expectedError: "parameter \"driverName\" value \"postgres\" must be one of [sqlserver azuresql]",
+	},
+	{
+		name:          "Error: azuresql driver combined with workload identity",
+		metadata:      map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "myserver.database.windows.net", "driverName": "azuresql"},
+		resolvedEnv:   map[string]string{},
+		authParams:    map[string]string{},
+		podIdentity:   kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload},
+		expectedError: "driverName azuresql cannot be combined with azure-workload pod identity",
+	},
 }
 
 func TestParseMSSQLMetadata(t *testing.T) {
@@ -157,9 +198,19 @@ func TestParseMSSQLMetadata(t *testing.T) {
 
 			if testData.expectedError != "" {
 				assert.EqualError(t, err, testData.expectedError)
-			} else {
-				assert.NoError(t, err)
-				assert.NotNil(t, meta)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.NotNil(t, meta)
+
+			if testData.expectedConnectionString != "" {
+				connStr := getMSSQLConnectionString(&mssqlScaler{metadata: meta})
+				assert.Equal(t, testData.expectedConnectionString, connStr)
+			}
+
+			if testData.expectedDriverName != "" {
+				assert.Equal(t, testData.expectedDriverName, meta.DriverName)
 			}
 		})
 	}
@@ -211,4 +262,12 @@ func TestMSSQLWorkloadIdentityConnectionStringNoDatabase(t *testing.T) {
 	scaler := &mssqlScaler{metadata: meta}
 	connStr := getMSSQLConnectionString(scaler)
 	assert.Equal(t, "sqlserver://myserver.database.windows.net", connStr)
+}
+
+func TestMSSQLRegisteredDrivers(t *testing.T) {
+	// Both drivers have to be registered with database/sql before sql.Open can
+	// resolve the value of the driverName parameter.
+	drivers := sql.Drivers()
+	assert.Contains(t, drivers, mssqlDriverSQLServer)
+	assert.Contains(t, drivers, mssqlDriverAzureSQL)
 }

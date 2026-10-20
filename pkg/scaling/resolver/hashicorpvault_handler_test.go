@@ -17,6 +17,7 @@ limitations under the License.
 package resolver
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -24,11 +25,16 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	vaultapi "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 	"go.uber.org/mock/gomock"
 	authv1 "k8s.io/api/authentication/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -207,6 +213,10 @@ func mockVault(t *testing.T, useRootToken bool) *httptest.Server {
 func TestHashicorpVaultHandler_getSecretValue_specify_secret_type(t *testing.T) {
 	server := mockVault(t, false)
 	defer server.Close()
+
+	prevCfg := globalConfig
+	SetConfig(&Config{AllowedOutboundEndpoints: []string{server.URL}})
+	defer SetConfig(&prevCfg)
 	ctrl := gomock.NewController(t)
 	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
 	mockSecretLister := mock_secretlister.NewMockSecretLister(ctrl)
@@ -354,6 +364,10 @@ var resolveRequestTestDataSet = []resolveRequestTestData{
 func TestHashicorpVaultHandler_ResolveSecret(t *testing.T) {
 	server := mockVault(t, false)
 	defer server.Close()
+
+	prevCfg := globalConfig
+	SetConfig(&Config{AllowedOutboundEndpoints: []string{server.URL}})
+	defer SetConfig(&prevCfg)
 	ctrl := gomock.NewController(t)
 	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
 	mockSecretLister := mock_secretlister.NewMockSecretLister(ctrl)
@@ -398,6 +412,10 @@ func TestHashicorpVaultHandler_ResolveSecret_UsingRootToken(t *testing.T) {
 	server := mockVault(t, true)
 	defer server.Close()
 
+	prevCfg := globalConfig
+	SetConfig(&Config{AllowedOutboundEndpoints: []string{server.URL}})
+	defer SetConfig(&prevCfg)
+
 	vault := kedav1alpha1.HashiCorpVault{
 		Address:        server.URL,
 		Authentication: kedav1alpha1.VaultAuthenticationToken,
@@ -439,7 +457,9 @@ func TestHashicorpVaultHandler_ResolveSecret_UsingRootToken(t *testing.T) {
 }
 
 func TestHashicorpVaultHandler_DefaultKubernetesVaultRole(t *testing.T) {
-	defaultServiceAccountPath := "/var/run/secrets/kubernetes.io/serviceaccount/token"
+	prev := globalConfig
+	SetConfig(&Config{OutboundEndpointPolicy: "enforce"})
+	defer SetConfig(&prev)
 	server := mockVault(t, false)
 	defer server.Close()
 	ctrl := gomock.NewController(t)
@@ -457,16 +477,185 @@ func TestHashicorpVaultHandler_DefaultKubernetesVaultRole(t *testing.T) {
 		Role:           "my-role",
 	}
 
+	// In enforce mode, with no outbound endpoint allowlist configured, KEDA refuses to fall back
+	// to the operator service account token instead of silently exfiltrating it.
 	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
 	err := vaultHandler.Initialize(logf.Log.WithName("test"))
 	defer vaultHandler.Stop()
+	assert.ErrorContains(t, err, "no outbound endpoint allowlist is configured")
+	assert.Nil(t, vaultHandler.vault.Credential, "operator SA fallback must not be set when refused")
+
+	// An allowlist alone is insufficient: secure mode also requires an explicit audience and
+	// never silently falls back to the kube-apiserver-audience ambient token.
+	SetConfig(&Config{OutboundEndpointPolicy: "enforce", AllowedOutboundEndpoints: []string{server.URL}, ServiceAccountTokenMode: "enforce-audience"})
+
+	vaultAllowed := kedav1alpha1.HashiCorpVault{
+		Address:        server.URL,
+		Authentication: kedav1alpha1.VaultAuthenticationKubernetes,
+		Mount:          "my-mount",
+		Role:           "my-role",
+	}
+	vaultHandlerAllowed := NewHashicorpVaultHandler(&vaultAllowed, authClientSet, "default")
+	errAllowed := vaultHandlerAllowed.Initialize(logf.Log.WithName("test"))
+	defer vaultHandlerAllowed.Stop()
+	assert.ErrorContains(t, errAllowed, "no approved service account token audiences")
+}
+
+func TestHashicorpVaultHandler_AddressAllowlist(t *testing.T) {
+	authClientSet := &authentication.AuthClientSet{}
+
+	prev := globalConfig
+	SetConfig(&Config{OutboundEndpointPolicy: "enforce", AllowedOutboundEndpoints: []string{"https://vault.example.com:8200"}})
+	defer SetConfig(&prev)
+
+	// Address not in the allowlist is refused before any connection is attempted.
+	rogue := kedav1alpha1.HashiCorpVault{
+		Address:        "http://rogue.attacker.example:8200",
+		Authentication: kedav1alpha1.VaultAuthenticationKubernetes,
+		Mount:          "my-mount",
+		Role:           "my-role",
+	}
+	err := NewHashicorpVaultHandler(&rogue, authClientSet, "default").Initialize(logf.Log.WithName("test"))
+	assert.ErrorContains(t, err, "not in the configured allowlist")
+}
+
+func TestHashicorpVaultHandler_LegacyPolicies(t *testing.T) {
+	defaultServiceAccountPath := "/var/run/secrets/kubernetes.io/serviceaccount/token"
+	authClientSet := &authentication.AuthClientSet{}
+
+	prev := globalConfig
+	SetConfig(&Config{ServiceAccountTokenMode: "legacy"})
+	defer SetConfig(&prev)
+
+	// Explicit legacy mode restores the old operator token path, even without an
+	// allowlist. This bypass is never selected by default.
+	vault := kedav1alpha1.HashiCorpVault{
+		Address:        "http://rogue.attacker.example:8200",
+		Authentication: kedav1alpha1.VaultAuthenticationKubernetes,
+		Mount:          "my-mount",
+		Role:           "my-role",
+	}
+	vh := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	err := vh.Initialize(logf.Log.WithName("test"))
 	assert.Errorf(t, err, "open %s : no such file or directory", defaultServiceAccountPath)
-	assert.Equal(t, vaultHandler.vault.Credential.ServiceAccount, defaultServiceAccountPath)
+	assert.NotContains(t, err.Error(), "allowlist")
+	assert.Contains(t, err.Error(), defaultServiceAccountPath)
+	assert.Nil(t, vh.vault.Credential, "defaulting must not mutate the authentication resource")
+}
+
+func TestHashicorpVaultHandler_FollowsVaultRedirectsInEnforceMode(t *testing.T) {
+	t.Setenv("VAULT_DISABLE_REDIRECTS", "false")
+	var redirectedRequests atomic.Int32
+	server := mockVault(t, false)
+	defer server.Close()
+	redirectTarget := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		redirectedRequests.Add(1)
+		assert.Equal(t, vaultTestToken, r.Header.Get("X-Vault-Token"))
+		server.Config.Handler.ServeHTTP(w, r)
+	}))
+	defer redirectTarget.Close()
+
+	redirectingVault := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, redirectTarget.URL+r.URL.Path, http.StatusTemporaryRedirect)
+	}))
+	defer redirectingVault.Close()
+
+	prev := globalConfig
+	SetConfig(&Config{OutboundEndpointPolicy: "enforce", AllowedOutboundEndpoints: []string{redirectingVault.URL}})
+	defer SetConfig(&prev)
+
+	vault := kedav1alpha1.HashiCorpVault{
+		Address:        redirectingVault.URL,
+		Authentication: kedav1alpha1.VaultAuthenticationToken,
+		Credential:     &kedav1alpha1.Credential{Token: vaultTestToken},
+	}
+	err := NewHashicorpVaultHandler(&vault, &authentication.AuthClientSet{}, "default").Initialize(logf.Log.WithName("test"))
+	assert.NoError(t, err)
+	assert.EqualValues(t, 1, redirectedRequests.Load(), "enforce mode trusts the configured Vault origin's HA redirect")
+}
+
+func TestHashicorpVaultHandler_TokenAudiences(t *testing.T) {
+	prev := globalConfig
+	defer SetConfig(&prev)
+	vh := NewHashicorpVaultHandler(&kedav1alpha1.HashiCorpVault{
+		Credential: &kedav1alpha1.Credential{ServiceAccountName: "vault-login"},
+	}, nil, "tenant")
+
+	SetConfig(&Config{})
+	_, err := vh.kubernetesToken(t.Context())
+	assert.ErrorContains(t, err, "no configured token audience for service account tenant/vault-login")
+
+	// Approving a file-token audience does not authorize minting for arbitrary SAs.
+	SetConfig(&Config{ServiceAccountTokenAudiences: []ServiceAccountTokenAudience{{Audience: "vault.example"}}})
+	_, err = vh.kubernetesToken(t.Context())
+	assert.ErrorContains(t, err, "no configured token audience")
+}
+
+// TestHashicorpVaultHandler_ExplicitCredentialDeniedWithoutAllowlist proves enforce mode's
+// address gate cannot be bypassed by explicitly naming a credential (the operator token path, any
+// mounted token, a minted SA, or a literal token) instead of relying on the nil-credential
+// fallback. The address is validated before credential/auth handling, so every form is refused.
+func TestHashicorpVaultHandler_ExplicitCredentialDeniedWithoutAllowlist(t *testing.T) {
+	authClientSet := &authentication.AuthClientSet{}
+
+	prev := globalConfig
+	SetConfig(&Config{OutboundEndpointPolicy: "enforce"})
+	defer SetConfig(&prev)
+
+	cases := []struct {
+		name string
+		auth kedav1alpha1.VaultAuthentication
+		cred kedav1alpha1.Credential
+	}{
+		{"operator token path", kedav1alpha1.VaultAuthenticationKubernetes, kedav1alpha1.Credential{ServiceAccount: serviceAccountTokenFile}},
+		{"arbitrary mounted token", kedav1alpha1.VaultAuthenticationKubernetes, kedav1alpha1.Credential{ServiceAccount: "/var/run/secrets/other/token"}},
+		{"minted by name", kedav1alpha1.VaultAuthenticationKubernetes, kedav1alpha1.Credential{ServiceAccountName: "keda-operator"}},
+		{"literal token", kedav1alpha1.VaultAuthenticationToken, kedav1alpha1.Credential{Token: "s.tenant-supplied"}},
+	}
+	for _, tc := range cases {
+		cred := tc.cred
+		vault := kedav1alpha1.HashiCorpVault{
+			Address:        "http://attacker.tenant.svc:8200",
+			Authentication: tc.auth,
+			Mount:          "my-mount",
+			Role:           "my-role",
+			Credential:     &cred,
+		}
+		vh := NewHashicorpVaultHandler(&vault, authClientSet, "red")
+		err := vh.Initialize(logf.Log.WithName("test"))
+		vh.Stop()
+		assert.ErrorContains(t, err, "no outbound endpoint allowlist is configured",
+			"credential form %q must be refused when no allowlist is configured", tc.name)
+	}
+}
+
+func TestVaultAddressesEqual(t *testing.T) {
+	cases := []struct {
+		a, b  string
+		equal bool
+	}{
+		{"https://vault:8200", "https://vault:8200/", true},
+		{"https://vault:8200", "https://vault:8200/v1/foo", true},
+		{"https://VAULT:8200", "https://vault:8200", true},
+		{"https://vault:8200", "http://vault:8200", false},
+		{"https://vault:8200", "https://vault:8201", false},
+		{"https://vault.internal:8200", "https://vault.internal.attacker.com:8200", false},
+		{"ftp://vault:8200", "ftp://vault:8200", false},
+		{"https://user@vault:8200", "https://user@vault:8200", false},
+		{"vault:8200", "vault:8200", false},
+	}
+	for _, c := range cases {
+		assert.Equalf(t, c.equal, vaultAddressesEqual(c.a, c.b), "vaultAddressesEqual(%q,%q)", c.a, c.b)
+	}
 }
 
 func TestHashicorpVaultHandler_ResolveSecrets_SameCertAndKey(t *testing.T) {
 	server := mockVault(t, false)
 	defer server.Close()
+
+	prevCfg := globalConfig
+	SetConfig(&Config{AllowedOutboundEndpoints: []string{server.URL}})
+	defer SetConfig(&prevCfg)
 	ctrl := gomock.NewController(t)
 	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
 	mockSecretLister := mock_secretlister.NewMockSecretLister(ctrl)
@@ -543,6 +732,10 @@ func TestHashicorpVaultHandler_fetchSecret(t *testing.T) {
 	server := mockVault(t, false)
 	defer server.Close()
 
+	prevCfg := globalConfig
+	SetConfig(&Config{AllowedOutboundEndpoints: []string{server.URL}})
+	defer SetConfig(&prevCfg)
+
 	ctrl := gomock.NewController(t)
 	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
 	mockSecretLister := mock_secretlister.NewMockSecretLister(ctrl)
@@ -604,6 +797,10 @@ var initialiseTestDataSet = []initializeTestData{
 func TestHashicorpVaultHandler_Initialize(t *testing.T) {
 	server := mockVault(t, false)
 	defer server.Close()
+
+	prevCfg := globalConfig
+	SetConfig(&Config{AllowedOutboundEndpoints: []string{server.URL}})
+	defer SetConfig(&prevCfg)
 
 	ctrl := gomock.NewController(t)
 	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
@@ -688,6 +885,10 @@ func TestHashicorpVaultHandler_Token_VaultTokenAuth(t *testing.T) {
 	server := mockVault(t, false)
 	defer server.Close()
 
+	prev := globalConfig
+	SetConfig(&Config{ServiceAccountTokenMode: "enforce-audience", ServiceAccountTokenAudiences: []ServiceAccountTokenAudience{{Audience: "vault.example"}}})
+	defer SetConfig(&prev)
+
 	ctrl := gomock.NewController(t)
 	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
 	mockSecretLister := mock_secretlister.NewMockSecretLister(ctrl)
@@ -711,7 +912,7 @@ func TestHashicorpVaultHandler_Token_VaultTokenAuth(t *testing.T) {
 			config := vaultapi.DefaultConfig()
 			client, err := vaultapi.NewClient(config)
 			assert.Nil(t, err)
-			token, err := vaultHandler.token(client)
+			token, err := vaultHandler.token(client, logf.Log.WithName("test"))
 			if testData.isError {
 				assert.Equalf(t, vaultHandler.vault.Credential.ServiceAccount, testData.credential.ServiceAccount, "test %s: expected %s but found %s", testData.name, "random/path", vaultHandler.vault.Credential.ServiceAccount)
 				assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)
@@ -727,6 +928,12 @@ func TestHashicorpVaultHandler_Token_ServiceAccountAuth(t *testing.T) {
 	server := mockVault(t, false)
 	defer server.Close()
 
+	prev := globalConfig
+	SetConfig(&Config{ServiceAccountTokenAudiences: []ServiceAccountTokenAudience{
+		{ServiceAccountName: bsatSAName, Namespace: "default", Audience: "vault.example"},
+	}})
+	defer SetConfig(&prev)
+
 	ctrl := gomock.NewController(t)
 	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
 	mockSecretLister := mock_secretlister.NewMockSecretLister(ctrl)
@@ -738,12 +945,24 @@ func TestHashicorpVaultHandler_Token_ServiceAccountAuth(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockServiceAccountInterface := mockCoreV1Interface.GetServiceAccountInterface()
+	key, err := generateTestRSAKeyPair()
+	require.NoError(t, err)
+	serviceAccountToken, err := createJWTToken(key, jwt.MapClaims{
+		"sub": "system:serviceaccount:default:" + bsatSAName,
+		"aud": []string{"vault.example"},
+		"exp": time.Now().Add(time.Hour).Unix(),
+	})
+	require.NoError(t, err)
 	tokenRequest := &authv1.TokenRequest{
 		Status: authv1.TokenRequestStatus{
-			Token: bsatData,
+			Token: string(serviceAccountToken),
 		},
 	}
-	mockServiceAccountInterface.EXPECT().CreateToken(gomock.Any(), gomock.Eq(bsatSAName), gomock.Any(), gomock.Any()).Return(tokenRequest, nil).AnyTimes()
+	mockServiceAccountInterface.EXPECT().CreateToken(gomock.Any(), gomock.Eq(bsatSAName), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ string, request *authv1.TokenRequest, _ metav1.CreateOptions) (*authv1.TokenRequest, error) {
+			assert.Equal(t, []string{"vault.example"}, request.Spec.Audiences)
+			return tokenRequest, nil
+		})
 
 	vault := kedav1alpha1.HashiCorpVault{
 		Address:        server.URL,
@@ -763,7 +982,184 @@ func TestHashicorpVaultHandler_Token_ServiceAccountAuth(t *testing.T) {
 	client, err := vaultapi.NewClient(config)
 	assert.NoError(t, err)
 
-	token, err := vaultHandler.token(client)
+	token, err := vaultHandler.token(client, logf.Log.WithName("test"))
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
+}
+
+const renewTokenTimeout = 10 * time.Second
+
+var vaultRenewableTokenAuth = vaultapi.SecretAuth{
+	ClientToken:   vaultTestToken,
+	Renewable:     true,
+	LeaseDuration: 3600,
+}
+
+func writeVaultSecret(w http.ResponseWriter, secret vaultapi.Secret) {
+	_ = json.NewEncoder(w).Encode(secret)
+}
+
+func mockVaultRenewal(t *testing.T, renewable bool, renewSelf http.HandlerFunc) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/auth/token/lookup-self":
+			writeVaultSecret(w, vaultapi.Secret{
+				Data: map[string]interface{}{
+					"id":        vaultTestToken,
+					"renewable": renewable,
+				},
+			})
+		case "/v1/auth/token/renew-self":
+			renewSelf(w, r)
+		default:
+			t.Logf("Got request at path %s", r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+}
+
+func signalRenewSelf(renewed chan struct{}) {
+	select {
+	case renewed <- struct{}{}:
+	default:
+	}
+}
+
+func newRenewalVaultHandler(t *testing.T, address string) *HashicorpVaultHandler {
+	t.Helper()
+
+	ctrl := gomock.NewController(t)
+	authClientSet := &authentication.AuthClientSet{
+		CoreV1Interface: mock_serviceaccounts.NewMockCoreV1Interface(ctrl),
+		SecretLister:    mock_secretlister.NewMockSecretLister(ctrl),
+	}
+
+	vault := kedav1alpha1.HashiCorpVault{
+		Address:        address,
+		Authentication: kedav1alpha1.VaultAuthenticationToken,
+		Credential: &kedav1alpha1.Credential{
+			Token: vaultTestToken,
+		},
+	}
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	err := vaultHandler.Initialize(logf.Log.WithName("test"))
+	assert.NoError(t, err)
+
+	return vaultHandler
+}
+
+func startRenewToken(vaultHandler *HashicorpVaultHandler) <-chan struct{} {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		vaultHandler.renewToken(logf.Log.WithName("test"))
+	}()
+
+	return done
+}
+
+func awaitSignal(t *testing.T, signal <-chan struct{}, message string) {
+	t.Helper()
+
+	select {
+	case <-signal:
+	case <-time.After(renewTokenTimeout):
+		t.Fatal(message)
+	}
+}
+
+type renewTokenFailureTestData struct {
+	name      string
+	renewSelf http.HandlerFunc
+}
+
+var renewTokenFailureTestDataSet = []renewTokenFailureTestData{
+	{
+		name: "renew-self is rejected",
+		renewSelf: func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+		},
+	},
+	{
+		name: "renew-self returns no secret",
+		renewSelf: func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		},
+	},
+}
+
+func TestHashicorpVaultHandler_renewToken_ExitsWhenSetupFails(t *testing.T) {
+	for _, testData := range renewTokenFailureTestDataSet {
+		t.Run(testData.name, func(t *testing.T) {
+			server := mockVaultRenewal(t, false, testData.renewSelf)
+			defer server.Close()
+
+			vaultHandler := newRenewalVaultHandler(t, server.URL)
+			defer vaultHandler.Stop()
+
+			done := startRenewToken(vaultHandler)
+			awaitSignal(t, done, "renewToken kept running after the renewal setup failed")
+		})
+	}
+}
+
+func TestHashicorpVaultHandler_Stop_EndsTokenRenewal(t *testing.T) {
+	renewed := make(chan struct{}, 1)
+	server := mockVaultRenewal(t, false, func(w http.ResponseWriter, _ *http.Request) {
+		signalRenewSelf(renewed)
+		writeVaultSecret(w, vaultapi.Secret{Auth: &vaultRenewableTokenAuth})
+	})
+	defer server.Close()
+
+	vaultHandler := newRenewalVaultHandler(t, server.URL)
+	vaultHandler.stopCh = make(chan struct{})
+
+	done := startRenewToken(vaultHandler)
+	awaitSignal(t, renewed, "renewToken never renewed the token")
+
+	vaultHandler.Stop()
+	awaitSignal(t, done, "renewToken kept running after Stop")
+}
+
+func TestHashicorpVaultHandler_Stop_AfterTokenRenewalEnded(t *testing.T) {
+	server := mockVaultRenewal(t, false, func(w http.ResponseWriter, _ *http.Request) {
+		writeVaultSecret(w, vaultapi.Secret{Data: kvV1SecretDataKeda})
+	})
+	defer server.Close()
+
+	vaultHandler := newRenewalVaultHandler(t, server.URL)
+	vaultHandler.stopCh = make(chan struct{})
+
+	done := startRenewToken(vaultHandler)
+	awaitSignal(t, done, "renewToken kept running for a token that cannot be renewed")
+
+	assert.NotPanics(t, vaultHandler.Stop)
+}
+
+func TestHashicorpVaultHandler_Initialize_StartsRenewalForRenewableToken(t *testing.T) {
+	renewed := make(chan struct{}, 1)
+	server := mockVaultRenewal(t, true, func(w http.ResponseWriter, _ *http.Request) {
+		signalRenewSelf(renewed)
+		writeVaultSecret(w, vaultapi.Secret{Auth: &vaultRenewableTokenAuth})
+	})
+	defer server.Close()
+
+	vaultHandler := newRenewalVaultHandler(t, server.URL)
+	defer vaultHandler.Stop()
+
+	assert.NotNil(t, vaultHandler.client)
+	assert.NotNil(t, vaultHandler.stopCh)
+	awaitSignal(t, renewed, "Initialize did not start the token renewal")
+}
+
+func TestHashicorpVaultHandler_Initialize_SkipsRenewalForNonRenewableToken(t *testing.T) {
+	server := mockVaultRenewal(t, false, func(_ http.ResponseWriter, _ *http.Request) {
+		t.Error("renew-self was called for a token that is not renewable")
+	})
+	defer server.Close()
+
+	vaultHandler := newRenewalVaultHandler(t, server.URL)
+	defer vaultHandler.Stop()
+
+	assert.Nil(t, vaultHandler.stopCh)
 }

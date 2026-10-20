@@ -37,7 +37,6 @@ type pubsubScaler struct {
 }
 
 type pubsubMetadata struct {
-	SubscriptionSize int           `keda:"name=subscriptionSize, order=triggerMetadata, optional, deprecated=The 'subscriptionSize' setting is DEPRECATED and is removed in v2.20 - Use 'mode' and 'value' instead"`
 	Mode             string        `keda:"name=mode, order=triggerMetadata, default=SubscriptionSize"`
 	Value            float64       `keda:"name=value, order=triggerMetadata, default=10, deprecatedAnnounce=This scaler is deprecated. More info -> 'https://keda.sh/blog/2025-09-15-gcp-deprecations'"`
 	ActivationValue  float64       `keda:"name=activationValue, order=triggerMetadata, default=0"`
@@ -47,8 +46,7 @@ type pubsubMetadata struct {
 	SubscriptionName string        `keda:"name=subscriptionName, order=triggerMetadata;resolvedEnv, optional"`
 	TopicName        string        `keda:"name=topicName, order=triggerMetadata;resolvedEnv, optional"`
 
-	Credentials            string `keda:"name=credentials, order=triggerMetadata;resolvedEnv, optional"`
-	CredentialsFromEnvFile string `keda:"name=credentialsFromEnvFile, order=triggerMetadata;resolvedEnv, optional"`
+	gcp.AuthMetadata `keda:"optional"`
 
 	// a resource is one of subscription or topic
 	resourceType     string

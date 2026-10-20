@@ -1,0 +1,86 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: en-US
+early_access: false
+
+tone_instructions: >-
+  Be concise and actionable. Avoid style-only comments, repeating CI results,
+  and suggesting changes outside the PR scope.
+
+reviews:
+  profile: chill
+  high_level_summary: false
+  poem: false
+  request_changes_workflow: false
+  collapse_walkthrough: true
+  enable_prompt_for_ai_agents: false
+  assess_linked_issues: true
+
+  path_filters:
+    - "!go.sum"
+    - "!**/zz_generated*.go"
+    - "!pkg/generated/**"
+
+  path_instructions:
+    - path: "pkg/scalers/**/*.go"
+      instructions: |
+        Review metric and activation semantics, metadata validation, authentication
+        and secret handling, context cancellation, connection cleanup in Close,
+        and stable unique metric names. Behavior changes require unit tests. New
+        scalers also require alphabetical registration, generated schema updates,
+        an e2e test, and corresponding documentation in kedacore/keda-docs.
+
+    - path: "pkg/scaling/scalers_builder.go"
+      instructions: |
+        Scaler registrations must remain alphabetically sorted. Check that new or
+        renamed scalers are included in schema generation, tests, and documentation.
+
+    - path: "controllers/**/*.go"
+      instructions: |
+        Review for idempotent reconciliation, correct finalizer and owner-reference
+        behavior, conflict-safe status updates, appropriate requeue behavior, and
+        cleanup on deletion. Require regression tests for behavior changes.
+
+    - path: "apis/**/*.go"
+      instructions: |
+        Treat API changes as compatibility-sensitive. Check JSON tags, optional
+        field semantics, kubebuilder validation/default markers, and conversion or
+        upgrade impact. API changes require regenerated deepcopy code, CRDs, and
+        relevant documentation.
+
+    - path: "config/**/*.yaml"
+      instructions: |
+        Review non-generated manifests for RBAC least privilege, secure pod and
+        container settings, valid selectors, and upgrade compatibility. Files under
+        config/crd/bases are generated; verify source consistency and do not suggest
+        stylistic hand edits to generated CRDs.
+
+    - path: ".github/workflows/**"
+      instructions: |
+        Review permissions, pinned action revisions, fork-controlled inputs, secret
+        exposure, shell injection risks, and whether the workflow matches documented
+        make targets. Do not duplicate findings already reported by CI.
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "AGENTS.md"
+      - "CONTRIBUTING.md"
+      - "CREATE-NEW-SCALER.md"
+      - "TESTING.md"
+  learnings:
+    scope: local
+  issues:
+    scope: local
+  pull_requests:
+    scope: local
+  linked_repositories:
+    - repository: "kedacore/keda-docs"
+      instructions: >-
+        User-facing KEDA behavior is documented here. Check whether behavioral,
+        API, scaler, authentication, or operational changes need matching docs.
+    - repository: "kedacore/charts"
+      instructions: >-
+        KEDA deployment manifests are packaged here. Check whether CRD, RBAC,
+        command-line flag, image, or deployment changes need matching chart work.

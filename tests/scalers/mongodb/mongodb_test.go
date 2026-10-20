@@ -189,9 +189,39 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, mongoPod string) {
 
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl exec %s -n %s -- mongosh --eval '%s'", mongoPod, mongoNamespace, insertCmd))
 	assert.NoErrorf(t, err, "cannot insert mongo records - %s", err)
-	time.Sleep(time.Second * 60)
-	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 0, 60, 1),
-		"job count should be 0 after 1 minute")
+	assertNoScaledJobsDuring(t, kc, activationWindow)
+}
+
+// Two documents match the query and activationQueryValue is 4, so the ScaledJob must not create a
+// job. The window is three of the ScaledJob's 20s polling intervals, so the scaler has evaluated the
+// trigger against the inserted documents more than once before the test moves on. It is a window
+// rather than a sleep followed by a count because successfulJobsHistoryLimit is 0: a job that was
+// wrongly created and finished inside the window would have been removed by the time a single count
+// ran, and would have consumed a document that the scale-out test expects to still be there.
+const activationWindow = 60 * time.Second
+
+func assertNoScaledJobsDuring(t *testing.T, kc *kubernetes.Clientset, window time.Duration) {
+	t.Logf("Asserting that no job is created for %s for %s", scaledJobName, window)
+
+	ctx, cancel := context.WithTimeout(context.Background(), window)
+	defer cancel()
+
+	err := KedaConsistently(ctx, func(ctx context.Context) (bool, error) {
+		jobs, err := kc.BatchV1().Jobs(testNamespace).List(ctx, metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("scaledjob.keda.sh/name=%s", scaledJobName),
+		})
+		if err != nil {
+			// KedaConsistently fails on a condition error, and a list that could not be made says
+			// nothing about the jobs, so it is logged as an attempt that saw nothing to object to.
+			t.Logf("cannot list jobs in namespace %s - %s", testNamespace, err)
+			return true, nil
+		}
+		if len(jobs.Items) != 0 {
+			return false, fmt.Errorf("%d job(s) exist for %s", len(jobs.Items), scaledJobName)
+		}
+		return true, nil
+	}, IntervalShort)
+	assert.NoErrorf(t, err, "job count should stay 0 for %s", window)
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, mongoPod string) {

@@ -90,6 +90,12 @@ var testMetricsAPIAuthMetadata = []metricAPIAuthMetadataTestData{
 	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "unsafeSsl": "yes"}, map[string]string{}, true},
 	// success with both apiKey and TLS authentication
 	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "apiKey,tls"}, map[string]string{"apiKey": "apiikey", "ca": "caaa", "cert": "ceert", "key": "keey"}, false},
+	// fail custom, the scaler never applies the custom header to the request
+	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "custom"}, map[string]string{"customAuthHeader": "X-Custom-Auth", "customAuthValue": "customValue"}, true},
+	// fail oauth, the scaler never performs the token flow
+	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "oauth"}, map[string]string{"oauthTokenURI": "http://dummy:1230/oauth/token", "clientID": "clientt", "clientSecret": "secrett"}, true},
+	// fail on an unsupported mode combined with a supported one
+	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "apiKey,custom"}, map[string]string{"apiKey": "apiikey", "customAuthHeader": "X-Custom-Auth", "customAuthValue": "customValue"}, true},
 }
 
 func TestParseMetricsAPIMetadata(t *testing.T) {

@@ -2,6 +2,10 @@ package scalers
 
 import (
 	"context"
+	"log"
+	"runtime"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -57,10 +61,12 @@ var testSplunkObservabilityMetadata = []parseSplunkObservabilityMetadataTestData
 	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "targetValue": "200.0", "queryAggregator": "avg", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
 	// Missing 'targetValue' field, fail
 	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "queryAggregator": "avg", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
-	// Missing 'queryAggregator' field, fail
-	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
+	// Missing 'queryAggregator' field defaults to avg, pass
+	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, false},
 	// Missing 'activationTargetValue' field, fail
 	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "queryAggregator": "avg"}, validSplunkObservabilityAuthParams, true},
+	// Unsupported 'queryAggregator' value, fail
+	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "queryAggregator": "median", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
 	// Empty 'accessToken' field
 	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "queryAggregator": "avg"}, invalidSplunkObservabilityAuthParams, true},
 }
@@ -78,6 +84,24 @@ func TestSplunkObservabilityParseMetadata(t *testing.T) {
 		} else if testData.isError && err == nil {
 			t.Error("Expected error but got success")
 		}
+	}
+}
+
+func TestSplunkObservabilityQueryAggregatorDefault(t *testing.T) {
+	meta, err := parseSplunkObservabilityMetadata(&scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"query":                 "data('demo.trans.latency').max().publish()",
+			"duration":              "10",
+			"targetValue":           "200.0",
+			"activationTargetValue": "1.1",
+		},
+		AuthParams: validSplunkObservabilityAuthParams,
+	})
+	if err != nil {
+		t.Fatal("expected omitted queryAggregator to parse:", err)
+	}
+	if meta.QueryAggregator != "avg" {
+		t.Errorf("expected default queryAggregator %q, got %q", "avg", meta.QueryAggregator)
 	}
 }
 
@@ -100,8 +124,33 @@ func TestSplunkObservabilityGetMetricSpecForScaling(t *testing.T) {
 	}
 }
 
-// newFakeSplunkO11yScaler wires a scaler to a fake backend that streams indefinitely without closing.
-func newFakeSplunkO11yScaler(t *testing.T, program string, duration int) (*splunkObservabilityScaler, func()) {
+func countSplunkO11ySignalflowGoroutines() int {
+	buf := make([]byte, 1<<20)
+	n := runtime.Stack(buf, true)
+	count := 0
+	for _, stack := range strings.Split(string(buf[:n]), "\n\n") {
+		if strings.Contains(stack, "signalflow-client-go") {
+			count++
+		}
+	}
+	return count
+}
+
+const splunkO11yFakeProgram = "data('demo.trans.latency').max().publish()"
+
+type splunkO11yLogRecorder struct {
+	started chan struct{}
+	once    sync.Once
+}
+
+func (r *splunkO11yLogRecorder) Write(p []byte) (int, error) {
+	if strings.Contains(string(p), "Executing SignalFlow program "+splunkO11yFakeProgram) {
+		r.once.Do(func() { close(r.started) })
+	}
+	return len(p), nil
+}
+
+func newFakeSplunkO11yScalerWithBackend(t *testing.T, duration int) (*splunkObservabilityScaler, *signalflow.FakeBackend, <-chan struct{}, func()) {
 	t.Helper()
 
 	fake := signalflow.NewRunningFakeBackend()
@@ -112,12 +161,12 @@ func newFakeSplunkO11yScaler(t *testing.T, program string, duration int) (*splun
 	}
 
 	tsid := idtool.ID(1)
-	fake.AddProgramTSIDs(program, []idtool.ID{tsid})
+	fake.AddProgramTSIDs(splunkO11yFakeProgram, []idtool.ID{tsid})
 	fake.SetTSIDFloatData(tsid, 42.0)
 
 	scaler := &splunkObservabilityScaler{
 		metadata: &splunkObservabilityMetadata{
-			Query:           program,
+			Query:           splunkO11yFakeProgram,
 			Duration:        duration,
 			QueryAggregator: "max",
 		},
@@ -125,32 +174,231 @@ func newFakeSplunkO11yScaler(t *testing.T, program string, duration int) (*splun
 		logger:    logr.Discard(),
 	}
 
-	return scaler, fake.Stop
+	recorder := &splunkO11yLogRecorder{started: make(chan struct{})}
+	fake.SetLogger(log.New(recorder, "", 0))
+	cleanup := func() {
+		_ = scaler.Close(context.Background())
+		fake.Stop()
+	}
+	return scaler, fake, recorder.started, cleanup
+}
+
+// newFakeSplunkO11yScaler wires a scaler to a fake backend that streams indefinitely without closing.
+func newFakeSplunkO11yScaler(t *testing.T, duration int) (*splunkObservabilityScaler, func()) {
+	t.Helper()
+	scaler, _, _, stop := newFakeSplunkO11yScalerWithBackend(t, duration)
+	return scaler, stop
+}
+
+func waitForSplunkO11yJob(t *testing.T, started <-chan struct{}) {
+	t.Helper()
+	select {
+	case <-started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("SignalFlow fake backend did not start the query")
+	}
 }
 
 // Regression guard: a stuck stream must not block getQueryResult past the parent context deadline.
 func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testing.T) {
-	const program = "data('demo.trans.latency').max().publish()"
-	// Large duration so the stopTimer never fires; the parent deadline must bound the call.
-	scaler, stop := newFakeSplunkO11yScaler(t, program, 3600)
+	scaler, _, started, stop := newFakeSplunkO11yScalerWithBackend(t, 3600)
 	defer stop()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	done := make(chan struct{})
-	start := time.Now()
+	done := make(chan error, 1)
 	go func() {
-		defer close(done)
-		_, _ = scaler.getQueryResult(ctx)
+		_, err := scaler.getQueryResult(ctx)
+		done <- err
+	}()
+	waitForSplunkO11yJob(t, started)
+
+	start := time.Now()
+	cancel()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("expected cancelled query to return an error")
+		}
+		if elapsed := time.Since(start); elapsed >= splunkO11yDrainTimeout/2 {
+			t.Fatalf("getQueryResult returned after %v, waited for timeout cleanup", elapsed)
+		}
+	case <-time.After(splunkO11yDrainTimeout):
+		t.Fatal("getQueryResult did not return after parent context was cancelled; it is hanging")
+	}
+}
+
+func TestSplunkObservabilityCloseCancelsActiveQuery(t *testing.T) {
+	scaler, _, started, stop := newFakeSplunkO11yScalerWithBackend(t, 3600)
+	defer stop()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	queryDone := make(chan error, 1)
+	go func() {
+		_, err := scaler.getQueryResult(ctx)
+		queryDone <- err
+	}()
+	waitForSplunkO11yJob(t, started)
+
+	closeDone := make(chan error, 1)
+	go func() {
+		closeDone <- scaler.Close(context.Background())
 	}()
 
 	select {
-	case <-done:
-		if elapsed := time.Since(start); elapsed > 5*time.Second {
-			t.Fatalf("getQueryResult returned after %v, far longer than the context deadline", elapsed)
+	case err := <-queryDone:
+		if err == nil {
+			t.Fatal("expected Close to cancel the active query")
 		}
-	case <-time.After(10 * time.Second):
-		t.Fatal("getQueryResult did not return after parent context was cancelled; it is hanging")
+	case <-time.After(time.Second):
+		cancel()
+		select {
+		case <-queryDone:
+		case <-time.After(splunkO11yDrainTimeout):
+		}
+		t.Fatal("Close did not cancel the active query")
+	}
+
+	select {
+	case err := <-closeDone:
+		if err != nil {
+			t.Fatalf("Close: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Close did not wait for query cleanup")
+	}
+}
+
+func TestSplunkObservabilityCloseReapsClientGoroutines(t *testing.T) {
+	before := countSplunkO11ySignalflowGoroutines()
+
+	scaler, stop := newFakeSplunkO11yScaler(t, 2)
+	defer stop()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	if _, err := scaler.getQueryResult(ctx); err != nil {
+		t.Fatalf("getQueryResult: %v", err)
+	}
+	if during := countSplunkO11ySignalflowGoroutines(); during <= before {
+		t.Fatal("expected signalflow goroutines while the client is open")
+	}
+
+	if err := scaler.Close(context.Background()); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	var after int
+	for {
+		after = countSplunkO11ySignalflowGoroutines()
+		if after <= before+1 || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if after > before+1 {
+		t.Fatalf("expected at most 1 leftover signalflow goroutine after Close, got %d (baseline %d)", after-before, before)
+	}
+}
+
+func TestSplunkObservabilityGetQueryResultAfterClose(t *testing.T) {
+	scaler, stop := newFakeSplunkO11yScaler(t, 1)
+	defer stop()
+
+	if err := scaler.Close(context.Background()); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err := scaler.getQueryResult(ctx)
+	if err == nil {
+		t.Fatal("expected error from getQueryResult after Close")
+	}
+	if !strings.Contains(err.Error(), "splunk observability scaler is closed") {
+		t.Fatalf("expected closed error, got %v", err)
+	}
+}
+
+func TestSplunkObservabilityCloseIsIdempotent(t *testing.T) {
+	scaler, stop := newFakeSplunkO11yScaler(t, 1)
+	defer stop()
+
+	if err := scaler.Close(context.Background()); err != nil {
+		t.Fatalf("first Close: %v", err)
+	}
+	if err := scaler.Close(context.Background()); err != nil {
+		t.Fatalf("second Close: %v", err)
+	}
+}
+
+func TestSplunkObservabilityReconnectsAfterWebsocketDrop(t *testing.T) {
+	scaler, fake, _, stop := newFakeSplunkO11yScalerWithBackend(t, 1)
+	defer stop()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	if _, err := scaler.getQueryResult(ctx); err != nil {
+		t.Fatalf("healthy poll: %v", err)
+	}
+
+	fake.KillExistingConnections()
+
+	deadline := time.Now().Add(20 * time.Second)
+	var lastErr error
+	for time.Now().Before(deadline) {
+		pctx, pcancel := context.WithTimeout(context.Background(), 20*time.Second)
+		_, lastErr = scaler.getQueryResult(pctx)
+		pcancel()
+		if lastErr == nil {
+			return
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	t.Fatalf("library did not recover on the same client within 20s: %v", lastErr)
+}
+
+func TestSplunkObservabilityRollup(t *testing.T) {
+	tests := []struct {
+		name       string
+		aggregator string
+		maxValue   float64
+		minValue   float64
+		valueSum   float64
+		valueCount int
+		latest     float64
+		want       float64
+		wantErr    bool
+	}{
+		{name: "max", aggregator: "max", maxValue: 30, minValue: 10, valueSum: 60, valueCount: 3, latest: 30, want: 30},
+		{name: "min", aggregator: "min", maxValue: 30, minValue: 10, valueSum: 60, valueCount: 3, latest: 30, want: 10},
+		{name: "avg", aggregator: "avg", maxValue: 30, minValue: 10, valueSum: 60, valueCount: 3, latest: 30, want: 20},
+		{name: "sum", aggregator: "sum", maxValue: 30, minValue: 10, valueSum: 60, valueCount: 3, latest: 30, want: 60},
+		{name: "count", aggregator: "count", maxValue: 30, minValue: 10, valueSum: 60, valueCount: 3, latest: 30, want: 3},
+		{name: "latest", aggregator: "latest", maxValue: 30, minValue: 10, valueSum: 60, valueCount: 3, latest: 25, want: 25},
+		{name: "single series empty aggregator", aggregator: "", maxValue: 42, minValue: 42, valueSum: 42, valueCount: 1, latest: 42, wantErr: true},
+		{name: "multi series empty aggregator", aggregator: "", maxValue: 30, minValue: 10, valueSum: 60, valueCount: 3, latest: 30, wantErr: true},
+		{name: "invalid", aggregator: "median", maxValue: 30, minValue: 10, valueSum: 60, valueCount: 3, latest: 30, wantErr: true},
+		{name: "no data", aggregator: "max", valueCount: 0, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := splunkObservabilityRollup(tt.aggregator, tt.maxValue, tt.minValue, tt.valueSum, tt.valueCount, tt.latest)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tt.want {
+				t.Errorf("got %v want %v", got, tt.want)
+			}
+		})
 	}
 }

@@ -18,9 +18,11 @@ package scalers
 
 import (
 	"context"
+	"maps"
 	"testing"
 
 	"github.com/go-logr/logr"
+	"k8s.io/utils/ptr"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -95,6 +97,8 @@ var testParseAzMonitorMetadata = []parseAzMonitorMetadataTestData{
 	// private cloud
 	{map[string]string{"resourceURI": "test/resource/uri", "tenantId": "123", "subscriptionId": "456", "resourceGroupName": "test", "metricName": "metric", "metricAggregationInterval": "0:15:0", "metricAggregationType": "Average", "activeDirectoryClientId": "CLIENT_ID", "activeDirectoryClientPasswordFromEnv": "CLIENT_PASSWORD", "targetValue": "5", "metricNamespace": "namespace", "cloud": "private",
 		"azureResourceManagerEndpoint": testAzureResourceManagerEndpoint}, false, testAzMonitorResolvedEnv, map[string]string{}, ""},
+	// metricInterval included
+	{map[string]string{"resourceURI": "test/resource/uri", "tenantId": "123", "subscriptionId": "456", "resourceGroupName": "test", "metricName": "metric", "metricAggregationInterval": "0:15:0", "metricInterval": "FULL", "metricAggregationType": "Average", "activeDirectoryClientId": "CLIENT_ID", "activeDirectoryClientPasswordFromEnv": "CLIENT_PASSWORD", "targetValue": "5"}, false, testAzMonitorResolvedEnv, map[string]string{}, ""},
 }
 
 var azMonitorMetricIdentifiers = []azMonitorMetricIdentifier{
@@ -112,6 +116,45 @@ func TestAzMonitorParseMetadata(t *testing.T) {
 		if testData.isError && err == nil {
 			t.Errorf("Expected error but got success. testData: %v", testData)
 		}
+	}
+}
+
+func TestAzMonitorMetricInterval(t *testing.T) {
+	metadata := map[string]string{"resourceURI": "test/resource/uri", "tenantId": "123", "subscriptionId": "456",
+		"resourceGroupName": "test", "metricName": "metric", "metricAggregationType": "Average",
+		"activeDirectoryClientId": "CLIENT_ID", "activeDirectoryClientPasswordFromEnv": "CLIENT_PASSWORD", "targetValue": "5"}
+
+	tests := []struct {
+		name     string
+		interval string
+		expected *string
+	}{
+		{"omitted leaves the interval unset", "", nil},
+		{"FULL is passed through", "FULL", ptr.To("FULL")},
+		{"timegrain is passed through", "PT5M", ptr.To("PT5M")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			triggerMetadata := maps.Clone(metadata)
+			if tt.interval != "" {
+				triggerMetadata["metricInterval"] = tt.interval
+			}
+
+			meta, err := parseAzureMonitorMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: triggerMetadata, ResolvedEnv: testAzMonitorResolvedEnv})
+			if err != nil {
+				t.Fatal("Could not parse metadata:", err)
+			}
+
+			switch {
+			case tt.expected == nil && meta.IntervalRef != nil:
+				t.Errorf("IntervalRef = %q, expected nil", *meta.IntervalRef)
+			case tt.expected != nil && meta.IntervalRef == nil:
+				t.Errorf("IntervalRef = nil, expected %q", *tt.expected)
+			case tt.expected != nil && *meta.IntervalRef != *tt.expected:
+				t.Errorf("IntervalRef = %q, expected %q", *meta.IntervalRef, *tt.expected)
+			}
+		})
 	}
 }
 

@@ -61,11 +61,11 @@ type temporalMetadata struct {
 	TargetQueueSize           int64    `keda:"name=targetQueueSize,           order=triggerMetadata, default=5"`
 	TaskQueue                 string   `keda:"name=taskQueue,                 order=triggerMetadata;resolvedEnv"`
 	QueueTypes                []string `keda:"name=queueTypes,                order=triggerMetadata, optional"`
-	BuildID                   string   `keda:"name=buildId,                   order=triggerMetadata;resolvedEnv, optional, deprecatedAnnounce=The 'buildId' setting is DEPRECATED and will be removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead"`
+	BuildID                   string   `keda:"name=buildId,                   order=triggerMetadata;resolvedEnv, optional, deprecated=The 'buildId' setting is DEPRECATED and is removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead"`
 	WorkerDeploymentName      string   `keda:"name=workerDeploymentName,      order=triggerMetadata;resolvedEnv, optional"`
 	WorkerDeploymentBuildID   string   `keda:"name=workerDeploymentBuildId,   order=triggerMetadata;resolvedEnv, optional"`
-	AllActive                 bool     `keda:"name=selectAllActive,           order=triggerMetadata, default=false, deprecatedAnnounce=The 'selectAllActive' setting is DEPRECATED and will be removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead"`
-	Unversioned               bool     `keda:"name=selectUnversioned,         order=triggerMetadata, default=false, deprecatedAnnounce=The 'selectUnversioned' setting is DEPRECATED and will be removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Remove it if your workers are unversioned. Or use 'workerDeploymentName' and 'workerDeploymentBuildId' if you're migrating to Worker Deployment Versioning"`
+	AllActive                 bool     `keda:"name=selectAllActive,           order=triggerMetadata, default=false, deprecated=The 'selectAllActive' setting is DEPRECATED and is removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead"`
+	Unversioned               bool     `keda:"name=selectUnversioned,         order=triggerMetadata, default=false, deprecated=The 'selectUnversioned' setting is DEPRECATED and is removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Remove it if your workers are unversioned. Or use 'workerDeploymentName' and 'workerDeploymentBuildId' if you're migrating to Worker Deployment Versioning"`
 	// IncludeRunningWorkflowCount, when true, keeps the scaler active if there are running
 	// workflows on the task queue even after the backlog drains to zero. It only affects the
 	// activity decision, never the reported metric value. Defaults to false to preserve prior
@@ -105,9 +105,6 @@ func (a *temporalMetadata) Validate() error {
 
 	if (a.WorkerDeploymentName == "") != (a.WorkerDeploymentBuildID == "") {
 		return fmt.Errorf("workerDeploymentName and workerDeploymentBuildId must both be set")
-	}
-	if a.WorkerDeploymentName != "" && (a.BuildID != "" || a.AllActive || a.Unversioned) {
-		return fmt.Errorf("workerDeploymentName/workerDeploymentBuildId cannot be combined with buildId, selectAllActive, or selectUnversioned")
 	}
 
 	if a.WorkflowTaskQueueForCount != "" && !a.IncludeRunningWorkflowCount {
@@ -154,9 +151,6 @@ func NewTemporalScaler(ctx context.Context, config *scalersconfig.ScalerConfig) 
 	}
 	if meta.TLSServerName != "" {
 		kv = append(kv, "tlsServerName", meta.TLSServerName)
-	}
-	if meta.BuildID != "" {
-		kv = append(kv, "buildId", meta.BuildID)
 	}
 	if meta.WorkerDeploymentName != "" {
 		kv = append(kv, "workerDeploymentName", meta.WorkerDeploymentName, "workerDeploymentBuildId", meta.WorkerDeploymentBuildID)
@@ -215,8 +209,6 @@ func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 	case s.metadata.WorkerDeploymentName != "":
 		backlogCount, versionStatus, err = s.getDeploymentBacklogCountAndStatus(ctx)
 		hasStatus = true
-	case s.metadata.BuildID != "" || s.metadata.AllActive || s.metadata.Unversioned:
-		backlogCount, err = s.getBuildIDBacklogCount(ctx)
 	default:
 		backlogCount, err = s.getUnversionedBacklogCount(ctx)
 	}
@@ -239,7 +231,6 @@ func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 		"mode", scalerMode(s.metadata),
 		"namespace", s.metadata.Namespace,
 		"taskQueue", s.metadata.TaskQueue,
-		"buildId", s.metadata.BuildID,
 		"workerDeploymentName", s.metadata.WorkerDeploymentName,
 		"workerDeploymentBuildId", s.metadata.WorkerDeploymentBuildID,
 		"workerDeploymentVersionStatus", versionStatus.String(),
@@ -263,8 +254,7 @@ func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 //     land on these versions, so the running-count check is the only signal available.
 //   - DRAINED / INACTIVE / UNSPECIFIED versions are safe to scale down.
 //
-// For every other mode (build-id, unversioned) we always fall through to the
-// visibility count.
+// For the unversioned mode we always fall through to the visibility count.
 //
 // Callers should be aware that this signal is approximate: it does not cover
 // activity-only workers, visibility indexing has no SLA (eventual consistency is
@@ -292,26 +282,6 @@ func (s *temporalScaler) isActiveWithoutBacklog(ctx context.Context, hasStatus b
 		return false
 	}
 	return runningCount > 0
-}
-
-func (s *temporalScaler) getBuildIDBacklogCount(ctx context.Context) (int64, error) {
-	selection := &sdk.TaskQueueVersionSelection{
-		AllActive:   s.metadata.AllActive,
-		Unversioned: s.metadata.Unversioned,
-		BuildIDs:    []string{s.metadata.BuildID},
-	}
-
-	resp, err := s.tcl.DescribeTaskQueueEnhanced(ctx, sdk.DescribeTaskQueueEnhancedOptions{
-		TaskQueue:      s.metadata.TaskQueue,
-		ReportStats:    true,
-		Versions:       selection,
-		TaskQueueTypes: getQueueTypes(s.metadata.QueueTypes),
-	})
-	if err != nil {
-		return 0, fmt.Errorf("failed to describe task queue enhanced (taskQueue=%q, buildId=%q): %w", s.metadata.TaskQueue, s.metadata.BuildID, err)
-	}
-
-	return getCombinedBacklogCount(resp), nil
 }
 
 // getUnversionedBacklogCount queries DescribeTaskQueue for each configured queue
@@ -369,10 +339,6 @@ func (s *temporalScaler) getDeploymentBacklogCountAndStatus(ctx context.Context)
 //     draining version's workflows do not keep a newer version alive, and vice versa.
 //   - the default (unversioned) mode restricts by "TemporalWorkerDeploymentVersion is null"
 //     so it never picks up workflows owned by versioned workers on the same task queue.
-//   - the deprecated build-id selectors (buildId / selectAllActive / selectUnversioned)
-//     do not map cleanly to Worker Deployment Version search attributes, so the query
-//     falls back to task-queue scoping only. This is intentional: the parameter is meant
-//     for users on the modern Worker Deployment Versioning path.
 func (s *temporalScaler) getRunningWorkflowCount(ctx context.Context) (int64, error) {
 	query, err := s.runningWorkflowCountQuery()
 	if err != nil {
@@ -410,9 +376,6 @@ func (s *temporalScaler) runningWorkflowCountQuery() (string, error) {
 		}
 		version := s.metadata.WorkerDeploymentName + workerDeploymentVersionSeparator + s.metadata.WorkerDeploymentBuildID
 		query = fmt.Sprintf("%s AND TemporalWorkerDeploymentVersion = '%s'", query, version)
-	case s.metadata.BuildID != "" || s.metadata.AllActive || s.metadata.Unversioned:
-		// Deprecated Build ID selectors do not map to Worker Deployment Version search
-		// attributes; leave the query scoped by task queue only.
 	default:
 		query += " AND TemporalWorkerDeploymentVersion is null"
 	}
@@ -462,8 +425,6 @@ func scalerMode(m *temporalMetadata) string {
 	switch {
 	case m.WorkerDeploymentName != "":
 		return "deployment-version"
-	case m.BuildID != "" || m.AllActive || m.Unversioned:
-		return "build-id"
 	default:
 		return "unversioned"
 	}
@@ -499,19 +460,6 @@ func getQueueTypes(queueTypes []string) []sdk.TaskQueueType {
 		return temporalDefaultQueueTypes
 	}
 	return taskQueueTypes
-}
-
-func getCombinedBacklogCount(description sdk.TaskQueueDescription) int64 {
-	var count int64
-
-	for _, versionInfo := range description.VersionsInfo {
-		for _, typeInfo := range versionInfo.TypesInfo {
-			if typeInfo.Stats != nil {
-				count += typeInfo.Stats.ApproximateBacklogCount
-			}
-		}
-	}
-	return count
 }
 
 func getTemporalClient(ctx context.Context, meta *temporalMetadata, log logr.Logger) (sdk.Client, error) {
