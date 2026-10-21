@@ -14,6 +14,7 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/go-logr/logr"
+	"github.com/golang-jwt/jwt/v5"
 
 	kafka_oauth "github.com/kedacore/keda/v2/pkg/scalers/kafka"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -368,6 +369,20 @@ var parseKafkaOAuthbearerAuthParamsTestDataset = []parseKafkaOAuthbearerAuthPara
 	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "aws_msk_iam", "tls": "enable", "awsRegion": ""}, true, true},
 	// failure, SASL OAUTHBEARER MSK + TLS + no credentials
 	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "aws_msk_iam", "tls": "enable", "awsRegion": "eu-west-1"}, true, true},
+	// success, SASL OAUTHBEARER static token + TLS
+	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "static", "oauthToken": "token", "tls": "enable"}, false, true},
+	// success, SASL OAUTHBEARER static token + multiple extensions
+	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "static", "oauthToken": "token", "tls": "disable", "oauthExtensions": "extension_foo=bar,extension_baz=baz"}, false, false},
+	// success, SASL OAUTHBEARER static token ignores shared username/password
+	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "static", "oauthToken": "token", "username": "admin", "password": "admin", "tls": "disable"}, false, false},
+	// failure, SASL OAUTHBEARER static token + extension with empty key
+	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "static", "oauthToken": "token", "tls": "disable", "oauthExtensions": "=bar"}, true, false},
+	// failure, SASL OAUTHBEARER static without oauthToken
+	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "static", "tls": "disable"}, true, false},
+	// failure, SASL OAUTHBEARER static + oauthTokenEndpointUri
+	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "static", "oauthToken": "token", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, true, false},
+	// failure, SASL OAUTHBEARER default (bearer) provider with only oauthToken
+	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "oauthToken": "token", "tls": "disable"}, true, false},
 }
 
 var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
@@ -630,6 +645,10 @@ func TestKafkaOAuthbearerAuthParams(t *testing.T) {
 			t.Fatal("Expected error but got success")
 		}
 
+		if testData.isError {
+			continue
+		}
+
 		switch testData.authParams["saslTokenProvider"] {
 		case "", "bearer":
 			if !testData.isError && meta.tokenProvider != KafkaSASLOAuthTokenProviderBearer {
@@ -666,6 +685,16 @@ func TestKafkaOAuthbearerAuthParams(t *testing.T) {
 				}
 			} else if testData.authParams["awsRoleArn"] != "" && meta.awsAuthorization.AwsRoleArn != testData.authParams["awsRoleArn"] {
 				t.Errorf("Expected awsRoleArn to be set to %v but got %v\n", testData.authParams["awsRoleArn"], meta.awsAuthorization.AwsRoleArn)
+			}
+		case "static":
+			if meta.tokenProvider != KafkaSASLOAuthTokenProviderStatic {
+				t.Errorf("Expected tokenProvider to be set to %v but got %v\n", KafkaSASLOAuthTokenProviderStatic, meta.tokenProvider)
+			}
+			if meta.OAuthToken != testData.authParams["oauthToken"] {
+				t.Errorf("Expected oauthToken to be set to %v but got %v\n", testData.authParams["oauthToken"], meta.OAuthToken)
+			}
+			if testData.authParams["oauthExtensions"] != "" && len(meta.oauthExtensions) != strings.Count(testData.authParams["oauthExtensions"], ",")+1 {
+				t.Errorf("Expected number of extensions to be set to %v but got %v\n", strings.Count(testData.authParams["oauthExtensions"], ",")+1, len(meta.oauthExtensions))
 			}
 		}
 	}
@@ -708,6 +737,103 @@ func TestKafkaClientsOAuthTokenProvider(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestKafkaClientsOAuthStaticTokenProvider(t *testing.T) {
+	meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic"},
+		AuthParams:      map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "static", "oauthToken": "token", "oauthExtensions": "extension_foo=bar,extension_baz=baz", "tls": "enable"},
+	}, logr.Discard())
+	if err != nil {
+		t.Fatal("Could not parse metadata:", err)
+	}
+
+	cfg, err := getKafkaClientConfig(t.Context(), meta)
+	if err != nil {
+		t.Fatal("Expected success but got error", err)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatal("Expected valid sarama config but got error", err)
+	}
+
+	accessToken, err := cfg.Net.SASL.TokenProvider.Token()
+	if err != nil {
+		t.Fatal("Expected token but got error", err)
+	}
+	if accessToken.Token != "token" {
+		t.Errorf("Expected token %q but got %q", "token", accessToken.Token)
+	}
+	expectedExtensions := map[string]string{"extension_foo": "bar", "extension_baz": "baz"}
+	if !maps.Equal(accessToken.Extensions, expectedExtensions) {
+		t.Errorf("Expected extensions %v but got %v", expectedExtensions, accessToken.Extensions)
+	}
+}
+
+func TestKafkaClientsOAuthStaticTokenProviderRefreshesBeforeExpiry(t *testing.T) {
+	now := time.Now()
+	newToken := func(issuedAt, expiresAt time.Time) string {
+		token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
+			IssuedAt:  jwt.NewNumericDate(issuedAt),
+			ExpiresAt: jwt.NewNumericDate(expiresAt),
+		}).SignedString([]byte("test-only")) // nosemgrep: go.jwt-go.security.jwt.hardcoded-jwt-key
+		if err != nil {
+			t.Fatal(err)
+		}
+		return token
+	}
+	expiring := newToken(now.Add(-50*time.Minute), now.Add(10*time.Minute))
+	renewed := newToken(now, now.Add(time.Hour))
+
+	meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic"},
+		AuthParams:      map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "static", "oauthToken": expiring},
+		ResolveAuthParams: func(context.Context) (map[string]string, error) {
+			return map[string]string{"oauthToken": renewed}, nil
+		},
+	}, logr.Discard())
+	if err != nil {
+		t.Fatal("Could not parse metadata:", err)
+	}
+
+	cfg, err := getKafkaClientConfig(t.Context(), meta)
+	if err != nil {
+		t.Fatal("Expected success but got error", err)
+	}
+	accessToken, err := cfg.Net.SASL.TokenProvider.Token()
+	if err != nil {
+		t.Fatal("Expected token but got error", err)
+	}
+	if accessToken.Token != renewed {
+		t.Errorf("Expected the renewed token but got %q", accessToken.Token)
+	}
+}
+
+func TestKafkaOAuthStaticTokenRefresh(t *testing.T) {
+	newMetadata := func(authParams map[string]string) kafkaMetadata {
+		meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{
+			TriggerMetadata:   map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic"},
+			AuthParams:        authParams,
+			ResolveAuthParams: func(context.Context) (map[string]string, error) { return map[string]string{}, nil },
+		}, logr.Discard())
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		return meta
+	}
+
+	t.Run("resolved authentication without oauthToken", func(t *testing.T) {
+		meta := newMetadata(map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "static", "oauthToken": "initial"})
+		if _, err := meta.refreshOAuthToken(t.Context()); err == nil {
+			t.Error("Expected error but got success")
+		}
+	})
+
+	t.Run("not set for other token providers", func(t *testing.T) {
+		meta := newMetadata(map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "oauthTokenEndpointUri": "https://website.com"})
+		if meta.refreshOAuthToken != nil {
+			t.Error("Expected no oauthToken refresh for the bearer token provider")
+		}
+	})
 }
 
 func TestKafkaClientConfigFullMetadata(t *testing.T) {
