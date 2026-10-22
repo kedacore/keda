@@ -41,6 +41,11 @@ type nsqMetadata struct {
 
 const (
 	nsqMetricType = "External"
+
+	// nsqAcceptHeader requests the V1 HTTP API response format. nsq < 1.0 only returns it when the
+	// Accept header matches this value exactly, otherwise it wraps responses in a
+	// {"status_code", "status_txt", "data"} envelope. nsq >= 1.0 always responds with the V1 format.
+	nsqAcceptHeader = "application/vnd.nsq; version=1.0"
 )
 
 func NewNSQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
@@ -212,7 +217,7 @@ func (s *nsqScaler) getLookup(ctx context.Context, host string, topic string) (*
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Accept", "application/json; charset=utf-8")
+	req.Header.Set("Accept", nsqAcceptHeader)
 
 	params := url.Values{"topic": {topic}}
 	req.URL.RawQuery = params.Encode()
@@ -333,6 +338,7 @@ func (s *nsqScaler) getStats(ctx context.Context, host string, topic string) (*s
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Set("Accept", nsqAcceptHeader)
 
 	// "channel" is a query param as well, but if used and the channel does not exist
 	// we do not receive any stats for the existing topic

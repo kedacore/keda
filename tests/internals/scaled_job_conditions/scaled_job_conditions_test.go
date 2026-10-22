@@ -238,7 +238,7 @@ func testReadyConditionTrue(t *testing.T, kc *kubernetes.Clientset) {
 	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, 3, 0)
 
 	// Wait for ScaledJob to be created and check conditions
-	assert.True(t, WaitForScaledJobConditions(t, kc, scaledJobNs, testNs, 60, 2,
+	assert.True(t, WaitForScaledJobConditions(t, scaledJobNs, testNs, 60, 2,
 		func(sj *kedav1alpha1.ScaledJob) bool {
 			readyCondition := sj.Status.Conditions.GetReadyCondition()
 			activeCondition := sj.Status.Conditions.GetActiveCondition()
@@ -295,7 +295,7 @@ func testReadyConditionFalse(t *testing.T, kc *kubernetes.Clientset) {
 	})
 
 	// Wait for ScaledJob conditions to be set
-	assert.True(t, WaitForScaledJobConditions(t, kc, scaledJobNs, testNs, 60, 2,
+	assert.True(t, WaitForScaledJobConditions(t, scaledJobNs, testNs, 60, 2,
 		func(sj *kedav1alpha1.ScaledJob) bool {
 			readyCondition := sj.Status.Conditions.GetReadyCondition()
 			activeCondition := sj.Status.Conditions.GetActiveCondition()
@@ -352,7 +352,7 @@ func testReadyConditionUnknown(t *testing.T, kc *kubernetes.Clientset) {
 	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, 2, 0)
 
 	// Wait for ScaledJob conditions to be set
-	assert.True(t, WaitForScaledJobConditions(t, kc, scaledJobNs, testNs, 60, 2,
+	assert.True(t, WaitForScaledJobConditions(t, scaledJobNs, testNs, 60, 2,
 		func(sj *kedav1alpha1.ScaledJob) bool {
 			readyCondition := sj.Status.Conditions.GetReadyCondition()
 			activeCondition := sj.Status.Conditions.GetActiveCondition()
@@ -398,26 +398,36 @@ func testReadyConditionUnknown(t *testing.T, kc *kubernetes.Clientset) {
 	assert.NoErrorf(t, err, "at least one job should be created when one trigger is active, last count was %d", jobCount)
 }
 
-// Helper function to wait for ScaledJob conditions
-func WaitForScaledJobConditions(t *testing.T, kc *kubernetes.Clientset, scaledJobName, namespace string,
+// WaitForScaledJobConditions polls the ScaledJob until conditionCheck accepts it, giving up once the
+// iterations x intervalSeconds budget is spent. A read that failed is handed back rather than skipped,
+// so a ScaledJob that cannot be read is reported with the reason instead of as a bare timeout.
+func WaitForScaledJobConditions(t *testing.T, scaledJobName, namespace string,
 	iterations, intervalSeconds int, conditionCheck func(*kedav1alpha1.ScaledJob) bool) bool {
-	for i := 0; i < iterations; i++ {
-		scaledJob, err := GetScaledJob(t, kc, scaledJobName, namespace)
-		if err == nil && scaledJob != nil {
-			if conditionCheck(scaledJob) {
-				return true
-			}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(iterations*intervalSeconds)*time.Second)
+	defer cancel()
+
+	err := KedaEventually(ctx, func(ctx context.Context) (bool, error) {
+		scaledJob, err := GetScaledJob(ctx, t, scaledJobName, namespace)
+		if err != nil {
+			return false, fmt.Errorf("cannot get scaledjob %s/%s - %w", namespace, scaledJobName, err)
 		}
-		t.Logf("Waiting for ScaledJob conditions... (%d/%d)", i+1, iterations)
-		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+		if conditionCheck(scaledJob) {
+			return true, nil
+		}
+		t.Logf("Waiting for ScaledJob %s/%s conditions...", namespace, scaledJobName)
+		return false, nil
+	}, time.Duration(intervalSeconds)*time.Second)
+	if err != nil {
+		t.Log(err)
+		return false
 	}
-	return false
+	return true
 }
 
 // Helper function to get ScaledJob
-func GetScaledJob(t *testing.T, kc *kubernetes.Clientset, name, namespace string) (*kedav1alpha1.ScaledJob, error) {
+func GetScaledJob(ctx context.Context, t *testing.T, name, namespace string) (*kedav1alpha1.ScaledJob, error) {
 	kedaClient := GetKedaKubernetesClient(t)
-	return kedaClient.ScaledJobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
+	return kedaClient.ScaledJobs(namespace).Get(ctx, name, metav1.GetOptions{})
 }
 
 // Helper function to get ScaledJob count
