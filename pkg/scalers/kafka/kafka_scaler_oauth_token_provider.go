@@ -73,10 +73,11 @@ type staticTokenProvider struct {
 	now        func() time.Time
 }
 
-// OAuthStaticTokenProvider returns an already-issued token, e.g. a Kubernetes bound service
-// account token. If the token is a JWT and refresh is set, a new token is obtained through
-// refresh once 80% of its lifetime has elapsed. If refreshing fails, the current token is
-// kept and refreshing is retried after 10 seconds.
+// OAuthStaticTokenProvider returns an already-issued token, such as a Kubernetes bound service
+// account token. If the token is a JWT and refresh is set, the first SASL handshake after 80%
+// of the token's lifetime calls refresh to get a new token. A handshake happens on each new
+// connection and each re-authentication. If refresh fails, the provider keeps the current token
+// and tries again after 10 seconds.
 func OAuthStaticTokenProvider(token string, extensions map[string]string, refresh func(context.Context) (string, error)) TokenProvider {
 	return &staticTokenProvider{
 		token:      token,
