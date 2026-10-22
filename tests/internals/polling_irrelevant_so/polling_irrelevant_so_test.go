@@ -4,6 +4,7 @@
 package polling_irrelevant_so_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -299,22 +300,40 @@ func setMetricValue(t *testing.T, kc *kubernetes.Clientset, data templateData, v
 	data.MetricValue = value
 	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
-	// wait some seconds to finish the job
-	WaitForJobCount(t, kc, namespace, 0, 15, 2)
+	// The metric is only in place once the job that posts it has finished, and every condition the
+	// test waits for next depends on that value, so a job that does not finish has to fail here rather
+	// than as an unrelated timeout later.
+	assert.True(t, WaitForJobCount(t, kc, namespace, 0, 15, 2),
+		"the job posting the metric value should finish within 30 seconds")
 }
 
+// A minute is what the previous 30 x 2s loop allowed.
+const scaledObjectConditionTimeout = time.Minute
+
 func waitForScaledObjectCondition(t *testing.T, description string, check func(*kedav1alpha1.ScaledObject) bool) bool {
-	const iterations, intervalSeconds = 30, 2
 	kedaClient := GetKedaKubernetesClient(t)
-	for i := 0; i < iterations; i++ {
-		so, err := kedaClient.ScaledObjects(namespace).Get(t.Context(), scaledObjectName, metav1.GetOptions{})
-		if err == nil && check(so) {
-			return true
+
+	ctx, cancel := context.WithTimeout(t.Context(), scaledObjectConditionTimeout)
+	defer cancel()
+
+	// A read that failed is handed back rather than skipped, so a ScaledObject that cannot be read
+	// is reported with the reason instead of as a bare timeout.
+	err := KedaEventually(ctx, func(ctx context.Context) (bool, error) {
+		so, err := kedaClient.ScaledObjects(namespace).Get(ctx, scaledObjectName, metav1.GetOptions{})
+		if err != nil {
+			return false, fmt.Errorf("cannot get scaledobject %s/%s - %w", namespace, scaledObjectName, err)
 		}
-		t.Logf("Waiting for ScaledObject condition %q... (%d/%d)", description, i+1, iterations)
-		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+		if check(so) {
+			return true, nil
+		}
+		t.Logf("Waiting for ScaledObject condition %q...", description)
+		return false, nil
+	}, IntervalShort)
+	if err != nil {
+		t.Log(err)
+		return false
 	}
-	return false
+	return true
 }
 
 func getTemplateData() (templateData, []Template) {

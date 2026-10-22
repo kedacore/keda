@@ -27,8 +27,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"go.uber.org/zap/zapcore"
+	"google.golang.org/grpc/connectivity"
 	appsv1 "k8s.io/api/apps/v1"
 	apimetrics "k8s.io/apiserver/pkg/endpoints/metrics"
+	"k8s.io/apiserver/pkg/server/healthz"
 	"k8s.io/client-go/kubernetes/scheme"
 	kubemetrics "k8s.io/component-base/metrics"
 	"k8s.io/component-base/metrics/legacyregistry"
@@ -70,20 +72,20 @@ var (
 	stdErrThreshold             string
 )
 
-func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsProvider, error) {
+func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsProvider, *metricsservice.GrpcClient, error) {
 	scheme := scheme.Scheme
 	if err := appsv1.SchemeBuilder.AddToScheme(scheme); err != nil {
 		setupLog.Error(err, "failed to add apps/v1 scheme to runtime scheme")
-		return nil, fmt.Errorf("failed to add apps/v1 scheme to runtime scheme (%s)", err)
+		return nil, nil, fmt.Errorf("failed to add apps/v1 scheme to runtime scheme (%s)", err)
 	}
 	if err := kedav1alpha1.SchemeBuilder.AddToScheme(scheme); err != nil {
 		setupLog.Error(err, "failed to add keda scheme to runtime scheme")
-		return nil, fmt.Errorf("failed to add keda scheme to runtime scheme (%s)", err)
+		return nil, nil, fmt.Errorf("failed to add keda scheme to runtime scheme (%s)", err)
 	}
 	namespaces, err := kedautil.GetWatchNamespaces()
 	if err != nil {
 		setupLog.Error(err, "failed to get watch namespace")
-		return nil, fmt.Errorf("failed to get watch namespace (%s)", err)
+		return nil, nil, fmt.Errorf("failed to get watch namespace (%s)", err)
 	}
 
 	// Get a config to talk to the apiserver
@@ -107,7 +109,7 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 	})
 	if err != nil {
 		setupLog.Error(err, "failed to setup manager")
-		return nil, err
+		return nil, nil, err
 	}
 
 	setupLog.Info("Connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
@@ -115,7 +117,7 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 	grpcClient, err := metricsservice.NewGrpcClient(ctx, metricsServiceAddr, a.SecureServing.ServerCert.CertDirectory, metricsServiceGRPCAuthority, defaultConnectionCfg, clientMetrics, false)
 	if err != nil {
 		setupLog.Error(err, "error connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
-		return nil, err
+		return nil, nil, err
 	}
 	go func() {
 		if err := mgr.Start(ctx); err != nil {
@@ -123,7 +125,7 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 			os.Exit(1)
 		}
 	}()
-	return kedaprovider.NewProvider(ctx, setupLog, mgr.GetClient(), *grpcClient), nil
+	return kedaprovider.NewProvider(ctx, setupLog, mgr.GetClient(), *grpcClient), grpcClient, nil
 }
 
 // getMetricHandler returns a http handler that exposes metrics from controller-runtime and apiserver
@@ -305,12 +307,22 @@ func main() {
 		return
 	}
 
-	kedaProvider, err := cmd.makeProvider(ctx)
+	kedaProvider, grpcClient, err := cmd.makeProvider(ctx)
 	if err != nil {
 		setupLog.Error(err, "making provider")
 		return
 	}
 	cmd.WithExternalMetrics(kedaProvider)
+
+	// Register a readiness check that reflects the state of the gRPC connection
+	// to the KEDA metrics service (keda-operator). Without it the adapter keeps
+	// reporting Ready even when this connection is down, so the APIService keeps
+	// routing external-metric requests to a replica that can only fail them.
+	// See https://github.com/kedacore/keda/issues/8211.
+	if err = addGrpcConnectionReadyzCheck(cmd, grpcClient); err != nil {
+		setupLog.Error(err, "unable to register gRPC connection readiness check")
+		return
+	}
 
 	setupLog.Info(cmd.Message)
 
@@ -319,4 +331,24 @@ func main() {
 	if err = cmd.Run(ctx); err != nil {
 		return
 	}
+}
+
+// addGrpcConnectionReadyzCheck registers a readyz check named
+// "metricsservice-grpc-connection" that reports NotReady whenever the gRPC
+// connection to the KEDA metrics service is not in the Ready state. A replica
+// that cannot establish (or re-establish) the connection is then removed from
+// the APIService endpoints so requests are not routed to it.
+func addGrpcConnectionReadyzCheck(cmd *Adapter, grpcClient *metricsservice.GrpcClient) error {
+	server, err := cmd.Server()
+	if err != nil {
+		return err
+	}
+	return server.GenericAPIServer.AddReadyzChecks(
+		healthz.NamedCheck("metricsservice-grpc-connection", func(_ *http.Request) error {
+			if state := grpcClient.GetConnectionState(); state != connectivity.Ready {
+				return fmt.Errorf("gRPC connection to KEDA metrics service is not ready (state: %s)", state)
+			}
+			return nil
+		}),
+	)
 }

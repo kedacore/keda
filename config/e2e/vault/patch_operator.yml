@@ -1,0 +1,34 @@
+# Keep the audience in sync with the HashiCorp Vault e2e roles.
+- op: add
+  path: /spec/template/spec/containers/0/args/-
+  value: --service-account-token-mode=enforce-audience
+- op: add
+  path: /spec/template/spec/containers/0/args/-
+  value: --vault-kubernetes-auth-token-file=/var/run/secrets/keda-vault/token
+- op: add
+  path: /spec/template/spec/containers/0/env/-
+  value:
+    name: KEDA_SERVICE_ACCOUNT_TOKEN_AUDIENCES
+    value: |
+      - serviceAccountName: default
+        namespace: hashicorp-vault-test-ns
+        audience: keda-vault-e2e
+      - serviceAccountName: trigger-auth-bound-service-account-token-test-sa
+        namespace: trigger-auth-bound-service-account-token-test-ns
+        audience: keda-metrics-e2e
+- op: add
+  path: /spec/template/spec/volumes/-
+  value:
+    name: keda-vault-token
+    projected:
+      sources:
+      - serviceAccountToken:
+          audience: keda-vault-e2e
+          expirationSeconds: 3600
+          path: token
+- op: add
+  path: /spec/template/spec/containers/0/volumeMounts/-
+  value:
+    name: keda-vault-token
+    mountPath: /var/run/secrets/keda-vault
+    readOnly: true

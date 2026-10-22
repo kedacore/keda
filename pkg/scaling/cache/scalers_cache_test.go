@@ -151,7 +151,7 @@ func newCacheWithScaler(s scalers.Scaler) *ScalersCache {
 		Scalers: []ScalerBuilder{{
 			Scaler:       s,
 			ScalerConfig: scalersconfig.ScalerConfig{},
-			Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+			Factory: func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 				return s, &scalersconfig.ScalerConfig{}, nil
 			},
 		}},
@@ -172,6 +172,31 @@ func TestScalersCache_CloseIsIdempotent(t *testing.T) {
 	cache.Close(context.Background())
 	if got := scaler.closeCount.Load(); got != 1 {
 		t.Fatalf("Scaler.Close called %d times, want 1", got)
+	}
+}
+
+func TestScalersCache_RefreshUsesCallerContext(t *testing.T) {
+	oldScaler := newFakeScaler(nil)
+	newScaler := newFakeScaler(nil)
+	type contextKey struct{}
+	refreshCtx := context.WithValue(context.Background(), contextKey{}, "refresh")
+	var factoryCtx context.Context
+
+	cache := newCacheWithScaler(oldScaler)
+	cache.Scalers[0].Factory = func(ctx context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		factoryCtx = ctx
+		return newScaler, &scalersconfig.ScalerConfig{}, nil
+	}
+
+	got, err := cache.refreshScaler(refreshCtx, 0)
+	if err != nil {
+		t.Fatalf("refreshScaler returned an error: %v", err)
+	}
+	if got != newScaler {
+		t.Fatalf("refreshScaler returned %T, want the replacement scaler", got)
+	}
+	if factoryCtx != refreshCtx {
+		t.Fatal("factory did not receive the refresh context")
 	}
 }
 

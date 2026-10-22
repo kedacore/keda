@@ -199,7 +199,7 @@ jobs:
           registry: ghcr.io
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Publish on GitHub Container Registry
         run: make publish-multiarch
@@ -415,7 +415,7 @@ jobs:
             {"summary": "${{ job.status == 'cancelled' && '🚫 Tests were cancelled.' || '❌ Tests Failed.' }} [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Upload test logs
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: e2e-test-logs
           path: "${{ github.workspace }}/**/*.log"
@@ -499,7 +499,7 @@ jobs:
             {"summary": "${{ job.status == 'cancelled' && '🚫 Tests were cancelled.' || '❌ Tests Failed.' }} [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Upload test logs
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: arm-smoke-test-logs
           path: "${{ github.workspace }}/**/*.log"
@@ -603,7 +603,7 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
 
       - name: Upload test logs
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: s390x-smoke-test-logs
           path: "${{ github.workspace }}/**/*.log"

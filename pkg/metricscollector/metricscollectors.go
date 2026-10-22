@@ -21,6 +21,7 @@ import (
 	"time"
 
 	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
+	"google.golang.org/grpc/stats"
 )
 
 const (
@@ -36,6 +37,9 @@ const (
 var (
 	collectors        []MetricsCollector
 	promServerMetrics *grpcprom.ServerMetrics
+	promClientMetrics *grpcprom.ClientMetrics
+	otelClientHandler stats.Handler
+	newOtelMetrics    = NewOtelMetrics
 )
 
 type Options struct {
@@ -105,11 +109,17 @@ func NewMetricsCollectors(options Options) {
 		if promServerMetrics == nil {
 			promServerMetrics = newPromServerMetrics()
 		}
+		if promClientMetrics == nil {
+			promClientMetrics = newPromClientMetrics(options.EnableHighCardinalityLabels)
+		}
 	}
 
 	if options.EnableOpenTelemetryMetrics {
-		otelmetrics := NewOtelMetrics(options.EnableHighCardinalityLabels)
-		collectors = append(collectors, otelmetrics)
+		otelmetrics := newOtelMetrics(options.EnableHighCardinalityLabels)
+		if otelmetrics != nil {
+			collectors = append(collectors, otelmetrics)
+			otelClientHandler = newOtelGRPCClientHandler(otelmetrics)
+		}
 	}
 }
 

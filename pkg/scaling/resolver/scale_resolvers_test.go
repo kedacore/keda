@@ -23,9 +23,12 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	appsv1 "k8s.io/api/apps/v1"
 	authv1 "k8s.io/api/authentication/v1"
@@ -54,8 +57,7 @@ var (
 	cmName                    = "supercm"
 	cmKey                     = "mycmkey"
 	cmData                    = "cmDataHere"
-	bsatSAName                = "bsatServiceAccount"
-	bsatData                  = "k8s-bsat-token"
+	bsatSAName                = "bsat-service-account"
 	trueValue                 = true
 	falseValue                = false
 	envKey                    = "test-env-key"
@@ -252,6 +254,17 @@ func TestResolveNonExistingConfigMapsOrSecretsEnv(t *testing.T) {
 }
 
 func TestResolveAuthRef(t *testing.T) {
+	previous := globalConfig
+	t.Cleanup(func() { SetConfig(&previous) })
+	SetConfig(&Config{ServiceAccountTokenAudiences: []ServiceAccountTokenAudience{
+		{ServiceAccountName: bsatSAName, Namespace: namespace, Audience: "metrics"},
+		{ServiceAccountName: bsatSAName, Namespace: clusterNamespace, Audience: "metrics"},
+	}})
+	bsatData, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": "system:serviceaccount:test:test", "aud": []string{"metrics"},
+		"exp": time.Now().Add(time.Hour).Unix(),
+	}).SignedString([]byte("test-only"))
+	require.NoError(t, err)
 	if err := corev1.AddToScheme(scheme.Scheme); err != nil {
 		t.Errorf("Expected Error because: %v", err)
 	}
@@ -728,7 +741,8 @@ func TestResolveAuthRef(t *testing.T) {
 			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
 		{
-			name: "clustertriggerauth exists bound service account token but service account in the wrong namespace",
+			name:    "clustertriggerauth exists bound service account token but service account in the wrong namespace",
+			isError: true,
 			existing: []runtime.Object{
 				&kedav1alpha1.ClusterTriggerAuthentication{
 					ObjectMeta: metav1.ObjectMeta{
@@ -754,7 +768,7 @@ func TestResolveAuthRef(t *testing.T) {
 				},
 			},
 			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName, Kind: "ClusterTriggerAuthentication"},
-			expected:            map[string]string{"token": ""},
+			expected:            nil,
 			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
 	}
