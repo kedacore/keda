@@ -45,7 +45,7 @@ RUN apt-get update \
     && go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
     && go install github.com/mgechev/revive@latest \
     && go install honnef.co/go/tools/cmd/staticcheck@latest \
-    && go install golang.org/x/tools/gopls@latest \
+    && go install golang.org/x/tools/gopls@v0.23.0 \
     # Protocol Buffer Compiler
     && case $(dpkg --print-architecture) in \
         "amd64") PROTOC_ARCH="x86_64" ;; \
@@ -77,9 +77,8 @@ RUN apt-get update \
     && sudo apt-get update \
     && apt-get install -y docker-ce-cli \
     #
-    # Install pip & pre-commit
-    && apt-get -y install python3-pip \
-    && python3 -m pip install --no-cache-dir --break-system-packages pre-commit \
+    # Install pre-commit
+    && apt-get -y install pre-commit \
     #
     # Clean up
     && apt-get autoremove -y \
