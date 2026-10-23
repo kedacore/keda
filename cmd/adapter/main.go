@@ -28,18 +28,22 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc/connectivity"
+	apidiscoveryv2 "k8s.io/api/apidiscovery/v2"
 	appsv1 "k8s.io/api/apps/v1"
+	genericapi "k8s.io/apiserver/pkg/endpoints"
 	apimetrics "k8s.io/apiserver/pkg/endpoints/metrics"
 	"k8s.io/apiserver/pkg/server/healthz"
 	"k8s.io/client-go/kubernetes/scheme"
 	kubemetrics "k8s.io/component-base/metrics"
 	"k8s.io/component-base/metrics/legacyregistry"
 	"k8s.io/klog/v2"
+	externalmetricsv1beta1 "k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver"
 	basecmd "sigs.k8s.io/custom-metrics-apiserver/pkg/cmd"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
@@ -324,6 +328,16 @@ func main() {
 		return
 	}
 
+	adapterServer, err := cmd.Server()
+	if err != nil {
+		setupLog.Error(err, "unable to build the metrics API server")
+		return
+	}
+	if err = addExternalMetricsAggregatedDiscovery(adapterServer, kedaProvider); err != nil {
+		setupLog.Error(err, "unable to publish external metrics in aggregated discovery")
+		return
+	}
+
 	setupLog.Info(cmd.Message)
 
 	RunMetricsServer(ctx)
@@ -331,6 +345,35 @@ func main() {
 	if err = cmd.Run(ctx); err != nil {
 		return
 	}
+}
+
+// addExternalMetricsAggregatedDiscovery publishes external.metrics.k8s.io/v1beta1
+// and its resources in the adapter's aggregated discovery document (GET /apis as
+// apidiscovery.k8s.io/v2 APIGroupDiscoveryList).
+//
+// custom-metrics-apiserver installs the external metrics API with its own
+// installer, which registers the group for legacy discovery only, while the
+// generic apiserver still answers /apis in the aggregated format. kube-aggregator
+// prefers that format, finds no entry for the APIService's group version and
+// publishes it with no resources. client-go never caches a group version with no
+// resources, so every kubectl invocation against the cluster repeats full API
+// discovery. See https://github.com/kedacore/keda/issues/6694.
+//
+// KEDA's list of external metrics is static, so publishing it once is enough.
+func addExternalMetricsAggregatedDiscovery(server *apiserver.CustomMetricsAdapterServer, p provider.ExternalMetricsProvider) error {
+	resources, err := genericapi.ConvertGroupVersionIntoToDiscovery(provider.NewExternalMetricResourceLister(p).ListAPIResources())
+	if err != nil {
+		return fmt.Errorf("unable to build aggregated discovery for %s: %w", externalmetricsv1beta1.SchemeGroupVersion, err)
+	}
+	server.GenericAPIServer.AggregatedDiscoveryGroupManager.AddGroupVersion(
+		externalmetricsv1beta1.SchemeGroupVersion.Group,
+		apidiscoveryv2.APIVersionDiscovery{
+			Version:   externalmetricsv1beta1.SchemeGroupVersion.Version,
+			Resources: resources,
+			Freshness: apidiscoveryv2.DiscoveryFreshnessCurrent,
+		},
+	)
+	return nil
 }
 
 // addGrpcConnectionReadyzCheck registers a readyz check named
