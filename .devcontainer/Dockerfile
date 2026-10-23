@@ -3,7 +3,7 @@
 # Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM golang:1.27.1
+FROM golang:1.26.8
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
@@ -45,7 +45,7 @@ RUN apt-get update \
     && go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
     && go install github.com/mgechev/revive@latest \
     && go install honnef.co/go/tools/cmd/staticcheck@latest \
-    && go install golang.org/x/tools/gopls@latest \
+    && go install golang.org/x/tools/gopls@v0.23.0 \
     # Protocol Buffer Compiler
     && case $(dpkg --print-architecture) in \
         "amd64") PROTOC_ARCH="x86_64" ;; \
@@ -77,9 +77,8 @@ RUN apt-get update \
     && sudo apt-get update \
     && apt-get install -y docker-ce-cli \
     #
-    # Install pip & pre-commit
-    && apt-get -y install python3-pip \
-    && python3 -m pip install --no-cache-dir --break-system-packages pre-commit \
+    # Install pre-commit
+    && apt-get -y install pre-commit \
     #
     # Clean up
     && apt-get autoremove -y \
@@ -96,3 +95,8 @@ RUN ARCH=$(case $(uname -m) in x86_64) echo -n amd64 ;; aarch64) echo -n arm64 ;
     && mkdir -p /usr/local/bin/ \
     && cp operator-sdk_${OS}_${ARCH} /usr/local/bin/operator-sdk \
     && rm operator-sdk_${OS}_${ARCH}
+
+# Docker seeds new named volumes with this directory's ownership. VS Code needs
+# to write here before postCreateCommand runs, so prepare it in the image.
+RUN install -d -m 0755 -o "$USERNAME" -g "$USERNAME" \
+    "/home/$USERNAME/.vscode-server"
