@@ -185,3 +185,7 @@ To run all checks on all files, run:
 ```bash
 pre-commit run --all-files
 ```
+
+### Tip: Running e2e tests locally for first-time contributors
+
+If e2e tests fail on your first PR due to environment setup, run `make e2e` with `KEDA_RUN_E2E` locally before pushing. Common issue is missing `kind` cluster or `KEDA_NAMESPACE` not set - see `.github/workflows` for env defaults.
