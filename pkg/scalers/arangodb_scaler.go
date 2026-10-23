@@ -96,6 +96,8 @@ func NewArangoDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 // arangodJWTIssuer is the JWT issuer claim expected by arangod for internal authentication.
 const arangodJWTIssuer = "arangodb"
 
+// getNewArangoDBClient returns a client for meta.Endpoints. When meta.ConnectionLimit
+// is set, the client opens at most that many connections to each endpoint.
 func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
 	var auth connection.Authentication
 
@@ -114,6 +116,8 @@ func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
 		Endpoint:       connection.NewRoundRobinEndpoints(strings.Split(meta.Endpoints, ",")),
 		Transport: &http.Transport{
 			TLSClientConfig: util.CreateTLSClientConfig(meta.UnsafeSsl),
+			// 0, when connectionLimit is unset, means no limit.
+			MaxConnsPerHost: int(meta.ConnectionLimit),
 		},
 	})
 
