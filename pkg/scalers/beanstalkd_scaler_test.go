@@ -249,6 +249,8 @@ func createTestServer(t *testing.T, response []byte) {
 			return
 		}
 
+		buf := make([]byte, 1024)
+		_, _ = conn.Read(buf)
 		_, err = conn.Write(response)
 		assert.NoError(t, err)
 		conn.Close()
