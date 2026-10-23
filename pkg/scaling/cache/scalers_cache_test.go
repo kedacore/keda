@@ -62,6 +62,17 @@ func TestBuildScalerRequestCtx(t *testing.T) {
 	Expect(ctx.Value(metricscollector.ScaledResourceContextKey)).To(Equal("my-scaled-object"))
 }
 
+// getMetricSpecs fails the test when discovery reported an incomplete result.
+func getMetricSpecs(t *testing.T, c *ScalersCache) []v2.MetricSpec {
+	t.Helper()
+
+	specs, err := c.GetMetricSpecForScaling(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected metric spec discovery error: %v", err)
+	}
+	return specs
+}
+
 func TestEmptyScalersCache(t *testing.T) {
 	RegisterTestingT(t)
 
@@ -80,7 +91,7 @@ func TestEmptyScalersCache(t *testing.T) {
 	}()
 
 	go func() {
-		metrics := cache.GetMetricSpecForScaling(context.Background())
+		metrics, _ := cache.GetMetricSpecForScaling(context.Background())
 		Expect(metrics).To(BeEmpty())
 	}()
 
@@ -451,7 +462,7 @@ func TestScalersCache_UpdateMetricSpecForScaler(t *testing.T) {
 	newSpecs[0].External.Metric.Name = "mutated"
 	newSpecs[0].External.Metric.Selector.MatchLabels["source"] = "mutated"
 
-	specs := c.GetMetricSpecForScaling(context.Background())
+	specs := getMetricSpecs(t, c)
 	if len(specs) != 1 {
 		t.Fatalf("expected 1 spec, got %d", len(specs))
 	}
@@ -483,7 +494,7 @@ func TestScalersCache_UpdateMetricSpecForScaler_InvalidIndex(t *testing.T) {
 		t.Fatal("UpdateMetricSpecForScaler should report false for an out-of-range index")
 	}
 
-	if got := c.GetMetricSpecForScaling(context.Background()); len(got) != 1 || got[0].External.Metric.Name != "fake" {
+	if got := getMetricSpecs(t, c); len(got) != 1 || got[0].External.Metric.Name != "fake" {
 		t.Fatalf("cache specs must be untouched on an invalid index, got %+v", got)
 	}
 }
@@ -506,7 +517,7 @@ func TestScalersCache_UpdateMetricSpecForScaler_IdentityMismatch(t *testing.T) {
 		t.Fatal("UpdateMetricSpecForScaler should report false for a mismatched generation")
 	}
 
-	if got := c.GetMetricSpecForScaling(context.Background()); len(got) != 1 || got[0].External.Metric.Name != "fake" {
+	if got := getMetricSpecs(t, c); len(got) != 1 || got[0].External.Metric.Name != "fake" {
 		t.Fatalf("cache specs must be untouched on identity mismatch, got %+v", got)
 	}
 }
@@ -525,7 +536,7 @@ func TestScalersCache_UpdateMetricSpecForScaler_RejectsEmptySpecs(t *testing.T) 
 		}
 	}
 
-	if got := c.GetMetricSpecForScaling(context.Background()); len(got) != 1 || got[0].External.Metric.Name != "fake" {
+	if got := getMetricSpecs(t, c); len(got) != 1 || got[0].External.Metric.Name != "fake" {
 		t.Fatalf("expected the scaler's own specs, got %+v", got)
 	}
 
@@ -556,7 +567,7 @@ func TestScalersCache_UpdateMetricSpecForScaler_EmptyUpdateKeepsCachedSpecs(t *t
 		t.Fatal("UpdateMetricSpecForScaler should report false for an empty update")
 	}
 
-	if got := c.GetMetricSpecForScaling(context.Background()); len(got) != 1 || got[0].External.Metric.Name != "streamed-metric" {
+	if got := getMetricSpecs(t, c); len(got) != 1 || got[0].External.Metric.Name != "streamed-metric" {
 		t.Fatalf("expected the last non-empty streamed specs to be kept, got %+v", got)
 	}
 }
@@ -600,5 +611,164 @@ func TestScalersCache_GetMetricSpecForScalingForScaler_UsesCachedSpecs(t *testin
 	}
 	if specsAgain[0].External.Metric.Selector.MatchLabels["owner"] != "cache" {
 		t.Fatalf("expected selector owner=cache on second read, got %q", specsAgain[0].External.Metric.Selector.MatchLabels["owner"])
+	}
+}
+
+// flakyScaler reports its metric specs only while online, like an external scaler
+// whose gRPC endpoint comes and goes.
+type flakyScaler struct {
+	metricName string
+	online     *atomic.Bool
+}
+
+func newFlakyScaler(metricName string) *flakyScaler {
+	return &flakyScaler{metricName: metricName, online: atomic.NewBool(true)}
+}
+
+var _ scalers.Scaler = (*flakyScaler)(nil)
+
+func (f *flakyScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	if !f.online.Load() {
+		return nil, false, errors.New("scaler is offline")
+	}
+	return []external_metrics.ExternalMetricValue{{MetricName: metricName}}, true, nil
+}
+
+func (f *flakyScaler) GetMetricSpecForScaling(_ context.Context) []v2.MetricSpec {
+	if !f.online.Load() {
+		return nil
+	}
+	return []v2.MetricSpec{{
+		External: &v2.ExternalMetricSource{
+			Metric: v2.MetricIdentifier{Name: f.metricName},
+		},
+	}}
+}
+
+func (f *flakyScaler) Close(_ context.Context) error { return nil }
+
+// newCacheWithScalers builds a cache where every scaler sits on its own trigger index.
+func newCacheWithScalers(ss ...scalers.Scaler) *ScalersCache {
+	c := &ScalersCache{
+		ScaledObject: &kedav1alpha1.ScaledObject{
+			ObjectMeta: metav1.ObjectMeta{
+				UID:        testCacheUID,
+				Generation: testCacheGeneration,
+			},
+		},
+		ScalableObjectGeneration: testCacheGeneration,
+		LastKnownMetricSpecs:     NewMetricSpecStore(testCacheGeneration),
+	}
+	for i, s := range ss {
+		c.Scalers = append(c.Scalers, ScalerBuilder{
+			Scaler:       s,
+			ScalerConfig: scalersconfig.ScalerConfig{TriggerIndex: i},
+			Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+				return s, &scalersconfig.ScalerConfig{TriggerIndex: i}, nil
+			},
+		})
+	}
+	return c
+}
+
+func metricNames(specs []v2.MetricSpec) []string {
+	names := make([]string, 0, len(specs))
+	for _, spec := range specs {
+		if spec.External != nil {
+			names = append(names, spec.External.Metric.Name)
+		}
+	}
+	return names
+}
+
+// A trigger that fails discovery must keep its place, otherwise it disappears from the
+// HPA and from ScaledObject.Status.ExternalMetricNames.
+func TestScalersCache_GetMetricSpecForScaling_UsesLastKnownSpecs(t *testing.T) {
+	healthy := newFakeScaler(nil)
+	flaky := newFlakyScaler("s1-flaky")
+	c := newCacheWithScalers(healthy, flaky)
+
+	specs, err := c.GetMetricSpecForScaling(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := metricNames(specs); len(got) != 2 {
+		t.Fatalf("expected both triggers to be discovered, got %v", got)
+	}
+
+	flaky.online.Store(false)
+
+	specs, err = c.GetMetricSpecForScaling(context.Background())
+	if err != nil {
+		t.Fatalf("a trigger with known specs must not make discovery incomplete, got %v", err)
+	}
+	got := metricNames(specs)
+	if len(got) != 2 || got[1] != "s1-flaky" {
+		t.Fatalf("expected the failing trigger to keep its last known spec, got %v", got)
+	}
+}
+
+// With nothing known for the failing trigger the caller has to be told, so it does not
+// persist a partial list.
+func TestScalersCache_GetMetricSpecForScaling_IncompleteWithoutLastKnownSpecs(t *testing.T) {
+	healthy := newFakeScaler(nil)
+	flaky := newFlakyScaler("s1-flaky")
+	flaky.online.Store(false)
+	c := newCacheWithScalers(healthy, flaky)
+
+	specs, err := c.GetMetricSpecForScaling(context.Background())
+	if err == nil {
+		t.Fatal("expected an error for an incomplete discovery result")
+	}
+	if got := metricNames(specs); len(got) != 1 || got[0] != "fake" {
+		t.Fatalf("expected only the healthy trigger, got %v", got)
+	}
+}
+
+func TestScalersCache_GetMetricSpecForScalingForScaler_UsesLastKnownSpecs(t *testing.T) {
+	flaky := newFlakyScaler("s0-flaky")
+	c := newCacheWithScalers(flaky)
+
+	if _, err := c.GetMetricSpecForScalingForScaler(context.Background(), 0); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	flaky.online.Store(false)
+
+	specs, err := c.GetMetricSpecForScalingForScaler(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := metricNames(specs); len(got) != 1 || got[0] != "s0-flaky" {
+		t.Fatalf("expected the last known spec, got %v", got)
+	}
+}
+
+// The cache is rebuilt on every scaler error, so the store has to outlive it.
+func TestMetricSpecStore_SurvivesCacheRebuild(t *testing.T) {
+	store := NewMetricSpecStore(testCacheGeneration)
+
+	oldCache := newCacheWithScalers(newFlakyScaler("s0-flaky"))
+	oldCache.LastKnownMetricSpecs = store
+	if _, err := oldCache.GetMetricSpecForScaling(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	newFlaky := newFlakyScaler("s0-flaky")
+	newFlaky.online.Store(false)
+	newCache := newCacheWithScalers(newFlaky)
+
+	if _, err := newCache.GetMetricSpecForScaling(context.Background()); err == nil {
+		t.Fatal("expected a cache without the store to report an incomplete discovery result")
+	}
+
+	newCache.LastKnownMetricSpecs = store
+
+	specs, err := newCache.GetMetricSpecForScaling(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error with the store of the previous cache: %v", err)
+	}
+	if got := metricNames(specs); len(got) != 1 || got[0] != "s0-flaky" {
+		t.Fatalf("expected the remembered spec, got %v", got)
 	}
 }

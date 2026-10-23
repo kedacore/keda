@@ -105,7 +105,9 @@ var _ = Describe("hpa", func() {
 		}
 
 		ctx := context.Background()
-		emptyScaler.EXPECT().GetMetricSpecForScaling(ctx).Return([]v2.MetricSpec{})
+		// Queried once directly and once more after the cache refreshed the scaler.
+		emptyScaler.EXPECT().GetMetricSpecForScaling(ctx).Return([]v2.MetricSpec{}).Times(2)
+		emptyScaler.EXPECT().Close(ctx).Return(nil)
 		scaleHandler.EXPECT().GetScalersCache(ctx, gomock.Eq(scaledObject)).Return(&scalersCache, nil)
 
 		specs, err := reconciler.getScaledObjectMetricSpecs(ctx, logger, scaledObject)
@@ -135,7 +137,9 @@ var _ = Describe("hpa", func() {
 		}
 
 		ctx := context.Background()
-		emptyScaler.EXPECT().GetMetricSpecForScaling(ctx).Return(nil)
+		// Queried once directly and once more after the cache refreshed the scaler.
+		emptyScaler.EXPECT().GetMetricSpecForScaling(ctx).Return(nil).Times(2)
+		emptyScaler.EXPECT().Close(ctx).Return(nil)
 		scaleHandler.EXPECT().GetScalersCache(ctx, gomock.Eq(scaledObject)).Return(&scalersCache, nil)
 
 		specs, err := reconciler.getScaledObjectMetricSpecs(ctx, logger, scaledObject)
@@ -179,6 +183,72 @@ var _ = Describe("hpa", func() {
 		Expect(capturedScaledObject.Status.Health).To(Equal(expectedHealth))
 	})
 
+	It("should keep the composite metric when a trigger fails discovery after being cached", func() {
+		scaledObject := &v1alpha1.ScaledObject{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "test-scaled-object",
+				Namespace: "test-namespace",
+			},
+			Spec: v1alpha1.ScaledObjectSpec{
+				Advanced: &v1alpha1.AdvancedConfig{
+					ScalingModifiers: v1alpha1.ScalingModifiers{
+						Formula: "metric_1 + metric_2",
+						Target:  "2",
+					},
+				},
+			},
+		}
+
+		flakyScaler := mock_scalers.NewMockScaler(ctrl)
+		scalersCache := cache.ScalersCache{
+			Scalers: []cache.ScalerBuilder{
+				{
+					Scaler:       scaler,
+					ScalerConfig: scalersconfig.ScalerConfig{TriggerIndex: 0},
+					Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+						return scaler, &scalersconfig.ScalerConfig{TriggerIndex: 0}, nil
+					},
+				},
+				{
+					Scaler:       flakyScaler,
+					ScalerConfig: scalersconfig.ScalerConfig{TriggerIndex: 1},
+					Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+						return flakyScaler, &scalersconfig.ScalerConfig{TriggerIndex: 1}, nil
+					},
+				},
+			},
+			Recorder:             nil,
+			LastKnownMetricSpecs: cache.NewMetricSpecStore(0),
+		}
+
+		ctx := context.Background()
+		scaler.EXPECT().GetMetricSpecForScaling(ctx).Return([]v2.MetricSpec{externalMetricSpec("s0-metric-1")}).Times(2)
+		gomock.InOrder(
+			flakyScaler.EXPECT().GetMetricSpecForScaling(ctx).Return([]v2.MetricSpec{externalMetricSpec("s1-metric-2")}),
+			// Unreachable on the second reconcile, queried once more after the cache refreshed it.
+			flakyScaler.EXPECT().GetMetricSpecForScaling(ctx).Return(nil).Times(2),
+		)
+		flakyScaler.EXPECT().Close(ctx).Return(nil)
+		scaleHandler.EXPECT().GetScalersCache(ctx, gomock.Any()).Return(&scalersCache, nil).Times(2)
+
+		var capturedScaledObject v1alpha1.ScaledObject
+		client.EXPECT().Status().Return(statusWriter).Times(2)
+		statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(arg any, scaledObject *v1alpha1.ScaledObject, anotherArg any, opts ...any) {
+			capturedScaledObject = *scaledObject
+		}).Times(2)
+
+		_, err := reconciler.getScaledObjectMetricSpecs(ctx, logger, scaledObject)
+		Expect(err).ToNot(HaveOccurred())
+
+		specs, err := reconciler.getScaledObjectMetricSpecs(ctx, logger, scaledObject)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(specs).To(HaveLen(1))
+		Expect(specs[0].External.Metric.Name).To(Equal(v1alpha1.CompositeMetricName))
+		Expect(capturedScaledObject.Status.CompositeScalerName).To(Equal(v1alpha1.CompositeMetricName))
+		Expect(capturedScaledObject.Status.ExternalMetricNames).To(ConsistOf("s0-metric-1", "s1-metric-2"))
+	})
+
 })
 
 func setupTest(health map[string]v1alpha1.HealthStatus, scaler *mock_scalers.MockScaler, scaleHandler *mock_scaling.MockScaleHandler) *v1alpha1.ScaledObject {
@@ -213,4 +283,15 @@ func setupTest(health map[string]v1alpha1.HealthStatus, scaler *mock_scalers.Moc
 	scaleHandler.EXPECT().GetScalersCache(context.Background(), gomock.Eq(scaledObject)).Return(&scalersCache, nil)
 
 	return scaledObject
+}
+
+func externalMetricSpec(name string) v2.MetricSpec {
+	return v2.MetricSpec{
+		Type: v2.ExternalMetricSourceType,
+		External: &v2.ExternalMetricSource{
+			Metric: v2.MetricIdentifier{
+				Name: name,
+			},
+		},
+	}
 }
