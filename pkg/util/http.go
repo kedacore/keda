@@ -20,6 +20,8 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -91,6 +93,38 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 	return &http.Client{
 		Timeout:   timeout,
 		Transport: CreateRT(unsafeSsl),
+	}
+}
+
+// CheckSameOriginRedirect keeps credentials at the original HTTP origin, including
+// when an authentication transport adds authorization to each redirected request.
+// It retains the default HTTP client's limit of ten redirects.
+func CheckSameOriginRedirect(request *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		return fmt.Errorf("stopped after 10 redirects")
+	}
+	if len(via) == 0 {
+		return fmt.Errorf("redirect has no original request")
+	}
+	original := via[0].URL
+	if request.URL.User != nil || request.URL.Scheme != original.Scheme ||
+		!strings.EqualFold(request.URL.Hostname(), original.Hostname()) || httpURLPort(request.URL) != httpURLPort(original) {
+		return fmt.Errorf("redirect to a different origin or a URL containing user information is not allowed with workload service account authentication")
+	}
+	return nil
+}
+
+func httpURLPort(u *url.URL) string {
+	if port := u.Port(); port != "" {
+		return port
+	}
+	switch u.Scheme {
+	case "http":
+		return "80"
+	case "https":
+		return "443"
+	default:
+		return ""
 	}
 }
 

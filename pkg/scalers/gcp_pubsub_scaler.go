@@ -93,6 +93,14 @@ func parsePubSubMetadata(config *scalersconfig.ScalerConfig) (*pubsubMetadata, e
 		return nil, err
 	}
 	meta.gcpAuthorization = auth
+	if auth.ServiceAccountTokenProvider != nil {
+		resourceParts := strings.Split(meta.resourceName, "/")
+		if len(resourceParts) != 4 || resourceParts[0] != "projects" || resourceParts[1] == "" ||
+			resourceParts[2] != meta.resourceType+"s" || resourceParts[3] == "" ||
+			regexpCompositeSubscriptionIDPrefix.FindString(meta.resourceName) != meta.resourceName {
+			return nil, fmt.Errorf("service account authentication requires a fully qualified Pub/Sub resource name: projects/PROJECT/%ss/NAME", meta.resourceType)
+		}
+	}
 	meta.triggerIndex = config.TriggerIndex
 
 	return meta, nil
@@ -163,9 +171,16 @@ func (s *pubsubScaler) GetMetricsAndActivity(ctx context.Context, metricName str
 func (s *pubsubScaler) setStackdriverClient(ctx context.Context) error {
 	var client *gcp.StackDriverClient
 	var err error
-	if s.metadata.gcpAuthorization.PodIdentityProviderEnabled {
+	switch {
+	case s.metadata.gcpAuthorization.ServiceAccountTokenProvider != nil:
+		tokenSource, tokenErr := newGCPMonitoringTokenSource(ctx, s.metadata.gcpAuthorization)
+		if tokenErr != nil {
+			return tokenErr
+		}
+		client, err = gcp.NewStackDriverClientWithTokenSource(ctx, tokenSource)
+	case s.metadata.gcpAuthorization.PodIdentityProviderEnabled:
 		client, err = gcp.NewStackDriverClientPodIdentity(ctx)
-	} else {
+	default:
 		client, err = gcp.NewStackDriverClient(ctx, s.metadata.gcpAuthorization.GoogleApplicationCredentials)
 	}
 

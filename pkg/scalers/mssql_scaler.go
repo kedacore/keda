@@ -118,13 +118,13 @@ func parseMSSQLMetadata(logger logr.Logger, config *scalersconfig.ScalerConfig) 
 	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		// existing behavior — no changes needed
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload, kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount:
 		// Workload identity builds its own connector and never goes through
 		// database/sql driver registration, so picking a driver here would be a no-op.
 		if meta.DriverName != mssqlDriverSQLServer {
 			return nil, authPodIdentity, fmt.Errorf("driverName %s cannot be combined with azure-workload pod identity", meta.DriverName)
 		}
-		cred, err := azure.NewChainedCredential(logger, config.PodIdentity)
+		cred, err := azure.NewChainedCredential(logger, config.PodIdentity, config.ServiceAccountTokenProvider)
 		if err != nil {
 			return nil, authPodIdentity, err
 		}
@@ -138,7 +138,7 @@ func parseMSSQLMetadata(logger logr.Logger, config *scalersconfig.ScalerConfig) 
 }
 
 func newMSSQLConnection(ctx context.Context, s *mssqlScaler) (*sql.DB, error) {
-	if s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
+	if s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload || s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount {
 		return newMSSQLWorkloadIdentityConnection(ctx, s)
 	}
 
@@ -242,7 +242,7 @@ func (s *mssqlScaler) GetMetricsAndActivity(ctx context.Context, metricName stri
 }
 
 func (s *mssqlScaler) getQueryResult(ctx context.Context) (float64, error) {
-	if s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
+	if s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload || s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount {
 		if s.metadata.azureAuthContext.token != nil && s.metadata.azureAuthContext.token.ExpiresOn.Before(time.Now()) {
 			s.logger.Info("Azure access token expired, reconnecting to MSSQL")
 			s.connection.Close()

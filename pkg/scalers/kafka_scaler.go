@@ -388,6 +388,9 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 	if err := config.TypedConfig(&meta); err != nil {
 		return meta, fmt.Errorf("error parsing kafka metadata: %w", err)
 	}
+	if config.PodIdentity.ServiceAccountName != nil && (meta.saslType != KafkaSASLTypeOAuthbearer || meta.tokenProvider != KafkaSASLOAuthTokenProviderAWSMSKIAM) {
+		return meta, fmt.Errorf("podIdentity.serviceAccountName requires AWS MSK IAM OAuth authentication for the kafka scaler")
+	}
 
 	if meta.Topic == "" {
 		logger.V(1).Info(fmt.Sprintf("consumer group %q has no topic specified, "+
@@ -445,7 +448,7 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 	}
 
 	if meta.saslType == KafkaSASLTypeOAuthbearer && meta.tokenProvider == KafkaSASLOAuthTokenProviderAWSMSKIAM {
-		auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, meta.AWSRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+		auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, meta.AWSRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv, config.ServiceAccountTokenProvider)
 		if err != nil {
 			return meta, fmt.Errorf("error getting AWS authorization: %w", err)
 		}
