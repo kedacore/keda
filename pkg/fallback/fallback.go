@@ -156,7 +156,7 @@ func GetMetricsWithFallback(soh ScaledObjectHandler, metrics []external_metrics.
 		var err error
 
 		if scaledObject.Spec.Fallback.Behavior != kedav1alpha1.FallbackBehaviorStatic {
-			currentReplicas, err = resolver.GetCurrentReplicas(soh.Ctx, soh.KubeClient, soh.ScaleClient, soh.ScaledObject)
+			currentReplicas, _, err = resolver.GetCurrentReplicas(soh.Ctx, soh.KubeClient, soh.ScaleClient, soh.ScaledObject)
 			if err != nil {
 				return nil, false, suppressedError
 			}
@@ -213,7 +213,11 @@ func getReadyReplicasCount(soh ScaledObjectHandler) (int32, error) {
 		return -1, fmt.Errorf("")
 	}
 
-	scale, err := soh.ScaleClient.Scales(scaledObject.Namespace).Get(soh.Ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+	targetName, err := resolver.ResolveScaleTargetName(soh.Ctx, soh.KubeClient, scaledObject.Namespace, scaledObject.Status.ScaleTargetGVKR.GroupVersionKind(), scaledObject.Spec.ScaleTargetRef)
+	if err != nil {
+		return -1, err
+	}
+	scale, err := soh.ScaleClient.Scales(scaledObject.Namespace).Get(soh.Ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), targetName, metav1.GetOptions{})
 	if err != nil {
 		return -1, err
 	}
