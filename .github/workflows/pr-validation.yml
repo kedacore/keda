@@ -202,6 +202,10 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: 3.x
+      - name: Verify Go toolchain alignment
+        run: |
+          python3 -B -m unittest discover -s hack -p 'verify_go_versions_test.py'
+          python3 -B hack/verify_go_versions.py
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: 'go.mod'
