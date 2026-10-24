@@ -24,12 +24,15 @@ import (
 	"time"
 
 	"go.uber.org/mock/gomock"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/events"
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
+	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_eventemitter"
 )
@@ -168,4 +171,45 @@ func TestEventHandler_DirectCall(t *testing.T) {
 	})
 	eventEmitter.enqueueEventData(eventData)
 	wg.Wait()
+}
+
+type recordedEvent struct {
+	eventType, reason, action, note string
+}
+
+// actionRecorder records the action argument, which events.FakeRecorder drops.
+type actionRecorder struct {
+	events []recordedEvent
+}
+
+func (r *actionRecorder) Eventf(_ runtime.Object, _ runtime.Object, eventType, reason, action, note string, args ...any) {
+	r.events = append(r.events, recordedEvent{eventType: eventType, reason: reason, action: action, note: fmt.Sprintf(note, args...)})
+}
+
+func TestEventEmitter_EmitUsesReasonAsAction(t *testing.T) {
+	recorder := &actionRecorder{}
+	eventEmitter := EventEmitter{
+		recorder:               recorder,
+		eventHandlersCache:     map[string]EventDataHandler{},
+		eventHandlersCacheLock: &sync.RWMutex{},
+	}
+
+	scaledObject := &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: testNameGlobal, Namespace: testNamespaceGlobal},
+	}
+	// events.k8s.io/v1 rejects an action longer than 128 characters, so a long message must not end up there.
+	message := "ScaledObject doesn't have correct Idle/Min/Max Replica Counts specification: MinReplicaCount=1 must be less than MaxReplicaCount=0"
+
+	eventEmitter.Emit(scaledObject, testNamespaceGlobal, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectCheckFailed, message)
+
+	if len(recorder.events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(recorder.events))
+	}
+	got := recorder.events[0]
+	if got.action != eventreason.ScaledObjectCheckFailed {
+		t.Errorf("expected action %q, got %q", eventreason.ScaledObjectCheckFailed, got.action)
+	}
+	if got.note != message {
+		t.Errorf("expected note %q, got %q", message, got.note)
+	}
 }
