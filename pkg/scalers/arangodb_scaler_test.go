@@ -52,6 +52,24 @@ var testArangoDBMetadata = []parseArangoDBMetadataTestData{
 		authParams:  map[string]string{},
 		raisesError: true,
 	},
+	// with connectionLimit
+	{
+		metadata:    map[string]string{"endpoints": "https://localhost:8529", "query": `FOR t IN testCollection FILTER t.cook_time == '3 hours' RETURN t`, "collection": "demo", "queryValue": "12", "connectionLimit": "2", "dbName": "test"},
+		authParams:  map[string]string{},
+		raisesError: false,
+	},
+	// connectionLimit of zero, which means no limit like an unset value
+	{
+		metadata:    map[string]string{"endpoints": "https://localhost:8529", "query": `FOR t IN testCollection FILTER t.cook_time == '3 hours' RETURN t`, "collection": "demo", "queryValue": "12", "connectionLimit": "0", "dbName": "test"},
+		authParams:  map[string]string{},
+		raisesError: false,
+	},
+	// negative connectionLimit, which net/http would treat as no limit
+	{
+		metadata:    map[string]string{"endpoints": "https://localhost:8529", "query": `FOR t IN testCollection FILTER t.cook_time == '3 hours' RETURN t`, "collection": "demo", "queryValue": "12", "connectionLimit": "-1", "dbName": "test"},
+		authParams:  map[string]string{},
+		raisesError: true,
+	},
 }
 
 type arangoDBAuthMetadataTestData struct {

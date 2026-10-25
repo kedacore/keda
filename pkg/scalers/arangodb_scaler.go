@@ -68,6 +68,14 @@ type arangoDBMetadata struct {
 	triggerIndex int
 }
 
+// Validate rejects a negative connectionLimit, which net/http would treat as no limit.
+func (m *arangoDBMetadata) Validate() error {
+	if m.ConnectionLimit < 0 {
+		return fmt.Errorf("connectionLimit must be greater than or equal to zero")
+	}
+	return nil
+}
+
 // NewArangoDBScaler creates a new arangodbScaler
 func NewArangoDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
