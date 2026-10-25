@@ -313,15 +313,15 @@ func createSqsClient() *sqs.Client {
 
 func getTemplateData(sqsQueue string) (templateData, []Template) {
 	return templateData{
-			TestNamespace:    testNamespace,
-			DeploymentName:   deploymentName,
-			ScaledObjectName: scaledObjectName,
-			SecretName:       secretName,
-			AwsRegion:        awsRegion,
-			RoleArn:          awsWorkload1RoleArn,
-			SqsQueue:         sqsQueue,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "serviceAccountTemplate", Config: serviceAccountTemplate},
-		}
+		TestNamespace:    testNamespace,
+		DeploymentName:   deploymentName,
+		ScaledObjectName: scaledObjectName,
+		SecretName:       secretName,
+		AwsRegion:        awsRegion,
+		RoleArn:          awsWorkload1RoleArn,
+		SqsQueue:         sqsQueue,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "serviceAccountTemplate", Config: serviceAccountTemplate},
+	}
 }

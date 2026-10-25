@@ -373,28 +373,28 @@ func TestScaler(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:        testNamespace,
-			KeycloakNamespace:    keycloakNamespace,
-			DeploymentName:       deploymentName,
-			ScaledObjectName:     scaledObjectName,
-			SecretName:           secretName,
-			QueueName:            queueName,
-			Connection:           connectionString,
-			Base64Connection:     base64.StdEncoding.EncodeToString([]byte(httpConnectionString)),
-			HttpNoAuthConnection: fmt.Sprintf("http://rabbitmq.%s.svc.cluster.local/", rmqNamespace),
-			TriggerAuthName:      triggerAuthName,
-			TriggerSecretName:    triggerSecretName,
-			RealmName:            realmName,
-			OAuthClientID:        oauthClientID,
-			ClientSecret:         clientSecret,
-			Base64ClientSecret:   base64.StdEncoding.EncodeToString([]byte(clientSecret)),
-			TokenURL:             tokenURL,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: RMQTargetDeploymentTemplate},
-			{Name: "oauthSecretTemplate", Config: oauthSecretTemplate},
-			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:        testNamespace,
+		KeycloakNamespace:    keycloakNamespace,
+		DeploymentName:       deploymentName,
+		ScaledObjectName:     scaledObjectName,
+		SecretName:           secretName,
+		QueueName:            queueName,
+		Connection:           connectionString,
+		Base64Connection:     base64.StdEncoding.EncodeToString([]byte(httpConnectionString)),
+		HttpNoAuthConnection: fmt.Sprintf("http://rabbitmq.%s.svc.cluster.local/", rmqNamespace),
+		TriggerAuthName:      triggerAuthName,
+		TriggerSecretName:    triggerSecretName,
+		RealmName:            realmName,
+		OAuthClientID:        oauthClientID,
+		ClientSecret:         clientSecret,
+		Base64ClientSecret:   base64.StdEncoding.EncodeToString([]byte(clientSecret)),
+		TokenURL:             tokenURL,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: RMQTargetDeploymentTemplate},
+		{Name: "oauthSecretTemplate", Config: oauthSecretTemplate},
+		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func testScaling(t *testing.T, kc *kubernetes.Clientset) {

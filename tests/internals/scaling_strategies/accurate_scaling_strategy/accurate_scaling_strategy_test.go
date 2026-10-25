@@ -162,16 +162,16 @@ func TestScalingStrategy(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			// Populate fields required in YAML templates
-			ScaledJobName: scaledJobName,
-			TestNamespace: testNamespace,
-			QueueName:     queueName,
-			Connection:    base64.StdEncoding.EncodeToString([]byte(connectionString)),
-			SecretName:    secretName,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "scaledJobTemplate", Config: scaledJobTemplate},
-		}
+		// Populate fields required in YAML templates
+		ScaledJobName: scaledJobName,
+		TestNamespace: testNamespace,
+		QueueName:     queueName,
+		Connection:    base64.StdEncoding.EncodeToString([]byte(connectionString)),
+		SecretName:    secretName,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "scaledJobTemplate", Config: scaledJobTemplate},
+	}
 }
 
 func testAccurateScaling(ctx context.Context, t *testing.T, kc *kubernetes.Clientset, client *azqueue.QueueClient) {

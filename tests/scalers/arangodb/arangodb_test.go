@@ -224,22 +224,22 @@ func TestArangoDBScaler(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:    testNamespace,
-			DeploymentName:   deploymentName,
-			ScaledObjectName: scaledObjectName,
-			MinReplicaCount:  minReplicaCount,
-			MaxReplicaCount:  maxReplicaCount,
-			Database:         arangoDBName,
-			Collection:       arangoDBCollection,
-			TriggerAuthName:  triggerAuthName,
-			SecretName:       secretName,
-			Username:         arangoDBUsername,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:    testNamespace,
+		DeploymentName:   deploymentName,
+		ScaledObjectName: scaledObjectName,
+		MinReplicaCount:  minReplicaCount,
+		MaxReplicaCount:  maxReplicaCount,
+		Database:         arangoDBName,
+		Collection:       arangoDBCollection,
+		TriggerAuthName:  triggerAuthName,
+		SecretName:       secretName,
+		Username:         arangoDBUsername,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {

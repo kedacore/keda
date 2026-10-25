@@ -381,31 +381,31 @@ func getTemplateData() (templateData, []Template) {
 	base64Pat := base64.StdEncoding.EncodeToString([]byte(personalAccessToken))
 
 	return templateData{
-			TestNamespace:    testNamespace,
-			SecretName:       secretName,
-			DeploymentName:   deploymentName,
-			ScaledObjectName: scaledObjectName,
-			ScaledJobName:    scaledJobName,
-			MinReplicaCount:  fmt.Sprintf("%v", minReplicaCount),
-			MaxReplicaCount:  fmt.Sprintf("%v", maxReplicaCount),
-			Pat:              base64Pat,
-			RunnerScope:      githubScope,
-			Owner:            owner,
-			Repos:            repos,
-			Labels:           "e2etester",
-			ApplicationID:    appID,
-			InstallationID:   instID,
-			ApplicationKey:   appKey,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "authTemplate", Config: triggerAuthTemplate},
-			{Name: "secretGhaTemplate", Config: secretGhaTemplate},
-			{Name: "authGhaTemplate", Config: triggerGhaAuthTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-			{Name: "scaledJobTemplate", Config: scaledJobTemplate},
-			{Name: "scaledGhaJobTemplate", Config: scaledGhaJobTemplate},
-		}
+		TestNamespace:    testNamespace,
+		SecretName:       secretName,
+		DeploymentName:   deploymentName,
+		ScaledObjectName: scaledObjectName,
+		ScaledJobName:    scaledJobName,
+		MinReplicaCount:  fmt.Sprintf("%v", minReplicaCount),
+		MaxReplicaCount:  fmt.Sprintf("%v", maxReplicaCount),
+		Pat:              base64Pat,
+		RunnerScope:      githubScope,
+		Owner:            owner,
+		Repos:            repos,
+		Labels:           "e2etester",
+		ApplicationID:    appID,
+		InstallationID:   instID,
+		ApplicationKey:   appKey,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "authTemplate", Config: triggerAuthTemplate},
+		{Name: "secretGhaTemplate", Config: secretGhaTemplate},
+		{Name: "authGhaTemplate", Config: triggerGhaAuthTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		{Name: "scaledJobTemplate", Config: scaledJobTemplate},
+		{Name: "scaledGhaJobTemplate", Config: scaledGhaJobTemplate},
+	}
 }
 
 func testSONotActivated(t *testing.T, kc *kubernetes.Clientset) {

@@ -236,19 +236,19 @@ func TestScaler(t *testing.T) {
 
 func getTemplateData(metricValue int) (templateData, []Template) {
 	return templateData{
-			TestNamespace:   testNamespace,
-			ScaledJobName:   scaledJobName,
-			ScalerName:      scalerName,
-			ServiceName:     serviceName,
-			MinReplicaCount: minReplicaCount,
-			MaxReplicaCount: maxReplicaCount,
-			MetricThreshold: 1,
-			MetricValue:     metricValue,
-		}, []Template{
-			{Name: "scalerTemplate", Config: scalerTemplate},
-			{Name: "serviceTemplate", Config: serviceTemplate},
-			{Name: "scaledJobTemplate", Config: scaledJobTemplate},
-		}
+		TestNamespace:   testNamespace,
+		ScaledJobName:   scaledJobName,
+		ScalerName:      scalerName,
+		ServiceName:     serviceName,
+		MinReplicaCount: minReplicaCount,
+		MaxReplicaCount: maxReplicaCount,
+		MetricThreshold: 1,
+		MetricValue:     metricValue,
+	}, []Template{
+		{Name: "scalerTemplate", Config: scalerTemplate},
+		{Name: "serviceTemplate", Config: serviceTemplate},
+		{Name: "scaledJobTemplate", Config: scaledJobTemplate},
+	}
 }
 
 func testPause(t *testing.T, kc *kubernetes.Clientset) {

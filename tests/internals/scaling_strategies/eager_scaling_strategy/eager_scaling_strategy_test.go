@@ -111,15 +111,15 @@ func TestScalingStrategy(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			// Populate fields required in YAML templates
-			ScaledJobName:    scaledJobName,
-			TestNamespace:    testNamespace,
-			QueueName:        queueName,
-			Base64Connection: base64.StdEncoding.EncodeToString([]byte(httpConnectionString)),
-			SecretName:       secretName,
-		}, []Template{
-			{Name: "scaledJobTemplate", Config: scaledJobTemplate},
-		}
+		// Populate fields required in YAML templates
+		ScaledJobName:    scaledJobName,
+		TestNamespace:    testNamespace,
+		QueueName:        queueName,
+		Base64Connection: base64.StdEncoding.EncodeToString([]byte(httpConnectionString)),
+		SecretName:       secretName,
+	}, []Template{
+		{Name: "scaledJobTemplate", Config: scaledJobTemplate},
+	}
 }
 
 func testEagerScaling(t *testing.T, kc *kubernetes.Clientset) {
