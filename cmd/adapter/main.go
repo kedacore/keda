@@ -360,6 +360,9 @@ func main() {
 // discovery. See https://github.com/kedacore/keda/issues/6694.
 //
 // KEDA's list of external metrics is static, so publishing it once is enough.
+//
+// TODO: remove once custom-metrics-apiserver registers the group in aggregated
+// discovery itself: https://github.com/kubernetes-sigs/custom-metrics-apiserver/issues/259
 func addExternalMetricsAggregatedDiscovery(server *apiserver.CustomMetricsAdapterServer, p provider.ExternalMetricsProvider) error {
 	resources, err := genericapi.ConvertGroupVersionIntoToDiscovery(provider.NewExternalMetricResourceLister(p).ListAPIResources())
 	if err != nil {
