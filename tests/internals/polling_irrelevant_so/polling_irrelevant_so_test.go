@@ -319,24 +319,24 @@ func waitForScaledObjectCondition(t *testing.T, description string, check func(*
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:               namespace,
-			DeploymentName:              deploymentName,
-			MetricsServerDeploymentName: metricsServerDeploymentName,
-			ServiceName:                 serviceName,
-			TriggerAuthName:             triggerAuthName,
-			ScaledObject:                scaledObjectName,
-			SecretName:                  secretName,
-			MetricsServerEndpoint:       metricsServerEndpoint,
-			MetricsServerReplicas:       1,
-			MinReplicas:                 fmt.Sprintf("%v", minReplicas),
-			MaxReplicas:                 fmt.Sprintf("%v", maxReplicas),
-			FallbackReplicas:            fmt.Sprintf("%v", fallbackReplicas),
-			MetricValue:                 0,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "metricsServerDeploymentTemplate", Config: metricsServerDeploymentTemplate},
-			{Name: "serviceTemplate", Config: serviceTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-		}
+		TestNamespace:               namespace,
+		DeploymentName:              deploymentName,
+		MetricsServerDeploymentName: metricsServerDeploymentName,
+		ServiceName:                 serviceName,
+		TriggerAuthName:             triggerAuthName,
+		ScaledObject:                scaledObjectName,
+		SecretName:                  secretName,
+		MetricsServerEndpoint:       metricsServerEndpoint,
+		MetricsServerReplicas:       1,
+		MinReplicas:                 fmt.Sprintf("%v", minReplicas),
+		MaxReplicas:                 fmt.Sprintf("%v", maxReplicas),
+		FallbackReplicas:            fmt.Sprintf("%v", fallbackReplicas),
+		MetricValue:                 0,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "metricsServerDeploymentTemplate", Config: metricsServerDeploymentTemplate},
+		{Name: "serviceTemplate", Config: serviceTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+	}
 }

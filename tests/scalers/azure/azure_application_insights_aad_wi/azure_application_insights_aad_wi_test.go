@@ -205,21 +205,21 @@ func getTemplateData() (templateData, []Template) {
 	base64ApplicationInsightsID := base64.StdEncoding.EncodeToString([]byte(appInsightsAppID))
 
 	return templateData{
-			TestNamespace:                 testNamespace,
-			SecretName:                    secretName,
-			DeploymentName:                deploymentName,
-			TriggerAuthName:               triggerAuthName,
-			ScaledObjectName:              scaledObjectName,
-			AzureADTenantID:               base64TenantID,
-			ApplicationInsightsID:         base64ApplicationInsightsID,
-			ApplicationInsightsMetricName: appInsightsMetricName,
-			ApplicationInsightsRole:       appInsightsRole,
-			MinReplicaCount:               fmt.Sprintf("%v", minReplicaCount),
-			MaxReplicaCount:               fmt.Sprintf("%v", maxReplicaCount),
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:                 testNamespace,
+		SecretName:                    secretName,
+		DeploymentName:                deploymentName,
+		TriggerAuthName:               triggerAuthName,
+		ScaledObjectName:              scaledObjectName,
+		AzureADTenantID:               base64TenantID,
+		ApplicationInsightsID:         base64ApplicationInsightsID,
+		ApplicationInsightsMetricName: appInsightsMetricName,
+		ApplicationInsightsRole:       appInsightsRole,
+		MinReplicaCount:               fmt.Sprintf("%v", minReplicaCount),
+		MaxReplicaCount:               fmt.Sprintf("%v", maxReplicaCount),
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }

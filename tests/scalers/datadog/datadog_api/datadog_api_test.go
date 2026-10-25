@@ -328,26 +328,26 @@ func uninstallDatadog(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:           testNamespace,
-			DeploymentName:          deploymentName,
-			MonitoredDeploymentName: monitoredDeploymentName,
-			ServiceName:             serviceName,
-			TriggerAuthName:         triggerAuthName,
-			ScaledObjectName:        scaledObjectName,
-			SecretName:              secretName,
-			ConfigName:              configName,
-			DatadogAPIKey:           base64.StdEncoding.EncodeToString([]byte(datadogAPIKey)),
-			DatadogAppKey:           base64.StdEncoding.EncodeToString([]byte(datadogAppKey)),
-			DatadogSite:             base64.StdEncoding.EncodeToString([]byte(datadogSite)),
-			KuberneteClusterName:    kuberneteClusterName,
-			MinReplicaCount:         fmt.Sprintf("%v", minReplicaCount),
-			MaxReplicaCount:         fmt.Sprintf("%v", maxReplicaCount),
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "configTemplate", Config: configTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "serviceTemplate", Config: serviceTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
-		}
+		TestNamespace:           testNamespace,
+		DeploymentName:          deploymentName,
+		MonitoredDeploymentName: monitoredDeploymentName,
+		ServiceName:             serviceName,
+		TriggerAuthName:         triggerAuthName,
+		ScaledObjectName:        scaledObjectName,
+		SecretName:              secretName,
+		ConfigName:              configName,
+		DatadogAPIKey:           base64.StdEncoding.EncodeToString([]byte(datadogAPIKey)),
+		DatadogAppKey:           base64.StdEncoding.EncodeToString([]byte(datadogAppKey)),
+		DatadogSite:             base64.StdEncoding.EncodeToString([]byte(datadogSite)),
+		KuberneteClusterName:    kuberneteClusterName,
+		MinReplicaCount:         fmt.Sprintf("%v", minReplicaCount),
+		MaxReplicaCount:         fmt.Sprintf("%v", maxReplicaCount),
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "configTemplate", Config: configTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "serviceTemplate", Config: serviceTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
+	}
 }

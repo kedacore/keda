@@ -188,20 +188,20 @@ func getTemplateData(eventHubHelper azurehelper.EventHubHelper) (templateData, [
 	base64StorageConnection := base64.StdEncoding.EncodeToString([]byte(storageConnectionString))
 
 	return templateData{
-			TestNamespace:           testNamespace,
-			SecretName:              secretName,
-			EventHubConnection:      base64EventhubConnection,
-			StorageConnection:       base64StorageConnection,
-			CheckpointContainerName: checkpointContainerName,
-			DeploymentName:          deploymentName,
-			ScaledObjectName:        scaledObjectName,
-			TriggerAuthName:         triggerAuthName,
-			ConsumerGroup:           eventhubConsumerGroup,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
-		}
+		TestNamespace:           testNamespace,
+		SecretName:              secretName,
+		EventHubConnection:      base64EventhubConnection,
+		StorageConnection:       base64StorageConnection,
+		CheckpointContainerName: checkpointContainerName,
+		DeploymentName:          deploymentName,
+		ScaledObjectName:        scaledObjectName,
+		TriggerAuthName:         triggerAuthName,
+		ConsumerGroup:           eventhubConsumerGroup,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+	}
 }
 
 func testActivation(ctx context.Context, t *testing.T, kc *kubernetes.Clientset, eventHubHelper azurehelper.EventHubHelper) {

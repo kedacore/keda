@@ -243,20 +243,20 @@ func checkIfSolrStatusIsReady(t *testing.T, name string) error {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:      testNamespace,
-			DeploymentName:     deploymentName,
-			ScaledObjectName:   scaledObjectName,
-			SecretName:         secretName,
-			SolrUsernameBase64: base64.StdEncoding.EncodeToString([]byte(solrUsername)),
-			SolrPasswordBase64: base64.StdEncoding.EncodeToString([]byte(solrPassword)),
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "serviceTemplate", Config: serviceTemplate},
-			{Name: "solrDeploymentTemplate", Config: solrDeploymentTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:      testNamespace,
+		DeploymentName:     deploymentName,
+		ScaledObjectName:   scaledObjectName,
+		SecretName:         secretName,
+		SolrUsernameBase64: base64.StdEncoding.EncodeToString([]byte(solrUsername)),
+		SolrPasswordBase64: base64.StdEncoding.EncodeToString([]byte(solrPassword)),
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "serviceTemplate", Config: serviceTemplate},
+		{Name: "solrDeploymentTemplate", Config: solrDeploymentTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 // add 3 documents to solr -> activation should not happen (activationTargetValue = 5)

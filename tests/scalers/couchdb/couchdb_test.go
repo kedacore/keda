@@ -244,26 +244,26 @@ func getTemplateData(t *testing.T, kc *kubernetes.Clientset) (templateData, []Te
 	hostName := fmt.Sprintf("test-release-svc-couchdb.%s.svc.cluster.local", testNamespace)
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
 	return templateData{
-			TestNamespace:    testNamespace,
-			DeploymentName:   deploymentName,
-			ClientName:       clientName,
-			HostName:         hostName,
-			Port:             "5984",
-			Username:         base64.StdEncoding.EncodeToString([]byte(couchdbUser)),
-			Password:         passwordEncoded,
-			TriggerAuthName:  triggerAuthName,
-			SecretName:       secretName,
-			ScaledObjectName: scaledObjectName,
-			MinReplicaCount:  minReplicaCount,
-			MaxReplicaCount:  maxReplicaCount,
-			Database:         couchdbDBName,
-			Connection:       connectionString,
-			Base64Connection: base64ConnectionString,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-			{Name: "clientTemplate", Config: clientTemplate},
-		}
+		TestNamespace:    testNamespace,
+		DeploymentName:   deploymentName,
+		ClientName:       clientName,
+		HostName:         hostName,
+		Port:             "5984",
+		Username:         base64.StdEncoding.EncodeToString([]byte(couchdbUser)),
+		Password:         passwordEncoded,
+		TriggerAuthName:  triggerAuthName,
+		SecretName:       secretName,
+		ScaledObjectName: scaledObjectName,
+		MinReplicaCount:  minReplicaCount,
+		MaxReplicaCount:  maxReplicaCount,
+		Database:         couchdbDBName,
+		Connection:       connectionString,
+		Base64Connection: base64ConnectionString,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		{Name: "clientTemplate", Config: clientTemplate},
+	}
 }
