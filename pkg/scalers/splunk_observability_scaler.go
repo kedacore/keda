@@ -23,6 +23,9 @@ const splunkO11yStreamMargin = 10 * time.Second
 // splunkO11yDrainTimeout is a short best-effort budget for draining after Stop.
 const splunkO11yDrainTimeout = 2 * time.Second
 
+// splunkO11yCloseTimeout bounds how long Close waits for in-flight queries to finish cleanup.
+const splunkO11yCloseTimeout = 2 * splunkO11yDrainTimeout
+
 type splunkObservabilityMetadata struct {
 	TriggerIndex int
 
@@ -174,11 +177,37 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 		}
 	}()
 
-	comp, err := apiClient.Execute(queryCtx, &signalflow.ExecuteRequest{
-		Program: s.metadata.Query,
-	})
-	if err != nil {
-		return -1, fmt.Errorf("could not execute signalflow query: %w", err)
+	// Execute can block on the SignalFlow client's internal lock without observing
+	// queryCtx, so run it separately and stop waiting once the query is cancelled.
+	type executeResult struct {
+		comp *signalflow.Computation
+		err  error
+	}
+	executeCh := make(chan executeResult, 1)
+	go func() {
+		comp, err := apiClient.Execute(queryCtx, &signalflow.ExecuteRequest{
+			Program: s.metadata.Query,
+		})
+		executeCh <- executeResult{comp, err}
+	}()
+
+	var comp *signalflow.Computation
+	select {
+	case res := <-executeCh:
+		if res.err != nil {
+			return -1, fmt.Errorf("could not execute signalflow query: %w", res.err)
+		}
+		comp = res.comp
+	case <-queryCtx.Done():
+		// Keep the query in flight until Execute returns so Close does not tear the client down under it.
+		cleanupStarted = true
+		go func() {
+			if res := <-executeCh; res.comp != nil {
+				_ = s.stopAndDrain(res.comp, nil)
+			}
+			finishQuery()
+		}()
+		return -1, fmt.Errorf("splunk observability query ended before execute returned: %w", queryCtx.Err())
 	}
 
 	s.logger.V(1).Info("Started MTS stream.")
@@ -322,7 +351,7 @@ func (s *splunkObservabilityScaler) GetMetricSpecForScaling(context.Context) []v
 	return []v2.MetricSpec{metricSpec}
 }
 
-func (s *splunkObservabilityScaler) Close(context.Context) error {
+func (s *splunkObservabilityScaler) Close(ctx context.Context) error {
 	s.mu.Lock()
 	if s.closed {
 		done := s.closeDone
@@ -346,10 +375,26 @@ func (s *splunkObservabilityScaler) Close(context.Context) error {
 	for _, cancel := range cancels {
 		cancel()
 	}
-	s.inFlight.Wait()
-	if apiClient != nil {
-		apiClient.Close()
+	defer close(done)
+
+	// Close the client only after in-flight queries finish, since using it after
+	// Close panics. Wait for them in the background so a query stuck inside the
+	// SignalFlow client cannot block Close indefinitely.
+	cleanupDone := make(chan struct{})
+	go func() {
+		s.inFlight.Wait()
+		if apiClient != nil {
+			apiClient.Close()
+		}
+		close(cleanupDone)
+	}()
+
+	waitCtx, cancel := context.WithTimeout(ctx, splunkO11yCloseTimeout)
+	defer cancel()
+	select {
+	case <-cleanupDone:
+	case <-waitCtx.Done():
+		s.logger.Info("Timed out waiting for in-flight Splunk Observability queries; client will be closed once they finish")
 	}
-	close(done)
 	return nil
 }

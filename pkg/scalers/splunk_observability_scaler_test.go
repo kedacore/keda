@@ -230,6 +230,50 @@ func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testin
 	}
 }
 
+// Regression guard for #8280: if Execute is stuck on the SignalFlow client lock,
+// neither getQueryResult nor Close may block past their own bounds.
+func TestSplunkObservabilityStuckExecuteDoesNotHang(t *testing.T) {
+	scaler, stop := newFakeSplunkO11yScaler(t, 3600)
+	defer stop()
+
+	client := scaler.apiClient
+	client.Lock()
+	unlocked := false
+	unlock := func() {
+		if !unlocked {
+			unlocked = true
+			client.Unlock()
+		}
+	}
+	defer unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		_, err := scaler.getQueryResult(ctx)
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("expected stuck query to return an error")
+		}
+	case <-time.After(splunkO11yDrainTimeout):
+		t.Fatal("getQueryResult did not return while Execute was stuck")
+	}
+
+	start := time.Now()
+	if err := scaler.Close(context.Background()); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	if elapsed := time.Since(start); elapsed > splunkO11yCloseTimeout+time.Second {
+		t.Fatalf("Close took %v with a stuck query", elapsed)
+	}
+	unlock()
+}
+
 func TestSplunkObservabilityCloseCancelsActiveQuery(t *testing.T) {
 	scaler, _, started, stop := newFakeSplunkO11yScalerWithBackend(t, 3600)
 	defer stop()

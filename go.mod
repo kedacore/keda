@@ -96,7 +96,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/segmentio/kafka-go v0.4.51
 	github.com/segmentio/kafka-go/sasl/aws_msk_iam_v2 v0.1.0
-	github.com/signalfx/signalflow-client-go/v2 v2.3.0
+	github.com/signalfx/signalflow-client-go/v2 v2.3.1-0.20260825155900-8aab013c79fb
 	github.com/signalfx/signalfx-go v1.65.0
 	github.com/solarwinds/swo-sdk-go/swov1 v0.15.3
 	github.com/spf13/pflag v1.0.10
