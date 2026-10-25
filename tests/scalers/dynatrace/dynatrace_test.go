@@ -212,20 +212,20 @@ func setMetricValue(t *testing.T, value float64, stopCh <-chan struct{}) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:    testNamespace,
-			DeploymentName:   deploymentName,
-			TriggerAuthName:  triggerAuthName,
-			ScaledObjectName: scaledObjectName,
-			SecretName:       secretName,
-			MinReplicaCount:  fmt.Sprintf("%v", minReplicaCount),
-			MaxReplicaCount:  fmt.Sprintf("%v", maxReplicaCount),
-			DynatraceToken:   base64.StdEncoding.EncodeToString([]byte(dynatraceToken)),
-			DynatraceHost:    dynatraceHost,
-			MetricName:       dynatraceMetricName,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:    testNamespace,
+		DeploymentName:   deploymentName,
+		TriggerAuthName:  triggerAuthName,
+		ScaledObjectName: scaledObjectName,
+		SecretName:       secretName,
+		MinReplicaCount:  fmt.Sprintf("%v", minReplicaCount),
+		MaxReplicaCount:  fmt.Sprintf("%v", maxReplicaCount),
+		DynatraceToken:   base64.StdEncoding.EncodeToString([]byte(dynatraceToken)),
+		DynatraceHost:    dynatraceHost,
+		MetricName:       dynatraceMetricName,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
