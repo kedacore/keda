@@ -2,8 +2,10 @@ package scalers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -434,5 +436,84 @@ func TestActiveMQGetMonitoringEndpoint(t *testing.T) {
 		if endpoint != testData.expected {
 			t.Errorf("Wrong endpoint: %s, expected: %s", endpoint, testData.expected)
 		}
+	}
+}
+
+func TestActiveMQUsePostSendsJolokiaReadRequest(t *testing.T) {
+	var gotMethod, gotPath, gotContentType, gotOrigin string
+	var gotBody jolokiaReadRequest
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		gotPath = r.URL.Path
+		gotContentType = r.Header.Get("Content-Type")
+		gotOrigin = r.Header.Get("Origin")
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		_, _ = w.Write([]byte(`{"value":7,"status":200,"timestamp":1}`))
+	}))
+	defer server.Close()
+
+	metadata, err := parseActiveMQMetadata(&scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"managementEndpoint": server.Listener.Addr().String(),
+			"brokerName":         "myBrokerName",
+			"destinationName":    "keda-test",
+			"corsHeader":         "http://keda.example",
+			"usePost":            "true",
+		},
+		AuthParams: map[string]string{"username": "u", "password": "p"},
+	})
+	if err != nil {
+		t.Fatal("Could not parse metadata:", err)
+	}
+	scaler := activeMQScaler{metadata: metadata, httpClient: server.Client()}
+
+	count, err := scaler.getQueueMessageCount(context.Background())
+	if err != nil {
+		t.Fatal("Could not get the queue size:", err)
+	}
+
+	if count != 7 {
+		t.Errorf("Wrong queue size: %d, expected 7", count)
+	}
+	if gotMethod != http.MethodPost {
+		t.Errorf("Wrong method: %s, expected POST", gotMethod)
+	}
+	if gotPath != "/api/jolokia" {
+		t.Errorf("Wrong path: %s, expected /api/jolokia", gotPath)
+	}
+	if gotContentType != "application/json" {
+		t.Errorf("Wrong Content-Type: %s", gotContentType)
+	}
+	if gotOrigin != "http://keda.example" {
+		t.Errorf("Wrong Origin: %s", gotOrigin)
+	}
+	expectedBody := jolokiaReadRequest{
+		Type:      "read",
+		MBean:     "org.apache.activemq:type=Broker,brokerName=myBrokerName,destinationType=Queue,destinationName=keda-test",
+		Attribute: "QueueSize",
+	}
+	if gotBody != expectedBody {
+		t.Errorf("Wrong body: %+v, expected %+v", gotBody, expectedBody)
+	}
+}
+
+func TestActiveMQUsePostRequiresReadURL(t *testing.T) {
+	metadata, err := parseActiveMQMetadata(&scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"managementEndpoint": "localhost:8161",
+			"brokerName":         "myBrokerName",
+			"destinationName":    "keda-test",
+			"usePost":            "true",
+			"restAPITemplate":    "http://localhost:8161/api/other/org.apache.activemq:type=Broker,brokerName=myBrokerName,destinationType=Queue,destinationName=keda-test/QueueSize",
+		},
+		AuthParams: map[string]string{"username": "u", "password": "p"},
+	})
+	if err != nil {
+		t.Fatal("Could not parse metadata:", err)
+	}
+	scaler := activeMQScaler{metadata: metadata, httpClient: http.DefaultClient}
+
+	if _, _, err := scaler.getJolokiaPostRequest(); err == nil {
+		t.Error("Expected an error for a URL without /read/")
 	}
 }
