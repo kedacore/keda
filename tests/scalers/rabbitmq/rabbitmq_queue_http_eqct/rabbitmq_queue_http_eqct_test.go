@@ -101,17 +101,17 @@ func TestScaler(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:    testNamespace,
-			DeploymentName:   deploymentName,
-			ScaledObjectName: scaledObjectName,
-			SecretName:       secretName,
-			QueueName:        queueName,
-			Connection:       connectionString,
-			Base64Connection: base64.StdEncoding.EncodeToString([]byte(httpConnectionString)),
-		}, []Template{
-			{Name: "deploymentTemplate", Config: RMQTargetDeploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:    testNamespace,
+		DeploymentName:   deploymentName,
+		ScaledObjectName: scaledObjectName,
+		SecretName:       secretName,
+		QueueName:        queueName,
+		Connection:       connectionString,
+		Base64Connection: base64.StdEncoding.EncodeToString([]byte(httpConnectionString)),
+	}, []Template{
+		{Name: "deploymentTemplate", Config: RMQTargetDeploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func testScaling(t *testing.T, kc *kubernetes.Clientset) {

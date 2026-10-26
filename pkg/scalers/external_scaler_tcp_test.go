@@ -77,6 +77,7 @@ func TestExternalScalerReleasesTheTCPConnection(t *testing.T) {
 		if err != nil {
 			t.Fatalf("NewExternalScaler: %v", err)
 		}
+		closeOnCleanup(t, s)
 		// grpc.NewClient dials lazily, so issue one call to bring the transport up.
 		// The metric name carries the trigger index prefix the scaler strips before
 		// the request, without which it returns early and never reaches the wire.

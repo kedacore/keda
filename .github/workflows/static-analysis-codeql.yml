@@ -17,7 +17,7 @@ jobs:
   codeQl:
     name: Analyze CodeQL Go
     runs-on: ubuntu-latest
-    container: ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c
+    container: ghcr.io/kedacore/keda-tools:1.27.3@sha256:068e6772a1714b673c503ad72c7d2f50570761a5a318087e3e6ec994f5df29f8
     if: (github.actor != 'dependabot[bot]')
     steps:
       - name: Checkout repository
@@ -26,16 +26,16 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
           languages: go
           # Details on CodeQL's query packs refer to : https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
           queries: +security-and-quality
 
       - name: Autobuild
-        uses: github/codeql-action/autobuild@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        uses: github/codeql-action/autobuild@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
           category: "/language:go"

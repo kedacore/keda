@@ -164,17 +164,17 @@ func setupServiceBusQueue(t *testing.T) (*azservicebus.Client, *admin.Client, st
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:    testNamespace,
-			DeploymentName:   deploymentName,
-			TriggerAuthName:  triggerAuthName,
-			IdentityID:       azureADClientID,
-			ScaledObjectName: scaledObjectName,
-			QueueName:        queueName,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:    testNamespace,
+		DeploymentName:   deploymentName,
+		TriggerAuthName:  triggerAuthName,
+		IdentityID:       azureADClientID,
+		ScaledObjectName: scaledObjectName,
+		QueueName:        queueName,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func testScaleOutWithIncorrectIdentity(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Client) {
@@ -188,9 +188,10 @@ func testScaleOutWithIncorrectIdentity(t *testing.T, kc *kubernetes.Clientset, c
 		}, nil)
 	}
 
-	// scale out should fail as we are using the incorrect identity
-	assert.True(t, WaitForDeploymentReplicaCountChange(t, kc, deploymentName, testNamespace, 30, 1) == 0,
-		"replica count should be 0 after 1 minute")
+	// Scale out should fail as we are using the incorrect identity, so the replica count has to stay
+	// at 0 for the whole window rather than merely be 0 at the end of it. Thirty seconds is what the
+	// previous 30 x 1s wait allowed.
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
 }
 
 func testScaleOutWithCorrectIdentity(t *testing.T, kc *kubernetes.Clientset, data templateData) {

@@ -164,20 +164,20 @@ func TestScaler(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:      testNamespace,
-			SecretName:         secretName,
-			AwsAccessKeyID:     base64.StdEncoding.EncodeToString([]byte(awsAccessKeyID)),
-			AwsSecretAccessKey: base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
-			AwsRegion:          awsRegion,
-			DeploymentName:     deploymentName,
-			ScaledObjectName:   scaledObjectName,
-			WorkspaceID:        workspaceID,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:      testNamespace,
+		SecretName:         secretName,
+		AwsAccessKeyID:     base64.StdEncoding.EncodeToString([]byte(awsAccessKeyID)),
+		AwsSecretAccessKey: base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
+		AwsRegion:          awsRegion,
+		DeploymentName:     deploymentName,
+		ScaledObjectName:   scaledObjectName,
+		WorkspaceID:        workspaceID,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func createAMPClient() *amp.Client {

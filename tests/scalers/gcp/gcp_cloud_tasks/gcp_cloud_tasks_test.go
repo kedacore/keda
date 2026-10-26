@@ -229,21 +229,21 @@ func getTemplateData() (templateData, []Template) {
 	base64GcpCreds := base64.StdEncoding.EncodeToString([]byte(gcpKey))
 
 	return templateData{
-			TestNamespace:       testNamespace,
-			SecretName:          secretName,
-			GcpCreds:            base64GcpCreds,
-			DeploymentName:      deploymentName,
-			ScaledObjectName:    scaledObjectName,
-			QueueID:             queueID,
-			ProjectID:           projectID,
-			MaxReplicaCount:     maxReplicaCount,
-			ActivationThreshold: activationThreshold,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-			{Name: "gcpSdkTemplate", Config: gcpSdkTemplate},
-		}
+		TestNamespace:       testNamespace,
+		SecretName:          secretName,
+		GcpCreds:            base64GcpCreds,
+		DeploymentName:      deploymentName,
+		ScaledObjectName:    scaledObjectName,
+		QueueID:             queueID,
+		ProjectID:           projectID,
+		MaxReplicaCount:     maxReplicaCount,
+		ActivationThreshold: activationThreshold,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		{Name: "gcpSdkTemplate", Config: gcpSdkTemplate},
+	}
 }
 
 func createGcpTasks(t *testing.T, count int) {

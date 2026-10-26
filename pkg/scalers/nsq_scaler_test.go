@@ -182,6 +182,49 @@ func createMockServerWithResponse(statusCode int, response string) http.HandlerF
 	}
 }
 
+// createMockNegotiatingServer mimics the HTTP API version negotiation of nsq < 1.0, which only responds with the
+// V1 format when the Accept header matches exactly and wraps the response in an envelope otherwise.
+func createMockNegotiatingServer(response string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		body := response
+		if r.Header.Get("Accept") != nsqAcceptHeader {
+			body = fmt.Sprintf(`{"status_code":200,"status_txt":"OK","data":%s}`, response)
+		}
+		http.ServeContent(w, r, "", time.Time{}, strings.NewReader(body))
+	}
+}
+
+func TestNSQGetTopicChannelDepthWithVersionNegotiation(t *testing.T) {
+	nsqdServer := httptest.NewServer(createMockNegotiatingServer(`{"version":"0.3.8","health":"OK","topics":[{"topic_name":"topic","depth":0,"channels":[{"channel_name":"channel","depth":7,"paused":false}]}]}`))
+	defer nsqdServer.Close()
+
+	parsedNSQdURL, err := url.Parse(nsqdServer.URL)
+	assert.Nil(t, err)
+
+	lookupdServer := httptest.NewServer(createMockNegotiatingServer(fmt.Sprintf(`{"channels":["channel"],"producers":[{"broadcast_address":"%s","http_port":%s,"version":"0.3.8"}]}`, parsedNSQdURL.Hostname(), parsedNSQdURL.Port())))
+	defer lookupdServer.Close()
+
+	parsedLookupdURL, err := url.Parse(lookupdServer.URL)
+	assert.Nil(t, err)
+
+	s := nsqScaler{
+		httpClient: http.DefaultClient,
+		scheme:     "http",
+		metadata: nsqMetadata{
+			NSQLookupdHTTPAddresses: []string{net.JoinHostPort(parsedLookupdURL.Hostname(), parsedLookupdURL.Port())},
+			Topic:                   "topic",
+			Channel:                 "channel",
+		},
+		logger: logr.Discard(),
+	}
+
+	depth, err := s.getTopicChannelDepth(context.Background())
+
+	assert.Nil(t, err)
+	assert.Equal(t, int64(7), depth)
+}
+
 func TestNSQParseMetadata(t *testing.T) {
 	for _, testData := range parseNSQMetadataTestDataset {
 		config := scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata}

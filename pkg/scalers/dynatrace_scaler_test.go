@@ -87,15 +87,19 @@ func TestDynatraceGetMetricSpecForScaling(t *testing.T) {
 
 func TestDynatraceGetMetricByQuery(t *testing.T) {
 	testCases := []struct {
-		name                  string
-		executeResponseFail   bool
-		executeState          string
-		pollResponseFail      bool
-		pollResponseAfter     int
-		pollIntermediateState string
-		pollTerminalState     string
-		metricValue           float64
-		isError               bool
+		name                           string
+		executeResponseFail            bool
+		executeState                   string
+		pollResponseFail               bool
+		pollResponseAfter              int
+		pollIntermediateState          string
+		pollTerminalState              string
+		pollNotificationType           string
+		pollNotificationMessage        string
+		pollNotificationMessagePresent bool
+		expectedError                  string
+		metricValue                    float64
+		isError                        bool
 	}{
 		{
 			name:                "value returned successfully on first poll",
@@ -172,6 +176,34 @@ func TestDynatraceGetMetricByQuery(t *testing.T) {
 			pollTerminalState:   "RESULT_GONE",
 			isError:             true,
 		},
+		{
+			name:                           "poll returns missing bucket permissions notification with message",
+			pollNotificationType:           "MISSING_BUCKET_PERMISSIONS",
+			pollNotificationMessage:        "No bucket permissions for table metrics.",
+			pollNotificationMessagePresent: true,
+			isError:                        true,
+			expectedError:                  "error executing DQL query: No bucket permissions for table metrics.",
+		},
+		{
+			name:                 "poll returns missing bucket permissions notification without message",
+			pollNotificationType: "MISSING_BUCKET_PERMISSIONS",
+			isError:              true,
+			expectedError:        "error executing DQL query: missing bucket permissions",
+		},
+		{
+			name:                           "poll returns missing bucket permissions notification with empty message",
+			pollNotificationType:           "MISSING_BUCKET_PERMISSIONS",
+			pollNotificationMessagePresent: true,
+			isError:                        true,
+			expectedError:                  "error executing DQL query: missing bucket permissions",
+		},
+		{
+			name:                           "poll accepts metric for another notification type with permission message",
+			pollNotificationType:           "OTHER_NOTIFICATION",
+			pollNotificationMessage:        "No bucket permissions for table metrics.",
+			pollNotificationMessagePresent: true,
+			metricValue:                    100.1,
+		},
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -215,16 +247,34 @@ func TestDynatraceGetMetricByQuery(t *testing.T) {
 						if pollingCount > tt.pollResponseAfter {
 							w.Header().Set("Content-Type", "application/json")
 							w.WriteHeader(http.StatusOK)
-							bytes, err := json.Marshal(dynatraceQueryResponse{
+							queryResponse := dynatraceQueryResponse{
 								State: pollTerminalState,
-								Result: struct {
-									Records []struct {
-										R float64 `json:"r"`
-									} `json:"records"`
-								}{Records: []struct {
-									R float64 `json:"r"`
-								}{{R: tt.metricValue}}},
-							})
+							}
+							queryResponse.Result.Records = []struct {
+								R float64 `json:"r"`
+							}{{R: tt.metricValue}}
+							var response any = queryResponse
+							if tt.pollNotificationType != "" {
+								notification := map[string]any{
+									"notificationType": tt.pollNotificationType,
+									"severity":         "WARNING",
+								}
+								if tt.pollNotificationMessagePresent {
+									notification["message"] = tt.pollNotificationMessage
+								}
+								response = map[string]any{
+									"state": pollTerminalState,
+									"result": map[string]any{
+										"records": []map[string]any{{"r": tt.metricValue}},
+										"metadata": map[string]any{
+											"grail": map[string]any{
+												"notifications": []map[string]any{notification},
+											},
+										},
+									},
+								}
+							}
+							bytes, err := json.Marshal(response)
 							assert.NoError(t, err)
 							_, err = w.Write(bytes)
 							assert.NoError(t, err)
@@ -252,6 +302,9 @@ func TestDynatraceGetMetricByQuery(t *testing.T) {
 			metric, _, err := scaler.GetMetricsAndActivity(t.Context(), "dummy")
 			if tt.isError {
 				assert.Error(t, err)
+				if tt.expectedError != "" {
+					assert.EqualError(t, err, tt.expectedError)
+				}
 			} else {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.metricValue, metric[0].Value.AsFloat64Slow())
