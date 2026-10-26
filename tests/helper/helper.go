@@ -730,36 +730,6 @@ func WaitForReplicaSetReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, 
 	})
 }
 
-// Waits for number of iterations and returns replica count.
-func WaitForDeploymentReplicaCountChange(t *testing.T, kc *kubernetes.Clientset, name, namespace string, iterations, intervalSeconds int) int {
-	t.Log("Waiting for some time to see if deployment replica count changes")
-	var replicas, prevReplicas int32
-	prevReplicas = -1
-
-	for i := 0; i < iterations; i++ {
-		deployment, err := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
-		if err != nil {
-			// Reading on would report 0 replicas, which the caller cannot tell apart from a
-			// genuine scale to zero.
-			t.Logf("cannot get deployment %s/%s - %s", namespace, name, err)
-		} else {
-			replicas = deployment.Status.Replicas
-
-			t.Logf("Deployment - %s, Current  - %d", name, replicas)
-
-			if replicas != prevReplicas && prevReplicas != -1 {
-				break
-			}
-
-			prevReplicas = replicas
-		}
-
-		time.Sleep(time.Duration(intervalSeconds) * time.Second)
-	}
-
-	return int(replicas)
-}
-
 // Waits some time to ensure that the replica count doesn't change.
 func AssertReplicaCountNotChangeDuringTimePeriod(t *testing.T, kc *kubernetes.Clientset, name, namespace string, target, intervalSeconds int) {
 	t.Logf("Waiting for some time to ensure deployment replica count doesn't change from %d", target)

@@ -2984,6 +2984,13 @@
                     "envVariableReadable": true
                 },
                 {
+                    "name": "maxPages",
+                    "type": "string",
+                    "default": "50",
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
+                },
+                {
                     "name": "applicationID",
                     "type": "string",
                     "optional": true,
@@ -3384,13 +3391,6 @@
                     "metadataVariableReadable": true
                 },
                 {
-                    "name": "minMetricValue",
-                    "type": "string",
-                    "optional": true,
-                    "deprecated": "The 'minMetricValue' setting is DEPRECATED and is removed in v2.20 - Use 'activationTargetMetricValue' instead",
-                    "metadataVariableReadable": true
-                },
-                {
                     "name": "metricCollectionTime",
                     "type": "string",
                     "default": "300",
@@ -3506,13 +3506,6 @@
         {
             "type": "influxdb",
             "parameters": [
-                {
-                    "name": "authToken",
-                    "type": "string",
-                    "optional": true,
-                    "deprecated": "The 'authToken' setting from triggerMetadata is DEPRECATED and is removed in v2.20 - Use 'authToken' from resolvedEnv or authParams instead",
-                    "metadataVariableReadable": true
-                },
                 {
                     "name": "authToken",
                     "type": "string",
@@ -4290,6 +4283,12 @@
                     "name": "timeout",
                     "type": "string",
                     "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "zeroOnNoReadyEndpoints",
+                    "type": "string",
+                    "default": "false",
                     "metadataVariableReadable": true
                 },
                 {
@@ -5549,13 +5548,6 @@
         {
             "type": "gcp-pubsub",
             "parameters": [
-                {
-                    "name": "subscriptionSize",
-                    "type": "string",
-                    "optional": true,
-                    "deprecated": "The 'subscriptionSize' setting is DEPRECATED and is removed in v2.20 - Use 'mode' and 'value' instead",
-                    "metadataVariableReadable": true
-                },
                 {
                     "name": "mode",
                     "type": "string",

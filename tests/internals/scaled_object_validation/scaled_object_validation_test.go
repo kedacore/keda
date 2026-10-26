@@ -431,10 +431,10 @@ func testScaledObjectWithExcludedLabels(t *testing.T, data templateData) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:       testNamespace,
-			DeploymentName:      deploymentName,
-			EmptyTriggersSoName: emptyTriggersSoName,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-		}
+		TestNamespace:       testNamespace,
+		DeploymentName:      deploymentName,
+		EmptyTriggersSoName: emptyTriggersSoName,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+	}
 }

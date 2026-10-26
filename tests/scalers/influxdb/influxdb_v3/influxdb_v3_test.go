@@ -338,19 +338,19 @@ func updateDataWithInfluxAuth(t *testing.T, kc *kubernetes.Clientset, data *temp
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:           testNamespace,
-			InfluxdbStatefulsetName: influxdbStatefulsetName,
-			InfluxdbWriteJobName:    influxdbJobName,
-			ScaledObjectName:        scaledObjectName,
-			DeploymentName:          deploymentName,
-			SecretName:              secretName,
-			TriggerAuthName:         triggerAuthName,
-			AuthToken:               authToken,
-			DatabaseName:            databaseName,
-		}, []Template{
-			{Name: "influxdbStatefulsetTemplate", Config: influxdbStatefulsetTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-		}
+		TestNamespace:           testNamespace,
+		InfluxdbStatefulsetName: influxdbStatefulsetName,
+		InfluxdbWriteJobName:    influxdbJobName,
+		ScaledObjectName:        scaledObjectName,
+		DeploymentName:          deploymentName,
+		SecretName:              secretName,
+		TriggerAuthName:         triggerAuthName,
+		AuthToken:               authToken,
+		DatabaseName:            databaseName,
+	}, []Template{
+		{Name: "influxdbStatefulsetTemplate", Config: influxdbStatefulsetTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+	}
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
