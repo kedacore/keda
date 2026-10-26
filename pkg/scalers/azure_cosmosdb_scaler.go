@@ -16,15 +16,12 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	azcloud "github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -268,6 +265,10 @@ func parseAzureCosmosDBMetadata(config *scalersconfig.ScalerConfig) (*azureCosmo
 }
 
 func newCosmosDBClient(meta *azureCosmosDBMetadata, triggerMetadata map[string]string, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger, httpTimeout time.Duration) (*cosmosDBClient, error) {
+	environment, err := resolveCosmosDBEnvironment(triggerMetadata)
+	if err != nil {
+		return nil, err
+	}
 	if httpTimeout == 0 {
 		httpTimeout = 30 * time.Second
 	}
@@ -281,6 +282,7 @@ func newCosmosDBClient(meta *azureCosmosDBMetadata, triggerMetadata map[string]s
 		processorName:    meta.ProcessorName,
 		logger:           logger,
 	}
+	client.httpClient.CheckRedirect = rejectCosmosDBRedirect
 
 	// Resolve data endpoint and key
 	if meta.Connection != "" {
@@ -311,9 +313,14 @@ func newCosmosDBClient(meta *azureCosmosDBMetadata, triggerMetadata map[string]s
 	if client.dataEndpoint == "" || client.leaseEndpoint == "" {
 		return nil, fmt.Errorf("failed to determine cosmos db endpoints")
 	}
+	for _, endpoint := range []string{client.dataEndpoint, client.leaseEndpoint} {
+		if err := validateCosmosDBEndpoint(endpoint, environment.CosmosDBDNSSuffix); err != nil {
+			return nil, err
+		}
+	}
 
 	if client.dataKey == "" || client.leaseKey == "" {
-		credential, resourceURL, err := newCosmosDBTokenCredential(meta, triggerMetadata, podIdentity, logger, client.httpClient)
+		credential, resourceURL, err := newCosmosDBTokenCredential(meta, environment, podIdentity, logger, client.httpClient)
 		if err != nil {
 			return nil, err
 		}
@@ -322,60 +329,6 @@ func newCosmosDBClient(meta *azureCosmosDBMetadata, triggerMetadata map[string]s
 	}
 
 	return client, nil
-}
-
-func newCosmosDBTokenCredential(meta *azureCosmosDBMetadata, triggerMetadata map[string]string, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger, transport policy.Transporter) (azcore.TokenCredential, string, error) {
-	switch podIdentity.Provider {
-	case "", kedav1alpha1.PodIdentityProviderNone:
-		cosmosDBResourceURL, credentialCloud, disableInstanceDiscovery, err := resolveCosmosDBServicePrincipalCloud(triggerMetadata)
-		if err != nil {
-			return nil, "", err
-		}
-		credential, err := azidentity.NewClientSecretCredential(meta.TenantID, meta.ClientID, meta.ClientSecret, &azidentity.ClientSecretCredentialOptions{
-			ClientOptions: azcore.ClientOptions{
-				Cloud:     credentialCloud,
-				Transport: transport,
-			},
-			DisableInstanceDiscovery: disableInstanceDiscovery,
-		})
-		if err != nil {
-			return nil, "", fmt.Errorf("error creating service-principal credential: %w", err)
-		}
-		return credential, cosmosDBResourceURL, nil
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		cosmosDBResourceURL, err := resolveCosmosDBResourceURL(triggerMetadata)
-		if err != nil {
-			return nil, "", fmt.Errorf("error resolving cosmos db resource URL: %w", err)
-		}
-		credential, err := azure.NewChainedCredential(logger, podIdentity)
-		if err != nil {
-			return nil, "", fmt.Errorf("error creating azure credential for workload identity: %w", err)
-		}
-		return credential, cosmosDBResourceURL, nil
-	default:
-		return nil, "", fmt.Errorf("pod identity %s not supported for azure cosmos db", podIdentity.Provider)
-	}
-}
-
-func resolveCosmosDBServicePrincipalCloud(triggerMetadata map[string]string) (string, azcloud.Configuration, bool, error) {
-	cosmosDBResourceURL, err := resolveCosmosDBResourceURL(triggerMetadata)
-	if err != nil {
-		return "", azcloud.Configuration{}, false, fmt.Errorf("error resolving cosmos db resource URL: %w", err)
-	}
-	activeDirectoryEndpoint, err := azure.ParseActiveDirectoryEndpoint(triggerMetadata)
-	if err != nil {
-		return "", azcloud.Configuration{}, false, fmt.Errorf("error resolving active directory endpoint: %w", err)
-	}
-	return cosmosDBResourceURL,
-		azcloud.Configuration{ActiveDirectoryAuthorityHost: activeDirectoryEndpoint},
-		strings.EqualFold(triggerMetadata["cloud"], azure.PrivateCloud),
-		nil
-}
-
-func resolveCosmosDBResourceURL(triggerMetadata map[string]string) (string, error) {
-	return azure.ParseEnvironmentProperty(triggerMetadata, "cosmosDBResourceURL", func(env azure.AzEnvironment) (string, error) {
-		return env.ResourceIdentifiers.CosmosDB, nil
-	})
 }
 
 func parseCosmosDBConnectionString(connectionString string) (string, string, error) {
@@ -415,6 +368,9 @@ func cosmosDBAccountShortName(endpoint string) string {
 
 // setAuthHeader sets the Authorization header using either master key HMAC-SHA256 or bearer token.
 func (c *cosmosDBClient) setAuthHeader(req *http.Request, verb, resourceType, resourceLink, date, key string) error {
+	if !cosmosDBRequestMatchesEndpoint(req, c.dataEndpoint) && !cosmosDBRequestMatchesEndpoint(req, c.leaseEndpoint) {
+		return fmt.Errorf("refusing cosmos db authentication outside the configured account origins")
+	}
 	if key != "" {
 		token, err := generateCosmosDBAuthToken(verb, resourceType, resourceLink, date, key)
 		if err != nil {
