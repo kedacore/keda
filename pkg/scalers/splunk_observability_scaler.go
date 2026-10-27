@@ -36,6 +36,7 @@ type splunkObservabilityMetadata struct {
 }
 
 type splunkObservabilityScaler struct {
+	metricType    v2.MetricTargetType
 	metadata      *splunkObservabilityMetadata
 	apiClient     *signalflow.Client
 	logger        logr.Logger
@@ -75,6 +76,11 @@ func newSplunkO11yConnection(meta *splunkObservabilityMetadata, logger logr.Logg
 func NewSplunkObservabilityScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	logger := InitializeLogger(config, "splunk_observability_scaler")
 
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
+	}
+
 	meta, err := parseSplunkObservabilityMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Splunk metadata: %w", err)
@@ -86,7 +92,8 @@ func NewSplunkObservabilityScaler(config *scalersconfig.ScalerConfig) (Scaler, e
 	}
 
 	return &splunkObservabilityScaler{
-		metadata:  meta,
+		metricType: metricType,
+		metadata:   meta,
 		apiClient: apiClient,
 		logger:    logger,
 	}, nil
@@ -314,7 +321,7 @@ func (s *splunkObservabilityScaler) GetMetricSpecForScaling(context.Context) []v
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, metricName),
 		},
-		Target: GetMetricTargetMili(v2.ValueMetricType, s.metadata.TargetValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.TargetValue),
 	}
 	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
