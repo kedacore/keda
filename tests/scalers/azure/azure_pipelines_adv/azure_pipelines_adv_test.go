@@ -463,21 +463,46 @@ func preSeedAgentPool(t *testing.T, data templateData) error {
 	if err != nil {
 		return err
 	}
-	// wait for deployment to be ready in AzDO
-	for !checkAgentState(t, data, "online") {
-		time.Sleep(10 * time.Second)
+	// Wait for each seed agent to report online in AzDO, then offline after the
+	// deployments are deleted. These used to be unbounded for !check() { sleep }
+	// loops: a stuck agent hung the whole e2e run. Ten minutes is a generous
+	// budget for AzDO to register or drop an agent; the previous sleep interval
+	// of 10s is kept as the poll cadence.
+	if err := waitForAgentState(t, data, "online"); err != nil {
+		return err
 	}
-	for !checkAgentState(t, naData, "online") {
-		time.Sleep(10 * time.Second)
+	if err := waitForAgentState(t, naData, "online"); err != nil {
+		return err
 	}
 	// delete the deployment
 	KubectlDeleteWithTemplate(t, naData, "deploymentTemplateSeed", seedDeploymentTemplate)
 	KubectlDeleteWithTemplate(t, data, "deploymentTemplateSeed", seedDeploymentTemplate)
-	for !checkAgentState(t, data, "offline") {
-		time.Sleep(10 * time.Second)
+	if err := waitForAgentState(t, data, "offline"); err != nil {
+		return err
 	}
-	for !checkAgentState(t, naData, "offline") {
-		time.Sleep(10 * time.Second)
+	if err := waitForAgentState(t, naData, "offline"); err != nil {
+		return err
+	}
+	return nil
+}
+
+const (
+	agentStateTimeout  = 10 * time.Minute
+	agentStateInterval = 10 * time.Second
+)
+
+func waitForAgentState(t *testing.T, data templateData, state string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), agentStateTimeout)
+	defer cancel()
+
+	err := KedaEventually(ctx, func(_ context.Context) (bool, error) {
+		if checkAgentState(t, data, state) {
+			return true, nil
+		}
+		return false, nil
+	}, agentStateInterval)
+	if err != nil {
+		return fmt.Errorf("agent %q did not become %s within %s: %w", data.SeedType+"-template", state, agentStateTimeout, err)
 	}
 	return nil
 }
