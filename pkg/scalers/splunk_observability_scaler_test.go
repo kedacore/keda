@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	v2 "k8s.io/api/autoscaling/v2"
 	"github.com/signalfx/signalflow-client-go/v2/signalflow"
 	"github.com/signalfx/signalfx-go/idtool"
 
@@ -113,13 +114,17 @@ func TestSplunkObservabilityGetMetricSpecForScaling(t *testing.T) {
 			t.Fatal("Could not parse Splunk Observability metadata:", err)
 		}
 		mockSplunkObservabilityScaler := splunkObservabilityScaler{
-			metadata: meta,
+			metricType: v2.AverageValueMetricType,
+			metadata:   meta,
 		}
 
 		metricSpec := mockSplunkObservabilityScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.metricName {
 			t.Error("Wrong External metric source name:", metricName)
+		}
+		if got := metricSpec[0].External.Target.Type; got != v2.AverageValueMetricType {
+			t.Errorf("Wrong External metric target type: got %q, want %q", got, v2.AverageValueMetricType)
 		}
 	}
 }
