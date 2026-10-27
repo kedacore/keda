@@ -18,6 +18,7 @@ package keda
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"reflect"
 	"sync"
@@ -52,6 +53,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/fallback"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scaling"
+	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
@@ -66,6 +68,7 @@ import (
 // +kubebuilder:rbac:groups="",resources="serviceaccounts",verbs=list;watch
 // +kubebuilder:rbac:groups="*",resources="*",verbs=get
 // +kubebuilder:rbac:groups="apps",resources=deployments;replicasets;statefulsets,verbs=list;watch
+// +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
 // +kubebuilder:rbac:groups="coordination.k8s.io",namespace=keda,resources=leases,verbs=get;list;watch;update;patch;create;delete
 // +kubebuilder:rbac:groups="",resources="limitranges",verbs=list;watch
 
@@ -279,9 +282,12 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		}
 	}
 
-	// Check scale target Name is specified
-	if scaledObject.Spec.ScaleTargetRef.Name == "" {
-		err := fmt.Errorf("ScaledObject.spec.scaleTargetRef.name is missing")
+	// Check the scale target is identified: a fixed name, a name prefix,
+	// and/or a label selector (at least one; selectors resolve per loop).
+	if scaledObject.Spec.ScaleTargetRef.Name == "" &&
+		scaledObject.Spec.ScaleTargetRef.NamePrefix == "" &&
+		scaledObject.Spec.ScaleTargetRef.LabelSelector == nil {
+		err := fmt.Errorf("ScaledObject.spec.scaleTargetRef needs at least one of name, namePrefix, labelSelector")
 		return message.ScaleTargetErrMsg, err
 	}
 
@@ -294,7 +300,33 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 	// Check if resource targeted for scaling exists and exposes /scale subresource
 	gvkr, err := r.checkTargetResourceIsScalable(ctx, logger, scaledObject)
 	if err != nil {
+		if stderrors.Is(err, resolver.ErrAmbiguousScaleTargetMatch) || stderrors.Is(err, resolver.ErrNoScaleTargetMatch) {
+			// A selector that resolves to zero or several objects names no
+			// target: the existing HPA (if any) would keep actuating a
+			// possibly-wrong one, so delete it and stop the loop. Both
+			// deletes are idempotent; the error return below requeues with
+			// backoff so a delayed target still converges on creation.
+			if _, delErr := r.ensureHPAForScaledObjectIsDeleted(ctx, logger, scaledObject); delErr != nil {
+				return "failed to delete HPA after scale target resolution failed", delErr
+			}
+			if stopErr := r.stopScaleLoop(ctx, logger, scaledObject); stopErr != nil {
+				return "failed to stop scale loop after scale target resolution failed", stopErr
+			}
+		}
 		return message.ScaleTargetErrMsg, err
+	}
+
+	// Selector-based refs can converge onto one workload after admission.
+	// The loser holds so only the winner actuates.
+	if conflictErr := r.ensureSingleTargetOwner(ctx, logger, scaledObject, gvkr); conflictErr != nil {
+		return message.ScaleTargetErrMsg, conflictErr
+	}
+
+	// Plain OrderedReady StatefulSets wedge on follow-down, and targets
+	// without placement rules pile (admission denies known-unsafe ones;
+	// post-admission edits converge here instead).
+	if followErr := r.ensureNodesFollowSafe(ctx, logger, scaledObject, gvkr); followErr != nil {
+		return message.ScaleTargetErrMsg, followErr
 	}
 
 	err = kedav1alpha1.CheckReplicaCountBoundsAreValid(scaledObject)
@@ -421,8 +453,14 @@ func (r *ScaledObjectReconciler) scaleTargetToPausedCount(ctx context.Context, l
 		return fmt.Errorf("failed to parse Group, Version, Kind, Resource: %w", err)
 	}
 
+	// Selectors resolve per loop; failure retries via reconcile error.
+	targetName, err := resolver.ResolveScaleTargetName(ctx, r.Client, scaledObject.Namespace, gvkr.GroupVersionKind(), scaledObject.Spec.ScaleTargetRef)
+	if err != nil {
+		return fmt.Errorf("failed to resolve scale target: %w", err)
+	}
+
 	gr := gvkr.GroupResource()
-	scale, err := r.ScaleClient.Scales(scaledObject.Namespace).Get(ctx, gr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+	scale, err := r.ScaleClient.Scales(scaledObject.Namespace).Get(ctx, gr, targetName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get scale for target resource: %w", err)
 	}
@@ -467,6 +505,15 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 		scaledObject.Status.OriginalReplicaCount == nil ||
 		removePausedStatus
 
+	// Selectors resolve per loop; failure retries via reconcile error
+	// (fail-closed: no HPA, no scale target recorded, no actuation).
+	targetName, err := resolver.ResolveScaleTargetName(ctx, r.Client, scaledObject.Namespace, gvkr.GroupVersionKind(), scaledObject.Spec.ScaleTargetRef)
+	if err != nil {
+		logger.Error(err, "Failed to resolve scale target", "resource", gvkString)
+		r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectCheckFailed, err.Error())
+		return gvkr, err
+	}
+
 	// check if we already know.
 	var scale *autoscalingv1.Scale
 	gr := gvkr.GroupResource()
@@ -475,19 +522,19 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 		// not cached, let's try to detect /scale subresource
 		// also rechecks when we need to update the status.
 		var errScale error
-		scale, errScale = (r.ScaleClient).Scales(scaledObject.Namespace).Get(ctx, gr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+		scale, errScale = (r.ScaleClient).Scales(scaledObject.Namespace).Get(ctx, gr, targetName, metav1.GetOptions{})
 		if errScale != nil {
 			// not able to get /scale subresource -> let's check if the resource even exist in the cluster
 			unstruct := &unstructured.Unstructured{}
 			unstruct.SetGroupVersionKind(gvkr.GroupVersionKind())
-			if err := r.Client.Get(ctx, client.ObjectKey{Namespace: scaledObject.Namespace, Name: scaledObject.Spec.ScaleTargetRef.Name}, unstruct); err != nil {
+			if err := r.Client.Get(ctx, client.ObjectKey{Namespace: scaledObject.Namespace, Name: targetName}, unstruct); err != nil {
 				// resource doesn't exist
-				logger.Error(err, message.ScaleTargetNotFoundMsg, "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
+				logger.Error(err, message.ScaleTargetNotFoundMsg, "resource", gvkString, "name", targetName)
 				r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNotFoundMsg)
 				return gvkr, err
 			}
 			// resource exist but doesn't expose /scale subresource
-			logger.Error(errScale, message.ScaleTargetNoSubresourceMsg, "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
+			logger.Error(errScale, message.ScaleTargetNoSubresourceMsg, "resource", gvkString, "name", targetName)
 			r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNoSubresourceMsg)
 			return gvkr, errScale
 		}
@@ -514,10 +561,101 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 		if err := kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status); err != nil {
 			return gvkr, err
 		}
-		logger.Info("Detected resource targeted for scaling", "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
+		logger.Info("Detected resource targeted for scaling", "resource", gvkString, "name", targetName)
+		// Placement and order safety for kubernetes-nodes targets is
+		// enforced per loop by ensureNodesFollowSafe (admission denies
+		// known-unsafe ones; edits converging later hold here instead),
+		// so first detection stays silent beyond this log line.
 	}
 
 	return gvkr, nil
+}
+
+// ensureSingleTargetOwner holds this ScaledObject when another one already
+// owns the same workload, so only the winner actuates. The loser deletes
+// its HPA and stops its loop; the returned error requeues with backoff, so
+// the loser resumes if the winner goes away. Fixed-name refs skip this
+// with no API calls because admission already rejects fixed duplicates. A
+// nil error means scaling may proceed.
+func (r *ScaledObjectReconciler) ensureSingleTargetOwner(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr kedav1alpha1.GroupVersionKindResource) error {
+	if !resolver.ScaleTargetUsesSelectors(scaledObject.Spec.ScaleTargetRef) {
+		return nil
+	}
+	targetName, err := resolver.ResolveScaleTargetName(ctx, r.Client, scaledObject.Namespace, gvkr.GroupVersionKind(), scaledObject.Spec.ScaleTargetRef)
+	if err != nil {
+		logger.V(1).Info("Skipping duplicate-target check: scale target not resolved", "resource", gvkr.GVKString())
+		return nil
+	}
+	holder, err := resolver.FindConflictingScaledObject(ctx, r.Client, scaledObject, targetName, gvkr.GroupVersionKind())
+	if err != nil {
+		return fmt.Errorf("failed to check for duplicate scale targets: %w", err)
+	}
+	if holder == "" {
+		return nil
+	}
+	if _, err := r.ensureHPAForScaledObjectIsDeleted(ctx, logger, scaledObject); err != nil {
+		return fmt.Errorf("failed to delete HPA after losing scale target ownership: %w", err)
+	}
+	if err := r.stopScaleLoop(ctx, logger, scaledObject); err != nil {
+		return fmt.Errorf("failed to stop scale loop after losing scale target ownership: %w", err)
+	}
+	return fmt.Errorf("scale target %s is already managed by ScaledObject %s", targetName, holder)
+}
+
+// ensureNodesFollowSafe holds this ScaledObject when a kubernetes-nodes
+// trigger would follow node count against an unsafe target: a plain
+// OrderedReady StatefulSet (wedges on middle-node follow-down), or a
+// pod-template target with neither anti-affinity nor topology spread (pods
+// pile, the count is meaningless). The existing HPA (if any) would keep
+// actuating the unsafe target, so delete it and stop the loop, mirroring
+// the duplicate-target hold. The error return requeues with backoff, so
+// fixing the target resumes convergence. Operator custom resources, safe
+// escapes (Parallel, scale-up-only, fixed size) and unresolvable targets
+// pass through with no API writes beyond the single target read.
+func (r *ScaledObjectReconciler) ensureNodesFollowSafe(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr kedav1alpha1.GroupVersionKindResource) error {
+	if !kedav1alpha1.UsesKubernetesNodesTrigger(scaledObject) {
+		return nil
+	}
+	targetName, err := resolver.ResolveScaleTargetName(ctx, r.Client, scaledObject.Namespace, gvkr.GroupVersionKind(), scaledObject.Spec.ScaleTargetRef)
+	if err != nil {
+		logger.V(1).Info("Skipping follow-safety check: scale target not resolved", "resource", gvkr.GVKString())
+		return nil
+	}
+	target := &unstructured.Unstructured{}
+	target.SetGroupVersionKind(gvkr.GroupVersionKind())
+	if err := r.Client.Get(ctx, client.ObjectKey{Namespace: scaledObject.Namespace, Name: targetName}, target); err != nil {
+		logger.V(1).Info("Skipping follow-safety check: scale target not found", "resource", gvkr.GVKString(), "name", targetName)
+		return nil
+	}
+	// Order first: a wedging target risks disruption, piling only wastes.
+	var (
+		reason  string
+		msg     string
+		holdErr error
+	)
+	switch {
+	case !kedav1alpha1.IsOrderedReadyFollowSafe(scaledObject, target):
+		reason = eventreason.ScaledObjectTargetOrderedReady
+		msg = fmt.Sprintf("scale target %s unsafe for node follow-down: OrderedReady order",
+			targetName)
+		holdErr = fmt.Errorf("scale target %s %s has podManagementPolicy OrderedReady; use Parallel, scale-up-only, or fixed size", gvkr.GVKString(), targetName)
+	case !kedav1alpha1.IsPlacementFollowSafe(scaledObject, target):
+		reason = eventreason.ScaledObjectTargetNoPlacement
+		msg = fmt.Sprintf("scale target %s has no placement rules, pods may not spread across nodes",
+			targetName)
+		holdErr = fmt.Errorf("scale target %s %s has no pod anti-affinity or topology spread constraints; pods would pile onto fewer nodes than the replica count suggests", gvkr.GVKString(), targetName)
+	default:
+		return nil
+	}
+	logger.Info("Warning: scale target unsafe for node following, holding replicas until fixed", "resource", gvkr.GVKString(), "name", targetName, "reason", reason)
+	r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, reason, msg)
+	if _, err := r.ensureHPAForScaledObjectIsDeleted(ctx, logger, scaledObject); err != nil {
+		return fmt.Errorf("failed to delete HPA after detecting unsafe node-follow target: %w", err)
+	}
+	if err := r.stopScaleLoop(ctx, logger, scaledObject); err != nil {
+		return fmt.Errorf("failed to stop scale loop after detecting unsafe node-follow target: %w", err)
+	}
+	return holdErr
 }
 
 // ensureHPAForScaledObjectExists ensures that in cluster exist up-to-date HPA for specified ScaledObject, returns true if a new HPA was created
@@ -720,6 +858,18 @@ func (r *ScaledObjectReconciler) updateStatusWithTriggersAndAuthsTypes(ctx conte
 	status := scaledObject.Status.DeepCopy()
 	status.TriggersTypes = &triggersTypes
 	status.AuthenticationsTypes = &authsTypes
+
+	// Surface the resolved target (selectors only; fixed names speak for
+	// themselves). Resolution failure here must not fail the status write:
+	// actuation paths resolve again and hold on ambiguity.
+	if gvk, err := resolver.GVKForRef(scaledObject.Spec.ScaleTargetRef); err == nil {
+		if resolved, err := resolver.ResolveScaleTargetName(ctx, r.Client, scaledObject.Namespace, gvk, scaledObject.Spec.ScaleTargetRef); err == nil {
+			status.ResolvedTargetName = resolved
+		} else {
+			logger.V(1).Info("Unable to resolve scale target for status", "error", err)
+			status.ResolvedTargetName = ""
+		}
+	}
 
 	logger.V(1).Info("Updating ScaledObject status with triggers and authentications types", "triggersTypes", triggersTypes, "authenticationsTypes", authsTypes)
 
