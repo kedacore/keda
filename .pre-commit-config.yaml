@@ -38,6 +38,12 @@ repos:
         language: system
         entry: "bash tools/sort_scalers.sh"
         files: .*scalers_builder\.go$
+      - id: check-test-sleeps
+        name: Reject new time.Sleep under tests/
+        language: system
+        entry: "bash tools/check_test_sleeps.sh"
+        pass_filenames: false
+        files: ^tests/.*\.go$|^tools/test_sleep_allowlist\.txt$|^tools/check_test_sleeps\.sh$
       - id: golangci-lint
         language: system
         name: Run golangci against the code
