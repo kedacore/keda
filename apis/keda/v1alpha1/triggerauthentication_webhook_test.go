@@ -217,6 +217,35 @@ var _ = It("validate clustertriggerauthentication when RoleArn is not empty and 
 	}).Should(HaveOccurred())
 })
 
+var _ = It("validate triggerauthentication when IdentityID is set and IdentityOwner is workload for azure-workload", func() {
+	namespaceName := "azureidentityidandworkloadowner"
+	namespace := createNamespace(namespaceName)
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	identityID := "12345"
+	identityOwner := workloadString
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzureWorkload, nil, &identityID, nil, nil, &identityOwner, nil)
+	ta := createTriggerAuthentication("identityidta", namespaceName, "TriggerAuthentication", spec)
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), ta)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("validate triggerauthentication when IdentityID is nil and IdentityOwner is workload for azure-workload", func() {
+	namespaceName := "azureworkloadowner"
+	namespace := createNamespace(namespaceName)
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	identityOwner := workloadString
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzureWorkload, nil, nil, nil, nil, &identityOwner, nil)
+	ta := createTriggerAuthentication("identityidta", namespaceName, "TriggerAuthentication", spec)
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), ta)
+	}).ShouldNot(HaveOccurred())
+})
+
 var _ = It("validate clustertriggerauthentication when RoleArn is empty and IdentityOwner is keda", func() {
 	namespaceName := "clusterandkedaowner"
 	namespace := createNamespace(namespaceName)
