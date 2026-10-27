@@ -274,17 +274,17 @@ func getCassandraInsertCmd(insertDataTemplate string) (string, error) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:           testNamespace,
-			DeploymentName:          deploymentName,
-			ScaledObjectName:        scaledObjectName,
-			SecretName:              secretName,
-			CassandraPasswordBase64: base64.StdEncoding.EncodeToString([]byte(cassandraPassword)),
-			CassandraKeyspace:       cassandraKeyspace,
-			CassandraTableName:      cassandraTableName,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:           testNamespace,
+		DeploymentName:          deploymentName,
+		ScaledObjectName:        scaledObjectName,
+		SecretName:              secretName,
+		CassandraPasswordBase64: base64.StdEncoding.EncodeToString([]byte(cassandraPassword)),
+		CassandraKeyspace:       cassandraKeyspace,
+		CassandraTableName:      cassandraTableName,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }

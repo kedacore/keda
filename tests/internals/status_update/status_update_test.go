@@ -253,25 +253,25 @@ func testTriggersAndAuthenticationsTypes(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:               testNamespace,
-			DeploymentName:              deploymentName,
-			MetricsServerDeploymentName: metricsServerDeploymentName,
-			ServciceName:                servciceName,
-			TriggerAuthName:             triggerAuthName,
-			ScaledObjectName:            scaledObjectName,
-			ScaledJobName:               scaledJobName,
-			SecretName:                  secretName,
-			MetricsServerEndpoint:       metricsServerEndpoint,
-			MinReplicaCount:             fmt.Sprintf("%v", minReplicaCount),
-			MaxReplicaCount:             fmt.Sprintf("%v", maxReplicaCount),
-			MetricValue:                 0,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "metricsServerdeploymentTemplate", Config: metricsServerdeploymentTemplate},
-			{Name: "serviceTemplate", Config: serviceTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-			{Name: "scaledJobTemplate", Config: scaledJobTemplate},
-		}
+		TestNamespace:               testNamespace,
+		DeploymentName:              deploymentName,
+		MetricsServerDeploymentName: metricsServerDeploymentName,
+		ServciceName:                servciceName,
+		TriggerAuthName:             triggerAuthName,
+		ScaledObjectName:            scaledObjectName,
+		ScaledJobName:               scaledJobName,
+		SecretName:                  secretName,
+		MetricsServerEndpoint:       metricsServerEndpoint,
+		MinReplicaCount:             fmt.Sprintf("%v", minReplicaCount),
+		MaxReplicaCount:             fmt.Sprintf("%v", maxReplicaCount),
+		MetricValue:                 0,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "metricsServerdeploymentTemplate", Config: metricsServerdeploymentTemplate},
+		{Name: "serviceTemplate", Config: serviceTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		{Name: "scaledJobTemplate", Config: scaledJobTemplate},
+	}
 }

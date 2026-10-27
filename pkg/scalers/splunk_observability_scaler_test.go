@@ -256,7 +256,8 @@ func TestSplunkObservabilityCloseCancelsActiveQuery(t *testing.T) {
 	case <-time.After(time.Second):
 		cancel()
 		select {
-		case <-queryDone:
+		case err := <-queryDone:
+			_ = err
 		case <-time.After(splunkO11yDrainTimeout):
 		}
 		t.Fatal("Close did not cancel the active query")
