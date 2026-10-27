@@ -463,7 +463,16 @@ func (h *scaleHandler) handleResult(ctx context.Context, obj kedav1alpha1.Scalab
 			return nil
 		}
 
-		return h.client.Status().Patch(operationCtx, current, client.MergeFrom(original))
+		patch := client.MergeFrom(original)
+		data, err := patch.Data(current)
+		if err != nil {
+			return err
+		}
+		if string(data) == "{}" {
+			return nil
+		}
+
+		return h.client.Status().Patch(operationCtx, current, client.RawPatch(patch.Type(), data))
 	})
 	if err != nil {
 		logger.Error(err, "failed to update status")
