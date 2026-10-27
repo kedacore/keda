@@ -135,10 +135,10 @@ func parsePostgreSQLMetadata(logger logr.Logger, config *scalersconfig.ScalerCon
 			params = append(params, "password="+escapePostgreConnectionParameter(meta.Password))
 			meta.Connection = strings.Join(params, " ")
 		}
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload, kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount:
 		params := buildConnArray(meta)
 
-		cred, err := azure.NewChainedCredential(logger, config.PodIdentity)
+		cred, err := azure.NewChainedCredential(logger, config.PodIdentity, config.ServiceAccountTokenProvider)
 		if err != nil {
 			return nil, authPodIdentity, err
 		}
@@ -167,7 +167,7 @@ func buildConnArray(meta *postgreSQLMetadata) []string {
 func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger) (*sql.DB, error) {
 	connectionString := meta.Connection
 
-	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
+	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload || podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount {
 		accessToken, err := getAzureAccessToken(ctx, meta, azureDatabasePostgresResource)
 		if err != nil {
 			return nil, err
@@ -202,7 +202,7 @@ func (s *postgreSQLScaler) Close(context.Context) error {
 func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error) {
 	var id float64
 
-	if s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
+	if s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload || s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount {
 		if s.metadata.azureAuthContext.token.ExpiresOn.Before(time.Now()) {
 			s.logger.Info("The Azure Access Token expired, retrieving a new Azure Access Token and instantiating a new Postgres connection object.")
 			s.connection.Close()
