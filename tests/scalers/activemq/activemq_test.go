@@ -515,22 +515,22 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:          testNamespace,
-			DeploymentName:         deploymentName,
-			ScaledObjectName:       scaledObjectName,
-			SecretName:             secretName,
-			ActiveMQPasswordBase64: base64.StdEncoding.EncodeToString([]byte(activemqPassword)),
-			ActiveMQUserBase64:     base64.StdEncoding.EncodeToString([]byte(activemqUser)),
-			ActiveMQConf:           activemqConf,
-			ActiveMQHome:           activemqHome,
-			ActiveMQDestination:    activemqDestination,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "activemqServiceTemplate", Config: activemqServiceTemplate},
-			{Name: "activemqConfigTemplate", Config: activemqConfigTemplate},
-			{Name: "activemqSteatefulTemplate", Config: activemqSteatefulTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:          testNamespace,
+		DeploymentName:         deploymentName,
+		ScaledObjectName:       scaledObjectName,
+		SecretName:             secretName,
+		ActiveMQPasswordBase64: base64.StdEncoding.EncodeToString([]byte(activemqPassword)),
+		ActiveMQUserBase64:     base64.StdEncoding.EncodeToString([]byte(activemqUser)),
+		ActiveMQConf:           activemqConf,
+		ActiveMQHome:           activemqHome,
+		ActiveMQDestination:    activemqDestination,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "activemqServiceTemplate", Config: activemqServiceTemplate},
+		{Name: "activemqConfigTemplate", Config: activemqConfigTemplate},
+		{Name: "activemqSteatefulTemplate", Config: activemqSteatefulTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }

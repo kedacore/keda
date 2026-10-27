@@ -148,16 +148,16 @@ func setupServiceBusQueue(t *testing.T) (*azservicebus.Client, *admin.Client, st
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:    testNamespace,
-			DeploymentName:   deploymentName,
-			TriggerAuthName:  triggerAuthName,
-			ScaledObjectName: scaledObjectName,
-			QueueName:        queueName,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:    testNamespace,
+		DeploymentName:   deploymentName,
+		TriggerAuthName:  triggerAuthName,
+		ScaledObjectName: scaledObjectName,
+		QueueName:        queueName,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Client) {

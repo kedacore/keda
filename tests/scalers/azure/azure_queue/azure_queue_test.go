@@ -143,17 +143,17 @@ func getTemplateData() (templateData, []Template) {
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
 
 	return templateData{
-			TestNamespace:    testNamespace,
-			SecretName:       secretName,
-			Connection:       base64ConnectionString,
-			DeploymentName:   deploymentName,
-			ScaledObjectName: scaledObjectName,
-			QueueName:        queueName,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:    testNamespace,
+		SecretName:       secretName,
+		Connection:       base64ConnectionString,
+		DeploymentName:   deploymentName,
+		ScaledObjectName: scaledObjectName,
+		QueueName:        queueName,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func testActivation(ctx context.Context, t *testing.T, kc *kubernetes.Clientset, client *azqueue.QueueClient) {

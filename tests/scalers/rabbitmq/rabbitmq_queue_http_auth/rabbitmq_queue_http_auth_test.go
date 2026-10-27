@@ -180,21 +180,21 @@ func TestScaler(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:             testNamespace,
-			DeploymentName:            deploymentName,
-			ScaledObjectName:          scaledObjectName,
-			TriggerAuthenticationName: triggerAuthenticationName,
-			SecretName:                secretName,
-			QueueName:                 queueName,
-			Username:                  user,
-			Base64Username:            base64.StdEncoding.EncodeToString([]byte(user)),
-			Password:                  password,
-			Base64Password:            base64.StdEncoding.EncodeToString([]byte(password)),
-			Connection:                connectionString,
-			Base64Connection:          base64.StdEncoding.EncodeToString([]byte(NoAuthConnectionString)),
-		}, []Template{
-			{Name: "deploymentTemplate", Config: RMQTargetDeploymentWithAuthEnvTemplate},
-		}
+		TestNamespace:             testNamespace,
+		DeploymentName:            deploymentName,
+		ScaledObjectName:          scaledObjectName,
+		TriggerAuthenticationName: triggerAuthenticationName,
+		SecretName:                secretName,
+		QueueName:                 queueName,
+		Username:                  user,
+		Base64Username:            base64.StdEncoding.EncodeToString([]byte(user)),
+		Password:                  password,
+		Base64Password:            base64.StdEncoding.EncodeToString([]byte(password)),
+		Connection:                connectionString,
+		Base64Connection:          base64.StdEncoding.EncodeToString([]byte(NoAuthConnectionString)),
+	}, []Template{
+		{Name: "deploymentTemplate", Config: RMQTargetDeploymentWithAuthEnvTemplate},
+	}
 }
 
 func testAuthFromSecret(t *testing.T, kc *kubernetes.Clientset, data templateData) {

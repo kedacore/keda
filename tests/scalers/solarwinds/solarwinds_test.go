@@ -165,27 +165,27 @@ func TestScaler(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:    testNamespace,
-			ScaledObjectName: scaledObjectName,
-			DeploymentName:   deploymentName,
-			SecretName:       secretName,
-			TriggerAuthName:  triggerAuthName,
-			MetricName:       metricName,
-			APITokenBase64:   base64.StdEncoding.EncodeToString([]byte(apiToken)),
-			Host:             host,
-			TargetValue:      "5",
-			ActivationValue:  "1",
-			Aggregation:      "AVG",
-			IntervalS:        "60",
-			Filter:           "",
-			MinReplicaCount:  fmt.Sprintf("%v", minReplicaCount),
-			MaxReplicaCount:  fmt.Sprintf("%v", maxReplicaCount),
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:    testNamespace,
+		ScaledObjectName: scaledObjectName,
+		DeploymentName:   deploymentName,
+		SecretName:       secretName,
+		TriggerAuthName:  triggerAuthName,
+		MetricName:       metricName,
+		APITokenBase64:   base64.StdEncoding.EncodeToString([]byte(apiToken)),
+		Host:             host,
+		TargetValue:      "5",
+		ActivationValue:  "1",
+		Aggregation:      "AVG",
+		IntervalS:        "60",
+		Filter:           "",
+		MinReplicaCount:  fmt.Sprintf("%v", minReplicaCount),
+		MaxReplicaCount:  fmt.Sprintf("%v", maxReplicaCount),
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {

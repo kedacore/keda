@@ -215,20 +215,20 @@ func setMetricValue(t *testing.T, value float64, stopCh <-chan struct{}) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:       testNamespace,
-			DeploymentName:      deploymentName,
-			TriggerAuthName:     triggerAuthName,
-			ScaledObjectName:    scaledObjectName,
-			SecretName:          secretName,
-			MinReplicaCount:     fmt.Sprintf("%v", minReplicaCount),
-			MaxReplicaCount:     fmt.Sprintf("%v", maxReplicaCount),
-			MetricName:          fmt.Sprintf("`%s`", dynatraceMetricName), // the backticks are required in the DQL query
-			DynatraceGrailToken: base64.StdEncoding.EncodeToString([]byte(dynatraceGrailToken)),
-			DynatraceGrailHost:  dynatraceGrailHost,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:       testNamespace,
+		DeploymentName:      deploymentName,
+		TriggerAuthName:     triggerAuthName,
+		ScaledObjectName:    scaledObjectName,
+		SecretName:          secretName,
+		MinReplicaCount:     fmt.Sprintf("%v", minReplicaCount),
+		MaxReplicaCount:     fmt.Sprintf("%v", maxReplicaCount),
+		MetricName:          fmt.Sprintf("`%s`", dynatraceMetricName), // the backticks are required in the DQL query
+		DynatraceGrailToken: base64.StdEncoding.EncodeToString([]byte(dynatraceGrailToken)),
+		DynatraceGrailHost:  dynatraceGrailHost,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }

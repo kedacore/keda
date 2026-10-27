@@ -119,13 +119,13 @@ func TestScaler(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:           testNamespace,
-			DeploymentName:          deploymentName,
-			ScaledObjectName:        scaledObjectName,
-			MonitoredDeploymentName: monitoredDeploymentName,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
-			{Name: "scaledObjectAnnotatedTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:           testNamespace,
+		DeploymentName:          deploymentName,
+		ScaledObjectName:        scaledObjectName,
+		MonitoredDeploymentName: monitoredDeploymentName,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
+		{Name: "scaledObjectAnnotatedTemplate", Config: scaledObjectTemplate},
+	}
 }
