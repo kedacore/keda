@@ -49,7 +49,7 @@ import (
 
 const (
 	// renovate: datasource=github-releases depName=argoproj/argo-rollouts
-	ArgoRolloutsVersion            = "v1.10.0"
+	ArgoRolloutsVersion            = "v1.10.1"
 	ArgoRolloutsNamespace          = "argo-rollouts"
 	AzureWorkloadIdentityNamespace = "azure-workload-identity-system"
 	AwsIdentityNamespace           = "aws-identity-system"
@@ -67,7 +67,7 @@ const (
 	StringTrue  = "true"
 
 	// renovate: datasource=github-releases depName=strimzi/strimzi-kafka-operator
-	StrimziVersion   = "1.2.0"
+	StrimziVersion   = "1.3.0"
 	StrimziChartName = "strimzi"
 	StrimziNamespace = "strimzi"
 )
