@@ -357,7 +357,7 @@ func (s *splunkObservabilityScaler) Close(ctx context.Context) error {
 		done := s.closeDone
 		s.mu.Unlock()
 		if done != nil {
-			<-done
+			s.waitForClose(ctx, done)
 		}
 		return nil
 	}
@@ -375,26 +375,30 @@ func (s *splunkObservabilityScaler) Close(ctx context.Context) error {
 	for _, cancel := range cancels {
 		cancel()
 	}
-	defer close(done)
 
 	// Close the client only after in-flight queries finish, since using it after
 	// Close panics. Wait for them in the background so a query stuck inside the
-	// SignalFlow client cannot block Close indefinitely.
-	cleanupDone := make(chan struct{})
+	// SignalFlow client cannot block Close indefinitely. done is closed only once
+	// the client is closed, so no Close caller can observe completion early.
 	go func() {
 		s.inFlight.Wait()
 		if apiClient != nil {
 			apiClient.Close()
 		}
-		close(cleanupDone)
+		close(done)
 	}()
 
+	s.waitForClose(ctx, done)
+	return nil
+}
+
+// waitForClose waits for teardown to finish, bounded by ctx and splunkO11yCloseTimeout.
+func (s *splunkObservabilityScaler) waitForClose(ctx context.Context, done <-chan struct{}) {
 	waitCtx, cancel := context.WithTimeout(ctx, splunkO11yCloseTimeout)
 	defer cancel()
 	select {
-	case <-cleanupDone:
+	case <-done:
 	case <-waitCtx.Done():
 		s.logger.Info("Timed out waiting for in-flight Splunk Observability queries; client will be closed once they finish")
 	}
-	return nil
 }
