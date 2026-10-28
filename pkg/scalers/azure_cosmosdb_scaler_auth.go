@@ -155,7 +155,9 @@ func isCosmosDBRegionalAuthorityRequest(req *http.Request, authority, region str
 	switch host {
 	case "login.microsoftonline.com", "login.windows.net", "login.microsoft.com", "sts.windows.net":
 		discoveryHost = "login.microsoft.com"
-	case "login.microsoftonline.us", "login.chinacloudapi.cn", "login.partner.microsoftonline.cn", "login.microsoftonline.de":
+	case "login.chinacloudapi.cn", "login.partner.microsoftonline.cn":
+		discoveryHost = "login.partner.microsoftonline.cn"
+	case "login.microsoftonline.us", "login.microsoftonline.de":
 	default:
 		return false
 	}

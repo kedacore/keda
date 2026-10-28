@@ -3507,9 +3507,15 @@ func TestCosmosDBKnownCloudServicePrincipalTokenAcquisition(t *testing.T) {
 						host, err = url.Parse(authority)
 						require.NoError(t, err)
 					}
+					allowedHosts := []string{host.Host}
+					if region != "" && cloud == "AzureChinaCloud" {
+						// MSAL 1.10+ canonicalizes the legacy China authority during regional discovery.
+						allowedHosts = append(allowedHosts, "westus.login.partner.microsoftonline.cn")
+					}
 					var tokenRequests atomic.Int64
 					server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-						assert.Equal(t, host.Host, r.Host)
+						assert.Contains(t, allowedHosts, r.Host)
+						requestAuthority := "https://" + r.Host
 						w.Header().Set("Content-Type", "application/json")
 						switch {
 						case r.URL.Path == "/common/discovery/instance":
@@ -3521,8 +3527,8 @@ func TestCosmosDBKnownCloudServicePrincipalTokenAcquisition(t *testing.T) {
 							})
 						case strings.Contains(r.URL.Path, ".well-known"):
 							_ = json.NewEncoder(w).Encode(map[string]string{
-								"authorization_endpoint": authority + "/tenant-id/oauth2/v2.0/authorize",
-								"token_endpoint":         authority + "/tenant-id/oauth2/v2.0/token",
+								"authorization_endpoint": requestAuthority + "/tenant-id/oauth2/v2.0/authorize",
+								"token_endpoint":         requestAuthority + "/tenant-id/oauth2/v2.0/token",
 								"issuer":                 strings.TrimSuffix(env.ActiveDirectoryEndpoint, "/") + "/tenant-id/v2.0",
 							})
 						case r.URL.Path == "/tenant-id/oauth2/v2.0/token":
@@ -3581,10 +3587,43 @@ func TestCosmosDBRegionalAuthorityOriginGuard(t *testing.T) {
 	assert.False(t, isCosmosDBRegionalAuthorityRequest(req, "https://authority.private.example", "westus"))
 }
 
+func TestCosmosDBChinaRegionalAuthorityOriginGuard(t *testing.T) {
+	for _, region := range []string{"westus", "TryAutoDetect"} {
+		for _, tc := range []struct {
+			endpoint string
+			allowed  bool
+		}{
+			{"https://westus.login.chinacloudapi.cn", true},
+			{"https://westus.login.partner.microsoftonline.cn", true},
+			{"https://eastus.login.partner.microsoftonline.cn", region == "TryAutoDetect"},
+			{"https://login.partner.microsoftonline.cn", false},
+			{"https://westus.login.microsoftonline.com", false},
+			{"https://westus.login.microsoftonline.us", false},
+			{"https://westus.login.partner.microsoftonline.cn.attacker.example", false},
+			{"https://westus.attacker.login.partner.microsoftonline.cn", false},
+			{"https://westus.login.partner.microsoftonline.cn:444", false},
+			{"http://westus.login.partner.microsoftonline.cn", false},
+		} {
+			t.Run(region+"/"+tc.endpoint, func(t *testing.T) {
+				req, err := http.NewRequest(http.MethodPost, tc.endpoint+"/tenant/oauth2/v2.0/token", strings.NewReader("client_secret=secret"))
+				require.NoError(t, err)
+				assert.Equal(t, tc.allowed, isCosmosDBRegionalAuthorityRequest(req, "https://login.chinacloudapi.cn", region))
+				if tc.allowed {
+					assert.False(t, isCosmosDBRegionalAuthorityRequest(req, "https://login.microsoftonline.com", region))
+				}
+				req.Host = "attacker.example"
+				assert.False(t, isCosmosDBRegionalAuthorityRequest(req, "https://login.chinacloudapi.cn", region))
+			})
+		}
+	}
+}
+
 func TestCosmosDBWorkloadTokenTransport(t *testing.T) {
 	for _, redirect := range []bool{false, true} {
 		t.Run(fmt.Sprintf("redirect=%t", redirect), func(t *testing.T) {
-			t.Setenv("PATH", "")
+			// An empty PATH can find az in the SDK's /bin working directory on Linux.
+			t.Setenv("PATH", t.TempDir())
+			t.Setenv("AZURE_REGIONAL_AUTHORITY_NAME", "")
 			t.Setenv("AZURE_CLIENT_ID", "client-id")
 			t.Setenv("AZURE_TENANT_ID", "tenant-id")
 			tokenFile := fmt.Sprintf(".cosmosdb-assertion-%x.jwt", sha256.Sum256([]byte(t.Name())))
