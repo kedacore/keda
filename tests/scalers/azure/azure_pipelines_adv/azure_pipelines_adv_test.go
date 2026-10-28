@@ -409,21 +409,21 @@ func getTemplateData() (templateData, []Template) {
 	base64Pat := base64.StdEncoding.EncodeToString([]byte(personalAccessToken))
 
 	return templateData{
-			TestNamespace:    testNamespace,
-			SecretName:       secretName,
-			DeploymentName:   deploymentName,
-			ScaledObjectName: scaledObjectName,
-			ScaledJobName:    scaledJobName,
-			MinReplicaCount:  fmt.Sprintf("%v", minReplicaCount),
-			MaxReplicaCount:  fmt.Sprintf("%v", maxReplicaCount),
-			Pat:              base64Pat,
-			URL:              organizationURL,
-			PoolName:         poolName,
-			PoolID:           poolID,
-			SeedType:         "golang", // must match the pipeline's demand
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-		}
+		TestNamespace:    testNamespace,
+		SecretName:       secretName,
+		DeploymentName:   deploymentName,
+		ScaledObjectName: scaledObjectName,
+		ScaledJobName:    scaledJobName,
+		MinReplicaCount:  fmt.Sprintf("%v", minReplicaCount),
+		MaxReplicaCount:  fmt.Sprintf("%v", maxReplicaCount),
+		Pat:              base64Pat,
+		URL:              organizationURL,
+		PoolName:         poolName,
+		PoolID:           poolID,
+		SeedType:         "golang", // must match the pipeline's demand
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+	}
 }
 
 func testJobScaleOut(t *testing.T, kc *kubernetes.Clientset, connection *azuredevops.Connection) {

@@ -257,15 +257,15 @@ func saveLogs(t *testing.T, kc *kubernetes.Clientset, logName, selector, namespa
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:           testNamespace,
-			MonitoredDeploymentName: monitoredDeploymentName,
-			SutDeploymentName:       sutDeploymentName,
-			ScaledObjectName:        scaledObjectName,
-			MinReplicaCount:         minReplicaCount,
-			MaxReplicaCount:         maxReplicaCount,
-		}, []Template{
-			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
-			{Name: "sutDeploymentTemplate", Config: sutDeploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:           testNamespace,
+		MonitoredDeploymentName: monitoredDeploymentName,
+		SutDeploymentName:       sutDeploymentName,
+		ScaledObjectName:        scaledObjectName,
+		MinReplicaCount:         minReplicaCount,
+		MaxReplicaCount:         maxReplicaCount,
+	}, []Template{
+		{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
+		{Name: "sutDeploymentTemplate", Config: sutDeploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }

@@ -11,7 +11,7 @@ jobs:
     name: validate - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     container:
-      image: ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c
+      image: ghcr.io/kedacore/keda-tools:1.27.3@sha256:068e6772a1714b673c503ad72c7d2f50570761a5a318087e3e6ec994f5df29f8
       volumes:
         - /usr:/host/usr
         - /opt:/host/opt
@@ -131,7 +131,7 @@ jobs:
       pull-requests: read # for dorny/paths-filter to read pull requests
     name: validate-dockerfiles - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c
+    container: ghcr.io/kedacore/keda-tools:1.27.3@sha256:068e6772a1714b673c503ad72c7d2f50570761a5a318087e3e6ec994f5df29f8
     strategy:
       matrix:
         include:
@@ -167,7 +167,7 @@ jobs:
       pull-requests: read # for dorny/paths-filter to read pull requests
     name: Validate dev-container - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c
+    container: ghcr.io/kedacore/keda-tools:1.27.3@sha256:068e6772a1714b673c503ad72c7d2f50570761a5a318087e3e6ec994f5df29f8
     strategy:
       matrix:
         include:
@@ -202,6 +202,10 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: 3.x
+      - name: Verify Go toolchain alignment
+        run: |
+          python3 -B -m unittest discover -s hack -p 'verify_go_versions_test.py'
+          python3 -B hack/verify_go_versions.py
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: 'go.mod'

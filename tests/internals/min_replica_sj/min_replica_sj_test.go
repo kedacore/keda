@@ -200,17 +200,17 @@ func testMinReplicaCountWithMetricValueGreaterMaxReplicaCountScalesOnlyToMaxRepl
 
 func getTemplateData(minReplicaCount int, maxReplicaCount int) (templateData, []Template) {
 	return templateData{
-			TestNamespace:         testNamespace,
-			ServiceName:           serviceName,
-			ScalerName:            scalerName,
-			ScaledJobName:         scaledJobName,
-			MetricThreshold:       1,
-			MetricsServerEndpoint: metricsServerEndpoint,
-			MinReplicaCount:       minReplicaCount,
-			MaxReplicaCount:       maxReplicaCount,
-		}, []Template{
-			{Name: "scalerTemplate", Config: scalerTemplate},
-			{Name: "serviceTemplate", Config: serviceTemplate},
-			{Name: "scaledJobTemplate", Config: scaledJobTemplate},
-		}
+		TestNamespace:         testNamespace,
+		ServiceName:           serviceName,
+		ScalerName:            scalerName,
+		ScaledJobName:         scaledJobName,
+		MetricThreshold:       1,
+		MetricsServerEndpoint: metricsServerEndpoint,
+		MinReplicaCount:       minReplicaCount,
+		MaxReplicaCount:       maxReplicaCount,
+	}, []Template{
+		{Name: "scalerTemplate", Config: scalerTemplate},
+		{Name: "serviceTemplate", Config: serviceTemplate},
+		{Name: "scaledJobTemplate", Config: scaledJobTemplate},
+	}
 }
