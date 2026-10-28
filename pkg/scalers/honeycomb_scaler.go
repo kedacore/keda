@@ -205,11 +205,13 @@ func (s *honeycombScaler) runQuery(ctx context.Context) (float64, error) {
 	// The create response never carries result data, so always fetch the result.
 	resultPath := "/1/query_results/" + dataset + "/" + url.PathEscape(result.ID)
 	delay := honeycombInitialPollDelay
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return 0, fmt.Errorf("waiting for query result %s: %w", result.ID, ctx.Err())
-		case <-time.After(delay):
+		case <-timer.C:
 		}
 		delay = min(delay*2, honeycombMaxPollDelay)
 
@@ -220,6 +222,7 @@ func (s *honeycombScaler) runQuery(ctx context.Context) (float64, error) {
 		if result.Complete {
 			break
 		}
+		timer.Reset(delay)
 	}
 
 	if result.Error != "" {

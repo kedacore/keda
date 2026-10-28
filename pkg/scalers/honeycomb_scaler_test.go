@@ -106,11 +106,11 @@ func (f *fakeHoneycomb) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		require.NoError(f.t, json.NewDecoder(r.Body).Decode(&q))
 		assert.Equal(f.t, float64(120), q["time_range"])
 		f.queriesMade++
-		fmt.Fprint(w, `{"id":"q1"}`)
+		f.writeJSON(w, map[string]any{"id": "q1"})
 	case r.Method == http.MethodPost && r.URL.Path == "/1/query_results/my.dataset":
 		if f.status != 0 {
 			w.WriteHeader(f.status)
-			fmt.Fprint(w, `{"error":"nope"}`)
+			f.writeJSON(w, map[string]any{"error": "nope"})
 			return
 		}
 		var body map[string]any
@@ -118,21 +118,25 @@ func (f *fakeHoneycomb) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(f.t, "q1", body["query_id"])
 		f.resultsMade++
 		w.WriteHeader(http.StatusCreated)
-		fmt.Fprintf(w, `{"id":"r%d","complete":false}`, f.resultsMade)
+		f.writeJSON(w, map[string]any{"id": fmt.Sprintf("r%d", f.resultsMade), "complete": false})
 	case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/1/query_results/my.dataset/r"):
 		id := strings.TrimPrefix(r.URL.Path, "/1/query_results/my.dataset/")
 		f.getsForResult[id]++
 		if f.getsForResult[id] < 2 {
-			fmt.Fprintf(w, `{"id":%q,"complete":false}`, id)
+			f.writeJSON(w, map[string]any{"id": id, "complete": false})
 			return
 		}
 		n, err := strconv.Atoi(strings.TrimPrefix(id, "r"))
 		require.NoError(f.t, err)
-		fmt.Fprintf(w, `{"id":%q,"complete":true,%s}`, id, f.results[n-1])
+		f.writeJSON(w, json.RawMessage(fmt.Sprintf(`{"id":%q,"complete":true,%s}`, id, f.results[n-1])))
 	default:
 		f.t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
 		w.WriteHeader(http.StatusNotFound)
 	}
+}
+
+func (f *fakeHoneycomb) writeJSON(w http.ResponseWriter, v any) {
+	require.NoError(f.t, json.NewEncoder(w).Encode(v))
 }
 
 func newHoneycombTestScaler(t *testing.T, fake *fakeHoneycomb, metadata map[string]string) (*honeycombScaler, *time.Time) {

@@ -198,6 +198,8 @@ func sendEvents(ctx context.Context, t *testing.T) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	url := fmt.Sprintf("%s/1/batch/%s", apiHost, dataset)
+	// A stalled request must not stop the sender from trying the next batch.
+	client := &http.Client{Timeout: 5 * time.Second}
 
 	for {
 		select {
@@ -221,16 +223,28 @@ func sendEvents(ctx context.Context, t *testing.T) {
 		}
 		req.Header.Set("X-Honeycomb-Team", ingestKey)
 		req.Header.Set("Content-Type", "application/json")
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := client.Do(req)
 		if err != nil {
 			if ctx.Err() == nil {
 				t.Logf("sending events to Honeycomb: %v", err)
 			}
 			continue
 		}
+		// The batch endpoint answers 200 and reports a status for each event.
+		var statuses []struct {
+			Status int    `json:"status"`
+			Error  string `json:"error"`
+		}
+		err = json.NewDecoder(resp.Body).Decode(&statuses)
 		resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			t.Logf("sending events to Honeycomb: unexpected status %s", resp.Status)
+		if resp.StatusCode != http.StatusOK || err != nil {
+			t.Logf("sending events to Honeycomb: status %s, decoding response: %v", resp.Status, err)
+			continue
+		}
+		for _, s := range statuses {
+			if s.Status != http.StatusAccepted {
+				t.Logf("Honeycomb rejected an event: status %d: %s", s.Status, s.Error)
+			}
 		}
 	}
 }
