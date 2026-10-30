@@ -96,7 +96,12 @@ func newSplunkO11yLookbackScaler(t *testing.T, response splunkO11yLookbackRespon
 }
 
 func (b *splunkO11yLookbackBackend) serveHTTP(w http.ResponseWriter, r *http.Request) {
-	conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			return len(r.Header.Values("Origin")) == 0
+		},
+	}
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
 	}
