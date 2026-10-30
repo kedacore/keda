@@ -30,9 +30,17 @@ type splunkObservabilityMetadata struct {
 	Realm                 string  `keda:"name=realm,                 order=authParams"`
 	Query                 string  `keda:"name=query,                 order=triggerMetadata"`
 	Duration              int     `keda:"name=duration,              order=triggerMetadata"`
+	LookbackDuration      int     `keda:"name=lookbackDuration,      order=triggerMetadata, default=0"`
 	TargetValue           float64 `keda:"name=targetValue,   	     order=triggerMetadata"`
 	QueryAggregator       string  `keda:"name=queryAggregator,       order=triggerMetadata, enum=min;max;avg;sum;count;latest, default=avg"`
 	ActivationTargetValue float64 `keda:"name=activationTargetValue, order=triggerMetadata"`
+}
+
+func (m *splunkObservabilityMetadata) Validate() error {
+	if m.LookbackDuration < 0 {
+		return fmt.Errorf("lookbackDuration must be greater than or equal to 0")
+	}
+	return nil
 }
 
 type splunkObservabilityScaler struct {
@@ -70,6 +78,16 @@ func newSplunkO11yConnection(meta *splunkObservabilityMetadata, logger logr.Logg
 	}
 
 	return apiClient, nil
+}
+
+func newSplunkO11yExecuteRequest(meta *splunkObservabilityMetadata, end time.Time) *signalflow.ExecuteRequest {
+	request := &signalflow.ExecuteRequest{Program: meta.Query}
+	if meta.LookbackDuration > 0 {
+		request.Start = end.Add(-time.Duration(meta.LookbackDuration) * time.Second)
+		request.Stop = end
+		request.Immediate = true
+	}
+	return request
 }
 
 func NewSplunkObservabilityScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
@@ -174,9 +192,7 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 		}
 	}()
 
-	comp, err := apiClient.Execute(queryCtx, &signalflow.ExecuteRequest{
-		Program: s.metadata.Query,
-	})
+	comp, err := apiClient.Execute(queryCtx, newSplunkO11yExecuteRequest(s.metadata, time.Now()))
 	if err != nil {
 		return -1, fmt.Errorf("could not execute signalflow query: %w", err)
 	}
