@@ -5077,6 +5077,10 @@ scalers:
         - name: duration
           type: string
           metadataVariableReadable: true
+        - name: lookbackDuration
+          type: string
+          default: "0"
+          metadataVariableReadable: true
         - name: targetValue
           type: string
           metadataVariableReadable: true
