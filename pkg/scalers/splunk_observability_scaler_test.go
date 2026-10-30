@@ -230,6 +230,165 @@ func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testin
 	}
 }
 
+// startStuckSplunkO11yQuery holds the SignalFlow client lock so Execute blocks inside
+// the client, and returns once getQueryResult has given up waiting on it. The query
+// stays in flight, keeping Close's teardown pending, until unlock is called.
+func startStuckSplunkO11yQuery(t *testing.T, scaler *splunkObservabilityScaler) (unlock func()) {
+	t.Helper()
+
+	client := scaler.apiClient
+	client.Lock()
+	var once sync.Once
+	unlock = func() { once.Do(client.Unlock) }
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		_, err := scaler.getQueryResult(ctx)
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			unlock()
+			t.Fatal("expected stuck query to return an error")
+		}
+	case <-time.After(splunkO11yDrainTimeout):
+		unlock()
+		t.Fatal("getQueryResult did not return while Execute was stuck")
+	}
+	return unlock
+}
+
+func splunkO11yCloseDone(s *splunkObservabilityScaler) <-chan struct{} {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.closeDone
+}
+
+func isSplunkO11yChanClosed(ch <-chan struct{}) bool {
+	select {
+	case <-ch:
+		return true
+	default:
+		return false
+	}
+}
+
+// splunkO11yClientClosed reports whether client.Close has run. The client exposes no
+// such state, but it panics when closed twice, so only call this once teardown is
+// expected to be complete: on a client that is still open it closes it.
+func splunkO11yClientClosed(client *signalflow.Client) (closed bool) {
+	defer func() { closed = recover() != nil }()
+	client.Close()
+	return false
+}
+
+// Regression guard for #8280: if Execute is stuck on the SignalFlow client lock,
+// neither getQueryResult nor Close may block past their own bounds, and the client
+// must still be closed once the stuck query is released.
+func TestSplunkObservabilityStuckExecuteDoesNotHang(t *testing.T) {
+	scaler, stop := newFakeSplunkO11yScaler(t, 3600)
+	defer stop()
+	client := scaler.apiClient
+	unlock := startStuckSplunkO11yQuery(t, scaler)
+	defer unlock()
+
+	start := time.Now()
+	if err := scaler.Close(context.Background()); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	if elapsed := time.Since(start); elapsed > splunkO11yCloseTimeout+time.Second {
+		t.Fatalf("Close took %v with a stuck query", elapsed)
+	}
+	unlock()
+
+	select {
+	case <-splunkO11yCloseDone(scaler):
+	case <-time.After(splunkO11yCloseTimeout):
+		t.Fatal("background teardown did not finish after the client was unlocked")
+	}
+	if !splunkO11yClientClosed(client) {
+		t.Fatal("expected the client to be closed once the stuck query was released")
+	}
+}
+
+// A Close that times out must not publish completion while teardown is pending, and a
+// repeated Close must wait on that same teardown instead of returning as if it were done.
+func TestSplunkObservabilityCloseTimeoutDoesNotReportCompletionEarly(t *testing.T) {
+	scaler, stop := newFakeSplunkO11yScaler(t, 3600)
+	defer stop()
+	client := scaler.apiClient
+	unlock := startStuckSplunkO11yQuery(t, scaler)
+	defer unlock()
+
+	const callerTimeout = 200 * time.Millisecond
+	closeWithTimeout := func(name string) {
+		t.Helper()
+		ctx, cancel := context.WithTimeout(context.Background(), callerTimeout)
+		defer cancel()
+		start := time.Now()
+		if err := scaler.Close(ctx); err != nil {
+			t.Fatalf("%s Close: %v", name, err)
+		}
+		// Close honors the caller's deadline, and returning sooner means it saw teardown as complete.
+		if elapsed := time.Since(start); elapsed < callerTimeout || elapsed > callerTimeout+time.Second {
+			t.Fatalf("%s Close took %v, want about %v while teardown is pending", name, elapsed, callerTimeout)
+		}
+		if isSplunkO11yChanClosed(splunkO11yCloseDone(scaler)) {
+			t.Fatalf("%s Close published completion while a query was still in flight", name)
+		}
+	}
+	closeWithTimeout("first")
+	closeWithTimeout("repeated")
+
+	unlock()
+	if err := scaler.Close(context.Background()); err != nil {
+		t.Fatalf("final Close: %v", err)
+	}
+	if !isSplunkO11yChanClosed(splunkO11yCloseDone(scaler)) {
+		t.Fatal("Close timed out after the stuck query was released")
+	}
+	if !splunkO11yClientClosed(client) {
+		t.Fatal("Close reported completion before the client was closed")
+	}
+}
+
+// Every concurrent Close caller must return only after the client is torn down.
+func TestSplunkObservabilityConcurrentCloseWaitsForTeardown(t *testing.T) {
+	scaler, stop := newFakeSplunkO11yScaler(t, 3600)
+	defer stop()
+	client := scaler.apiClient
+	unlock := startStuckSplunkO11yQuery(t, scaler)
+	defer unlock()
+
+	const callers = 4
+	completed := make(chan bool, callers)
+	for range callers {
+		go func() {
+			_ = scaler.Close(context.Background())
+			completed <- isSplunkO11yChanClosed(splunkO11yCloseDone(scaler))
+		}()
+	}
+	time.AfterFunc(100*time.Millisecond, unlock)
+
+	for range callers {
+		select {
+		case ok := <-completed:
+			if !ok {
+				t.Fatal("a Close caller returned before teardown finished")
+			}
+		case <-time.After(splunkO11yCloseTimeout + time.Second):
+			t.Fatal("Close did not return within its bound")
+		}
+	}
+	if !splunkO11yClientClosed(client) {
+		t.Fatal("expected the client to be closed after all Close callers returned")
+	}
+}
+
 func TestSplunkObservabilityCloseCancelsActiveQuery(t *testing.T) {
 	scaler, _, started, stop := newFakeSplunkO11yScalerWithBackend(t, 3600)
 	defer stop()
