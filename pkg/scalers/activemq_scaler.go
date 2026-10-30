@@ -161,23 +161,31 @@ func (s *activeMQScaler) getJolokiaPostRequest() (string, []byte, error) {
 	if err != nil {
 		return "", nil, err
 	}
-	endpoint, readPath, found := strings.Cut(monitoringEndpoint, "/read/")
+	u, err := url.Parse(monitoringEndpoint)
+	if err != nil {
+		return "", nil, fmt.Errorf("unable to parse the Jolokia read URL: %w", err)
+	}
+	basePath, readPath, found := strings.Cut(u.EscapedPath(), "/read/")
 	if !found {
 		return "", nil, fmt.Errorf("usePost requires a Jolokia read URL containing /read/, got: %s", monitoringEndpoint)
 	}
 	// The read path is "<mbean>/<attribute>", so a restAPITemplate with a custom JMX domain keeps it.
-	i := strings.LastIndex(readPath, "/")
-	if i <= 0 || i == len(readPath)-1 {
+	parts, err := splitJolokiaPath(readPath)
+	if err != nil {
+		return "", nil, fmt.Errorf("unable to parse the Jolokia read URL: %w", err)
+	}
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 		return "", nil, fmt.Errorf("usePost requires a Jolokia read URL ending in /read/<mbean>/<attribute>, got: %s", monitoringEndpoint)
 	}
-	mbean, err := url.PathUnescape(readPath[:i])
+	mbean, attribute := parts[0], parts[1]
+
+	// The query parameters, if any, stay on the POST endpoint.
+	u.RawPath = ""
+	u.Path, err = url.PathUnescape(basePath)
 	if err != nil {
-		return "", nil, fmt.Errorf("unable to parse the mbean of the Jolokia read URL: %w", err)
+		return "", nil, fmt.Errorf("unable to parse the Jolokia read URL: %w", err)
 	}
-	attribute, err := url.PathUnescape(readPath[i+1:])
-	if err != nil {
-		return "", nil, fmt.Errorf("unable to parse the attribute of the Jolokia read URL: %w", err)
-	}
+	endpoint := u.String()
 
 	body, err := json.Marshal(jolokiaReadRequest{
 		Type:      "read",
@@ -188,6 +196,34 @@ func (s *activeMQScaler) getJolokiaPostRequest() (string, []byte, error) {
 		return "", nil, err
 	}
 	return endpoint, body, nil
+}
+
+// splitJolokiaPath splits a Jolokia GET path at its unescaped "/" separators. Each part is URL-decoded, then
+// Jolokia's escapes are decoded: "!/" for "/", "!!" for "!" and "!" before any other character for that character.
+func splitJolokiaPath(path string) ([]string, error) {
+	var parts []string
+	var part strings.Builder
+	for i := 0; i < len(path); i++ {
+		switch {
+		case path[i] == '!' && i+1 < len(path):
+			i++
+			part.WriteByte(path[i])
+		case path[i] == '/':
+			parts = append(parts, part.String())
+			part.Reset()
+		default:
+			part.WriteByte(path[i])
+		}
+	}
+	parts = append(parts, part.String())
+	for i, p := range parts {
+		decoded, err := url.PathUnescape(p)
+		if err != nil {
+			return nil, err
+		}
+		parts[i] = decoded
+	}
+	return parts, nil
 }
 
 func (s *activeMQScaler) getQueueMessageCount(ctx context.Context) (int64, error) {

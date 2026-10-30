@@ -532,6 +532,63 @@ func TestActiveMQUsePostKeepsCustomJMXDomain(t *testing.T) {
 	}
 }
 
+func TestActiveMQUsePostParsesTheReadURL(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		template     string
+		wantEndpoint string
+		wantMBean    string
+	}{
+		{
+			name:         "query parameters stay on the endpoint",
+			template:     "http://localhost:8161/api/jolokia/read/org.apache.activemq:type=Broker,brokerName=b,destinationType=Queue,destinationName=q/QueueSize?ignoreErrors=true",
+			wantEndpoint: "http://localhost:8161/api/jolokia?ignoreErrors=true",
+			wantMBean:    "org.apache.activemq:type=Broker,brokerName=b,destinationType=Queue,destinationName=q",
+		},
+		{
+			name:         "jolokia escapes are decoded",
+			template:     "http://localhost:8161/api/jolokia/read/org.apache.activemq:type=Broker,brokerName=b,destinationType=Queue,destinationName=a!/b!!c/QueueSize",
+			wantEndpoint: "http://localhost:8161/api/jolokia",
+			wantMBean:    "org.apache.activemq:type=Broker,brokerName=b,destinationType=Queue,destinationName=a/b!c",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			metadata, err := parseActiveMQMetadata(&scalersconfig.ScalerConfig{
+				TriggerMetadata: map[string]string{
+					"managementEndpoint": "localhost:8161",
+					"brokerName":         "b",
+					"destinationName":    "q",
+					"usePost":            "true",
+					"restAPITemplate":    tc.template,
+				},
+				AuthParams: map[string]string{"username": "u", "password": "p"},
+			})
+			if err != nil {
+				t.Fatal("Could not parse metadata:", err)
+			}
+			scaler := activeMQScaler{metadata: metadata, httpClient: http.DefaultClient}
+
+			endpoint, body, err := scaler.getJolokiaPostRequest()
+			if err != nil {
+				t.Fatal("Could not build the POST request:", err)
+			}
+			if endpoint != tc.wantEndpoint {
+				t.Errorf("Wrong endpoint: %s, expected %s", endpoint, tc.wantEndpoint)
+			}
+			var request jolokiaReadRequest
+			if err := json.Unmarshal(body, &request); err != nil {
+				t.Fatal("Could not decode the request body:", err)
+			}
+			if request.MBean != tc.wantMBean {
+				t.Errorf("Wrong mbean: %s, expected %s", request.MBean, tc.wantMBean)
+			}
+			if request.Attribute != "QueueSize" {
+				t.Errorf("Wrong attribute: %s, expected QueueSize", request.Attribute)
+			}
+		})
+	}
+}
+
 func TestActiveMQUsePostRequiresReadURL(t *testing.T) {
 	metadata, err := parseActiveMQMetadata(&scalersconfig.ScalerConfig{
 		TriggerMetadata: map[string]string{
