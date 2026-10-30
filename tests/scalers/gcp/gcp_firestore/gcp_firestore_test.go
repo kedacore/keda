@@ -50,6 +50,7 @@ var (
 	secretName     = fmt.Sprintf("%s-secret", testName)
 	deploymentName = fmt.Sprintf("%s-deployment", testName)
 	scaledObjName  = fmt.Sprintf("%s-so", testName)
+	hpaName        = fmt.Sprintf("keda-hpa-%s", scaledObjName)
 	// The project comes from the credentials. The documents live in the default
 	// database, in a collection that only this run uses, so that runs do not
 	// see each other's documents.
@@ -152,16 +153,23 @@ func TestScaler(t *testing.T) {
 	require.NotEmpty(t, gcpKey, "TF_GCP_SA_CREDENTIALS env variable is required for GCP Firestore test")
 	require.NoErrorf(t, errGcpKey, "failed to parse TF_GCP_SA_CREDENTIALS as JSON: %s", errGcpKey)
 	require.NotEqual(t, "<nil>", projectID, "project_id is missing from TF_GCP_SA_CREDENTIALS")
+	require.NotEmpty(t, projectID, "project_id is empty in TF_GCP_SA_CREDENTIALS")
 
 	// The documents are written and deleted by the test binary itself, with the service
 	// account credentials. The cleanup is registered right away and does not depend on the
 	// pods or on the namespace of the test, so no document is left behind if the test fails.
 	client := newFirestoreClient(t)
+	verifyFirestoreAccess(t, client)
 
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 	defer DeleteKubernetesResources(t, testNamespace, data, templates)
+
+	// Without the HPA the scaler did not start, and the activation check below would pass
+	// without ever reaching Firestore.
+	_, err := WaitForHpaCreation(t, kc, hpaName, testNamespace, 60, 1)
+	require.NoError(t, err, "the HPA of the ScaledObject should be created")
 
 	require.True(t,
 		WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
@@ -176,10 +184,8 @@ func TestScaler(t *testing.T) {
 
 func newFirestoreClient(t *testing.T) *firestore.Client {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-
-	client, err := firestore.NewClient(ctx, projectID,
+	// The client is used until the end of the test, so it is not created with a context that ends here.
+	client, err := firestore.NewClient(context.Background(), projectID,
 		option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(gcpKey)))
 	require.NoError(t, err, "failed to create the Firestore client")
 
@@ -192,6 +198,22 @@ func newFirestoreClient(t *testing.T) *firestore.Client {
 		}
 	})
 	return client
+}
+
+// verifyFirestoreAccess stops the test before any Kubernetes resource exists when the project has
+// no reachable (default) database in Native mode, or the service account cannot use it. The client
+// connects lazily, so without this the first failure would be the first document write.
+func verifyFirestoreAccess(t *testing.T, client *firestore.Client) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	iter := client.Collection(collection).Limit(1).Documents(ctx)
+	defer iter.Stop()
+	if _, err := iter.Next(); err != nil && !errors.Is(err, iterator.Done) {
+		require.NoErrorf(t, err, "cannot read from Firestore: firestore.googleapis.com must be enabled in project %s, "+
+			"the (default) database must exist in Native mode, and the service account must be allowed to read and write documents", projectID)
+	}
 }
 
 // deleteAllDocuments deletes every document of the collection of the test, and reports every
@@ -264,7 +286,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, client *firestore.Clie
 	// the total is pendingDocsForScaleOut documents.
 	addPendingDocuments(t, client, pendingDocsForScaleOut-activationThreshold, 2000)
 
-	assert.True(t,
+	require.True(t,
 		WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 30, 10),
 		fmt.Sprintf("replica count should reach %d after scale-out", maxReplicaCount),
 	)
