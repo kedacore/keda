@@ -497,6 +497,41 @@ func TestActiveMQUsePostSendsJolokiaReadRequest(t *testing.T) {
 	}
 }
 
+func TestActiveMQUsePostKeepsCustomJMXDomain(t *testing.T) {
+	metadata, err := parseActiveMQMetadata(&scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"managementEndpoint": "localhost:8161",
+			"brokerName":         "myBrokerName",
+			"destinationName":    "keda-test",
+			"usePost":            "true",
+			"restAPITemplate":    "http://localhost:8161/api/jolokia/read/my.custom.domain:type=Broker,brokerName=myBrokerName,destinationType=Queue,destinationName=keda-test/QueueSize",
+		},
+		AuthParams: map[string]string{"username": "u", "password": "p"},
+	})
+	if err != nil {
+		t.Fatal("Could not parse metadata:", err)
+	}
+	scaler := activeMQScaler{metadata: metadata, httpClient: http.DefaultClient}
+
+	endpoint, body, err := scaler.getJolokiaPostRequest()
+	if err != nil {
+		t.Fatal("Could not build the POST request:", err)
+	}
+	if endpoint != "http://localhost:8161/api/jolokia" {
+		t.Errorf("Wrong endpoint: %s", endpoint)
+	}
+	var request jolokiaReadRequest
+	if err := json.Unmarshal(body, &request); err != nil {
+		t.Fatal("Could not decode the request body:", err)
+	}
+	if request.MBean != "my.custom.domain:type=Broker,brokerName=myBrokerName,destinationType=Queue,destinationName=keda-test" {
+		t.Errorf("Wrong mbean: %s", request.MBean)
+	}
+	if request.Attribute != "QueueSize" {
+		t.Errorf("Wrong attribute: %s", request.Attribute)
+	}
+}
+
 func TestActiveMQUsePostRequiresReadURL(t *testing.T) {
 	metadata, err := parseActiveMQMetadata(&scalersconfig.ScalerConfig{
 		TriggerMetadata: map[string]string{

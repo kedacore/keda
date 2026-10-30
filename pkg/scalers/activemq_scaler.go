@@ -161,15 +161,28 @@ func (s *activeMQScaler) getJolokiaPostRequest() (string, []byte, error) {
 	if err != nil {
 		return "", nil, err
 	}
-	endpoint, _, found := strings.Cut(monitoringEndpoint, "/read/")
+	endpoint, readPath, found := strings.Cut(monitoringEndpoint, "/read/")
 	if !found {
 		return "", nil, fmt.Errorf("usePost requires a Jolokia read URL containing /read/, got: %s", monitoringEndpoint)
+	}
+	// The read path is "<mbean>/<attribute>", so a restAPITemplate with a custom JMX domain keeps it.
+	i := strings.LastIndex(readPath, "/")
+	if i <= 0 || i == len(readPath)-1 {
+		return "", nil, fmt.Errorf("usePost requires a Jolokia read URL ending in /read/<mbean>/<attribute>, got: %s", monitoringEndpoint)
+	}
+	mbean, err := url.PathUnescape(readPath[:i])
+	if err != nil {
+		return "", nil, fmt.Errorf("unable to parse the mbean of the Jolokia read URL: %w", err)
+	}
+	attribute, err := url.PathUnescape(readPath[i+1:])
+	if err != nil {
+		return "", nil, fmt.Errorf("unable to parse the attribute of the Jolokia read URL: %w", err)
 	}
 
 	body, err := json.Marshal(jolokiaReadRequest{
 		Type:      "read",
-		MBean:     fmt.Sprintf("org.apache.activemq:type=Broker,brokerName=%s,destinationType=Queue,destinationName=%s", s.metadata.BrokerName, s.metadata.DestinationName),
-		Attribute: "QueueSize",
+		MBean:     mbean,
+		Attribute: attribute,
 	})
 	if err != nil {
 		return "", nil, err
