@@ -3,8 +3,11 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -43,7 +46,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 		name:          "no apiKey given",
 		metadata:      map[string]string{"cloudID": "my-cluster:xxxxxxxxxxx"},
 		authParams:    map[string]string{},
-		expectedError: fmt.Errorf("both cloudID and apiKey must be provided when cloudID or apiKey is used"),
+		expectedError: fmt.Errorf("both cloudID and apiKey must be provided when cloudID is used"),
 	},
 	{
 		name:          "can't provide endpoint addresses and cloud config at the same time",
@@ -352,6 +355,90 @@ var testCases = []parseElasticsearchMetadataTestData{
 		},
 		expectedError: nil,
 	},
+	{
+		name: "cloudID and apiKey",
+		metadata: map[string]string{
+			"cloudID":       "my-cluster:xxxxxxxxxxx",
+			"index":         "index1",
+			"query":         `{"match": {"field": "value"}}`,
+			"valueLocation": "hits.total.value",
+			"targetValue":   "12",
+		},
+		authParams: map[string]string{
+			"apiKey": "xxxxxxxxx",
+		},
+		expectedMetadata: &elasticsearchMetadata{
+			CloudID:       "my-cluster:xxxxxxxxxxx",
+			APIKey:        "xxxxxxxxx",
+			Index:         []string{"index1"},
+			Query:         `{"match": {"field": "value"}}`,
+			ValueLocation: "hits.total.value",
+			TargetValue:   12,
+			MetricName:    "s0-elasticsearch-query",
+		},
+		expectedError: nil,
+	},
+	{
+		name: "addresses and apiKey",
+		metadata: map[string]string{
+			"addresses":     "http://localhost:9200",
+			"index":         "index1",
+			"query":         `{"match": {"field": "value"}}`,
+			"valueLocation": "hits.total.value",
+			"targetValue":   "12",
+		},
+		authParams: map[string]string{
+			"apiKey": "xxxxxxxxx",
+		},
+		expectedMetadata: &elasticsearchMetadata{
+			Addresses:     []string{"http://localhost:9200"},
+			APIKey:        "xxxxxxxxx",
+			Index:         []string{"index1"},
+			Query:         `{"match": {"field": "value"}}`,
+			ValueLocation: "hits.total.value",
+			TargetValue:   12,
+			MetricName:    "s0-elasticsearch-query",
+		},
+		expectedError: nil,
+	},
+	{
+		name:          "apiKey without cloudID or addresses",
+		metadata:      map[string]string{"index": "index1"},
+		authParams:    map[string]string{"apiKey": "xxxxxxxxx"},
+		expectedError: fmt.Errorf("either cloudID or addresses must be provided when apiKey is used"),
+	},
+	{
+		name: "addresses with both apiKey and username/password",
+		metadata: map[string]string{
+			"addresses":     "http://localhost:9200",
+			"index":         "index1",
+			"query":         `{"match": {"field": "value"}}`,
+			"valueLocation": "hits.total.value",
+			"targetValue":   "12",
+		},
+		authParams: map[string]string{
+			"apiKey":   "xxxxxxxxx",
+			"username": "admin",
+			"password": "password",
+		},
+		expectedError: fmt.Errorf("can't provide both apiKey and username/password"),
+	},
+	{
+		name: "cloudID with username/password",
+		metadata: map[string]string{
+			"cloudID":       "my-cluster:xxxxxxxxxxx",
+			"index":         "index1",
+			"query":         `{"match": {"field": "value"}}`,
+			"valueLocation": "hits.total.value",
+			"targetValue":   "12",
+		},
+		authParams: map[string]string{
+			"apiKey":   "xxxxxxxxx",
+			"username": "admin",
+			"password": "password",
+		},
+		expectedError: fmt.Errorf("can't provide both cloud config and endpoint addresses"),
+	},
 }
 
 func TestParseElasticsearchMetadata(t *testing.T) {
@@ -607,6 +694,14 @@ func TestElasticsearchCheckHTTPStatus(t *testing.T) {
 		assert.Contains(t, err.Error(), "check username and password")
 	})
 
+	t.Run("mentions apiKey on HTTP 401 when apiKey is used", func(t *testing.T) {
+		apiKeyScaler := &elasticsearchScaler{metadata: elasticsearchMetadata{APIKey: "xxxxxxxxx"}}
+		err := apiKeyScaler.checkHTTPStatus(401)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "HTTP 401")
+		assert.Contains(t, err.Error(), "check apiKey")
+	})
+
 	t.Run("returns clear error on HTTP 403", func(t *testing.T) {
 		err := scaler.checkHTTPStatus(403)
 		assert.Error(t, err)
@@ -624,4 +719,41 @@ func TestElasticsearchCheckHTTPStatus(t *testing.T) {
 		err := scaler.checkHTTPStatus(404)
 		assert.NoError(t, err)
 	})
+}
+
+func TestElasticsearchClientAuthorizationHeader(t *testing.T) {
+	testCases := []struct {
+		name           string
+		meta           elasticsearchMetadata
+		expectedHeader string
+	}{
+		{
+			name:           "addresses with apiKey sends APIKey header",
+			meta:           elasticsearchMetadata{APIKey: "xxxxxxxxx"},
+			expectedHeader: "APIKey xxxxxxxxx",
+		},
+		{
+			name:           "addresses with username and password sends Basic header",
+			meta:           elasticsearchMetadata{Username: "admin", Password: "password"},
+			expectedHeader: "Basic YWRtaW46cGFzc3dvcmQ=",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var receivedHeader string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				receivedHeader = r.Header.Get("Authorization")
+				w.Header().Set("X-Elastic-Product", "Elasticsearch")
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"version":{"number":"9.0.0"}}`))
+			}))
+			defer server.Close()
+
+			tc.meta.Addresses = []string{server.URL}
+			_, err := newElasticsearchClient(tc.meta, logr.Discard())
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expectedHeader, receivedHeader)
+		})
+	}
 }
