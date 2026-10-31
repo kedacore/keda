@@ -2595,6 +2595,10 @@ scalers:
           type: string
           default: "false"
           metadataVariableReadable: true
+        - name: onlyReadyPods
+          type: string
+          default: "false"
+          metadataVariableReadable: true
     - type: liiklus
       parameters:
         - name: lagThreshold

@@ -36,6 +36,9 @@ var parseWorkloadMetadataTestDataset = []workloadMetadataTestData{
 	{map[string]string{"value": "0", "podSelector": "app=demo"}, "default", true},
 	{map[string]string{"value": "1", "activationValue": "aa", "podSelector": "app=demo"}, "test", true},
 	{map[string]string{"value": "1", "podSelector": "app=demo", "groupByNode": "invalid"}, "test", true},
+	{map[string]string{"value": "1", "podSelector": "app=demo", "onlyReadyPods": "true"}, "test", false},
+	{map[string]string{"value": "1", "podSelector": "app=demo", "onlyReadyPods": "false"}, "test", false},
+	{map[string]string{"value": "1", "podSelector": "app=demo", "onlyReadyPods": "invalid"}, "test", true},
 }
 
 func TestParseWorkloadMetadata(t *testing.T) {
@@ -338,6 +341,173 @@ func TestWorkloadGroupByNode(t *testing.T) {
 
 			if count != testCase.expected {
 				t.Fatalf("Expected count %d and got %d", testCase.expected, count)
+			}
+		})
+	}
+}
+
+func newWorkloadTestPod(name, nodeName string, phase v1.PodPhase, ready v1.ConditionStatus, terminating bool) v1.Pod {
+	pod := v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: "default",
+			Labels: map[string]string{
+				"app": "demo",
+			},
+		},
+		Spec: v1.PodSpec{
+			NodeName: nodeName,
+		},
+		Status: v1.PodStatus{
+			Phase: phase,
+		},
+	}
+	if ready != "" {
+		pod.Status.Conditions = []v1.PodCondition{{Type: v1.PodReady, Status: ready}}
+	}
+	if terminating {
+		now := metav1.Now()
+		pod.DeletionTimestamp = &now
+		// the fake client refuses objects with a deletion timestamp but no finalizers
+		pod.Finalizers = []string{"keda.sh/test"}
+	}
+	return pod
+}
+
+func TestWorkloadShouldCountPod(t *testing.T) {
+	testCases := []struct {
+		name             string
+		pod              v1.Pod
+		countAll         bool
+		countIfReadyOnly bool
+	}{
+		{"running and ready", newWorkloadTestPod("p", "", v1.PodRunning, v1.ConditionTrue, false), true, true},
+		{"running but not ready", newWorkloadTestPod("p", "", v1.PodRunning, v1.ConditionFalse, false), true, false},
+		{"running without ready condition", newWorkloadTestPod("p", "", v1.PodRunning, "", false), true, false},
+		{"pending", newWorkloadTestPod("p", "", v1.PodPending, "", false), true, false},
+		{"unknown phase with stale ready condition", newWorkloadTestPod("p", "", v1.PodUnknown, v1.ConditionTrue, false), true, false},
+		{"terminating but still ready", newWorkloadTestPod("p", "", v1.PodRunning, v1.ConditionTrue, true), true, false},
+		{"failed", newWorkloadTestPod("p", "", v1.PodFailed, "", false), false, false},
+		{"succeeded", newWorkloadTestPod("p", "", v1.PodSucceeded, "", false), false, false},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := shouldCountPod(testCase.pod, false); got != testCase.countAll {
+				t.Errorf("onlyReadyPods=false: expected %v and got %v", testCase.countAll, got)
+			}
+			if got := shouldCountPod(testCase.pod, true); got != testCase.countIfReadyOnly {
+				t.Errorf("onlyReadyPods=true: expected %v and got %v", testCase.countIfReadyOnly, got)
+			}
+		})
+	}
+}
+
+func TestWorkloadOnlyReadyPods(t *testing.T) {
+	podList := &v1.PodList{
+		Items: []v1.Pod{
+			newWorkloadTestPod("ready", "node-a", v1.PodRunning, v1.ConditionTrue, false),
+			newWorkloadTestPod("running-not-ready", "node-a", v1.PodRunning, v1.ConditionFalse, false),
+			newWorkloadTestPod("pending", "", v1.PodPending, "", false),
+			newWorkloadTestPod("terminating-ready", "node-b", v1.PodRunning, v1.ConditionTrue, true),
+			newWorkloadTestPod("unknown", "node-c", v1.PodUnknown, v1.ConditionTrue, false),
+			// Succeeded and Failed pods are never counted, even while terminating
+			newWorkloadTestPod("failed-terminating", "node-d", v1.PodFailed, "", true),
+			newWorkloadTestPod("succeeded", "node-d", v1.PodSucceeded, "", false),
+		},
+	}
+
+	testCases := []struct {
+		name          string
+		onlyReadyPods string
+		groupByNode   bool
+		expected      int64
+	}{
+		{name: "not set counts every non-terminal pod", expected: 5},
+		{name: "false counts every non-terminal pod", onlyReadyPods: "false", expected: 5},
+		{name: "true counts only ready pods that are not terminating", onlyReadyPods: "true", expected: 1},
+		{name: "group by node, not set", groupByNode: true, expected: 3},
+		{name: "group by node, only ready pods", onlyReadyPods: "true", groupByNode: true, expected: 1},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			metadata := map[string]string{
+				"podSelector": "app=demo",
+				"value":       "1",
+			}
+			if testCase.onlyReadyPods != "" {
+				metadata["onlyReadyPods"] = testCase.onlyReadyPods
+			}
+			if testCase.groupByNode {
+				metadata["groupByNode"] = "true"
+			}
+
+			s, err := NewKubernetesWorkloadScaler(
+				fake.NewClientBuilder().WithRuntimeObjects(podList).Build(),
+				&scalersconfig.ScalerConfig{
+					TriggerMetadata:         metadata,
+					ScalableObjectNamespace: "default",
+				},
+			)
+			if err != nil {
+				t.Fatalf("Error creating scaler: %v", err)
+			}
+
+			workloadScaler, ok := s.(*kubernetesWorkloadScaler)
+			if !ok {
+				t.Fatalf("Expected *kubernetesWorkloadScaler and got %T", s)
+			}
+
+			count, err := workloadScaler.getMetricValue(context.Background())
+			if err != nil {
+				t.Fatalf("Error getting metric value: %v", err)
+			}
+			if count != testCase.expected {
+				t.Fatalf("Expected count %d and got %d", testCase.expected, count)
+			}
+		})
+	}
+}
+
+func TestWorkloadOnlyReadyPodsActivity(t *testing.T) {
+	notReady := newWorkloadTestPod("running-not-ready", "", v1.PodRunning, v1.ConditionFalse, false)
+	terminatingReady := newWorkloadTestPod("terminating-ready", "", v1.PodRunning, v1.ConditionTrue, true)
+	ready := newWorkloadTestPod("ready", "", v1.PodRunning, v1.ConditionTrue, false)
+
+	testCases := []struct {
+		name   string
+		pods   []v1.Pod
+		active bool
+	}{
+		{name: "inactive when no matching pod is ready", pods: []v1.Pod{notReady, terminatingReady}, active: false},
+		{name: "active when a ready pod exists", pods: []v1.Pod{notReady, terminatingReady, ready}, active: true},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			s, err := NewKubernetesWorkloadScaler(
+				fake.NewClientBuilder().WithRuntimeObjects(&v1.PodList{Items: testCase.pods}).Build(),
+				&scalersconfig.ScalerConfig{
+					TriggerMetadata: map[string]string{
+						"podSelector":     "app=demo",
+						"value":           "1",
+						"activationValue": "0",
+						"onlyReadyPods":   "true",
+					},
+					ScalableObjectNamespace: "default",
+				},
+			)
+			if err != nil {
+				t.Fatalf("Error creating scaler: %v", err)
+			}
+
+			_, isActive, err := s.GetMetricsAndActivity(context.Background(), "Metric")
+			if err != nil {
+				t.Fatalf("Error getting metrics: %v", err)
+			}
+			if isActive != testCase.active {
+				t.Fatalf("Expected active=%v and got %v", testCase.active, isActive)
 			}
 		})
 	}
