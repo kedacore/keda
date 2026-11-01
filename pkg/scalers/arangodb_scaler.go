@@ -39,7 +39,7 @@ type arangoDBMetadata struct {
 	ArangoDBAuth *authentication.Config `keda:"optional"`
 	// Specify the unique arangoDB server ID. Only required if bearer JWT is being used.
 	// +optional
-	serverID string
+    ServerID string `keda:"name=serverID, order=triggerMetadata;authParams;resolvedEnv, optional"`
 
 	// The name of the database to be queried.
 	// +required
@@ -102,7 +102,7 @@ func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
 	if meta.ArangoDBAuth.EnabledBasicAuth() {
 		auth = connection.NewBasicAuth(meta.ArangoDBAuth.Username, meta.ArangoDBAuth.Password)
 	} else if meta.ArangoDBAuth.EnabledBearerAuth() {
-		hdr, err := createArangodJWTAuthorizationHeader(meta.ArangoDBAuth.BearerToken, meta.serverID)
+		hdr, err := createArangodJWTAuthorizationHeader(meta.ArangoDBAuth.BearerToken, meta.ServerID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create bearer token authorization header, %w", err)
 		}
