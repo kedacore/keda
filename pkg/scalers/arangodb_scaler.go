@@ -79,7 +79,10 @@ func NewArangoDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing arangoDB metadata: %w", err)
 	}
-
+	// Security fix: reject bearer auth without serverID to avoid empty Authorization header
+	if meta.ServerID == "" {
+		return nil, fmt.Errorf("serverID is required")
+	}
 	client, err := getNewArangoDBClient(meta)
 	if err != nil {
 		return nil, err
