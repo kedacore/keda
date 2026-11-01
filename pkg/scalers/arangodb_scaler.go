@@ -39,8 +39,7 @@ type arangoDBMetadata struct {
 	ArangoDBAuth *authentication.Config `keda:"optional"`
 	// Specify the unique arangoDB server ID. Only required if bearer JWT is being used.
 	// +optional
-     ServerID string `keda:"name=serverID, order=triggerMetadata;authParams;resolvedEnv, optional"`
-
+	ServerID string `keda:"name=serverID, order=triggerMetadata;authParams;resolvedEnv, optional"`
 	// The name of the database to be queried.
 	// +required
 	DbName string `keda:"name=dbName, order=triggerMetadata;authParams"`
@@ -78,7 +77,7 @@ func NewArangoDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing arangoDB metadata: %w", err)
 	}
-		// Security: serverID is required only for bearer auth
+	// Security: serverID is required only for bearer auth
 	if meta.ArangoDBAuth.EnabledBearerAuth() && meta.ServerID == "" {
 		return nil, fmt.Errorf("serverID is required when bearer authentication is used")
 	}
