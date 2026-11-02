@@ -270,3 +270,33 @@ func TestHoneycombWaitingCallerStopsAtContextDeadline(t *testing.T) {
 	cancelFirst()
 	<-firstDone
 }
+
+func TestHoneycombRetryInSameMinuteReusesQueryResult(t *testing.T) {
+	fake := &fakeHoneycomb{results: []string{
+		`"data":{"results":[{"data":{"COUNT":5}}]}`,
+		`"data":{"results":[{"data":{"COUNT":6}}]}`,
+	}}
+	s, now := newHoneycombTestScaler(t, fake, honeycombTestMetadata(nil))
+	// r1 stays incomplete, so the first call times out after creating it.
+	fake.getsForResult = map[string]int{"r1": -1 << 30}
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	_, _, err := s.GetMetricsAndActivity(ctx, "s0-honeycomb")
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+
+	// r1 completes on its next GET. A retry in the same minute reads r1 instead of creating r2.
+	fake.mu.Lock()
+	fake.getsForResult["r1"] = 1
+	fake.mu.Unlock()
+	metrics, _, err := s.GetMetricsAndActivity(context.Background(), "s0-honeycomb")
+	require.NoError(t, err)
+	assert.InDelta(t, 5, metrics[0].Value.AsApproximateFloat64(), 0.001)
+	assert.Equal(t, 1, fake.resultsMade, "a retry in the same minute must not create another query result")
+
+	// The next minute creates a new query result.
+	*now = now.Add(time.Minute)
+	metrics, _, err = s.GetMetricsAndActivity(context.Background(), "s0-honeycomb")
+	require.NoError(t, err)
+	assert.InDelta(t, 6, metrics[0].Value.AsApproximateFloat64(), 0.001)
+	assert.Equal(t, 2, fake.resultsMade)
+}

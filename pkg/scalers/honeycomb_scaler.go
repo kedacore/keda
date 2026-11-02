@@ -48,6 +48,10 @@ type honeycombScaler struct {
 	queryID   string
 	lastRun   time.Time
 	lastValue float64
+	// resultID is the query result created in resultMinute that has not been read yet. A
+	// later call in the same minute polls it again instead of creating another query result.
+	resultID     string
+	resultMinute time.Time
 }
 
 type honeycombMetadata struct {
@@ -173,7 +177,7 @@ func (s *honeycombScaler) getValue(ctx context.Context) (float64, error) {
 		return s.lastValue, nil
 	}
 
-	value, err := s.runQuery(ctx)
+	value, err := s.runQuery(ctx, now.Truncate(time.Minute))
 	if err != nil {
 		return 0, err
 	}
@@ -192,7 +196,7 @@ type honeycombQueryResult struct {
 	} `json:"data"`
 }
 
-func (s *honeycombScaler) runQuery(ctx context.Context) (float64, error) {
+func (s *honeycombScaler) runQuery(ctx context.Context, minute time.Time) (float64, error) {
 	ctx, cancel := context.WithTimeout(ctx, honeycombQueryResultTimeout)
 	defer cancel()
 
@@ -213,24 +217,30 @@ func (s *honeycombScaler) runQuery(ctx context.Context) (float64, error) {
 		s.queryID = created.ID
 	}
 
-	var result honeycombQueryResult
-	createBody := map[string]any{"query_id": s.queryID, "disable_series": true}
-	if err := s.doRequest(ctx, http.MethodPost, "/1/query_results/"+dataset, createBody, http.StatusCreated, &result); err != nil {
-		return 0, fmt.Errorf("creating query result: %w", err)
-	}
-	if result.ID == "" {
-		return 0, errors.New("creating query result: response has no query result id")
+	// Creating a query result spends the rate limit even when polling it fails afterwards, so
+	// create at most one per minute and keep polling it until it is read.
+	if s.resultID == "" || !s.resultMinute.Equal(minute) {
+		var created honeycombQueryResult
+		createBody := map[string]any{"query_id": s.queryID, "disable_series": true}
+		if err := s.doRequest(ctx, http.MethodPost, "/1/query_results/"+dataset, createBody, http.StatusCreated, &created); err != nil {
+			return 0, fmt.Errorf("creating query result: %w", err)
+		}
+		if created.ID == "" {
+			return 0, errors.New("creating query result: response has no query result id")
+		}
+		s.resultID, s.resultMinute = created.ID, minute
 	}
 
 	// The create response never carries result data, so always fetch the result.
-	resultPath := "/1/query_results/" + dataset + "/" + url.PathEscape(result.ID)
+	var result honeycombQueryResult
+	resultPath := "/1/query_results/" + dataset + "/" + url.PathEscape(s.resultID)
 	delay := honeycombInitialPollDelay
 	timer := time.NewTimer(delay)
 	defer timer.Stop()
 	for {
 		select {
 		case <-ctx.Done():
-			return 0, fmt.Errorf("waiting for query result %s: %w", result.ID, ctx.Err())
+			return 0, fmt.Errorf("waiting for query result %s: %w", s.resultID, ctx.Err())
 		case <-timer.C:
 		}
 		delay = min(delay*2, honeycombMaxPollDelay)
