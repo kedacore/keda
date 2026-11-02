@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -41,9 +40,11 @@ type honeycombScaler struct {
 	logger     logr.Logger
 	now        func() time.Time
 
-	// mu serializes queries so that concurrent callers (the operator and the metrics server)
-	// share one query result instead of each spending the Honeycomb rate limit.
-	mu        sync.Mutex
+	// lock is a one-slot semaphore that serializes queries, so that concurrent callers (the
+	// operator and the metrics server) share one query result instead of each spending the
+	// Honeycomb rate limit. Unlike a sync.Mutex, a caller waiting for it can give up when its
+	// context ends.
+	lock      chan struct{}
 	queryID   string
 	lastRun   time.Time
 	lastValue float64
@@ -113,6 +114,7 @@ func NewHoneycombScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		httpClient: kedautil.CreateHTTPClient(timeout, false),
 		logger:     InitializeLogger(config, "honeycomb_scaler"),
 		now:        time.Now,
+		lock:       make(chan struct{}, 1),
 	}, nil
 }
 
@@ -159,8 +161,12 @@ func (s *honeycombScaler) GetMetricsAndActivity(ctx context.Context, metricName 
 // same minute with the same result, while each run still counts against the rate limit on
 // creating query results (10 per minute by default).
 func (s *honeycombScaler) getValue(ctx context.Context) (float64, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	select {
+	case s.lock <- struct{}{}:
+	case <-ctx.Done():
+		return 0, fmt.Errorf("waiting for another Honeycomb query to finish: %w", ctx.Err())
+	}
+	defer func() { <-s.lock }()
 
 	now := s.now()
 	if !s.lastRun.IsZero() && s.lastRun.Truncate(time.Minute).Equal(now.Truncate(time.Minute)) {

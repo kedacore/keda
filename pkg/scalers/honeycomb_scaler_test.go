@@ -244,3 +244,29 @@ func TestHoneycombPollingStopsAtContextDeadline(t *testing.T) {
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 	assert.Less(t, time.Since(start), 2*time.Second)
 }
+
+func TestHoneycombWaitingCallerStopsAtContextDeadline(t *testing.T) {
+	fake := &fakeHoneycomb{}
+	s, _ := newHoneycombTestScaler(t, fake, honeycombTestMetadata(nil))
+	// The first caller holds the query lock while r1 never completes.
+	fake.getsForResult = map[string]int{"r1": -1 << 30}
+	firstCtx, cancelFirst := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFirst()
+	firstDone := make(chan struct{})
+	go func() {
+		defer close(firstDone)
+		_, _, _ = s.GetMetricsAndActivity(firstCtx, "s0-honeycomb")
+	}()
+	require.Eventually(t, func() bool { return len(s.lock) == 1 }, time.Second, time.Millisecond)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	_, _, err := s.GetMetricsAndActivity(ctx, "s0-honeycomb")
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.Less(t, time.Since(start), time.Second, "the waiting caller returns at its own deadline, not when the first query ends")
+
+	cancelFirst()
+	<-firstDone
+}
