@@ -50,14 +50,17 @@ type honeycombScaler struct {
 }
 
 type honeycombMetadata struct {
-	APIKey              string        `keda:"name=apiKey,              order=authParams"`
-	APIHost             string        `keda:"name=apiHost,             order=triggerMetadata, default=https://api.honeycomb.io"`
-	Dataset             string        `keda:"name=dataset,             order=triggerMetadata"`
-	Query               string        `keda:"name=query,               order=triggerMetadata"`
-	ResultField         string        `keda:"name=resultField,         order=triggerMetadata, optional"`
-	Threshold           float64       `keda:"name=threshold,           order=triggerMetadata, optional"`
-	ActivationThreshold float64       `keda:"name=activationThreshold, order=triggerMetadata, default=0"`
-	Timeout             time.Duration `keda:"name=timeout,             order=triggerMetadata, optional"`
+	APIKey              string  `keda:"name=apiKey,              order=authParams"`
+	APIHost             string  `keda:"name=apiHost,             order=triggerMetadata, default=https://api.honeycomb.io"`
+	Dataset             string  `keda:"name=dataset,             order=triggerMetadata"`
+	Query               string  `keda:"name=query,               order=triggerMetadata"`
+	ResultField         string  `keda:"name=resultField,         order=triggerMetadata, optional"`
+	Threshold           float64 `keda:"name=threshold,           order=triggerMetadata, optional"`
+	ActivationThreshold float64 `keda:"name=activationThreshold, order=triggerMetadata, default=0"`
+	// Timeout limits each HTTP request. Creating and polling a query result together is
+	// capped separately at honeycombQueryResultTimeout, so a larger Timeout does not give a
+	// query more time.
+	Timeout time.Duration `keda:"name=timeout,             order=triggerMetadata, optional"`
 
 	triggerIndex int
 }
@@ -72,6 +75,17 @@ func (m *honeycombMetadata) Validate() error {
 	var query map[string]any
 	if err := json.Unmarshal([]byte(m.Query), &query); err != nil {
 		return fmt.Errorf("query must be a Honeycomb query JSON object: %w", err)
+	}
+	// Honeycomb accepts null and {} as a COUNT over its default time range, which is
+	// almost never the intended scaling metric.
+	if len(query) == 0 {
+		return errors.New("query must be a non-empty Honeycomb query JSON object")
+	}
+	// An absolute time window returns the same value on every run.
+	for _, key := range []string{"start_time", "end_time"} {
+		if _, ok := query[key]; ok {
+			return fmt.Errorf("query must not set %s; use a relative time_range so each run covers the most recent data", key)
+		}
 	}
 	return nil
 }
