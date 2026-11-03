@@ -106,6 +106,8 @@ func startFakeFirestore(t *testing.T) *fakeFirestore {
 		t.Fatalf("listening: %v", err)
 	}
 	fake := &fakeFirestore{}
+	// The fake backend only listens on 127.0.0.1 for the duration of the test, like the Firestore emulator.
+	// nosemgrep: go.grpc.security.grpc-server-insecure-connection.grpc-server-insecure-connection
 	server := grpc.NewServer()
 	firestorepb.RegisterFirestoreServer(server, fake)
 	go func() { _ = server.Serve(listener) }()
