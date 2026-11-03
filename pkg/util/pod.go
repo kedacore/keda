@@ -20,7 +20,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// IsPodReady reports whether the pod's Ready condition is True.
+// IsPodReady reports whether the pod's Ready condition is True. The Running phase alone is
+// reached before a readiness probe first succeeds and before the pod is reachable through a Service.
 func IsPodReady(pod *corev1.Pod) bool {
 	if pod == nil {
 		return false
