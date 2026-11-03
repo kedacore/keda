@@ -134,7 +134,7 @@ func TestGetPkiRequest(t *testing.T) {
 		SecretLister:    mockSecretLister,
 	}
 
-	vault := NewHashicorpVaultHandler(nil, authClientSet, "default")
+	vault := NewHashicorpVaultHandler(nil, authClientSet, "default", "")
 
 	for _, testData := range pkiRequestTestDataset {
 		var secret kedav1alpha1.VaultSecret
@@ -229,10 +229,10 @@ func TestHashicorpVaultHandler_getSecretValue_specify_secret_type(t *testing.T) 
 		Address:        server.URL,
 		Authentication: kedav1alpha1.VaultAuthenticationToken,
 		Credential: &kedav1alpha1.Credential{
-			Token: vaultTestToken,
+			Token: vaultTestToken, //nolint:staticcheck // SA1019: the inline token is deprecated but still supported
 		},
 	}
-	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default", "")
 	err := vaultHandler.Initialize(logf.Log.WithName("test"))
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
@@ -380,10 +380,10 @@ func TestHashicorpVaultHandler_ResolveSecret(t *testing.T) {
 		Address:        server.URL,
 		Authentication: kedav1alpha1.VaultAuthenticationToken,
 		Credential: &kedav1alpha1.Credential{
-			Token: vaultTestToken,
+			Token: vaultTestToken, //nolint:staticcheck // SA1019: the inline token is deprecated but still supported
 		},
 	}
-	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default", "")
 	err := vaultHandler.Initialize(logf.Log.WithName("test"))
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
@@ -420,7 +420,7 @@ func TestHashicorpVaultHandler_ResolveSecret_UsingRootToken(t *testing.T) {
 		Address:        server.URL,
 		Authentication: kedav1alpha1.VaultAuthenticationToken,
 		Credential: &kedav1alpha1.Credential{
-			Token: vaultTestToken,
+			Token: vaultTestToken, //nolint:staticcheck // SA1019: the inline token is deprecated but still supported
 		},
 	}
 	ctrl := gomock.NewController(t)
@@ -431,7 +431,7 @@ func TestHashicorpVaultHandler_ResolveSecret_UsingRootToken(t *testing.T) {
 		SecretLister:    mockSecretLister,
 	}
 
-	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default", "")
 	err := vaultHandler.Initialize(logf.Log.WithName("test"))
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
@@ -479,7 +479,7 @@ func TestHashicorpVaultHandler_DefaultKubernetesVaultRole(t *testing.T) {
 
 	// In enforce mode, with no outbound endpoint allowlist configured, KEDA refuses to fall back
 	// to the operator service account token instead of silently exfiltrating it.
-	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default", "")
 	err := vaultHandler.Initialize(logf.Log.WithName("test"))
 	defer vaultHandler.Stop()
 	assert.ErrorContains(t, err, "no outbound endpoint allowlist is configured")
@@ -495,7 +495,7 @@ func TestHashicorpVaultHandler_DefaultKubernetesVaultRole(t *testing.T) {
 		Mount:          "my-mount",
 		Role:           "my-role",
 	}
-	vaultHandlerAllowed := NewHashicorpVaultHandler(&vaultAllowed, authClientSet, "default")
+	vaultHandlerAllowed := NewHashicorpVaultHandler(&vaultAllowed, authClientSet, "default", "")
 	errAllowed := vaultHandlerAllowed.Initialize(logf.Log.WithName("test"))
 	defer vaultHandlerAllowed.Stop()
 	assert.ErrorContains(t, errAllowed, "no approved service account token audiences")
@@ -515,7 +515,7 @@ func TestHashicorpVaultHandler_AddressAllowlist(t *testing.T) {
 		Mount:          "my-mount",
 		Role:           "my-role",
 	}
-	err := NewHashicorpVaultHandler(&rogue, authClientSet, "default").Initialize(logf.Log.WithName("test"))
+	err := NewHashicorpVaultHandler(&rogue, authClientSet, "default", "").Initialize(logf.Log.WithName("test"))
 	assert.ErrorContains(t, err, "not in the configured allowlist")
 }
 
@@ -535,7 +535,7 @@ func TestHashicorpVaultHandler_LegacyPolicies(t *testing.T) {
 		Mount:          "my-mount",
 		Role:           "my-role",
 	}
-	vh := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	vh := NewHashicorpVaultHandler(&vault, authClientSet, "default", "")
 	err := vh.Initialize(logf.Log.WithName("test"))
 	assert.Errorf(t, err, "open %s : no such file or directory", defaultServiceAccountPath)
 	assert.NotContains(t, err.Error(), "allowlist")
@@ -567,9 +567,9 @@ func TestHashicorpVaultHandler_FollowsVaultRedirectsInEnforceMode(t *testing.T) 
 	vault := kedav1alpha1.HashiCorpVault{
 		Address:        redirectingVault.URL,
 		Authentication: kedav1alpha1.VaultAuthenticationToken,
-		Credential:     &kedav1alpha1.Credential{Token: vaultTestToken},
+		Credential:     &kedav1alpha1.Credential{Token: vaultTestToken}, //nolint:staticcheck // SA1019: the inline token is deprecated but still supported
 	}
-	err := NewHashicorpVaultHandler(&vault, &authentication.AuthClientSet{}, "default").Initialize(logf.Log.WithName("test"))
+	err := NewHashicorpVaultHandler(&vault, &authentication.AuthClientSet{}, "default", "").Initialize(logf.Log.WithName("test"))
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, redirectedRequests.Load(), "enforce mode trusts the configured Vault origin's HA redirect")
 }
@@ -579,7 +579,7 @@ func TestHashicorpVaultHandler_TokenAudiences(t *testing.T) {
 	defer SetConfig(&prev)
 	vh := NewHashicorpVaultHandler(&kedav1alpha1.HashiCorpVault{
 		Credential: &kedav1alpha1.Credential{ServiceAccountName: "vault-login"},
-	}, nil, "tenant")
+	}, nil, "tenant", "")
 
 	SetConfig(&Config{})
 	_, err := vh.kubernetesToken(t.Context())
@@ -610,7 +610,7 @@ func TestHashicorpVaultHandler_ExplicitCredentialDeniedWithoutAllowlist(t *testi
 		{"operator token path", kedav1alpha1.VaultAuthenticationKubernetes, kedav1alpha1.Credential{ServiceAccount: serviceAccountTokenFile}},
 		{"arbitrary mounted token", kedav1alpha1.VaultAuthenticationKubernetes, kedav1alpha1.Credential{ServiceAccount: "/var/run/secrets/other/token"}},
 		{"minted by name", kedav1alpha1.VaultAuthenticationKubernetes, kedav1alpha1.Credential{ServiceAccountName: "keda-operator"}},
-		{"literal token", kedav1alpha1.VaultAuthenticationToken, kedav1alpha1.Credential{Token: "s.tenant-supplied"}},
+		{"literal token", kedav1alpha1.VaultAuthenticationToken, kedav1alpha1.Credential{Token: "s.tenant-supplied"}}, //nolint:staticcheck // SA1019: the inline token is deprecated but still supported
 	}
 	for _, tc := range cases {
 		cred := tc.cred
@@ -621,7 +621,7 @@ func TestHashicorpVaultHandler_ExplicitCredentialDeniedWithoutAllowlist(t *testi
 			Role:           "my-role",
 			Credential:     &cred,
 		}
-		vh := NewHashicorpVaultHandler(&vault, authClientSet, "red")
+		vh := NewHashicorpVaultHandler(&vault, authClientSet, "red", "")
 		err := vh.Initialize(logf.Log.WithName("test"))
 		vh.Stop()
 		assert.ErrorContains(t, err, "no outbound endpoint allowlist is configured",
@@ -668,10 +668,10 @@ func TestHashicorpVaultHandler_ResolveSecrets_SameCertAndKey(t *testing.T) {
 		Address:        server.URL,
 		Authentication: kedav1alpha1.VaultAuthenticationToken,
 		Credential: &kedav1alpha1.Credential{
-			Token: vaultTestToken,
+			Token: vaultTestToken, //nolint:staticcheck // SA1019: the inline token is deprecated but still supported
 		},
 	}
-	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default", "")
 	err := vaultHandler.Initialize(logf.Log.WithName("test"))
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
@@ -748,11 +748,11 @@ func TestHashicorpVaultHandler_fetchSecret(t *testing.T) {
 		Address:        server.URL,
 		Authentication: kedav1alpha1.VaultAuthenticationToken,
 		Credential: &kedav1alpha1.Credential{
-			Token: vaultTestToken,
+			Token: vaultTestToken, //nolint:staticcheck // SA1019: the inline token is deprecated but still supported
 		},
 	}
 
-	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default", "")
 	err := vaultHandler.Initialize(logf.Log.WithName("test"))
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
@@ -816,11 +816,11 @@ func TestHashicorpVaultHandler_Initialize(t *testing.T) {
 				Address:        server.URL,
 				Authentication: kedav1alpha1.VaultAuthenticationToken,
 				Credential: &kedav1alpha1.Credential{
-					Token: testData.token,
+					Token: testData.token, //nolint:staticcheck // SA1019: the inline token is deprecated but still supported
 				},
 				Namespace: testData.namespace,
 			}
-			vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, testData.namespace)
+			vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, testData.namespace, "")
 			err := vaultHandler.Initialize(logf.Log.WithName("test"))
 			defer vaultHandler.Stop()
 			assert.Nil(t, err)
@@ -852,7 +852,7 @@ var tokenTestDataSet = []tokenTestData{
 		isError:        false,
 		authentication: kedav1alpha1.VaultAuthenticationToken,
 		credential: kedav1alpha1.Credential{
-			Token: vaultTestToken,
+			Token: vaultTestToken, //nolint:staticcheck // SA1019: the inline token is deprecated but still supported
 		},
 		role:  "my-role",
 		mount: "my-mount",
@@ -906,7 +906,7 @@ func TestHashicorpVaultHandler_Token_VaultTokenAuth(t *testing.T) {
 				Role:           testData.role,
 				Mount:          testData.mount,
 			}
-			vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+			vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default", "")
 			defer vaultHandler.Stop()
 
 			config := vaultapi.DefaultConfig()
@@ -974,7 +974,7 @@ func TestHashicorpVaultHandler_Token_ServiceAccountAuth(t *testing.T) {
 		},
 	}
 
-	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default", "")
 	defer vaultHandler.Stop()
 
 	config := vaultapi.DefaultConfig()
@@ -1038,10 +1038,10 @@ func newRenewalVaultHandler(t *testing.T, address string) *HashicorpVaultHandler
 		Address:        address,
 		Authentication: kedav1alpha1.VaultAuthenticationToken,
 		Credential: &kedav1alpha1.Credential{
-			Token: vaultTestToken,
+			Token: vaultTestToken, //nolint:staticcheck // SA1019: the inline token is deprecated but still supported
 		},
 	}
-	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default", "")
 	err := vaultHandler.Initialize(logf.Log.WithName("test"))
 	assert.NoError(t, err)
 
@@ -1162,4 +1162,85 @@ func TestHashicorpVaultHandler_Initialize_SkipsRenewalForNonRenewableToken(t *te
 	defer vaultHandler.Stop()
 
 	assert.Nil(t, vaultHandler.stopCh)
+}
+
+func TestHashicorpVaultHandler_Token_FromSecret(t *testing.T) {
+	t.Setenv("VAULT_TOKEN", "")
+	client, err := vaultapi.NewClient(vaultapi.DefaultConfig())
+	require.NoError(t, err)
+
+	const secretToken = "token-from-secret"
+	tokenFrom := &kedav1alpha1.ValueFromSecret{
+		SecretKeyRef: kedav1alpha1.SecretKeyRef{Name: "vault-token", Key: "token"},
+	}
+
+	tests := []struct {
+		name        string
+		credential  *kedav1alpha1.Credential
+		secretToken string
+		want        string
+		wantErr     string
+	}{
+		{
+			name:        "token from secret",
+			credential:  &kedav1alpha1.Credential{TokenFrom: tokenFrom},
+			secretToken: secretToken,
+			want:        secretToken,
+		},
+		{
+			name:        "token from secret takes precedence over the inline token",
+			credential:  &kedav1alpha1.Credential{Token: vaultTestToken, TokenFrom: tokenFrom}, //nolint:staticcheck // SA1019: the inline token is deprecated but still supported
+			secretToken: secretToken,
+			want:        secretToken,
+		},
+		{
+			name:       "inline token",
+			credential: &kedav1alpha1.Credential{Token: vaultTestToken}, //nolint:staticcheck // SA1019: the inline token is deprecated but still supported
+			want:       vaultTestToken,
+		},
+		{
+			name:    "no token",
+			wantErr: "could not get Vault token",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			vault := kedav1alpha1.HashiCorpVault{
+				Authentication: kedav1alpha1.VaultAuthenticationToken,
+				Credential:     test.credential,
+			}
+			vaultHandler := NewHashicorpVaultHandler(&vault, &authentication.AuthClientSet{}, "default", test.secretToken)
+
+			token, err := vaultHandler.token(client, logf.Log.WithName("test"))
+			if test.wantErr != "" {
+				assert.EqualError(t, err, test.wantErr)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, test.want, token)
+		})
+	}
+}
+
+// TestHashicorpVaultHandler_SecretTokenDeniedWithoutAllowlist checks that a token read from a
+// secret is gated by the outbound endpoint policy like every other credential form.
+func TestHashicorpVaultHandler_SecretTokenDeniedWithoutAllowlist(t *testing.T) {
+	prev := globalConfig
+	SetConfig(&Config{OutboundEndpointPolicy: "enforce"})
+	defer SetConfig(&prev)
+
+	vault := kedav1alpha1.HashiCorpVault{
+		Address:        "http://attacker.tenant.svc:8200",
+		Authentication: kedav1alpha1.VaultAuthenticationToken,
+		Credential: &kedav1alpha1.Credential{
+			TokenFrom: &kedav1alpha1.ValueFromSecret{
+				SecretKeyRef: kedav1alpha1.SecretKeyRef{Name: "vault-token", Key: "token"},
+			},
+		},
+	}
+	vh := NewHashicorpVaultHandler(&vault, &authentication.AuthClientSet{}, "red", "s.from-secret")
+	err := vh.Initialize(logf.Log.WithName("test"))
+	vh.Stop()
+	assert.ErrorContains(t, err, "no outbound endpoint allowlist is configured")
 }
