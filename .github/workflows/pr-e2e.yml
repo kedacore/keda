@@ -75,7 +75,7 @@ jobs:
 
   build-test-images:
     needs: triage
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     name: Build images
     container: ghcr.io/kedacore/keda-tools:1.27.3@sha256:068e6772a1714b673c503ad72c7d2f50570761a5a318087e3e6ec994f5df29f8
     if: needs.triage.outputs.run-e2e == 'true'
@@ -189,7 +189,7 @@ jobs:
         run: exit 1
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           # Username used to log in to a Docker registry. If not set then no login will occur
           username: ${{ github.repository_owner }}
@@ -423,7 +423,7 @@ jobs:
 
   run-arm-smoke-test:
     needs: [triage, build-test-images]
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     name: Execute ARM smoke tests
     if: needs.triage.outputs.run-e2e == 'true'
     outputs:
@@ -458,7 +458,7 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
 
       - name: Create k8s ${{ inputs.kubernetesVersion }} Kind Cluster
-        uses: helm/kind-action@06c1ae10762d3b9c1644e7fe69596ae519e015a2 # v1.15.0
+        uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
         env:
           # renovate: datasource=docker depName=kindest/node
           NODE_IMAGE_VERSION: v1.37.0
