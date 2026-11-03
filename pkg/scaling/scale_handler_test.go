@@ -1695,6 +1695,39 @@ func TestHandleResult_SetsLastActiveTime(t *testing.T) {
 	assert.Equal(t, &now, patchedObj.Status.LastActiveTime)
 }
 
+func TestHandleResult_SkipsEmptySerializedPatch(t *testing.T) {
+	for _, object := range []kedav1alpha1.ScalableObject{&kedav1alpha1.ScaledObject{}, &kedav1alpha1.ScaledJob{}} {
+		for _, tc := range []struct {
+			name        string
+			delta       time.Duration
+			expectPatch bool
+		}{
+			{name: "same serialized status", delta: 100 * time.Millisecond},
+			{name: "changed serialized status", delta: time.Second, expectPatch: true},
+		} {
+			t.Run(fmt.Sprintf("%T/%s", object, tc.name), func(t *testing.T) {
+				ctrl := gomock.NewController(t)
+				mockClient := mock_client.NewMockClient(ctrl)
+				sh := scaleHandler{client: mockClient}
+				current := object.DeepCopyObject().(kedav1alpha1.ScalableObject)
+				lastActive := metav1.NewTime(time.Date(2026, time.October, 5, 12, 0, 0, 0, time.UTC))
+				current.SetStatusLastActiveTime(&lastActive)
+				updated := metav1.NewTime(lastActive.Add(tc.delta))
+				mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, _ types.NamespacedName, obj kedav1alpha1.ScalableObject, _ ...any) error {
+					obj.SetStatusLastActiveTime(&lastActive)
+					return nil
+				})
+				if tc.expectPatch {
+					writer := mock_client.NewMockStatusWriter(ctrl)
+					mockClient.EXPECT().Status().Return(writer)
+					writer.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+				}
+				sh.handleResult(context.Background(), current, executor.ScaleResult{LastActiveTime: &updated})
+			})
+		}
+	}
+}
+
 func TestHandleResult_KubernetesAPITimeout(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockClient := mock_client.NewMockClient(ctrl)
