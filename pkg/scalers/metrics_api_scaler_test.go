@@ -564,3 +564,41 @@ func TestGetEndpointsUrlsFromServiceURL_SelectorFiltersCorrectly(t *testing.T) {
 	assert.Equal(t, []string{"http://10.0.0.1:8080/metrics"}, urls,
 		"should only return endpoints from my-service, not other-service")
 }
+
+func TestGetEndpointsUrlsFromServiceURL_HostForms(t *testing.T) {
+	ready := true
+	port8080 := int32(8080)
+	slice := &discoveryV1.EndpointSlice{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-service-abc",
+			Namespace: "my-namespace",
+			Labels:    map[string]string{discoveryV1.LabelServiceName: "my-service"},
+		},
+		Ports: []discoveryV1.EndpointPort{{Port: &port8080}},
+		Endpoints: []discoveryV1.Endpoint{{
+			Addresses:  []string{"10.0.0.1"},
+			Conditions: discoveryV1.EndpointConditions{Ready: &ready},
+		}},
+	}
+	kubeClient := fake.NewClientBuilder().
+		WithLists(&discoveryV1.EndpointSliceList{Items: []discoveryV1.EndpointSlice{*slice}}).
+		Build()
+	s := metricsAPIScaler{kubeClient: kubeClient, logger: logr.Discard()}
+
+	tests := []struct {
+		name string
+		url  string
+	}{
+		{"service and namespace with a port", "http://my-service.my-namespace:8080/metrics"},
+		{"service and namespace with a port and the root path", "http://my-service.my-namespace:8080/"},
+		{"fully qualified name with a port", "http://my-service.my-namespace.svc.cluster.local:8080/metrics"},
+		{"service, namespace and svc with a port", "http://my-service.my-namespace.svc:8080/metrics"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			urls, err := s.getEndpointsUrlsFromServiceURL(t.Context(), tt.url)
+			assert.NoError(t, err)
+			assert.Len(t, urls, 1, "the endpoints of my-service in my-namespace should be found")
+		})
+	}
+}

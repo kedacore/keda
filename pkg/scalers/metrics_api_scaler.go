@@ -336,9 +336,10 @@ func (s *metricsAPIScaler) getEndpointsUrlsFromServiceURL(ctx context.Context, s
 		return nil, err
 	}
 
-	splittedHost := strings.Split(url.Host, ".")
+	// use the hostname without the port, the port is read separately below
+	splittedHost := strings.Split(url.Hostname(), ".")
 	if len(splittedHost) < 2 {
-		return nil, fmt.Errorf("invalid hostname %s : expected at least 2 elements, first being service name and second being the namespace", url.Host)
+		return nil, fmt.Errorf("invalid hostname %s : expected at least 2 elements, first being service name and second being the namespace", url.Hostname())
 	}
 	serviceName := splittedHost[0]
 	namespace := splittedHost[1]
