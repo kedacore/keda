@@ -29,8 +29,11 @@ import (
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -126,7 +129,7 @@ func TestUpdateScaleOnScaleTarget_KubernetesAPITimeout(t *testing.T) {
 		})
 
 	startedAt := time.Now()
-	_, err := exec.updateScaleOnScaleTarget(context.Background(), scaledObject, 1)
+	_, err := exec.updateScaleOnScaleTarget(context.Background(), scaledObject, "name", 1)
 
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 	assert.Less(t, time.Since(startedAt), time.Second)
@@ -163,7 +166,7 @@ func TestUpdateScaleOnScaleTarget_KubernetesAPITimeoutDuringUpdate(t *testing.T)
 		})
 
 	startedAt := time.Now()
-	_, err := exec.updateScaleOnScaleTarget(context.Background(), scaledObject, 2)
+	_, err := exec.updateScaleOnScaleTarget(context.Background(), scaledObject, "name", 2)
 
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 	assert.Less(t, time.Since(startedAt), time.Second)
@@ -434,14 +437,8 @@ func TestScaleToPausedReplicasCount(t *testing.T) {
 
 	scaledObject.Status.Conditions = *v1alpha1.GetInitializedConditions()
 
-	// GetCurrentReplicas is called before handlePaused, so we need a mock for it.
-	replicaCount := int32(2)
-	client.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, appsv1.Deployment{
-		Spec: appsv1.DeploymentSpec{
-			Replicas: &replicaCount,
-		},
-	})
-
+	// handlePaused runs before GetCurrentReplicas, so no client mocks are
+	// needed: a paused ScaledObject short-circuits immediately.
 	result := scaleExecutor.RequestScale(context.TODO(), &scaledObject, true, false, ScaleExecutorOptions{})
 
 	// PauseReplicas should not be set
@@ -1354,4 +1351,90 @@ func TestRequestScale_ScalerErrorWithFallback_HPAHealthy(t *testing.T) {
 
 	readyCond := result.Conditions.GetReadyCondition()
 	assert.Truef(t, readyCond.IsTrue(), "with fallback configured and HPA healthy, Ready should be True, got %s/%s", readyCond.Status, readyCond.Reason)
+}
+
+func TestFindConflictingScaledObject(t *testing.T) {
+	scheme := runtime.NewScheme()
+	assert.NoError(t, v1alpha1.AddToScheme(scheme))
+	assert.NoError(t, appsv1.AddToScheme(scheme))
+
+	deploymentGVKR := &v1alpha1.GroupVersionKindResource{
+		Group: "apps", Version: "v1", Kind: "Deployment", Resource: "deployments",
+	}
+	newDeployment := func(name string, labels map[string]string) *appsv1.Deployment {
+		return &appsv1.Deployment{
+			ObjectMeta: v1.ObjectMeta{Namespace: "test", Name: name, Labels: labels},
+		}
+	}
+	newSO := func(name string, ref *v1alpha1.ScaleTarget) *v1alpha1.ScaledObject {
+		return &v1alpha1.ScaledObject{
+			ObjectMeta: v1.ObjectMeta{Namespace: "test", Name: name},
+			Spec:       v1alpha1.ScaledObjectSpec{ScaleTargetRef: ref},
+			Status:     v1alpha1.ScaledObjectStatus{ScaleTargetGVKR: deploymentGVKR},
+		}
+	}
+	fixedRef := func(name string) *v1alpha1.ScaleTarget {
+		return &v1alpha1.ScaleTarget{APIVersion: "apps/v1", Kind: "Deployment", Name: name}
+	}
+	selectorRef := func(prefix string, labels map[string]string) *v1alpha1.ScaleTarget {
+		return &v1alpha1.ScaleTarget{
+			APIVersion: "apps/v1", Kind: "Deployment", NamePrefix: prefix,
+			LabelSelector: &v1.LabelSelector{MatchLabels: labels},
+		}
+	}
+
+	buildExecutor := func(t *testing.T, objects ...runtimeclient.Object) *scaleExecutor {
+		t.Helper()
+		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objects...).Build()
+		exec, ok := NewScaleExecutor(fakeClient, nil, nil, kubernetesAPITimeout, nil).(*scaleExecutor)
+		if !ok {
+			t.Fatal("NewScaleExecutor did not return *scaleExecutor")
+		}
+		return exec
+	}
+
+	t.Run("fixed SO skips the scan, selector side holds instead", func(t *testing.T) {
+		exec := buildExecutor(t,
+			newDeployment("worker-abc12", map[string]string{"role": "worker"}),
+			newSO("so-fixed", fixedRef("worker-abc12")),
+			newSO("so-selector", selectorRef("worker-", map[string]string{"role": "worker"})),
+		)
+		conflict, err := exec.findConflictingScaledObject(context.Background(), newSO("so-fixed", fixedRef("worker-abc12")), "worker-abc12")
+		assert.NoError(t, err)
+		assert.Empty(t, conflict)
+	})
+
+	t.Run("selector SO sees fixed conflict on the same target", func(t *testing.T) {
+		exec := buildExecutor(t,
+			newDeployment("worker-abc12", map[string]string{"role": "worker"}),
+			newSO("so-fixed", fixedRef("worker-abc12")),
+			newSO("so-selector", selectorRef("worker-", map[string]string{"role": "worker"})),
+		)
+		conflict, err := exec.findConflictingScaledObject(context.Background(), newSO("so-selector", selectorRef("worker-", map[string]string{"role": "worker"})), "worker-abc12")
+		assert.NoError(t, err)
+		assert.Equal(t, "so-fixed", conflict)
+	})
+
+	t.Run("no conflict for distinct targets", func(t *testing.T) {
+		exec := buildExecutor(t,
+			newDeployment("worker-abc12", map[string]string{"role": "worker"}),
+			newDeployment("other-abc12", map[string]string{"role": "other"}),
+			newSO("so-fixed", fixedRef("worker-abc12")),
+			newSO("so-selector", selectorRef("other-", map[string]string{"role": "other"})),
+		)
+		conflict, err := exec.findConflictingScaledObject(context.Background(), newSO("so-fixed", fixedRef("worker-abc12")), "worker-abc12")
+		assert.NoError(t, err)
+		assert.Empty(t, conflict)
+	})
+
+	t.Run("unresolvable selector neighbour is skipped", func(t *testing.T) {
+		exec := buildExecutor(t,
+			newDeployment("worker-abc12", map[string]string{"role": "worker"}),
+			newSO("so-fixed", fixedRef("worker-abc12")),
+			newSO("so-ghost", selectorRef("ghost-", map[string]string{"role": "ghost"})),
+		)
+		conflict, err := exec.findConflictingScaledObject(context.Background(), newSO("so-fixed", fixedRef("worker-abc12")), "worker-abc12")
+		assert.NoError(t, err)
+		assert.Empty(t, conflict)
+	})
 }
