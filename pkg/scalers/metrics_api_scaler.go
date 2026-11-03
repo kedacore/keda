@@ -343,6 +343,10 @@ func (s *metricsAPIScaler) getEndpointsUrlsFromServiceURL(ctx context.Context, s
 	}
 	serviceName := splittedHost[0]
 	namespace := splittedHost[1]
+	// An empty namespace would list the endpoints of the service name in every namespace.
+	if serviceName == "" || namespace == "" {
+		return nil, fmt.Errorf("invalid hostname %s : the service name and the namespace must not be empty", url.Hostname())
+	}
 	podPort := url.Port()
 	// infer port from service scheme when not set explicitly
 	if podPort == "" {

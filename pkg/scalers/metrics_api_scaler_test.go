@@ -602,3 +602,33 @@ func TestGetEndpointsUrlsFromServiceURL_HostForms(t *testing.T) {
 		})
 	}
 }
+
+func TestGetEndpointsUrlsFromServiceURL_EmptyServiceOrNamespace(t *testing.T) {
+	ready := true
+	port8080 := int32(8080)
+	slice := &discoveryV1.EndpointSlice{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-service-abc",
+			Namespace: "other-namespace",
+			Labels:    map[string]string{discoveryV1.LabelServiceName: "my-service"},
+		},
+		Ports: []discoveryV1.EndpointPort{{Port: &port8080}},
+		Endpoints: []discoveryV1.Endpoint{{
+			Addresses:  []string{"10.0.0.1"},
+			Conditions: discoveryV1.EndpointConditions{Ready: &ready},
+		}},
+	}
+	kubeClient := fake.NewClientBuilder().
+		WithLists(&discoveryV1.EndpointSliceList{Items: []discoveryV1.EndpointSlice{*slice}}).
+		Build()
+	s := metricsAPIScaler{kubeClient: kubeClient, logger: logr.Discard()}
+
+	for _, serviceURL := range []string{
+		"http://my-service.:8080/metrics",
+		"http://.my-namespace:8080/metrics",
+	} {
+		urls, err := s.getEndpointsUrlsFromServiceURL(t.Context(), serviceURL)
+		assert.Error(t, err, serviceURL)
+		assert.Empty(t, urls, serviceURL)
+	}
+}
