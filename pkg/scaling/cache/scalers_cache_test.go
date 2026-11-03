@@ -26,6 +26,7 @@ import (
 	. "github.com/onsi/gomega"
 	"go.uber.org/atomic"
 	v2 "k8s.io/api/autoscaling/v2"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -446,6 +447,9 @@ func TestScalersCache_UpdateMetricSpecForScaler(t *testing.T) {
 	if !c.UpdateMetricSpecForScaler(0, newSpecs, testCacheUID, testCacheGeneration) {
 		t.Fatal("UpdateMetricSpecForScaler should report true for a valid index")
 	}
+	if c.UpdateMetricSpecForScaler(0, cloneMetricSpecs(newSpecs), testCacheUID, testCacheGeneration) {
+		t.Fatal("UpdateMetricSpecForScaler should report false for unchanged specs")
+	}
 
 	// Mutate the caller-owned slice after storing it; the cache must keep its own deep copy.
 	newSpecs[0].External.Metric.Name = "mutated"
@@ -460,6 +464,96 @@ func TestScalersCache_UpdateMetricSpecForScaler(t *testing.T) {
 	}
 	if specs[0].External.Metric.Selector.MatchLabels["source"] != "stream" {
 		t.Fatalf("expected selector source=stream, got %q", specs[0].External.Metric.Selector.MatchLabels["source"])
+	}
+}
+
+func TestScalersCache_UpdateMetricSpecForScaler_FirstUpdateMatchesStaticSpecs(t *testing.T) {
+	scaler := newFakeScaler(nil)
+	c := newCacheWithScaler(scaler)
+	specs := scaler.GetMetricSpecForScaling(context.Background())
+	if !c.UpdateMetricSpecForScaler(0, specs, testCacheUID, testCacheGeneration) {
+		t.Fatal("the first streamed update must be applied even when it matches the static specs")
+	}
+	if c.Scalers[0].CachedMetricSpecs == nil {
+		t.Fatal("the first streamed update must override the static specs")
+	}
+	if c.UpdateMetricSpecForScaler(0, specs, testCacheUID, testCacheGeneration) {
+		t.Fatal("a repeated streamed update must be skipped")
+	}
+}
+
+func TestScalersCache_UpdateMetricSpecForScaler_ChangedSpecs(t *testing.T) {
+	specs := []v2.MetricSpec{{
+		Type: v2.ExternalMetricSourceType,
+		External: &v2.ExternalMetricSource{
+			Metric: v2.MetricIdentifier{
+				Name:     "first",
+				Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"source": "stream"}},
+			},
+			Target: v2.MetricTarget{Type: v2.AverageValueMetricType, AverageValue: resource.NewQuantity(1, resource.DecimalSI)},
+		},
+	}, {
+		Type:     v2.ExternalMetricSourceType,
+		External: &v2.ExternalMetricSource{Metric: v2.MetricIdentifier{Name: "second"}},
+	}}
+
+	t.Run("equivalent quantity", func(t *testing.T) {
+		c := newCacheWithScaler(newFakeScaler(nil))
+		if !c.UpdateMetricSpecForScaler(0, specs, testCacheUID, testCacheGeneration) {
+			t.Fatal("expected the first update to be applied")
+		}
+		equivalent := cloneMetricSpecs(specs)
+		equivalent[0].External.Target.AverageValue = resource.NewMilliQuantity(1000, resource.DecimalSI)
+		if c.UpdateMetricSpecForScaler(0, equivalent, testCacheUID, testCacheGeneration) {
+			t.Fatal("equivalent quantity representations should not apply an update")
+		}
+	})
+
+	for name, change := range map[string]func([]v2.MetricSpec) []v2.MetricSpec{
+		"name": func(s []v2.MetricSpec) []v2.MetricSpec {
+			s[0].External.Metric.Name = "changed"
+			return s
+		},
+		"selector": func(s []v2.MetricSpec) []v2.MetricSpec {
+			s[0].External.Metric.Selector.MatchLabels["source"] = "changed"
+			return s
+		},
+		"target value": func(s []v2.MetricSpec) []v2.MetricSpec {
+			s[0].External.Target.AverageValue = resource.NewQuantity(2, resource.DecimalSI)
+			return s
+		},
+		"target type": func(s []v2.MetricSpec) []v2.MetricSpec {
+			s[0].External.Target = v2.MetricTarget{Type: v2.ValueMetricType, Value: resource.NewQuantity(1, resource.DecimalSI)}
+			return s
+		},
+		"order": func(s []v2.MetricSpec) []v2.MetricSpec {
+			s[0], s[1] = s[1], s[0]
+			return s
+		},
+		"removal": func(s []v2.MetricSpec) []v2.MetricSpec { return s[:1] },
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := newCacheWithScaler(newFakeScaler(nil))
+			if !c.UpdateMetricSpecForScaler(0, specs, testCacheUID, testCacheGeneration) {
+				t.Fatal("expected the first update to be applied")
+			}
+			changed := change(cloneMetricSpecs(specs))
+			if !c.UpdateMetricSpecForScaler(0, changed, testCacheUID, testCacheGeneration) {
+				t.Fatal("expected changed specs to be applied")
+			}
+			if c.UpdateMetricSpecForScaler(0, cloneMetricSpecs(changed), testCacheUID, testCacheGeneration) {
+				t.Fatal("expected unchanged specs to be skipped")
+			}
+		})
+	}
+}
+
+func TestScalersCache_UpdateMetricSpecForScaler_Closed(t *testing.T) {
+	c := newCacheWithScaler(newFakeScaler(nil))
+	specs := c.GetMetricSpecForScaling(context.Background())
+	c.Close(context.Background())
+	if c.UpdateMetricSpecForScaler(0, specs, testCacheUID, testCacheGeneration) {
+		t.Fatal("UpdateMetricSpecForScaler should report false for a closed cache")
 	}
 }
 
