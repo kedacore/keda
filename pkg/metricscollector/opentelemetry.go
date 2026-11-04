@@ -25,6 +25,11 @@ import (
 
 var otLog = logf.Log.WithName("otel_collector")
 
+// otelValsMu guards the buffered measurement values below. Record* methods append
+// from the scale loops while the SDK reader drains them in the observable
+// callbacks on its own goroutine.
+var otelValsMu sync.Mutex
+
 const meterName = "keda-open-telemetry-metrics"
 const defaultNamespace = "default"
 
@@ -305,7 +310,10 @@ func initMeters() {
 	}
 }
 
+// BuildInfoCallback reports the pending keda.build.info measurement and clears it.
 func BuildInfoCallback(_ context.Context, obsrv api.Int64Observer) error {
+	otelValsMu.Lock()
+	defer otelValsMu.Unlock()
 	if otelBuildInfoVal.measurementOption != nil {
 		obsrv.Observe(otelBuildInfoVal.val, otelBuildInfoVal.measurementOption)
 	}
@@ -315,6 +323,8 @@ func BuildInfoCallback(_ context.Context, obsrv api.Int64Observer) error {
 
 // RecordBuildInfo publishes information about KEDA version and runtime info through an info metric (gauge).
 func (o *OtelMetrics) RecordBuildInfo() {
+	otelValsMu.Lock()
+	defer otelValsMu.Unlock()
 	opt := api.WithAttributes(
 		attribute.Key("version").String(version.Version),
 		attribute.Key("git_commit").String(version.GitCommit),
@@ -326,7 +336,10 @@ func (o *OtelMetrics) RecordBuildInfo() {
 	otelBuildInfoVal.measurementOption = opt
 }
 
+// ScalerMetricValueCallback reports the buffered keda.scaler.metrics.value measurements and clears the buffer.
 func ScalerMetricValueCallback(_ context.Context, obsrv api.Float64Observer) error {
+	otelValsMu.Lock()
+	defer otelValsMu.Unlock()
 	for _, v := range otelScalerMetricVals {
 		obsrv.Observe(v.val, v.measurementOption)
 	}
@@ -334,7 +347,10 @@ func ScalerMetricValueCallback(_ context.Context, obsrv api.Float64Observer) err
 	return nil
 }
 
+// RecordScalerMetric buffers a scaler metric value for the next keda.scaler.metrics.value collection.
 func (o *OtelMetrics) RecordScalerMetric(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value float64) {
+	otelValsMu.Lock()
+	defer otelValsMu.Unlock()
 	otelScalerMetric := OtelMetricFloat64Val{}
 	otelScalerMetric.val = value
 	otelScalerMetric.measurementOption = getScalerMeasurementOption(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)
@@ -345,7 +361,10 @@ func (o *OtelMetrics) DeleteScalerMetrics(string, string, bool) {
 	// noop for OTel
 }
 
+// ScalerMetricsLatencyCallback reports the buffered keda.scaler.metrics.latency.seconds measurements and clears the buffer.
 func ScalerMetricsLatencyCallback(_ context.Context, obsrv api.Float64Observer) error {
+	otelValsMu.Lock()
+	defer otelValsMu.Unlock()
 	for _, v := range otelScalerMetricsLatencyVals {
 		obsrv.Observe(v.val, v.measurementOption)
 	}
@@ -353,7 +372,10 @@ func ScalerMetricsLatencyCallback(_ context.Context, obsrv api.Float64Observer) 
 	return nil
 }
 
+// ScalerMetricsLatencyCallbackDeprecated reports the buffered keda.scaler.metrics.latency measurements (milliseconds) and clears the buffer.
 func ScalerMetricsLatencyCallbackDeprecated(_ context.Context, obsrv api.Float64Observer) error {
+	otelValsMu.Lock()
+	defer otelValsMu.Unlock()
 	for _, v := range otelScalerMetricsLatencyValDeprecated {
 		obsrv.Observe(v.val, v.measurementOption)
 	}
@@ -363,6 +385,8 @@ func ScalerMetricsLatencyCallbackDeprecated(_ context.Context, obsrv api.Float64
 
 // RecordScalerLatency create a measurement of the latency to external metric
 func (o *OtelMetrics) RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value time.Duration) {
+	otelValsMu.Lock()
+	defer otelValsMu.Unlock()
 	otelScalerMetricsLatency := OtelMetricFloat64Val{}
 	otelScalerMetricsLatency.val = value.Seconds()
 	otelScalerMetricsLatency.measurementOption = getScalerMeasurementOption(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)
@@ -374,7 +398,10 @@ func (o *OtelMetrics) RecordScalerLatency(namespace string, scaledResource strin
 	otelScalerMetricsLatencyValDeprecated = append(otelScalerMetricsLatencyValDeprecated, otelScalerMetricsLatencyValD)
 }
 
+// ScalableObjectLatencyCallback reports the buffered keda.internal.scale.loop.latency.seconds measurements and clears the buffer.
 func ScalableObjectLatencyCallback(_ context.Context, obsrv api.Float64Observer) error {
+	otelValsMu.Lock()
+	defer otelValsMu.Unlock()
 	for _, v := range otelInternalLoopLatencyVals {
 		obsrv.Observe(v.val, v.measurementOption)
 	}
@@ -382,7 +409,10 @@ func ScalableObjectLatencyCallback(_ context.Context, obsrv api.Float64Observer)
 	return nil
 }
 
+// ScalableObjectLatencyCallbackDeprecated reports the buffered keda.internal.scale.loop.latency measurements (milliseconds) and clears the buffer.
 func ScalableObjectLatencyCallbackDeprecated(_ context.Context, obsrv api.Float64Observer) error {
+	otelValsMu.Lock()
+	defer otelValsMu.Unlock()
 	for _, v := range otelInternalLoopLatencyValDeprecated {
 		obsrv.Observe(v.val, v.measurementOption)
 	}
@@ -392,6 +422,8 @@ func ScalableObjectLatencyCallbackDeprecated(_ context.Context, obsrv api.Float6
 
 // RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
 func (o *OtelMetrics) RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value time.Duration) {
+	otelValsMu.Lock()
+	defer otelValsMu.Unlock()
 	resourceType := "scaledjob"
 	if isScaledObject {
 		resourceType = "scaledobject"
@@ -413,7 +445,10 @@ func (o *OtelMetrics) RecordScalableObjectLatency(namespace string, name string,
 	otelInternalLoopLatencyValDeprecated = append(otelInternalLoopLatencyValDeprecated, otelInternalLoopLatencyD)
 }
 
+// ScalerActiveCallback reports the buffered keda.scaler.active measurements and clears the buffer.
 func ScalerActiveCallback(_ context.Context, obsrv api.Float64Observer) error {
+	otelValsMu.Lock()
+	defer otelValsMu.Unlock()
 	for _, v := range otelScalerActiveVals {
 		obsrv.Observe(v.val, v.measurementOption)
 	}
@@ -423,6 +458,8 @@ func ScalerActiveCallback(_ context.Context, obsrv api.Float64Observer) error {
 
 // RecordScalerActive create a measurement of the activity of the scaler
 func (o *OtelMetrics) RecordScalerActive(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, active bool) {
+	otelValsMu.Lock()
+	defer otelValsMu.Unlock()
 	activeVal := 0
 	if active {
 		activeVal = 1
@@ -433,7 +470,10 @@ func (o *OtelMetrics) RecordScalerActive(namespace string, scaledResource string
 	otelScalerActiveVals = append(otelScalerActiveVals, otelScalerActive)
 }
 
+// PausedStatusCallback reports the buffered keda.scaled.object.paused measurements and clears the buffer.
 func PausedStatusCallback(_ context.Context, obsrv api.Float64Observer) error {
+	otelValsMu.Lock()
+	defer otelValsMu.Unlock()
 	for _, v := range otelScalerPauseVals {
 		obsrv.Observe(v.val, v.measurementOption)
 	}
@@ -443,6 +483,8 @@ func PausedStatusCallback(_ context.Context, obsrv api.Float64Observer) error {
 
 // RecordScaledObjectPaused marks whether the current ScaledObject is paused.
 func (o *OtelMetrics) RecordScaledObjectPaused(namespace string, scaledObject string, active bool) {
+	otelValsMu.Lock()
+	defer otelValsMu.Unlock()
 	activeVal := 0
 	if active {
 		activeVal = 1
@@ -634,7 +676,10 @@ func (o *OtelMetrics) RecordCloudEventEmittedError(namespace string, cloudevents
 	otCloudEventEmittedCounter.Add(context.Background(), 1, opt)
 }
 
+// CloudeventQueueStatusCallback reports the buffered keda.cloudeventsource.events.queued measurements and clears the buffer.
 func CloudeventQueueStatusCallback(_ context.Context, obsrv api.Float64Observer) error {
+	otelValsMu.Lock()
+	defer otelValsMu.Unlock()
 	for _, v := range otCloudEventQueueStatusVals {
 		obsrv.Observe(v.val, v.measurementOption)
 	}
@@ -717,6 +762,8 @@ func (o *OtelMetrics) RecordGRPCClientStreamMessage(ctx context.Context, message
 
 // RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting
 func (o *OtelMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
+	otelValsMu.Lock()
+	defer otelValsMu.Unlock()
 	opt := api.WithAttributes(
 		attribute.Key("namespace").String(namespace),
 	)
