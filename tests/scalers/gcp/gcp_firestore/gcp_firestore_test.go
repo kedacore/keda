@@ -194,7 +194,7 @@ func newFirestoreClient(t *testing.T) *firestore.Client {
 		defer client.Close()
 		t.Logf("--- deleting the documents of collection %s ---", collection)
 		if err := deleteAllDocuments(client); err != nil {
-			t.Logf("WARNING: failed to delete the documents of collection %s, they may need manual cleanup: %v", collection, err)
+			t.Errorf("failed to delete the documents of collection %s, they may need manual cleanup: %v", collection, err)
 		}
 	})
 	return client
@@ -254,17 +254,17 @@ func deleteAllDocuments(client *firestore.Client) error {
 	return errors.Join(errs...)
 }
 
-// addPendingDocuments writes count documents with status=pending. The ids start at
-// idOffset, so that calls do not overwrite each other's documents.
-func addPendingDocuments(t *testing.T, client *firestore.Client, count, idOffset int) {
+// addDocuments writes count documents with the given status. The ids start at idOffset,
+// so that calls do not overwrite each other's documents.
+func addDocuments(t *testing.T, client *firestore.Client, status string, count, idOffset int) {
 	t.Helper()
-	t.Logf("--- adding %d pending documents (offset %d) ---", count, idOffset)
+	t.Logf("--- adding %d documents with status=%s (offset %d) ---", count, status, idOffset)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	for i := 0; i < count; i++ {
-		id := fmt.Sprintf("job-%d", idOffset+i)
-		_, err := client.Collection(collection).Doc(id).Set(ctx, map[string]interface{}{"status": "pending"})
+		id := fmt.Sprintf("%s-%d", status, idOffset+i)
+		_, err := client.Collection(collection).Doc(id).Set(ctx, map[string]interface{}{"status": status})
 		require.NoErrorf(t, err, "failed to write document %s", id)
 	}
 }
@@ -275,7 +275,10 @@ func addPendingDocuments(t *testing.T, client *firestore.Client, count, idOffset
 // count is at or below activationThreshold.
 func testActivation(t *testing.T, kc *kubernetes.Clientset, client *firestore.Client) {
 	t.Log("--- testing activation threshold: scaler should stay at 0 replicas ---")
-	addPendingDocuments(t, client, activationThreshold, 1000)
+	addDocuments(t, client, "pending", activationThreshold, 1000)
+	// Documents that fail the filter must not be counted: an unfiltered count of all the documents
+	// is above activationThreshold, so a scaler that ignores the filter would activate here.
+	addDocuments(t, client, "done", activationThreshold, 3000)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
 
@@ -283,8 +286,8 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, client *firestore.Cl
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, client *firestore.Client) {
 	t.Log("--- testing scale out ---")
 	// Add enough documents to exceed activationThreshold and saturate maxReplicaCount:
-	// the total is pendingDocsForScaleOut documents.
-	addPendingDocuments(t, client, pendingDocsForScaleOut-activationThreshold, 2000)
+	// the total is pendingDocsForScaleOut pending documents.
+	addDocuments(t, client, "pending", pendingDocsForScaleOut-activationThreshold, 2000)
 
 	require.True(t,
 		WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 30, 10),
