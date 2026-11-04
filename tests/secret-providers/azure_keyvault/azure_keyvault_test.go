@@ -180,23 +180,23 @@ func getTemplateData() (templateData, []Template) {
 	base64ClientSecret := base64.StdEncoding.EncodeToString([]byte(azureADSecret))
 
 	return templateData{
-			TestNamespace:    testNamespace,
-			SecretName:       secretName,
-			Connection:       base64ConnectionString,
-			DeploymentName:   deploymentName,
-			TriggerAuthName:  triggerAuthName,
-			ScaledObjectName: scaledObjectName,
-			QueueName:        queueName,
-			KeyVaultURI:      keyvaultURI,
-			AzureADClientID:  azureADClientID,
-			AzureADSecret:    base64ClientSecret,
-			AzureADTenantID:  azureADTenantID,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:    testNamespace,
+		SecretName:       secretName,
+		Connection:       base64ConnectionString,
+		DeploymentName:   deploymentName,
+		TriggerAuthName:  triggerAuthName,
+		ScaledObjectName: scaledObjectName,
+		QueueName:        queueName,
+		KeyVaultURI:      keyvaultURI,
+		AzureADClientID:  azureADClientID,
+		AzureADSecret:    base64ClientSecret,
+		AzureADTenantID:  azureADTenantID,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func testScaleOut(ctx context.Context, t *testing.T, kc *kubernetes.Clientset, client *azqueue.QueueClient) {

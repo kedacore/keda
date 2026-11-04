@@ -197,18 +197,18 @@ func TestBeanstalkdScaler(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:            testNamespace,
-			ScaledObjectName:         scaledObjectName,
-			DeploymentName:           deploymentName,
-			BeanstalkdDeploymentName: beanstalkdDeploymentName,
-			BeanstalkdTubeName:       beanstalkdTubeName,
-			BeanstalkdPutJobName:     beanstalkdPutJobName,
-			BeanstalkdPopJobName:     beanstalkdPopJobName,
-			JobCount:                 activationJobCount,
-		}, []Template{
-			{Name: "beanstalkdDeploymentTemplate", Config: beanstalkdDeploymentTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-		}
+		TestNamespace:            testNamespace,
+		ScaledObjectName:         scaledObjectName,
+		DeploymentName:           deploymentName,
+		BeanstalkdDeploymentName: beanstalkdDeploymentName,
+		BeanstalkdTubeName:       beanstalkdTubeName,
+		BeanstalkdPutJobName:     beanstalkdPutJobName,
+		BeanstalkdPopJobName:     beanstalkdPopJobName,
+		JobCount:                 activationJobCount,
+	}, []Template{
+		{Name: "beanstalkdDeploymentTemplate", Config: beanstalkdDeploymentTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+	}
 }
 
 // Adds five beanstalkd jobs to the default tube

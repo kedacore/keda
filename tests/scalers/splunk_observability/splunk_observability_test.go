@@ -269,22 +269,22 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, expectedReplicas int) {
 
 func getTemplateData(tc aggregatorTestCase) (templateData, []Template) {
 	return templateData{
-			TestNamespace:         testNamespace,
-			DeploymentName:        deploymentName,
-			ScaledObjectName:      scaledObjectName,
-			AuthName:              authName,
-			AccessToken:           base64.StdEncoding.EncodeToString([]byte(accessToken)),
-			Realm:                 base64.StdEncoding.EncodeToString([]byte(realm)),
-			SignalflowQuery:       signalflowQuery,
-			Duration:              duration,
-			MinReplicaCount:       fmt.Sprintf("%v", minReplicaCount),
-			MaxReplicaCount:       fmt.Sprintf("%v", maxReplicaCount),
-			TargetValue:           tc.targetValue,
-			ActivationTargetValue: tc.activationTargetValue,
-			QueryAggregator:       tc.aggregator,
-		}, []Template{
-			{Name: "authTemplate", Config: authTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-		}
+		TestNamespace:         testNamespace,
+		DeploymentName:        deploymentName,
+		ScaledObjectName:      scaledObjectName,
+		AuthName:              authName,
+		AccessToken:           base64.StdEncoding.EncodeToString([]byte(accessToken)),
+		Realm:                 base64.StdEncoding.EncodeToString([]byte(realm)),
+		SignalflowQuery:       signalflowQuery,
+		Duration:              duration,
+		MinReplicaCount:       fmt.Sprintf("%v", minReplicaCount),
+		MaxReplicaCount:       fmt.Sprintf("%v", maxReplicaCount),
+		TargetValue:           tc.targetValue,
+		ActivationTargetValue: tc.activationTargetValue,
+		QueryAggregator:       tc.aggregator,
+	}, []Template{
+		{Name: "authTemplate", Config: authTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+	}
 }

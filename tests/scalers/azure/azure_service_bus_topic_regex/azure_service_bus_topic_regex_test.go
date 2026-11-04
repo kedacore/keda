@@ -194,21 +194,21 @@ func getTemplateData() (templateData, []Template) {
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
 
 	return templateData{
-			TestNamespace:    testNamespace,
-			SecretName:       secretName,
-			Connection:       base64ConnectionString,
-			DeploymentName:   deploymentName,
-			TriggerAuthName:  triggerAuthName,
-			ScaledObjectName: scaledObjectName,
-			TopicName:        topicName,
-			SubscriptionName: fmt.Sprintf("%s.*", subscriptionPrefix),
-			Operation:        "sum",
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:    testNamespace,
+		SecretName:       secretName,
+		Connection:       base64ConnectionString,
+		DeploymentName:   deploymentName,
+		TriggerAuthName:  triggerAuthName,
+		ScaledObjectName: scaledObjectName,
+		TopicName:        topicName,
+		SubscriptionName: fmt.Sprintf("%s.*", subscriptionPrefix),
+		Operation:        "sum",
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func testScale(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Client, data templateData) {

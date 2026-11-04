@@ -558,17 +558,17 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:    testNamespace,
-			DeploymentName:   deploymentName,
-			ScaledObjectName: scaledObjectName,
-			MinReplicaCount:  minReplicaCount,
-			MaxReplicaCount:  maxReplicaCount,
-		}, []Template{
-			{Name: "graphiteStatsdConfigMapTemplate", Config: graphiteStatsdConfigMapTemplate},
-			{Name: "graphiteConfigMapTemplate", Config: graphiteConfigMapTemplate},
-			{Name: "graphiteServiceTemplate", Config: graphiteServiceTemplate},
-			{Name: "graphiteStatefulSetTemplate", Config: graphiteStatefulSetTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:    testNamespace,
+		DeploymentName:   deploymentName,
+		ScaledObjectName: scaledObjectName,
+		MinReplicaCount:  minReplicaCount,
+		MaxReplicaCount:  maxReplicaCount,
+	}, []Template{
+		{Name: "graphiteStatsdConfigMapTemplate", Config: graphiteStatsdConfigMapTemplate},
+		{Name: "graphiteConfigMapTemplate", Config: graphiteConfigMapTemplate},
+		{Name: "graphiteServiceTemplate", Config: graphiteServiceTemplate},
+		{Name: "graphiteStatefulSetTemplate", Config: graphiteStatefulSetTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }

@@ -188,17 +188,17 @@ func getTemplateData() (templateData, []Template) {
 	base64ClientSecret := base64.StdEncoding.EncodeToString([]byte(azureADSecret))
 
 	return templateData{
-			TestNamespace:           testNamespace,
-			SecretName:              secretName,
-			DeploymentName:          deploymentName,
-			TriggerAuthName:         triggerAuthName,
-			ScaledObjectName:        scaledObjectName,
-			AzureADClientID:         azureADClientID,
-			AzureADSecret:           base64ClientSecret,
-			AzureADTenantID:         azureADTenantID,
-			LogAnalyticsWorkspaceID: logAnalyticsWorkspaceID,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-		}
+		TestNamespace:           testNamespace,
+		SecretName:              secretName,
+		DeploymentName:          deploymentName,
+		TriggerAuthName:         triggerAuthName,
+		ScaledObjectName:        scaledObjectName,
+		AzureADClientID:         azureADClientID,
+		AzureADSecret:           base64ClientSecret,
+		AzureADTenantID:         azureADTenantID,
+		LogAnalyticsWorkspaceID: logAnalyticsWorkspaceID,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+	}
 }

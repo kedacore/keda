@@ -176,21 +176,21 @@ func uninstallNSQ(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:            testNamespace,
-			NSQNamespace:             nsqNamespace,
-			DeploymentName:           deploymentName,
-			JobName:                  jobName,
-			ScaledObjectName:         scaledObjectName,
-			MinReplicaCount:          minReplicaCount,
-			MaxReplicaCount:          maxReplicaCount,
-			TopicName:                topicName,
-			ChannelName:              channelName,
-			DepthThreshold:           depthThreshold,
-			ActivationDepthThreshold: activationDepthThreshold,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:            testNamespace,
+		NSQNamespace:             nsqNamespace,
+		DeploymentName:           deploymentName,
+		JobName:                  jobName,
+		ScaledObjectName:         scaledObjectName,
+		MinReplicaCount:          minReplicaCount,
+		MaxReplicaCount:          maxReplicaCount,
+		TopicName:                topicName,
+		ChannelName:              channelName,
+		DepthThreshold:           depthThreshold,
+		ActivationDepthThreshold: activationDepthThreshold,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {

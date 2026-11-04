@@ -3909,6 +3909,12 @@
                     "type": "string",
                     "default": "false",
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "onlyReadyPods",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
                 }
             ]
         },
@@ -4290,6 +4296,12 @@
                     "name": "timeout",
                     "type": "string",
                     "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "zeroOnNoReadyEndpoints",
+                    "type": "string",
+                    "default": "false",
                     "metadataVariableReadable": true
                 },
                 {

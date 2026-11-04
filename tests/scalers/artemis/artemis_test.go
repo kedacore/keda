@@ -351,20 +351,20 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:         testNamespace,
-			DeploymentName:        deploymentName,
-			ScaledObjectName:      scaledObjectName,
-			SecretName:            secretName,
-			ArtemisPasswordBase64: base64.StdEncoding.EncodeToString([]byte(artemisPassword)),
-			ArtemisUserBase64:     base64.StdEncoding.EncodeToString([]byte(artemisUser)),
-			MessageCount:          0,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "artemisServiceTemplate", Config: artemisServiceTemplate},
-			{Name: "artemisConfigTemplate", Config: artemisConfigTemplate},
-			{Name: "artemisDeploymentTemplate", Config: artemisDeploymentTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:         testNamespace,
+		DeploymentName:        deploymentName,
+		ScaledObjectName:      scaledObjectName,
+		SecretName:            secretName,
+		ArtemisPasswordBase64: base64.StdEncoding.EncodeToString([]byte(artemisPassword)),
+		ArtemisUserBase64:     base64.StdEncoding.EncodeToString([]byte(artemisUser)),
+		MessageCount:          0,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "artemisServiceTemplate", Config: artemisServiceTemplate},
+		{Name: "artemisConfigTemplate", Config: artemisConfigTemplate},
+		{Name: "artemisDeploymentTemplate", Config: artemisDeploymentTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }

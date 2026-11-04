@@ -310,24 +310,24 @@ func testByteRatePerSecond(t *testing.T, kc *kubernetes.Clientset, data *solaceD
 
 func getSolaceDMTemplateData() (solaceDMTemplateData, []Template) {
 	return solaceDMTemplateData{
-			TestNamespace:                           solaceDMTestNamespace,
-			ConsumerDeploymentName:                  consumerDeploymentName,
-			ConsumerDeploymentSecretsName:           consumerDeploymentSecretsName,
-			ProducerPodName:                         producerPodName,
-			ScalerSecretsName:                       scalerSecretsName,
-			ScalerTriggerAuthenticationName:         scalerTriggerAuthenticationName,
-			ScalerScaledObjectName:                  scalerScaledObjectName,
-			MinReplicaCount:                         minReplicaCount,
-			MaxReplicaCount:                         maxReplicaCount,
-			AggregatedClientTxMsgRateTarget:         aggregatedClientTxMsgRateTarget,
-			AggregatedClientTxByteRateTarget:        aggregatedClientTxByteRateTarget,
-			AggregatedClientAverageTxByteRateTarget: aggregatedClientAverageTxByteRateTarget,
-			AggregatedClientAverageTxMsgRateTarget:  aggregatedClientAverageTxMsgRateTarget,
-		}, []Template{
-			{Name: "consumerDeploymentSecrets", Config: consumerDeploymentSecretsTemplate},
-			{Name: "consumerDeployment", Config: consumerDeploymentTemplate},
-			{Name: "producerPodTemplate", Config: producerPodTemplate},
-			{Name: "scalerSecretsTemplate", Config: scalerSecretsTemplate},
-			{Name: "scalerTriggerAuthenticationTemplate", Config: scalerTriggerAuthenticationTemplate},
-		}
+		TestNamespace:                           solaceDMTestNamespace,
+		ConsumerDeploymentName:                  consumerDeploymentName,
+		ConsumerDeploymentSecretsName:           consumerDeploymentSecretsName,
+		ProducerPodName:                         producerPodName,
+		ScalerSecretsName:                       scalerSecretsName,
+		ScalerTriggerAuthenticationName:         scalerTriggerAuthenticationName,
+		ScalerScaledObjectName:                  scalerScaledObjectName,
+		MinReplicaCount:                         minReplicaCount,
+		MaxReplicaCount:                         maxReplicaCount,
+		AggregatedClientTxMsgRateTarget:         aggregatedClientTxMsgRateTarget,
+		AggregatedClientTxByteRateTarget:        aggregatedClientTxByteRateTarget,
+		AggregatedClientAverageTxByteRateTarget: aggregatedClientAverageTxByteRateTarget,
+		AggregatedClientAverageTxMsgRateTarget:  aggregatedClientAverageTxMsgRateTarget,
+	}, []Template{
+		{Name: "consumerDeploymentSecrets", Config: consumerDeploymentSecretsTemplate},
+		{Name: "consumerDeployment", Config: consumerDeploymentTemplate},
+		{Name: "producerPodTemplate", Config: producerPodTemplate},
+		{Name: "scalerSecretsTemplate", Config: scalerSecretsTemplate},
+		{Name: "scalerTriggerAuthenticationTemplate", Config: scalerTriggerAuthenticationTemplate},
+	}
 }

@@ -417,20 +417,20 @@ func testSecretJSONValue(t *testing.T, kc *kubernetes.Clientset, data templateDa
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:     testNamespace,
-			DeploymentName:    deploymentName,
-			ScaledObjectName:  scaledObjectName,
-			ConfigMapName:     configMapName,
-			SecretName:        secretName,
-			ConfigMapJSONName: configMapJSONName,
-			SecretJSONName:    secretJSONName,
-			MinReplicaCount:   minReplicaCount,
-			MaxReplicaCount:   maxReplicaCount,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "configMapTemplate", Config: configMapTemplate},
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "configMapJSONTemplate", Config: configMapJSONTemplate},
-			{Name: "secretJSONTemplate", Config: secretJSONTemplate},
-		}
+		TestNamespace:     testNamespace,
+		DeploymentName:    deploymentName,
+		ScaledObjectName:  scaledObjectName,
+		ConfigMapName:     configMapName,
+		SecretName:        secretName,
+		ConfigMapJSONName: configMapJSONName,
+		SecretJSONName:    secretJSONName,
+		MinReplicaCount:   minReplicaCount,
+		MaxReplicaCount:   maxReplicaCount,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "configMapTemplate", Config: configMapTemplate},
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "configMapJSONTemplate", Config: configMapJSONTemplate},
+		{Name: "secretJSONTemplate", Config: secretJSONTemplate},
+	}
 }

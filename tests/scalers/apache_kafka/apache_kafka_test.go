@@ -881,17 +881,17 @@ func addCluster(t *testing.T, data templateData) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:    testNamespace,
-			DeploymentName:   deploymentName,
-			KafkaName:        kafkaName,
-			KafkaClientName:  kafkaClientName,
-			BootstrapServer:  bootstrapServer,
-			TopicName:        topic1,
-			Topic1Name:       topic1,
-			Topic2Name:       topic2,
-			ResetPolicy:      "",
-			ScaledObjectName: scaledObjectName,
-		}, []Template{
-			{Name: "kafkaClientTemplate", Config: kafkaClientTemplate},
-		}
+		TestNamespace:    testNamespace,
+		DeploymentName:   deploymentName,
+		KafkaName:        kafkaName,
+		KafkaClientName:  kafkaClientName,
+		BootstrapServer:  bootstrapServer,
+		TopicName:        topic1,
+		Topic1Name:       topic1,
+		Topic2Name:       topic2,
+		ResetPolicy:      "",
+		ScaledObjectName: scaledObjectName,
+	}, []Template{
+		{Name: "kafkaClientTemplate", Config: kafkaClientTemplate},
+	}
 }

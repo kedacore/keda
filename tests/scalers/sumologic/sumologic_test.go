@@ -253,31 +253,31 @@ func pushDataToSumoLogic(t *testing.T, ctx context.Context) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:         testNamespace,
-			DeploymentName:        deploymentName,
-			ScaledObjectName:      scaledObjectName,
-			SecretName:            secretName,
-			SumologicAccessID:     accessID,
-			SumologicAccessIDB64:  base64.StdEncoding.EncodeToString([]byte(accessID)),
-			SumologicAccessKey:    accessKey,
-			SumologicAccessKeyB64: base64.StdEncoding.EncodeToString([]byte(accessKey)),
-			Host:                  host,
-			Query:                 query,
-			QueryType:             queryType,
-			ResultField:           resultField,
-			TimeRange:             timeRange,
-			TimeZone:              timeZone,
-			QueryAggregator:       queryAggregator,
-			MinReplicaCount:       fmt.Sprintf("%v", minReplicaCount),
-			MaxReplicaCount:       fmt.Sprintf("%v", maxReplicaCount),
-			TargetValue:           scaleInTargetValue,
-			ActivationThreshold:   scaleInActivationValue,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:         testNamespace,
+		DeploymentName:        deploymentName,
+		ScaledObjectName:      scaledObjectName,
+		SecretName:            secretName,
+		SumologicAccessID:     accessID,
+		SumologicAccessIDB64:  base64.StdEncoding.EncodeToString([]byte(accessID)),
+		SumologicAccessKey:    accessKey,
+		SumologicAccessKeyB64: base64.StdEncoding.EncodeToString([]byte(accessKey)),
+		Host:                  host,
+		Query:                 query,
+		QueryType:             queryType,
+		ResultField:           resultField,
+		TimeRange:             timeRange,
+		TimeZone:              timeZone,
+		QueryAggregator:       queryAggregator,
+		MinReplicaCount:       fmt.Sprintf("%v", minReplicaCount),
+		MaxReplicaCount:       fmt.Sprintf("%v", maxReplicaCount),
+		TargetValue:           scaleInTargetValue,
+		ActivationThreshold:   scaleInActivationValue,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func getScaledObjectTemplateData(targetValue, activationThreshold string) templateData {

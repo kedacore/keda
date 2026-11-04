@@ -333,22 +333,22 @@ func createDynamoDBClient() *dynamodb.Client {
 
 func getTemplateData(expressionAttributeValues, filterExpression, scaledObjectTemplate string) (templateData, []Template) {
 	return templateData{
-			TestNamespace:             testNamespace,
-			DeploymentName:            deploymentName,
-			ScaledObjectName:          scaledObjectName,
-			SecretName:                secretName,
-			AwsAccessKeyID:            base64.StdEncoding.EncodeToString([]byte(awsAccessKeyID)),
-			AwsSecretAccessKey:        base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
-			AwsRegion:                 awsRegion,
-			DynamoDBTableName:         dynamoDBTableName,
-			ExpressionAttributeNames:  expressionAttributeNames,
-			KeyConditionExpression:    keyConditionExpression,
-			ExpressionAttributeValues: expressionAttributeValues,
-			FilterExpression:          filterExpression,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:             testNamespace,
+		DeploymentName:            deploymentName,
+		ScaledObjectName:          scaledObjectName,
+		SecretName:                secretName,
+		AwsAccessKeyID:            base64.StdEncoding.EncodeToString([]byte(awsAccessKeyID)),
+		AwsSecretAccessKey:        base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
+		AwsRegion:                 awsRegion,
+		DynamoDBTableName:         dynamoDBTableName,
+		ExpressionAttributeNames:  expressionAttributeNames,
+		KeyConditionExpression:    keyConditionExpression,
+		ExpressionAttributeValues: expressionAttributeValues,
+		FilterExpression:          filterExpression,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }

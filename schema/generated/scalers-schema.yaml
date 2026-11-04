@@ -2600,6 +2600,10 @@ scalers:
           type: string
           default: "false"
           metadataVariableReadable: true
+        - name: onlyReadyPods
+          type: string
+          default: "false"
+          metadataVariableReadable: true
     - type: liiklus
       parameters:
         - name: lagThreshold
@@ -2857,6 +2861,10 @@ scalers:
         - name: timeout
           type: string
           optional: true
+          metadataVariableReadable: true
+        - name: zeroOnNoReadyEndpoints
+          type: string
+          default: "false"
           metadataVariableReadable: true
         - name: authModes
           type: string

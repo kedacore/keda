@@ -53,6 +53,13 @@ make build
 > Note: The first time you run the container, it will take some time to build and install the tooling. The image
 > will be cached so this is only required the first time.
 
+Keep the Go major/minor version in `.devcontainer/Dockerfile` aligned with the `go` directive in `go.mod`
+and the `ghcr.io/kedacore/keda-tools` image tags used by the build Dockerfiles and CI workflows. Patch versions
+may differ because `go.mod` specifies the minimum supported Go version. Renovate groups these dependencies
+in a single **Go toolchain** update; check that all three are aligned before merging a Go release upgrade,
+since Go and `keda-tools` images can become available at different times.
+CI rejects major/minor mismatches. To run the same check locally, use `python3 -B hack/verify_go_versions.py`.
+
 ### Locally directly
 
 This project is using [Operator SDK framework](https://github.com/operator-framework/operator-sdk), make sure you

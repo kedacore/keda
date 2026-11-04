@@ -325,19 +325,19 @@ func TestScalerWithConfig(t *testing.T, testName string, numPartitions int) {
 
 func getTemplateData(testName string, numPartitions int) (templateData, []helper.Template) {
 	return templateData{
-			ApachePulsarVersion: apachePulsarVersion,
-			TestName:            testName,
-			NumPartitions:       numPartitions,
-			MessageCount:        messageCount,
-			MinReplicaCount:     minReplicaCount,
-			MaxReplicaCount:     maxReplicaCount,
-			MsgBacklog:          msgBacklog,
-		}, []helper.Template{
-			{Name: "statefulsetTemplate", Config: pulsarStatefulsetTemplate},
-			{Name: "serviceTemplate", Config: pulsarServiceTemplate},
-			{Name: "authenticationRefTemplate", Config: authenticationRefTemplate},
-			{Name: "secretTemplate", Config: authSecretTemplate},
-		}
+		ApachePulsarVersion: apachePulsarVersion,
+		TestName:            testName,
+		NumPartitions:       numPartitions,
+		MessageCount:        messageCount,
+		MinReplicaCount:     minReplicaCount,
+		MaxReplicaCount:     maxReplicaCount,
+		MsgBacklog:          msgBacklog,
+	}, []helper.Template{
+		{Name: "statefulsetTemplate", Config: pulsarStatefulsetTemplate},
+		{Name: "serviceTemplate", Config: pulsarServiceTemplate},
+		{Name: "authenticationRefTemplate", Config: authenticationRefTemplate},
+		{Name: "secretTemplate", Config: authSecretTemplate},
+	}
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {

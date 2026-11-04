@@ -158,19 +158,19 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:    testNamespace,
-			DeploymentName:   deploymentName,
-			ScaledObjectName: scaledObjectName,
-			JobName:          jobName,
-			EtcdName:         testName,
-			EtcdClientName:   etcdClientName,
-			EtcdEndpoints:    etcdEndpoints,
-			MinReplicaCount:  minReplicaCount,
-			MaxReplicaCount:  maxReplicaCount,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:    testNamespace,
+		DeploymentName:   deploymentName,
+		ScaledObjectName: scaledObjectName,
+		JobName:          jobName,
+		EtcdName:         testName,
+		EtcdClientName:   etcdClientName,
+		EtcdEndpoints:    etcdEndpoints,
+		MinReplicaCount:  minReplicaCount,
+		MaxReplicaCount:  maxReplicaCount,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func setVarValue(t *testing.T, value int) {

@@ -169,14 +169,14 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:        testNamespace,
-			DeploymentName:       deploymentName,
-			TriggerAuthName:      triggerAuthName,
-			ScaledObjectName:     scaledObjectName,
-			DataExplorerDB:       dataExplorerDB,
-			DataExplorerEndpoint: dataExplorerEndpoint,
-			ScaleReplicaCount:    scaleInReplicaCount,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-		}
+		TestNamespace:        testNamespace,
+		DeploymentName:       deploymentName,
+		TriggerAuthName:      triggerAuthName,
+		ScaledObjectName:     scaledObjectName,
+		DataExplorerDB:       dataExplorerDB,
+		DataExplorerEndpoint: dataExplorerEndpoint,
+		ScaleReplicaCount:    scaleInReplicaCount,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+	}
 }

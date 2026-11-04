@@ -75,6 +75,8 @@ var (
 )
 
 // GetFullType implements implementable.
+//
+//nolint:revive // return type is dictated by the unexported implementable interface
 func (*ScaleTriggers) GetFullType() populatable {
 	return &WithTriggers{}
 }

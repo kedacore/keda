@@ -646,23 +646,23 @@ func testErrEventSourceCreation(t *testing.T, _ *kubernetes.Clientset, data temp
 // help function to load template data
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:                   namespace,
-			ScaledObject:                    scaledObjectName,
-			DeploymentName:                  deploymentName,
-			ClientName:                      clientName,
-			CloudEventSourceName:            cloudeventSourceName,
-			CloudeventSourceErrName:         cloudeventSourceErrName,
-			CloudeventSourceErrName2:        cloudeventSourceErrName2,
-			ClusterCloudEventSourceName:     clusterCloudeventSourceName,
-			ClusterCloudeventSourceErrName:  clusterCloudeventSourceErrName,
-			ClusterCloudeventSourceErrName2: clusterCloudeventSourceErrName2,
-			CloudEventHTTPReceiverName:      cloudEventHTTPReceiverName,
-			CloudEventHTTPServiceName:       cloudEventHTTPServiceName,
-			CloudEventHTTPServiceURL:        cloudEventHTTPServiceURL,
-			ClusterName:                     clusterName,
-		}, []Template{
-			{Name: "cloudEventHTTPReceiverTemplate", Config: cloudEventHTTPReceiverTemplate},
-			{Name: "cloudEventHTTPServiceTemplate", Config: cloudEventHTTPServiceTemplate},
-			{Name: "clientTemplate", Config: clientTemplate},
-		}
+		TestNamespace:                   namespace,
+		ScaledObject:                    scaledObjectName,
+		DeploymentName:                  deploymentName,
+		ClientName:                      clientName,
+		CloudEventSourceName:            cloudeventSourceName,
+		CloudeventSourceErrName:         cloudeventSourceErrName,
+		CloudeventSourceErrName2:        cloudeventSourceErrName2,
+		ClusterCloudEventSourceName:     clusterCloudeventSourceName,
+		ClusterCloudeventSourceErrName:  clusterCloudeventSourceErrName,
+		ClusterCloudeventSourceErrName2: clusterCloudeventSourceErrName2,
+		CloudEventHTTPReceiverName:      cloudEventHTTPReceiverName,
+		CloudEventHTTPServiceName:       cloudEventHTTPServiceName,
+		CloudEventHTTPServiceURL:        cloudEventHTTPServiceURL,
+		ClusterName:                     clusterName,
+	}, []Template{
+		{Name: "cloudEventHTTPReceiverTemplate", Config: cloudEventHTTPReceiverTemplate},
+		{Name: "cloudEventHTTPServiceTemplate", Config: cloudEventHTTPServiceTemplate},
+		{Name: "clientTemplate", Config: clientTemplate},
+	}
 }

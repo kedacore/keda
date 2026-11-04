@@ -207,6 +207,17 @@
       groupName: "DevContainer",
     },
 
+    // Keep the devcontainer, build/CI images, and go.mod Go directive in one
+    // update group. This must follow the generic Go and DevContainer rules.
+    // Image tags may have newer patches than go.mod's minimum Go version.
+    {
+      matchDatasources: ["docker", "golang-version"],
+      matchPackageNames: ["golang", "ghcr.io/kedacore/keda-tools", "go"],
+      groupName: "Go toolchain",
+      separateMajorMinor: false,
+      separateMinorPatch: false,
+    },
+
     // Internal main references deliberately follow the latest KEDA build.
     {
       matchPackageNames: [

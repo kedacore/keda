@@ -41,14 +41,14 @@ func GetJetStreamDeploymentTemplateData(
 	messagePublishCount int,
 ) (JetStreamDeploymentTemplateData, []h.Template) {
 	return JetStreamDeploymentTemplateData{
-			TestNamespace:                testNamespace,
-			NatsAddress:                  natsAddress,
-			NatsServerMonitoringEndpoint: natsServerMonitoringEndpoint,
-			NumberOfMessages:             messagePublishCount,
-			NatsConsumer:                 NatsJetStreamConsumerName,
-		}, []h.Template{
-			{Name: "deploymentTemplate", Config: DeploymentTemplate},
-		}
+		TestNamespace:                testNamespace,
+		NatsAddress:                  natsAddress,
+		NatsServerMonitoringEndpoint: natsServerMonitoringEndpoint,
+		NumberOfMessages:             messagePublishCount,
+		NatsConsumer:                 NatsJetStreamConsumerName,
+	}, []h.Template{
+		{Name: "deploymentTemplate", Config: DeploymentTemplate},
+	}
 }
 
 const (

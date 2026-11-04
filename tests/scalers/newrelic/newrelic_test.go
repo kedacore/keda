@@ -274,26 +274,26 @@ func installNewRelic(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:           testNamespace,
-			DeploymentName:          deploymentName,
-			MonitoredDeploymentName: monitoredDeploymentName,
-			ServiceName:             serviceName,
-			TriggerAuthName:         triggerAuthName,
-			ScaledObjectName:        scaledObjectName,
-			SecretName:              secretName,
-			NewRelicRegion:          newRelicRegion,
-			KuberneteClusterName:    kuberneteClusterName,
-			MinReplicaCount:         fmt.Sprintf("%v", minReplicaCount),
-			MaxReplicaCount:         fmt.Sprintf("%v", maxReplicaCount),
-			DeploymentReplicas:      fmt.Sprintf("%v", deploymentReplicas),
-			NewRelicAccountID:       newRelicAccountID,
-			NewRelicAPIKey:          base64.StdEncoding.EncodeToString([]byte(newRelicAPIKey)),
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "serviceTemplate", Config: serviceTemplate},
-			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:           testNamespace,
+		DeploymentName:          deploymentName,
+		MonitoredDeploymentName: monitoredDeploymentName,
+		ServiceName:             serviceName,
+		TriggerAuthName:         triggerAuthName,
+		ScaledObjectName:        scaledObjectName,
+		SecretName:              secretName,
+		NewRelicRegion:          newRelicRegion,
+		KuberneteClusterName:    kuberneteClusterName,
+		MinReplicaCount:         fmt.Sprintf("%v", minReplicaCount),
+		MaxReplicaCount:         fmt.Sprintf("%v", maxReplicaCount),
+		DeploymentReplicas:      fmt.Sprintf("%v", deploymentReplicas),
+		NewRelicAccountID:       newRelicAccountID,
+		NewRelicAPIKey:          base64.StdEncoding.EncodeToString([]byte(newRelicAPIKey)),
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "serviceTemplate", Config: serviceTemplate},
+		{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }

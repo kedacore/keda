@@ -274,16 +274,16 @@ spec:
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			WorkFlowCommand:        "run-scenario",
-			WorkFlowIterations:     2,
-			TestNamespace:          testNamespace,
-			TemporalDeploymentName: temporalDeploymentName,
-			ScaledObjectName:       scaledObjectName,
-			DeploymentName:         deploymentName,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		WorkFlowCommand:        "run-scenario",
+		WorkFlowIterations:     2,
+		TestNamespace:          testNamespace,
+		TemporalDeploymentName: temporalDeploymentName,
+		ScaledObjectName:       scaledObjectName,
+		DeploymentName:         deploymentName,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func TestTemporalScaler(t *testing.T) {

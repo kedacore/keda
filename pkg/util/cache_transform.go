@@ -46,7 +46,7 @@ func CacheObjectTransform(obj any) (any, error) {
 
 // stripPodFields removes Pod fields that KEDA never reads. KEDA only uses:
 //   - status.phase (workload scaler, fallback, scale_jobs)
-//   - status.conditions (fallback, scale_jobs)
+//   - status.conditions (fallback, scale_jobs, workload scaler with onlyReadyPods)
 //   - spec.nodeName (workload scaler with groupByNode)
 func stripPodFields(pod *corev1.Pod) {
 	pod.Annotations = nil

@@ -429,19 +429,19 @@ func getElasticsearchDoc() (interface{}, error) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:         testNamespace,
-			DeploymentName:        deploymentName,
-			ScaledObjectName:      scaledObjectName,
-			SecretName:            secretName,
-			ElasticPassword:       password,
-			ElasticPasswordBase64: base64.StdEncoding.EncodeToString([]byte(password)),
-			IndexName:             indexName,
-			SearchTemplateName:    searchTemplateName,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "serviceTemplate", Config: serviceTemplate},
-			{Name: "elasticsearchDeploymentTemplate", Config: elasticsearchDeploymentTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-		}
+		TestNamespace:         testNamespace,
+		DeploymentName:        deploymentName,
+		ScaledObjectName:      scaledObjectName,
+		SecretName:            secretName,
+		ElasticPassword:       password,
+		ElasticPasswordBase64: base64.StdEncoding.EncodeToString([]byte(password)),
+		IndexName:             indexName,
+		SearchTemplateName:    searchTemplateName,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "serviceTemplate", Config: serviceTemplate},
+		{Name: "elasticsearchDeploymentTemplate", Config: elasticsearchDeploymentTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+	}
 }

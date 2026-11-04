@@ -37,6 +37,7 @@ type kubernetesWorkloadMetadata struct {
 	Value           float64 `keda:"name=value,           order=triggerMetadata, default=0"`
 	ActivationValue float64 `keda:"name=activationValue, order=triggerMetadata, default=0"`
 	GroupByNode     bool    `keda:"name=groupByNode,     order=triggerMetadata, default=false"`
+	OnlyReadyPods   bool    `keda:"name=onlyReadyPods,   order=triggerMetadata, default=false"`
 
 	namespace      string
 	triggerIndex   int
@@ -134,30 +135,30 @@ func (s *kubernetesWorkloadScaler) getMetricValue(ctx context.Context) (int64, e
 	}
 
 	if s.metadata.GroupByNode {
-		return getUniqueNodeCount(podList.Items), nil
+		return getUniqueNodeCount(podList.Items, s.metadata.OnlyReadyPods), nil
 	}
 
 	var count int64
 	for _, pod := range podList.Items {
-		count += getCountValue(pod)
+		count += getCountValue(pod, s.metadata.OnlyReadyPods)
 	}
 
 	return count, nil
 }
 
-func getCountValue(pod corev1.Pod) int64 {
-	if !shouldCountPod(pod) {
+func getCountValue(pod corev1.Pod, onlyReadyPods bool) int64 {
+	if !shouldCountPod(pod, onlyReadyPods) {
 		return 0
 	}
 
 	return 1
 }
 
-func getUniqueNodeCount(pods []corev1.Pod) int64 {
+func getUniqueNodeCount(pods []corev1.Pod, onlyReadyPods bool) int64 {
 	countedNodes := make(map[string]struct{})
 
 	for _, pod := range pods {
-		if !shouldCountPod(pod) || pod.Spec.NodeName == "" {
+		if !shouldCountPod(pod, onlyReadyPods) || pod.Spec.NodeName == "" {
 			continue
 		}
 
@@ -167,6 +168,23 @@ func getUniqueNodeCount(pods []corev1.Pod) int64 {
 	return int64(len(countedNodes))
 }
 
-func shouldCountPod(pod corev1.Pod) bool {
-	return !slices.Contains(phasesCountedAsTerminated, pod.Status.Phase)
+// shouldCountPod skips Succeeded and Failed pods. With onlyReadyPods, it also
+// skips pods that are terminating or not Running with the Ready condition True.
+func shouldCountPod(pod corev1.Pod, onlyReadyPods bool) bool {
+	if slices.Contains(phasesCountedAsTerminated, pod.Status.Phase) {
+		return false
+	}
+	if !onlyReadyPods {
+		return true
+	}
+	return pod.DeletionTimestamp == nil && pod.Status.Phase == corev1.PodRunning && isPodReady(pod)
+}
+
+func isPodReady(pod corev1.Pod) bool {
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.PodReady {
+			return condition.Status == corev1.ConditionTrue
+		}
+	}
+	return false
 }

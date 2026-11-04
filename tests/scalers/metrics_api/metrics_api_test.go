@@ -354,24 +354,24 @@ func getTemplateData(nbReplicasForMetricsServer int) (templateData, []Template) 
 		aggregateFromKubeServiceEndpoints = true
 	}
 	return templateData{
-			AggregateFromKubeServiceEndpoints: aggregateFromKubeServiceEndpoints,
-			TestNamespace:                     testNamespace,
-			DeploymentName:                    deploymentName,
-			MetricsServerDeploymentName:       metricsServerDeploymentName,
-			ServciceName:                      servciceName,
-			TriggerAuthName:                   triggerAuthName,
-			ScaledObjectName:                  scaledObjectName,
-			SecretName:                        secretName,
-			MetricsServerEndpoint:             metricsServerEndpoint,
-			MinReplicaCount:                   fmt.Sprintf("%v", minReplicaCount),
-			MaxReplicaCount:                   fmt.Sprintf("%v", maxReplicaCount),
-			NbReplicasForMetricsServer:        nbReplicasForMetricsServer,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "metricsServerdeploymentTemplate", Config: metricsServerdeploymentTemplate},
-			{Name: "serviceTemplate", Config: serviceTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		AggregateFromKubeServiceEndpoints: aggregateFromKubeServiceEndpoints,
+		TestNamespace:                     testNamespace,
+		DeploymentName:                    deploymentName,
+		MetricsServerDeploymentName:       metricsServerDeploymentName,
+		ServciceName:                      servciceName,
+		TriggerAuthName:                   triggerAuthName,
+		ScaledObjectName:                  scaledObjectName,
+		SecretName:                        secretName,
+		MetricsServerEndpoint:             metricsServerEndpoint,
+		MinReplicaCount:                   fmt.Sprintf("%v", minReplicaCount),
+		MaxReplicaCount:                   fmt.Sprintf("%v", maxReplicaCount),
+		NbReplicasForMetricsServer:        nbReplicasForMetricsServer,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "metricsServerdeploymentTemplate", Config: metricsServerdeploymentTemplate},
+		{Name: "serviceTemplate", Config: serviceTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }

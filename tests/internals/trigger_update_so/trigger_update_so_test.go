@@ -393,25 +393,25 @@ func testThreeTriggersWithCPU(t *testing.T, kc *kubernetes.Clientset, data templ
 // help function to load template data
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:               namespace,
-			DeploymentName:              deploymentName,
-			MetricsServerDeploymentName: metricsServerDeploymentName,
-			ServiceName:                 serviceName,
-			TriggerAuthName:             triggerAuthName,
-			ScaledObject:                scaledObjectName,
-			SecretName:                  secretName,
-			MetricsServerEndpoint:       metricsServerEndpoint,
-			MinReplicas:                 fmt.Sprintf("%v", minReplicas),
-			MaxReplicas:                 fmt.Sprintf("%v", maxReplicas),
-			MetricValue:                 0,
-			WorkloadDeploymentName:      workloadDeploymentName,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "workloadDeploymentTemplate", Config: workloadDeploymentTemplate},
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "serviceTemplate", Config: serviceTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "metricsServerDeploymentTemplate", Config: metricsServerDeploymentTemplate},
-			{Name: "scaledObjectTriggerTemplate", Config: scaledObjectTriggerTemplate},
-		}
+		TestNamespace:               namespace,
+		DeploymentName:              deploymentName,
+		MetricsServerDeploymentName: metricsServerDeploymentName,
+		ServiceName:                 serviceName,
+		TriggerAuthName:             triggerAuthName,
+		ScaledObject:                scaledObjectName,
+		SecretName:                  secretName,
+		MetricsServerEndpoint:       metricsServerEndpoint,
+		MinReplicas:                 fmt.Sprintf("%v", minReplicas),
+		MaxReplicas:                 fmt.Sprintf("%v", maxReplicas),
+		MetricValue:                 0,
+		WorkloadDeploymentName:      workloadDeploymentName,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "workloadDeploymentTemplate", Config: workloadDeploymentTemplate},
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "serviceTemplate", Config: serviceTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "metricsServerDeploymentTemplate", Config: metricsServerDeploymentTemplate},
+		{Name: "scaledObjectTriggerTemplate", Config: scaledObjectTriggerTemplate},
+	}
 }
