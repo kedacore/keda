@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 
 	"github.com/go-logr/logr"
@@ -229,6 +230,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	metricscollector.RecordScaledObjectPaused(scaledObject.Namespace, scaledObject.Name, conditions.GetPausedCondition().Status == metav1.ConditionTrue)
+	metricscollector.RecordScaledObjectReady(scaledObject.Namespace, scaledObject.Name, conditions.GetReadyCondition().Status == metav1.ConditionTrue)
 
 	if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledObject, &conditions); err != nil {
 		r.EventEmitter.Emit(scaledObject, req.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectUpdateFailed, err.Error())
@@ -694,6 +696,10 @@ func (r *ScaledObjectReconciler) updatePromMetricsOnDelete(namespacedName string
 		for _, triggerType := range metricsData.triggerTypes {
 			metricscollector.DecrementTriggerTotal(triggerType)
 		}
+	}
+
+	if namespace, name, ok := strings.Cut(namespacedName, "/"); ok {
+		metricscollector.DeleteScaledObjectReady(namespace, name)
 	}
 
 	delete(scaledObjectPromMetricsMap, namespacedName)
