@@ -317,6 +317,17 @@ func (so *ScaledObject) IsPollingIntervalRelevant() bool {
 	return false
 }
 
+// IsCooldownPeriodRelevant reports whether cooldownPeriod is relevant for the ScaledObject.
+// CooldownPeriod is only relevant when the workload can scale to zero (minReplicaCount is 0 or unset)
+// or when idleReplicaCount is set.
+func (so *ScaledObject) IsCooldownPeriodRelevant() bool {
+	minReplicas := int32(0)
+	if so.Spec.MinReplicaCount != nil {
+		minReplicas = *so.Spec.MinReplicaCount
+	}
+	return minReplicas <= 0 || so.Spec.IdleReplicaCount != nil
+}
+
 // UsesHPAObservations reports whether the state of the ScaledObject may be derived from the metric
 // observations of the HPA-driven metrics path instead of querying the trigger sources on KEDA's own
 // scale loop. This is only allowed when pollingInterval is not relevant (see
