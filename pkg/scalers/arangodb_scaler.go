@@ -68,6 +68,14 @@ type arangoDBMetadata struct {
 	triggerIndex int
 }
 
+// Validate rejects a negative connectionLimit, which net/http would treat as no limit.
+func (m *arangoDBMetadata) Validate() error {
+	if m.ConnectionLimit < 0 {
+		return fmt.Errorf("connectionLimit must be greater than or equal to zero")
+	}
+	return nil
+}
+
 // NewArangoDBScaler creates a new arangodbScaler
 func NewArangoDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
@@ -96,6 +104,8 @@ func NewArangoDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 // arangodJWTIssuer is the JWT issuer claim expected by arangod for internal authentication.
 const arangodJWTIssuer = "arangodb"
 
+// getNewArangoDBClient returns a client for meta.Endpoints. When meta.ConnectionLimit
+// is set, the client opens at most that many connections to each endpoint.
 func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
 	var auth connection.Authentication
 
@@ -114,6 +124,8 @@ func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
 		Endpoint:       connection.NewRoundRobinEndpoints(strings.Split(meta.Endpoints, ",")),
 		Transport: &http.Transport{
 			TLSClientConfig: util.CreateTLSClientConfig(meta.UnsafeSsl),
+			// 0, when connectionLimit is unset, means no limit.
+			MaxConnsPerHost: int(meta.ConnectionLimit),
 		},
 	})
 
