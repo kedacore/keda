@@ -105,6 +105,80 @@ func TestSplunkObservabilityQueryAggregatorDefault(t *testing.T) {
 	}
 }
 
+func TestSplunkObservabilityLookbackDurationMetadata(t *testing.T) {
+	tests := []struct {
+		name          string
+		value         string
+		include       bool
+		want          int
+		expectFailure bool
+	}{
+		{name: "omitted", want: 0},
+		{name: "zero", value: "0", include: true, want: 0},
+		{name: "positive", value: "60", include: true, want: 60},
+		{name: "negative", value: "-1", include: true, expectFailure: true},
+		{name: "malformed", value: "not-a-number", include: true, expectFailure: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metadata := make(map[string]string, len(validSplunkObservabilityMetadata)+1)
+			for key, value := range validSplunkObservabilityMetadata {
+				metadata[key] = value
+			}
+			if tt.include {
+				metadata["lookbackDuration"] = tt.value
+			}
+
+			meta, err := parseSplunkObservabilityMetadata(&scalersconfig.ScalerConfig{
+				TriggerMetadata: metadata,
+				AuthParams:      validSplunkObservabilityAuthParams,
+			})
+			if tt.expectFailure {
+				if err == nil {
+					t.Fatal("expected metadata parsing to fail")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal("expected metadata parsing to succeed:", err)
+			}
+			if meta.LookbackDuration != tt.want {
+				t.Fatalf("expected lookbackDuration %d, got %d", tt.want, meta.LookbackDuration)
+			}
+		})
+	}
+}
+
+func TestSplunkObservabilityExecuteRequestLookback(t *testing.T) {
+	end := time.Unix(1_800_000_000, 123_000_000)
+	meta := &splunkObservabilityMetadata{
+		Query:            splunkO11yFakeProgram,
+		LookbackDuration: 60,
+	}
+
+	request := newSplunkO11yExecuteRequest(meta, end)
+	if request.Program != splunkO11yFakeProgram {
+		t.Fatalf("expected program %q, got %q", splunkO11yFakeProgram, request.Program)
+	}
+	if !request.Start.Equal(end.Add(-60 * time.Second)) {
+		t.Fatalf("expected start %v, got %v", end.Add(-60*time.Second), request.Start)
+	}
+	if !request.Stop.Equal(end) {
+		t.Fatalf("expected stop %v, got %v", end, request.Stop)
+	}
+	if !request.Immediate {
+		t.Fatal("expected immediate execution for a lookback query")
+	}
+}
+
+func TestSplunkObservabilityExecuteRequestWithoutLookback(t *testing.T) {
+	request := newSplunkO11yExecuteRequest(&splunkObservabilityMetadata{Query: splunkO11yFakeProgram}, time.Now())
+	if !request.Start.IsZero() || !request.Stop.IsZero() || request.Immediate {
+		t.Fatalf("expected live-stream request defaults, got start=%v stop=%v immediate=%v", request.Start, request.Stop, request.Immediate)
+	}
+}
+
 func TestSplunkObservabilityGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range SplunkObservabilityMetricIdentifiers {
 		ctx := context.Background()
