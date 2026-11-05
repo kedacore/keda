@@ -14,9 +14,11 @@ import (
 	"cloud.google.com/go/firestore"
 	"github.com/go-logr/logr"
 	"google.golang.org/api/option"
+	"google.golang.org/grpc"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/gcp"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -42,12 +44,13 @@ var firestoreFilterValueTypes = []string{"string", "int", "float", "bool"}
 var firestoreReservedName = regexp.MustCompile(`^__.*__$`)
 
 type gcpFirestoreScaler struct {
-	client     *firestore.Client
-	query      firestore.Query
-	timeout    time.Duration
-	metricType v2.MetricTargetType
-	metadata   *gcpFirestoreMetadata
-	logger     logr.Logger
+	client       *firestore.Client
+	query        firestore.Query
+	timeout      time.Duration
+	metricType   v2.MetricTargetType
+	metadata     *gcpFirestoreMetadata
+	scalerConfig scalersconfig.ScalerConfig
+	logger       logr.Logger
 }
 
 type gcpFirestoreMetadata struct {
@@ -175,7 +178,7 @@ func parseFirestoreFilterValue(valueType, raw string) (interface{}, error) {
 }
 
 // NewGcpFirestoreScaler creates a new gcpFirestoreScaler.
-func NewGcpFirestoreScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
+func NewGcpFirestoreScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -188,18 +191,19 @@ func NewGcpFirestoreScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing Firestore metadata: %w", err)
 	}
 
-	client, err := newGcpFirestoreClient(context.Background(), meta)
+	client, err := newGcpFirestoreClient(ctx, meta)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Firestore client: %w", err)
 	}
 
 	return &gcpFirestoreScaler{
-		client:     client,
-		query:      newGcpFirestoreQuery(client, meta),
-		timeout:    firestoreQueryTimeout,
-		metricType: metricType,
-		metadata:   meta,
-		logger:     logger,
+		client:       client,
+		query:        newGcpFirestoreQuery(client, meta),
+		timeout:      firestoreQueryTimeout,
+		metricType:   metricType,
+		metadata:     meta,
+		scalerConfig: *config,
+		logger:       logger,
 	}, nil
 }
 
@@ -238,6 +242,14 @@ func parseGcpFirestoreMetadata(config *scalersconfig.ScalerConfig) (*gcpFirestor
 }
 
 func newGcpFirestoreClient(ctx context.Context, meta *gcpFirestoreMetadata) (*firestore.Client, error) {
+	return firestore.NewClientWithDatabase(ctx, meta.ProjectID, meta.DatabaseID,
+		gcpFirestoreClientOptions(meta, metricscollector.GRPCClientDialOptions())...)
+}
+
+// gcpFirestoreClientOptions returns the options of the Firestore client: the credentials of the trigger and
+// the gRPC dial options that instrument the outbound calls. The SDK ignores dial options when it talks to
+// the emulator (FIRESTORE_EMULATOR_HOST), because it then uses a connection of its own.
+func gcpFirestoreClientOptions(meta *gcpFirestoreMetadata, dialOptions []grpc.DialOption) []option.ClientOption {
 	var opts []option.ClientOption
 
 	switch {
@@ -257,7 +269,10 @@ func newGcpFirestoreClient(ctx context.Context, meta *gcpFirestoreMetadata) (*fi
 		// GCP scalers).
 	}
 
-	return firestore.NewClientWithDatabase(ctx, meta.ProjectID, meta.DatabaseID, opts...)
+	for _, dialOption := range dialOptions {
+		opts = append(opts, option.WithGRPCDialOption(dialOption))
+	}
+	return opts
 }
 
 // newGcpFirestoreQuery builds the query whose documents are counted: the whole collection,
@@ -305,6 +320,7 @@ func (s *gcpFirestoreScaler) count(ctx context.Context) (int64, error) {
 }
 
 func (s *gcpFirestoreScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	ctx = metricscollector.BuildScalerRequestCtx(ctx, s.scalerConfig, metricName)
 	count, err := s.count(ctx)
 	if err != nil {
 		s.logger.Error(err, "error counting Firestore documents")

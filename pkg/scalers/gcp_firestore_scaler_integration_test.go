@@ -64,7 +64,7 @@ func seedFirestore(t *testing.T, client *firestore.Client, collection string, do
 
 func newFirestoreIntegrationScaler(t *testing.T, metadata map[string]string) Scaler {
 	t.Helper()
-	scaler, err := NewGcpFirestoreScaler(&scalersconfig.ScalerConfig{
+	scaler, err := NewGcpFirestoreScaler(context.Background(), &scalersconfig.ScalerConfig{
 		TriggerMetadata: withOverrides(map[string]string{"projectId": intTestFirestoreProject}, metadata),
 		AuthParams:      map[string]string{},
 		ResolvedEnv:     map[string]string{},

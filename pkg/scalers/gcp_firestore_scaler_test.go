@@ -9,13 +9,18 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/firestore"
 	"cloud.google.com/go/firestore/apiv1/firestorepb"
 	"github.com/go-logr/logr"
+	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/stats"
 	"google.golang.org/grpc/status"
 	v2 "k8s.io/api/autoscaling/v2"
 
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/gcp"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -97,9 +102,8 @@ func countReply(count int64) firestoreReply {
 	}
 }
 
-// startFakeFirestore serves the fake backend on a local port and points the Firestore client at it with
-// FIRESTORE_EMULATOR_HOST, the variable the SDK reads for the emulator.
-func startFakeFirestore(t *testing.T) *fakeFirestore {
+// serveFakeFirestore serves the fake backend on a local port and returns the address.
+func serveFakeFirestore(t *testing.T) (*fakeFirestore, string) {
 	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -112,14 +116,91 @@ func startFakeFirestore(t *testing.T) *fakeFirestore {
 	firestorepb.RegisterFirestoreServer(server, fake)
 	go func() { _ = server.Serve(listener) }()
 	t.Cleanup(server.Stop)
-	t.Setenv("FIRESTORE_EMULATOR_HOST", listener.Addr().String())
+	return fake, listener.Addr().String()
+}
+
+// startFakeFirestore serves the fake backend and points the Firestore client at it with
+// FIRESTORE_EMULATOR_HOST, the variable the SDK reads for the emulator.
+func startFakeFirestore(t *testing.T) *fakeFirestore {
+	t.Helper()
+	fake, addr := serveFakeFirestore(t)
+	t.Setenv("FIRESTORE_EMULATOR_HOST", addr)
 	return fake
+}
+
+// rpcRecorder is a gRPC stats handler that records the labels of the context of every call.
+type rpcRecorder struct {
+	mu     sync.Mutex
+	scaler []any
+	metric []any
+}
+
+func (r *rpcRecorder) TagRPC(ctx context.Context, _ *stats.RPCTagInfo) context.Context {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.scaler = append(r.scaler, ctx.Value(metricscollector.ScalerContextKey))
+	r.metric = append(r.metric, ctx.Value(metricscollector.MetricNameContextKey))
+	return ctx
+}
+
+func (r *rpcRecorder) HandleRPC(context.Context, stats.RPCStats)                         {}
+func (r *rpcRecorder) TagConn(ctx context.Context, _ *stats.ConnTagInfo) context.Context { return ctx }
+func (r *rpcRecorder) HandleConn(context.Context, stats.ConnStats)                       {}
+
+// The gRPC instrumentation of KEDA records a call only when the context carries the labels of the
+// scaler. This test builds the client with the options of the scaler, plus a recorder in place of the
+// metrics collectors, and checks that the recorder sees the call and the labels of GetMetricsAndActivity.
+func TestFirestoreInstrumentsOutboundCalls(t *testing.T) {
+	// With the emulator the SDK uses a connection of its own and ignores dial options.
+	t.Setenv("FIRESTORE_EMULATOR_HOST", "")
+	fake, addr := serveFakeFirestore(t)
+	fake.setReply(countReply(7))
+
+	recorder := &rpcRecorder{}
+	meta := &gcpFirestoreMetadata{ProjectID: "my-project", DatabaseID: "(default)", Collection: "jobs", gcpAuthorization: &gcp.AuthorizationMetadata{}}
+	opts := gcpFirestoreClientOptions(meta, []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithStatsHandler(recorder),
+	})
+	opts = append(opts, option.WithEndpoint(addr), option.WithoutAuthentication())
+	client, err := firestore.NewClientWithDatabase(context.Background(), meta.ProjectID, meta.DatabaseID, opts...)
+	if err != nil {
+		t.Fatalf("creating the client: %v", err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+
+	scaler := &gcpFirestoreScaler{
+		client:   client,
+		query:    newGcpFirestoreQuery(client, meta),
+		timeout:  5 * time.Second,
+		metadata: &gcpFirestoreMetadata{ActivationValue: 0},
+		scalerConfig: scalersconfig.ScalerConfig{
+			TriggerType: "gcp-firestore",
+		},
+		logger: logr.Discard(),
+	}
+	metrics, active, err := scaler.GetMetricsAndActivity(context.Background(), "s0-gcp-firestore-jobs")
+	if err != nil {
+		t.Fatalf("GetMetricsAndActivity: %v", err)
+	}
+	if len(metrics) != 1 || !active {
+		t.Fatalf("got %d metrics, active=%v, want 1 metric and active", len(metrics), active)
+	}
+
+	recorder.mu.Lock()
+	defer recorder.mu.Unlock()
+	if len(recorder.scaler) != 1 {
+		t.Fatalf("the recorder saw %d calls, want 1: the dial options did not reach the client", len(recorder.scaler))
+	}
+	if recorder.scaler[0] != "gcp-firestore" || recorder.metric[0] != "s0-gcp-firestore-jobs" {
+		t.Errorf("labels of the call = scaler %v, metric %v, want gcp-firestore and s0-gcp-firestore-jobs", recorder.scaler[0], recorder.metric[0])
+	}
 }
 
 // newTestFirestoreScaler creates the real scaler against the fake backend.
 func newTestFirestoreScaler(t *testing.T, metadata map[string]string) *gcpFirestoreScaler {
 	t.Helper()
-	scaler, err := NewGcpFirestoreScaler(&scalersconfig.ScalerConfig{
+	scaler, err := NewGcpFirestoreScaler(context.Background(), &scalersconfig.ScalerConfig{
 		TriggerMetadata: firestoreWith(metadata),
 		AuthParams:      map[string]string{},
 		ResolvedEnv:     testFirestoreResolvedEnv,
