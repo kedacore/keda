@@ -206,6 +206,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewGitHubRunnerScaler(config)
 	case "graphite":
 		return scalers.NewGraphiteScaler(config)
+	case "honeycomb":
+		return scalers.NewHoneycombScaler(config)
 	case "huawei-cloudeye":
 		return scalers.NewHuaweiCloudeyeScaler(config)
 	case "ibmmq":
