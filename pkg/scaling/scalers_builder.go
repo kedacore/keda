@@ -195,7 +195,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "gcp-cloudtasks":
 		return scalers.NewGcpCloudTasksScaler(config)
 	case "gcp-firestore":
-		return scalers.NewGcpFirestoreScaler(config)
+		return scalers.NewGcpFirestoreScaler(ctx, config)
 	case "gcp-pubsub":
 		return scalers.NewPubSubScaler(config)
 	case "gcp-spanner":
