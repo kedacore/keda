@@ -159,6 +159,8 @@ func TestFirestoreInstrumentsOutboundCalls(t *testing.T) {
 	recorder := &rpcRecorder{}
 	meta := &gcpFirestoreMetadata{ProjectID: "my-project", DatabaseID: "(default)", Collection: "jobs", gcpAuthorization: &gcp.AuthorizationMetadata{}}
 	opts := gcpFirestoreClientOptions(meta, []grpc.DialOption{
+		// The fake backend listens on 127.0.0.1 without TLS, like the Firestore emulator.
+		// nosemgrep: go.grpc.tls.grpc-client-new-insecure-connection.grpc-client-new-insecure-connection
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithStatsHandler(recorder),
 	})
