@@ -17,7 +17,11 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
+	"strings"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -135,11 +139,14 @@ type PodIdentityProvider string
 // PodIdentityProviderNone specifies the default state when there is no Identity Provider
 // PodIdentityProvider<IDENTITY_PROVIDER> specifies other available Identity providers
 const (
-	PodIdentityProviderNone          PodIdentityProvider = "none"
-	PodIdentityProviderAzureWorkload PodIdentityProvider = "azure-workload"
-	PodIdentityProviderGCP           PodIdentityProvider = "gcp"
-	PodIdentityProviderAwsEKS        PodIdentityProvider = "aws-eks"
-	PodIdentityProviderAws           PodIdentityProvider = "aws"
+	PodIdentityProviderNone                        PodIdentityProvider = "none"
+	PodIdentityProviderAzureWorkload               PodIdentityProvider = "azure-workload"
+	PodIdentityProviderAzureWorkloadServiceAccount PodIdentityProvider = "azure-workload-service-account"
+	PodIdentityProviderGCP                         PodIdentityProvider = "gcp"
+	PodIdentityProviderGCPWorkloadServiceAccount   PodIdentityProvider = "gcp-workload-service-account"
+	PodIdentityProviderAwsEKS                      PodIdentityProvider = "aws-eks"
+	PodIdentityProviderAws                         PodIdentityProvider = "aws"
+	PodIdentityProviderAwsWorkloadServiceAccount   PodIdentityProvider = "aws-workload-service-account"
 )
 
 // PodIdentityAnnotationEKS specifies aws role arn for aws-eks Identity Provider
@@ -149,12 +156,23 @@ const (
 
 // AuthPodIdentity allows users to select the platform native identity
 // mechanism
+// +kubebuilder:validation:XValidation:rule="!(self.provider in ['azure-workload-service-account', 'gcp-workload-service-account', 'aws-workload-service-account']) || has(self.serviceAccountName)",message="workload service account providers require serviceAccountName"
+// +kubebuilder:validation:XValidation:rule="!has(self.serviceAccountName) || self.provider in ['azure-workload-service-account', 'gcp-workload-service-account', 'aws-workload-service-account']",message="serviceAccountName requires a workload service account provider"
 type AuthPodIdentity struct {
-	// +kubebuilder:validation:Enum=azure-workload;gcp;aws;aws-eks;none
+	// +kubebuilder:validation:Enum=azure-workload;azure-workload-service-account;gcp;gcp-workload-service-account;aws;aws-workload-service-account;aws-eks;none
 	Provider PodIdentityProvider `json:"provider"`
 
+	// For gcp-workload-service-account, identityId is the optional IAM service account email to impersonate.
 	// +optional
 	IdentityID *string `json:"identityId,omitempty"`
+
+	// ServiceAccountName selects a Kubernetes service account in the ScaledObject or ScaledJob namespace.
+	// Required for providers gcp-workload-service-account, azure-workload-service-account and
+	// aws-workload-service-account in the top-level podIdentity. The operator must be configured
+	// with an approved audience and token-creation RBAC for this service account.
+	// +optional
+	// +kubebuilder:validation:MinLength=1
+	ServiceAccountName *string `json:"serviceAccountName,omitempty"`
 
 	// +optional
 	// Set identityTenantId to override the default Azure tenant id. If this is set, then the IdentityID must also be set
@@ -176,6 +194,78 @@ type AuthPodIdentity struct {
 	// +optional
 	// IdentityOwner configures which identity has to be used during auto discovery, keda or the scaled workload. Mutually exclusive with roleArn
 	IdentityOwner *string `json:"identityOwner,omitempty"`
+}
+
+// ValidateServiceAccountName validates the pod identity provider and explicit Kubernetes service account selection.
+func (a *AuthPodIdentity) ValidateServiceAccountName() error {
+	if a == nil {
+		return nil
+	}
+
+	switch a.Provider {
+	case "", PodIdentityProviderNone, PodIdentityProviderAzureWorkload, PodIdentityProviderGCP, PodIdentityProviderAwsEKS, PodIdentityProviderAws:
+		if a.ServiceAccountName != nil {
+			return fmt.Errorf("podIdentity.serviceAccountName requires provider gcp-workload-service-account, azure-workload-service-account or aws-workload-service-account")
+		}
+		return nil
+	case PodIdentityProviderGCPWorkloadServiceAccount, PodIdentityProviderAzureWorkloadServiceAccount, PodIdentityProviderAwsWorkloadServiceAccount:
+		if a.ServiceAccountName == nil {
+			return fmt.Errorf("podIdentity.provider %s requires podIdentity.serviceAccountName", a.Provider)
+		}
+	default:
+		return fmt.Errorf("unsupported podIdentity.provider %q", a.Provider)
+	}
+
+	if errs := validation.IsDNS1123Subdomain(*a.ServiceAccountName); len(errs) > 0 {
+		return fmt.Errorf("podIdentity.serviceAccountName must be a valid Kubernetes service account name: %s", strings.Join(errs, "; "))
+	}
+	switch a.Provider {
+	case PodIdentityProviderGCPWorkloadServiceAccount:
+	case PodIdentityProviderAzureWorkloadServiceAccount:
+		if strings.TrimSpace(a.GetIdentityID()) == "" || strings.TrimSpace(a.GetIdentityTenantID()) == "" {
+			return fmt.Errorf("podIdentity.serviceAccountName with provider azure-workload-service-account requires explicit identityId and identityTenantId")
+		}
+	case PodIdentityProviderAwsWorkloadServiceAccount:
+		if a.RoleArn == nil || strings.TrimSpace(*a.RoleArn) == "" {
+			return fmt.Errorf("podIdentity.serviceAccountName with provider aws-workload-service-account requires an explicit roleArn")
+		}
+		if a.IdentityOwner != nil || a.ExternalID != nil {
+			return fmt.Errorf("podIdentity.serviceAccountName with provider aws-workload-service-account cannot be combined with identityOwner or externalID")
+		}
+	}
+	return nil
+}
+
+func (a *AuthPodIdentity) isWorkloadServiceAccountProvider() bool {
+	if a == nil {
+		return false
+	}
+	switch a.Provider {
+	case PodIdentityProviderGCPWorkloadServiceAccount, PodIdentityProviderAzureWorkloadServiceAccount, PodIdentityProviderAwsWorkloadServiceAccount:
+		return true
+	default:
+		return false
+	}
+}
+
+// ValidateServiceAccountSelection restricts Kubernetes service account selection to top-level cloud pod identity.
+func (s *TriggerAuthenticationSpec) ValidateServiceAccountSelection() error {
+	if err := s.PodIdentity.ValidateServiceAccountName(); err != nil {
+		return err
+	}
+	if s.PodIdentity != nil && s.PodIdentity.ServiceAccountName != nil && s.AzureServicePrincipal != nil {
+		return fmt.Errorf("podIdentity.serviceAccountName cannot be combined with azureServicePrincipal authentication")
+	}
+	if s.AzureKeyVault != nil && s.AzureKeyVault.PodIdentity != nil && (s.AzureKeyVault.PodIdentity.ServiceAccountName != nil || s.AzureKeyVault.PodIdentity.isWorkloadServiceAccountProvider()) {
+		return fmt.Errorf("azureKeyVault.podIdentity.serviceAccountName is not supported; configure serviceAccountName only in the top-level podIdentity")
+	}
+	if s.AwsSecretManager != nil && s.AwsSecretManager.PodIdentity != nil && (s.AwsSecretManager.PodIdentity.ServiceAccountName != nil || s.AwsSecretManager.PodIdentity.isWorkloadServiceAccountProvider()) {
+		return fmt.Errorf("awsSecretManager.podIdentity.serviceAccountName is not supported; configure serviceAccountName only in the top-level podIdentity")
+	}
+	if s.GCPSecretManager != nil && s.GCPSecretManager.PodIdentity != nil && (s.GCPSecretManager.PodIdentity.ServiceAccountName != nil || s.GCPSecretManager.PodIdentity.isWorkloadServiceAccountProvider()) {
+		return fmt.Errorf("gcpSecretManager.podIdentity.serviceAccountName is not supported; configure serviceAccountName only in the top-level podIdentity")
+	}
+	return nil
 }
 
 func (a *AuthPodIdentity) GetIdentityID() string {

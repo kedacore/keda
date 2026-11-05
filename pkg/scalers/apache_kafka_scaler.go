@@ -158,6 +158,9 @@ func NewApacheKafkaScaler(ctx context.Context, config *scalersconfig.ScalerConfi
 }
 
 func parseApacheKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *apacheKafkaMetadata) error {
+	if config.PodIdentity.ServiceAccountName != nil && meta.SASLType != KafkaSASLTypeMskIam {
+		return fmt.Errorf("podIdentity.serviceAccountName requires AWS MSK IAM authentication for the apache-kafka scaler")
+	}
 	if config.TriggerMetadata["sasl"] != "" && config.AuthParams["sasl"] != "" {
 		return errors.New("unable to set `sasl` in both ScaledObject and TriggerAuthentication together")
 	}
@@ -165,7 +168,7 @@ func parseApacheKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *apache
 		return errors.New("unable to set `tls` in both ScaledObject and TriggerAuthentication together")
 	}
 	if meta.SASLType == KafkaSASLTypeMskIam {
-		auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, meta.AWSRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+		auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, meta.AWSRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv, config.ServiceAccountTokenProvider)
 		if err != nil {
 			return err
 		}

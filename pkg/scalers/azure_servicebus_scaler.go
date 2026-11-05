@@ -46,11 +46,12 @@ const (
 )
 
 type azureServiceBusScaler struct {
-	metricType  v2.MetricTargetType
-	metadata    *azureServiceBusMetadata
-	podIdentity kedav1alpha1.AuthPodIdentity
-	client      *admin.Client
-	logger      logr.Logger
+	metricType                  v2.MetricTargetType
+	metadata                    *azureServiceBusMetadata
+	podIdentity                 kedav1alpha1.AuthPodIdentity
+	serviceAccountTokenProvider *scalersconfig.ServiceAccountTokenProvider
+	client                      *admin.Client
+	logger                      logr.Logger
 }
 
 type azureServiceBusMetadata struct {
@@ -134,10 +135,11 @@ func NewAzureServiceBusScaler(config *scalersconfig.ScalerConfig) (Scaler, error
 	}
 
 	return &azureServiceBusScaler{
-		metricType:  metricType,
-		metadata:    meta,
-		podIdentity: config.PodIdentity,
-		logger:      logger,
+		metricType:                  metricType,
+		metadata:                    meta,
+		podIdentity:                 config.PodIdentity,
+		serviceAccountTokenProvider: config.ServiceAccountTokenProvider,
+		logger:                      logger,
 	}, nil
 }
 
@@ -157,7 +159,7 @@ func parseAzureServiceBusMetadata(config *scalersconfig.ScalerConfig) (*azureSer
 		if meta.Connection == "" {
 			return meta, fmt.Errorf("no connection setting given")
 		}
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload, kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount:
 		if meta.Namespace != "" {
 			envSuffixProvider := func(env azure.AzEnvironment) (string, error) {
 				return env.ServiceBusEndpointSuffix, nil
@@ -250,17 +252,21 @@ func (s *azureServiceBusScaler) getServiceBusAdminClient() (*admin.Client, error
 	}
 	var err error
 	var client *admin.Client
+	httpClient := kedautil.CreateHTTPClient(s.metadata.timeout, false)
+	if s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount {
+		httpClient.CheckRedirect = kedautil.CheckSameOriginRedirect
+	}
 	opts := &admin.ClientOptions{
 		ClientOptions: policy.ClientOptions{
-			Transport: kedautil.CreateHTTPClient(s.metadata.timeout, false),
+			Transport: httpClient,
 		},
 	}
 
 	switch s.podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		client, err = admin.NewClientFromConnectionString(s.metadata.Connection, opts)
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		creds, chainedErr := azure.NewChainedCredential(s.logger, s.podIdentity)
+	case kedav1alpha1.PodIdentityProviderAzureWorkload, kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount:
+		creds, chainedErr := azure.NewChainedCredential(s.logger, s.podIdentity, s.serviceAccountTokenProvider)
 		if chainedErr != nil {
 			return nil, chainedErr
 		}

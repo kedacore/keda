@@ -160,7 +160,7 @@ func TestGetAwsAuthorization(t *testing.T) {
 				tt.resolvedEnv = map[string]string{}
 			}
 
-			meta, err := GetAwsAuthorization("test-key", "us-east-1", tt.podIdentity, tt.triggerMetadata, tt.authParams, tt.resolvedEnv)
+			meta, err := GetAwsAuthorization("test-key", "us-east-1", tt.podIdentity, tt.triggerMetadata, tt.authParams, tt.resolvedEnv, nil)
 
 			if tt.wantErr != nil {
 				require.Error(t, err)

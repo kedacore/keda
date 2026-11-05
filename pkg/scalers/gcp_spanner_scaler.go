@@ -8,6 +8,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/go-logr/logr"
+	"golang.org/x/oauth2"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -115,6 +116,12 @@ func newSpannerClient(ctx context.Context, meta *spannerMetadata) (*spanner.Clie
 	var opts []option.ClientOption
 
 	switch {
+	case meta.gcpAuthorization.ServiceAccountTokenProvider != nil:
+		tokenSource, err := newGCPSpannerTokenSource(ctx, meta.gcpAuthorization)
+		if err != nil {
+			return nil, err
+		}
+		return spanner.NewClientWithConfig(ctx, db, gcpSpannerServiceAccountClientConfig(), option.WithTokenSource(tokenSource))
 	case meta.gcpAuthorization.PodIdentityProviderEnabled:
 		// Workload Identity / ADC — the SDK picks up credentials from the
 		// metadata server automatically; no explicit option is needed.
@@ -131,6 +138,18 @@ func newSpannerClient(ctx context.Context, meta *spannerMetadata) (*spanner.Clie
 	}
 
 	return spanner.NewClient(ctx, db, opts...)
+}
+
+func newGCPSpannerTokenSource(ctx context.Context, gcpAuthorization *gcp.AuthorizationMetadata) (oauth2.TokenSource, error) {
+	return gcpAuthorization.TokenSource(ctx, spanner.Scope)
+}
+
+// Native Spanner client metrics require a Cloud Monitoring write scope. Keep
+// them disabled when the selected service account receives only the data scope.
+func gcpSpannerServiceAccountClientConfig() spanner.ClientConfig {
+	return spanner.ClientConfig{
+		DisableNativeMetrics: true,
+	}
 }
 
 func (s *spannerScaler) Close(_ context.Context) error {

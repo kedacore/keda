@@ -77,7 +77,7 @@ func (m *azureLogAnalyticsMetadata) Validate() error {
 		if m.ClientSecret == "" {
 			missingParameter = "clientSecret"
 		}
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload, kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount:
 		break
 	default:
 		return fmt.Errorf("error parsing metadata. Details: Log Analytics Scaler doesn't support pod identity %s", m.PodIdentity.Provider)
@@ -145,17 +145,21 @@ func CreateAzureLogsClient(config *scalersconfig.ScalerConfig, meta *azureLogAna
 	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		creds, err = azidentity.NewClientSecretCredential(meta.TenantID, meta.ClientID, meta.ClientSecret, nil)
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		creds, err = azure.NewChainedCredential(logger, config.PodIdentity)
+	case kedav1alpha1.PodIdentityProviderAzureWorkload, kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount:
+		creds, err = azure.NewChainedCredential(logger, config.PodIdentity, config.ServiceAccountTokenProvider)
 	default:
 		return nil, fmt.Errorf("azure monitor does not support pod identity provider - %s", config.PodIdentity.Provider)
 	}
 	if err != nil {
 		return nil, err
 	}
+	httpClient := kedautil.CreateHTTPClient(meta.Timeout, meta.UnsafeSsl)
+	if config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount {
+		httpClient.CheckRedirect = kedautil.CheckSameOriginRedirect
+	}
 	client, err := azquery.NewLogsClient(creds, &azquery.LogsClientOptions{
 		ClientOptions: policy.ClientOptions{
-			Transport: kedautil.CreateHTTPClient(meta.Timeout, meta.UnsafeSsl),
+			Transport: httpClient,
 			Cloud:     meta.Cloud,
 		},
 	})
