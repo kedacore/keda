@@ -45,6 +45,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	"github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/typed/keda/v1alpha1"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
@@ -510,18 +511,6 @@ func WaitForPodsCompleted(t *testing.T, kc *kubernetes.Clientset, selector, name
 	})
 }
 
-// isPodReady reports whether the pod's Ready condition is true. The Running phase only means the
-// pod's containers have been created, so it is reached before a readiness probe first succeeds and
-// before the pod is reachable through a Service.
-func isPodReady(pod corev1.Pod) bool {
-	for _, cond := range pod.Status.Conditions {
-		if cond.Type == corev1.PodReady {
-			return cond.Status == corev1.ConditionTrue
-		}
-	}
-	return false
-}
-
 // Waits until all the pods in the namespace are ready.
 func WaitForAllPodRunningInNamespace(t *testing.T, kc *kubernetes.Clientset, namespace string, iterations, intervalSeconds int) bool {
 	return pollUntil(t, iterations, intervalSeconds, func(ctx context.Context) (bool, error) {
@@ -532,7 +521,7 @@ func WaitForAllPodRunningInNamespace(t *testing.T, kc *kubernetes.Clientset, nam
 
 		readyCount := 0
 		for _, pod := range pods.Items {
-			if !isPodReady(pod) {
+			if !kedautil.IsPodReady(&pod) {
 				break
 			}
 			readyCount++
@@ -644,7 +633,7 @@ func WaitForPodReady(t *testing.T, kc *kubernetes.Clientset, podName, namespace 
 
 		t.Logf("Waiting for pod to be in ready state. Pod - %s, Current Phase - %s", podName, pod.Status.Phase)
 
-		return isPodReady(*pod), nil
+		return kedautil.IsPodReady(pod), nil
 	})
 }
 
