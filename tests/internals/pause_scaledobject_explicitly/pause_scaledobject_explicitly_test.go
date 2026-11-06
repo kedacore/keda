@@ -447,9 +447,9 @@ func testSwitchFromPausedReplicasToPaused(t *testing.T, kc *kubernetes.Clientset
 	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 5, 60, 1),
 		"replica count should be 5 after 1 minute")
 
-	// Switch: remove paused-replicas, add paused=true
-	removeScaledObjectPausedReplicasAnnotation(t)
-	upsertScaledObjectPausedAnnotation(t)
+	// Switch both annotations atomically so scaling never resumes between updates.
+	_, annotationErr := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledobject/%s -n %s autoscaling.keda.sh/paused=true autoscaling.keda.sh/paused-replicas- --overwrite", scaledObjectName, testNamespace))
+	assert.NoErrorf(t, annotationErr, "cannot switch pause annotations - %s", annotationErr)
 
 	// HPA should not exist after switch
 	waitForHPADeleted(t, kc, "HPA should not exist after switching to paused=true")
