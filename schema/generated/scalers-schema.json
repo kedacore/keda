@@ -2804,6 +2804,83 @@
             ]
         },
         {
+            "type": "gcp-firestore",
+            "parameters": [
+                {
+                    "name": "projectId",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "databaseId",
+                    "type": "string",
+                    "default": "(default)",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "collection",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "filterField",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "filterOperator",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "filterValue",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "filterValueType",
+                    "type": "string",
+                    "default": "string",
+                    "allowedValue": [
+                        "string",
+                        "int",
+                        "float",
+                        "bool"
+                    ],
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "targetValue",
+                    "type": "string",
+                    "default": "5",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "activationValue",
+                    "type": "string",
+                    "default": "0",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "credentials",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "credentialsFromEnvFile",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
+                }
+            ]
+        },
+        {
             "type": "gcp-spanner",
             "parameters": [
                 {
