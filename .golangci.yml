@@ -97,6 +97,11 @@ linters:
           - dogsled
         path: pkg/scaling/scale_handler_test.go
 
+      # Exclude for mqtt E2E test: "mosquitto" is the name of the Eclipse Mosquitto
+      # MQTT broker, not a misspelling of "mosquito".
+      - linters:
+          - misspell
+        text: 'mosquitto'
       # https://github.com/go-critic/go-critic/issues/926
       - linters:
           - gocritic
