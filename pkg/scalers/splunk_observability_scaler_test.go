@@ -12,6 +12,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/signalfx/signalflow-client-go/v2/signalflow"
 	"github.com/signalfx/signalfx-go/idtool"
+	v2 "k8s.io/api/autoscaling/v2"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -121,6 +122,52 @@ func TestSplunkObservabilityGetMetricSpecForScaling(t *testing.T) {
 		if metricName != testData.metricName {
 			t.Error("Wrong External metric source name:", metricName)
 		}
+	}
+}
+
+func TestSplunkObservabilityGetMetricSpecForScalingMetricType(t *testing.T) {
+	testCases := []struct {
+		name       string
+		metricType v2.MetricTargetType
+		expected   v2.MetricTargetType
+		isError    bool
+	}{
+		{name: "omitted defaults to Value", metricType: "", expected: v2.ValueMetricType},
+		{name: "AverageValue", metricType: v2.AverageValueMetricType, expected: v2.AverageValueMetricType},
+		{name: "Value", metricType: v2.ValueMetricType, expected: v2.ValueMetricType},
+		{name: "Utilization is rejected", metricType: v2.UtilizationMetricType, isError: true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			meta, err := parseSplunkObservabilityMetadata(&scalersconfig.ScalerConfig{
+				TriggerMetadata: validSplunkObservabilityMetadata,
+				AuthParams:      validSplunkObservabilityAuthParams,
+				MetricType:      tc.metricType,
+			})
+			if tc.isError {
+				if err == nil {
+					t.Fatal("expected error but got success")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal("Could not parse Splunk Observability metadata:", err)
+			}
+
+			scaler := splunkObservabilityScaler{metadata: meta}
+			target := scaler.GetMetricSpecForScaling(context.Background())[0].External.Target
+
+			if target.Type != tc.expected {
+				t.Errorf("expected target type %q, got %q", tc.expected, target.Type)
+			}
+			if tc.expected == v2.AverageValueMetricType && (target.AverageValue == nil || target.Value != nil) {
+				t.Errorf("expected only AverageValue to be set, got AverageValue=%v Value=%v", target.AverageValue, target.Value)
+			}
+			if tc.expected == v2.ValueMetricType && (target.Value == nil || target.AverageValue != nil) {
+				t.Errorf("expected only Value to be set, got AverageValue=%v Value=%v", target.AverageValue, target.Value)
+			}
+		})
 	}
 }
 
