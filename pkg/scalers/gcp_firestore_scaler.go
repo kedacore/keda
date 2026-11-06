@@ -14,7 +14,6 @@ import (
 	"cloud.google.com/go/firestore"
 	"github.com/go-logr/logr"
 	"google.golang.org/api/option"
-	"google.golang.org/grpc"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -242,14 +241,18 @@ func parseGcpFirestoreMetadata(config *scalersconfig.ScalerConfig) (*gcpFirestor
 }
 
 func newGcpFirestoreClient(ctx context.Context, meta *gcpFirestoreMetadata) (*firestore.Client, error) {
-	return firestore.NewClientWithDatabase(ctx, meta.ProjectID, meta.DatabaseID,
-		gcpFirestoreClientOptions(meta, metricscollector.GRPCClientDialOptions())...)
+	return firestore.NewClientWithDatabase(
+		ctx,
+		meta.ProjectID,
+		meta.DatabaseID,
+		gcpFirestoreClientOptions(meta)...,
+	)
 }
 
 // gcpFirestoreClientOptions returns the options of the Firestore client: the credentials of the trigger and
-// the gRPC dial options that instrument the outbound calls. The SDK ignores dial options when it talks to
-// the emulator (FIRESTORE_EMULATOR_HOST), because it then uses a connection of its own.
-func gcpFirestoreClientOptions(meta *gcpFirestoreMetadata, dialOptions []grpc.DialOption) []option.ClientOption {
+// the gRPC dial options of the metrics collectors that instrument the outbound calls. The SDK ignores dial
+// options when it talks to the emulator (FIRESTORE_EMULATOR_HOST), because it then uses a connection of its own.
+func gcpFirestoreClientOptions(meta *gcpFirestoreMetadata) []option.ClientOption {
 	var opts []option.ClientOption
 
 	switch {
@@ -269,7 +272,7 @@ func gcpFirestoreClientOptions(meta *gcpFirestoreMetadata, dialOptions []grpc.Di
 		// GCP scalers).
 	}
 
-	for _, dialOption := range dialOptions {
+	for _, dialOption := range metricscollector.GRPCClientDialOptions() {
 		opts = append(opts, option.WithGRPCDialOption(dialOption))
 	}
 	return opts
