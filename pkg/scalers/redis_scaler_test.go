@@ -7,6 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
@@ -133,6 +134,74 @@ func TestRedisGetMetricSpecForScaling(t *testing.T) {
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
 		}
+	}
+}
+
+func TestRedisValidateWithAzureWorkloadAndPasswordFails(t *testing.T) {
+	meta := redisMetadata{
+		ConnectionInfo: redisConnectionInfo{
+			Addresses: []string{"localhost:6379"},
+			Password:  "secret",
+			EnableTLS: true,
+		},
+		podIdentity: kedav1alpha1.AuthPodIdentity{
+			Provider: kedav1alpha1.PodIdentityProviderAzureWorkload,
+		},
+	}
+
+	err := meta.Validate()
+	assert.ErrorIs(t, err, ErrRedisEntraIDIncompatibleWithPassword)
+}
+
+func TestRedisValidateWithAzureWorkloadAndSentinelFails(t *testing.T) {
+	meta := redisMetadata{
+		ConnectionInfo: redisConnectionInfo{
+			Addresses:      []string{"localhost:26379"},
+			SentinelMaster: "mymaster",
+			EnableTLS:      true,
+		},
+		podIdentity: kedav1alpha1.AuthPodIdentity{
+			Provider: kedav1alpha1.PodIdentityProviderAzureWorkload,
+		},
+	}
+
+	err := meta.Validate()
+	assert.ErrorIs(t, err, ErrRedisEntraIDIncompatibleWithSentinel)
+}
+
+func TestRedisValidateAzureWorkloadTLS(t *testing.T) {
+	tests := []struct {
+		name         string
+		metadataTLS  string
+		authParamTLS string
+		wantErr      error
+	}{
+		{name: "disabled", wantErr: ErrRedisEntraIDRequiresTLS},
+		{name: "enabled by trigger metadata", metadataTLS: "true"},
+		{name: "enabled by auth params", authParamTLS: "enable"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			meta := redisMetadata{
+				MetadataEnableTLS:  tt.metadataTLS,
+				AuthParamEnableTLS: tt.authParamTLS,
+				ConnectionInfo: redisConnectionInfo{
+					Addresses: []string{"localhost:6379"},
+				},
+				ListName: "mylist",
+				podIdentity: kedav1alpha1.AuthPodIdentity{
+					Provider: kedav1alpha1.PodIdentityProviderAzureWorkload,
+				},
+			}
+
+			err := meta.Validate()
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
 }
 
