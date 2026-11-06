@@ -89,10 +89,11 @@ type kafkaMetadata struct {
 	Username string `keda:"name=username,order=authParams,optional"`
 	Password string `keda:"name=password,order=authParams,optional"`
 
-	SaslTokenProvider     string `keda:"name=saslTokenProvider,order=triggerMetadata;authParams,optional,enum=bearer;aws_msk_iam"`
+	SaslTokenProvider     string `keda:"name=saslTokenProvider,order=triggerMetadata;authParams,optional,enum=bearer;aws_msk_iam;static"`
 	ScopesStr             string `keda:"name=scopes,order=authParams,optional"`
 	OAuthTokenEndpointURI string `keda:"name=oauthTokenEndpointUri,order=authParams,optional"`
 	OAuthExtensionsStr    string `keda:"name=oauthExtensions,order=authParams,optional"`
+	OAuthToken            string `keda:"name=oauthToken,order=authParams,optional"`
 
 	Keytab              string `keda:"name=keytab,order=authParams,optional"`
 	CcacheName          string `keda:"name=ccacheName,order=authParams,optional"`
@@ -113,6 +114,7 @@ type kafkaMetadata struct {
 	awsAuthorization   awsutils.AuthorizationMetadata
 	scopes             []string
 	oauthExtensions    map[string]string
+	refreshOAuthToken  func(context.Context) (string, error)
 
 	triggerIndex int
 }
@@ -252,6 +254,10 @@ func (m *kafkaMetadata) parseOAuthParams() error {
 		tokenProvider = kafkaSaslOAuthTokenProvider(m.SaslTokenProvider)
 	}
 
+	if m.OAuthToken != "" && tokenProvider != KafkaSASLOAuthTokenProviderStatic {
+		return errors.New("oauthToken can only be used with saslTokenProvider static")
+	}
+
 	switch tokenProvider {
 	case KafkaSASLOAuthTokenProviderBearer:
 		if m.Username == "" {
@@ -264,15 +270,19 @@ func (m *kafkaMetadata) parseOAuthParams() error {
 			return errors.New("no oauth token endpoint uri given")
 		}
 		m.scopes = strings.Split(m.ScopesStr, ",")
-		m.oauthExtensions = make(map[string]string)
-		if m.OAuthExtensionsStr != "" {
-			for ext := range strings.SplitSeq(m.OAuthExtensionsStr, ",") {
-				kv := strings.Split(ext, "=")
-				if len(kv) != 2 {
-					return errors.New("invalid OAuthBearer extension, must be of format key=value")
-				}
-				m.oauthExtensions[kv[0]] = kv[1]
-			}
+		if err := m.parseOAuthExtensions(); err != nil {
+			return err
+		}
+
+	case KafkaSASLOAuthTokenProviderStatic:
+		if m.OAuthToken == "" {
+			return errors.New("no oauthToken given")
+		}
+		if m.OAuthTokenEndpointURI != "" {
+			return errors.New("oauthTokenEndpointUri cannot be used with saslTokenProvider static")
+		}
+		if err := m.parseOAuthExtensions(); err != nil {
+			return err
 		}
 
 	case KafkaSASLOAuthTokenProviderAWSMSKIAM:
@@ -285,6 +295,21 @@ func (m *kafkaMetadata) parseOAuthParams() error {
 	}
 
 	m.tokenProvider = tokenProvider
+	return nil
+}
+
+func (m *kafkaMetadata) parseOAuthExtensions() error {
+	m.oauthExtensions = make(map[string]string)
+	if m.OAuthExtensionsStr == "" {
+		return nil
+	}
+	for ext := range strings.SplitSeq(m.OAuthExtensionsStr, ",") {
+		kv := strings.Split(ext, "=")
+		if len(kv) != 2 || kv[0] == "" {
+			return errors.New("invalid OAuthBearer extension, must be of format key=value")
+		}
+		m.oauthExtensions[kv[0]] = kv[1]
+	}
 	return nil
 }
 
@@ -342,6 +367,7 @@ type kafkaSaslOAuthTokenProvider string
 const (
 	KafkaSASLOAuthTokenProviderBearer    kafkaSaslOAuthTokenProvider = "bearer"
 	KafkaSASLOAuthTokenProviderAWSMSKIAM kafkaSaslOAuthTokenProvider = "aws_msk_iam"
+	KafkaSASLOAuthTokenProviderStatic    kafkaSaslOAuthTokenProvider = "static"
 )
 
 const (
@@ -401,6 +427,20 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 			return meta, fmt.Errorf("error parsing kafka version: %w", err)
 		}
 		meta.version = version
+	}
+
+	if resolveAuthParams := config.ResolveAuthParams; meta.tokenProvider == KafkaSASLOAuthTokenProviderStatic && resolveAuthParams != nil {
+		meta.refreshOAuthToken = func(ctx context.Context) (string, error) {
+			authParams, err := resolveAuthParams(ctx)
+			if err == nil && authParams["oauthToken"] == "" {
+				err = errors.New("no oauthToken given")
+			}
+			if err != nil {
+				logger.Info("Warning: failed to refresh oauthToken, the current token is used until the broker rejects it", "error", err.Error())
+				return "", err
+			}
+			return authParams["oauthToken"], nil
+		}
 	}
 
 	if meta.saslType == KafkaSASLTypeGSSAPI {
@@ -571,6 +611,8 @@ func getKafkaClientConfig(ctx context.Context, metadata kafkaMetadata) (*sarama.
 				return nil, fmt.Errorf("error getting AWS config: %w", err)
 			}
 			config.Net.SASL.TokenProvider = kafka.OAuthMSKTokenProvider(awsAuth)
+		case KafkaSASLOAuthTokenProviderStatic:
+			config.Net.SASL.TokenProvider = kafka.OAuthStaticTokenProvider(metadata.OAuthToken, metadata.oauthExtensions, metadata.refreshOAuthToken)
 		}
 	}
 

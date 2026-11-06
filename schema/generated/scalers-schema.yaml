@@ -2495,6 +2495,7 @@ scalers:
           allowedValue:
             - bearer
             - aws_msk_iam
+            - static
           metadataVariableReadable: true
           triggerAuthenticationVariableReadable: true
         - name: scopes
@@ -2506,6 +2507,10 @@ scalers:
           optional: true
           triggerAuthenticationVariableReadable: true
         - name: oauthExtensions
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: oauthToken
           type: string
           optional: true
           triggerAuthenticationVariableReadable: true

@@ -87,7 +87,7 @@ func TestScalerFactoryUsesContextFromCurrentInvocation(t *testing.T) {
 			return nil, err
 		}
 		return &authenticationv1.TokenRequest{Status: authenticationv1.TokenRequestStatus{Token: token}}, nil
-	}).Times(2)
+	}).Times(3)
 
 	handler := &scaleHandler{
 		client:   fake.NewClientBuilder().WithScheme(testScheme).WithObjects(triggerAuthentication, serviceAccount).Build(),
@@ -119,6 +119,11 @@ func TestScalerFactoryUsesContextFromCurrentInvocation(t *testing.T) {
 	refreshedScaler, config, err := builders[0].Factory(refreshCtx)
 	require.NoError(t, err)
 	require.Equal(t, token, config.AuthParams["token"])
+
+	// ResolveAuthParams must mint again with the caller's context, not the one the scaler was built with
+	authParams, err := builders[0].ScalerConfig.ResolveAuthParams(refreshCtx)
+	require.NoError(t, err)
+	require.Equal(t, token, authParams["token"])
 	require.NoError(t, refreshedScaler.Close(refreshCtx))
 	require.NoError(t, builders[0].Scaler.Close(refreshCtx))
 }
