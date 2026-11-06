@@ -28,6 +28,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -103,6 +104,13 @@ func main() {
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:         scheme,
 		LeaderElection: false,
+		// Read scale target workloads directly so validating a ScaledObject
+		// doesn't cache every Deployment and StatefulSet in the cluster.
+		Client: client.Options{
+			Cache: &client.CacheOptions{
+				DisableFor: kedav1alpha1.WebhookUncachedObjects(),
+			},
+		},
 		Metrics: server.Options{
 			BindAddress: metricsAddr,
 		},
