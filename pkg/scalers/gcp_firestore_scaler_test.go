@@ -147,10 +147,11 @@ func (r *rpcRecorder) HandleRPC(context.Context, stats.RPCStats)                
 func (r *rpcRecorder) TagConn(ctx context.Context, _ *stats.ConnTagInfo) context.Context { return ctx }
 func (r *rpcRecorder) HandleConn(context.Context, stats.ConnStats)                       {}
 
-// The gRPC instrumentation of KEDA records a call only when the context carries the labels of the
-// scaler. This test builds the client with the options of the scaler, plus a recorder in place of the
-// metrics collectors, and checks that the recorder sees the call and the labels of GetMetricsAndActivity.
-func TestFirestoreInstrumentsOutboundCalls(t *testing.T) {
+// The gRPC metrics of KEDA read the labels of the scaler from the context of the call. The metrics
+// collectors are off in the unit tests, so this test puts a recording stats handler on the client
+// in their place and checks that the context of the call made by GetMetricsAndActivity carries the
+// scaler and metric labels. It does not cover the dial options of the collectors themselves.
+func TestFirestoreCallsCarryScalerLabels(t *testing.T) {
 	// With the emulator the SDK uses a connection of its own and ignores dial options.
 	t.Setenv("FIRESTORE_EMULATOR_HOST", "")
 	fake, addr := serveFakeFirestore(t)
@@ -158,13 +159,15 @@ func TestFirestoreInstrumentsOutboundCalls(t *testing.T) {
 
 	recorder := &rpcRecorder{}
 	meta := &gcpFirestoreMetadata{ProjectID: "my-project", DatabaseID: "(default)", Collection: "jobs", gcpAuthorization: &gcp.AuthorizationMetadata{}}
-	opts := gcpFirestoreClientOptions(meta, []grpc.DialOption{
+	opts := gcpFirestoreClientOptions(meta)
+	opts = append(opts,
+		option.WithEndpoint(addr),
+		option.WithoutAuthentication(),
 		// The fake backend listens on 127.0.0.1 without TLS, like the Firestore emulator.
 		// nosemgrep: go.grpc.tls.grpc-client-new-insecure-connection.grpc-client-new-insecure-connection
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithStatsHandler(recorder),
-	})
-	opts = append(opts, option.WithEndpoint(addr), option.WithoutAuthentication())
+		option.WithGRPCDialOption(grpc.WithTransportCredentials(insecure.NewCredentials())),
+		option.WithGRPCDialOption(grpc.WithStatsHandler(recorder)),
+	)
 	client, err := firestore.NewClientWithDatabase(context.Background(), meta.ProjectID, meta.DatabaseID, opts...)
 	if err != nil {
 		t.Fatalf("creating the client: %v", err)
@@ -192,7 +195,7 @@ func TestFirestoreInstrumentsOutboundCalls(t *testing.T) {
 	recorder.mu.Lock()
 	defer recorder.mu.Unlock()
 	if len(recorder.scaler) != 1 {
-		t.Fatalf("the recorder saw %d calls, want 1: the dial options did not reach the client", len(recorder.scaler))
+		t.Fatalf("the recorder saw %d calls, want 1", len(recorder.scaler))
 	}
 	if recorder.scaler[0] != "gcp-firestore" || recorder.metric[0] != "s0-gcp-firestore-jobs" {
 		t.Errorf("labels of the call = scaler %v, metric %v, want gcp-firestore and s0-gcp-firestore-jobs", recorder.scaler[0], recorder.metric[0])
