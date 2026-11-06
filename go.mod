@@ -20,16 +20,16 @@ require (
 	dario.cat/mergo v1.0.2
 	github.com/Azure/azure-amqp-common-go/v4 v4.2.0
 	github.com/Azure/azure-kusto-go/azkustodata v1.2.2
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.23.1
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.14.1
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.24.0
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.15.0
 	github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2 v2.0.2
-	github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.10.0
+	github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.11.0
 	github.com/Azure/azure-sdk-for-go/sdk/messaging/eventgrid/azeventgrid v1.0.0
 	github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery v1.2.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub v1.3.0
-	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.5.0
-	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.1
-	github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/v2 v2.1.0
+	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.5.1
+	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.3
+	github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/v2 v2.1.1
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.10.1
 	github.com/ClickHouse/clickhouse-go/v2 v2.48.0
 	github.com/DataDog/datadog-api-client-go/v2 v2.66.0
@@ -69,6 +69,7 @@ require (
 	github.com/google/go-github/v92 v92.0.0
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud/v2 v2.15.0
+	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.1-0.20250905170011-2dc9821e1ff0
 	github.com/hashicorp/vault/api v1.23.0
 	github.com/influxdata/influxdb-client-go/v2 v2.14.0
@@ -155,8 +156,9 @@ require (
 	cloud.google.com/go/longrunning v1.2.0 // indirect
 	code.cloudfoundry.org/clock v1.59.0 // indirect
 	filippo.io/edwards25519 v1.2.0 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/internal v1.12.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.13.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.2.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/storage/internal v0.1.0 // indirect
 	github.com/Azure/go-amqp v1.7.0 // indirect
 	github.com/ClickHouse/ch-go v0.74.0 // indirect
 	github.com/DataDog/zstd v1.5.7 // indirect
@@ -251,7 +253,6 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.23 // indirect
 	github.com/googleapis/gax-go/v2 v2.26.2 // indirect
-	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.4 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.30.0 // indirect
@@ -344,11 +345,11 @@ require (
 	go.opentelemetry.io/proto/otlp v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
-	go.yaml.in/yaml/v3 v3.0.5 // indirect
+	go.yaml.in/yaml/v3 v3.0.6 // indirect
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/exp v0.0.0-20260824195058-e88cd73687aa // indirect
 	golang.org/x/mod v0.42.0 // indirect
-	golang.org/x/net v0.61.0 // indirect
+	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/term v0.47.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
