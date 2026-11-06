@@ -66,8 +66,9 @@ func newFirestoreIntegrationScaler(t *testing.T, metadata map[string]string) Sca
 	t.Helper()
 	scaler, err := NewGcpFirestoreScaler(context.Background(), &scalersconfig.ScalerConfig{
 		TriggerMetadata: withOverrides(map[string]string{"projectId": intTestFirestoreProject}, metadata),
-		AuthParams:      map[string]string{},
-		ResolvedEnv:     map[string]string{},
+		// The emulator ignores the credentials, but the metadata parsing requires them.
+		AuthParams:  firestoreCredentials,
+		ResolvedEnv: map[string]string{},
 	})
 	if err != nil {
 		t.Fatalf("NewGcpFirestoreScaler: %v", err)

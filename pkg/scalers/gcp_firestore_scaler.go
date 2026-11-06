@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"os"
 	"regexp"
 	"slices"
 	"strconv"
@@ -190,7 +189,12 @@ func NewGcpFirestoreScaler(ctx context.Context, config *scalersconfig.ScalerConf
 		return nil, fmt.Errorf("error parsing Firestore metadata: %w", err)
 	}
 
-	client, err := newGcpFirestoreClient(ctx, meta)
+	client, err := firestore.NewClientWithDatabase(
+		ctx,
+		meta.ProjectID,
+		meta.DatabaseID,
+		gcpFirestoreClientOptions(meta)...,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Firestore client: %w", err)
 	}
@@ -224,13 +228,6 @@ func parseGcpFirestoreMetadata(config *scalersconfig.ScalerConfig) (*gcpFirestor
 		)),
 	)
 
-	// When FIRESTORE_EMULATOR_HOST is set the SDK talks to the emulator without
-	// credentials; they are not required in that case.
-	if os.Getenv("FIRESTORE_EMULATOR_HOST") != "" {
-		meta.gcpAuthorization = &gcp.AuthorizationMetadata{}
-		return meta, nil
-	}
-
 	auth, err := gcp.GetGCPAuthorization(config)
 	if err != nil {
 		return nil, err
@@ -238,15 +235,6 @@ func parseGcpFirestoreMetadata(config *scalersconfig.ScalerConfig) (*gcpFirestor
 	meta.gcpAuthorization = auth
 
 	return meta, nil
-}
-
-func newGcpFirestoreClient(ctx context.Context, meta *gcpFirestoreMetadata) (*firestore.Client, error) {
-	return firestore.NewClientWithDatabase(
-		ctx,
-		meta.ProjectID,
-		meta.DatabaseID,
-		gcpFirestoreClientOptions(meta)...,
-	)
 }
 
 // gcpFirestoreClientOptions returns the options of the Firestore client: the credentials of the trigger and
@@ -266,10 +254,9 @@ func gcpFirestoreClientOptions(meta *gcpFirestoreMetadata) []option.ClientOption
 	default:
 		// No explicit credentials and no pod identity: the SDK uses Application
 		// Default Credentials (GOOGLE_APPLICATION_CREDENTIALS, gcloud default, the
-		// metadata server). This is reached when the emulator host is set, and also
-		// when credentialsFromEnv or credentialsFromEnvFile names a variable that is
-		// empty, which GetGCPAuthorization does not check (the same as for the other
-		// GCP scalers).
+		// metadata server). This is reached when credentialsFromEnv or
+		// credentialsFromEnvFile names a variable that is empty, which
+		// GetGCPAuthorization does not check (the same as for the other GCP scalers).
 	}
 
 	for _, dialOption := range metricscollector.GRPCClientDialOptions() {

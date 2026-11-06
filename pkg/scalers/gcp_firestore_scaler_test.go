@@ -72,6 +72,12 @@ func (f *fakeFirestore) RunAggregationQuery(req *firestorepb.RunAggregationQuery
 	return stream.Send(resp)
 }
 
+func (f *fakeFirestore) requestCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return len(f.requests)
+}
+
 func (f *fakeFirestore) setReply(reply firestoreReply) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -202,12 +208,13 @@ func TestFirestoreCallsCarryScalerLabels(t *testing.T) {
 	}
 }
 
-// newTestFirestoreScaler creates the real scaler against the fake backend.
+// newTestFirestoreScaler creates the real scaler against the fake backend. The SDK ignores the credentials
+// while FIRESTORE_EMULATOR_HOST points at the fake backend, but the metadata parsing still requires them.
 func newTestFirestoreScaler(t *testing.T, metadata map[string]string) *gcpFirestoreScaler {
 	t.Helper()
 	scaler, err := NewGcpFirestoreScaler(context.Background(), &scalersconfig.ScalerConfig{
 		TriggerMetadata: firestoreWith(metadata),
-		AuthParams:      map[string]string{},
+		AuthParams:      firestoreCredentials,
 		ResolvedEnv:     testFirestoreResolvedEnv,
 	})
 	if err != nil {
@@ -291,8 +298,6 @@ var testFirestoreMetadataCases = []parseFirestoreMetadataTestData{
 func TestFirestoreParseMetadata(t *testing.T) {
 	for _, tc := range testFirestoreMetadataCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			// A developer who runs the integration tests has the emulator host exported; it would hide the credentials.
-			t.Setenv("FIRESTORE_EMULATOR_HOST", "")
 			_, err := parseGcpFirestoreMetadata(&scalersconfig.ScalerConfig{
 				AuthParams:      tc.authParams,
 				TriggerMetadata: tc.metadata,
@@ -310,7 +315,6 @@ func TestFirestoreParseMetadata(t *testing.T) {
 
 // TestFirestoreParseMetadata_Defaults verifies the values that are used when the optional fields are omitted.
 func TestFirestoreParseMetadata_Defaults(t *testing.T) {
-	t.Setenv("FIRESTORE_EMULATOR_HOST", "")
 	meta, err := parseGcpFirestoreMetadata(&scalersconfig.ScalerConfig{
 		AuthParams:      firestoreCredentials,
 		TriggerMetadata: firestoreRequiredFields,
@@ -386,7 +390,6 @@ func TestFirestoreParseMetadata_Filter(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.desc, func(t *testing.T) {
-			t.Setenv("FIRESTORE_EMULATOR_HOST", "")
 			meta, err := parseGcpFirestoreMetadata(&scalersconfig.ScalerConfig{
 				AuthParams:      firestoreCredentials,
 				TriggerMetadata: firestoreWith(tc.metadata),
@@ -406,7 +409,6 @@ func TestFirestoreParseMetadata_Filter(t *testing.T) {
 }
 
 func TestFirestoreParseMetadata_NaN(t *testing.T) {
-	t.Setenv("FIRESTORE_EMULATOR_HOST", "")
 	meta, err := parseGcpFirestoreMetadata(&scalersconfig.ScalerConfig{
 		AuthParams:      firestoreCredentials,
 		TriggerMetadata: firestoreWith(map[string]string{"filterField": "score", "filterValue": "NaN", "filterValueType": "float"}),
@@ -422,7 +424,6 @@ func TestFirestoreParseMetadata_NaN(t *testing.T) {
 
 // TestFirestoreParseMetadata_CredentialsFromEnvFile verifies that the file-path credential method is stored.
 func TestFirestoreParseMetadata_CredentialsFromEnvFile(t *testing.T) {
-	t.Setenv("FIRESTORE_EMULATOR_HOST", "")
 	meta, err := parseGcpFirestoreMetadata(&scalersconfig.ScalerConfig{
 		AuthParams:      map[string]string{},
 		TriggerMetadata: firestoreWith(map[string]string{"credentialsFromEnvFile": "CREDS_FILE_ENV"}),
@@ -439,7 +440,6 @@ func TestFirestoreParseMetadata_CredentialsFromEnvFile(t *testing.T) {
 
 // TestFirestoreParseMetadata_CredentialsFromEnv verifies that the inline credential is taken from the environment.
 func TestFirestoreParseMetadata_CredentialsFromEnv(t *testing.T) {
-	t.Setenv("FIRESTORE_EMULATOR_HOST", "")
 	meta, err := parseGcpFirestoreMetadata(&scalersconfig.ScalerConfig{
 		AuthParams:      map[string]string{},
 		TriggerMetadata: firestoreWith(map[string]string{"credentialsFromEnv": "CREDS_ENV"}),
@@ -450,22 +450,6 @@ func TestFirestoreParseMetadata_CredentialsFromEnv(t *testing.T) {
 	}
 	if meta.gcpAuthorization.GoogleApplicationCredentials != testFirestoreResolvedEnv["CREDS_ENV"] {
 		t.Errorf("Credentials: got %q, want %q", meta.gcpAuthorization.GoogleApplicationCredentials, testFirestoreResolvedEnv["CREDS_ENV"])
-	}
-}
-
-// TestFirestoreParseMetadata_Emulator verifies that no credentials are needed when the emulator host is set.
-func TestFirestoreParseMetadata_Emulator(t *testing.T) {
-	t.Setenv("FIRESTORE_EMULATOR_HOST", "localhost:8080")
-	meta, err := parseGcpFirestoreMetadata(&scalersconfig.ScalerConfig{
-		AuthParams:      map[string]string{},
-		TriggerMetadata: firestoreRequiredFields,
-		ResolvedEnv:     testFirestoreResolvedEnv,
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if meta.gcpAuthorization == nil {
-		t.Error("expected an empty authorization, got nil")
 	}
 }
 
@@ -505,18 +489,33 @@ func TestFirestoreClientCredentials(t *testing.T) {
 	// Without the emulator host the SDK uses the credentials that it is given, so a wrong one fails at once.
 	t.Setenv("FIRESTORE_EMULATOR_HOST", "")
 	cases := []struct {
-		desc      string
-		auth      *gcp.AuthorizationMetadata
-		wantInErr string
+		desc        string
+		metadata    map[string]string
+		authParams  map[string]string
+		resolvedEnv map[string]string
+		wantInErr   string
 	}{
-		{desc: "inline credentials that are not JSON", auth: &gcp.AuthorizationMetadata{GoogleApplicationCredentials: "not json"}, wantInErr: "invalid character"},
-		{desc: "a credentials file that does not exist", auth: &gcp.AuthorizationMetadata{GoogleApplicationCredentialsFile: "/nonexistent/sa.json"}, wantInErr: "no such file"},
+		{
+			desc:       "inline credentials that are not JSON",
+			authParams: map[string]string{"GoogleApplicationCredentials": "not json"},
+			wantInErr:  "invalid character",
+		},
+		{
+			desc:        "a credentials file that does not exist",
+			metadata:    map[string]string{"credentialsFromEnvFile": "CREDS_FILE_ENV"},
+			resolvedEnv: map[string]string{"CREDS_FILE_ENV": "/nonexistent/sa.json"},
+			wantInErr:   "no such file",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.desc, func(t *testing.T) {
-			client, err := newGcpFirestoreClient(context.Background(), &gcpFirestoreMetadata{ProjectID: "my-project", DatabaseID: "(default)", gcpAuthorization: tc.auth})
+			scaler, err := NewGcpFirestoreScaler(context.Background(), &scalersconfig.ScalerConfig{
+				TriggerMetadata: firestoreWith(tc.metadata),
+				AuthParams:      withOverrides(map[string]string{}, tc.authParams),
+				ResolvedEnv:     withOverrides(map[string]string{}, tc.resolvedEnv),
+			})
 			if err == nil {
-				_ = client.Close()
+				_ = scaler.Close(context.Background())
 				t.Fatal("expected an error, got nil")
 			}
 			if !strings.Contains(err.Error(), tc.wantInErr) {
@@ -728,7 +727,8 @@ func TestFirestoreGetMetricsAndActivity_Errors(t *testing.T) {
 }
 
 func TestFirestoreGetMetricsAndActivity_Deadlines(t *testing.T) {
-	startFakeFirestore(t).setReply(func(ctx context.Context, _ *firestorepb.RunAggregationQueryRequest) (*firestorepb.RunAggregationQueryResponse, error) {
+	fake := startFakeFirestore(t)
+	fake.setReply(func(ctx context.Context, _ *firestorepb.RunAggregationQueryRequest) (*firestorepb.RunAggregationQueryResponse, error) {
 		select {
 		case <-ctx.Done():
 		case <-time.After(10 * time.Second):
@@ -758,12 +758,36 @@ func TestFirestoreGetMetricsAndActivity_Deadlines(t *testing.T) {
 		}
 	})
 
-	t.Run("a cancelled context stops the call", func(t *testing.T) {
+	t.Run("cancelling the context stops a call that is running", func(t *testing.T) {
 		s.timeout = time.Minute
 		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-		if _, _, err := s.GetMetricsAndActivity(ctx, "s0-test"); err == nil {
-			t.Error("expected an error, got nil")
+		defer cancel()
+
+		// Cancel only after the backend has received the request, so that the call is running.
+		before := fake.requestCount()
+		done := make(chan struct{})
+		defer close(done)
+		go func() {
+			for fake.requestCount() == before {
+				select {
+				case <-done:
+					return
+				case <-time.After(time.Millisecond):
+				}
+			}
+			cancel()
+		}()
+
+		started := time.Now()
+		_, _, err := s.GetMetricsAndActivity(ctx, "s0-test")
+		if err == nil {
+			t.Fatal("expected an error, got nil")
+		}
+		if code := status.Code(err); code != codes.Canceled {
+			t.Errorf("code: got %v, want Canceled (error %v)", code, err)
+		}
+		if elapsed := time.Since(started); elapsed > 5*time.Second {
+			t.Errorf("the call took %v after the cancellation", elapsed)
 		}
 	})
 }
@@ -807,7 +831,6 @@ var firestoreMetricNameCases = []struct {
 func TestFirestoreGetMetricSpecForScaling(t *testing.T) {
 	for _, tc := range firestoreMetricNameCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			t.Setenv("FIRESTORE_EMULATOR_HOST", "")
 			meta, err := parseGcpFirestoreMetadata(&scalersconfig.ScalerConfig{
 				AuthParams:      firestoreCredentials,
 				TriggerMetadata: tc.metadata,
@@ -832,7 +855,6 @@ func TestFirestoreGetMetricSpecForScaling(t *testing.T) {
 }
 
 func TestFirestoreGetMetricSpecForScaling_Target(t *testing.T) {
-	t.Setenv("FIRESTORE_EMULATOR_HOST", "")
 	meta, err := parseGcpFirestoreMetadata(&scalersconfig.ScalerConfig{
 		AuthParams:      firestoreCredentials,
 		TriggerMetadata: firestoreWith(map[string]string{"targetValue": "20"}),
