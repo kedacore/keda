@@ -177,14 +177,5 @@ func shouldCountPod(pod corev1.Pod, onlyReadyPods bool) bool {
 	if !onlyReadyPods {
 		return true
 	}
-	return pod.DeletionTimestamp == nil && pod.Status.Phase == corev1.PodRunning && isPodReady(pod)
-}
-
-func isPodReady(pod corev1.Pod) bool {
-	for _, condition := range pod.Status.Conditions {
-		if condition.Type == corev1.PodReady {
-			return condition.Status == corev1.ConditionTrue
-		}
-	}
-	return false
+	return pod.DeletionTimestamp == nil && pod.Status.Phase == corev1.PodRunning && kedautil.IsPodReady(&pod)
 }
