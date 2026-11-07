@@ -168,7 +168,7 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.61.0 // indirect
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
-	github.com/andybalholm/brotli v1.2.6 // indirect
+	github.com/andybalholm/brotli v1.2.7 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/apache/arrow-go/v18 v18.7.0 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
