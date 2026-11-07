@@ -186,6 +186,12 @@ func removeScaledObjectPausedReplicasAnnotation(t assert.TestingT) {
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
+func switchScaledObjectPausedReplicasToPaused(t assert.TestingT) {
+	// Switch both annotations atomically so scaling never resumes between updates.
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledobject/%s -n %s autoscaling.keda.sh/paused=true autoscaling.keda.sh/paused-replicas- --overwrite", scaledObjectName, testNamespace))
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+}
+
 func upsertScaledObjectPausedScaleInAnnotation(t assert.TestingT) {
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledobject/%s -n %s autoscaling.keda.sh/paused-scale-in=true --overwrite", scaledObjectName, testNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
@@ -447,9 +453,7 @@ func testSwitchFromPausedReplicasToPaused(t *testing.T, kc *kubernetes.Clientset
 	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 5, 60, 1),
 		"replica count should be 5 after 1 minute")
 
-	// Switch: remove paused-replicas, add paused=true
-	removeScaledObjectPausedReplicasAnnotation(t)
-	upsertScaledObjectPausedAnnotation(t)
+	switchScaledObjectPausedReplicasToPaused(t)
 
 	// HPA should not exist after switch
 	waitForHPADeleted(t, kc, "HPA should not exist after switching to paused=true")
