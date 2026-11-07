@@ -327,9 +327,11 @@ func TestSplunkObservabilityCloseTimeoutDoesNotReportCompletionEarly(t *testing.
 	const callerTimeout = 200 * time.Millisecond
 	closeWithTimeout := func(name string) {
 		t.Helper()
+		// Start timing before the deadline is set, so a Close that returns exactly at the
+		// deadline can never measure shorter than callerTimeout.
+		start := time.Now()
 		ctx, cancel := context.WithTimeout(context.Background(), callerTimeout)
 		defer cancel()
-		start := time.Now()
 		if err := scaler.Close(ctx); err != nil {
 			t.Fatalf("%s Close: %v", name, err)
 		}
