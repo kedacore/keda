@@ -10,8 +10,9 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	"github.com/opensearch-project/opensearch-go/v4"
-	"github.com/opensearch-project/opensearch-go/v4/opensearchapi"
+	"github.com/opensearch-project/opensearch-go/v5"
+	"github.com/opensearch-project/opensearch-go/v5/errmask"
+	"github.com/opensearch-project/opensearch-go/v5/opensearchapi"
 	"github.com/tidwall/gjson"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -141,7 +142,18 @@ func newOpensearchAPIClientWithBasicAuth(meta opensearchMetadata, logger logr.Lo
 }
 
 func newOpensearchAPIClientFromConfig(cfg opensearch.Config, logger logr.Logger) (*opensearchapi.Client, error) {
-	client, err := opensearchapi.NewClient(opensearchapi.Config{Client: cfg})
+	// Keep using only the configured addresses, without the v5 defaults that
+	// discover nodes and poll cluster statistics with additional permissions.
+	cfg.DiscoverNodesOnStart = new(false)
+	cfg.DiscoverNodesInterval = -1
+	cfg.NodeStatsInterval = -1
+	cfg.MaxRetryClusterHealth = -1
+
+	client, err := opensearchapi.NewClient(opensearchapi.Config{
+		Client: cfg,
+		// Match v4: partial results can still contain the requested metric.
+		Errors: errmask.New(errmask.All),
+	})
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("failed to create opensearch client: %s", err))
 		return nil, err
@@ -149,6 +161,7 @@ func newOpensearchAPIClientFromConfig(cfg opensearch.Config, logger logr.Logger)
 
 	_, err = client.Ping(context.Background(), nil)
 	if err != nil {
+		_ = client.Close()
 		logger.Error(err, fmt.Sprintf("failed to ping the opensearch engine: %s", err))
 		return nil, err
 	}
@@ -176,11 +189,17 @@ func parseOpensearchMetadata(config *scalersconfig.ScalerConfig) (opensearchMeta
 }
 
 func (s *opensearchScaler) Close(_ context.Context) error {
+	var err error
+	if s.osAPIClient != nil {
+		// Refresh can close a scaler after a cache reader has selected it.
+		// Keep the client reference immutable while releasing its resources.
+		err = s.osAPIClient.Close()
+	}
 	if s.httpTransport != nil {
 		s.httpTransport.CloseIdleConnections()
 		s.httpTransport = nil
 	}
-	return nil
+	return err
 }
 
 func (s *opensearchScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
@@ -263,8 +282,8 @@ func (s *opensearchScaler) search(ctx context.Context) ([]byte, error) {
 	}
 
 	searchResponse, err := s.osAPIClient.Search(ctx, &opensearchapi.SearchReq{
-		Indices: s.metadata.Index,
-		Body:    bytes.NewReader([]byte(s.metadata.Query)),
+		Indices:    s.metadata.Index,
+		BodyReader: bytes.NewReader([]byte(s.metadata.Query)),
 	})
 	if err != nil {
 		var resp *opensearch.Response
@@ -291,9 +310,9 @@ func (s *opensearchScaler) searchTemplate(ctx context.Context) ([]byte, error) {
 		return nil, fmt.Errorf("failed to encode search template request: %w", err)
 	}
 
-	searchTemplResponse, err := s.osAPIClient.SearchTemplate(ctx, opensearchapi.SearchTemplateReq{
-		Indices: s.metadata.Index,
-		Body:    bytes.NewReader(body),
+	searchTemplResponse, err := s.osAPIClient.SearchTemplate(ctx, &opensearchapi.SearchTemplateReq{
+		Indices:    s.metadata.Index,
+		BodyReader: bytes.NewReader(body),
 	})
 	if err != nil {
 		var resp *opensearch.Response
