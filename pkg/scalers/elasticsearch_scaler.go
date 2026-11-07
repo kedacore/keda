@@ -49,17 +49,24 @@ type elasticsearchMetadata struct {
 }
 
 func (m *elasticsearchMetadata) Validate() error {
-	if (m.CloudID != "" || m.APIKey != "") && (len(m.Addresses) > 0 || m.Username != "" || m.Password != "") {
+	hasBasicAuth := m.Username != "" || m.Password != ""
+	if m.CloudID != "" && (len(m.Addresses) > 0 || hasBasicAuth) {
 		return fmt.Errorf("can't provide both cloud config and endpoint addresses")
 	}
-	if (m.CloudID == "" && m.APIKey == "") && (len(m.Addresses) == 0 && m.Username == "" && m.Password == "") {
+	if m.CloudID == "" && m.APIKey == "" && len(m.Addresses) == 0 && !hasBasicAuth {
 		return fmt.Errorf("must provide either cloud config or endpoint addresses")
 	}
-	if (m.CloudID != "" && m.APIKey == "") || (m.CloudID == "" && m.APIKey != "") {
-		return fmt.Errorf("both cloudID and apiKey must be provided when cloudID or apiKey is used")
+	if m.CloudID != "" && m.APIKey == "" {
+		return fmt.Errorf("both cloudID and apiKey must be provided when cloudID is used")
 	}
-	if len(m.Addresses) > 0 && (m.Username == "" || m.Password == "") {
-		return fmt.Errorf("both username and password must be provided when addresses is used")
+	if m.CloudID == "" && m.APIKey != "" && len(m.Addresses) == 0 {
+		return fmt.Errorf("either cloudID or addresses must be provided when apiKey is used")
+	}
+	if m.APIKey != "" && hasBasicAuth {
+		return fmt.Errorf("can't provide both apiKey and username/password")
+	}
+	if len(m.Addresses) > 0 && m.APIKey == "" && (m.Username == "" || m.Password == "") {
+		return fmt.Errorf("both username and password must be provided when addresses is used without apiKey")
 	}
 	if m.SearchTemplateName == "" && m.Query == "" {
 		return fmt.Errorf("either searchTemplateName or query must be provided")
@@ -120,9 +127,12 @@ func newElasticsearchClient(meta elasticsearchMetadata, logger logr.Logger) (*el
 		elasticsearch.WithTransportOptions(elastictransport.WithTransport(util.CreateRT(meta.UnsafeSsl))),
 	}
 
-	if meta.CloudID != "" {
+	switch {
+	case meta.CloudID != "":
 		opts = append(opts, elasticsearch.WithCloudID(meta.CloudID), elasticsearch.WithAPIKey(meta.APIKey))
-	} else {
+	case meta.APIKey != "":
+		opts = append(opts, elasticsearch.WithAddresses(meta.Addresses...), elasticsearch.WithAPIKey(meta.APIKey))
+	default:
 		opts = append(opts, elasticsearch.WithAddresses(meta.Addresses...), elasticsearch.WithBasicAuth(meta.Username, meta.Password))
 	}
 
@@ -147,6 +157,9 @@ func (s *elasticsearchScaler) Close(_ context.Context) error {
 // checkHTTPStatus returns a clear error for authentication and authorization failures
 func (s *elasticsearchScaler) checkHTTPStatus(statusCode int) error {
 	if statusCode == 401 {
+		if s.metadata.APIKey != "" {
+			return fmt.Errorf("elasticsearch authentication failed (HTTP 401): check apiKey")
+		}
 		return fmt.Errorf("elasticsearch authentication failed (HTTP 401): check username and password")
 	}
 	if statusCode == 403 {

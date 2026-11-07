@@ -185,3 +185,7 @@ To run all checks on all files, run:
 ```bash
 pre-commit run --all-files
 ```
+
+If e2e tests fail on your first PR, run `make e2e-test-local` locally before pushing. Common issue is that `kubectl` is not connected to a reachable Kubernetes cluster; check your kubeconfig before pushing.
+
+If e2e tests fail on your first PR due to environment setup, run `make e2e` with `KEDA_RUN_E2E` locally before pushing. Common issue is missing `kind` cluster or `KEDA_NAMESPACE` not set - see `.github/workflows` for env defaults.

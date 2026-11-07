@@ -35,6 +35,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 var log = logf.Log.WithName("fallback")
@@ -194,18 +195,6 @@ func HasValidFallback(scaledObject *kedav1alpha1.ScaledObject) bool {
 		modifierChecking
 }
 
-// IsPodReady returns true if a pod is ready; false otherwise.
-func IsPodReady(pod *v1.Pod) bool {
-	if pod != nil {
-		for _, c := range pod.Status.Conditions {
-			if c.Type == v1.PodReady {
-				return c.Status == v1.ConditionTrue
-			}
-		}
-	}
-	return false
-}
-
 // Similar to how it's done in HPA's code: https://github.com/kubernetes/kubernetes/blob/091f87c10bc3532041b77a783a5f832de5506dc8/pkg/controller/podautoscaler/replica_calculator.go#L323
 func getReadyReplicasCount(soh ScaledObjectHandler) (int32, error) {
 	scaledObject := soh.ScaledObject
@@ -231,7 +220,7 @@ func getReadyReplicasCount(soh ScaledObjectHandler) (int32, error) {
 
 	var readyPodCount int32
 	for _, pod := range podList.Items {
-		if pod.Status.Phase == v1.PodRunning && IsPodReady(&pod) {
+		if pod.Status.Phase == v1.PodRunning && util.IsPodReady(&pod) {
 			readyPodCount++
 		}
 	}
