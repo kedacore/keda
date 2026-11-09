@@ -14,7 +14,7 @@ exclude github.com/go-chi/chi/v5 v5.2.3
 require (
 	cloud.google.com/go/compute/metadata v0.10.0
 	cloud.google.com/go/monitoring v1.32.1
-	cloud.google.com/go/secretmanager v1.23.1
+	cloud.google.com/go/secretmanager v1.24.0
 	cloud.google.com/go/spanner v1.96.1
 	cloud.google.com/go/storage v1.70.0
 	dario.cat/mergo v1.0.2
@@ -122,7 +122,7 @@ require (
 	go.uber.org/zap v1.28.0
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sync v0.24.0
-	google.golang.org/api v0.310.0
+	google.golang.org/api v0.311.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20261026165753-2ffab32bce7e
 	google.golang.org/grpc v1.85.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.6.2
@@ -151,7 +151,7 @@ require (
 	cel.dev/expr v0.25.3 // indirect
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.24.1 // indirect
-	cloud.google.com/go/auth/oauth2adapt v0.3.0 // indirect
+	cloud.google.com/go/auth/oauth2adapt v0.3.1 // indirect
 	cloud.google.com/go/iam v1.14.0 // indirect
 	cloud.google.com/go/longrunning v1.3.0 // indirect
 	code.cloudfoundry.org/clock v1.59.0 // indirect
