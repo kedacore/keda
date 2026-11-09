@@ -4675,6 +4675,16 @@
                     "metadataVariableReadable": true
                 },
                 {
+                    "name": "lagStrategy",
+                    "type": "string",
+                    "default": "all",
+                    "allowedValue": [
+                        "all",
+                        "pending"
+                    ],
+                    "metadataVariableReadable": true
+                },
+                {
                     "name": "useHttps",
                     "type": "string",
                     "optional": true,
