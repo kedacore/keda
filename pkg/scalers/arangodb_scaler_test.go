@@ -40,25 +40,26 @@ var testArangoDBMetadata = []parseArangoDBMetadataTestData{
 		authParams:  map[string]string{},
 		raisesError: false,
 	},
-		// With serverID in trigger metadata for bearer auth
-{
-    metadata: map[string]string{"endpoints": "https://localhost:8529", "query": "FOR t IN testCollection FILTER t.cook_time <= '3 hours' RETURN t", "collection": "demo", "queryValue": "12", "dbName": "test", "serverID": "test-server-123"},
-    authParams: map[string]string{},
-    raisesError: false,
-},
-// Without serverID - should still work because optional
-{
-    metadata: map[string]string{"endpoints": "https://localhost:8529", "query": "FOR t IN testCollection FILTER t.cook_time <= '3 hours' RETURN t", "collection": "demo", "queryValue": "12", "dbName": "test"},
-    authParams: map[string]string{},
-    raisesError: false,
-},
-// With serverID in authParams
-{
-    metadata: map[string]string{"endpoints": "https://localhost:8529", "query": "FOR t IN testCollection FILTER t.cook_time <= '3 hours' RETURN t", "collection": "demo", "queryValue": "12", "dbName": "test"},
-    authParams: map[string]string{"serverID": "auth-server-456"},
-    raisesError: false,
-},
-	
+			
+	// With serverID in trigger metadata for bearer auth
+  	{
+  		metadata:    map[string]string{"endpoints": "https://localhost:8529", "query": "FOR t IN testCollection FILTER t.cook_time <= '3 hours' RETURN t", "collection": "demo", "queryValue": "12", "dbName": "test", "serverID": "test-server-123"},
+  		authParams:  map[string]string{},
+  		raisesError: false,
+  	},
+  	// Without serverID - should still work because optional
+  	{
+  		metadata:    map[string]string{"endpoints": "https://localhost:8529", "query": "FOR t IN testCollection FILTER t.cook_time <= '3 hours' RETURN t", "collection": "demo", "queryValue": "12", "dbName": "test"},
+  		authParams:  map[string]string{},
+  		raisesError: false,
+  	},
+  	// With serverID in authParams
+  	{
+  		metadata:    map[string]string{"endpoints": "https://localhost:8529", "query": "FOR t IN testCollection FILTER t.cook_time <= '3 hours' RETURN t", "collection": "demo", "queryValue": "12", "dbName": "test"},
+  		authParams:  map[string]string{"serverID": "auth-server-456"},
+  		raisesError: false,
+  	},
+  
 	// from trigger auth
 	{
 		metadata:    map[string]string{"endpoints": "https://localhost:8529", "query": `FOR t IN testCollection FILTER t.cook_time == '3 hours' RETURN t`, "collection": "demo", "queryValue": "12"},
