@@ -290,7 +290,7 @@ func (s *PredictKubeScaler) doQuery(ctx context.Context) ([]*commonproto.Item, e
 		Step:  s.metadata.stepDuration,
 	}
 
-	val, warns, err := s.api.QueryRange(ctx, s.metadata.Query, r)
+	val, warns, _, err := s.api.QueryRange(ctx, s.metadata.Query, r)
 
 	if len(warns) > 0 {
 		s.logger.V(1).Info("warnings", warns)
@@ -395,7 +395,10 @@ func (s *PredictKubeScaler) ping(ctx context.Context) (err error) {
 	// Use a portable Prometheus-API instant query rather than
 	// /api/v1/status/runtimeinfo, which is Prometheus-only and not
 	// implemented by VictoriaMetrics, M3DB, Thanos sidecar, etc.
-	_, _, err = s.api.Query(ctx, "vector(1)", time.Now())
+	_, warns, _, err := s.api.Query(ctx, "vector(1)", time.Now())
+	if len(warns) > 0 {
+		s.logger.V(1).Info("Prometheus query returned warnings", "warnings", warns)
+	}
 	return err
 }
 
