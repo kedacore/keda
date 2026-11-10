@@ -81,7 +81,7 @@ func NewArangoDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
-    meta, err := parseArangoDBMetadata(config)
+    meta, err = parseArangoDBMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing arangoDB metadata: %w", err)
 	}
