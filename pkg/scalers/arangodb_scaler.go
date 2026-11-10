@@ -81,7 +81,7 @@ func NewArangoDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
-    meta, err = parseArangoDBMetadata(config)
+	meta, err := parseArangoDBMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing arangoDB metadata: %w", err)
 	}
@@ -93,8 +93,8 @@ func NewArangoDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	return &arangoDBScaler{
+	
+return &arangoDBScaler{
 		metricType: metricType,
 		metadata:   meta,
 		client:     client,
@@ -109,8 +109,7 @@ const arangodJWTIssuer = "arangodb"
 // is set, the client opens at most that many connections to each endpoint.
 func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
 	var auth connection.Authentication
-
-	if meta.ArangoDBAuth.EnabledBasicAuth() {
+if meta.ArangoDBAuth.EnabledBasicAuth() {
 		auth = connection.NewBasicAuth(meta.ArangoDBAuth.Username, meta.ArangoDBAuth.Password)
 	} else if meta.ArangoDBAuth.EnabledBearerAuth() {
 		hdr, err := createArangodJWTAuthorizationHeader(meta.ArangoDBAuth.BearerToken, meta.ServerID)
@@ -119,8 +118,7 @@ func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
 		}
 		auth = connection.NewHeaderAuth("Authorization", hdr)
 	}
-
-	conn := connection.NewHttpConnection(connection.HttpConfiguration{
+conn := connection.NewHttpConnection(connection.HttpConfiguration{
 		Authentication: auth,
 		Endpoint:       connection.NewRoundRobinEndpoints(strings.Split(meta.Endpoints, ",")),
 		Transport: &http.Transport{
