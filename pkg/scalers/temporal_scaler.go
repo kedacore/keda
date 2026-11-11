@@ -136,8 +136,9 @@ func NewTemporalScaler(ctx context.Context, config *scalersconfig.ScalerConfig) 
 		return nil, fmt.Errorf("failed to parse Temporal metadata: %w", err)
 	}
 
-	// sdk.DialContext calls GetSystemInfo while connecting, so that call gets the scaler labels too.
-	c, err := getTemporalClient(metricscollector.BuildScalerRequestCtx(ctx, *config, ""), meta, logger)
+	// sdk.DialContext calls GetSystemInfo while connecting, so label that call too, with "initialization"
+	// as the metric name since there is no metric yet.
+	c, err := getTemporalClient(metricscollector.BuildScalerRequestCtx(ctx, *config, "initialization"), meta, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Temporal client connection: %w", err)
 	}

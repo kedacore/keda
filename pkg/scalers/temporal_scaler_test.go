@@ -717,9 +717,9 @@ func TestTemporalGRPCClientMetrics(t *testing.T) {
 		"trigger_name":    triggerName,
 	}
 
-	// The call made while connecting has no metric name yet.
+	// The call made while connecting uses "initialization" as the metric name.
 	labels["grpc_method"] = "GetSystemInfo"
-	labels["metric_name"] = ""
+	labels["metric_name"] = "initialization"
 	dial := findTemporalPromMetric(families, "keda_grpc_client_handled_total", labels)
 	require.NotNil(t, dial, "GetSystemInfo should be recorded with the scaler labels")
 	assert.EqualValues(t, 1, dial.GetCounter().GetValue())
