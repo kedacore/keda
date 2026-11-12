@@ -179,8 +179,8 @@ func TestPromGRPCStreamClientMetrics(t *testing.T) {
 	assert.EqualValues(t, 1, sent.GetCounter().GetValue())
 	received := findPromMetric(families, "keda_grpc_client_msg_received_total", labels)
 	require.NotNil(t, received)
-	// The upstream interceptor counts receive attempts, including the final EOF.
-	assert.EqualValues(t, 2, received.GetCounter().GetValue())
+	// The upstream interceptor only counts successfully received messages, not the final EOF.
+	assert.EqualValues(t, 1, received.GetCounter().GetValue())
 }
 
 func TestOtelGRPCStreamClientMetrics(t *testing.T) {
