@@ -90,7 +90,7 @@ require (
 	github.com/prometheus/client_golang v1.25.0
 	github.com/prometheus/client_model v0.6.3
 	github.com/prometheus/common v0.73.1
-	github.com/prometheus/prometheus v0.314.0
+	github.com/prometheus/prometheus v0.316.0
 	github.com/rabbitmq/amqp091-go v1.16.0
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9
 	github.com/redis/go-redis/v9 v9.23.0
@@ -129,10 +129,10 @@ require (
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/gotestsum v1.13.0
-	k8s.io/api v0.36.6
-	k8s.io/apimachinery v0.36.6
+	k8s.io/api v0.37.1
+	k8s.io/apimachinery v0.37.1
 	k8s.io/apiserver v0.36.6
-	k8s.io/client-go v0.36.6
+	k8s.io/client-go v0.37.1
 	k8s.io/code-generator v0.36.6
 	k8s.io/component-base v0.36.6
 	k8s.io/klog/v2 v2.140.0
@@ -368,7 +368,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.36.6 // indirect
 	k8s.io/gengo/v2 v2.0.0-20260408192533-25e2208e0dc3 // indirect
 	k8s.io/kms v0.36.6 // indirect
-	k8s.io/streaming v0.36.6 // indirect
+	k8s.io/streaming v0.37.1 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.36.0 // indirect
 	sigs.k8s.io/json v0.0.0-20260909141634-11ed52e25bc5 // indirect
 	sigs.k8s.io/kustomize/api v0.21.2 // indirect
