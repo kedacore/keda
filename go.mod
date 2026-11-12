@@ -13,6 +13,7 @@ exclude github.com/go-chi/chi/v5 v5.2.3
 
 require (
 	cloud.google.com/go/compute/metadata v0.10.0
+	cloud.google.com/go/firestore v1.28.0
 	cloud.google.com/go/monitoring v1.32.1
 	cloud.google.com/go/secretmanager v1.23.1
 	cloud.google.com/go/spanner v1.96.1
