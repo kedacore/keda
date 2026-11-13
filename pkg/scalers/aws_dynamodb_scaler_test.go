@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"errors"
+	"math"
 	"net/http"
 	"testing"
 
@@ -21,6 +22,8 @@ const (
 	testAWSDynamoErrorTable      = "Error"
 	testAWSDynamoNoValueTable    = "NoValue"
 	testAWSDynamoIndexTable      = "Index"
+	testAWSDynamoMultiPageTable  = "MultiPage"
+	testAWSDynamoLargeCountTable = "LargeCount"
 )
 
 var testAWSDynamoAuthentication = map[string]string{
@@ -405,6 +408,8 @@ type mockDynamoDB struct {
 var result int32 = 4
 var indexResult int32 = 2
 var empty int32
+var multiPageFirst int32 = 4
+var multiPageSecond int32 = 3
 
 func (c *mockDynamoDB) Query(_ context.Context, input *dynamodb.QueryInput, _ ...func(*dynamodb.Options)) (*dynamodb.QueryOutput, error) {
 	switch *input.TableName {
@@ -413,6 +418,33 @@ func (c *mockDynamoDB) Query(_ context.Context, input *dynamodb.QueryInput, _ ..
 	case testAWSDynamoNoValueTable:
 		return &dynamodb.QueryOutput{
 			Count: empty,
+		}, nil
+	case testAWSDynamoMultiPageTable:
+		// Simulate a paginated Query response: the first page carries a
+		// LastEvaluatedKey so the scaler must request the next page and sum
+		// the per-page counts.
+		if input.Select != types.SelectCount {
+			return nil, errors.New("expected Select COUNT: only the item count is read")
+		}
+		if input.ExclusiveStartKey == nil {
+			return &dynamodb.QueryOutput{
+				Count:            multiPageFirst,
+				LastEvaluatedKey: map[string]types.AttributeValue{"pk": &types.AttributeValueMemberS{Value: "next"}},
+			}, nil
+		}
+		return &dynamodb.QueryOutput{
+			Count: multiPageSecond,
+		}, nil
+	case testAWSDynamoLargeCountTable:
+		// Two pages whose counts sum past math.MaxInt32.
+		if input.ExclusiveStartKey == nil {
+			return &dynamodb.QueryOutput{
+				Count:            math.MaxInt32,
+				LastEvaluatedKey: map[string]types.AttributeValue{"pk": &types.AttributeValueMemberS{Value: "next"}},
+			}, nil
+		}
+		return &dynamodb.QueryOutput{
+			Count: math.MaxInt32,
 		}, nil
 	}
 
@@ -502,6 +534,41 @@ func TestDynamoGetQueryMetrics(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDynamoGetQueryMetricsPaginated(t *testing.T) {
+	meta := awsDynamoDBMetadata{
+		TableName:                 testAWSDynamoMultiPageTable,
+		AwsRegion:                 "eu-west-1",
+		KeyConditionExpression:    "#yr = :yyyy",
+		expressionAttributeNames:  map[string]string{"#yr": year},
+		expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
+		TargetValue:               3,
+	}
+	scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, nil, logr.Discard()}
+
+	value, err := scaler.GetQueryMetrics(context.Background())
+	assert.NoError(t, err)
+	// The mock returns two pages (4 and 3 items). A DynamoDB Query response is
+	// paginated, so the scaler must follow LastEvaluatedKey and sum every page.
+	assert.EqualValues(t, int64(multiPageFirst+multiPageSecond), value)
+}
+
+func TestDynamoGetQueryMetricsPaginatedTotalExceedsInt32(t *testing.T) {
+	meta := awsDynamoDBMetadata{
+		TableName:                 testAWSDynamoLargeCountTable,
+		AwsRegion:                 "eu-west-1",
+		KeyConditionExpression:    "#yr = :yyyy",
+		expressionAttributeNames:  map[string]string{"#yr": year},
+		expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
+		TargetValue:               3,
+	}
+	scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, nil, logr.Discard()}
+
+	value, err := scaler.GetQueryMetrics(context.Background())
+	assert.NoError(t, err)
+	// Summing into an int32 would wrap negative and clamp the metric to zero.
+	assert.EqualValues(t, float64(2*int64(math.MaxInt32)), value)
 }
 
 func TestDynamoIsActive(t *testing.T) {
