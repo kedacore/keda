@@ -41,6 +41,9 @@ type activeMQMetadata struct {
 
 	CorsHeader string `keda:"name=corsHeader, order=triggerMetadata, optional"`
 
+	// UsePost sends the Jolokia request as a POST with a JSON body, as brokers with a hardened Jolokia configuration only allow
+	UsePost bool `keda:"name=usePost, order=triggerMetadata, default=false"`
+
 	RestAPITemplate           string `keda:"name=restAPITemplate,           order=triggerMetadata, optional"`
 	TargetQueueSize           int64  `keda:"name=targetQueueSize,           order=triggerMetadata, default=10"`
 	ActivationTargetQueueSize int64  `keda:"name=activationTargetQueueSize, order=triggerMetadata, default=0"`
@@ -87,6 +90,13 @@ func (a *activeMQMetadata) Validate() error {
 	}
 	a.metricName = GenerateMetricNameWithIndex(a.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("activemq-%s", a.DestinationName)))
 	return nil
+}
+
+// jolokiaReadRequest is the body of a Jolokia POST read operation
+type jolokiaReadRequest struct {
+	Type      string `json:"type"`
+	MBean     string `json:"mbean"`
+	Attribute string `json:"attribute"`
 }
 
 type activeMQMonitoring struct {
@@ -144,19 +154,102 @@ func (s *activeMQScaler) getMonitoringEndpoint() (string, error) {
 	return monitoringEndpoint, nil
 }
 
+// getJolokiaPostRequest returns the Jolokia endpoint and the body of the POST read request for the queue size.
+// The endpoint is the monitoring endpoint without its "/read/..." operation path.
+func (s *activeMQScaler) getJolokiaPostRequest() (string, []byte, error) {
+	monitoringEndpoint, err := s.getMonitoringEndpoint()
+	if err != nil {
+		return "", nil, err
+	}
+	u, err := url.Parse(monitoringEndpoint)
+	if err != nil {
+		return "", nil, fmt.Errorf("unable to parse the Jolokia read URL: %w", err)
+	}
+	basePath, readPath, found := strings.Cut(u.EscapedPath(), "/read/")
+	if !found {
+		return "", nil, fmt.Errorf("usePost requires a Jolokia read URL containing /read/, got: %s", monitoringEndpoint)
+	}
+	// The read path is "<mbean>/<attribute>", so a restAPITemplate with a custom JMX domain keeps it.
+	parts, err := splitJolokiaPath(readPath)
+	if err != nil {
+		return "", nil, fmt.Errorf("unable to parse the Jolokia read URL: %w", err)
+	}
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return "", nil, fmt.Errorf("usePost requires a Jolokia read URL ending in /read/<mbean>/<attribute>, got: %s", monitoringEndpoint)
+	}
+	mbean, attribute := parts[0], parts[1]
+
+	// The query parameters, if any, stay on the POST endpoint.
+	u.RawPath = ""
+	u.Path, err = url.PathUnescape(basePath)
+	if err != nil {
+		return "", nil, fmt.Errorf("unable to parse the Jolokia read URL: %w", err)
+	}
+	endpoint := u.String()
+
+	body, err := json.Marshal(jolokiaReadRequest{
+		Type:      "read",
+		MBean:     mbean,
+		Attribute: attribute,
+	})
+	if err != nil {
+		return "", nil, err
+	}
+	return endpoint, body, nil
+}
+
+// splitJolokiaPath splits a Jolokia GET path at its unescaped "/" separators. Each part is URL-decoded, then
+// Jolokia's escapes are decoded: "!/" for "/", "!!" for "!" and "!" before any other character for that character.
+func splitJolokiaPath(path string) ([]string, error) {
+	var parts []string
+	var part strings.Builder
+	for i := 0; i < len(path); i++ {
+		switch {
+		case path[i] == '!' && i+1 < len(path):
+			i++
+			part.WriteByte(path[i])
+		case path[i] == '/':
+			parts = append(parts, part.String())
+			part.Reset()
+		default:
+			part.WriteByte(path[i])
+		}
+	}
+	parts = append(parts, part.String())
+	for i, p := range parts {
+		decoded, err := url.PathUnescape(p)
+		if err != nil {
+			return nil, err
+		}
+		parts[i] = decoded
+	}
+	return parts, nil
+}
+
 func (s *activeMQScaler) getQueueMessageCount(ctx context.Context) (int64, error) {
 	var monitoringInfo *activeMQMonitoring
 	var queueMessageCount int64
 
 	client := s.httpClient
-	url, err := s.getMonitoringEndpoint()
-	if err != nil {
-		return -1, err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return -1, err
+	var req *http.Request
+	if s.metadata.UsePost {
+		url, body, err := s.getJolokiaPostRequest()
+		if err != nil {
+			return -1, err
+		}
+		req, err = http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+		if err != nil {
+			return -1, err
+		}
+	} else {
+		url, err := s.getMonitoringEndpoint()
+		if err != nil {
+			return -1, err
+		}
+		req, err = http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			return -1, err
+		}
 	}
 
 	// Add HTTP Auth and Headers
