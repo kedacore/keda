@@ -24,6 +24,12 @@ const (
 	natsHTTPProtocol                = "http"
 	natsHTTPSProtocol               = "https"
 	jetStreamLagThresholdMetricName = "lagThreshold"
+
+	// lagStrategyPending counts only the messages that have never been delivered
+	// (num_pending), so messages parked by a NakWithDelay or waiting for an
+	// AckWait timeout do not inflate the reported lag. The default strategy,
+	// "all", also counts the delivered-but-unacked ones (num_ack_pending).
+	lagStrategyPending = "pending"
 )
 
 type natsJetStreamScaler struct {
@@ -41,6 +47,7 @@ type natsJetStreamMetadata struct {
 	Consumer               string `keda:"name=consumer, order=triggerMetadata"`
 	LagThreshold           int64  `keda:"name=lagThreshold, order=triggerMetadata, default=10"`
 	ActivationLagThreshold int64  `keda:"name=activationLagThreshold, order=triggerMetadata, default=0"`
+	LagStrategy            string `keda:"name=lagStrategy, order=triggerMetadata, enum=all;pending, default=all"`
 	UseHTTPS               bool   `keda:"name=useHttps, optional, order=triggerMetadata, default=false"`
 	NatsServerEndpoint     string `keda:"name=natsServerMonitoringEndpoint, order=authParams;triggerMetadata"`
 	monitoringURL          string
@@ -424,6 +431,9 @@ func (s *natsJetStreamScaler) getMaxMsgLag() (int64, error) {
 
 	for _, consumer := range s.stream.Consumers {
 		if consumer.Name == consumerName {
+			if s.metadata.LagStrategy == lagStrategyPending {
+				return int64(consumer.NumPending), nil
+			}
 			return int64(consumer.NumPending + consumer.NumAckPending), nil
 		}
 	}
@@ -459,7 +469,7 @@ func (s *natsJetStreamScaler) GetMetricsAndActivity(ctx context.Context, metricN
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
-	s.logger.V(1).Info("NATS JetStream Scaler: Providing metrics based on totalLag, threshold", "totalLag", totalLag, "lagThreshold", s.metadata.LagThreshold)
+	s.logger.V(1).Info("NATS JetStream Scaler: Providing metrics based on totalLag, threshold", "totalLag", totalLag, "lagThreshold", s.metadata.LagThreshold, "lagStrategy", s.metadata.LagStrategy)
 
 	metric := GenerateMetricInMili(metricName, float64(totalLag))
 
