@@ -2,6 +2,8 @@ package scalers
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -60,12 +62,18 @@ var testCronMetadata = []parseCronMetadataTestData{
 	{map[string]string{"timezone": "Asia/Kolkata", "start": "30 * * * *", "end": "-50 * * * *", "desiredReplicas": "10"}, true},
 	{map[string]string{"timezone": "Asia/Kolkata", "start": "30 * * * *", "end": "50 * * -3 *", "desiredReplicas": "10"}, true},
 	{map[string]string{"timezone": "Asia/Kolkata", "start": "30 * * * *", "end": "30 * * * *", "desiredReplicas": "10"}, true},
+	{map[string]string{"timezone": "Etc/UTC", "start": "H 8 * * MON-FRI", "end": "H 17 * * MON-FRI", "desiredReplicas": "10"}, false},
+	{map[string]string{"timezone": "Etc/UTC", "start": "H(0-29) H(6-7) * * *", "end": "H/15 18 * * *", "desiredReplicas": "10"}, false},
+	{map[string]string{"timezone": "Etc/UTC", "start": "H(30-10) 8 * * *", "end": "0 17 * * *", "desiredReplicas": "10"}, true},
+	{map[string]string{"timezone": "Etc/UTC", "start": "H/0 8 * * *", "end": "0 17 * * *", "desiredReplicas": "10"}, true},
+	{map[string]string{"timezone": "Etc/UTC", "start": "H(0-99) 8 * * *", "end": "0 17 * * *", "desiredReplicas": "10"}, true},
 }
 
 var cronMetricIdentifiers = []cronMetricIdentifier{
 	{&testCronMetadata[1], 0, "s0-cron-Etc-UTC-00xxThu-5923xxThu"},
 	{&testCronMetadata[2], 1, "s1-cron-Etc-UTC-0xSl2xxx-01-23Sl2xxx"},
 	{&testCronMetadata[3], 2, "s2-cron-Etc-UTC-0Cm30xxxx-15Cm45xxxx"},
+	{&testCronMetadata[13], 0, "s0-cron-Etc-UTC-H-0-29-H-6-7-xxx-HSl1518xxx"},
 }
 
 var tz, _ = time.LoadLocation(validCronMetadata2["timezone"])
@@ -151,4 +159,42 @@ func TestCronGetMetricSpecForScaling(t *testing.T) {
 			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
+}
+
+func TestExpandCronHash(t *testing.T) {
+	type testData struct {
+		expr    string
+		pattern string
+	}
+	tests := []testData{
+		{"0 8 * * *", `^0 8 \* \* \*$`},
+		{"H 8 * * MON-FRI", `^([0-9]|[1-5][0-9]) 8 \* \* MON-FRI$`},
+		{"H(0-29) H(6-7) * * *", `^([0-9]|[12][0-9]) [67] \* \* \*$`},
+		{"H/15 * * * *", `^([0-9]|1[0-4])-59/15 \* \* \* \*$`},
+		{"H(10-40)/10 * * * *", `^[1-3][0-9]-40/10 \* \* \* \*$`},
+		{"0 0 H * *", `^0 0 ([1-9]|1[0-9]|2[0-8]) \* \*$`},
+		{"0,H 8 * * *", `^0,([0-9]|[1-5][0-9]) 8 \* \* \*$`},
+	}
+	for _, tt := range tests {
+		expanded, err := expandCronHash(tt.expr, "default/app/0")
+		assert.NoError(t, err)
+		assert.Regexp(t, tt.pattern, expanded, tt.expr)
+	}
+}
+
+func TestExpandCronHashIsStable(t *testing.T) {
+	first, _ := expandCronHash("H H(6-9) * * *", "default/app/0")
+	second, _ := expandCronHash("H H(6-9) * * *", "default/app/0")
+	assert.Equal(t, first, second)
+
+	start, _ := expandCronHash("H 8 * * *", "default/app/0")
+	end, _ := expandCronHash("H 17 * * *", "default/app/0")
+	assert.Equal(t, strings.Fields(start)[0], strings.Fields(end)[0])
+
+	minutes := map[string]struct{}{}
+	for i := 0; i < 20; i++ {
+		expanded, _ := expandCronHash("H 8 * * *", fmt.Sprintf("default/app-%d/0", i))
+		minutes[strings.Fields(expanded)[0]] = struct{}{}
+	}
+	assert.Greater(t, len(minutes), 1)
 }
