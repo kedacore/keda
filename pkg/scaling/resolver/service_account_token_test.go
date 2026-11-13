@@ -197,7 +197,7 @@ func TestVaultFileTokenAudiencePolicy(t *testing.T) {
 		},
 	})
 	for _, credential := range []*kedav1alpha1.Credential{nil, {ServiceAccount: path}} {
-		vh := NewHashicorpVaultHandler(&kedav1alpha1.HashiCorpVault{Credential: credential}, nil, "tenant")
+		vh := NewHashicorpVaultHandler(&kedav1alpha1.HashiCorpVault{Credential: credential}, nil, "tenant", "")
 		for _, tt := range []struct {
 			audiences []string
 			wantError bool
@@ -225,7 +225,7 @@ func TestVaultFileTokenAudiencePolicy(t *testing.T) {
 	SetConfig(&Config{ServiceAccountTokenMode: "legacy"})
 	want := testServiceAccountJWT(t, "kube-apiserver")
 	require.NoError(t, os.WriteFile(path, []byte(want), 0o600))
-	vh := NewHashicorpVaultHandler(&kedav1alpha1.HashiCorpVault{Credential: &kedav1alpha1.Credential{ServiceAccount: path}}, nil, "tenant")
+	vh := NewHashicorpVaultHandler(&kedav1alpha1.HashiCorpVault{Credential: &kedav1alpha1.Credential{ServiceAccount: path}}, nil, "tenant", "")
 	token, err := vh.kubernetesToken(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, want, string(token))
