@@ -25,6 +25,7 @@ const splunkO11yDrainTimeout = 2 * time.Second
 
 type splunkObservabilityMetadata struct {
 	TriggerIndex int
+	MetricType   v2.MetricTargetType
 
 	AccessToken           string  `keda:"name=accessToken,           order=authParams"`
 	Realm                 string  `keda:"name=realm,                 order=authParams"`
@@ -53,6 +54,16 @@ func parseSplunkObservabilityMetadata(config *scalersconfig.ScalerConfig) (*splu
 
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing splunk observability metadata: %w", err)
+	}
+
+	// Value preserves this scaler's historical default; other scalers default to AverageValue.
+	meta.MetricType = v2.ValueMetricType
+	if config.MetricType != "" {
+		metricType, err := GetMetricTargetType(config)
+		if err != nil {
+			return nil, fmt.Errorf("error getting scaler metric type: %w", err)
+		}
+		meta.MetricType = metricType
 	}
 
 	return meta, nil
@@ -314,7 +325,7 @@ func (s *splunkObservabilityScaler) GetMetricSpecForScaling(context.Context) []v
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, metricName),
 		},
-		Target: GetMetricTargetMili(v2.ValueMetricType, s.metadata.TargetValue),
+		Target: GetMetricTargetMili(s.metadata.MetricType, s.metadata.TargetValue),
 	}
 	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
