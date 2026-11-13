@@ -25,6 +25,8 @@ type seleniumGridScaler struct {
 	logger     logr.Logger
 }
 
+const maxSeleniumGridResponseSize = 10 * 1024 * 1024
+
 type seleniumGridScalerMetadata struct {
 	triggerIndex int
 
@@ -294,9 +296,14 @@ func (s *seleniumGridScaler) getSessionsQueueLength(ctx context.Context, logger 
 	}
 
 	defer res.Body.Close()
-	b, err := io.ReadAll(res.Body)
+	b, err := io.ReadAll(io.LimitReader(res.Body, maxSeleniumGridResponseSize+1))
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Error when reading Selenium Grid response body: %s", err))
+		return -1, -1, err
+	}
+	if len(b) > maxSeleniumGridResponseSize {
+		err = fmt.Errorf("selenium Grid response body exceeds the %d byte limit", maxSeleniumGridResponseSize)
+		logger.Error(err, "Selenium Grid response body is too large")
 		return -1, -1, err
 	}
 	newRequestNodes, onGoingSession, err := getCountFromSeleniumResponse(b, s.metadata.BrowserName, s.metadata.BrowserVersion, s.metadata.SessionBrowserName, s.metadata.PlatformName, s.metadata.NodeMaxSessions, s.metadata.EnableManagedDownloads, s.metadata.Capabilities, logger)
@@ -309,10 +316,13 @@ func (s *seleniumGridScaler) getSessionsQueueLength(ctx context.Context, logger 
 
 func getCapability(capability map[string]any, key string) string {
 	value, ok := capability[key]
-	if ok {
-		return value.(string)
+	if !ok || value == nil {
+		return ""
 	}
-	return ""
+	if s, ok := value.(string); ok {
+		return s
+	}
+	return fmt.Sprintf("%v", value)
 }
 
 func getBrowserName(capability map[string]any) string {
@@ -355,14 +365,21 @@ func countMatchingSessions(sessions Sessions, browserName string, browserVersion
 func managedDownloadsEnabled(stereotype map[string]any, capabilities map[string]any) bool {
 	// First lets check if user wanted a Node with managed downloads enabled
 	value1, ok1 := capabilities[EnableManagedDownloadsCapability]
-	if !ok1 || !value1.(bool) {
+	if !ok1 || value1 == nil {
 		// User didn't ask. So lets move on to the next matching criteria
+		return true
+	}
+	enabled1, ok := value1.(bool)
+	if !ok || !enabled1 {
 		return true
 	}
 	// User wants managed downloads enabled to be done on this Node, let's check the stereotype
 	value2, ok2 := stereotype[EnableManagedDownloadsCapability]
-	// Try to match what the user requested
-	return ok2 && value2.(bool)
+	if !ok2 || value2 == nil {
+		return false
+	}
+	enabled2, ok := value2.(bool)
+	return ok && enabled2
 }
 
 func extensionCapabilitiesMatch(stereotype map[string]any, capabilities map[string]any) bool {
