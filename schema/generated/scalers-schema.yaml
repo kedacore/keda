@@ -728,6 +728,14 @@ scalers:
           type: string
           default: "0"
           metadataVariableReadable: true
+        - name: maxActiveLeasesPerReplica
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: enableHighAvailability
+          type: string
+          default: "false"
+          metadataVariableReadable: true
     - type: azure-data-explorer
       parameters:
         - name: databaseName
