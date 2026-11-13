@@ -80,15 +80,6 @@ type SolaceDMScalerConfiguration struct {
 	// Target Client AverageTxMsgRate
 	AggregatedClientAverageTxMsgRateTarget int64 `keda:"name=aggregatedClientAverageTxMsgRateTarget, order=triggerMetadata, default=0"`
 
-	// Activation Client TxByteRate
-	ActivationAggregatedClientTxByteRateTarget int `keda:"name=activationAggregatedClientTxByteRateTarget, order=triggerMetadata, default=0"`
-	// Activation Target Average TxByteRate
-	ActivationAggregatedClientAverageTxByteRateTarget int `keda:"name=activationAggregatedClientAverageTxByteRateTarget, order=triggerMetadata, default=0"`
-	// Activation Client TxMsgRate
-	ActivationAggregatedClientTxMsgRateTarget int `keda:"name=activationAggregatedClientTxMsgRateTarget, order=triggerMetadata, default=0"`
-	// Activation Target Average TxMsgRate
-	ActivationAggregatedClientAverageTxMsgRateTarget int `keda:"name=activationAggregatedClientAverageTxMsgRateTarget, order=triggerMetadata, default=0"`
-
 	// Full SEMP URLs to get stats
 	sempURL []string
 }
@@ -435,7 +426,7 @@ func (s *SolaceDMScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 	}
 
 	s.logger.V(1).Info(fmt.Sprintf("Metrics: '%s'", metricValues))
-	// always return true for activation unless its not needed this needs at least one instace
+	// Always active: SEMP client stats only exist for connected consumers, so at least one replica has to be running
 	return []external_metrics.ExternalMetricValue{metric}, true, nil
 }
 

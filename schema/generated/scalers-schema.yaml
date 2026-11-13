@@ -4943,22 +4943,6 @@ scalers:
           type: string
           default: "0"
           metadataVariableReadable: true
-        - name: activationAggregatedClientTxByteRateTarget
-          type: string
-          default: "0"
-          metadataVariableReadable: true
-        - name: activationAggregatedClientAverageTxByteRateTarget
-          type: string
-          default: "0"
-          metadataVariableReadable: true
-        - name: activationAggregatedClientTxMsgRateTarget
-          type: string
-          default: "0"
-          metadataVariableReadable: true
-        - name: activationAggregatedClientAverageTxMsgRateTarget
-          type: string
-          default: "0"
-          metadataVariableReadable: true
     - type: solace-event-queue
       parameters:
         - name: solaceSempBaseURL

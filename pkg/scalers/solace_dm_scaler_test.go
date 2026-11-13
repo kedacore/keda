@@ -3,10 +3,14 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"io"
 	"maps"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -387,6 +391,32 @@ var solaceDMParseConfigurationTestCases = []testSolaceDMConfiguration{
 			"s1-solace-dm-direct-messaging-simple-aggregatedClientAverageTxMsgRateTarget":  "",
 		},
 	},
+	{
+		"Activation parameters are not part of the configuration",
+		map[string]string{
+			solaceDMSempBaseURL:                                 "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
+			solaceDMMessageVpn:                                  "default",
+			solaceDMClientNamePattern:                           "direct-messaging-simple",
+			solaceDMUnsafeSSL:                                   "true",
+			solaceDMQueuedMessagesFactor:                        "3",
+			aggregatedClientTxMsgRateTargetMetricName:           "1000",
+			aggregatedClientTxByteRateTargetMetricName:          "0",
+			aggregatedClientAverageTxByteRateTargetMetricName:   "0",
+			aggregatedClientAverageTxMsgRateTargetMetricName:    "0",
+			"activationAggregatedClientTxMsgRateTarget":         "not-a-number",
+			"activationAggregatedClientTxByteRateTarget":        "not-a-number",
+			"activationAggregatedClientAverageTxByteRateTarget": "not-a-number",
+			"activationAggregatedClientAverageTxMsgRateTarget":  "not-a-number",
+		},
+		false,
+		[]string{
+			"https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944/SEMP",
+			"https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943/SEMP",
+		},
+		map[string]string{
+			"s1-solace-dm-direct-messaging-simple-aggregatedClientTxMsgRateTarget": "",
+		},
+	},
 }
 
 func TestParseSolaceDMConfiguration(t *testing.T) {
@@ -490,4 +520,70 @@ func testEq(a []string, b []string) bool {
 		}
 	}
 	return true
+}
+
+const (
+	solaceDMTestClientStatsReply  = `<rpc-reply semp-version="soltr/10_8_1"><rpc><show><client><primary-virtual-router><client><name>direct-messaging-simple-1</name><message-vpn>default</message-vpn><stats><current-egress-rate-per-second>%d</current-egress-rate-per-second><average-egress-rate-per-minute>%d</average-egress-rate-per-minute><current-egress-byte-rate-per-second>0</current-egress-byte-rate-per-second><average-egress-byte-rate-per-minute>0</average-egress-byte-rate-per-minute></stats></client></primary-virtual-router></client></show></rpc><execute-result code="ok"/></rpc-reply>`
+	solaceDMTestClientQueuesReply = `<rpc-reply semp-version="soltr/10_8_1"><rpc><show><client><primary-virtual-router><client><name>direct-messaging-simple-1</name><message-vpn>default</message-vpn><client-queue><queue-priority>D-1</queue-priority><length-msgs>0</length-msgs><length-work>0</length-work><max-work>100</max-work></client-queue></client></primary-virtual-router></client></show></rpc><execute-result code="ok"/></rpc-reply>`
+)
+
+type testSolaceDMActivity struct {
+	testID  string
+	msgRate int64
+}
+
+var solaceDMActivityTestCases = []testSolaceDMActivity{
+	{"No traffic", 0},
+	{"Traffic below the activation value", 10},
+	{"Traffic above the target", 5000},
+}
+
+func TestSolaceDMGetMetricsAndActivity(t *testing.T) {
+	for _, testData := range solaceDMActivityTestCases {
+		t.Run(testData.testID, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				body, err := io.ReadAll(request.Body)
+				if err != nil {
+					t.Error(err)
+					return
+				}
+				reply := fmt.Sprintf(solaceDMTestClientStatsReply, testData.msgRate, testData.msgRate)
+				if strings.Contains(string(body), "<queues>") {
+					reply = solaceDMTestClientQueuesReply
+				}
+				if _, err := writer.Write([]byte(reply)); err != nil {
+					t.Error(err)
+				}
+			}))
+			defer server.Close()
+
+			config, err := parseSolaceDMConfiguration(&scalersconfig.ScalerConfig{
+				TriggerMetadata: map[string]string{
+					solaceDMSempBaseURL:                         server.URL,
+					solaceDMMessageVpn:                          "default",
+					solaceDMClientNamePattern:                   "direct-messaging-simple",
+					aggregatedClientTxMsgRateTargetMetricName:   "1000",
+					"activationAggregatedClientTxMsgRateTarget": "100",
+				},
+				AuthParams:   testSolaceDMAuthParams,
+				TriggerIndex: 1,
+			})
+			if err != nil {
+				t.Fatalf("unexpected parse error: %v", err)
+			}
+			scaler := SolaceDMScaler{configuration: config, httpClient: server.Client(), logger: logr.Discard()}
+
+			metricName := scaler.GetMetricSpecForScaling(context.Background())[0].External.Metric.Name
+			metrics, isActive, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !isActive {
+				t.Error("expected the scaler to be active")
+			}
+			if len(metrics) != 1 || metrics[0].Value.Value() != testData.msgRate {
+				t.Errorf("expected metric value %d, got %v", testData.msgRate, metrics)
+			}
+		})
+	}
 }
