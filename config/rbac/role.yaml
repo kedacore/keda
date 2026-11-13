@@ -10,6 +10,7 @@ rules:
   - configmaps
   - configmaps/status
   - external
+  - nodes
   - pods
   - secrets
   - services
