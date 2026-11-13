@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: tspascoal/get-user-teams-membership@b2546c5affc730fd8e3d8483ae9ad3621938c2f9 # v4.0.2
+      - uses: tspascoal/get-user-teams-membership@239f45b779d25e70c2e669134c6ed90826f008a1 # v4.0.3
         id: checkUserMember
         with:
           username: ${{ github.actor }}
@@ -189,7 +189,7 @@ jobs:
         run: exit 1
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           # Username used to log in to a Docker registry. If not set then no login will occur
           username: ${{ github.repository_owner }}
@@ -458,7 +458,7 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
 
       - name: Create k8s ${{ inputs.kubernetesVersion }} Kind Cluster
-        uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
+        uses: helm/kind-action@ea822c7bf1874f08e5a491df991c228edffc3376 # v1.15.2
         env:
           # renovate: datasource=docker depName=kindest/node
           NODE_IMAGE_VERSION: v1.37.0
