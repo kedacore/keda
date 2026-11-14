@@ -3747,7 +3747,8 @@
                     "optional": true,
                     "allowedValue": [
                         "bearer",
-                        "aws_msk_iam"
+                        "aws_msk_iam",
+                        "static"
                     ],
                     "metadataVariableReadable": true,
                     "triggerAuthenticationVariableReadable": true
@@ -3766,6 +3767,12 @@
                 },
                 {
                     "name": "oauthExtensions",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "oauthToken",
                     "type": "string",
                     "optional": true,
                     "triggerAuthenticationVariableReadable": true
