@@ -540,6 +540,19 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Cont
 		return false, err
 	}
 
+	if err := r.verifyHPAIsManageable(scaledObject, foundHpa); err != nil {
+		if isHpaRenamed(scaledObject, foundHpa) {
+			// the HPA under the previous name is not ours, so there is nothing to rename; just create the configured one
+			logger.Info("HPA found under the previous name is not managed by this ScaledObject, leaving it untouched", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
+			if err := r.createAndDeployNewHPA(ctx, logger, scaledObject, gvkr); err != nil {
+				return false, err
+			}
+			return true, nil
+		}
+		logger.Error(err, "refusing to manage HPA that is not owned by this ScaledObject", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
+		return false, err
+	}
+
 	// check if hpa name is changed, and if so we need to delete the old hpa before creating new one
 	if isHpaRenamed(scaledObject, foundHpa) {
 		err = r.renameHPA(ctx, logger, scaledObject, foundHpa, gvkr)
@@ -578,6 +591,16 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectIsDeleted(ctx context.C
 		return true, nil
 	} else if err != nil {
 		logger.Error(err, "failed to get HPA from cluster")
+		return false, err
+	}
+
+	if err := r.verifyHPAIsManageable(scaledObject, foundHpa); err != nil {
+		if isHpaRenamed(scaledObject, foundHpa) {
+			// the HPA under the previous name is not ours, so there is no HPA of this ScaledObject left to delete
+			logger.Info("HPA found under the previous name is not managed by this ScaledObject, leaving it untouched", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
+			return true, nil
+		}
+		logger.Error(err, "refusing to delete HPA that is not owned by this ScaledObject", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 		return false, err
 	}
 
