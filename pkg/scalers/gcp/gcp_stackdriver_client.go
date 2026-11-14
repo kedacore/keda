@@ -15,6 +15,7 @@ import (
 	"cloud.google.com/go/compute/metadata"
 	monitoring "cloud.google.com/go/monitoring/apiv3/v2"
 	monitoringpb "cloud.google.com/go/monitoring/apiv3/v2/monitoringpb"
+	"golang.org/x/oauth2"
 	"google.golang.org/api/iterator"
 	option "google.golang.org/api/option"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
@@ -124,6 +125,24 @@ func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, e
 		queryClient:   queryClient,
 		projectID:     project,
 	}, nil
+}
+
+// NewStackDriverClientWithTokenSource uses an explicitly selected identity without
+// discovering credentials or a default project from the operator's environment.
+func NewStackDriverClientWithTokenSource(ctx context.Context, tokenSource oauth2.TokenSource) (*StackDriverClient, error) {
+	if tokenSource == nil {
+		return nil, errors.New("a token source is required for service account authentication")
+	}
+	clientOption := option.WithTokenSource(tokenSource)
+	metricsClient, err := monitoring.NewMetricClient(ctx, clientOption)
+	if err != nil {
+		return nil, err
+	}
+	queryClient, err := monitoring.NewQueryClient(ctx, clientOption)
+	if err != nil {
+		return nil, errors.Join(err, metricsClient.Close())
+	}
+	return &StackDriverClient{metricsClient: metricsClient, queryClient: queryClient}, nil
 }
 
 func NewStackdriverAggregator(period int64, aligner string, reducer string) (*monitoringpb.Aggregation, error) {

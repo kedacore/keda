@@ -70,7 +70,7 @@ func NewAzureQueueScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing azure queue metadata: %w", err)
 	}
 
-	queueClient, err := azure.GetStorageQueueClient(logger, podIdentity, meta.Connection, meta.AccountName, meta.EndpointSuffix, meta.QueueName, config.GlobalHTTPTimeout)
+	queueClient, err := azure.GetStorageQueueClient(logger, podIdentity, meta.Connection, meta.AccountName, meta.EndpointSuffix, meta.QueueName, config.GlobalHTTPTimeout, config.ServiceAccountTokenProvider)
 	if err != nil {
 		return nil, fmt.Errorf("error creating azure queue client: %w", err)
 	}
@@ -105,7 +105,7 @@ func parseAzureQueueMetadata(config *scalersconfig.ScalerConfig) (azureQueueMeta
 		if meta.Connection == "" {
 			return meta, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no connection setting given")
 		}
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload, kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount:
 		// If the Use AAD Pod Identity is present then check account name
 		if meta.AccountName == "" {
 			return meta, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no accountName given")

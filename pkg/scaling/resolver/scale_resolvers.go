@@ -344,6 +344,9 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 		if err != nil {
 			logger.Error(err, "error getting triggerAuth", "triggerAuthRef.Name", triggerAuthRef.Name)
 		} else {
+			if err := triggerAuthSpec.ValidateServiceAccountSelection(); err != nil {
+				return nil, podIdentity, err
+			}
 			if triggerAuthSpec.PodIdentity != nil {
 				podIdentity = *triggerAuthSpec.PodIdentity
 			}

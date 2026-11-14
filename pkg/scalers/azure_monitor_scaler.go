@@ -131,7 +131,7 @@ func (m *azureMonitorMetadata) checkAzurePodIdentityParams(config *scalersconfig
 		if len(m.ClientPassword) == 0 {
 			return fmt.Errorf("no activeDirectoryClientPassword given")
 		}
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload, kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount:
 		// no params required to be parsed
 	default:
 		return fmt.Errorf("azure Monitor doesn't support pod identity %s", config.PodIdentity.Provider)
@@ -200,17 +200,21 @@ func CreateAzureMetricsClient(config *scalersconfig.ScalerConfig, meta *azureMon
 	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		creds, err = azidentity.NewClientSecretCredential(meta.TenantID, meta.ClientID, meta.ClientPassword, nil)
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		creds, err = azure.NewChainedCredential(logger, config.PodIdentity)
+	case kedav1alpha1.PodIdentityProviderAzureWorkload, kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount:
+		creds, err = azure.NewChainedCredential(logger, config.PodIdentity, config.ServiceAccountTokenProvider)
 	default:
 		return nil, fmt.Errorf("azure monitor does not support pod identity provider - %s", config.PodIdentity.Provider)
 	}
 	if err != nil {
 		return nil, err
 	}
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
+	if config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount {
+		httpClient.CheckRedirect = kedautil.CheckSameOriginRedirect
+	}
 	client, err := azquery.NewMetricsClient(creds, &azquery.MetricsClientOptions{
 		ClientOptions: policy.ClientOptions{
-			Transport: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
+			Transport: httpClient,
 			Cloud:     meta.Cloud,
 		},
 	})
