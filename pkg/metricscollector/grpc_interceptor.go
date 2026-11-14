@@ -50,17 +50,27 @@ type scalerRequestLabels struct {
 // instrumentation for external scaler connections.
 func GRPCClientDialOptions() []grpc.DialOption {
 	var options []grpc.DialOption
-	if promClientMetrics != nil {
-		labelsOption := grpcprom.WithLabelsFromContext(grpcPromLabelsFromContext)
+	if unary, stream := GRPCClientPromInterceptors(); unary != nil {
 		options = append(options,
-			grpc.WithChainUnaryInterceptor(promClientMetrics.UnaryClientInterceptor(labelsOption)),
-			grpc.WithChainStreamInterceptor(promClientMetrics.StreamClientInterceptor(labelsOption)),
+			grpc.WithChainUnaryInterceptor(unary),
+			grpc.WithChainStreamInterceptor(stream),
 		)
 	}
 	if otelClientHandler != nil {
 		options = append(options, grpc.WithStatsHandler(otelClientHandler))
 	}
 	return options
+}
+
+// GRPCClientPromInterceptors returns the Prometheus client interceptors, or nil
+// when Prometheus is disabled. Prefer GRPCClientDialOptions; this is only for
+// clients that accept interceptors but not dial options, so they miss OpenTelemetry.
+func GRPCClientPromInterceptors() (grpc.UnaryClientInterceptor, grpc.StreamClientInterceptor) {
+	if promClientMetrics == nil {
+		return nil, nil
+	}
+	labelsOption := grpcprom.WithLabelsFromContext(grpcPromLabelsFromContext)
+	return promClientMetrics.UnaryClientInterceptor(labelsOption), promClientMetrics.StreamClientInterceptor(labelsOption)
 }
 
 func newOtelGRPCClientHandler(metrics *OtelMetrics) stats.Handler {

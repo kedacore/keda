@@ -183,6 +183,43 @@ func TestPromGRPCStreamClientMetrics(t *testing.T) {
 	assert.EqualValues(t, 1, received.GetCounter().GetValue())
 }
 
+func TestGRPCClientPromInterceptors(t *testing.T) {
+	previous := promClientMetrics
+	t.Cleanup(func() { promClientMetrics = previous })
+
+	promClientMetrics = nil
+	unary, stream := GRPCClientPromInterceptors()
+	assert.Nil(t, unary)
+	assert.Nil(t, stream)
+
+	var registry *prometheus.Registry
+	promClientMetrics, registry = newTestPromClientMetrics(t, false)
+	unary, stream = GRPCClientPromInterceptors()
+	require.NotNil(t, unary)
+	require.NotNil(t, stream)
+
+	require.NoError(t, unary(
+		testGRPCRequestContext(t.Context(), "interceptors"),
+		testGRPCFullMethod,
+		nil,
+		nil,
+		nil,
+		func(context.Context, string, any, any, *grpc.ClientConn, ...grpc.CallOption) error {
+			return nil
+		},
+	))
+
+	families, err := registry.Gather()
+	require.NoError(t, err)
+	handled := findPromMetric(families, "keda_grpc_client_handled_total", map[string]string{
+		"grpc_method": "GetMetrics",
+		"grpc_code":   codes.OK.String(),
+		"scaler":      "external-interceptors",
+	})
+	require.NotNil(t, handled)
+	assert.EqualValues(t, 1, handled.GetCounter().GetValue())
+}
+
 func TestOtelGRPCStreamClientMetrics(t *testing.T) {
 	resetTestOtel(true)
 	handler := newOtelGRPCClientHandler(testOtel)

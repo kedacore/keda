@@ -36,6 +36,7 @@ require (
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/IBM/sarama v1.61.1
 	github.com/InfluxCommunity/influxdb3-go/v2 v2.17.0
+	github.com/apache/arrow-go/v18 v18.8.0
 	github.com/apache/cassandra-gocql-driver/v2 v2.1.2
 	github.com/arangodb/go-driver/v2 v2.4.1
 	github.com/aws/aws-msk-iam-sasl-signer-go v1.0.4
@@ -169,7 +170,6 @@ require (
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/andybalholm/brotli v1.3.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
-	github.com/apache/arrow-go/v18 v18.8.0 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/arangodb/go-velocypack v0.0.0-20200318135517-5af53c29c67e // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.27 // indirect
