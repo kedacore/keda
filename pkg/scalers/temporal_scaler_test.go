@@ -8,17 +8,24 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"fmt"
 	"math/big"
+	"net"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/go-logr/logr"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	enumspb "go.temporal.io/api/enums/v1"
 	taskqueuepb "go.temporal.io/api/taskqueue/v1"
 	"go.temporal.io/api/workflowservice/v1"
+	"google.golang.org/grpc"
+	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
@@ -641,4 +648,105 @@ func TestAuthType(t *testing.T) {
 			assert.Equal(t, tc.want, authType(&tc.meta))
 		})
 	}
+}
+
+var temporalPromMetricsOnce sync.Once
+
+type fakeTemporalFrontend struct {
+	workflowservice.UnimplementedWorkflowServiceServer
+}
+
+func (fakeTemporalFrontend) GetSystemInfo(context.Context, *workflowservice.GetSystemInfoRequest) (*workflowservice.GetSystemInfoResponse, error) {
+	return &workflowservice.GetSystemInfoResponse{}, nil
+}
+
+func (fakeTemporalFrontend) DescribeTaskQueue(context.Context, *workflowservice.DescribeTaskQueueRequest) (*workflowservice.DescribeTaskQueueResponse, error) {
+	return &workflowservice.DescribeTaskQueueResponse{
+		Stats: &taskqueuepb.TaskQueueStats{ApproximateBacklogCount: 7},
+	}, nil
+}
+
+func TestTemporalGRPCClientMetrics(t *testing.T) {
+	temporalPromMetricsOnce.Do(func() {
+		metricscollector.NewMetricsCollectors(metricscollector.Options{
+			EnablePrometheusMetrics:     true,
+			EnableHighCardinalityLabels: true,
+		})
+	})
+
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	// nosemgrep: go.grpc.security.grpc-server-insecure-connection.grpc-server-insecure-connection
+	server := grpc.NewServer()
+	workflowservice.RegisterWorkflowServiceServer(server, fakeTemporalFrontend{})
+	go func() { _ = server.Serve(lis) }()
+	t.Cleanup(server.Stop)
+
+	// The collectors are process wide, so use a trigger name of our own to find this test's series.
+	triggerName := fmt.Sprintf("temporal-metrics-%d", time.Now().UnixNano())
+	config := &scalersconfig.ScalerConfig{
+		TriggerType:             "temporal",
+		TriggerName:             triggerName,
+		ScalableObjectNamespace: "test-namespace",
+		ScalableObjectName:      "test-scaledobject",
+		TriggerMetadata: map[string]string{
+			"endpoint":   lis.Addr().String(),
+			"taskQueue":  "test-queue",
+			"queueTypes": "workflow",
+		},
+	}
+
+	scaler, err := NewTemporalScaler(t.Context(), config)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = scaler.Close(t.Context()) })
+
+	metrics, _, err := scaler.GetMetricsAndActivity(t.Context(), "s0-temporal")
+	require.NoError(t, err)
+	require.Len(t, metrics, 1)
+	assert.EqualValues(t, 7, metrics[0].Value.Value())
+
+	families, err := ctrlmetrics.Registry.Gather()
+	require.NoError(t, err)
+	labels := map[string]string{
+		"grpc_type":       "unary",
+		"grpc_service":    "temporal.api.workflowservice.v1.WorkflowService",
+		"grpc_code":       "OK",
+		"scaler":          "temporal",
+		"namespace":       "test-namespace",
+		"scaled_resource": "test-scaledobject",
+		"trigger_name":    triggerName,
+	}
+
+	// The call made while connecting uses "initialization" as the metric name.
+	labels["grpc_method"] = "GetSystemInfo"
+	labels["metric_name"] = "initialization"
+	dial := findTemporalPromMetric(families, "keda_grpc_client_handled_total", labels)
+	require.NotNil(t, dial, "GetSystemInfo should be recorded with the scaler labels")
+	assert.EqualValues(t, 1, dial.GetCounter().GetValue())
+
+	labels["grpc_method"] = "DescribeTaskQueue"
+	labels["metric_name"] = "s0-temporal"
+	describe := findTemporalPromMetric(families, "keda_grpc_client_handled_total", labels)
+	require.NotNil(t, describe, "DescribeTaskQueue should be recorded with the scaler labels")
+	assert.EqualValues(t, 1, describe.GetCounter().GetValue())
+}
+
+func findTemporalPromMetric(families []*dto.MetricFamily, name string, labels map[string]string) *dto.Metric {
+	for _, family := range families {
+		if family.GetName() != name {
+			continue
+		}
+		for _, metric := range family.GetMetric() {
+			matched := 0
+			for _, label := range metric.GetLabel() {
+				if want, ok := labels[label.GetName()]; ok && want == label.GetValue() {
+					matched++
+				}
+			}
+			if matched == len(labels) {
+				return metric
+			}
+		}
+	}
+	return nil
 }

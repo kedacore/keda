@@ -21,6 +21,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -48,10 +49,11 @@ var (
 const workerDeploymentVersionSeparator = ":"
 
 type temporalScaler struct {
-	metricType v2.MetricTargetType
-	metadata   *temporalMetadata
-	tcl        sdk.Client
-	logger     logr.Logger
+	metricType   v2.MetricTargetType
+	metadata     *temporalMetadata
+	tcl          sdk.Client
+	logger       logr.Logger
+	scalerConfig scalersconfig.ScalerConfig
 }
 
 type temporalMetadata struct {
@@ -134,7 +136,9 @@ func NewTemporalScaler(ctx context.Context, config *scalersconfig.ScalerConfig) 
 		return nil, fmt.Errorf("failed to parse Temporal metadata: %w", err)
 	}
 
-	c, err := getTemporalClient(ctx, meta, logger)
+	// sdk.DialContext calls GetSystemInfo while connecting, so label that call too, with "initialization"
+	// as the metric name since there is no metric yet.
+	c, err := getTemporalClient(metricscollector.BuildScalerRequestCtx(ctx, *config, "initialization"), meta, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Temporal client connection: %w", err)
 	}
@@ -161,10 +165,11 @@ func NewTemporalScaler(ctx context.Context, config *scalersconfig.ScalerConfig) 
 	logger.Info("Temporal scaler initialized", kv...)
 
 	return &temporalScaler{
-		metricType: metricType,
-		metadata:   meta,
-		tcl:        c,
-		logger:     logger,
+		metricType:   metricType,
+		metadata:     meta,
+		tcl:          c,
+		logger:       logger,
+		scalerConfig: *config,
 	}, nil
 }
 
@@ -199,6 +204,7 @@ func (s *temporalScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 }
 
 func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	ctx = metricscollector.BuildScalerRequestCtx(ctx, s.scalerConfig, metricName)
 	var (
 		backlogCount  int64
 		versionStatus enumspb.WorkerDeploymentVersionStatus
@@ -490,6 +496,7 @@ func getTemporalClient(ctx context.Context, meta *temporalMetadata, log logr.Log
 			)
 		},
 	))
+	dialOptions = append(dialOptions, metricscollector.GRPCClientDialOptions()...)
 
 	if meta.APIKey != "" {
 		options.Credentials = sdk.NewAPIKeyStaticCredentials(meta.APIKey)
