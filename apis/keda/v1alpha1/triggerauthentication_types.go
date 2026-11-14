@@ -143,8 +143,10 @@ const (
 )
 
 // PodIdentityAnnotationEKS specifies aws role arn for aws-eks Identity Provider
+// PodIdentityAnnotationAzureWorkload specifies the client id for azure-workload Identity Provider
 const (
-	PodIdentityAnnotationEKS = "eks.amazonaws.com/role-arn"
+	PodIdentityAnnotationEKS           = "eks.amazonaws.com/role-arn"
+	PodIdentityAnnotationAzureWorkload = "azure.workload.identity/client-id"
 )
 
 // AuthPodIdentity allows users to select the platform native identity
