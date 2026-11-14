@@ -358,11 +358,6 @@ func verifyHpas(incomingSo *ScaledObject, action string, _ bool) (admission.Warn
 func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admission.Warnings, error) {
 	var warnings admission.Warnings
 
-	minReplicas := int32(0)
-	if incomingSo.Spec.MinReplicaCount != nil {
-		minReplicas = *incomingSo.Spec.MinReplicaCount
-	}
-
 	// PollingInterval warning: warn when pollingInterval no longer affects scaling because the HPA
 	// drives it all. UsesHPAObservations is the very condition the scale loop evaluates to decide
 	// whether to keep querying the trigger sources itself, so the warning cannot drift away from the
@@ -378,17 +373,13 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 		}
 	}
 
-	// CooldownPeriod warning: if minReplicaCount > 0 AND idleReplicaCount is not set (idle mode disabled).
-	// When idle mode is enabled, the target still scales down to the idle replica count on inactivity,
-	// so cooldownPeriod stays relevant regardless of the idle value.
-	if incomingSo.Spec.CooldownPeriod != nil {
-		idleModeDisabled := incomingSo.Spec.IdleReplicaCount == nil
-		if minReplicas > 0 && idleModeDisabled {
-			msg := "CooldownPeriod is configured but is not relevant. CooldownPeriod is only relevant when minReplicaCount = 0 or idleReplicaCount is set"
-			warnings = append(warnings, msg)
-			if eventRecorder != nil {
-				eventRecorder.Eventf(incomingSo, nil, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", msg)
-			}
+	// CooldownPeriod warning: if cooldownPeriod is configured on a workload where cooldown is not relevant
+	// (i.e. minReplicaCount > 0 and idle mode is disabled).
+	if incomingSo.Spec.CooldownPeriod != nil && !incomingSo.IsCooldownPeriodRelevant() {
+		msg := "CooldownPeriod is configured but is not relevant. CooldownPeriod is only relevant when minReplicaCount = 0 or idleReplicaCount is set"
+		warnings = append(warnings, msg)
+		if eventRecorder != nil {
+			eventRecorder.Eventf(incomingSo, nil, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, eventreason.KEDAScalersInfo, "%s", msg)
 		}
 	}
 
