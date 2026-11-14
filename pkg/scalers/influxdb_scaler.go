@@ -6,12 +6,14 @@ import (
 	"strings"
 
 	"github.com/InfluxCommunity/influxdb3-go/v2/influxdb3"
+	"github.com/apache/arrow-go/v18/arrow/flight"
 	"github.com/go-logr/logr"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	api "github.com/influxdata/influxdb-client-go/v2/api"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
@@ -93,6 +95,7 @@ func NewInfluxDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 			Token:        meta.AuthToken,
 			Database:     meta.Database,
 			Organization: meta.OrganizationName,
+			Middleware:   influxDBV3FlightMiddleware(),
 		})
 
 		if err != nil {
@@ -205,6 +208,17 @@ func queryInfluxDBV3(ctx context.Context, client *influxdb3.Client, metadata inf
 	}
 
 	return readInfluxDBV3Result(result, metadata.MetricKey)
+}
+
+// influxDBV3FlightMiddleware returns the Prometheus gRPC client interceptors as
+// Flight middleware. influxdb3-go exposes no dial options, so OpenTelemetry
+// gRPC client metrics are not available for this client.
+func influxDBV3FlightMiddleware() []flight.ClientMiddleware {
+	unary, stream := metricscollector.GRPCClientPromInterceptors()
+	if unary == nil {
+		return nil
+	}
+	return []flight.ClientMiddleware{{Unary: unary, Stream: stream}}
 }
 
 // influxDBV3ResultIterator is the subset of *influxdb3.QueryIterator used to

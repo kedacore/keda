@@ -133,7 +133,7 @@ func TestEtcdGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockEtcdScaler := etcdScaler{"", meta, nil, logr.Logger{}}
+		mockEtcdScaler := etcdScaler{metadata: meta, logger: logr.Logger{}}
 
 		metricSpec := mockEtcdScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

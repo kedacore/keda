@@ -19,6 +19,8 @@ import (
 	option "google.golang.org/api/option"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 )
 
 var validPubSubName = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9\-_.~+%]{2,254}$`)
@@ -72,6 +74,16 @@ type StackDriverClient struct {
 	projectID     string
 }
 
+// grpcClientOptions converts the shared gRPC client metrics dial options into
+// Cloud Monitoring client options.
+func grpcClientOptions() []option.ClientOption {
+	var opts []option.ClientOption
+	for _, dialOption := range metricscollector.GRPCClientDialOptions() {
+		opts = append(opts, option.WithGRPCDialOption(dialOption))
+	}
+	return opts
+}
+
 // NewStackDriverClient creates a new stackdriver client with the credentials that are passed
 func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriverClient, error) {
 	var gcpCredentials GoogleApplicationCredentials
@@ -79,14 +91,16 @@ func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriver
 	if err := json.Unmarshal([]byte(credentials), &gcpCredentials); err != nil {
 		return nil, err
 	}
-	clientOption := option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(credentials))
+	clientOpts := append([]option.ClientOption{
+		option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(credentials)),
+	}, grpcClientOptions()...)
 
-	metricsClient, err := monitoring.NewMetricClient(ctx, clientOption)
+	metricsClient, err := monitoring.NewMetricClient(ctx, clientOpts...)
 	if err != nil {
 		return nil, err
 	}
 
-	queryClient, err := monitoring.NewQueryClient(ctx, clientOption)
+	queryClient, err := monitoring.NewQueryClient(ctx, clientOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -100,11 +114,13 @@ func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriver
 
 // NewStackDriverClientPodIdentity creates a new stackdriver client with the credentials underlying
 func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, error) {
-	metricsClient, err := monitoring.NewMetricClient(ctx)
+	clientOpts := grpcClientOptions()
+
+	metricsClient, err := monitoring.NewMetricClient(ctx, clientOpts...)
 	if err != nil {
 		return nil, err
 	}
-	queryClient, err := monitoring.NewQueryClient(ctx)
+	queryClient, err := monitoring.NewQueryClient(ctx, clientOpts...)
 	if err != nil {
 		return nil, err
 	}
