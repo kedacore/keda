@@ -869,3 +869,178 @@ func TestGetPausedReplicaCount(t *testing.T) {
 func contains(s, substr string) bool {
 	return strings.Contains(s, substr)
 }
+
+func TestOwnsHPA(t *testing.T) {
+	so := &ScaledObject{ObjectMeta: metav1.ObjectMeta{Name: "my-so"}}
+
+	tests := []struct {
+		name         string
+		owners       []metav1.OwnerReference
+		expectResult bool
+	}{
+		{
+			name:         "No owner references",
+			owners:       nil,
+			expectResult: false,
+		},
+		{
+			name:         "Owned by this ScaledObject",
+			owners:       []metav1.OwnerReference{{Kind: "ScaledObject", Name: "my-so"}},
+			expectResult: true,
+		},
+		{
+			name:         "Owned by another ScaledObject",
+			owners:       []metav1.OwnerReference{{Kind: "ScaledObject", Name: "other-so"}},
+			expectResult: false,
+		},
+		{
+			name:         "Owned by a different kind with the same name",
+			owners:       []metav1.OwnerReference{{Kind: "Deployment", Name: "my-so"}},
+			expectResult: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			hpa := &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: metav1.ObjectMeta{OwnerReferences: test.owners}}
+			if result := so.OwnsHPA(hpa); result != test.expectResult {
+				t.Errorf("Expected OwnsHPA to return %v, got %v", test.expectResult, result)
+			}
+		})
+	}
+}
+
+func TestMayTakeOverHPA(t *testing.T) {
+	tests := []struct {
+		name           string
+		soAnnotations  map[string]string
+		hpaConfigName  string
+		hpaAnnotations map[string]string
+		expectResult   bool
+	}{
+		{
+			name:         "No annotations and no explicit name",
+			expectResult: false,
+		},
+		{
+			name:          "Explicit name without transfer annotation",
+			hpaConfigName: "existing-hpa",
+			expectResult:  false,
+		},
+		{
+			name:          "Transfer annotation without explicit name",
+			soAnnotations: map[string]string{ScaledObjectTransferHpaOwnershipAnnotation: "true"},
+			expectResult:  false,
+		},
+		{
+			name:          "Transfer annotation with a different explicit name",
+			soAnnotations: map[string]string{ScaledObjectTransferHpaOwnershipAnnotation: "true"},
+			hpaConfigName: "another-hpa",
+			expectResult:  false,
+		},
+		{
+			name:          "Transfer annotation with matching explicit name",
+			soAnnotations: map[string]string{ScaledObjectTransferHpaOwnershipAnnotation: "true"},
+			hpaConfigName: "existing-hpa",
+			expectResult:  true,
+		},
+		{
+			name:           "HPA opted out of ownership validation",
+			hpaAnnotations: map[string]string{ValidationsHpaOwnershipAnnotation: "false"},
+			expectResult:   true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			so := &ScaledObject{ObjectMeta: metav1.ObjectMeta{Name: "my-so", Annotations: test.soAnnotations}}
+			if test.hpaConfigName != "" {
+				so.Spec.Advanced = &AdvancedConfig{HorizontalPodAutoscalerConfig: &HorizontalPodAutoscalerConfig{Name: test.hpaConfigName}}
+			}
+			hpa := &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: metav1.ObjectMeta{Name: "existing-hpa", Annotations: test.hpaAnnotations}}
+			if result := so.MayTakeOverHPA(hpa); result != test.expectResult {
+				t.Errorf("Expected MayTakeOverHPA to return %v, got %v", test.expectResult, result)
+			}
+		})
+	}
+}
+
+func TestCanManageHPA(t *testing.T) {
+	transfer := map[string]string{ScaledObjectTransferHpaOwnershipAnnotation: "true"}
+
+	tests := []struct {
+		name          string
+		soAnnotations map[string]string
+		owners        []metav1.OwnerReference
+		hpaTarget     string
+		hpaKind       string
+		expectResult  bool
+	}{
+		{
+			name:         "Owned HPA for another workload is manageable",
+			owners:       []metav1.OwnerReference{{Kind: "ScaledObject", Name: "my-so"}},
+			hpaTarget:    "other-workload",
+			hpaKind:      "Deployment",
+			expectResult: true,
+		},
+		{
+			name:         "Unowned HPA for another workload is not manageable",
+			hpaTarget:    "other-workload",
+			hpaKind:      "Deployment",
+			expectResult: false,
+		},
+		{
+			name:         "Unowned HPA for the same workload without transfer is not manageable",
+			hpaTarget:    "my-workload",
+			hpaKind:      "Deployment",
+			expectResult: false,
+		},
+		{
+			name:          "Transfer of unowned HPA for the same workload is manageable",
+			soAnnotations: transfer,
+			hpaTarget:     "my-workload",
+			hpaKind:       "Deployment",
+			expectResult:  true,
+		},
+		{
+			name:          "Transfer of unowned HPA for another workload is not manageable",
+			soAnnotations: transfer,
+			hpaTarget:     "other-workload",
+			hpaKind:       "Deployment",
+			expectResult:  false,
+		},
+		{
+			name:          "Transfer of unowned HPA for the same name but another kind is not manageable",
+			soAnnotations: transfer,
+			hpaTarget:     "my-workload",
+			hpaKind:       "StatefulSet",
+			expectResult:  false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			so := &ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: "my-so", Annotations: test.soAnnotations},
+				Spec: ScaledObjectSpec{
+					ScaleTargetRef: &ScaleTarget{Name: "my-workload", APIVersion: "apps/v1", Kind: "Deployment"},
+					Advanced:       &AdvancedConfig{HorizontalPodAutoscalerConfig: &HorizontalPodAutoscalerConfig{Name: "existing-hpa"}},
+				},
+			}
+			hpa := &autoscalingv2.HorizontalPodAutoscaler{
+				ObjectMeta: metav1.ObjectMeta{Name: "existing-hpa", OwnerReferences: test.owners},
+				Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
+					ScaleTargetRef: autoscalingv2.CrossVersionObjectReference{Name: test.hpaTarget, APIVersion: "apps/v1", Kind: test.hpaKind},
+				},
+			}
+			// Deployment and StatefulSet are resolved without consulting the REST mapper
+			result, err := so.CanManageHPA(nil, hpa)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if result != test.expectResult {
+				t.Errorf("Expected CanManageHPA to return %v, got %v", test.expectResult, result)
+			}
+		})
+	}
+}
