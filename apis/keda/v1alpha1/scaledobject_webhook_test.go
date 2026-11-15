@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"context"
 	"strings"
+	"testing"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -28,9 +29,12 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var _ = It("should validate the so creation when there isn't any hpa", func() {
@@ -84,6 +88,158 @@ var _ = It("should validate the so creation when another SO targets the same nam
 
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), soStatefulSet)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("should admit two selector SOs resolving to different workloads", func() {
+	// Regression coverage for selector-aware duplicate detection: name-less
+	// SOs share the "" field-index value, so without resolution the second
+	// creation would be falsely rejected as "already managed".
+	namespaceName := "selector-distinct-targets"
+	namespace := createNamespace(namespaceName)
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), createLabeledDeployment(namespaceName, "ingress-sensor-abc12", map[string]string{"events.argoproj.io/sensor-name": "ingress"}, false, false))
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), createLabeledDeployment(namespaceName, "other-sensor-zz99", map[string]string{"events.argoproj.io/sensor-name": "other"}, false, false))
+	Expect(err).ToNot(HaveOccurred())
+
+	so1 := createScaledObjectWithRef("so-ingress", namespaceName, &ScaleTarget{
+		APIVersion: "apps/v1", Kind: "Deployment", NamePrefix: "ingress-sensor-",
+		LabelSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"events.argoproj.io/sensor-name": "ingress"}},
+	}, false, map[string]string{}, "")
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so1)
+	}).ShouldNot(HaveOccurred())
+
+	so2 := createScaledObjectWithRef("so-other", namespaceName, &ScaleTarget{
+		APIVersion: "apps/v1", Kind: "Deployment", NamePrefix: "other-sensor-",
+		LabelSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"events.argoproj.io/sensor-name": "other"}},
+	}, false, map[string]string{}, "")
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so2)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("shouldn't admit a second selector SO resolving to the same workload", func() {
+	namespaceName := "selector-same-target"
+	namespace := createNamespace(namespaceName)
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), createLabeledDeployment(namespaceName, "ingress-sensor-abc12", map[string]string{"events.argoproj.io/sensor-name": "ingress"}, false, false))
+	Expect(err).ToNot(HaveOccurred())
+
+	so1 := createScaledObjectWithRef("so-first", namespaceName, &ScaleTarget{
+		APIVersion: "apps/v1", Kind: "Deployment", NamePrefix: "ingress-sensor-",
+	}, false, map[string]string{}, "")
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so1)
+	}).ShouldNot(HaveOccurred())
+
+	so2 := createScaledObjectWithRef("so-second", namespaceName, &ScaleTarget{
+		APIVersion: "apps/v1", Kind: "Deployment",
+		LabelSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"events.argoproj.io/sensor-name": "ingress"}},
+	}, false, map[string]string{}, "")
+	// The newer selector loses the runtime tie-break, so admission rejects
+	// it. Matching the exact text proves the rejection (a retry
+	// AlreadyExists error could never satisfy this assertion).
+	Eventually(func() error {
+		_, err := so2.ValidateCreate(new(false))
+		return err
+	}).Should(MatchError(ContainSubstring("already managed by the ScaledObject")))
+})
+
+var _ = It("should admit a fixed-name SO when a selector SO already resolves to that workload", func() {
+	namespaceName := "selector-then-fixed"
+	namespace := createNamespace(namespaceName)
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), createLabeledDeployment(namespaceName, "ingress-sensor-abc12", map[string]string{"events.argoproj.io/sensor-name": "ingress"}, false, false))
+	Expect(err).ToNot(HaveOccurred())
+
+	selectorSo := createScaledObjectWithRef("so-selector", namespaceName, &ScaleTarget{
+		APIVersion: "apps/v1", Kind: "Deployment", NamePrefix: "ingress-sensor-",
+	}, false, map[string]string{}, "")
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), selectorSo)
+	}).ShouldNot(HaveOccurred())
+
+	// Fixed-name refs win the runtime tie-break over selector refs, so
+	// admission accepts the fixed object; the selector side holds.
+	fixedSo := createScaledObject("so-fixed", namespaceName, "ingress-sensor-abc12", "apps/v1", "Deployment", false, map[string]string{}, "")
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), fixedSo)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("shouldn't admit a selector SO whose selectors match several workloads", func() {
+	// Ambiguity fails fast at admission: the scale loop could only hold on
+	// it forever.
+	namespaceName := "selector-ambiguous"
+	namespace := createNamespace(namespaceName)
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), createLabeledDeployment(namespaceName, "sensor-aaa11", map[string]string{"team": "events"}, false, false))
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), createLabeledDeployment(namespaceName, "sensor-bbb22", map[string]string{"team": "events"}, false, false))
+	Expect(err).ToNot(HaveOccurred())
+
+	so := createScaledObjectWithRef(soName, namespaceName, &ScaleTarget{
+		APIVersion: "apps/v1", Kind: "Deployment",
+		LabelSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"team": "events"}},
+	}, false, map[string]string{}, "")
+	// Matching the exact text proves the ambiguity rejection (a retry
+	// AlreadyExists error could never satisfy this assertion).
+	Eventually(func() error {
+		_, err := so.ValidateCreate(new(false))
+		return err
+	}).Should(MatchError(ContainSubstring("matched several objects")))
+})
+
+var _ = It("shouldn't admit a selector SO when an unmanaged hpa targets the resolved workload", func() {
+	hpaName := "test-unmanaged-hpa"
+	namespaceName := "selector-unmanaged-hpa"
+	namespace := createNamespace(namespaceName)
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), createLabeledDeployment(namespaceName, "ingress-sensor-abc12", map[string]string{"events.argoproj.io/sensor-name": "ingress"}, false, false))
+	Expect(err).ToNot(HaveOccurred())
+
+	hpa := createHpa(hpaName, namespaceName, "ingress-sensor-abc12", "apps/v1", "Deployment", nil)
+	err = k8sClient.Create(context.Background(), hpa)
+	Expect(err).ToNot(HaveOccurred())
+
+	so := createScaledObjectWithRef(soName, namespaceName, &ScaleTarget{
+		APIVersion: "apps/v1", Kind: "Deployment", NamePrefix: "ingress-sensor-",
+	}, false, map[string]string{}, "")
+	// Matching the exact text proves the HPA-ownership rejection (a retry
+	// AlreadyExists error could never satisfy this assertion).
+	Eventually(func() error {
+		_, err := so.ValidateCreate(new(false))
+		return err
+	}).Should(MatchError(ContainSubstring("already managed by the hpa")))
+})
+
+var _ = It("should admit a cpu/memory SO with a selector resolving to a resourced deployment", func() {
+	namespaceName := "selector-cpu-memory"
+	namespace := createNamespace(namespaceName)
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	deployment := createLabeledDeployment(namespaceName, "worker-abc12", map[string]string{"role": "worker"}, true, true)
+	err = k8sClient.Create(context.Background(), deployment)
+	Expect(err).ToNot(HaveOccurred())
+
+	so := createScaledObjectWithRef(soName, namespaceName, &ScaleTarget{
+		APIVersion: "apps/v1", Kind: "Deployment", NamePrefix: "worker-",
+	}, true, map[string]string{}, "")
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
 	}).ShouldNot(HaveOccurred())
 })
 
@@ -1427,6 +1583,99 @@ var _ = It("should validate the so creation with ScalingModifiers.Formula - doub
 	}).ShouldNot(HaveOccurred())
 })
 
+// ======================== DIRECT-CLIENT RECHECK TESTS ========================
+var _ = It("should consult the direct client when the cached target lookup finds nothing", func() {
+	namespaceName := "direct-recheck"
+	// The workload carries the matched label on the Deployment object
+	// itself so the selector resolves against it.
+	workload := createDeployment(namespaceName, false, false)
+	workload.Labels = map[string]string{"test": "test"}
+	hpa := createHpa("keda-hpa-other", namespaceName, workloadName, "apps/v1", "Deployment", nil)
+
+	scheme := runtime.NewScheme()
+	Expect(clientgoscheme.AddToScheme(scheme)).ToNot(HaveOccurred())
+	Expect(AddToScheme(scheme)).ToNot(HaveOccurred())
+	hpaIndex := func(obj client.Object) []string {
+		return []string{obj.(*v2.HorizontalPodAutoscaler).Spec.ScaleTargetRef.Name}
+	}
+	// cachedCl simulates a stale informer cache: the HPA is visible but
+	// the workload is not. directCl is the authoritative API state.
+	cachedCl := fake.NewClientBuilder().WithScheme(scheme).
+		WithIndex(&v2.HorizontalPodAutoscaler{}, scaleTargetRefNameIdx, hpaIndex).
+		WithRuntimeObjects(hpa).Build()
+	directCl := fake.NewClientBuilder().WithScheme(scheme).
+		WithRuntimeObjects(workload, hpa).Build()
+
+	oldKc, oldDirectClient, oldFallback := kc, directClient, cacheMissToDirectClient
+	kc, directClient, cacheMissToDirectClient = cachedCl, directCl, true
+	defer func() { kc, directClient, cacheMissToDirectClient = oldKc, oldDirectClient, oldFallback }()
+
+	so := createScaledObjectWithRef(soName, namespaceName, &ScaleTarget{
+		APIVersion:    "apps/v1",
+		Kind:          "Deployment",
+		LabelSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"test": "test"}},
+	}, false, map[string]string{}, "")
+
+	// The direct recheck finds the workload, so the HPA ownership check
+	// runs and rejects the duplicate instead of skipping.
+	_, err := verifyHpas(so, "create", false)
+	Expect(err).To(HaveOccurred())
+	Expect(err.Error()).To(ContainSubstring("already managed by the hpa"))
+
+	// Without the fallback the stale zero-match skips the check.
+	cacheMissToDirectClient = false
+	_, err = verifyHpas(so, "create", false)
+	Expect(err).ToNot(HaveOccurred())
+})
+
+// ======================== DUPLICATE-RACE PRECEDENCE TESTS ========================
+
+var _ = It("should admit updates to the winning selector when a newer loser converged later", func() {
+	namespaceName := "precedence-winner-update"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+	workload.Labels = map[string]string{}
+	winnerSO := createScaledObjectWithRef("aaa-winner", namespaceName, &ScaleTarget{
+		APIVersion:    "apps/v1",
+		Kind:          "Deployment",
+		LabelSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"winner": "yes"}},
+	}, false, map[string]string{}, "")
+	loserSO := createScaledObjectWithRef("zzz-loser", namespaceName, &ScaleTarget{
+		APIVersion:    "apps/v1",
+		Kind:          "Deployment",
+		LabelSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"loser": "yes"}},
+	}, false, map[string]string{}, "")
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	// Winner first so it is older; neither selector matches yet.
+	err = k8sClient.Create(context.Background(), winnerSO)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), loserSO)
+	Expect(err).ToNot(HaveOccurred())
+
+	// Converge both onto the workload with a label edit (no admission).
+	workload.Labels = map[string]string{"winner": "yes", "loser": "yes"}
+	err = k8sClient.Update(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	// Updating the winner must stay admitted even though the loser now
+	// resolves to the same workload: the winner beats it at runtime.
+	updated := winnerSO.DeepCopy()
+	updated.Spec.PollingInterval = ptr.To[int32](31)
+	_, err = updated.ValidateUpdate(winnerSO, new(false))
+	Expect(err).ToNot(HaveOccurred())
+
+	// Updating the loser is still rejected.
+	updatedLoser := loserSO.DeepCopy()
+	updatedLoser.Spec.PollingInterval = ptr.To[int32](31)
+	_, err = updatedLoser.ValidateUpdate(loserSO, new(false))
+	Expect(err).To(HaveOccurred())
+	Expect(err.Error()).To(ContainSubstring("already managed by the ScaledObject"))
+})
+
 // ======================== POLLINGINTERVAL WARNING TESTS ========================
 
 var _ = It("should emit warning when PollingInterval is set with minReplicaCount > 0 and idleReplicaCount not set", func() {
@@ -1806,6 +2055,14 @@ func createNamespace(name string) *v1.Namespace {
 }
 
 func createScaledObject(name, namespace, targetName, targetAPI, targetKind string, hasCPUAndMemory bool, annotations map[string]string, hpaName string) *ScaledObject {
+	return createScaledObjectWithRef(name, namespace, &ScaleTarget{
+		Name:       targetName,
+		APIVersion: targetAPI,
+		Kind:       targetKind,
+	}, hasCPUAndMemory, annotations, hpaName)
+}
+
+func createScaledObjectWithRef(name, namespace string, ref *ScaleTarget, hasCPUAndMemory bool, annotations map[string]string, hpaName string) *ScaledObject {
 	triggers := []ScaleTriggers{
 		{
 			Type: "cron",
@@ -1855,11 +2112,7 @@ func createScaledObject(name, namespace, targetName, targetAPI, targetKind strin
 			APIVersion: "keda.sh",
 		},
 		Spec: ScaledObjectSpec{
-			ScaleTargetRef: &ScaleTarget{
-				Name:       targetName,
-				APIVersion: targetAPI,
-				Kind:       targetKind,
-			},
+			ScaleTargetRef:   ref,
 			IdleReplicaCount: ptr.To[int32](1),
 			MinReplicaCount:  ptr.To[int32](5),
 			MaxReplicaCount:  ptr.To[int32](10),
@@ -1867,6 +2120,13 @@ func createScaledObject(name, namespace, targetName, targetAPI, targetKind strin
 			Advanced:         advancedConfig,
 		},
 	}
+}
+
+func createLabeledDeployment(namespace, name string, labels map[string]string, hasCPU, hasMemory bool) *appsv1.Deployment {
+	deployment := createDeployment(namespace, hasCPU, hasMemory)
+	deployment.Name = name
+	deployment.Labels = labels
+	return deployment
 }
 
 func createHpa(name, namespace, targetName, targetAPI, targetKind string, owner *ScaledObject) *v2.HorizontalPodAutoscaler {
@@ -2087,5 +2347,51 @@ func createLimitRange(name, namespace string, limitType v1.LimitType, cpu, memor
 				},
 			},
 		},
+	}
+}
+
+func TestIncomingWinsDuplicateRace(t *testing.T) {
+	older := metav1.NewTime(time.Now().Add(-time.Hour))
+	newer := metav1.NewTime(time.Now())
+	fixedRef := func() *ScaleTarget {
+		return &ScaleTarget{APIVersion: "apps/v1", Kind: "Deployment", Name: "target"}
+	}
+	selectorRef := func() *ScaleTarget {
+		return &ScaleTarget{
+			APIVersion:    "apps/v1",
+			Kind:          "Deployment",
+			LabelSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"team": "x"}},
+		}
+	}
+	so := func(name string, created metav1.Time, ref *ScaleTarget) *ScaledObject {
+		return &ScaledObject{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "ns", CreationTimestamp: created},
+			Spec:       ScaledObjectSpec{ScaleTargetRef: ref},
+		}
+	}
+
+	if incomingWinsDuplicateRace(so("new", newer, fixedRef()), so("old", older, selectorRef())) != true {
+		t.Error("fixed incoming must beat selector other regardless of age")
+	}
+	if incomingWinsDuplicateRace(so("new", newer, selectorRef()), so("old", older, fixedRef())) != false {
+		t.Error("selector incoming must lose to fixed other")
+	}
+	if incomingWinsDuplicateRace(so("a", newer, fixedRef()), so("b", older, fixedRef())) != false {
+		t.Error("fixed-fixed duplicates must still be rejected")
+	}
+	if incomingWinsDuplicateRace(so("old", older, selectorRef()), so("new", newer, selectorRef())) != true {
+		t.Error("older selector incoming must beat newer selector other")
+	}
+	if incomingWinsDuplicateRace(so("new", newer, selectorRef()), so("old", older, selectorRef())) != false {
+		t.Error("newer selector incoming must lose to older selector other")
+	}
+	if incomingWinsDuplicateRace(so("aaa", older, selectorRef()), so("zzz", older, selectorRef())) != true {
+		t.Error("equal timestamps must break ties by name")
+	}
+	if incomingWinsDuplicateRace(so("new", metav1.Time{}, selectorRef()), so("old", older, selectorRef())) != false {
+		t.Error("create requests with zero timestamp must lose to stored objects")
+	}
+	if incomingWinsDuplicateRace(so("x", newer, nil), so("y", older, selectorRef())) != false {
+		t.Error("nil incoming ref must lose")
 	}
 }

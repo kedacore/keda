@@ -200,7 +200,13 @@ func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, sc
 		}
 
 		gvk := obj.Status.ScaleTargetGVKR.GroupVersionKind()
-		objKey := client.ObjectKey{Namespace: obj.Namespace, Name: obj.Spec.ScaleTargetRef.Name}
+		// Selectors resolve here too: env injection reads the resolved
+		// target's pod spec. Failure fails the trigger (fail-closed).
+		targetName, err := ResolveScaleTargetName(ctx, kubeClient, obj.Namespace, gvk, obj.Spec.ScaleTargetRef)
+		if err != nil {
+			return nil, "", err
+		}
+		objKey := client.ObjectKey{Namespace: obj.Namespace, Name: targetName}
 
 		logger := log.WithValues("scaledObject.Namespace", obj.Namespace, "scaledObject.Name", obj.Name, "resource", gvk.String(), "name", objKey.Name)
 
@@ -241,7 +247,7 @@ func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, sc
 		}
 
 		if len(podTemplateSpec.Spec.Containers) == 0 {
-			logger.V(1).Info("There aren't any containers found in the ScaleTarget, therefore it is no possible to inject environment properties", "scaleTargetRef.Name", obj.Spec.ScaleTargetRef.Name)
+			logger.V(1).Info("There aren't any containers found in the ScaleTarget, therefore it is no possible to inject environment properties", "scaleTarget.Name", targetName)
 			return nil, "", nil
 		}
 
@@ -839,19 +845,28 @@ func resolveServiceAccountAnnotation(ctx context.Context, client client.Client, 
 	return value, nil
 }
 
-// GetCurrentReplicas returns the current replica count for a ScaledObject
-func GetCurrentReplicas(ctx context.Context, client client.Client, scaleClient scale.ScalesGetter, scaledObject *kedav1alpha1.ScaledObject) (int32, error) {
+// GetCurrentReplicas returns the replica count and the resolved target name.
+// The name is resolved once here so callers read and scale the same object.
+func GetCurrentReplicas(ctx context.Context, client client.Client, scaleClient scale.ScalesGetter, scaledObject *kedav1alpha1.ScaledObject) (int32, string, error) {
 	// trying to prevent operator crashes, due to some race condition, sometimes scaledObject.Status.ScaleTargetGVKR is nil
 	// see https://github.com/kedacore/keda/issues/4389
 	// Tracking issue: https://github.com/kedacore/keda/issues/4955
 	var err error
 	scaledObject, err = ensureScaleTargetGVKR(ctx, client, scaledObject)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 
-	targetName := scaledObject.Spec.ScaleTargetRef.Name
 	targetGVKR := scaledObject.Status.ScaleTargetGVKR
+
+	// Selectors (namePrefix/labelSelector) resolve to exactly one object per
+	// loop; a fixed name passes through untouched. Resolution failure holds
+	// replicas (fail-closed, never actuate on ambiguity).
+	targetName, err := ResolveScaleTargetName(ctx, client, scaledObject.Namespace, targetGVKR.GroupVersionKind(), scaledObject.Spec.ScaleTargetRef)
+	if err != nil {
+		log.Error(err, "unable to resolve scale target")
+		return 0, "", err
+	}
 
 	logger := log.WithValues("scaledObject.Namespace", scaledObject.Namespace,
 		"scaledObject.Name", scaledObject.Name,
@@ -865,23 +880,23 @@ func GetCurrentReplicas(ctx context.Context, client client.Client, scaleClient s
 		deployment := &appsv1.Deployment{}
 		if err := client.Get(ctx, types.NamespacedName{Name: targetName, Namespace: scaledObject.Namespace}, deployment); err != nil {
 			logger.Error(err, "target deployment doesn't exist")
-			return 0, err
+			return 0, "", err
 		}
-		return ptr.Deref(deployment.Spec.Replicas, 1), nil
+		return ptr.Deref(deployment.Spec.Replicas, 1), targetName, nil
 	case targetGVKR.Group == appsGroup && targetGVKR.Kind == statefulSetKind:
 		statefulSet := &appsv1.StatefulSet{}
 		if err := client.Get(ctx, types.NamespacedName{Name: targetName, Namespace: scaledObject.Namespace}, statefulSet); err != nil {
 			logger.Error(err, "target statefulset doesn't exist")
-			return 0, err
+			return 0, "", err
 		}
-		return ptr.Deref(statefulSet.Spec.Replicas, 1), nil
+		return ptr.Deref(statefulSet.Spec.Replicas, 1), targetName, nil
 	case targetGVKR.Group == appsGroup && targetGVKR.Kind == replicaSetKind:
 		replicaSet := &appsv1.ReplicaSet{}
 		if err := client.Get(ctx, types.NamespacedName{Name: targetName, Namespace: scaledObject.Namespace}, replicaSet); err != nil {
 			logger.Error(err, "target replicaset doesn't exist")
-			return 0, err
+			return 0, "", err
 		}
-		return ptr.Deref(replicaSet.Spec.Replicas, 1), nil
+		return ptr.Deref(replicaSet.Spec.Replicas, 1), targetName, nil
 	default:
 		// Try reading from the informer cache via Unstructured to avoid an API call.
 		unstruct := &unstructured.Unstructured{}
@@ -891,15 +906,15 @@ func GetCurrentReplicas(ctx context.Context, client client.Client, scaleClient s
 			// there is no convenient way to know the paths without having RBAC to read the CRD, this is only a best effort heuristic to reduce API calls for common implementations
 			replicas, found, fieldErr := unstructured.NestedInt64(unstruct.Object, "spec", "replicas")
 			if fieldErr == nil && found {
-				return int32(replicas), nil
+				return int32(replicas), targetName, nil
 			}
 		}
 		// Fall back to scale subresource if cache read or field extraction fails.
 		scale, err := scaleClient.Scales(scaledObject.Namespace).Get(ctx, targetGVKR.GroupResource(), targetName, metav1.GetOptions{})
 		if err != nil {
 			logger.Error(err, "error getting scale subresource")
-			return 0, err
+			return 0, "", err
 		}
-		return scale.Spec.Replicas, nil
+		return scale.Spec.Replicas, targetName, nil
 	}
 }

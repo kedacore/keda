@@ -31,7 +31,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -290,22 +294,154 @@ func verifyTriggers(incomingObject any, action string, _ bool) error {
 	return err
 }
 
+// Admission-time scale-target resolution.
+//
+// pkg/scaling/resolver.ResolveScaleTargetName is the canonical resolver, but
+// this package cannot import it (the resolver imports this package). The
+// helper below mirrors its semantics exactly: a fixed name alone passes
+// through with no listing; otherwise name prefix and label selector are ANDed
+// and exactly one survivor is required. Selector resolution lists the target
+// kind, so it needs list permission on that kind — covered for the built-in
+// workload kinds (deployments, replicasets, statefulsets), not for arbitrary
+// CRDs. A listing forbidden by RBAC surfaces as a resolution error and fails
+// closed like any other ambiguity.
+var (
+	// errNoScaleTargetSelector means no name, prefix, or labels were given.
+	errNoScaleTargetSelector = errors.New("scaleTargetRef needs at least one of name, namePrefix, labelSelector")
+	// errNoScaleTargetMatch means the selectors matched zero objects.
+	errNoScaleTargetMatch = errors.New("scaleTargetRef selectors matched zero objects")
+	// errAmbiguousScaleTargetMatch means the selectors matched several objects.
+	errAmbiguousScaleTargetMatch = errors.New("scaleTargetRef selectors matched several objects")
+)
+
+// resolveScaleTargetName maps a ScaleTarget to exactly one object name.
+// Name and prefix comparisons are literal (no globs).
+func resolveScaleTargetName(ctx context.Context, c client.Client, namespace string, gvk schema.GroupVersionKind, ref *ScaleTarget) (string, error) {
+	if ref == nil {
+		return "", errNoScaleTargetSelector
+	}
+	if ref.NamePrefix == "" && ref.LabelSelector == nil {
+		if ref.Name == "" {
+			return "", errNoScaleTargetSelector
+		}
+		return ref.Name, nil
+	}
+
+	opts := &client.ListOptions{Namespace: namespace}
+	if ref.LabelSelector != nil {
+		sel, err := metav1.LabelSelectorAsSelector(ref.LabelSelector)
+		if err != nil {
+			return "", fmt.Errorf("invalid scaleTargetRef.labelSelector: %w", err)
+		}
+		opts.LabelSelector = sel
+	} else {
+		opts.LabelSelector = labels.Everything()
+	}
+
+	candidates := &unstructured.UnstructuredList{}
+	candidates.SetGroupVersionKind(gvk)
+	if err := c.List(ctx, candidates, opts); err != nil {
+		return "", fmt.Errorf("listing scale targets: %w", err)
+	}
+	if len(candidates.Items) == 0 && cacheMissToDirectClient && directClient != nil {
+		// The informer cache may not have observed a just-created target
+		// yet; a stale empty list would fail closed (or skip a check) on
+		// fresh truth. Fall back to a direct read, mirroring
+		// getFromCacheOrDirect for Gets.
+		if err := directClient.List(ctx, candidates, opts); err != nil {
+			return "", fmt.Errorf("listing scale targets: %w", err)
+		}
+	}
+
+	return matchScaleTargetCandidates(candidates.Items, ref)
+}
+
+// matchScaleTargetCandidates applies a ref's name, prefix and label
+// selector to already-listed items in memory and requires exactly one
+// survivor. It mirrors the server-side filtering of
+// resolveScaleTargetName for callers that list each GVK once and match
+// many refs against the result.
+func matchScaleTargetCandidates(items []unstructured.Unstructured, ref *ScaleTarget) (string, error) {
+	var sel labels.Selector
+	if ref.LabelSelector != nil {
+		s, err := metav1.LabelSelectorAsSelector(ref.LabelSelector)
+		if err != nil {
+			return "", fmt.Errorf("invalid scaleTargetRef.labelSelector: %w", err)
+		}
+		sel = s
+	}
+
+	matched := make([]string, 0, 1)
+	for i := range items {
+		name := items[i].GetName()
+		if ref.Name != "" && name != ref.Name {
+			continue
+		}
+		if ref.NamePrefix != "" && !strings.HasPrefix(name, ref.NamePrefix) {
+			continue
+		}
+		if sel != nil && !sel.Matches(labels.Set(items[i].GetLabels())) {
+			continue
+		}
+		matched = append(matched, name)
+	}
+
+	switch len(matched) {
+	case 0:
+		return "", errNoScaleTargetMatch
+	case 1:
+		return matched[0], nil
+	default:
+		shown := matched
+		suffix := ""
+		if len(shown) > 3 {
+			shown = shown[:3]
+			suffix = ", ..."
+		}
+		return "", fmt.Errorf("%w: %d objects (%s%s)", errAmbiguousScaleTargetMatch, len(matched), strings.Join(shown, ", "), suffix)
+	}
+}
+
 func verifyHpas(incomingSo *ScaledObject, action string, _ bool) (admission.Warnings, error) {
-	// Narrow to HPAs targeting the same workload name via the
-	// scaleTargetRefNameIdx index; the loop below still disambiguates by GVK.
-	hpaList := &autoscalingv2.HorizontalPodAutoscalerList{}
-	err := kc.List(context.Background(), hpaList,
-		client.InNamespace(incomingSo.Namespace),
-		client.MatchingFields{scaleTargetRefNameIdx: incomingSo.Spec.ScaleTargetRef.Name},
-	)
+	var incomingSoGvkr GroupVersionKindResource
+	incomingSoGvkr, err := ParseGVKR(restMapper, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind)
 	if err != nil {
+		scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from incoming ScaledObject", "apiVersion", incomingSo.Spec.ScaleTargetRef.APIVersion, "kind", incomingSo.Spec.ScaleTargetRef.Kind)
 		return nil, err
 	}
 
-	var incomingSoGvkr GroupVersionKindResource
-	incomingSoGvkr, err = ParseGVKR(restMapper, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind)
+	// Selector-based refs resolve to the concrete workload name first; a
+	// fixed name passes through untouched. Zero survivors usually means the
+	// target is not created yet, so no HPA can reference it — nothing to
+	// compare. A zero-match from the informer cache is not authoritative on
+	// its own: recheck against the API server before skipping, otherwise a
+	// stale cache admits a ScaledObject that reconciliation turns into a
+	// second HPA for the same workload.
+	incomingTargetName, err := resolveScaleTargetName(context.Background(), kc, incomingSo.Namespace, incomingSoGvkr.GroupVersionKind(), incomingSo.Spec.ScaleTargetRef)
+	if err != nil && errors.Is(err, errNoScaleTargetMatch) && cacheMissToDirectClient && directClient != nil {
+		// A zero-match from the informer cache is not authoritative on
+		// its own: recheck against the API server. Only a confirmed
+		// zero-match skips the ownership check below.
+		incomingTargetName, err = resolveScaleTargetName(context.Background(), directClient, incomingSo.Namespace, incomingSoGvkr.GroupVersionKind(), incomingSo.Spec.ScaleTargetRef)
+	}
 	if err != nil {
-		scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from incoming ScaledObject", "apiVersion", incomingSo.Spec.ScaleTargetRef.APIVersion, "kind", incomingSo.Spec.ScaleTargetRef.Kind)
+		if errors.Is(err, errNoScaleTargetMatch) {
+			scaledobjectlog.V(1).Info("skipping HPA ownership check: selectors match nothing yet", "name", incomingSo.Name, "namespace", incomingSo.Namespace)
+			return nil, nil
+		}
+		scaledobjectlog.Error(err, "validation error")
+		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "ambiguous-scale-target")
+		return nil, err
+	}
+
+	// Narrow to HPAs targeting the same workload name via the
+	// scaleTargetRefNameIdx index; the loop below still disambiguates by GVK.
+	hpaList := &autoscalingv2.HorizontalPodAutoscalerList{}
+	err = kc.List(context.Background(), hpaList,
+		client.InNamespace(incomingSo.Namespace),
+		client.MatchingFields{scaleTargetRefNameIdx: incomingTargetName},
+	)
+	if err != nil {
 		return nil, err
 	}
 
@@ -322,7 +458,7 @@ func verifyHpas(incomingSo *ScaledObject, action string, _ bool) (admission.Warn
 		}
 
 		if hpaGvkr.GVKString() == incomingSoGvkr.GVKString() &&
-			hpa.Spec.ScaleTargetRef.Name == incomingSo.Spec.ScaleTargetRef.Name {
+			hpa.Spec.ScaleTargetRef.Name == incomingTargetName {
 			owned := false
 			for _, owner := range hpa.OwnerReferences {
 				if owner.Kind == incomingSo.Kind {
@@ -338,18 +474,140 @@ func verifyHpas(incomingSo *ScaledObject, action string, _ bool) (admission.Warn
 					if incomingSo.Spec.Advanced != nil && incomingSo.Spec.Advanced.HorizontalPodAutoscalerConfig != nil && incomingSo.Spec.Advanced.HorizontalPodAutoscalerConfig.Name == hpa.Name {
 						scaledobjectlog.Info(fmt.Sprintf("%s hpa ownership being transferred to %s", hpa.Name, incomingSo.Name))
 					} else {
-						err = fmt.Errorf("the existing hpa '%s' for workload '%s' of type '%s' must be specified by name in advanced settings to enable ownership transfer", hpa.Name, incomingSo.Spec.ScaleTargetRef.Name, incomingSoGvkr.GVKString())
+						err = fmt.Errorf("the existing hpa '%s' for workload '%s' of type '%s' must be specified by name in advanced settings to enable ownership transfer", hpa.Name, incomingTargetName, incomingSoGvkr.GVKString())
 						scaledobjectlog.Error(err, "validation error")
 						metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "transfer-ownership-missing-hpa-name")
 						return nil, err
 					}
 				} else {
-					err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the hpa '%s'", incomingSo.Spec.ScaleTargetRef.Name, incomingSoGvkr.GVKString(), hpa.Name)
+					err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the hpa '%s'", incomingTargetName, incomingSoGvkr.GVKString(), hpa.Name)
 					scaledobjectlog.Error(err, "validation error")
 					metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-hpa")
 					return nil, err
 				}
 			}
+		}
+	}
+	return nil, nil
+}
+
+// incomingWinsDuplicateRace reports whether the incoming ScaledObject
+// would win the runtime duplicate-target tie-break against the other
+// ScaledObject: a fixed-name ref beats a selector-based ref, and among
+// selector-based refs the oldest (creation timestamp, then name) wins.
+// Mirrors resolver.FindConflictingScaledObject so admission and the scale
+// loop agree on who holds. A create request carries a zero timestamp and
+// always loses to a stored object; the runtime tie-break then holds the
+// newcomer instead of admission rejecting anything the runtime would allow.
+func incomingWinsDuplicateRace(incomingSo, so *ScaledObject) bool {
+	if incomingSo.Spec.ScaleTargetRef == nil || so.Spec.ScaleTargetRef == nil {
+		return false
+	}
+	incomingSelectors := incomingSo.Spec.ScaleTargetRef.NamePrefix != "" || incomingSo.Spec.ScaleTargetRef.LabelSelector != nil
+	otherSelectors := so.Spec.ScaleTargetRef.NamePrefix != "" || so.Spec.ScaleTargetRef.LabelSelector != nil
+	if incomingSelectors != otherSelectors {
+		return !incomingSelectors
+	}
+	if !incomingSelectors {
+		return false
+	}
+	if incomingSo.CreationTimestamp.IsZero() {
+		return false
+	}
+	if !so.CreationTimestamp.Time.Equal(incomingSo.CreationTimestamp.Time) {
+		return incomingSo.CreationTimestamp.Time.Before(so.CreationTimestamp.Time)
+	}
+	return incomingSo.Name < so.Name
+}
+
+// resolveNeighborTarget resolves one neighbor ref against a per-GVK
+// cache: each workload kind is listed once per duplicate check no matter
+// how many selector-based neighbors share it, and every neighbor's name,
+// prefix and label selector filter that list in memory. Preserves the
+// direct-client fallback for an empty cached result.
+func resolveNeighborTarget(ctx context.Context, listed map[schema.GroupVersionKind][]unstructured.Unstructured, namespace string, gvk schema.GroupVersionKind, ref *ScaleTarget) (string, error) {
+	items, ok := listed[gvk]
+	if !ok {
+		l := &unstructured.UnstructuredList{}
+		l.SetGroupVersionKind(gvk)
+		if err := kc.List(ctx, l, &client.ListOptions{Namespace: namespace}); err != nil {
+			return "", fmt.Errorf("listing scale targets: %w", err)
+		}
+		if len(l.Items) == 0 && cacheMissToDirectClient && directClient != nil {
+			if err := directClient.List(ctx, l, &client.ListOptions{Namespace: namespace}); err != nil {
+				return "", fmt.Errorf("listing scale targets: %w", err)
+			}
+		}
+		items = l.Items
+		listed[gvk] = items
+	}
+	return matchScaleTargetCandidates(items, ref)
+}
+
+// findConflictingScaledObject returns another ScaledObject in the same
+// namespace that already targets the given workload (same resolved name and
+// GVK), or nil when there is none. Fixed-name SOs come from the
+// scaleTargetRefNameIdx index; selector-based SOs (empty name, invisible to
+// the index) are listed separately and resolved one by one. Either side may
+// be fixed or selector-based.
+func findConflictingScaledObject(ctx context.Context, incomingSo *ScaledObject, incomingTargetName string, incomingSoGckr GroupVersionKindResource) (*ScaledObject, error) {
+	targetCandidates := &ScaledObjectList{}
+	if err := kc.List(ctx, targetCandidates,
+		client.InNamespace(incomingSo.Namespace),
+		client.MatchingFields{scaleTargetRefNameIdx: incomingTargetName},
+	); err != nil {
+		return nil, err
+	}
+	selectorCandidates := &ScaledObjectList{}
+	if err := kc.List(ctx, selectorCandidates,
+		client.InNamespace(incomingSo.Namespace),
+		client.MatchingFields{scaleTargetRefNameIdx: ""},
+	); err != nil {
+		return nil, err
+	}
+	candidates := make([]ScaledObject, 0, len(targetCandidates.Items)+len(selectorCandidates.Items))
+	candidates = append(candidates, targetCandidates.Items...)
+	candidates = append(candidates, selectorCandidates.Items...)
+	listed := make(map[schema.GroupVersionKind][]unstructured.Unstructured)
+	for i := range candidates {
+		so := &candidates[i]
+		if so.Name == incomingSo.Name {
+			continue
+		}
+		scaledobjectlog.V(1).Info("checking scaledobject for duplicate scaleTarget", "name", so.Name, "namespace", so.Namespace)
+
+		soGckr, err := ParseGVKR(restMapper, so.Spec.ScaleTargetRef.APIVersion, so.Spec.ScaleTargetRef.Kind)
+		if err != nil {
+			// An unrelated neighbor must never reject this admission.
+			scaledobjectlog.V(1).Info("skipping scaledobject with unparseable scaleTargetRef in duplicate check", "name", so.Name, "error", err)
+			continue
+		}
+		if soGckr.GVKString() != incomingSoGckr.GVKString() {
+			continue
+		}
+
+		otherTargetName := so.Spec.ScaleTargetRef.Name
+		// Mirror resolver.ScaleTargetUsesSelectors (same package cycle
+		// forbids sharing it): a candidate that also sets Name still
+		// resolves through its selectors.
+		if otherTargetName == "" || so.Spec.ScaleTargetRef.NamePrefix != "" || so.Spec.ScaleTargetRef.LabelSelector != nil {
+			resolved, err := resolveNeighborTarget(ctx, listed, so.Namespace, soGckr.GroupVersionKind(), so.Spec.ScaleTargetRef)
+			if err != nil {
+				// Unresolvable neighbours are their own admission's or
+				// scale loop's problem, never this object's rejection.
+				scaledobjectlog.V(1).Info("skipping unresolvable scaledobject in duplicate scaleTarget check", "name", so.Name, "namespace", so.Namespace, "error", err)
+				continue
+			}
+			otherTargetName = resolved
+		}
+		if otherTargetName == incomingTargetName {
+			// The runtime tie-break decides who holds; admission only
+			// rejects the loser, so updating the winner is never
+			// blocked by the object it already beats.
+			if incomingWinsDuplicateRace(incomingSo, so) {
+				continue
+			}
+			return so, nil
 		}
 	}
 	return nil, nil
@@ -396,14 +654,16 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 	//
 	// Two conditions must hold for the incoming SO to be valid:
 	//   1. No other SO in the namespace already targets the same workload
-	//      (same GVK + same scaleTargetRef.name).
+	//      (same GVK + same resolved scaleTargetRef name).
 	//   2. No other SO in the namespace already owns the same HPA name.
 	//
 	// Both used to be evaluated by listing every SO in the namespace. With
-	// the scaleTargetRefNameIdx and hpaNameIdx field indexes we issue two
-	// narrow indexed Lists instead; each returns the small set of candidates
-	// that share the indexed value (typically 0–1) and the loops still
-	// post-filter by GVK / identity.
+	// the scaleTargetRefNameIdx and hpaNameIdx field indexes we issue
+	// narrow indexed Lists instead; each returns the small set of
+	// candidates that share the indexed value (typically 0–1) and the loops
+	// still post-filter by GVK / identity. Selector-based SOs carry an
+	// empty name, so Check 1 additionally lists them by the "" index value
+	// and resolves each one.
 	ctx := context.Background()
 	incomingSoGckr, err := ParseGVKR(restMapper, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind)
 	if err != nil {
@@ -411,30 +671,33 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admis
 		return nil, err
 	}
 
-	// Check 1: duplicate scaleTargetRef. SOs in the index share the target
-	// name; GVK is checked in the loop so e.g. a Deployment "foo" and a
-	// StatefulSet "foo" can coexist.
-	targetCandidates := &ScaledObjectList{}
-	if err := kc.List(ctx, targetCandidates,
-		client.InNamespace(incomingSo.Namespace),
-		client.MatchingFields{scaleTargetRefNameIdx: incomingSo.Spec.ScaleTargetRef.Name},
-	); err != nil {
-		return nil, err
-	}
-	for _, so := range targetCandidates.Items {
-		if so.Name == incomingSo.Name {
-			continue
-		}
-		scaledobjectlog.V(1).Info("checking scaledobject for duplicate scaleTarget", "name", so.Name, "namespace", so.Namespace)
-
-		soGckr, err := ParseGVKR(restMapper, so.Spec.ScaleTargetRef.APIVersion, so.Spec.ScaleTargetRef.Kind)
-		if err != nil {
-			scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from ScaledObject", "soName", so.Name, "apiVersion", so.Spec.ScaleTargetRef.APIVersion, "kind", so.Spec.ScaleTargetRef.Kind)
+	// Check 1: duplicate scaleTargetRef. Either side may be fixed-name or
+	// selector-based, so the incoming ref resolves to a concrete workload
+	// name first and both candidate sets are compared against it: fixed-name
+	// SOs via the index, selector-based SOs (empty name, invisible to the
+	// index) via a second listing plus per-object resolution.
+	incomingTargetName, err := resolveScaleTargetName(ctx, kc, incomingSo.Namespace, incomingSoGckr.GroupVersionKind(), incomingSo.Spec.ScaleTargetRef)
+	if err != nil {
+		if errors.Is(err, errNoScaleTargetMatch) {
+			// Zero survivors: the target may be created after the
+			// ScaledObject (the fixed-name path never requires the target
+			// to exist either). The scale loop holds replicas until
+			// resolution succeeds, so there is nothing to compare yet.
+			scaledobjectlog.V(1).Info("skipping duplicate scaleTarget check: selectors match nothing yet", "name", incomingSo.Name, "namespace", incomingSo.Namespace)
+		} else {
+			// Ambiguous or invalid selectors are config errors the scale
+			// loop could only hold on forever: fail fast at admission.
+			scaledobjectlog.Error(err, "validation error")
+			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "ambiguous-scale-target")
 			return nil, err
 		}
-
-		if soGckr.GVKString() == incomingSoGckr.GVKString() {
-			err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the ScaledObject '%s'", so.Spec.ScaleTargetRef.Name, incomingSoGckr.GVKString(), so.Name)
+	} else {
+		conflict, err := findConflictingScaledObject(ctx, incomingSo, incomingTargetName, incomingSoGckr)
+		if err != nil {
+			return nil, err
+		}
+		if conflict != nil {
+			err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the ScaledObject '%s'", incomingTargetName, incomingSoGckr.GVKString(), conflict.Name)
 			scaledobjectlog.Error(err, "validation error")
 			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-scaled-object")
 			return nil, err
@@ -505,14 +768,26 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string, dryRun bool
 	for _, trigger := range incomingSo.Spec.Triggers {
 		if trigger.Type == cpuString || trigger.Type == memoryString {
 			if podSpec == nil {
-				key := types.NamespacedName{
-					Namespace: incomingSo.Namespace,
-					Name:      incomingSo.Spec.ScaleTargetRef.Name,
-				}
 				incomingSoGvkr, err := ParseGVKR(restMapper, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind)
 				if err != nil {
 					scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from incoming ScaledObject", "apiVersion", incomingSo.Spec.ScaleTargetRef.APIVersion, "kind", incomingSo.Spec.ScaleTargetRef.Kind)
 					return nil, err
+				}
+
+				// Selector-based refs resolve to the concrete workload name
+				// first; a fixed name passes through untouched. Resolution
+				// failure denies admission, consistent with the missing
+				// target below: cpu/memory validation cannot evaluate
+				// without reading the target's pod spec.
+				targetName, err := resolveScaleTargetName(context.Background(), kc, incomingSo.Namespace, incomingSoGvkr.GroupVersionKind(), incomingSo.Spec.ScaleTargetRef)
+				if err != nil {
+					scaledobjectlog.Error(err, "validation error")
+					metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "unresolvable-scale-target")
+					return nil, err
+				}
+				key := types.NamespacedName{
+					Namespace: incomingSo.Namespace,
+					Name:      targetName,
 				}
 
 				switch incomingSoGvkr.GVKString() {
