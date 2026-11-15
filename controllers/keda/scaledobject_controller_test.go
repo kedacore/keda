@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -1804,6 +1805,103 @@ var _ = Describe("ScaledObjectController", func() {
 		}).Should(HaveOccurred())
 	})
 
+	It("does not delete a foreign hpa with the configured name when scaledobject is paused", func() {
+		victimName := "foreign-hpa-paused-victim"
+		targetName := "foreign-hpa-paused-target"
+		hpaName := "foreign-hpa-paused"
+		soName := "so-" + targetName
+
+		Expect(k8sClient.Create(context.Background(), generateDeployment(victimName))).To(Succeed())
+		Expect(k8sClient.Create(context.Background(), generateDeployment(targetName))).To(Succeed())
+		Expect(k8sClient.Create(context.Background(), generateForeignHPA(hpaName, victimName))).To(Succeed())
+
+		so := generateScaledObjectWithHPAName(soName, targetName, hpaName)
+		so.Annotations = map[string]string{kedav1alpha1.PausedAnnotation: "true"}
+		Expect(k8sClient.Create(context.Background(), so)).To(Succeed())
+
+		// the ScaledObject must report the conflict instead of touching the HPA
+		Eventually(func() string {
+			if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so); err != nil {
+				return ""
+			}
+			return so.Status.Conditions.GetReadyCondition().Message
+		}).WithTimeout(30 * time.Second).Should(ContainSubstring("not managed by ScaledObject"))
+
+		// the foreign HPA keeps its target and stays unowned
+		hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+		Consistently(func() error {
+			if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: hpaName, Namespace: "default"}, hpa); err != nil {
+				return err
+			}
+			if hpa.Spec.ScaleTargetRef.Name != victimName {
+				return fmt.Errorf("hpa target changed to %q", hpa.Spec.ScaleTargetRef.Name)
+			}
+			if len(hpa.OwnerReferences) != 0 {
+				return fmt.Errorf("hpa gained owner references %v", hpa.OwnerReferences)
+			}
+			return nil
+		}).WithTimeout(10 * time.Second).Should(Succeed())
+	})
+
+	It("does not take over a foreign hpa with the configured name", func() {
+		victimName := "foreign-hpa-takeover-victim"
+		targetName := "foreign-hpa-takeover-target"
+		hpaName := "foreign-hpa-takeover"
+		soName := "so-" + targetName
+
+		Expect(k8sClient.Create(context.Background(), generateDeployment(victimName))).To(Succeed())
+		Expect(k8sClient.Create(context.Background(), generateDeployment(targetName))).To(Succeed())
+		Expect(k8sClient.Create(context.Background(), generateForeignHPA(hpaName, victimName))).To(Succeed())
+
+		so := generateScaledObjectWithHPAName(soName, targetName, hpaName)
+		Expect(k8sClient.Create(context.Background(), so)).To(Succeed())
+
+		Eventually(func() string {
+			if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so); err != nil {
+				return ""
+			}
+			return so.Status.Conditions.GetReadyCondition().Message
+		}).WithTimeout(30 * time.Second).Should(ContainSubstring("not managed by ScaledObject"))
+
+		hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+		Consistently(func() error {
+			if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: hpaName, Namespace: "default"}, hpa); err != nil {
+				return err
+			}
+			if hpa.Spec.ScaleTargetRef.Name != victimName {
+				return fmt.Errorf("hpa target changed to %q", hpa.Spec.ScaleTargetRef.Name)
+			}
+			if len(hpa.OwnerReferences) != 0 {
+				return fmt.Errorf("hpa gained owner references %v", hpa.OwnerReferences)
+			}
+			if len(hpa.Spec.Metrics) != 1 || hpa.Spec.Metrics[0].Type != autoscalingv2.ResourceMetricSourceType {
+				return fmt.Errorf("hpa metrics were rewritten: %v", hpa.Spec.Metrics)
+			}
+			return nil
+		}).WithTimeout(10 * time.Second).Should(Succeed())
+	})
+
+	It("takes over a foreign hpa with the configured name when ownership transfer is requested for the same workload", func() {
+		targetName := "foreign-hpa-transfer-target"
+		hpaName := "foreign-hpa-transfer"
+		soName := "so-" + targetName
+
+		Expect(k8sClient.Create(context.Background(), generateDeployment(targetName))).To(Succeed())
+		Expect(k8sClient.Create(context.Background(), generateForeignHPA(hpaName, targetName))).To(Succeed())
+
+		so := generateScaledObjectWithHPAName(soName, targetName, hpaName)
+		so.Annotations = map[string]string{kedav1alpha1.ScaledObjectTransferHpaOwnershipAnnotation: "true"}
+		Expect(k8sClient.Create(context.Background(), so)).To(Succeed())
+
+		hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+		Eventually(func() bool {
+			if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: hpaName, Namespace: "default"}, hpa); err != nil {
+				return false
+			}
+			return so.OwnsHPA(hpa)
+		}).WithTimeout(30 * time.Second).Should(BeTrue())
+	})
+
 	// Fix issue 5281
 	It("reconciles scaledobject when hpa spec is changed", func() {
 		var (
@@ -2112,6 +2210,62 @@ var _ = Describe("ScaledObjectController", func() {
 	})
 
 })
+
+// generateForeignHPA returns an HPA that is not owned by any ScaledObject and scales the given deployment
+func generateForeignHPA(name, deploymentName string) *autoscalingv2.HorizontalPodAutoscaler {
+	return &autoscalingv2.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+		Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
+			ScaleTargetRef: autoscalingv2.CrossVersionObjectReference{
+				APIVersion: "apps/v1",
+				Kind:       "Deployment",
+				Name:       deploymentName,
+			},
+			MinReplicas: ptr.To[int32](1),
+			MaxReplicas: 3,
+			Metrics: []autoscalingv2.MetricSpec{
+				{
+					Type: autoscalingv2.ResourceMetricSourceType,
+					Resource: &autoscalingv2.ResourceMetricSource{
+						Name: corev1.ResourceCPU,
+						Target: autoscalingv2.MetricTarget{
+							Type:               autoscalingv2.UtilizationMetricType,
+							AverageUtilization: ptr.To[int32](50),
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// generateScaledObjectWithHPAName returns a cron based ScaledObject that configures an explicit HPA name
+func generateScaledObjectWithHPAName(name, deploymentName, hpaName string) *kedav1alpha1.ScaledObject {
+	return &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+				Name: deploymentName,
+			},
+			Advanced: &kedav1alpha1.AdvancedConfig{
+				HorizontalPodAutoscalerConfig: &kedav1alpha1.HorizontalPodAutoscalerConfig{
+					Name: hpaName,
+				},
+			},
+			Triggers: []kedav1alpha1.ScaleTriggers{
+				{
+					Type: "cron",
+					Metadata: map[string]string{
+						"timezone":        "UTC",
+						"start":           "0 * * * *",
+						"end":             "1 * * * *",
+						"desiredReplicas": "1",
+					},
+				},
+			},
+		},
+	}
+}
 
 func generateDeployment(name string) *appsv1.Deployment {
 	return &appsv1.Deployment{
