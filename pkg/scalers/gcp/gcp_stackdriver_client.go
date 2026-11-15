@@ -77,7 +77,9 @@ type StackDriverClient struct {
 // grpcClientOptions converts the shared gRPC client metrics dial options into
 // Cloud Monitoring client options.
 func grpcClientOptions() []option.ClientOption {
-	var opts []option.ClientOption
+	// Google's transport otherwise adds its own otelgrpc handler on the global
+	// meter provider, double-counting RPCs alongside KEDA's handler.
+	opts := []option.ClientOption{option.WithTelemetryDisabled()}
 	for _, dialOption := range metricscollector.GRPCClientDialOptions() {
 		opts = append(opts, option.WithGRPCDialOption(dialOption))
 	}
