@@ -309,6 +309,10 @@ func verifyHpas(incomingSo *ScaledObject, action string, _ bool) (admission.Warn
 		return nil, err
 	}
 
+	if err := verifyHpaNameNotTaken(incomingSo, action); err != nil {
+		return nil, err
+	}
+
 	for _, hpa := range hpaList.Items {
 		if hpa.Annotations[ValidationsHpaOwnershipAnnotation] == "false" {
 			continue
@@ -353,6 +357,46 @@ func verifyHpas(incomingSo *ScaledObject, action string, _ bool) (admission.Warn
 		}
 	}
 	return nil, nil
+}
+
+// verifyHpaNameNotTaken rejects a ScaledObject whose HPA name resolves to an existing HPA
+// that it neither owns nor is allowed to take over. The controller acts on that HPA by name,
+// so without this check a ScaledObject could delete or rewrite an HPA that belongs to a
+// different workload.
+func verifyHpaNameNotTaken(incomingSo *ScaledObject, action string) error {
+	hpaName := getHpaName(*incomingSo)
+	existingHpa := &autoscalingv2.HorizontalPodAutoscaler{}
+	err := getFromCacheOrDirect(context.Background(), types.NamespacedName{Namespace: incomingSo.Namespace, Name: hpaName}, existingHpa)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	manageable, err := incomingSo.CanManageHPA(restMapper, existingHpa)
+	if err != nil {
+		scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from HPA", "hpaName", existingHpa.Name, "apiVersion", existingHpa.Spec.ScaleTargetRef.APIVersion, "kind", existingHpa.Spec.ScaleTargetRef.Kind)
+		return err
+	}
+	if manageable {
+		return nil
+	}
+
+	// keep the message identical to the ScaledObject conflict check so the result does not depend on validator order
+	for _, owner := range existingHpa.OwnerReferences {
+		if owner.Kind == "ScaledObject" {
+			err = fmt.Errorf("the HPA '%s' is already managed by the ScaledObject '%s'", hpaName, owner.Name)
+			scaledobjectlog.Error(err, "validation error")
+			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-scaled-object-hpa")
+			return err
+		}
+	}
+
+	err = fmt.Errorf("the hpa '%s' already exists and is not managed by the ScaledObject '%s'", hpaName, incomingSo.Name)
+	scaledobjectlog.Error(err, "validation error")
+	metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "hpa-name-taken")
+	return err
 }
 
 func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) (admission.Warnings, error) {

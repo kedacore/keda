@@ -332,6 +332,86 @@ var _ = It("should validate the so creation when there is another unmanaged hpa 
 	}).ShouldNot(HaveOccurred())
 })
 
+var _ = It("shouldn't validate the so creation when the configured hpa name belongs to an unmanaged hpa for another workload", func() {
+
+	hpaName := "test-foreign-hpa-other-workload"
+	namespaceName := "foreign-hpa-other-workload"
+	namespace := createNamespace(namespaceName)
+	hpa := createHpa(hpaName, namespaceName, "other-workload", "apps/v1", "Deployment", nil)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, hpaName)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), hpa)
+	Expect(err).ToNot(HaveOccurred())
+	waitForHpaInWebhookCache(hpa)
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(MatchError(ContainSubstring("is not managed by the ScaledObject")))
+})
+
+var _ = It("shouldn't validate the so creation when the configured hpa name belongs to an hpa owned by another so", func() {
+
+	hpaName := "test-foreign-hpa-owned-by-other-so"
+	namespaceName := "foreign-hpa-owned-by-other-so"
+	namespace := createNamespace(namespaceName)
+	owner := createScaledObject("other-so", namespaceName, "other-workload", "apps/v1", "Deployment", false, map[string]string{}, hpaName)
+	hpa := createHpa(hpaName, namespaceName, "other-workload", "apps/v1", "Deployment", owner)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, hpaName)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), hpa)
+	Expect(err).ToNot(HaveOccurred())
+	waitForHpaInWebhookCache(hpa)
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(MatchError(ContainSubstring("the HPA '" + hpaName + "' is already managed by the ScaledObject 'other-so'")))
+})
+
+var _ = It("shouldn't validate the so creation when transfer-hpa-ownership names an unmanaged hpa for another workload", func() {
+
+	hpaName := "test-foreign-hpa-other-workload-transfer"
+	namespaceName := "foreign-hpa-other-workload-transfer"
+	namespace := createNamespace(namespaceName)
+	hpa := createHpa(hpaName, namespaceName, "other-workload", "apps/v1", "Deployment", nil)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{ScaledObjectTransferHpaOwnershipAnnotation: "true"}, hpaName)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), hpa)
+	Expect(err).ToNot(HaveOccurred())
+	waitForHpaInWebhookCache(hpa)
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(MatchError(ContainSubstring("is not managed by the ScaledObject")))
+})
+
+var _ = It("shouldn't validate the so creation when the default hpa name belongs to an unmanaged hpa for another workload", func() {
+
+	namespaceName := "foreign-hpa-default-name"
+	namespace := createNamespace(namespaceName)
+	hpa := createHpa("keda-hpa-"+soName, namespaceName, "other-workload", "apps/v1", "Deployment", nil)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), hpa)
+	Expect(err).ToNot(HaveOccurred())
+	waitForHpaInWebhookCache(hpa)
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(MatchError(ContainSubstring("is not managed by the ScaledObject")))
+})
+
 var _ = It("shouldn't validate the so creation when there is another unmanaged hpa and so has transfer-hpa-ownership activated but no name specified", func() {
 
 	hpaName := "test-unmanaged-hpa-ownership-without-name"
@@ -1867,6 +1947,14 @@ func createScaledObject(name, namespace, targetName, targetAPI, targetKind strin
 			Advanced:         advancedConfig,
 		},
 	}
+}
+
+// waitForHpaInWebhookCache blocks until the webhook's cached client can see the given HPA,
+// so that validation tests do not race with the informer
+func waitForHpaInWebhookCache(hpa *v2.HorizontalPodAutoscaler) {
+	Eventually(func() error {
+		return kc.Get(context.Background(), types.NamespacedName{Namespace: hpa.Namespace, Name: hpa.Name}, &v2.HorizontalPodAutoscaler{})
+	}).Should(Succeed())
 }
 
 func createHpa(name, namespace, targetName, targetAPI, targetKind string, owner *ScaledObject) *v2.HorizontalPodAutoscaler {
