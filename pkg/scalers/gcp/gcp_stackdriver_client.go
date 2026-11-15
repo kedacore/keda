@@ -19,8 +19,6 @@ import (
 	option "google.golang.org/api/option"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
-
-	"github.com/kedacore/keda/v2/pkg/metricscollector"
 )
 
 var validPubSubName = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9\-_.~+%]{2,254}$`)
@@ -74,18 +72,6 @@ type StackDriverClient struct {
 	projectID     string
 }
 
-// grpcClientOptions converts the shared gRPC client metrics dial options into
-// Cloud Monitoring client options.
-func grpcClientOptions() []option.ClientOption {
-	// Google's transport otherwise adds its own otelgrpc handler on the global
-	// meter provider, double-counting RPCs alongside KEDA's handler.
-	opts := []option.ClientOption{option.WithTelemetryDisabled()}
-	for _, dialOption := range metricscollector.GRPCClientDialOptions() {
-		opts = append(opts, option.WithGRPCDialOption(dialOption))
-	}
-	return opts
-}
-
 // NewStackDriverClient creates a new stackdriver client with the credentials that are passed
 func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriverClient, error) {
 	var gcpCredentials GoogleApplicationCredentials
@@ -95,7 +81,7 @@ func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriver
 	}
 	clientOpts := append([]option.ClientOption{
 		option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(credentials)),
-	}, grpcClientOptions()...)
+	}, GRPCClientOptions()...)
 
 	metricsClient, err := monitoring.NewMetricClient(ctx, clientOpts...)
 	if err != nil {
@@ -116,7 +102,7 @@ func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriver
 
 // NewStackDriverClientPodIdentity creates a new stackdriver client with the credentials underlying
 func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, error) {
-	clientOpts := grpcClientOptions()
+	clientOpts := GRPCClientOptions()
 
 	metricsClient, err := monitoring.NewMetricClient(ctx, clientOpts...)
 	if err != nil {
