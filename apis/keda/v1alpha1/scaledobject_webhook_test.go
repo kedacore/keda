@@ -345,6 +345,7 @@ var _ = It("shouldn't validate the so creation when the configured hpa name belo
 
 	err = k8sClient.Create(context.Background(), hpa)
 	Expect(err).ToNot(HaveOccurred())
+	waitForHpaInWebhookCache(hpa)
 
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), so)
@@ -365,6 +366,7 @@ var _ = It("shouldn't validate the so creation when the configured hpa name belo
 
 	err = k8sClient.Create(context.Background(), hpa)
 	Expect(err).ToNot(HaveOccurred())
+	waitForHpaInWebhookCache(hpa)
 
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), so)
@@ -384,6 +386,7 @@ var _ = It("shouldn't validate the so creation when transfer-hpa-ownership names
 
 	err = k8sClient.Create(context.Background(), hpa)
 	Expect(err).ToNot(HaveOccurred())
+	waitForHpaInWebhookCache(hpa)
 
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), so)
@@ -402,6 +405,7 @@ var _ = It("shouldn't validate the so creation when the default hpa name belongs
 
 	err = k8sClient.Create(context.Background(), hpa)
 	Expect(err).ToNot(HaveOccurred())
+	waitForHpaInWebhookCache(hpa)
 
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), so)
@@ -1943,6 +1947,14 @@ func createScaledObject(name, namespace, targetName, targetAPI, targetKind strin
 			Advanced:         advancedConfig,
 		},
 	}
+}
+
+// waitForHpaInWebhookCache blocks until the webhook's cached client can see the given HPA,
+// so that validation tests do not race with the informer
+func waitForHpaInWebhookCache(hpa *v2.HorizontalPodAutoscaler) {
+	Eventually(func() error {
+		return kc.Get(context.Background(), types.NamespacedName{Namespace: hpa.Namespace, Name: hpa.Name}, &v2.HorizontalPodAutoscaler{})
+	}).Should(Succeed())
 }
 
 func createHpa(name, namespace, targetName, targetAPI, targetKind string, owner *ScaledObject) *v2.HorizontalPodAutoscaler {

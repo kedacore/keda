@@ -522,11 +522,11 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 
 // ensureHPAForScaledObjectExists ensures that in cluster exist up-to-date HPA for specified ScaledObject, returns true if a new HPA was created
 func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) (bool, error) {
-	hpaName := getHPANameOnEnsure(scaledObject)
-	foundHpa := &autoscalingv2.HorizontalPodAutoscaler{}
-	// Check if HPA for this ScaledObject already exists
-	err := r.Client.Get(ctx, types.NamespacedName{Name: hpaName, Namespace: scaledObject.Namespace}, foundHpa)
-	if err != nil && errors.IsNotFound(err) {
+	foundHpa, err := r.findHPAForScaledObject(ctx, logger, scaledObject)
+	if err != nil {
+		return false, err
+	}
+	if foundHpa == nil {
 		// HPA wasn't found -> let's create a new one
 		err = r.createAndDeployNewHPA(ctx, logger, scaledObject, gvkr)
 		if err != nil {
@@ -535,20 +535,9 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Cont
 
 		// new HPA created successfully -> notify Reconcile function so it could fire a new ScaleLoop
 		return true, nil
-	} else if err != nil {
-		logger.Error(err, "failed to get HPA from cluster")
-		return false, err
 	}
 
 	if err := r.verifyHPAIsManageable(scaledObject, foundHpa); err != nil {
-		if isHpaRenamed(scaledObject, foundHpa) {
-			// the HPA under the previous name is not ours, so there is nothing to rename; just create the configured one
-			logger.Info("HPA found under the previous name is not managed by this ScaledObject, leaving it untouched", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
-			if err := r.createAndDeployNewHPA(ctx, logger, scaledObject, gvkr); err != nil {
-				return false, err
-			}
-			return true, nil
-		}
 		logger.Error(err, "refusing to manage HPA that is not owned by this ScaledObject", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 		return false, err
 	}
@@ -571,8 +560,8 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Cont
 	}
 
 	// If the HPA name does not match the one in ScaledObject status, we need to update the status
-	if scaledObject.Status.HpaName != hpaName {
-		err = r.storeHpaNameInStatus(ctx, logger, scaledObject, hpaName)
+	if scaledObject.Status.HpaName != foundHpa.Name {
+		err = r.storeHpaNameInStatus(ctx, logger, scaledObject, foundHpa.Name)
 		if err != nil {
 			return false, err
 		}
@@ -583,23 +572,15 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Cont
 
 // ensureHPAForScaledObjectIsDeleted ensures that in cluster any HPA for specified ScaledObject is deleted, returns true if no HPA exists
 func (r *ScaledObjectReconciler) ensureHPAForScaledObjectIsDeleted(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (bool, error) {
-	hpaName := getHPANameOnEnsure(scaledObject)
-	foundHpa := &autoscalingv2.HorizontalPodAutoscaler{}
-	// Check if HPA for this ScaledObject already exists
-	err := r.Client.Get(ctx, types.NamespacedName{Name: hpaName, Namespace: scaledObject.Namespace}, foundHpa)
-	if err != nil && errors.IsNotFound(err) {
-		return true, nil
-	} else if err != nil {
-		logger.Error(err, "failed to get HPA from cluster")
+	foundHpa, err := r.findHPAForScaledObject(ctx, logger, scaledObject)
+	if err != nil {
 		return false, err
+	}
+	if foundHpa == nil {
+		return true, nil
 	}
 
 	if err := r.verifyHPAIsManageable(scaledObject, foundHpa); err != nil {
-		if isHpaRenamed(scaledObject, foundHpa) {
-			// the HPA under the previous name is not ours, so there is no HPA of this ScaledObject left to delete
-			logger.Info("HPA found under the previous name is not managed by this ScaledObject, leaving it untouched", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
-			return true, nil
-		}
 		logger.Error(err, "refusing to delete HPA that is not owned by this ScaledObject", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 		return false, err
 	}
@@ -609,6 +590,38 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectIsDeleted(ctx context.C
 		return false, err
 	}
 	return true, nil
+}
+
+// findHPAForScaledObject returns the HPA the ScaledObject should act on, or nil if there is none.
+// It looks under the name recorded in the status first. If that HPA is not ours after the HPA name
+// was changed in the spec, it is left alone and the configured name is looked up instead, so that a
+// stale status never blocks managing or creating the configured HPA.
+func (r *ScaledObjectReconciler) findHPAForScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (*autoscalingv2.HorizontalPodAutoscaler, error) {
+	foundHpa, err := r.getHPA(ctx, logger, scaledObject.Namespace, getHPANameOnEnsure(scaledObject))
+	if err != nil || foundHpa == nil {
+		return foundHpa, err
+	}
+
+	if !isHpaRenamed(scaledObject, foundHpa) || r.verifyHPAIsManageable(scaledObject, foundHpa) == nil {
+		return foundHpa, nil
+	}
+
+	logger.Info("HPA found under the previous name is not managed by this ScaledObject, leaving it untouched", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
+	return r.getHPA(ctx, logger, scaledObject.Namespace, getHPAName(scaledObject))
+}
+
+// getHPA returns the HPA with the given name, or nil if it does not exist
+func (r *ScaledObjectReconciler) getHPA(ctx context.Context, logger logr.Logger, namespace, name string) (*autoscalingv2.HorizontalPodAutoscaler, error) {
+	hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+	err := r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, hpa)
+	if errors.IsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		logger.Error(err, "failed to get HPA from cluster")
+		return nil, err
+	}
+	return hpa, nil
 }
 
 func getHPANameOnEnsure(scaledObject *kedav1alpha1.ScaledObject) string {
