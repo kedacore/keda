@@ -2,13 +2,117 @@ package scalers
 
 import (
 	"context"
+	"net"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/mvccpb"
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/local"
 
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
+
+type fakeEtcdWatchServer struct {
+	etcdserverpb.UnimplementedWatchServer
+}
+
+func (fakeEtcdWatchServer) Watch(stream etcdserverpb.Watch_WatchServer) error {
+	if _, err := stream.Recv(); err != nil {
+		return err
+	}
+	header := &etcdserverpb.ResponseHeader{Revision: 1}
+	if err := stream.Send(&etcdserverpb.WatchResponse{Header: header, WatchId: 1, Created: true}); err != nil {
+		return err
+	}
+	if err := stream.Send(&etcdserverpb.WatchResponse{Header: header, WatchId: 1, Events: []*mvccpb.Event{{
+		Type: mvccpb.PUT,
+		Kv:   &mvccpb.KeyValue{Key: []byte("watch-key"), Value: []byte("5"), ModRevision: 1},
+	}}}); err != nil {
+		return err
+	}
+	<-stream.Context().Done()
+	return nil
+}
+
+func TestEtcdRunLabelsWatchStream(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	server := grpc.NewServer(grpc.Creds(local.NewCredentials()))
+	etcdserverpb.RegisterWatchServer(server, fakeEtcdWatchServer{})
+	go func() { _ = server.Serve(listener) }()
+	t.Cleanup(server.Stop)
+
+	streamCtxs := make(chan context.Context, 1)
+	captureStreamCtx := func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+		select {
+		case streamCtxs <- ctx:
+		default:
+		}
+		return streamer(ctx, desc, cc, method, opts...)
+	}
+	client, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{listener.Addr().String()},
+		DialTimeout: 5 * time.Second,
+		DialOptions: []grpc.DialOption{
+			grpc.WithTransportCredentials(local.NewCredentials()),
+			grpc.WithChainStreamInterceptor(captureStreamCtx),
+		},
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = client.Close() })
+
+	scaler := &etcdScaler{
+		metadata: &etcdMetadata{WatchKey: "watch-key", WatchProgressNotifyInterval: defaultWatchProgressNotifyInterval},
+		client:   client,
+		scalerConfig: scalersconfig.ScalerConfig{
+			TriggerType:             "etcd",
+			TriggerName:             "etcd-trigger",
+			ScalableObjectNamespace: "etcd-namespace",
+			ScalableObjectName:      "etcd-resource",
+		},
+		logger: logr.Discard(),
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	active := make(chan bool)
+	go scaler.Run(ctx, active)
+
+	select {
+	case isActive := <-active:
+		assert.True(t, isActive)
+	case <-time.After(10 * time.Second):
+		t.Fatal("timed out waiting for the watch event")
+	}
+
+	var streamCtx context.Context
+	select {
+	case streamCtx = <-streamCtxs:
+	case <-time.After(time.Second):
+		t.Fatal("watch stream was not opened through the client interceptors")
+	}
+	assert.Equal(t, "etcd", streamCtx.Value(metricscollector.ScalerContextKey))
+	assert.Equal(t, "etcd-trigger", streamCtx.Value(metricscollector.TriggerNameContextKey))
+	assert.Equal(t, "", streamCtx.Value(metricscollector.MetricNameContextKey))
+	assert.Equal(t, "etcd-namespace", streamCtx.Value(metricscollector.NamespaceContextKey))
+	assert.Equal(t, "etcd-resource", streamCtx.Value(metricscollector.ScaledResourceContextKey))
+
+	cancel()
+	select {
+	case _, open := <-active:
+		assert.False(t, open, "Run must close the active channel once its context is cancelled")
+	case <-time.After(10 * time.Second):
+		t.Fatal("Run did not return after its context was cancelled")
+	}
+}
 
 type parseEtcdMetadataTestData struct {
 	metadata  map[string]string
