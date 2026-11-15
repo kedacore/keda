@@ -32,9 +32,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_scaling"
 	"github.com/kedacore/keda/v2/pkg/scalers"
@@ -288,6 +290,286 @@ var _ = Describe("ScaledObjectController", func() {
 			}).Should(Equal(1))
 			// And it should only be the first one left.
 			Expect(hpa.Spec.Metrics[0].External.Metric.Name).To(Equal("s0-cron-UTC-0xxxx-1xxxx"))
+		})
+
+		It("creates the HPA when the selector target appears after the ScaledObject", func() {
+			// Create the ScaledObject first: its prefix selector matches
+			// nothing yet, so reconciliation holds with no HPA.
+			so := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: "delayed-target-test", Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						APIVersion: "apps/v1",
+						Kind:       "Deployment",
+						NamePrefix: "delayed-sensor-",
+					},
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			err := k8sClient.Create(context.Background(), so)
+			Expect(err).ToNot(HaveOccurred())
+
+			// No HPA while nothing matches the selector.
+			Consistently(func() bool {
+				hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-delayed-target-test", Namespace: "default"}, hpa)
+				return errors.IsNotFound(err)
+			}, "5s", "500ms").Should(BeTrue())
+
+			// Create the target later: the error retry must converge and
+			// the HPA must point at the resolved workload.
+			err = k8sClient.Create(context.Background(), generateDeployment("delayed-sensor-abc12"))
+			Expect(err).ToNot(HaveOccurred())
+
+			hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+			Eventually(func() error {
+				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-delayed-target-test", Namespace: "default"}, hpa)
+			}, "60s", "1s").ShouldNot(HaveOccurred())
+			Expect(hpa.Spec.ScaleTargetRef.Name).To(Equal("delayed-sensor-abc12"))
+		})
+
+		It("emits a placement warning event when a kubernetes-nodes target has no placement rules", func() {
+			// generateDeployment has no anti-affinity or topology spread,
+			// so first target detection must warn instead of staying silent.
+			deploymentName := "no-placement-target"
+			soName := "so-" + deploymentName
+			err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+			Expect(err).ToNot(HaveOccurred())
+
+			so := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: soName, Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						APIVersion: "apps/v1",
+						Kind:       "Deployment",
+						Name:       deploymentName,
+					},
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type:     "kubernetes-nodes",
+							Metadata: map[string]string{},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), so)
+			Expect(err).ToNot(HaveOccurred())
+
+			events := &corev1.EventList{}
+			Eventually(func() bool {
+				if err := k8sClient.List(context.Background(), events, client.InNamespace("default")); err != nil {
+					return false
+				}
+				for _, e := range events.Items {
+					if e.InvolvedObject.Name == soName && e.Reason == eventreason.ScaledObjectTargetNoPlacement {
+						return true
+					}
+				}
+				return false
+			}, "60s", "1s").Should(BeTrue())
+		})
+
+		It("creates the HPA when a kubernetes-nodes Deployment target has placement rules", func() {
+			deploymentName := "placed-target"
+			soName := "so-" + deploymentName
+			deployment := generateDeployment(deploymentName)
+			deployment.Spec.Template.Spec.Affinity = &corev1.Affinity{
+				PodAntiAffinity: &corev1.PodAntiAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+						{
+							LabelSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": deploymentName}},
+							TopologyKey:   "kubernetes.io/hostname",
+						},
+					},
+				},
+			}
+			err := k8sClient.Create(context.Background(), deployment)
+			Expect(err).ToNot(HaveOccurred())
+
+			so := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: soName, Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						APIVersion: "apps/v1",
+						Kind:       "Deployment",
+						Name:       deploymentName,
+					},
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type:     "kubernetes-nodes",
+							Metadata: map[string]string{},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), so)
+			Expect(err).ToNot(HaveOccurred())
+
+			hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+			Eventually(func() error {
+				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-" + soName, Namespace: "default"}, hpa)
+			}, "60s", "1s").ShouldNot(HaveOccurred())
+			Expect(hpa.Spec.ScaleTargetRef.Name).To(Equal(deploymentName))
+		})
+
+		It("holds the HPA and warns when a kubernetes-nodes target is an OrderedReady StatefulSet", func() {
+			// OrderedReady is the API default (field omitted): follow-down
+			// wedges on middle-node loss, so reconciliation must hold with
+			// no HPA instead of actuating silently.
+			stsName := "ordered-ready-target"
+			soName := "so-" + stsName
+			err := k8sClient.Create(context.Background(), generateStatefulSet(stsName, appsv1.OrderedReadyPodManagement))
+			Expect(err).ToNot(HaveOccurred())
+
+			so := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: soName, Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						APIVersion: "apps/v1",
+						Kind:       "StatefulSet",
+						Name:       stsName,
+					},
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type:     "kubernetes-nodes",
+							Metadata: map[string]string{},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), so)
+			Expect(err).ToNot(HaveOccurred())
+
+			// No HPA while the order is unsafe.
+			Consistently(func() bool {
+				hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-" + soName, Namespace: "default"}, hpa)
+				return errors.IsNotFound(err)
+			}, "5s", "500ms").Should(BeTrue())
+
+			events := &corev1.EventList{}
+			Eventually(func() bool {
+				if err := k8sClient.List(context.Background(), events, client.InNamespace("default")); err != nil {
+					return false
+				}
+				for _, e := range events.Items {
+					if e.InvolvedObject.Name == soName && e.Reason == eventreason.ScaledObjectTargetOrderedReady {
+						return true
+					}
+				}
+				return false
+			}, "60s", "1s").Should(BeTrue())
+		})
+
+		It("creates the HPA when a kubernetes-nodes StatefulSet target is Parallel", func() {
+			stsName := "parallel-target"
+			soName := "so-" + stsName
+			err := k8sClient.Create(context.Background(), generateStatefulSet(stsName, appsv1.ParallelPodManagement))
+			Expect(err).ToNot(HaveOccurred())
+
+			so := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: soName, Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						APIVersion: "apps/v1",
+						Kind:       "StatefulSet",
+						Name:       stsName,
+					},
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type:     "kubernetes-nodes",
+							Metadata: map[string]string{},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), so)
+			Expect(err).ToNot(HaveOccurred())
+
+			hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+			Eventually(func() error {
+				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-" + soName, Namespace: "default"}, hpa)
+			}, "60s", "1s").ShouldNot(HaveOccurred())
+			Expect(hpa.Spec.ScaleTargetRef.Name).To(Equal(stsName))
+		})
+
+		It("deletes the HPA when a newer selector loses the target to another ScaledObject", func() {
+			// The fixed-name winner is created first, so it is older and
+			// wins the deterministic oldest-first tie-break. The loser
+			// uses a prefix selector converging on the same Deployment.
+			err := k8sClient.Create(context.Background(), generateDeployment("shared-target"))
+			Expect(err).ToNot(HaveOccurred())
+
+			winner := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: "aaa-winner", Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						APIVersion: "apps/v1",
+						Kind:       "Deployment",
+						Name:       "shared-target",
+					},
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), winner)
+			Expect(err).ToNot(HaveOccurred())
+
+			loser := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: "zzz-loser", Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						APIVersion: "apps/v1",
+						Kind:       "Deployment",
+						NamePrefix: "shared-",
+					},
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), loser)
+			Expect(err).ToNot(HaveOccurred())
+
+			// The winner converges normally.
+			winnerHPA := &autoscalingv2.HorizontalPodAutoscaler{}
+			Eventually(func() error {
+				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-aaa-winner", Namespace: "default"}, winnerHPA)
+			}, "60s", "1s").ShouldNot(HaveOccurred())
+
+			// The loser must never hold an HPA for the shared target.
+			Consistently(func() bool {
+				loserHPA := &autoscalingv2.HorizontalPodAutoscaler{}
+				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-zzz-loser", Namespace: "default"}, loserHPA)
+				return errors.IsNotFound(err)
+			}, "10s", "500ms").Should(BeTrue())
 		})
 
 		It("cleans up old hpa when hpa name is updated", func() {
@@ -2112,6 +2394,46 @@ var _ = Describe("ScaledObjectController", func() {
 	})
 
 })
+
+func generateStatefulSet(name string, policy appsv1.PodManagementPolicyType) *appsv1.StatefulSet {
+	return &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+		Spec: appsv1.StatefulSetSpec{
+			ServiceName:         name,
+			PodManagementPolicy: policy,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": name,
+				},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": name,
+					},
+				},
+				Spec: corev1.PodSpec{
+					Affinity: &corev1.Affinity{
+						PodAntiAffinity: &corev1.PodAntiAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+								{
+									LabelSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": name}},
+									TopologyKey:   "kubernetes.io/hostname",
+								},
+							},
+						},
+					},
+					Containers: []corev1.Container{
+						{
+							Name:  name,
+							Image: name,
+						},
+					},
+				},
+			},
+		},
+	}
+}
 
 func generateDeployment(name string) *appsv1.Deployment {
 	return &appsv1.Deployment{

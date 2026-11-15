@@ -26,6 +26,12 @@ const (
 	// ScaledObjectCheckFailed is for event when ScaledObject validation check fails
 	ScaledObjectCheckFailed = "ScaledObjectCheckFailed"
 
+	// ScaledObjectTargetNoPlacement is for event when a ScaledObject target has no pod placement rules
+	ScaledObjectTargetNoPlacement = "ScaledObjectTargetNoPlacement"
+
+	// ScaledObjectTargetOrderedReady is for event when a kubernetes-nodes ScaledObject follows down against a plain OrderedReady StatefulSet
+	ScaledObjectTargetOrderedReady = "ScaledObjectTargetOrderedReady"
+
 	// ScaledJobCheckFailed is for event when ScaledJob validation check fails
 	ScaledJobCheckFailed = "ScaledJobCheckFailed"
 

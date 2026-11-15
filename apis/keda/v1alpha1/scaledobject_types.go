@@ -170,15 +170,33 @@ type HorizontalPodAutoscalerConfig struct {
 }
 
 // ScaleTarget holds the reference to the scale target Object
+// +kubebuilder:validation:XValidation:rule="(has(self.name) && size(self.name) > 0) || (has(self.namePrefix) && size(self.namePrefix) > 0) || (has(self.labelSelector) && ((has(self.labelSelector.matchLabels) && size(self.labelSelector.matchLabels) > 0) || (has(self.labelSelector.matchExpressions) && size(self.labelSelector.matchExpressions) > 0)))",message="scaleTargetRef needs a non-empty name, a non-empty namePrefix, or a non-empty labelSelector"
 type ScaleTarget struct {
-	// +kubebuilder:validation:MinLength=1
-	Name string `json:"name"`
+	// Name is the exact object name (today's behavior, unchanged).
+	// Optional when NamePrefix and/or LabelSelector identify the target.
+	// +optional
+	Name string `json:"name,omitempty"`
 	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
 	// +optional
 	Kind string `json:"kind,omitempty"`
 	// +optional
 	EnvSourceContainerName string `json:"envSourceContainerName,omitempty"`
+	// NamePrefix matches object names by prefix. ANDed with Name (when
+	// set) and LabelSelector (when set); at least one of the three is
+	// required. Exists for controllers that name objects dynamically
+	// (GenerateName), which no fixed name can ever reference. Selector
+	// resolution lists the target kind, so the KEDA operator needs list
+	// permission on that kind (granted for deployments, replicasets and
+	// statefulsets; not for arbitrary custom resources).
+	// +optional
+	NamePrefix string `json:"namePrefix,omitempty"`
+	// LabelSelector matches objects by label. ANDed with Name/NamePrefix;
+	// resolution requires exactly one survivor (see ResolveScaleTargetName).
+	// Like NamePrefix, resolution lists the target kind and needs list
+	// permission on it.
+	// +optional
+	LabelSelector *metav1.LabelSelector `json:"labelSelector,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -190,6 +208,11 @@ type ScaledObjectStatus struct {
 	ScaleTargetKind string `json:"scaleTargetKind,omitempty"`
 	// +optional
 	ScaleTargetGVKR *GroupVersionKindResource `json:"scaleTargetGVKR,omitempty"`
+	// ResolvedTargetName is the object name the selectors currently resolve
+	// to (empty when targeting by fixed name or while unresolved). Operators
+	// can see what KEDA follows; HPA retargets from it.
+	// +optional
+	ResolvedTargetName string `json:"resolvedTargetName,omitempty"`
 	// +optional
 	OriginalReplicaCount *int32 `json:"originalReplicaCount,omitempty"`
 	// +optional
