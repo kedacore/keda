@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/local"
 
@@ -42,35 +41,33 @@ func (fakeEtcdWatchServer) Watch(stream etcdserverpb.Watch_WatchServer) error {
 	return nil
 }
 
-func TestEtcdRunLabelsWatchStream(t *testing.T) {
+func startFakeEtcdWatchServer(t *testing.T) string {
+	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	server := grpc.NewServer(grpc.Creds(local.NewCredentials()))
 	etcdserverpb.RegisterWatchServer(server, fakeEtcdWatchServer{})
 	go func() { _ = server.Serve(listener) }()
 	t.Cleanup(server.Stop)
+	return listener.Addr().String()
+}
 
-	streamCtxs := make(chan context.Context, 1)
-	captureStreamCtx := func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-		select {
-		case streamCtxs <- ctx:
-		default:
-		}
-		return streamer(ctx, desc, cc, method, opts...)
+// runEtcdWatch builds the client through getEtcdClients, runs the scaler until
+// the fake server's event arrives, then checks that cancellation closes active.
+func runEtcdWatch(t *testing.T, dialOptions []grpc.DialOption) {
+	t.Helper()
+	meta := &etcdMetadata{
+		Endpoints:                   []string{startFakeEtcdWatchServer(t)},
+		WatchKey:                    "watch-key",
+		WatchProgressNotifyInterval: defaultWatchProgressNotifyInterval,
+		EnableTLS:                   etcdTLSDisable,
 	}
-	client, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{listener.Addr().String()},
-		DialTimeout: 5 * time.Second,
-		DialOptions: []grpc.DialOption{
-			grpc.WithTransportCredentials(local.NewCredentials()),
-			grpc.WithChainStreamInterceptor(captureStreamCtx),
-		},
-	})
+	client, err := getEtcdClients(meta, append([]grpc.DialOption{grpc.WithTransportCredentials(local.NewCredentials())}, dialOptions...))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = client.Close() })
 
 	scaler := &etcdScaler{
-		metadata: &etcdMetadata{WatchKey: "watch-key", WatchProgressNotifyInterval: defaultWatchProgressNotifyInterval},
+		metadata: meta,
 		client:   client,
 		scalerConfig: scalersconfig.ScalerConfig{
 			TriggerType:             "etcd",
@@ -93,18 +90,6 @@ func TestEtcdRunLabelsWatchStream(t *testing.T) {
 		t.Fatal("timed out waiting for the watch event")
 	}
 
-	var streamCtx context.Context
-	select {
-	case streamCtx = <-streamCtxs:
-	case <-time.After(time.Second):
-		t.Fatal("watch stream was not opened through the client interceptors")
-	}
-	assert.Equal(t, "etcd", streamCtx.Value(metricscollector.ScalerContextKey))
-	assert.Equal(t, "etcd-trigger", streamCtx.Value(metricscollector.TriggerNameContextKey))
-	assert.Equal(t, "", streamCtx.Value(metricscollector.MetricNameContextKey))
-	assert.Equal(t, "etcd-namespace", streamCtx.Value(metricscollector.NamespaceContextKey))
-	assert.Equal(t, "etcd-resource", streamCtx.Value(metricscollector.ScaledResourceContextKey))
-
 	cancel()
 	select {
 	case _, open := <-active:
@@ -112,6 +97,36 @@ func TestEtcdRunLabelsWatchStream(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("Run did not return after its context was cancelled")
 	}
+}
+
+func TestEtcdRunWatch(t *testing.T) {
+	t.Run("with dial options, the watch stream carries scaler labels", func(t *testing.T) {
+		streamCtxs := make(chan context.Context, 1)
+		captureStreamCtx := func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+			select {
+			case streamCtxs <- ctx:
+			default:
+			}
+			return streamer(ctx, desc, cc, method, opts...)
+		}
+		runEtcdWatch(t, []grpc.DialOption{grpc.WithChainStreamInterceptor(captureStreamCtx)})
+
+		var streamCtx context.Context
+		select {
+		case streamCtx = <-streamCtxs:
+		default:
+			t.Fatal("watch stream was not opened through the dial options")
+		}
+		assert.Equal(t, "etcd", streamCtx.Value(metricscollector.ScalerContextKey))
+		assert.Equal(t, "etcd-trigger", streamCtx.Value(metricscollector.TriggerNameContextKey))
+		assert.Equal(t, "", streamCtx.Value(metricscollector.MetricNameContextKey))
+		assert.Equal(t, "etcd-namespace", streamCtx.Value(metricscollector.NamespaceContextKey))
+		assert.Equal(t, "etcd-resource", streamCtx.Value(metricscollector.ScaledResourceContextKey))
+	})
+
+	t.Run("without dial options, the watch still works", func(t *testing.T) {
+		runEtcdWatch(t, nil)
+	})
 }
 
 type parseEtcdMetadataTestData struct {

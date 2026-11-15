@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-logr/logr"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"google.golang.org/grpc"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -96,7 +97,7 @@ func NewEtcdScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing kubernetes workload metadata: %w", parseErr)
 	}
 
-	cli, err := getEtcdClients(meta)
+	cli, err := getEtcdClients(meta, metricscollector.GRPCClientDialOptions())
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +121,7 @@ func parseEtcdMetadata(config *scalersconfig.ScalerConfig) (*etcdMetadata, error
 	return meta, nil
 }
 
-func getEtcdClients(metadata *etcdMetadata) (*clientv3.Client, error) {
+func getEtcdClients(metadata *etcdMetadata, dialOptions []grpc.DialOption) (*clientv3.Client, error) {
 	var tlsConfig *tls.Config
 	var err error
 	if metadata.EnableTLS == etcdTLSEnable {
@@ -136,7 +137,7 @@ func getEtcdClients(metadata *etcdMetadata) (*clientv3.Client, error) {
 		TLS:         tlsConfig,
 		Username:    metadata.Username,
 		Password:    metadata.Password,
-		DialOptions: metricscollector.GRPCClientDialOptions(),
+		DialOptions: dialOptions,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to etcd server: %w", err)
