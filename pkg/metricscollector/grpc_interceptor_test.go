@@ -19,6 +19,7 @@ package metricscollector
 import (
 	"context"
 	"io"
+	"net"
 	"testing"
 	"time"
 
@@ -31,6 +32,9 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/local"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/stats"
 	"google.golang.org/grpc/status"
@@ -218,6 +222,58 @@ func TestGRPCClientPromInterceptors(t *testing.T) {
 	})
 	require.NotNil(t, handled)
 	assert.EqualValues(t, 1, handled.GetCounter().GetValue())
+}
+
+func TestGRPCClientDialOptionsRecordLabeledCalls(t *testing.T) {
+	previousProm, previousOtel := promClientMetrics, otelClientHandler
+	t.Cleanup(func() { promClientMetrics, otelClientHandler = previousProm, previousOtel })
+	var registry *prometheus.Registry
+	promClientMetrics, registry = newTestPromClientMetrics(t, true)
+	resetTestOtel(true)
+	otelClientHandler = newOtelGRPCClientHandler(testOtel)
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	server := grpc.NewServer(grpc.Creds(local.NewCredentials()))
+	healthpb.RegisterHealthServer(server, health.NewServer())
+	go func() { _ = server.Serve(listener) }()
+	t.Cleanup(server.Stop)
+
+	conn, err := grpc.NewClient(listener.Addr().String(),
+		append(GRPCClientDialOptions(), grpc.WithTransportCredentials(local.NewCredentials()))...)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = conn.Close() })
+
+	_, err = healthpb.NewHealthClient(conn).Check(testGRPCRequestContext(t.Context(), "dial"), &healthpb.HealthCheckRequest{})
+	require.NoError(t, err)
+
+	families, err := registry.Gather()
+	require.NoError(t, err)
+	handled := findPromMetric(families, "keda_grpc_client_handled_total", map[string]string{
+		"grpc_type":       "unary",
+		"grpc_service":    "grpc.health.v1.Health",
+		"grpc_method":     "Check",
+		"grpc_code":       codes.OK.String(),
+		"scaler":          "external-dial",
+		"namespace":       "namespace-dial",
+		"scaled_resource": "resource-dial",
+		"trigger_name":    "trigger-dial",
+		"metric_name":     "metric-dial",
+	})
+	require.NotNil(t, handled)
+	assert.EqualValues(t, 1, handled.GetCounter().GetValue())
+
+	var got metricdata.ResourceMetrics
+	require.NoError(t, testReader.Collect(t.Context(), &got))
+	calls := findOtelMetric(got, "keda.rpc.client.call.count")
+	require.NotNil(t, calls)
+	points := calls.Data.(metricdata.Sum[int64]).DataPoints
+	require.Len(t, points, 1)
+	assert.Equal(t, int64(1), points[0].Value)
+	assertOtelStringAttribute(t, points[0].Attributes, "scaler", "external-dial")
+	assertOtelStringAttribute(t, points[0].Attributes, "namespace", "namespace-dial")
+	assertOtelStringAttribute(t, points[0].Attributes, "rpc.method", "grpc.health.v1.Health/Check")
+	assertOtelStringAttribute(t, points[0].Attributes, "rpc.response.status_code", codes.OK.String())
 }
 
 func TestOtelGRPCStreamClientMetrics(t *testing.T) {

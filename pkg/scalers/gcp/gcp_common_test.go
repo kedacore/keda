@@ -33,7 +33,7 @@ import (
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials/local"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -176,7 +176,7 @@ func (fakeMetricServer) ListTimeSeries(context.Context, *monitoringpb.ListTimeSe
 func TestGRPCClientOptionsDisablesGoogleTelemetry(t *testing.T) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	server := grpc.NewServer()
+	server := grpc.NewServer(grpc.Creds(local.NewCredentials()))
 	monitoringpb.RegisterMetricServiceServer(server, fakeMetricServer{})
 	go func() { _ = server.Serve(listener) }()
 	t.Cleanup(server.Stop)
@@ -189,7 +189,7 @@ func TestGRPCClientOptionsDisablesGoogleTelemetry(t *testing.T) {
 	opts := append(GRPCClientOptions(),
 		option.WithEndpoint(listener.Addr().String()),
 		option.WithoutAuthentication(),
-		option.WithGRPCDialOption(grpc.WithTransportCredentials(insecure.NewCredentials())),
+		option.WithGRPCDialOption(grpc.WithTransportCredentials(local.NewCredentials())),
 	)
 	client, err := monitoring.NewMetricClient(t.Context(), opts...)
 	require.NoError(t, err)
