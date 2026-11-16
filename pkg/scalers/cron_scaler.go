@@ -25,8 +25,7 @@ const (
 var (
 	cronHashRegex   = regexp.MustCompile(`^H(?:\((\d+)-(\d+)\))?(?:/(\d+))?$`)
 	cronFieldBounds = [5][2]int{{0, 59}, {0, 23}, {1, 31}, {1, 12}, {0, 6}}
-	// Day of month is capped at 28 for a bare H so every month has the chosen day, matching Jenkins.
-	cronHashBounds = [5][2]int{{0, 59}, {0, 23}, {1, 28}, {1, 12}, {0, 6}}
+	cronParser      = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 )
 
 type cronScaler struct {
@@ -46,11 +45,11 @@ type cronMetadata struct {
 }
 
 func (m *cronMetadata) Validate() error {
-	if _, err := parseCronSchedule(m.Start, ""); err != nil {
+	if _, _, err := parseCronSchedule(m.Start, ""); err != nil {
 		return fmt.Errorf("error parsing start schedule: %w", err)
 	}
 
-	if _, err := parseCronSchedule(m.End, ""); err != nil {
+	if _, _, err := parseCronSchedule(m.End, ""); err != nil {
 		return fmt.Errorf("error parsing end schedule: %w", err)
 	}
 
@@ -77,15 +76,17 @@ func NewCronScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 
 	seed := fmt.Sprintf("%s/%s/%d", config.ScalableObjectNamespace, config.ScalableObjectName, config.TriggerIndex)
-	startExpr, _ := expandCronHash(meta.Start, seed)
-	endExpr, _ := expandCronHash(meta.End, seed)
+	startExpr, startSchedule, err := parseCronSchedule(meta.Start, seed)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing start schedule: %w", err)
+	}
+	endExpr, endSchedule, err := parseCronSchedule(meta.End, seed)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing end schedule: %w", err)
+	}
 	if startExpr == endExpr {
 		return nil, fmt.Errorf("start and end resolve to the same schedule %q", startExpr)
 	}
-
-	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
-	startSchedule, _ := parser.Parse(startExpr)
-	endSchedule, _ := parser.Parse(endExpr)
 
 	return &cronScaler{
 		metricType:    metricType,
@@ -96,20 +97,20 @@ func NewCronScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseCronSchedule(expr, seed string) (cron.Schedule, error) {
+func parseCronSchedule(expr, seed string) (string, cron.Schedule, error) {
 	expanded, err := expandCronHash(expr, seed)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
-	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
-	return parser.Parse(expanded)
+	schedule, err := cronParser.Parse(expanded)
+	return expanded, schedule, err
 }
 
 // expandCronHash replaces Jenkins-style H tokens (H, H(a-b), H/n, H(a-b)/n) with values derived
 // from the seed, so each trigger gets a stable but distinct time within the given range.
 func expandCronHash(expr, seed string) (string, error) {
 	fields := strings.Fields(expr)
-	if len(fields) != len(cronHashBounds) {
+	if len(fields) != len(cronFieldBounds) {
 		return expr, nil
 	}
 
@@ -121,13 +122,16 @@ func expandCronHash(expr, seed string) (string, error) {
 				continue
 			}
 
-			low, high := cronHashBounds[i][0], cronHashBounds[i][1]
+			low, high := cronFieldBounds[i][0], cronFieldBounds[i][1]
 			if match[1] != "" {
 				low, _ = strconv.Atoi(match[1])
 				high, _ = strconv.Atoi(match[2])
 				if low > high || low < cronFieldBounds[i][0] || high > cronFieldBounds[i][1] {
 					return "", fmt.Errorf("invalid H range %q", part)
 				}
+			} else if i == 2 {
+				// Cap day of month at 28 so every month has the chosen day, matching Jenkins.
+				high = 28
 			}
 
 			h := fnv.New64a()

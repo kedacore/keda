@@ -183,11 +183,7 @@ func TestExpandCronHash(t *testing.T) {
 	}
 }
 
-func TestExpandCronHashIsStable(t *testing.T) {
-	first, _ := expandCronHash("H H(6-9) * * *", "default/app/0")
-	second, _ := expandCronHash("H H(6-9) * * *", "default/app/0")
-	assert.Equal(t, first, second)
-
+func TestExpandCronHashSeed(t *testing.T) {
 	start, _ := expandCronHash("H 8 * * *", "default/app/0")
 	end, _ := expandCronHash("H 17 * * *", "default/app/0")
 	assert.Equal(t, strings.Fields(start)[0], strings.Fields(end)[0])
