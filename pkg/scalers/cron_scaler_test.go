@@ -67,6 +67,7 @@ var testCronMetadata = []parseCronMetadataTestData{
 	{map[string]string{"timezone": "Etc/UTC", "start": "H(30-10) 8 * * *", "end": "0 17 * * *", "desiredReplicas": "10"}, true},
 	{map[string]string{"timezone": "Etc/UTC", "start": "H/0 8 * * *", "end": "0 17 * * *", "desiredReplicas": "10"}, true},
 	{map[string]string{"timezone": "Etc/UTC", "start": "H(0-99) 8 * * *", "end": "0 17 * * *", "desiredReplicas": "10"}, true},
+	{map[string]string{"timezone": "Etc/UTC", "start": "H/90 8 * * *", "end": "0 17 * * *", "desiredReplicas": "10"}, true},
 }
 
 var cronMetricIdentifiers = []cronMetricIdentifier{
@@ -197,4 +198,14 @@ func TestExpandCronHashIsStable(t *testing.T) {
 		minutes[strings.Fields(expanded)[0]] = struct{}{}
 	}
 	assert.Greater(t, len(minutes), 1)
+}
+
+func TestCronHashSameSchedule(t *testing.T) {
+	_, err := NewCronScaler(&scalersconfig.ScalerConfig{TriggerMetadata: map[string]string{
+		"timezone":        "Etc/UTC",
+		"start":           "H 8 * * *",
+		"end":             "H(0-59) 8 * * *",
+		"desiredReplicas": "10",
+	}})
+	assert.Error(t, err)
 }

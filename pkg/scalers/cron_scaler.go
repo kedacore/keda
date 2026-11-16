@@ -77,8 +77,15 @@ func NewCronScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 
 	seed := fmt.Sprintf("%s/%s/%d", config.ScalableObjectNamespace, config.ScalableObjectName, config.TriggerIndex)
-	startSchedule, _ := parseCronSchedule(meta.Start, seed)
-	endSchedule, _ := parseCronSchedule(meta.End, seed)
+	startExpr, _ := expandCronHash(meta.Start, seed)
+	endExpr, _ := expandCronHash(meta.End, seed)
+	if startExpr == endExpr {
+		return nil, fmt.Errorf("start and end resolve to the same schedule %q", startExpr)
+	}
+
+	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+	startSchedule, _ := parser.Parse(startExpr)
+	endSchedule, _ := parser.Parse(endExpr)
 
 	return &cronScaler{
 		metricType:    metricType,
@@ -133,10 +140,10 @@ func expandCronHash(expr, seed string) (string, error) {
 			}
 
 			step, _ := strconv.Atoi(match[3])
-			if step == 0 {
+			if step == 0 || step > high-low+1 {
 				return "", fmt.Errorf("invalid H step %q", part)
 			}
-			parts[j] = fmt.Sprintf("%d-%d/%d", low+int(hash%uint64(min(step, high-low+1))), high, step)
+			parts[j] = fmt.Sprintf("%d-%d/%d", low+int(hash%uint64(step)), high, step)
 		}
 		fields[i] = strings.Join(parts, ",")
 	}
