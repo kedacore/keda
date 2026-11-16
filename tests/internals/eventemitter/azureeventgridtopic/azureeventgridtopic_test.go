@@ -210,24 +210,24 @@ func testEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templa
 func getTemplateData() (templateData, []Template) {
 	base64EventGridKey := base64.StdEncoding.EncodeToString([]byte(eventGridKey))
 	return templateData{
-			TestNamespace:           namespace,
-			ClientName:              clientName,
-			CloudEventSourceName:    cloudeventSourceName,
-			ClusterName:             clusterName,
-			MonitoredDeploymentName: monitoredDeploymentName,
-			SutDeploymentName:       sutDeploymentName,
-			ScaledObjectName:        scaledObjectName,
-			EventGridEndpoint:       eventGridEndpoint,
-			EventGridKey:            base64EventGridKey,
-			TriggerAuthName:         triggerAuthName,
-			SecretName:              secretName,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
-			{Name: "cloudEventSourceTemplate", Config: cloudEventSourceTemplate},
-			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
-			{Name: "sutDeploymentTemplate", Config: sutDeploymentTemplate},
-		}
+		TestNamespace:           namespace,
+		ClientName:              clientName,
+		CloudEventSourceName:    cloudeventSourceName,
+		ClusterName:             clusterName,
+		MonitoredDeploymentName: monitoredDeploymentName,
+		SutDeploymentName:       sutDeploymentName,
+		ScaledObjectName:        scaledObjectName,
+		EventGridEndpoint:       eventGridEndpoint,
+		EventGridKey:            base64EventGridKey,
+		TriggerAuthName:         triggerAuthName,
+		SecretName:              secretName,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+		{Name: "cloudEventSourceTemplate", Config: cloudEventSourceTemplate},
+		{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
+		{Name: "sutDeploymentTemplate", Config: sutDeploymentTemplate},
+	}
 }
 
 func setupServiceBusTopicAndSubscription(t *testing.T) (*azservicebus.Client, *admin.Client) {

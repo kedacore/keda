@@ -25,6 +25,7 @@ import (
 
 	"github.com/expr-lang/expr/vm"
 	v2 "k8s.io/api/autoscaling/v2"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -287,8 +288,8 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 // The identity check and the write are performed under the same lock so the
 // validated cache cannot silently become stale between the two operations. It
 // reports whether the update was applied (false if the update carries no metric
-// specs, the cache is closed, the index is out of range, or the identity does
-// not match).
+// specs, the specs are unchanged, the cache is closed, the index is out of range,
+// or the identity does not match).
 func (c *ScalersCache) UpdateMetricSpecForScaler(index int, specs []v2.MetricSpec, uid types.UID, generation int64) bool {
 	// Empty updates are rejected so that CachedMetricSpecs is never a non-nil empty
 	// slice.
@@ -304,6 +305,10 @@ func (c *ScalersCache) UpdateMetricSpecForScaler(index int, specs []v2.MetricSpe
 	}
 
 	if c.ScaledObject == nil || c.ScaledObject.UID != uid || c.ScalableObjectGeneration != generation {
+		return false
+	}
+
+	if equality.Semantic.DeepEqual(c.Scalers[index].CachedMetricSpecs, specs) {
 		return false
 	}
 

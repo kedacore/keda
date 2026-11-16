@@ -235,46 +235,46 @@ func TestForgejoScaler(t *testing.T) {
 }
 func getForgejoData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:      testNamespace,
-			DeploymentName:     deploymentName,
-			NewTimestamp:       newTimestamp,
-			SecretName:         secretName,
-			TriggerAuthName:    triggerAuthName,
-			ScaledJobName:      scaledJobName,
-			ConfigName:         configName,
-			RegistrationName:   registrationName,
-			ForgejoRunnerName:  forgejoRunnerName,
-			ForgejoToken:       forgejoToken,
-			ForgejoGlobal:      forgejoGlobal,
-			ForgejoLabel:       forgejoLabel,
-			ForgejoAccessToken: base64.StdEncoding.EncodeToString([]byte(forgejoAccessToken)),
-			ForgejoAddress:     forgejoAddress,
-		}, []Template{
-			{Name: "forgejoDeploymentTemplate", Config: forgejoDeployment},
-			{Name: "forgejoServiceTemplate", Config: forgejoService},
-		}
+		TestNamespace:      testNamespace,
+		DeploymentName:     deploymentName,
+		NewTimestamp:       newTimestamp,
+		SecretName:         secretName,
+		TriggerAuthName:    triggerAuthName,
+		ScaledJobName:      scaledJobName,
+		ConfigName:         configName,
+		RegistrationName:   registrationName,
+		ForgejoRunnerName:  forgejoRunnerName,
+		ForgejoToken:       forgejoToken,
+		ForgejoGlobal:      forgejoGlobal,
+		ForgejoLabel:       forgejoLabel,
+		ForgejoAccessToken: base64.StdEncoding.EncodeToString([]byte(forgejoAccessToken)),
+		ForgejoAddress:     forgejoAddress,
+	}, []Template{
+		{Name: "forgejoDeploymentTemplate", Config: forgejoDeployment},
+		{Name: "forgejoServiceTemplate", Config: forgejoService},
+	}
 }
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:      testNamespace,
-			DeploymentName:     deploymentName,
-			NewTimestamp:       newTimestamp,
-			SecretName:         secretName,
-			TriggerAuthName:    triggerAuthName,
-			ScaledJobName:      scaledJobName,
-			ConfigName:         configName,
-			RegistrationName:   registrationName,
-			ForgejoRunnerName:  forgejoRunnerName,
-			ForgejoToken:       forgejoToken,
-			ForgejoGlobal:      forgejoGlobal,
-			ForgejoLabel:       forgejoLabel,
-			ForgejoAccessToken: base64.StdEncoding.EncodeToString([]byte(forgejoAccessToken)),
-			ForgejoAddress:     forgejoAddress,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "scaledJobTemplate", Config: scaledJobTemplate},
-		}
+		TestNamespace:      testNamespace,
+		DeploymentName:     deploymentName,
+		NewTimestamp:       newTimestamp,
+		SecretName:         secretName,
+		TriggerAuthName:    triggerAuthName,
+		ScaledJobName:      scaledJobName,
+		ConfigName:         configName,
+		RegistrationName:   registrationName,
+		ForgejoRunnerName:  forgejoRunnerName,
+		ForgejoToken:       forgejoToken,
+		ForgejoGlobal:      forgejoGlobal,
+		ForgejoLabel:       forgejoLabel,
+		ForgejoAccessToken: base64.StdEncoding.EncodeToString([]byte(forgejoAccessToken)),
+		ForgejoAddress:     forgejoAddress,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "scaledJobTemplate", Config: scaledJobTemplate},
+	}
 }
 
 func setupForgejo(t *testing.T, kc *kubernetes.Clientset) {

@@ -317,25 +317,25 @@ func testCooldownPeriod(t *testing.T, kc *kubernetes.Clientset, data templateDat
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:               namespace,
-			DeploymentName:              deploymentName,
-			MetricsServerDeploymentName: metricsServerDeploymentName,
-			ServiceName:                 serviceName,
-			TriggerAuthName:             triggerAuthName,
-			ScaledObject:                scaledObjectName,
-			SecretName:                  secretName,
-			MetricsServerEndpoint:       metricsServerEndpoint,
-			MinReplicas:                 fmt.Sprintf("%v", minReplicas),
-			MaxReplicas:                 fmt.Sprintf("%v", maxReplicas),
-			MetricValue:                 0,
-			PollingInterval:             pollingInterval,
-			CooldownPeriod:              cooldownPeriod,
-			CustomHpaName:               hpaName,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "metricsServerDeploymentTemplate", Config: metricsServerDeploymentTemplate},
-			{Name: "serviceTemplate", Config: serviceTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-		}
+		TestNamespace:               namespace,
+		DeploymentName:              deploymentName,
+		MetricsServerDeploymentName: metricsServerDeploymentName,
+		ServiceName:                 serviceName,
+		TriggerAuthName:             triggerAuthName,
+		ScaledObject:                scaledObjectName,
+		SecretName:                  secretName,
+		MetricsServerEndpoint:       metricsServerEndpoint,
+		MinReplicas:                 fmt.Sprintf("%v", minReplicas),
+		MaxReplicas:                 fmt.Sprintf("%v", maxReplicas),
+		MetricValue:                 0,
+		PollingInterval:             pollingInterval,
+		CooldownPeriod:              cooldownPeriod,
+		CustomHpaName:               hpaName,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "metricsServerDeploymentTemplate", Config: metricsServerDeploymentTemplate},
+		{Name: "serviceTemplate", Config: serviceTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+	}
 }

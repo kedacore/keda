@@ -159,13 +159,13 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:           testNamespace,
-			MonitoredDeploymentName: monitoredDeploymentName,
-			ArgoRolloutName:         argoRolloutName,
-			ScaledObjectName:        scaledObjectName,
-		}, []Template{
-			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
-			{Name: "argoRolloutTemplate", Config: argoRolloutTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:           testNamespace,
+		MonitoredDeploymentName: monitoredDeploymentName,
+		ArgoRolloutName:         argoRolloutName,
+		ScaledObjectName:        scaledObjectName,
+	}, []Template{
+		{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
+		{Name: "argoRolloutTemplate", Config: argoRolloutTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }

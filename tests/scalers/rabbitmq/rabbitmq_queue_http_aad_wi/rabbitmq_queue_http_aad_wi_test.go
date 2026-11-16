@@ -138,25 +138,25 @@ func TestScaler(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:           testNamespace,
-			DeploymentName:          deploymentName,
-			ScaledObjectName:        scaledObjectName,
-			SecretName:              secretName,
-			VHost:                   vhost,
-			QueueName:               queueName,
-			Connection:              connectionString,
-			Base64Connection:        base64.StdEncoding.EncodeToString([]byte(httpConnectionString)),
-			TriggerAuthName:         triggerAuthName,
-			TriggerSecretName:       triggerSecretName,
-			ConnectionNoAuth:        httpNoAuthConnectionString,
-			RabbitAppClientID:       rabbitAppClientID,
-			Base64RabbitAppClientID: base64.StdEncoding.EncodeToString([]byte(rabbitAppClientID)),
-		}, []Template{
-			{Name: "deploymentTemplate", Config: RMQTargetDeploymentTemplate},
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:           testNamespace,
+		DeploymentName:          deploymentName,
+		ScaledObjectName:        scaledObjectName,
+		SecretName:              secretName,
+		VHost:                   vhost,
+		QueueName:               queueName,
+		Connection:              connectionString,
+		Base64Connection:        base64.StdEncoding.EncodeToString([]byte(httpConnectionString)),
+		TriggerAuthName:         triggerAuthName,
+		TriggerSecretName:       triggerSecretName,
+		ConnectionNoAuth:        httpNoAuthConnectionString,
+		RabbitAppClientID:       rabbitAppClientID,
+		Base64RabbitAppClientID: base64.StdEncoding.EncodeToString([]byte(rabbitAppClientID)),
+	}, []Template{
+		{Name: "deploymentTemplate", Config: RMQTargetDeploymentTemplate},
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func testScaling(t *testing.T, kc *kubernetes.Clientset) {

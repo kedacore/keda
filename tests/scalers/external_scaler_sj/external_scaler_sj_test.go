@@ -156,17 +156,17 @@ func TestScaler(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:         testNamespace,
-			ServiceName:           serviceName,
-			ScalerName:            scalerName,
-			ScaledJobName:         scaledJobName,
-			MetricThreshold:       10,
-			MetricsServerEndpoint: metricsServerEndpoint,
-		}, []Template{
-			{Name: "scalerTemplate", Config: scalerTemplate},
-			{Name: "serviceTemplate", Config: serviceTemplate},
-			{Name: "scaledJobTemplate", Config: scaledJobTemplate},
-		}
+		TestNamespace:         testNamespace,
+		ServiceName:           serviceName,
+		ScalerName:            scalerName,
+		ScaledJobName:         scaledJobName,
+		MetricThreshold:       10,
+		MetricsServerEndpoint: metricsServerEndpoint,
+	}, []Template{
+		{Name: "scalerTemplate", Config: scalerTemplate},
+		{Name: "serviceTemplate", Config: serviceTemplate},
+		{Name: "scaledJobTemplate", Config: scaledJobTemplate},
+	}
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {

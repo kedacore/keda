@@ -109,6 +109,12 @@ func newMySQLConnection(meta *mySQLMetadata, logger logr.Logger) (*sql.DB, error
 	err = db.Ping()
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Found error when pinging database: %s", err))
+		// sql.Open already started the pool's connectionOpener goroutine; close
+		// it, otherwise every failed scaler build (for example a stopped database
+		// that KEDA retries each pollingInterval) leaks a pool and a goroutine.
+		if closeErr := db.Close(); closeErr != nil {
+			logger.Error(closeErr, "Error closing MySQL connection after failed ping")
+		}
 		return nil, err
 	}
 	return db, nil

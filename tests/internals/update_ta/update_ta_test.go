@@ -330,21 +330,21 @@ func testTriggerAuthenticationStatusValue(t *testing.T, data templateData, kind 
 // help function to load template data
 func getTemplateData(triggerAuthKind string) (templateData, []Template) {
 	return templateData{
-			TestNamespace:   namespace,
-			TriggerAuthKind: triggerAuthKind,
-			DeploymentName:  deploymentName,
-			Deployment2Name: deployment2Name,
-			TriggerAuthName: triggerAuthName,
-			ScaledObject:    scaledObjectName,
-			ScaledObject2:   scaledObject2Name,
-			ScaledJob:       scaledJobName,
-			ScaledJob2:      scaledJob2Name,
-			SecretName:      secretName,
-			MinReplicas:     fmt.Sprintf("%v", minReplicas),
-			MaxReplicas:     fmt.Sprintf("%v", maxReplicas),
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "deployment2Template", Config: deployment2Template},
-		}
+		TestNamespace:   namespace,
+		TriggerAuthKind: triggerAuthKind,
+		DeploymentName:  deploymentName,
+		Deployment2Name: deployment2Name,
+		TriggerAuthName: triggerAuthName,
+		ScaledObject:    scaledObjectName,
+		ScaledObject2:   scaledObject2Name,
+		ScaledJob:       scaledJobName,
+		ScaledJob2:      scaledJob2Name,
+		SecretName:      secretName,
+		MinReplicas:     fmt.Sprintf("%v", minReplicas),
+		MaxReplicas:     fmt.Sprintf("%v", maxReplicas),
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "deployment2Template", Config: deployment2Template},
+	}
 }

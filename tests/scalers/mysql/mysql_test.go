@@ -301,20 +301,20 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 func getTemplateData() (templateData, []Template) {
 	base64MySQLConnectionString := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s@tcp(mysql.%s.svc.cluster.local:3306)/%s", mySQLUsername, mySQLPassword, testNamespace, mySQLDatabase)))
 	return templateData{
-			TestNamespace:         testNamespace,
-			DeploymentName:        deploymentName,
-			ScaledObjectName:      scaledObjectName,
-			SecretName:            secretName,
-			MySQLUsername:         mySQLUsername,
-			MySQLPassword:         mySQLPassword,
-			MySQLDatabase:         mySQLDatabase,
-			MySQLRootPassword:     mySQLRootPassword,
-			MySQLConnectionString: base64MySQLConnectionString,
-			ItemsToWrite:          0,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
-		}
+		TestNamespace:         testNamespace,
+		DeploymentName:        deploymentName,
+		ScaledObjectName:      scaledObjectName,
+		SecretName:            secretName,
+		MySQLUsername:         mySQLUsername,
+		MySQLPassword:         mySQLPassword,
+		MySQLDatabase:         mySQLDatabase,
+		MySQLRootPassword:     mySQLRootPassword,
+		MySQLConnectionString: base64MySQLConnectionString,
+		ItemsToWrite:          0,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+	}
 }

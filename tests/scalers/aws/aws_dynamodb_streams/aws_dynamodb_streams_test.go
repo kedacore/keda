@@ -250,22 +250,22 @@ func getTemplateData() (templateData, []Template) {
 	base64AwsSecretKey := base64.StdEncoding.EncodeToString([]byte(awsSecretKey))
 
 	return templateData{
-			TestNamespace:    testNamespace,
-			SecretName:       secretName,
-			AwsRegion:        awsRegion,
-			AwsAccessKey:     base64AwsAccessKey,
-			AwsSecretKey:     base64AwsSecretKey,
-			DeploymentName:   deploymentName,
-			TriggerAuthName:  triggerAuthName,
-			ScaledObjectName: scaledObjectName,
-			TableName:        tableName,
-			ShardCount:       int64(shardCount),
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:    testNamespace,
+		SecretName:       secretName,
+		AwsRegion:        awsRegion,
+		AwsAccessKey:     base64AwsAccessKey,
+		AwsSecretKey:     base64AwsSecretKey,
+		DeploymentName:   deploymentName,
+		TriggerAuthName:  triggerAuthName,
+		ScaledObjectName: scaledObjectName,
+		TableName:        tableName,
+		ShardCount:       int64(shardCount),
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {

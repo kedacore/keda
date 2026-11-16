@@ -12,6 +12,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/signalfx/signalflow-client-go/v2/signalflow"
 	"github.com/signalfx/signalfx-go/idtool"
+	v2 "k8s.io/api/autoscaling/v2"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -124,6 +125,52 @@ func TestSplunkObservabilityGetMetricSpecForScaling(t *testing.T) {
 	}
 }
 
+func TestSplunkObservabilityGetMetricSpecForScalingMetricType(t *testing.T) {
+	testCases := []struct {
+		name       string
+		metricType v2.MetricTargetType
+		expected   v2.MetricTargetType
+		isError    bool
+	}{
+		{name: "omitted defaults to Value", metricType: "", expected: v2.ValueMetricType},
+		{name: "AverageValue", metricType: v2.AverageValueMetricType, expected: v2.AverageValueMetricType},
+		{name: "Value", metricType: v2.ValueMetricType, expected: v2.ValueMetricType},
+		{name: "Utilization is rejected", metricType: v2.UtilizationMetricType, isError: true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			meta, err := parseSplunkObservabilityMetadata(&scalersconfig.ScalerConfig{
+				TriggerMetadata: validSplunkObservabilityMetadata,
+				AuthParams:      validSplunkObservabilityAuthParams,
+				MetricType:      tc.metricType,
+			})
+			if tc.isError {
+				if err == nil {
+					t.Fatal("expected error but got success")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal("Could not parse Splunk Observability metadata:", err)
+			}
+
+			scaler := splunkObservabilityScaler{metadata: meta}
+			target := scaler.GetMetricSpecForScaling(context.Background())[0].External.Target
+
+			if target.Type != tc.expected {
+				t.Errorf("expected target type %q, got %q", tc.expected, target.Type)
+			}
+			if tc.expected == v2.AverageValueMetricType && (target.AverageValue == nil || target.Value != nil) {
+				t.Errorf("expected only AverageValue to be set, got AverageValue=%v Value=%v", target.AverageValue, target.Value)
+			}
+			if tc.expected == v2.ValueMetricType && (target.Value == nil || target.AverageValue != nil) {
+				t.Errorf("expected only Value to be set, got AverageValue=%v Value=%v", target.AverageValue, target.Value)
+			}
+		})
+	}
+}
+
 func countSplunkO11ySignalflowGoroutines() int {
 	buf := make([]byte, 1<<20)
 	n := runtime.Stack(buf, true)
@@ -150,7 +197,7 @@ func (r *splunkO11yLogRecorder) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func newFakeSplunkO11yScalerWithBackend(t *testing.T, duration int) (*splunkObservabilityScaler, *signalflow.FakeBackend, <-chan struct{}, func()) {
+func newFakeSplunkO11yScalerWithBackend(t *testing.T, duration int) (*splunkObservabilityScaler, <-chan struct{}, func()) {
 	t.Helper()
 
 	fake := signalflow.NewRunningFakeBackend()
@@ -180,13 +227,13 @@ func newFakeSplunkO11yScalerWithBackend(t *testing.T, duration int) (*splunkObse
 		_ = scaler.Close(context.Background())
 		fake.Stop()
 	}
-	return scaler, fake, recorder.started, cleanup
+	return scaler, recorder.started, cleanup
 }
 
 // newFakeSplunkO11yScaler wires a scaler to a fake backend that streams indefinitely without closing.
 func newFakeSplunkO11yScaler(t *testing.T, duration int) (*splunkObservabilityScaler, func()) {
 	t.Helper()
-	scaler, _, _, stop := newFakeSplunkO11yScalerWithBackend(t, duration)
+	scaler, _, stop := newFakeSplunkO11yScalerWithBackend(t, duration)
 	return scaler, stop
 }
 
@@ -201,7 +248,7 @@ func waitForSplunkO11yJob(t *testing.T, started <-chan struct{}) {
 
 // Regression guard: a stuck stream must not block getQueryResult past the parent context deadline.
 func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testing.T) {
-	scaler, _, started, stop := newFakeSplunkO11yScalerWithBackend(t, 3600)
+	scaler, started, stop := newFakeSplunkO11yScalerWithBackend(t, 3600)
 	defer stop()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -231,7 +278,7 @@ func TestSplunkObservabilityGetQueryResultReturnsOnParentContextCancel(t *testin
 }
 
 func TestSplunkObservabilityCloseCancelsActiveQuery(t *testing.T) {
-	scaler, _, started, stop := newFakeSplunkO11yScalerWithBackend(t, 3600)
+	scaler, started, stop := newFakeSplunkO11yScalerWithBackend(t, 3600)
 	defer stop()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -256,7 +303,8 @@ func TestSplunkObservabilityCloseCancelsActiveQuery(t *testing.T) {
 	case <-time.After(time.Second):
 		cancel()
 		select {
-		case <-queryDone:
+		case err := <-queryDone:
+			_ = err
 		case <-time.After(splunkO11yDrainTimeout):
 		}
 		t.Fatal("Close did not cancel the active query")
@@ -294,13 +342,13 @@ func TestSplunkObservabilityCloseReapsClientGoroutines(t *testing.T) {
 	var after int
 	for {
 		after = countSplunkO11ySignalflowGoroutines()
-		if after <= before+1 || time.Now().After(deadline) {
+		if after <= before || time.Now().After(deadline) {
 			break
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	if after > before+1 {
-		t.Fatalf("expected at most 1 leftover signalflow goroutine after Close, got %d (baseline %d)", after-before, before)
+	if after > before {
+		t.Fatalf("expected no leftover signalflow goroutines after Close, got %d (baseline %d)", after-before, before)
 	}
 }
 
@@ -336,29 +384,39 @@ func TestSplunkObservabilityCloseIsIdempotent(t *testing.T) {
 }
 
 func TestSplunkObservabilityReconnectsAfterWebsocketDrop(t *testing.T) {
-	scaler, fake, _, stop := newFakeSplunkO11yScalerWithBackend(t, 1)
-	defer stop()
+	baseline := countSplunkO11yBufferGoroutines()
+	scaler, backend := newSplunkO11yLifecycleScaler(t, 3600, splunkO11yLifecycleConfig{})
+	client := scaler.apiClient
+	select {
+	case <-backend.connected:
+	case <-time.After(5 * time.Second):
+		t.Fatal("SignalFlow client did not authenticate")
+	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if _, err := scaler.getQueryResult(ctx); err != nil {
-		t.Fatalf("healthy poll: %v", err)
+	if value, err := scaler.getQueryResult(ctx); err != nil || value != 42 {
+		t.Fatalf("healthy poll: got value %v, error %v", value, err)
 	}
 
-	fake.KillExistingConnections()
+	backend.closeExistingConnections()
 
-	deadline := time.Now().Add(20 * time.Second)
-	var lastErr error
-	for time.Now().Before(deadline) {
-		pctx, pcancel := context.WithTimeout(context.Background(), 20*time.Second)
-		_, lastErr = scaler.getQueryResult(pctx)
-		pcancel()
-		if lastErr == nil {
-			return
-		}
-		time.Sleep(500 * time.Millisecond)
+	reconnectCtx, reconnectCancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer reconnectCancel()
+	// Observe automatic reauthentication before querying again; repeated Execute
+	// requests must not be responsible for reconnecting the client.
+	select {
+	case <-backend.connected:
+	case <-reconnectCtx.Done():
+		t.Fatal("SignalFlow client did not reconnect within 20s")
 	}
-	t.Fatalf("library did not recover on the same client within 20s: %v", lastErr)
+	if value, err := scaler.getQueryResult(reconnectCtx); err != nil || value != 42 {
+		t.Fatalf("poll after reconnect: got value %v, error %v", value, err)
+	}
+	if scaler.apiClient != client {
+		t.Fatal("reconnection replaced the SignalFlow client")
+	}
+	assertSplunkO11yBuffersReaped(t, baseline)
 }
 
 func TestSplunkObservabilityRollup(t *testing.T) {

@@ -280,21 +280,21 @@ func getTemplateData() (templateData, []Template) {
 	base64Pat := base64.StdEncoding.EncodeToString([]byte(personalAccessToken))
 
 	return templateData{
-			TestNamespace:    testNamespace,
-			SecretName:       secretName,
-			DeploymentName:   deploymentName,
-			ScaledObjectName: scaledObjectName,
-			MinReplicaCount:  fmt.Sprintf("%v", minReplicaCount),
-			MaxReplicaCount:  fmt.Sprintf("%v", maxReplicaCount),
-			Pat:              base64Pat,
-			URL:              organizationURL,
-			PoolName:         poolName,
-			PoolID:           poolID,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "poolIdscaledObjectTemplate", Config: poolIdscaledObjectTemplate},
-		}
+		TestNamespace:    testNamespace,
+		SecretName:       secretName,
+		DeploymentName:   deploymentName,
+		ScaledObjectName: scaledObjectName,
+		MinReplicaCount:  fmt.Sprintf("%v", minReplicaCount),
+		MaxReplicaCount:  fmt.Sprintf("%v", maxReplicaCount),
+		Pat:              base64Pat,
+		URL:              organizationURL,
+		PoolName:         poolName,
+		PoolID:           poolID,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "poolIdscaledObjectTemplate", Config: poolIdscaledObjectTemplate},
+	}
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, connection *azuredevops.Connection) {

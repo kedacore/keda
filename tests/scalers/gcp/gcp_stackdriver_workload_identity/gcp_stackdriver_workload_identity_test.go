@@ -252,24 +252,24 @@ func getTemplateData() (templateData, []Template) {
 	base64GcpCreds := base64.StdEncoding.EncodeToString([]byte(gcpKey))
 
 	return templateData{
-			TestNamespace:       testNamespace,
-			SecretName:          secretName,
-			GcpCreds:            base64GcpCreds,
-			DeploymentName:      deploymentName,
-			ScaledObjectName:    scaledObjectName,
-			ProjectID:           fmt.Sprintf("%s", projectID),
-			TopicName:           topicName,
-			SubscriptionID:      subscriptionID,
-			SubscriptionName:    subscriptionName,
-			MaxReplicaCount:     maxReplicaCount,
-			ActivationThreshold: activationThreshold,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-			{Name: "gcpSdkTemplate", Config: gcpSdkTemplate},
-		}
+		TestNamespace:       testNamespace,
+		SecretName:          secretName,
+		GcpCreds:            base64GcpCreds,
+		DeploymentName:      deploymentName,
+		ScaledObjectName:    scaledObjectName,
+		ProjectID:           fmt.Sprintf("%s", projectID),
+		TopicName:           topicName,
+		SubscriptionID:      subscriptionID,
+		SubscriptionName:    subscriptionName,
+		MaxReplicaCount:     maxReplicaCount,
+		ActivationThreshold: activationThreshold,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		{Name: "gcpSdkTemplate", Config: gcpSdkTemplate},
+	}
 }
 
 func publishMessages(t *testing.T, count int) {

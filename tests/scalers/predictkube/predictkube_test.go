@@ -255,22 +255,22 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:        testNamespace,
-			DeploymentName:       deploymentName,
-			PredictkubeAPIKey:    base64.StdEncoding.EncodeToString([]byte(predictkubeAPIKey)),
-			SecretName:           secretName,
-			TriggerAuthName:      triggerAuthName,
-			ScaledObjectName:     scaledObjectName,
-			MonitoredAppName:     monitoredAppName,
-			PrometheusServerName: prometheusServerName,
-			MinReplicaCount:      minReplicaCount,
-			MaxReplicaCount:      maxReplicaCount,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "monitoredAppDeploymentTemplate", Config: monitoredAppDeploymentTemplate},
-			{Name: "monitoredAppServiceTemplate", Config: monitoredAppServiceTemplate},
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:        testNamespace,
+		DeploymentName:       deploymentName,
+		PredictkubeAPIKey:    base64.StdEncoding.EncodeToString([]byte(predictkubeAPIKey)),
+		SecretName:           secretName,
+		TriggerAuthName:      triggerAuthName,
+		ScaledObjectName:     scaledObjectName,
+		MonitoredAppName:     monitoredAppName,
+		PrometheusServerName: prometheusServerName,
+		MinReplicaCount:      minReplicaCount,
+		MaxReplicaCount:      maxReplicaCount,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "monitoredAppDeploymentTemplate", Config: monitoredAppDeploymentTemplate},
+		{Name: "monitoredAppServiceTemplate", Config: monitoredAppServiceTemplate},
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }

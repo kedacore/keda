@@ -2076,6 +2076,35 @@ func (s *metricSpecWatcherTestPushScaler) MetricSpecChan() <-chan []v2.MetricSpe
 	return s.specCh
 }
 
+func TestWatchMetricSpecUpdates_SkipsUnchangedSpecs(t *testing.T) {
+	scaledObject := &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: testNameGlobal, Namespace: testNamespaceGlobal,
+			UID: types.UID("so-uid-1"), Generation: 1,
+		},
+	}
+	streamer := &metricSpecWatcherTestPushScaler{specCh: make(chan []v2.MetricSpec, 3)}
+	scalersCache := &cache.ScalersCache{
+		ScaledObject:             scaledObject,
+		ScalableObjectGeneration: scaledObject.Generation,
+		Scalers:                  []cache.ScalerBuilder{{Scaler: streamer}},
+	}
+	h := &scaleHandler{
+		scalerCaches:          map[string]*cache.ScalersCache{scaledObject.GenerateIdentifier(): scalersCache},
+		scalerCachesLock:      &sync.RWMutex{},
+		metricSpecReconcileCh: make(chan event.GenericEvent, 3),
+	}
+	streamer.specCh <- []v2.MetricSpec{createMetricSpec(42, "s0-streamed")}
+	streamer.specCh <- []v2.MetricSpec{createMetricSpec(42, "s0-streamed")}
+	streamer.specCh <- []v2.MetricSpec{createMetricSpec(43, "s0-streamed")}
+	close(streamer.specCh)
+
+	h.watchMetricSpecUpdates(t.Context(), scaledObject.Name, scaledObject.Namespace, 0, streamer, scaledObject.UID, scaledObject.Generation)
+
+	assert.Len(t, h.metricSpecReconcileCh, 2, "only first and changed specs should enqueue reconciliation")
+	assert.Equal(t, []v2.MetricSpec{createMetricSpec(43, "s0-streamed")}, scalersCache.GetMetricSpecForScaling(t.Context()))
+}
+
 func TestWatchMetricSpecUpdates_UsesLatestCacheAfterInvalidation(t *testing.T) {
 	const generation = int64(3)
 	uid := types.UID("so-uid-1")
@@ -2119,6 +2148,9 @@ func TestWatchMetricSpecUpdates_UsesLatestCacheAfterInvalidation(t *testing.T) {
 
 	ctx := t.Context()
 
+	expectedSpecs := []v2.MetricSpec{createMetricSpec(42, "s0-updated")}
+	assert.True(t, oldCache.UpdateMetricSpecForScaler(0, expectedSpecs, uid, generation))
+
 	go h.watchMetricSpecUpdates(ctx, scaledObject.Name, scaledObject.Namespace, 0, streamer, uid, generation)
 
 	oldCache.Close(context.Background())
@@ -2126,7 +2158,6 @@ func TestWatchMetricSpecUpdates_UsesLatestCacheAfterInvalidation(t *testing.T) {
 	h.scalerCaches[key] = newCache
 	h.scalerCachesLock.Unlock()
 
-	expectedSpecs := []v2.MetricSpec{createMetricSpec(42, "s0-updated")}
 	streamer.specCh <- expectedSpecs
 
 	assert.Eventually(t, func() bool {

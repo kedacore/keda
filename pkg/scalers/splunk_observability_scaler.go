@@ -25,6 +25,7 @@ const splunkO11yDrainTimeout = 2 * time.Second
 
 type splunkObservabilityMetadata struct {
 	TriggerIndex int
+	MetricType   v2.MetricTargetType
 
 	AccessToken           string  `keda:"name=accessToken,           order=authParams"`
 	Realm                 string  `keda:"name=realm,                 order=authParams"`
@@ -53,6 +54,16 @@ func parseSplunkObservabilityMetadata(config *scalersconfig.ScalerConfig) (*splu
 
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing splunk observability metadata: %w", err)
+	}
+
+	// Value preserves this scaler's historical default; other scalers default to AverageValue.
+	meta.MetricType = v2.ValueMetricType
+	if config.MetricType != "" {
+		metricType, err := GetMetricTargetType(config)
+		if err != nil {
+			return nil, fmt.Errorf("error getting scaler metric type: %w", err)
+		}
+		meta.MetricType = metricType
 	}
 
 	return meta, nil
@@ -92,10 +103,10 @@ func NewSplunkObservabilityScaler(config *scalersconfig.ScalerConfig) (Scaler, e
 	}, nil
 }
 
-// stopAndDrain stops the computation and keeps reading Data() until it closes or a
-// short grace period elapses, so the SignalFlow client's goroutines are not left
-// blocked on sends to an unconsumed channel. If process is non-nil, drained messages
-// are passed to it; a process error ends the drain and is returned.
+// stopAndDrain stops the computation and reads all of its output channels until
+// they close or a short grace period elapses. The SignalFlow client buffers each
+// output independently, so leaving even an unused channel unread retains its
+// forwarding goroutine. A processing error is returned after cleanup completes.
 func (s *splunkObservabilityScaler) stopAndDrain(comp *signalflow.Computation, process func(*messages.DataMessage) error) error {
 	stopCtx, cancel := context.WithTimeout(context.Background(), splunkO11yDrainTimeout)
 	defer cancel()
@@ -105,30 +116,49 @@ func (s *splunkObservabilityScaler) stopAndDrain(comp *signalflow.Computation, p
 	}
 
 	dataCh := comp.Data()
-	for {
+	infoCh := comp.Info()
+	eventsCh := comp.Events()
+	expirationsCh := comp.Expirations()
+	var processErr error
+	for dataCh != nil || infoCh != nil || eventsCh != nil || expirationsCh != nil {
 		// Give the deadline priority so a backend that keeps sending cannot extend the grace budget.
 		select {
 		case <-stopCtx.Done():
-			s.logger.V(1).Info("Gave up draining SignalFlow data channel after stop")
-			return nil
+			s.logger.V(1).Info("Gave up draining SignalFlow output channels after stop")
+			return processErr
 		default:
 		}
 
 		select {
 		case msg, ok := <-dataCh:
 			if !ok {
-				return nil
+				dataCh = nil
+				continue
 			}
 			if process != nil {
 				if err := process(msg); err != nil {
-					return err
+					processErr = err
+					process = nil
 				}
 			}
+		case _, ok := <-infoCh:
+			if !ok {
+				infoCh = nil
+			}
+		case _, ok := <-eventsCh:
+			if !ok {
+				eventsCh = nil
+			}
+		case _, ok := <-expirationsCh:
+			if !ok {
+				expirationsCh = nil
+			}
 		case <-stopCtx.Done():
-			s.logger.V(1).Info("Gave up draining SignalFlow data channel after stop")
-			return nil
+			s.logger.V(1).Info("Gave up draining SignalFlow output channels after stop")
+			return processErr
 		}
 	}
+	return processErr
 }
 
 func (s *splunkObservabilityScaler) startQuery(ctx context.Context) (*signalflow.Client, context.Context, func(), error) {
@@ -220,6 +250,9 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 	s.logger.V(1).Info("Now iterating over results.")
 
 	dataCh := comp.Data()
+	infoCh := comp.Info()
+	eventsCh := comp.Events()
+	expirationsCh := comp.Expirations()
 
 	// timedOut handles the hard-deadline path: stop, drain, and return the timeout error.
 	timedOut := func() (float64, error) {
@@ -233,7 +266,7 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 	}
 
 loop:
-	for {
+	for dataCh != nil || infoCh != nil || eventsCh != nil || expirationsCh != nil {
 		// Give the hard deadline priority: select has no fairness, so a continuously
 		// ready dataCh could otherwise starve the streamCtx.Done() case.
 		select {
@@ -254,11 +287,24 @@ loop:
 			break loop
 		case msg, ok := <-dataCh:
 			if !ok {
-				break loop
+				dataCh = nil
+				continue
 			}
 			if err := process(msg); err != nil {
 				_ = s.stopAndDrain(comp, nil)
 				return -1, err
+			}
+		case _, ok := <-infoCh:
+			if !ok {
+				infoCh = nil
+			}
+		case _, ok := <-eventsCh:
+			if !ok {
+				eventsCh = nil
+			}
+		case _, ok := <-expirationsCh:
+			if !ok {
+				expirationsCh = nil
 			}
 		}
 	}
@@ -314,7 +360,7 @@ func (s *splunkObservabilityScaler) GetMetricSpecForScaling(context.Context) []v
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, metricName),
 		},
-		Target: GetMetricTargetMili(v2.ValueMetricType, s.metadata.TargetValue),
+		Target: GetMetricTargetMili(s.metadata.MetricType, s.metadata.TargetValue),
 	}
 	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,

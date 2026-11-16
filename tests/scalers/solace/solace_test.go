@@ -299,18 +299,18 @@ func testScaleInRate(t *testing.T, kc *kubernetes.Clientset) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:             testNamespace,
-			DeploymentName:            deploymentName,
-			HelperName:                helperName,
-			ScaledObjectName:          scaledObjectName,
-			TriggerAuthenticationName: triggerAuthenticationName,
-			SecretName:                secretName,
-			MinReplicaCount:           minReplicaCount,
-			MaxReplicaCount:           maxReplicaCount,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "helperTemplate", Config: helperTemplate},
-		}
+		TestNamespace:             testNamespace,
+		DeploymentName:            deploymentName,
+		HelperName:                helperName,
+		ScaledObjectName:          scaledObjectName,
+		TriggerAuthenticationName: triggerAuthenticationName,
+		SecretName:                secretName,
+		MinReplicaCount:           minReplicaCount,
+		MaxReplicaCount:           maxReplicaCount,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "helperTemplate", Config: helperTemplate},
+	}
 }

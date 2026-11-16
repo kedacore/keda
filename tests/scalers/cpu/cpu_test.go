@@ -254,16 +254,16 @@ func scaleToZero(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:          testNamespace,
-			DeploymentName:         deploymentName,
-			ScaledObjectName:       scaledObjectName,
-			MinReplicas:            fmt.Sprintf("%v", minReplicas),
-			MaxReplicas:            fmt.Sprintf("%v", maxReplicas),
-			WorkloadDeploymentName: workloadDeploymentName,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "serviceTemplate", Config: serviceTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-			{Name: "workloadDeploymentTemplate", Config: workloadDeploymentTemplate},
-		}
+		TestNamespace:          testNamespace,
+		DeploymentName:         deploymentName,
+		ScaledObjectName:       scaledObjectName,
+		MinReplicas:            fmt.Sprintf("%v", minReplicas),
+		MaxReplicas:            fmt.Sprintf("%v", maxReplicas),
+		WorkloadDeploymentName: workloadDeploymentName,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "serviceTemplate", Config: serviceTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		{Name: "workloadDeploymentTemplate", Config: workloadDeploymentTemplate},
+	}
 }

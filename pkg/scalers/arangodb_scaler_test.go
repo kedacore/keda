@@ -2,8 +2,13 @@ package scalers
 
 import (
 	"context"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/go-logr/logr"
 
@@ -44,6 +49,24 @@ var testArangoDBMetadata = []parseArangoDBMetadataTestData{
 	// wrong activationQueryValue
 	{
 		metadata:    map[string]string{"endpoints": "https://localhost:8529", "query": `FOR t IN testCollection FILTER t.cook_time == '3 hours' RETURN t`, "collection": "demo", "queryValue": "12", "activationQueryValue": "aa", "dbName": "test"},
+		authParams:  map[string]string{},
+		raisesError: true,
+	},
+	// with connectionLimit
+	{
+		metadata:    map[string]string{"endpoints": "https://localhost:8529", "query": `FOR t IN testCollection FILTER t.cook_time == '3 hours' RETURN t`, "collection": "demo", "queryValue": "12", "connectionLimit": "2", "dbName": "test"},
+		authParams:  map[string]string{},
+		raisesError: false,
+	},
+	// connectionLimit of zero, which means no limit like an unset value
+	{
+		metadata:    map[string]string{"endpoints": "https://localhost:8529", "query": `FOR t IN testCollection FILTER t.cook_time == '3 hours' RETURN t`, "collection": "demo", "queryValue": "12", "connectionLimit": "0", "dbName": "test"},
+		authParams:  map[string]string{},
+		raisesError: false,
+	},
+	// negative connectionLimit, which net/http would treat as no limit
+	{
+		metadata:    map[string]string{"endpoints": "https://localhost:8529", "query": `FOR t IN testCollection FILTER t.cook_time == '3 hours' RETURN t`, "collection": "demo", "queryValue": "12", "connectionLimit": "-1", "dbName": "test"},
 		authParams:  map[string]string{},
 		raisesError: true,
 	},
@@ -127,5 +150,81 @@ func TestArangoDBGetMetricSpecForScaling(t *testing.T) {
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
 		}
+	}
+}
+
+// TestArangoDBClientConnectionLimit checks that connectionLimit caps the
+// connections the scaler's client opens to an ArangoDB endpoint.
+func TestArangoDBClientConnectionLimit(t *testing.T) {
+	tests := []struct {
+		name            string
+		connectionLimit string
+		wantMin         int
+		wantMax         int
+	}{
+		{name: "limit of one", connectionLimit: "1", wantMin: 1, wantMax: 1},
+		{name: "limit of two", connectionLimit: "2", wantMin: 1, wantMax: 2},
+		{name: "no limit", connectionLimit: "", wantMin: 2, wantMax: 5},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var mu sync.Mutex
+			var open, maxOpen int
+			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				// Keep each request busy, so that concurrent requests need their own connection.
+				time.Sleep(50 * time.Millisecond)
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"server":"arango","version":"3.12.4","license":"community"}`))
+			}))
+			server.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+				mu.Lock()
+				defer mu.Unlock()
+				switch state {
+				case http.StateNew:
+					open++
+					maxOpen = max(maxOpen, open)
+				case http.StateClosed, http.StateHijacked:
+					open--
+				}
+			}
+			server.Start()
+			defer server.Close()
+
+			metadata := map[string]string{
+				"endpoints":  server.URL,
+				"dbName":     "test",
+				"collection": "demo",
+				"query":      "FOR d IN demo RETURN d",
+				"queryValue": "1",
+			}
+			if tt.connectionLimit != "" {
+				metadata["connectionLimit"] = tt.connectionLimit
+			}
+			meta, err := parseArangoDBMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: metadata, AuthParams: map[string]string{}})
+			if err != nil {
+				t.Fatal("Could not parse metadata:", err)
+			}
+			client, err := getNewArangoDBClient(meta)
+			if err != nil {
+				t.Fatal("Could not create client:", err)
+			}
+
+			var wg sync.WaitGroup
+			for range 5 {
+				wg.Go(func() {
+					if _, err := client.Version(context.Background()); err != nil {
+						t.Error("Version() error:", err)
+					}
+				})
+			}
+			wg.Wait()
+
+			mu.Lock()
+			defer mu.Unlock()
+			if maxOpen < tt.wantMin || maxOpen > tt.wantMax {
+				t.Errorf("open connections = %d, want between %d and %d", maxOpen, tt.wantMin, tt.wantMax)
+			}
+		})
 	}
 }

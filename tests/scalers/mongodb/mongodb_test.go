@@ -136,20 +136,20 @@ func getTemplateData() (templateData, []Template) {
 	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
 
 	return templateData{
-			TestNamespace:    testNamespace,
-			SecretName:       secretName,
-			TriggerAuthName:  triggerAuthName,
-			ScaledJobName:    scaledJobName,
-			MongoNamespace:   mongoNamespace,
-			Database:         mongoDBName,
-			Collection:       mongoCollection,
-			Connection:       connectionString,
-			Base64Connection: base64ConnectionString,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
-			{Name: "scaledJobTemplate", Config: scaledJobTemplate},
-		}
+		TestNamespace:    testNamespace,
+		SecretName:       secretName,
+		TriggerAuthName:  triggerAuthName,
+		ScaledJobName:    scaledJobName,
+		MongoNamespace:   mongoNamespace,
+		Database:         mongoDBName,
+		Collection:       mongoCollection,
+		Connection:       connectionString,
+		Base64Connection: base64ConnectionString,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+		{Name: "scaledJobTemplate", Config: scaledJobTemplate},
+	}
 }
 
 func setupMongo(t *testing.T, kc *kubernetes.Clientset) string {

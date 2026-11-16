@@ -117,15 +117,15 @@ func TestScaler(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:    testNamespace,
-			DeploymentName:   deploymentName,
-			ScaledObjectName: scaledObjectName,
-			StartMin:         strconv.Itoa(start),
-			EndMin:           strconv.Itoa(end),
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:    testNamespace,
+		DeploymentName:   deploymentName,
+		ScaledObjectName: scaledObjectName,
+		StartMin:         strconv.Itoa(start),
+		EndMin:           strconv.Itoa(end),
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {

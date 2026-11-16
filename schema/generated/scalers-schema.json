@@ -3902,6 +3902,12 @@
                     "type": "string",
                     "default": "false",
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "onlyReadyPods",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
                 }
             ]
         },
@@ -4286,6 +4292,12 @@
                     "metadataVariableReadable": true
                 },
                 {
+                    "name": "zeroOnNoReadyEndpoints",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
                     "name": "authModes",
                     "type": "string",
                     "optional": true,
@@ -4660,6 +4672,16 @@
                     "name": "activationLagThreshold",
                     "type": "string",
                     "default": "0",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "lagStrategy",
+                    "type": "string",
+                    "default": "all",
+                    "allowedValue": [
+                        "all",
+                        "pending"
+                    ],
                     "metadataVariableReadable": true
                 },
                 {

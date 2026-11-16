@@ -733,7 +733,8 @@ func TestHandleIsActiveStreamRespectsCancellation(t *testing.T) {
 			t.Fatal("could not drain blocked activation")
 		}
 		select {
-		case <-done:
+		case err := <-done:
+			_ = err
 		case <-time.After(time.Second):
 			t.Fatal("stream did not exit after draining activation")
 		}

@@ -183,18 +183,18 @@ func TestFileBasedAuthentication(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:    testNamespace,
-			DeploymentName:   deploymentName,
-			ScaledObjectName: scaledObjectName,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "clusterTriggerAuthenticationTemplate", Config: clusterTriggerAuthenticationTemplate},
-			{Name: "metricsApiSecret", Config: metricsApiSecret},
-			{Name: "metricsApiDeployment", Config: metricsApiDeployment},
-			{Name: "metricsApiService", Config: metricsApiService},
-			{Name: "curlDeployment", Config: curlDeployment},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:    testNamespace,
+		DeploymentName:   deploymentName,
+		ScaledObjectName: scaledObjectName,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "clusterTriggerAuthenticationTemplate", Config: clusterTriggerAuthenticationTemplate},
+		{Name: "metricsApiSecret", Config: metricsApiSecret},
+		{Name: "metricsApiDeployment", Config: metricsApiDeployment},
+		{Name: "metricsApiService", Config: metricsApiService},
+		{Name: "curlDeployment", Config: curlDeployment},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func testScaledObjectWithFileAuth(t *testing.T) {

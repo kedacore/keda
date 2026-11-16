@@ -150,15 +150,15 @@ func TestScaler(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:           testNamespace,
-			DeploymentName:          deploymentName,
-			ScaledObjectName:        scaledObjectName,
-			MonitoredDeploymentName: monitoredDeploymentName,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
-			{Name: "scaledObjectAnnotatedTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:           testNamespace,
+		DeploymentName:          deploymentName,
+		ScaledObjectName:        scaledObjectName,
+		MonitoredDeploymentName: monitoredDeploymentName,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
+		{Name: "scaledObjectAnnotatedTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func upsertScaledObjectPausedAnnotation(t assert.TestingT) {
@@ -183,6 +183,12 @@ func upsertScaledObjectPausedReplicasAnnotation(t assert.TestingT, value int) {
 
 func removeScaledObjectPausedReplicasAnnotation(t assert.TestingT) {
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledobject/%s -n %s autoscaling.keda.sh/paused-replicas- --overwrite", scaledObjectName, testNamespace))
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+}
+
+func switchScaledObjectPausedReplicasToPaused(t assert.TestingT) {
+	// Switch both annotations atomically so scaling never resumes between updates.
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledobject/%s -n %s autoscaling.keda.sh/paused=true autoscaling.keda.sh/paused-replicas- --overwrite", scaledObjectName, testNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
@@ -447,9 +453,7 @@ func testSwitchFromPausedReplicasToPaused(t *testing.T, kc *kubernetes.Clientset
 	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 5, 60, 1),
 		"replica count should be 5 after 1 minute")
 
-	// Switch: remove paused-replicas, add paused=true
-	removeScaledObjectPausedReplicasAnnotation(t)
-	upsertScaledObjectPausedAnnotation(t)
+	switchScaledObjectPausedReplicasToPaused(t)
 
 	// HPA should not exist after switch
 	waitForHPADeleted(t, kc, "HPA should not exist after switching to paused=true")

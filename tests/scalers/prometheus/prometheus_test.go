@@ -252,18 +252,18 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:         testNamespace,
-			DeploymentName:        deploymentName,
-			PublishDeploymentName: publishDeploymentName,
-			ScaledObjectName:      scaledObjectName,
-			MonitoredAppName:      monitoredAppName,
-			PrometheusServerName:  prometheusServerName,
-			MinReplicaCount:       minReplicaCount,
-			MaxReplicaCount:       maxReplicaCount,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "monitoredAppDeploymentTemplate", Config: monitoredAppDeploymentTemplate},
-			{Name: "monitoredAppServiceTemplate", Config: monitoredAppServiceTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:         testNamespace,
+		DeploymentName:        deploymentName,
+		PublishDeploymentName: publishDeploymentName,
+		ScaledObjectName:      scaledObjectName,
+		MonitoredAppName:      monitoredAppName,
+		PrometheusServerName:  prometheusServerName,
+		MinReplicaCount:       minReplicaCount,
+		MaxReplicaCount:       maxReplicaCount,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "monitoredAppDeploymentTemplate", Config: monitoredAppDeploymentTemplate},
+		{Name: "monitoredAppServiceTemplate", Config: monitoredAppServiceTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }

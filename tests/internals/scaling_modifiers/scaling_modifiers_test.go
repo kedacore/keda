@@ -386,23 +386,23 @@ func waitForFallbackActive(t *testing.T) bool {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:               namespace,
-			DeploymentName:              deploymentName,
-			MetricsServerDeploymentName: metricsServerDeploymentName,
-			ServiceName:                 serviceName,
-			TriggerAuthName:             triggerAuthName,
-			ScaledObject:                scaledObjectName,
-			SecretName:                  secretName,
-			MetricsServerEndpoint:       metricsServerEndpoint,
-			MetricValue:                 0,
-		}, []Template{
-			// basic: scaled deployment, metrics-api trigger server & authentication
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "metricsServerDeploymentTemplate", Config: metricsServerDeploymentTemplate},
-			{Name: "serviceTemplate", Config: serviceTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			// workload base
-			{Name: "workloadDeploymentTemplate", Config: workloadDeploymentTemplate},
-		}
+		TestNamespace:               namespace,
+		DeploymentName:              deploymentName,
+		MetricsServerDeploymentName: metricsServerDeploymentName,
+		ServiceName:                 serviceName,
+		TriggerAuthName:             triggerAuthName,
+		ScaledObject:                scaledObjectName,
+		SecretName:                  secretName,
+		MetricsServerEndpoint:       metricsServerEndpoint,
+		MetricValue:                 0,
+	}, []Template{
+		// basic: scaled deployment, metrics-api trigger server & authentication
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "metricsServerDeploymentTemplate", Config: metricsServerDeploymentTemplate},
+		{Name: "serviceTemplate", Config: serviceTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		// workload base
+		{Name: "workloadDeploymentTemplate", Config: workloadDeploymentTemplate},
+	}
 }

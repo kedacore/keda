@@ -192,22 +192,22 @@ func setMetricValue(client appinsights.TelemetryClient, delay int64, stopCh <-ch
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:                 testNamespace,
-			SecretName:                    secretName,
-			DeploymentName:                deploymentName,
-			TriggerAuthName:               triggerAuthName,
-			ScaledObjectName:              scaledObjectName,
-			AzureADTenantID:               azureADTenantID,
-			AzureSubscriptionID:           azureADSubscriptionID,
-			AzureResourceGroup:            azureResourceGroup,
-			ApplicationInsightsName:       appInsightsName,
-			ApplicationInsightsMetricName: appInsightsMetricName,
-			ApplicationInsightsRole:       appInsightsRole,
-			MinReplicaCount:               fmt.Sprintf("%v", minReplicaCount),
-			MaxReplicaCount:               fmt.Sprintf("%v", maxReplicaCount),
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:                 testNamespace,
+		SecretName:                    secretName,
+		DeploymentName:                deploymentName,
+		TriggerAuthName:               triggerAuthName,
+		ScaledObjectName:              scaledObjectName,
+		AzureADTenantID:               azureADTenantID,
+		AzureSubscriptionID:           azureADSubscriptionID,
+		AzureResourceGroup:            azureResourceGroup,
+		ApplicationInsightsName:       appInsightsName,
+		ApplicationInsightsMetricName: appInsightsMetricName,
+		ApplicationInsightsRole:       appInsightsRole,
+		MinReplicaCount:               fmt.Sprintf("%v", minReplicaCount),
+		MaxReplicaCount:               fmt.Sprintf("%v", maxReplicaCount),
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }

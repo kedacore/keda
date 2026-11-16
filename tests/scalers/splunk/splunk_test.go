@@ -276,31 +276,31 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:        testNamespace,
-			ConfigMapName:        configMapName,
-			DeploymentName:       deploymentName,
-			ScaledObjectName:     scaledObjectName,
-			SecretName:           secretName,
-			SplunkUsername:       username,
-			SplunkUsernameBase64: base64.StdEncoding.EncodeToString([]byte(username)),
-			SplunkPassword:       password,
-			SplunkPasswordBase64: base64.StdEncoding.EncodeToString([]byte(password)),
-			SavedSearchName:      savedSearchName,
-			APIPort:              apiPort,
-			MinReplicaCount:      fmt.Sprintf("%v", minReplicaCount),
-			MaxReplicaCount:      fmt.Sprintf("%v", maxReplicaCount),
-			// Ensure no scaling out since saved search returns 10 by default
-			TargetValue:     scaleInTargetValue,
-			ActivationValue: scaleInActivationValue,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "configMapTemplate", Config: configMapTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "serviceTemplate", Config: serviceTemplate},
-			{Name: "splunkDeploymentTemplate", Config: splunkDeploymentTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:        testNamespace,
+		ConfigMapName:        configMapName,
+		DeploymentName:       deploymentName,
+		ScaledObjectName:     scaledObjectName,
+		SecretName:           secretName,
+		SplunkUsername:       username,
+		SplunkUsernameBase64: base64.StdEncoding.EncodeToString([]byte(username)),
+		SplunkPassword:       password,
+		SplunkPasswordBase64: base64.StdEncoding.EncodeToString([]byte(password)),
+		SavedSearchName:      savedSearchName,
+		APIPort:              apiPort,
+		MinReplicaCount:      fmt.Sprintf("%v", minReplicaCount),
+		MaxReplicaCount:      fmt.Sprintf("%v", maxReplicaCount),
+		// Ensure no scaling out since saved search returns 10 by default
+		TargetValue:     scaleInTargetValue,
+		ActivationValue: scaleInActivationValue,
+	}, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "configMapTemplate", Config: configMapTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "serviceTemplate", Config: serviceTemplate},
+		{Name: "splunkDeploymentTemplate", Config: splunkDeploymentTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func getScaledObjectTemplateData(targetValue, activationValue string) templateData {

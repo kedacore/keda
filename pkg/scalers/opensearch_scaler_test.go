@@ -3,14 +3,20 @@ package scalers
 import (
 	"context"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/opensearch-project/opensearch-go/v5"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -19,8 +25,13 @@ type closeTrackingOpensearchTransport struct {
 	closed bool
 }
 
-func (t *closeTrackingOpensearchTransport) RoundTrip(*http.Request) (*http.Response, error) {
-	return nil, nil
+func (t *closeTrackingOpensearchTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+		Body:       io.NopCloser(strings.NewReader(`{"version":{"distribution":"opensearch","number":"2.19.0"}}`)),
+		Request:    req,
+	}, nil
 }
 
 func (t *closeTrackingOpensearchTransport) CloseIdleConnections() {
@@ -34,6 +45,22 @@ func TestOpensearchScalerCloseClosesHTTPTransport(t *testing.T) {
 	assert.NoError(t, scaler.Close(context.Background()))
 	assert.True(t, transport.closed)
 	assert.Nil(t, scaler.httpTransport)
+}
+
+func TestOpensearchScalerCloseClosesAPIClientResources(t *testing.T) {
+	transport := &closeTrackingOpensearchTransport{}
+	client, err := newOpensearchAPIClientFromConfig(opensearch.Config{
+		Addresses: []string{"http://localhost:9200"},
+		Transport: transport,
+	}, logr.Discard())
+	require.NoError(t, err)
+	require.NotNil(t, client)
+	scaler := &opensearchScaler{osAPIClient: client}
+	assert.False(t, transport.closed)
+
+	assert.NoError(t, scaler.Close(t.Context()))
+	assert.True(t, transport.closed)
+	assert.Same(t, client, scaler.osAPIClient, "a cache reader may still hold this scaler after refresh")
 }
 
 func TestOpensearchMetadataValidate(t *testing.T) {
@@ -520,4 +547,106 @@ func TestOpensearchCheckHTTPStatus(t *testing.T) {
 		err := scaler.checkHTTPStatus(404)
 		assert.NoError(t, err)
 	})
+}
+
+func TestOpensearchSearchRequestsPreserveJSON(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		query        string
+		template     string
+		parameters   string
+		expectedPath string
+		expectedBody string
+	}{
+		{
+			name:         "query with extension fields",
+			query:        `{"size":0,"query":{"match_all":{}},"ext":{"custom_plugin":{"enabled":true}}}`,
+			expectedPath: "/my-index/_search",
+			expectedBody: `{"size":0,"query":{"match_all":{}},"ext":{"custom_plugin":{"enabled":true}}}`,
+		},
+		{
+			name:         "stored template with parameters",
+			template:     "pending-jobs",
+			parameters:   "state:pending;owner:keda",
+			expectedPath: "/my-index/_search/template",
+			expectedBody: `{"id":"pending-jobs","params":{"state":"pending","owner":"keda"}}`,
+		},
+	} {
+		for _, response := range []struct {
+			name   string
+			status int
+			body   string
+		}{
+			{
+				name:   "success",
+				status: http.StatusOK,
+				body:   `{"took":1,"timed_out":false,"_shards":{"total":1,"successful":1,"failed":0},"hits":{"total":{"value":0,"relation":"eq"},"hits":[]},"plugin_response":{"pending":42}}`,
+			},
+			{
+				name:   "partial shard failure",
+				status: http.StatusOK,
+				body:   `{"took":1,"timed_out":false,"_shards":{"total":2,"successful":1,"failed":1,"failures":[{"shard":1,"index":"my-index","node":"node-2","reason":{"type":"query_shard_exception","reason":"unavailable"}}]},"hits":{"total":{"value":0,"relation":"eq"},"hits":[]},"plugin_response":{"pending":42}}`,
+			},
+			{
+				name:   "authentication failure",
+				status: http.StatusUnauthorized,
+				body:   `{"error":{"type":"security_exception","reason":"denied"},"status":401}`,
+			},
+		} {
+			t.Run(fmt.Sprintf("%s/%s", test.name, response.name), func(t *testing.T) {
+				var requests atomic.Int32
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path == "/" {
+						assert.Contains(t, []string{http.MethodGet, http.MethodHead}, r.Method)
+						w.Header().Set("Content-Type", "application/json")
+						w.WriteHeader(http.StatusOK)
+						_, _ = w.Write([]byte(`{"version":{"distribution":"opensearch","number":"2.19.0"}}`))
+						return
+					}
+					assert.Equal(t, http.MethodPost, r.Method)
+					assert.Equal(t, test.expectedPath, r.URL.Path)
+					requestBody, err := io.ReadAll(r.Body)
+					assert.NoError(t, err)
+					assert.JSONEq(t, test.expectedBody, string(requestBody))
+					requests.Add(1)
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(response.status)
+					// Value locations may reference plugin fields outside the SDK's typed response.
+					assert.NoError(t, json.NewEncoder(w).Encode(json.RawMessage(response.body)))
+				}))
+				defer server.Close()
+
+				metadata := map[string]string{
+					"addresses":     server.URL,
+					"index":         "my-index",
+					"valueLocation": "plugin_response.pending",
+					"targetValue":   "10",
+				}
+				if test.query != "" {
+					metadata["query"] = test.query
+				} else {
+					metadata["searchTemplateName"] = test.template
+					metadata["parameters"] = test.parameters
+				}
+				scaler, err := NewOpensearchScaler(&scalersconfig.ScalerConfig{
+					TriggerMetadata: metadata,
+					AuthParams:      map[string]string{"username": "admin", "password": "secret"},
+				})
+				require.NoError(t, err)
+				defer scaler.Close(t.Context())
+
+				metrics, active, err := scaler.GetMetricsAndActivity(t.Context(), "pending-jobs")
+				if response.status == http.StatusUnauthorized {
+					require.ErrorContains(t, err, "authentication failed (HTTP 401)")
+					assert.False(t, active)
+				} else {
+					require.NoError(t, err)
+					require.Len(t, metrics, 1)
+					assert.Equal(t, float64(42), metrics[0].Value.AsApproximateFloat64())
+					assert.True(t, active)
+				}
+				assert.Equal(t, int32(1), requests.Load())
+			})
+		}
+	}
 }

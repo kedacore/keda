@@ -206,20 +206,20 @@ func createCloudWatchClient() *cloudwatch.Client {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:                  testNamespace,
-			DeploymentName:                 deploymentName,
-			ScaledObjectName:               scaledObjectName,
-			SecretName:                     secretName,
-			AwsAccessKeyID:                 base64.StdEncoding.EncodeToString([]byte(awsAccessKeyID)),
-			AwsSecretAccessKey:             base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
-			AwsRegion:                      awsRegion,
-			CloudWatchMetricName:           cloudwatchMetricName,
-			CloudWatchMetricNamespace:      cloudwatchMetricNamespace,
-			CloudWatchMetricDimensionName:  cloudwatchMetricDimensionName,
-			CloudWatchMetricDimensionValue: cloudwatchMetricDimensionValue,
-		}, []Template{
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:                  testNamespace,
+		DeploymentName:                 deploymentName,
+		ScaledObjectName:               scaledObjectName,
+		SecretName:                     secretName,
+		AwsAccessKeyID:                 base64.StdEncoding.EncodeToString([]byte(awsAccessKeyID)),
+		AwsSecretAccessKey:             base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
+		AwsRegion:                      awsRegion,
+		CloudWatchMetricName:           cloudwatchMetricName,
+		CloudWatchMetricNamespace:      cloudwatchMetricNamespace,
+		CloudWatchMetricDimensionName:  cloudwatchMetricDimensionName,
+		CloudWatchMetricDimensionValue: cloudwatchMetricDimensionValue,
+	}, []Template{
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }

@@ -6,9 +6,9 @@ on:
 jobs:
   e2e-tests:
     name: Run e2e test
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     # keda-tools is built from github.com/test-tools/tools/Dockerfile
-    container: ghcr.io/kedacore/keda-tools:1.26.8@sha256:43316d99880b57ee18ad12f119acb37bbea7be99c73219166a529bbfa7b9340c
+    container: ghcr.io/kedacore/keda-tools:1.27.4@sha256:524734d8dd919dd74802d230206027095a3b31e35626a7702ffe4ddebd2061e4
     concurrency: e2e-tests
     steps:
       - name: Check out code
