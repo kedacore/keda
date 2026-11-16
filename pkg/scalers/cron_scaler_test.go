@@ -179,6 +179,8 @@ func TestExpandCronHash(t *testing.T) {
 		{"0,H 8 * * *", `^0,([0-9]|[1-5][0-9]) 8 \* \* \*$`},
 		{"CRON_TZ=Etc/UTC H 8 * * *", `^CRON_TZ=Etc/UTC ([0-9]|[1-5][0-9]) 8 \* \* \*$`},
 		{"TZ=Etc/UTC H 8 * * *", `^TZ=Etc/UTC ([0-9]|[1-5][0-9]) 8 \* \* \*$`},
+		{"H/1 8 * * *", `^([0-9]|[1-5][0-9]) 8 \* \* \*$`},
+		{"H(10-20)/1 8 * * *", `^(1[0-9]|20) 8 \* \* \*$`},
 	}
 	for _, tt := range tests {
 		expanded, err := expandCronHash(tt.expr, "default/app/0")
@@ -188,6 +190,10 @@ func TestExpandCronHash(t *testing.T) {
 }
 
 func TestExpandCronHashSeed(t *testing.T) {
+	bare, _ := expandCronHash("H H(10-20) * * *", "default/app/0")
+	stepOne, _ := expandCronHash("H/1 H(10-20)/1 * * *", "default/app/0")
+	assert.Equal(t, bare, stepOne)
+
 	start, _ := expandCronHash("H 8 * * *", "default/app/0")
 	end, _ := expandCronHash("H 17 * * *", "default/app/0")
 	assert.Equal(t, strings.Fields(start)[0], strings.Fields(end)[0])
@@ -201,11 +207,13 @@ func TestExpandCronHashSeed(t *testing.T) {
 }
 
 func TestCronHashSameSchedule(t *testing.T) {
-	_, err := NewCronScaler(&scalersconfig.ScalerConfig{TriggerMetadata: map[string]string{
-		"timezone":        "Etc/UTC",
-		"start":           "H 8 * * *",
-		"end":             "H(0-59) 8 * * *",
-		"desiredReplicas": "10",
-	}})
-	assert.Error(t, err)
+	for _, end := range []string{"H(0-59) 8 * * *", "H/60 8 * * *"} {
+		_, err := NewCronScaler(&scalersconfig.ScalerConfig{TriggerMetadata: map[string]string{
+			"timezone":        "Etc/UTC",
+			"start":           "H 8 * * *",
+			"end":             end,
+			"desiredReplicas": "10",
+		}})
+		assert.Error(t, err, end)
+	}
 }

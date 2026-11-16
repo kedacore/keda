@@ -24,7 +24,7 @@ const (
 
 var (
 	cronHashRegex   = regexp.MustCompile(`^H(?:\((\d+)-(\d+)\))?(?:/(\d+))?$`)
-	cronFieldBounds = [5][2]int{{0, 59}, {0, 23}, {1, 31}, {1, 12}, {0, 6}}
+	cronFieldBounds = [5][2]uint64{{0, 59}, {0, 23}, {1, 31}, {1, 12}, {0, 6}}
 	cronParser      = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 )
 
@@ -84,8 +84,8 @@ func NewCronScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing end schedule: %w", err)
 	}
-	if startExpr == endExpr {
-		return nil, fmt.Errorf("start and end resolve to the same schedule %q", startExpr)
+	if sameCronSchedule(startSchedule, endSchedule) {
+		return nil, fmt.Errorf("start %q and end %q resolve to the same schedule", startExpr, endExpr)
 	}
 
 	return &cronScaler{
@@ -104,6 +104,17 @@ func parseCronSchedule(expr, seed string) (string, cron.Schedule, error) {
 	}
 	schedule, err := cronParser.Parse(expanded)
 	return expanded, schedule, err
+}
+
+func sameCronSchedule(a, b cron.Schedule) bool {
+	x, okX := a.(*cron.SpecSchedule)
+	y, okY := b.(*cron.SpecSchedule)
+	if !okX || !okY {
+		return false
+	}
+	xs, ys := *x, *y
+	xs.Location, ys.Location = nil, nil
+	return xs == ys && x.Location.String() == y.Location.String()
 }
 
 // expandCronHash replaces Jenkins-style H tokens (H, H(a-b), H/n, H(a-b)/n) with values derived
@@ -128,9 +139,10 @@ func expandCronHash(expr, seed string) (string, error) {
 
 			low, high := cronFieldBounds[i][0], cronFieldBounds[i][1]
 			if match[1] != "" {
-				low, _ = strconv.Atoi(match[1])
-				high, _ = strconv.Atoi(match[2])
-				if low > high || low < cronFieldBounds[i][0] || high > cronFieldBounds[i][1] {
+				var lowErr, highErr error
+				low, lowErr = strconv.ParseUint(match[1], 10, 64)
+				high, highErr = strconv.ParseUint(match[2], 10, 64)
+				if lowErr != nil || highErr != nil || low > high || low < cronFieldBounds[i][0] || high > cronFieldBounds[i][1] {
 					return "", fmt.Errorf("invalid H range %q", part)
 				}
 			} else if i == 2 {
@@ -142,16 +154,21 @@ func expandCronHash(expr, seed string) (string, error) {
 			fmt.Fprintf(h, "%s/%d", seed, i)
 			hash := h.Sum64()
 
-			if match[3] == "" {
-				parts[j] = strconv.Itoa(low + int(hash%uint64(high-low+1)))
-				continue
+			var step uint64 = 1
+			if match[3] != "" {
+				var err error
+				step, err = strconv.ParseUint(match[3], 10, 64)
+				if err != nil || step == 0 || step > high-low+1 {
+					return "", fmt.Errorf("invalid H step %q", part)
+				}
 			}
 
-			step, _ := strconv.Atoi(match[3])
-			if step == 0 || step > high-low+1 {
-				return "", fmt.Errorf("invalid H step %q", part)
+			// A step of 1 picks a single value like a bare H, matching Jenkins.
+			if step == 1 {
+				parts[j] = strconv.FormatUint(low+hash%(high-low+1), 10)
+			} else {
+				parts[j] = fmt.Sprintf("%d-%d/%d", low+hash%step, high, step)
 			}
-			parts[j] = fmt.Sprintf("%d-%d/%d", low+int(hash%uint64(step)), high, step)
 		}
 		fields[i] = strings.Join(parts, ",")
 	}
