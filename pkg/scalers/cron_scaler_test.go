@@ -68,6 +68,8 @@ var testCronMetadata = []parseCronMetadataTestData{
 	{map[string]string{"timezone": "Etc/UTC", "start": "H/0 8 * * *", "end": "0 17 * * *", "desiredReplicas": "10"}, true},
 	{map[string]string{"timezone": "Etc/UTC", "start": "H(0-99) 8 * * *", "end": "0 17 * * *", "desiredReplicas": "10"}, true},
 	{map[string]string{"timezone": "Etc/UTC", "start": "H/90 8 * * *", "end": "0 17 * * *", "desiredReplicas": "10"}, true},
+	{map[string]string{"timezone": "Etc/UTC", "start": "CRON_TZ=Etc/UTC H 8 * * *", "end": "CRON_TZ=Etc/UTC H 17 * * *", "desiredReplicas": "10"}, false},
+	{map[string]string{"timezone": "Etc/UTC", "start": "TZ=Etc/UTC H 8 * * *", "end": "TZ=Etc/UTC H 17 * * *", "desiredReplicas": "10"}, false},
 }
 
 var cronMetricIdentifiers = []cronMetricIdentifier{
@@ -175,6 +177,8 @@ func TestExpandCronHash(t *testing.T) {
 		{"H(10-40)/10 * * * *", `^[1-3][0-9]-40/10 \* \* \* \*$`},
 		{"0 0 H * *", `^0 0 ([1-9]|1[0-9]|2[0-8]) \* \*$`},
 		{"0,H 8 * * *", `^0,([0-9]|[1-5][0-9]) 8 \* \* \*$`},
+		{"CRON_TZ=Etc/UTC H 8 * * *", `^CRON_TZ=Etc/UTC ([0-9]|[1-5][0-9]) 8 \* \* \*$`},
+		{"TZ=Etc/UTC H 8 * * *", `^TZ=Etc/UTC ([0-9]|[1-5][0-9]) 8 \* \* \*$`},
 	}
 	for _, tt := range tests {
 		expanded, err := expandCronHash(tt.expr, "default/app/0")

@@ -110,6 +110,10 @@ func parseCronSchedule(expr, seed string) (string, cron.Schedule, error) {
 // from the seed, so each trigger gets a stable but distinct time within the given range.
 func expandCronHash(expr, seed string) (string, error) {
 	fields := strings.Fields(expr)
+	prefix := ""
+	if len(fields) > 0 && (strings.HasPrefix(fields[0], "TZ=") || strings.HasPrefix(fields[0], "CRON_TZ=")) {
+		prefix, fields = fields[0]+" ", fields[1:]
+	}
 	if len(fields) != len(cronFieldBounds) {
 		return expr, nil
 	}
@@ -152,7 +156,7 @@ func expandCronHash(expr, seed string) (string, error) {
 		fields[i] = strings.Join(parts, ",")
 	}
 
-	return strings.Join(fields, " "), nil
+	return prefix + strings.Join(fields, " "), nil
 }
 
 func getCronTime(location *time.Location, schedule cron.Schedule) time.Time {
