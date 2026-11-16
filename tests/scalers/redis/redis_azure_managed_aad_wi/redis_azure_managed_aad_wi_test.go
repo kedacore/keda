@@ -207,18 +207,18 @@ func deleteRedisJob(t *testing.T, data templateData, name string) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:    testNamespace,
-			KedaNamespace:    KEDANamespace,
-			DeploymentName:   deploymentName,
-			TriggerAuthName:  triggerAuthName,
-			ScaledObjectName: scaledObjectName,
-			JobName:          jobName,
-			RedisAction:      "push",
-			ManagedRedisHost: managedRedisHost,
-			RedisList:        redisList,
-		}, []Template{
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:    testNamespace,
+		KedaNamespace:    KEDANamespace,
+		DeploymentName:   deploymentName,
+		TriggerAuthName:  triggerAuthName,
+		ScaledObjectName: scaledObjectName,
+		JobName:          jobName,
+		RedisAction:      "push",
+		ManagedRedisHost: managedRedisHost,
+		RedisList:        redisList,
+	}, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }

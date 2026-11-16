@@ -21,7 +21,6 @@ tests/scalers/azure/azure_event_hub_dapr_wi/azure_event_hub_dapr_wi_test.go
 tests/scalers/azure/azure_event_hub_go_sdk/azure_event_hub_go_sdk_test.go
 tests/scalers/azure/azure_monitor/azure_monitor_test.go
 tests/scalers/azure/azure_monitor_aad_wi/azure_monitor_aad_wi_test.go
-tests/scalers/azure/azure_pipelines_adv/azure_pipelines_adv_test.go
 tests/scalers/dynatrace/dynatrace_test.go
 tests/scalers/dynatrace_dql/dynatrace_dql_test.go
 tests/scalers/solarwinds/solarwinds_test.go
