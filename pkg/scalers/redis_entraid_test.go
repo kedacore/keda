@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -15,8 +14,11 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/redis/go-redis-entraid/manager"
 	"github.com/redis/go-redis-entraid/token"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
+	v2 "k8s.io/api/autoscaling/v2"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
@@ -103,7 +105,7 @@ func TestRedisClientAzureWorkloadBranch(t *testing.T) {
 	identity := kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	_, err := getRedisClient(ctx, info, 0, identity, logr.Discard())
+	_, _, err := getRedisClient(ctx, info, 0, identity, logr.Discard())
 	require.Error(t, err)
 	assert.Positive(t, calls.Load())
 }
@@ -123,7 +125,7 @@ func TestRedisClusterClientAzureWorkloadBranch(t *testing.T) {
 	identity := kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	_, err := getRedisClusterClient(ctx, info, identity, logr.Discard())
+	_, _, err := getRedisClusterClient(ctx, info, identity, logr.Discard())
 	require.Error(t, err)
 	assert.Positive(t, calls.Load())
 }
@@ -139,7 +141,7 @@ func TestRedisClientDoesNotUseCredentialWithoutPodIdentity(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	_, err := getRedisClient(ctx, redisConnectionInfo{Addresses: []string{"127.0.0.1:1"}}, 0, kedav1alpha1.AuthPodIdentity{}, logr.Discard())
+	_, _, err := getRedisClient(ctx, redisConnectionInfo{Addresses: []string{"127.0.0.1:1"}}, 0, kedav1alpha1.AuthPodIdentity{}, logr.Discard())
 	require.Error(t, err)
 	assert.Zero(t, calls.Load())
 }
@@ -155,7 +157,7 @@ func TestRedisClusterClientDoesNotUseCredentialWithoutPodIdentity(t *testing.T) 
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	_, err := getRedisClusterClient(ctx, redisConnectionInfo{Addresses: []string{"127.0.0.1:1"}}, kedav1alpha1.AuthPodIdentity{}, logr.Discard())
+	_, _, err := getRedisClusterClient(ctx, redisConnectionInfo{Addresses: []string{"127.0.0.1:1"}}, kedav1alpha1.AuthPodIdentity{}, logr.Discard())
 	require.Error(t, err)
 	assert.Zero(t, calls.Load())
 }
@@ -188,5 +190,38 @@ func TestNewRedisEntraIDCredentialsProviderErrors(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(t, err, expected.Error())
 		assert.NotPanics(t, stop)
+	})
+}
+
+func TestRedisScalersCloseStopsTokenManager(t *testing.T) {
+	newStop := func(calls *atomic.Int32) func() {
+		return func() { calls.Add(1) }
+	}
+	newClient := func() *redis.Client {
+		return redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"})
+	}
+
+	t.Run("redis list scaler", func(t *testing.T) {
+		var calls atomic.Int32
+		scaler := createRedisScalerWithClient(newClient(), newStop(&calls), &redisMetadata{}, "", v2.AverageValueMetricType, logr.Discard())
+		require.NoError(t, scaler.Close(context.Background()))
+		assert.Equal(t, int32(1), calls.Load())
+	})
+
+	t.Run("redis streams scaler", func(t *testing.T) {
+		var calls atomic.Int32
+		scaler, err := createScaler(newClient(), newStop(&calls), &redisStreamsMetadata{scaleFactor: xLengthFactor}, v2.AverageValueMetricType, logr.Discard())
+		require.NoError(t, err)
+		require.NoError(t, scaler.Close(context.Background()))
+		assert.Equal(t, int32(1), calls.Load())
+	})
+
+	t.Run("stop runs when client close fails", func(t *testing.T) {
+		var calls atomic.Int32
+		client := newClient()
+		require.NoError(t, client.Close())
+		closeFn := newRedisCloseFn(client, newStop(&calls), logr.Discard())
+		require.Error(t, closeFn())
+		assert.Equal(t, int32(1), calls.Load())
 	})
 }

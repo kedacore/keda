@@ -122,19 +122,13 @@ func NewRedisStreamsScaler(ctx context.Context, isClustered, isSentinel bool, co
 }
 
 func createClusteredRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
-	client, err := getRedisClusterClient(ctx, meta.ConnectionInfo, meta.podIdentity, logger)
+	client, stop, err := getRedisClusterClient(ctx, meta.ConnectionInfo, meta.podIdentity, logger)
 
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis cluster failed: %w", err)
 	}
 
-	closeFn := func() error {
-		if err := client.Close(); err != nil {
-			logger.Error(err, "error closing redis client")
-			return err
-		}
-		return nil
-	}
+	closeFn := newRedisCloseFn(client, stop, logger)
 
 	entriesCountFn, err := createEntriesCountFn(client, meta)
 
@@ -153,26 +147,20 @@ func createSentinelRedisStreamsScaler(ctx context.Context, meta *redisStreamsMet
 		return nil, fmt.Errorf("connection to redis sentinel failed: %w", err)
 	}
 
-	return createScaler(client, meta, metricType, logger)
+	return createScaler(client, func() {}, meta, metricType, logger)
 }
 
 func createRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
-	client, err := getRedisClient(ctx, meta.ConnectionInfo, meta.DatabaseIndex, meta.podIdentity, logger)
+	client, stop, err := getRedisClient(ctx, meta.ConnectionInfo, meta.DatabaseIndex, meta.podIdentity, logger)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis failed: %w", err)
 	}
 
-	return createScaler(client, meta, metricType, logger)
+	return createScaler(client, stop, meta, metricType, logger)
 }
 
-func createScaler(client *redis.Client, meta *redisStreamsMetadata, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
-	closeFn := func() error {
-		if err := client.Close(); err != nil {
-			logger.Error(err, "error closing redis client")
-			return err
-		}
-		return nil
-	}
+func createScaler(client *redis.Client, stop func(), meta *redisStreamsMetadata, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
+	closeFn := newRedisCloseFn(client, stop, logger)
 
 	entriesCountFn, err := createEntriesCountFn(client, meta)
 

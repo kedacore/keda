@@ -19,27 +19,25 @@ var _ = godotenv.Load("../../../.env")
 const testName = "redis-azure-managed-aad-wi-test"
 
 var (
-	managedRedisHost   = os.Getenv("TF_AZURE_MANAGED_REDIS_HOST")
-	testNamespace      = fmt.Sprintf("%s-ns", testName)
-	deploymentName     = fmt.Sprintf("%s-deployment", testName)
-	triggerAuthName    = fmt.Sprintf("%s-ta", testName)
-	scaledObjectName   = fmt.Sprintf("%s-so", testName)
-	serviceAccountName = fmt.Sprintf("%s-sa", testName)
-	jobName            = fmt.Sprintf("%s-job", testName)
-	redisList          = fmt.Sprintf("keda-list-%d", GetRandomNumber())
+	managedRedisHost = os.Getenv("TF_AZURE_MANAGED_REDIS_HOST")
+	testNamespace    = fmt.Sprintf("%s-ns", testName)
+	deploymentName   = fmt.Sprintf("%s-deployment", testName)
+	triggerAuthName  = fmt.Sprintf("%s-ta", testName)
+	scaledObjectName = fmt.Sprintf("%s-so", testName)
+	jobName          = fmt.Sprintf("%s-job", testName)
+	redisList        = fmt.Sprintf("keda-list-%d", GetRandomNumber())
 )
 
 type templateData struct {
-	TestNamespace      string
-	DeploymentName     string
-	TriggerAuthName    string
-	ScaledObjectName   string
-	ServiceAccountName string
-	JobName            string
-	RedisAction        string
-	ManagedRedisHost   string
-	RedisList          string
-	AzureClientID      string
+	TestNamespace    string
+	KedaNamespace    string
+	DeploymentName   string
+	TriggerAuthName  string
+	ScaledObjectName string
+	JobName          string
+	RedisAction      string
+	ManagedRedisHost string
+	RedisList        string
 }
 
 const (
@@ -62,15 +60,6 @@ spec:
       containers:
       - name: nginx
         image: ghcr.io/nginx/nginx-unprivileged:1.26
-`
-	serviceAccountTemplate = `
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: {{.ServiceAccountName}}
-  namespace: {{.TestNamespace}}
-  annotations:
-    azure.workload.identity/client-id: {{.AzureClientID}}
 `
 	triggerAuthTemplate = `
 apiVersion: keda.sh/v1alpha1
@@ -105,14 +94,15 @@ spec:
     authenticationRef:
       name: {{.TriggerAuthName}}
 `
+	// The job runs as the keda-operator service account because the e2e
+	// infrastructure federates identity_1 (the Managed Redis data contributor)
+	// only with system:serviceaccount:keda:keda-operator.
 	redisJobTemplate = `
-# TODO(infra): This assumes identity_1 is assigned to the Managed Redis data
-# plane and that the Azure Workload Identity webhook is enabled in the e2e cluster.
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{.JobName}}
-  namespace: {{.TestNamespace}}
+  namespace: {{.KedaNamespace}}
 spec:
   backoffLimit: 1
   template:
@@ -120,7 +110,7 @@ spec:
       labels:
         azure.workload.identity/use: "true"
     spec:
-      serviceAccountName: {{.ServiceAccountName}}
+      serviceAccountName: keda-operator
       restartPolicy: Never
       containers:
       - name: redis
@@ -152,7 +142,12 @@ spec:
                   part = str(part).encode()
                   data += b'$%d\r\n%s\r\n' % (len(part), part)
               sock.sendall(data)
-              response = sock.recv(4096)
+              response = b''
+              while b'\r\n' not in response:
+                  chunk = sock.recv(4096)
+                  if not chunk:
+                      raise RuntimeError('Redis connection closed before the reply was complete')
+                  response += chunk
               if response.startswith(b'-'):
                   raise RuntimeError(response.decode())
 
@@ -168,11 +163,12 @@ spec:
 
 func TestScaler(t *testing.T) {
 	require.NotEmpty(t, managedRedisHost, "TF_AZURE_MANAGED_REDIS_HOST env variable is required for Azure Managed Redis tests")
-	require.NotEmpty(t, os.Getenv("TF_AZURE_IDENTITY_1_APP_ID"), "TF_AZURE_IDENTITY_1_APP_ID env variable is required for Azure Managed Redis tests")
 
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 	t.Cleanup(func() {
+		deleteRedisJob(t, data, jobName)
+		deleteRedisJob(t, data, fmt.Sprintf("%s-drain", testName))
 		DeleteKubernetesResources(t, testNamespace, data, templates)
 	})
 
@@ -194,26 +190,35 @@ func TestScaler(t *testing.T) {
 }
 
 func waitForRedisJob(t *testing.T, data templateData) {
-	_, err := ExecuteCommand(fmt.Sprintf("kubectl wait --for=condition=complete --timeout=120s job/%s -n %s", data.JobName, data.TestNamespace))
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl wait --for=condition=complete --timeout=120s job/%s -n %s", data.JobName, data.KedaNamespace))
+	if err != nil {
+		logs, _ := ExecuteCommand(fmt.Sprintf("kubectl logs job/%s -n %s --all-containers", data.JobName, data.KedaNamespace))
+		t.Logf("redis job %s logs:\n%s", data.JobName, logs)
+	}
 	require.NoError(t, err)
+}
+
+func deleteRedisJob(t *testing.T, data templateData, name string) {
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl delete job/%s -n %s --ignore-not-found --cascade=foreground", name, data.KedaNamespace))
+	if err != nil {
+		t.Logf("failed to delete redis job %s: %v", name, err)
+	}
 }
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-		TestNamespace:      testNamespace,
-		DeploymentName:     deploymentName,
-		TriggerAuthName:    triggerAuthName,
-		ScaledObjectName:   scaledObjectName,
-		ServiceAccountName: serviceAccountName,
-		JobName:            jobName,
-		RedisAction:        "push",
-		ManagedRedisHost:   managedRedisHost,
-		RedisList:          redisList,
-		AzureClientID:      os.Getenv("TF_AZURE_IDENTITY_1_APP_ID"),
-	}, []Template{
-		{Name: "deploymentTemplate", Config: deploymentTemplate},
-		{Name: "serviceAccountTemplate", Config: serviceAccountTemplate},
-		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
-		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-	}
+			TestNamespace:    testNamespace,
+			KedaNamespace:    KEDANamespace,
+			DeploymentName:   deploymentName,
+			TriggerAuthName:  triggerAuthName,
+			ScaledObjectName: scaledObjectName,
+			JobName:          jobName,
+			RedisAction:      "push",
+			ManagedRedisHost: managedRedisHost,
+			RedisList:        redisList,
+		}, []Template{
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
 }

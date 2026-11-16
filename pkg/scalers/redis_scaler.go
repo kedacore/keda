@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 	"sync"
@@ -174,18 +175,12 @@ func NewRedisScaler(ctx context.Context, isClustered, isSentinel bool, config *s
 }
 
 func createClusteredRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
-	client, err := getRedisClusterClient(ctx, meta.ConnectionInfo, meta.podIdentity, logger)
+	client, stop, err := getRedisClusterClient(ctx, meta.ConnectionInfo, meta.podIdentity, logger)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis cluster failed: %w", err)
 	}
 
-	closeFn := func() error {
-		if err := client.Close(); err != nil {
-			logger.Error(err, "error closing redis client")
-			return err
-		}
-		return nil
-	}
+	closeFn := newRedisCloseFn(client, stop, logger)
 
 	listLengthFn := func(ctx context.Context) (int64, error) {
 		cmd := client.Eval(ctx, script, []string{meta.ListName})
@@ -211,26 +206,20 @@ func createSentinelRedisScaler(ctx context.Context, meta *redisMetadata, script 
 		return nil, fmt.Errorf("connection to redis sentinel failed: %w", err)
 	}
 
-	return createRedisScalerWithClient(client, meta, script, metricType, logger), nil
+	return createRedisScalerWithClient(client, func() {}, meta, script, metricType, logger), nil
 }
 
 func createRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
-	client, err := getRedisClient(ctx, meta.ConnectionInfo, meta.DatabaseIndex, meta.podIdentity, logger)
+	client, stop, err := getRedisClient(ctx, meta.ConnectionInfo, meta.DatabaseIndex, meta.podIdentity, logger)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis failed: %w", err)
 	}
 
-	return createRedisScalerWithClient(client, meta, script, metricType, logger), nil
+	return createRedisScalerWithClient(client, stop, meta, script, metricType, logger), nil
 }
 
-func createRedisScalerWithClient(client *redis.Client, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) Scaler {
-	closeFn := func() error {
-		if err := client.Close(); err != nil {
-			logger.Error(err, "error closing redis client")
-			return err
-		}
-		return nil
-	}
+func createRedisScalerWithClient(client *redis.Client, stop func(), meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) Scaler {
+	closeFn := newRedisCloseFn(client, stop, logger)
 
 	listLengthFn := func(ctx context.Context) (int64, error) {
 		cmd := client.Eval(ctx, script, []string{meta.ListName})
@@ -388,7 +377,20 @@ func newRedisEntraIDCredentialsProvider(logger logr.Logger, podIdentity kedav1al
 	return credProvider, stoppableManager.Stop, nil
 }
 
-func getRedisClusterClient(ctx context.Context, info redisConnectionInfo, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger) (*redis.ClusterClient, error) {
+// newRedisCloseFn closes the client and stops the Entra ID token manager (if any),
+// so a scaler rebuild does not leak the token refresh goroutine.
+func newRedisCloseFn(client io.Closer, stop func(), logger logr.Logger) func() error {
+	return func() error {
+		defer stop()
+		if err := client.Close(); err != nil {
+			logger.Error(err, "error closing redis client")
+			return err
+		}
+		return nil
+	}
+}
+
+func getRedisClusterClient(ctx context.Context, info redisConnectionInfo, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger) (*redis.ClusterClient, func(), error) {
 	options := &redis.ClusterOptions{
 		Addrs:    info.Addresses,
 		Username: info.Username,
@@ -398,7 +400,7 @@ func getRedisClusterClient(ctx context.Context, info redisConnectionInfo, podIde
 	if info.EnableTLS {
 		tlsConfig, err := util.NewTLSConfigWithPassword(info.Cert, info.Key, info.KeyPassword, info.Ca, info.UnsafeSsl)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		options.TLSConfig = tlsConfig
 	}
@@ -408,7 +410,7 @@ func getRedisClusterClient(ctx context.Context, info redisConnectionInfo, podIde
 		var err error
 		options.StreamingCredentialsProvider, stop, err = newRedisEntraIDCredentialsProvider(logger, podIdentity)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -417,9 +419,9 @@ func getRedisClusterClient(ctx context.Context, info redisConnectionInfo, podIde
 	if err := c.Ping(ctx).Err(); err != nil {
 		_ = c.Close()
 		stop()
-		return nil, err
+		return nil, nil, err
 	}
-	return c, nil
+	return c, stop, nil
 }
 
 func getRedisSentinelClient(ctx context.Context, info redisConnectionInfo, dbIndex int) (*redis.Client, error) {
@@ -448,7 +450,7 @@ func getRedisSentinelClient(ctx context.Context, info redisConnectionInfo, dbInd
 	return c, nil
 }
 
-func getRedisClient(ctx context.Context, info redisConnectionInfo, dbIndex int, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger) (*redis.Client, error) {
+func getRedisClient(ctx context.Context, info redisConnectionInfo, dbIndex int, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger) (*redis.Client, func(), error) {
 	options := &redis.Options{
 		Addr:     info.Addresses[0],
 		Username: info.Username,
@@ -459,7 +461,7 @@ func getRedisClient(ctx context.Context, info redisConnectionInfo, dbIndex int, 
 	if info.EnableTLS {
 		tlsConfig, err := util.NewTLSConfigWithPassword(info.Cert, info.Key, info.KeyPassword, info.Ca, info.UnsafeSsl)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		options.TLSConfig = tlsConfig
 	}
@@ -469,7 +471,7 @@ func getRedisClient(ctx context.Context, info redisConnectionInfo, dbIndex int, 
 		var err error
 		options.StreamingCredentialsProvider, stop, err = newRedisEntraIDCredentialsProvider(logger, podIdentity)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -479,7 +481,7 @@ func getRedisClient(ctx context.Context, info redisConnectionInfo, dbIndex int, 
 	if err != nil {
 		_ = c.Close()
 		stop()
-		return nil, err
+		return nil, nil, err
 	}
-	return c, nil
+	return c, stop, nil
 }
