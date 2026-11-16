@@ -22,6 +22,7 @@ import (
 	"strconv"
 
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -235,6 +236,57 @@ func (so *ScaledObject) HasPausedAnnotation() bool {
 	_, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
 	_, pausedReplicasAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]
 	return pausedAnnotationFound || pausedReplicasAnnotationFound
+}
+
+// OwnsHPA returns whether the given HPA carries an owner reference to this ScaledObject.
+// Only HPAs owned by a ScaledObject may be modified or deleted by its controller;
+// an HPA that merely shares the configured name belongs to someone else.
+func (so *ScaledObject) OwnsHPA(hpa *autoscalingv2.HorizontalPodAutoscaler) bool {
+	for _, owner := range hpa.GetOwnerReferences() {
+		if owner.Kind == "ScaledObject" && owner.Name == so.Name {
+			return true
+		}
+	}
+	return false
+}
+
+// MayTakeOverHPA returns whether this ScaledObject is allowed to adopt a pre-existing HPA
+// it does not own. That is the case when the ScaledObject explicitly requests the transfer
+// (transfer-hpa-ownership annotation together with the HPA name in the advanced settings),
+// or when the HPA itself opted out of ownership validation. Callers must additionally
+// verify that the HPA scales the same workload as the ScaledObject.
+func (so *ScaledObject) MayTakeOverHPA(hpa *autoscalingv2.HorizontalPodAutoscaler) bool {
+	if hpa.GetAnnotations()[ValidationsHpaOwnershipAnnotation] == "false" {
+		return true
+	}
+	if so.GetAnnotations()[ScaledObjectTransferHpaOwnershipAnnotation] != "true" {
+		return false
+	}
+	return so.Spec.Advanced != nil &&
+		so.Spec.Advanced.HorizontalPodAutoscalerConfig != nil &&
+		so.Spec.Advanced.HorizontalPodAutoscalerConfig.Name == hpa.Name
+}
+
+// CanManageHPA returns whether this ScaledObject may update or delete the given HPA. That is the case when
+// the ScaledObject owns the HPA, or when it may take over the HPA and the HPA scales the same workload.
+// An HPA that only shares the configured name belongs to someone else and must not be touched.
+func (so *ScaledObject) CanManageHPA(restMapper meta.RESTMapper, hpa *autoscalingv2.HorizontalPodAutoscaler) (bool, error) {
+	if so.OwnsHPA(hpa) {
+		return true, nil
+	}
+	if !so.MayTakeOverHPA(hpa) {
+		return false, nil
+	}
+
+	soGvkr, err := ParseGVKR(restMapper, so.Spec.ScaleTargetRef.APIVersion, so.Spec.ScaleTargetRef.Kind)
+	if err != nil {
+		return false, err
+	}
+	hpaGvkr, err := ParseGVKR(restMapper, hpa.Spec.ScaleTargetRef.APIVersion, hpa.Spec.ScaleTargetRef.Kind)
+	if err != nil {
+		return false, err
+	}
+	return soGvkr.GVKString() == hpaGvkr.GVKString() && hpa.Spec.ScaleTargetRef.Name == so.Spec.ScaleTargetRef.Name, nil
 }
 
 // NeedToBePausedByAnnotation will check whether ScaledObject needs to be paused based on PausedAnnotation or PausedReplicaCount
