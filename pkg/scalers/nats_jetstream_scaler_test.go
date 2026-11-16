@@ -72,6 +72,12 @@ var testNATSJetStreamMetadata = []parseNATSJetStreamMetadataTestData{
 	{map[string]string{"stream": "mystream", "consumer": "pull_consumer"}, map[string]string{"account": "$G", "natsServerMonitoringEndpoint": "nats.nats:8222"}, false},
 	// Misconfigured account
 	{map[string]string{"stream": "mystream", "consumer": "pull_consumer"}, map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222"}, true},
+	// All good + lagStrategy all
+	{map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222", "account": "$G", "stream": "mystream", "consumer": "pull_consumer", "lagStrategy": "all"}, map[string]string{}, false},
+	// All good + lagStrategy pending
+	{map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222", "account": "$G", "stream": "mystream", "consumer": "pull_consumer", "lagStrategy": "pending"}, map[string]string{}, false},
+	// Misconfigured lagStrategy, should fail
+	{map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222", "account": "$G", "stream": "mystream", "consumer": "pull_consumer", "lagStrategy": "ackpending"}, map[string]string{}, true},
 }
 
 var natsJetStreamMetricIdentifiers = []natsJetStreamMetricIdentifier{
@@ -626,4 +632,64 @@ func TestNATSJetStreamMonitoringNodeURLByNodeEncoding(t *testing.T) {
 	assert.Equal(t, "true", q.Get("config"), "config parameter must always be true after node-by-node URL construction")
 	assert.Equal(t, "$G", q.Get("acc"), "acc parameter must be preserved correctly in node-by-node URL")
 	assert.True(t, strings.HasPrefix(parsedURL.Host, "leader."), "node-by-node hostname must be prefixed with node name")
+}
+
+type natsJetStreamLagStrategyTestData struct {
+	name           string
+	lagStrategy    string
+	numPending     int
+	numAckPending  int
+	expectedMsgLag int64
+}
+
+var testNATSJetStreamLagStrategy = []natsJetStreamLagStrategyTestData{
+	// Default strategy, unset in the trigger metadata: ack-pending messages count,
+	// which is the behaviour introduced for kedacore/keda#3787.
+	{"default - undelivered and ack pending", "", 100, 20, 120},
+	{"default - only ack pending", "", 0, 20, 20},
+	// Explicit "all" behaves like the default.
+	{"all - undelivered and ack pending", "all", 100, 20, 120},
+	{"all - only ack pending", "all", 0, 20, 20},
+	// "pending" ignores ack-pending messages, e.g. messages parked by NakWithDelay.
+	{"pending - undelivered and ack pending", "pending", 100, 20, 100},
+	{"pending - only ack pending", "pending", 0, 20, 0},
+	{"pending - only undelivered", "pending", 100, 0, 100},
+}
+
+func TestNATSJetStreamGetMaxMsgLagByStrategy(t *testing.T) {
+	for _, testData := range testNATSJetStreamLagStrategy {
+		t.Run(testData.name, func(t *testing.T) {
+			metadata := map[string]string{
+				"natsServerMonitoringEndpoint": "localhost:8222",
+				"account":                      "$G",
+				"stream":                       "mystream",
+				"consumer":                     "pull_consumer",
+			}
+			if testData.lagStrategy != "" {
+				metadata["lagStrategy"] = testData.lagStrategy
+			}
+
+			meta, err := parseNATSJetStreamMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: metadata})
+			if err != nil {
+				t.Fatal("Could not parse metadata:", err)
+			}
+
+			mockJetStreamScaler := natsJetStreamScaler{
+				metadata: meta,
+				stream: &streamDetail{
+					Name: "mystream",
+					Consumers: []consumerDetail{{
+						Name:          "pull_consumer",
+						NumPending:    testData.numPending,
+						NumAckPending: testData.numAckPending,
+					}},
+				},
+				httpClient: http.DefaultClient,
+			}
+
+			msgLag, err := mockJetStreamScaler.getMaxMsgLag()
+			assert.NoError(t, err)
+			assert.Equal(t, testData.expectedMsgLag, msgLag)
+		})
+	}
 }

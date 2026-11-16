@@ -247,6 +247,21 @@ func (r *ScaledObjectReconciler) renameHPA(ctx context.Context, logger logr.Logg
 	return r.createAndDeployNewHPA(ctx, logger, scaledObject, gvkr)
 }
 
+// verifyHPAIsManageable checks that the HPA found under the name configured for the ScaledObject may be
+// managed (updated or deleted) by it. An HPA that is not owned by the ScaledObject is only accepted when
+// ownership transfer is allowed and the HPA scales the same workload; otherwise the HPA belongs to a
+// different owner and must not be touched, even though it carries the configured name.
+func (r *ScaledObjectReconciler) verifyHPAIsManageable(scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2.HorizontalPodAutoscaler) error {
+	manageable, err := scaledObject.CanManageHPA(r.restMapper, foundHpa)
+	if err != nil {
+		return err
+	}
+	if !manageable {
+		return fmt.Errorf("HPA '%s' already exists and is not managed by ScaledObject '%s': it is owned by another resource or scales a different workload", foundHpa.Name, scaledObject.Name)
+	}
+	return nil
+}
+
 // deleteHpa delete existing HPA
 func (r *ScaledObjectReconciler) deleteHPA(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2.HorizontalPodAutoscaler) error {
 	logger.Info("Deleting existing HPA", "HPA.Namespace", scaledObject.Namespace, "HPA.Name", foundHpa.Name)

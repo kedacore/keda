@@ -1,0 +1,31 @@
+# Files under tests/ that still contain time.Sleep. Shrink this list as each
+# family is converted to KedaEventually / KedaConsistently (see #7991). Blank
+# lines and lines starting with # are ignored.
+tests/scalers/aws/aws_cloudwatch_min_metric_value/aws_cloudwatch_min_metric_value_test.go
+tests/scalers/aws/aws_dynamodb/aws_dynamodb_test.go
+tests/scalers/aws/aws_dynamodb_pod_identity/aws_dynamodb_pod_identity_test.go
+tests/scalers/aws/aws_dynamodb_pod_identity_eks/aws_dynamodb_pod_identity_eks_test.go
+tests/scalers/aws/aws_dynamodb_streams/aws_dynamodb_streams_test.go
+tests/scalers/aws/aws_dynamodb_streams_pod_identity/aws_dynamodb_streams_pod_identity_test.go
+tests/scalers/aws/aws_dynamodb_streams_pod_identity_eks/aws_dynamodb_streams_pod_identity_eks_test.go
+tests/scalers/aws/aws_kinesis_stream/aws_kinesis_stream_test.go
+tests/scalers/aws/aws_kinesis_stream_pod_identity/aws_kinesis_stream_pod_identity_test.go
+tests/scalers/aws/aws_kinesis_stream_pod_identity_eks/aws_kinesis_stream_pod_identity_eks_test.go
+tests/scalers/azure/azure_application_insights/azure_application_insights_test.go
+tests/scalers/azure/azure_application_insights_aad_wi/azure_application_insights_aad_wi_test.go
+tests/scalers/azure/azure_event_hub_aad_wi/azure_event_hub_aad_wi_test.go
+tests/scalers/azure/azure_event_hub_blob_metadata/azure_event_hub_blob_metadata_test.go
+tests/scalers/azure/azure_event_hub_blob_metadata_wi/azure_event_hub_blob_metadata_wi_test.go
+tests/scalers/azure/azure_event_hub_dapr/azure_event_hub_dapr_test.go
+tests/scalers/azure/azure_event_hub_dapr_wi/azure_event_hub_dapr_wi_test.go
+tests/scalers/azure/azure_event_hub_go_sdk/azure_event_hub_go_sdk_test.go
+tests/scalers/azure/azure_monitor/azure_monitor_test.go
+tests/scalers/azure/azure_monitor_aad_wi/azure_monitor_aad_wi_test.go
+tests/scalers/azure/azure_pipelines_adv/azure_pipelines_adv_test.go
+tests/scalers/dynatrace/dynatrace_test.go
+tests/scalers/dynatrace_dql/dynatrace_dql_test.go
+tests/scalers/solarwinds/solarwinds_test.go
+tests/scalers/splunk_observability/splunk_observability_test.go
+tests/secret-providers/aws_identity_assume_role/aws_identity_assume_role_test.go
+tests/secret-providers/aws_identity_external_id/aws_identity_external_id_test.go
+tests/sequential/kafka_gssapi/kafka_gssapi_test.go
