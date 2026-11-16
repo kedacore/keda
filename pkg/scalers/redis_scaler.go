@@ -240,13 +240,13 @@ func createRedisScalerWithClient(client *redis.Client, stop func(), meta *redisM
 }
 
 func parseRedisMetadata(config *scalersconfig.ScalerConfig) (*redisMetadata, error) {
-	meta := &redisMetadata{}
+	// podIdentity must be set before TypedConfig, which runs Validate.
+	meta := &redisMetadata{podIdentity: config.PodIdentity}
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing redis metadata: %w", err)
 	}
 
 	meta.triggerIndex = config.TriggerIndex
-	meta.podIdentity = config.PodIdentity
 	return meta, nil
 }
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -201,6 +202,50 @@ func TestRedisValidateAzureWorkloadTLS(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestParseRedisMetadataAzureWorkload(t *testing.T) {
+	azureWorkload := kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload}
+	tests := []struct {
+		name     string
+		metadata map[string]string
+		wantErr  error
+	}{
+		{
+			name:     "tls omitted",
+			metadata: map[string]string{"address": "localhost:6379", "listName": "mylist"},
+			wantErr:  ErrRedisEntraIDRequiresTLS,
+		},
+		{
+			name:     "password set",
+			metadata: map[string]string{"address": "localhost:6379", "listName": "mylist", "enableTLS": "true", "password": "secret"},
+			wantErr:  ErrRedisEntraIDIncompatibleWithPassword,
+		},
+		{
+			name:     "sentinel set",
+			metadata: map[string]string{"address": "localhost:26379", "listName": "mylist", "enableTLS": "true", "sentinelMaster": "mymaster"},
+			wantErr:  ErrRedisEntraIDIncompatibleWithSentinel,
+		},
+		{
+			name:     "tls enabled",
+			metadata: map[string]string{"address": "localhost:6379", "listName": "mylist", "enableTLS": "true"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			meta, err := parseRedisMetadata(&scalersconfig.ScalerConfig{
+				TriggerMetadata: tt.metadata,
+				PodIdentity:     azureWorkload,
+			})
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, azureWorkload, meta.podIdentity)
 		})
 	}
 }
