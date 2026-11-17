@@ -1180,8 +1180,11 @@ func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler
 			var errCacheClosed error
 			record, errCacheClosed = h.observeMetric(ctx, logger, scaledObject, scalersCache, triggerIndex, result.TriggerName, spec, nil, RawMetricsPollingInterval)
 			if errCacheClosed != nil {
+				// Return immediately: a later spec's ScalerError would
+				// overwrite result.Err below and hide the closed-cache
+				// signal from getScaledObjectState.
 				result.Err = errCacheClosed
-				continue
+				return result
 			}
 		}
 		metrics, isMetricActive, fallbackActive, err := record.Metric, record.IsMetricActive, record.FallbackActive, record.ScalerError
