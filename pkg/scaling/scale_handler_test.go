@@ -2051,6 +2051,49 @@ func TestGetScalerState_CacheClosedMetricReadRecordsError(t *testing.T) {
 	assert.Empty(t, result.Records)
 }
 
+func TestGetScaledObjectState_CacheClosedNotOverwrittenByLaterHPAError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	scaledObject := scaledObjectWithIrrelevantPolling()
+
+	closedMetric := "cache-closed-metric"
+	hpaMetric := "hpa-error-metric"
+
+	scaler := mock_scalers.NewMockScaler(ctrl)
+	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{
+		createMetricSpec(10, closedMetric),
+		createMetricSpec(10, hpaMetric),
+	})
+	// The closed-cache read is retried once on the refreshed scaler.
+	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), closedMetric).Return(nil, false, cache.ErrCacheClosed).Times(2)
+	scaler.EXPECT().Close(gomock.Any()).AnyTimes()
+
+	sh, scalerCache, mockClient := newHPAObservationsHandler(ctrl, scaledObject, scaler)
+	expectHPAScalingActive(mockClient, v1.ConditionTrue)
+	// The second spec reuses an HPA observation carrying a ScalerError.
+	// Without the early return in getScalerState, that error overwrites
+	// ErrCacheClosed and the tick is no longer discarded as closed-cache.
+	sh.scaledObjectsMetricCache.StoreRecord(scaledObject.GenerateIdentifier(), hpaMetric, metricscache.MetricsRecord{
+		IsMetricActive: false,
+		ScalerError:    errors.New("hpa scaler error"),
+	})
+
+	isActive, isError, records, activeTriggers, isFallbackActive, err := sh.getScaledObjectState(t.Context(), scaledObject)
+
+	scalerCache.Close(t.Context())
+
+	assert.ErrorIs(t, err, cache.ErrCacheClosed)
+	assert.False(t, isActive)
+	assert.True(t, isError)
+	assert.Empty(t, records)
+	assert.Empty(t, activeTriggers)
+	assert.False(t, isFallbackActive)
+
+	sh.scalerCachesLock.RLock()
+	_, stillPresent := sh.scalerCaches[scaledObject.GenerateIdentifier()]
+	sh.scalerCachesLock.RUnlock()
+	assert.True(t, stillPresent, "ClearScalersCache should not have run")
+}
+
 func TestGetScaledObjectState_EmptyScalerSnapshotIsError(t *testing.T) {
 	recorder := events.NewFakeRecorder(10)
 	scaledObject := kedav1alpha1.ScaledObject{
