@@ -314,6 +314,18 @@ func TestActiveMQRestAPITemplateParsing(t *testing.T) {
 			wantDestination: "testQueue",
 		},
 		{
+			name:            "encoded comma in a value",
+			template:        prefix + ":type=Broker,brokerName=localhost,destinationType=Queue,destinationName=q%2Cr/QueueSize",
+			wantBroker:      "localhost",
+			wantDestination: "q,r",
+		},
+		{
+			name:            "colon in a value",
+			template:        prefix + ":type=Broker,brokerName=localhost,destinationType=Queue,destinationName=q:r/QueueSize",
+			wantBroker:      "localhost",
+			wantDestination: "q:r",
+		},
+		{
 			name:     "no destinationName",
 			template: prefix + ":type=Broker,brokerName=localhost/QueueSize",
 			wantErr:  "no destinationName is given",

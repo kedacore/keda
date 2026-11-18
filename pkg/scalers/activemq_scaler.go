@@ -54,9 +54,16 @@ func (a *activeMQMetadata) Validate() error {
 			return fmt.Errorf("unable to parse ActiveMQ restAPITemplate: %w", err)
 		}
 		a.ManagementEndpoint = u.Host
+		// Use the path as written in the template, like the Artemis scaler, so that ParseQuery
+		// decodes a value once. RawPath holds it only when it differs from the default encoding;
+		// otherwise EscapedPath returns it.
+		path := u.RawPath
+		if path == "" {
+			path = u.EscapedPath()
+		}
 		// This returns : type=Broker,brokerName=<<brokerName>>,destinationType=Queue,destinationName=<<destinationName>>
 		// It is empty when the path has no ':', and the checks below report the missing names.
-		_, properties, _ := strings.Cut(u.Path, ":")
+		_, properties, _ := strings.Cut(path, ":")
 		splitURL, _, _ := strings.Cut(properties, "/")
 		replacer := strings.NewReplacer(",", "&")
 		// This returns a map with key: string types and element type [] string. : map[brokerName:[<<brokerName>>] destinationName:[<<destinationName>>] destinationType:[Queue] type:[Broker]]

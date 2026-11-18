@@ -192,6 +192,38 @@ func TestArtemisRestAPITemplateParsing(t *testing.T) {
 			wantQueue:   "q",
 		},
 		{
+			name:        "colon in a quoted value",
+			template:    prefix + `:broker="b",component=addresses,address="a",subcomponent=queues,routing-type="anycast",queue="q:r"/MessageCount`,
+			wantBroker:  `"b"`,
+			wantAddress: `"a"`,
+			wantQueue:   `"q:r"`,
+		},
+		{
+			name:     "no address",
+			template: prefix + `:broker="b",component=addresses,subcomponent=queues,routing-type="anycast",queue="q"/MessageCount`,
+			wantErr:  "no brokerAddress given",
+		},
+		{
+			name:     "empty address",
+			template: prefix + `:broker="b",component=addresses,address="",subcomponent=queues,routing-type="anycast",queue="q"/MessageCount`,
+			wantErr:  "no brokerAddress given",
+		},
+		{
+			name:     "no queue",
+			template: prefix + `:broker="b",component=addresses,address="a"/MessageCount`,
+			wantErr:  "no queueName is given",
+		},
+		{
+			name:     "empty queue",
+			template: prefix + `:broker="b",component=addresses,address="a",subcomponent=queues,routing-type="anycast",queue=""/MessageCount`,
+			wantErr:  "no queueName is given",
+		},
+		{
+			name:     "no broker",
+			template: prefix + `:component=addresses,address="a",subcomponent=queues,routing-type="anycast",queue="q"/MessageCount`,
+			wantErr:  "no brokerName given",
+		},
+		{
 			name:     "empty broker in literal quotes",
 			template: prefix + `:broker="",component=addresses,address="a",subcomponent=queues,routing-type="anycast",queue="q"/MessageCount`,
 			wantErr:  "no brokerName given",
@@ -200,11 +232,6 @@ func TestArtemisRestAPITemplateParsing(t *testing.T) {
 			name:     "empty broker in percent-encoded quotes",
 			template: prefix + ":broker=%22%22,component=addresses,address=%22a%22,subcomponent=queues,routing-type=%22anycast%22,queue=%22q%22/MessageCount",
 			wantErr:  "no brokerName given",
-		},
-		{
-			name:     "no queue",
-			template: prefix + `:broker="b",component=addresses,address="a"/MessageCount`,
-			wantErr:  "no queueName is given",
 		},
 		{
 			name:     "no properties",
