@@ -138,7 +138,7 @@ func createCloudwatchClient(ctx context.Context, metadata *awsCloudwatchMetadata
 func parseAwsCloudwatchMetadata(config *scalersconfig.ScalerConfig) (*awsCloudwatchMetadata, error) {
 	meta := &awsCloudwatchMetadata{}
 	if err := config.TypedConfig(meta); err != nil {
-		return nil, fmt.Errorf("error parsing prometheus metadata: %w", err)
+		return nil, fmt.Errorf("error parsing cloudwatch metadata: %w", err)
 	}
 
 	awsAuthorization, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, meta.AwsRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)

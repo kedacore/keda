@@ -123,7 +123,7 @@ func NewArtemisQueueScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 func parseArtemisMetadata(config *scalersconfig.ScalerConfig) (*artemisMetadata, error) {
 	meta := &artemisMetadata{}
 	if err := config.TypedConfig(meta); err != nil {
-		return nil, fmt.Errorf("error parsing prometheus metadata: %w", err)
+		return nil, fmt.Errorf("error parsing artemis metadata: %w", err)
 	}
 
 	meta.TriggerIndex = config.TriggerIndex

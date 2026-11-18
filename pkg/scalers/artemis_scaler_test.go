@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -276,5 +277,14 @@ func TestArtemisTLSCaOnly(t *testing.T) {
 	}
 	if meta.Key != "" {
 		t.Error("Expected empty Key")
+	}
+}
+
+// A ScaledObject can also have a prometheus trigger, so the error has to name this scaler.
+func TestArtemisParseErrorNamesTheScaler(t *testing.T) {
+	_, err := parseArtemisMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: map[string]string{}})
+	const want = "error parsing artemis metadata: "
+	if err == nil || !strings.HasPrefix(err.Error(), want) {
+		t.Errorf("parseArtemisMetadata() error = %v, want an error starting with %q", err, want)
 	}
 }

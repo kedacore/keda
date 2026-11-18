@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	v2 "k8s.io/api/autoscaling/v2"
@@ -610,5 +611,14 @@ func TestSolaceGetMetricSpec(t *testing.T) {
 		default:
 			fmt.Println(" --> PASS")
 		}
+	}
+}
+
+// A ScaledObject can also have a prometheus trigger, so the error has to name this scaler.
+func TestSolaceParseErrorNamesTheScaler(t *testing.T) {
+	_, err := parseSolaceMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: map[string]string{}})
+	const want = "error parsing solace metadata: "
+	if err == nil || !strings.HasPrefix(err.Error(), want) {
+		t.Errorf("parseSolaceMetadata() error = %v, want an error starting with %q", err, want)
 	}
 }

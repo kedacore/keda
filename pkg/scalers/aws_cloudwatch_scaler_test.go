@@ -900,3 +900,9 @@ func TestAWSCloudwatchScalerCloseClosesHTTPConnections(t *testing.T) {
 
 	assert.True(t, transport.closeIdleCalled, "CloseIdleConnections should have been called after Close()")
 }
+
+// A ScaledObject can also have a prometheus trigger, so the error has to name this scaler.
+func TestAWSCloudwatchParseErrorNamesTheScaler(t *testing.T) {
+	_, err := parseAwsCloudwatchMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: map[string]string{}})
+	assert.ErrorContains(t, err, "error parsing cloudwatch metadata: ")
+}
