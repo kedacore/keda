@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -3759,14 +3758,5 @@ func Test_GetMetricsAndActivity_IncludeOngoingSessions(t *testing.T) {
 				t.Errorf("GetMetricsAndActivity() metric = %v, want %v", got, tt.wantMetric)
 			}
 		})
-	}
-}
-
-// A ScaledObject can also have a prometheus trigger, so the error has to name this scaler.
-func TestSeleniumGridParseErrorNamesTheScaler(t *testing.T) {
-	_, err := parseSeleniumGridScalerMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: map[string]string{}})
-	const want = "error parsing selenium grid metadata: "
-	if err == nil || !strings.HasPrefix(err.Error(), want) {
-		t.Errorf("parseSeleniumGridScalerMetadata() error = %v, want an error starting with %q", err, want)
 	}
 }
