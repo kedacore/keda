@@ -17,172 +17,98 @@ limitations under the License.
 package k8s
 
 import (
-	"errors"
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/api/meta"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/restmapper"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/scale"
 )
 
-// discoveryMapper builds the same kind of RESTMapper controller-runtime hands to the scale client:
-// one mapper per group/version behind a PriorityRESTMapper whose priority follows the group order.
-func discoveryMapper(groups ...*restmapper.APIGroupResources) meta.RESTMapper {
-	return restmapper.NewDiscoveryRESTMapper(groups)
-}
-
-func appsGroup() *restmapper.APIGroupResources {
-	return &restmapper.APIGroupResources{
-		Group: metav1.APIGroup{
-			Name:             "apps",
-			Versions:         []metav1.GroupVersionForDiscovery{{Version: "v1"}},
-			PreferredVersion: metav1.GroupVersionForDiscovery{Version: "v1"},
-		},
-		VersionedResources: map[string][]metav1.APIResource{
-			"v1": {
-				{Name: "deployments", SingularName: "deployment", Namespaced: true, Kind: "Deployment"},
-				{Name: "statefulsets", SingularName: "statefulset", Namespaced: true, Kind: "StatefulSet"},
-			},
-		},
-	}
-}
-
-// kruiseGroup mimics OpenKruise, whose group name starts with "apps" and also serves "statefulsets".
-func kruiseGroup() *restmapper.APIGroupResources {
-	return &restmapper.APIGroupResources{
-		Group: metav1.APIGroup{
-			Name:             "apps.kruise.io",
-			Versions:         []metav1.GroupVersionForDiscovery{{Version: "v1beta1"}, {Version: "v1alpha1"}},
-			PreferredVersion: metav1.GroupVersionForDiscovery{Version: "v1beta1"},
-		},
-		VersionedResources: map[string][]metav1.APIResource{
-			"v1beta1":  {{Name: "statefulsets", SingularName: "statefulset", Namespaced: true, Kind: "StatefulSet"}},
-			"v1alpha1": {{Name: "statefulsets", SingularName: "statefulset", Namespaced: true, Kind: "StatefulSet"}, {Name: "clonesets", SingularName: "cloneset", Namespaced: true, Kind: "CloneSet"}},
-		},
-	}
-}
-
-var (
-	appsStatefulSets   = schema.GroupVersionResource{Group: "apps", Resource: "statefulsets"}
-	appsV1StatefulSets = schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "statefulsets"}
-	kruiseStatefulSets = schema.GroupVersionResource{Group: "apps.kruise.io", Version: "v1beta1", Resource: "statefulsets"}
-)
-
-// The scale client asks the mapper for a GroupResource with an empty version. apimachinery falls back to
-// group-prefix matching for that shape, and which group wins then depends on the group order of the
-// discovery mapper (map iteration order inside controller-runtime's lazy mapper), so the plain mapper
-// can return apps.kruise.io for apps/statefulsets. This test pins that behaviour so the wrapper below
-// has something real to guard against.
-func TestPlainDiscoveryMapperPrefersPrefixGroupDependingOnOrder(t *testing.T) {
-	gvr, err := discoveryMapper(kruiseGroup(), appsGroup()).ResourceFor(appsStatefulSets)
-	require.NoError(t, err)
-	assert.Equal(t, kruiseStatefulSets, gvr, "kruise first: prefix match wins")
-
-	gvr, err = discoveryMapper(appsGroup(), kruiseGroup()).ResourceFor(appsStatefulSets)
-	require.NoError(t, err)
-	assert.Equal(t, appsV1StatefulSets, gvr, "apps first: exact match wins")
-}
-
-// versionsOf mimics discovery for the two test groups.
-func versionsOf(group string) ([]string, error) {
-	switch group {
-	case "apps":
-		return []string{"v1"}, nil
-	case "apps.kruise.io":
-		return []string{"v1beta1", "v1alpha1"}, nil
-	}
-	return nil, nil
-}
-
-func TestExactGroupMapperResourceFor(t *testing.T) {
-	for name, groups := range map[string][]*restmapper.APIGroupResources{
-		"kruise first": {kruiseGroup(), appsGroup()},
-		"apps first":   {appsGroup(), kruiseGroup()},
+func TestScaleUsesResolvedResource(t *testing.T) {
+	for _, gv := range []schema.GroupVersion{
+		{Group: "apps", Version: "v1"},
+		{Group: "apps.kruise.io", Version: "v1"},
+		{Group: "apps.kruise.io", Version: "v1beta1"},
 	} {
-		t.Run(name, func(t *testing.T) {
-			m := exactGroupMapper{RESTMapper: discoveryMapper(groups...), groupVersions: versionsOf}
+		t.Run(gv.String(), func(t *testing.T) {
+			target := gv.WithResource("statefulsets")
+			groupPath := "/apis/" + target.GroupVersion().String()
+			scalePath := groupPath + "/namespaces/demo/statefulsets/web/scale"
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch {
+				case r.Method == http.MethodGet && r.URL.Path == scalePath:
+					assert.Equal(t, "32s", r.URL.Query().Get("timeout"))
+					assert.Equal(t, "17", r.URL.Query().Get("resourceVersion"))
+					_, _ = w.Write([]byte(`{"apiVersion":"autoscaling/v1","kind":"Scale","metadata":{"name":"web","namespace":"demo","resourceVersion":"17"},"spec":{"replicas":2},"status":{"selector":"app=web"}}`))
+				case r.Method == http.MethodGet && r.URL.Path == groupPath:
+					list := metav1.APIResourceList{GroupVersion: target.GroupVersion().String(), APIResources: []metav1.APIResource{
+						{Name: "statefulsets/scale", Group: "autoscaling", Version: "v1", Kind: "Scale"},
+					}}
+					assert.NoError(t, json.NewEncoder(w).Encode(list))
+				case r.Method == http.MethodPut && r.URL.Path == scalePath:
+					assert.Equal(t, "32s", r.URL.Query().Get("timeout"))
+					assert.Equal(t, "scale-test", r.URL.Query().Get("fieldManager"))
+					var body autoscalingv1.Scale
+					if assert.NoError(t, json.NewDecoder(r.Body).Decode(&body)) {
+						assert.Equal(t, "autoscaling/v1", body.APIVersion)
+						assert.Equal(t, "17", body.ResourceVersion)
+						assert.EqualValues(t, 3, body.Spec.Replicas)
+						body.ResourceVersion = "18"
+						assert.NoError(t, json.NewEncoder(w).Encode(body))
+					}
+				default:
+					t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
+					http.NotFound(w, r)
+				}
+			}))
+			defer server.Close()
 
-			gvr, err := m.ResourceFor(appsStatefulSets)
+			config := &rest.Config{Host: server.URL}
+			resources, err := newScaleResourceClient(config)
 			require.NoError(t, err)
-			assert.Equal(t, appsV1StatefulSets, gvr, "version-less lookup must stay in the requested group")
-
-			gvr, err = m.ResourceFor(schema.GroupVersionResource{Group: "apps.kruise.io", Resource: "statefulsets"})
+			require.Zero(t, config.Timeout)
+			client := &versionedScaleClient{
+				client:    resources,
+				kinds:     scale.NewDiscoveryScaleKindResolver(discovery.NewDiscoveryClientForConfigOrDie(config)),
+				converter: scale.NewScaleConverter(),
+			}
+			scales := client.Scales("demo")
+			current, err := scales.Get(t.Context(), target, "web", metav1.GetOptions{ResourceVersion: "17"})
 			require.NoError(t, err)
-			assert.Equal(t, kruiseStatefulSets, gvr, "exact group keeps its preferred version")
-
-			gvr, err = m.ResourceFor(schema.GroupVersionResource{Group: "apps.kruise.io", Version: "v1alpha1", Resource: "statefulsets"})
+			assert.EqualValues(t, 2, current.Spec.Replicas)
+			assert.Equal(t, "app=web", current.Status.Selector)
+			current.Spec.Replicas = 3
+			updated, err := scales.Update(t.Context(), target, current, metav1.UpdateOptions{FieldManager: "scale-test"})
 			require.NoError(t, err)
-			assert.Equal(t, schema.GroupVersionResource{Group: "apps.kruise.io", Version: "v1alpha1", Resource: "statefulsets"}, gvr, "fully qualified lookups are passed through")
+			assert.Equal(t, "18", updated.ResourceVersion)
 		})
 	}
 }
 
-// lazyMapper mimics controller-runtime's lazy mapper: it starts with only some groups loaded and loads the
-// rest when a lookup fails, and a prefix match is not a failure.
-type lazyMapper struct {
-	meta.RESTMapper
-	full meta.RESTMapper
-}
+func TestScaleRequestHonorsConfiguredTimeout(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done()
+	}))
+	defer server.Close()
 
-func (l *lazyMapper) ResourceFor(input schema.GroupVersionResource) (schema.GroupVersionResource, error) {
-	gvr, err := l.RESTMapper.ResourceFor(input)
-	if meta.IsNoMatchError(err) {
-		l.RESTMapper = l.full
-		return l.full.ResourceFor(input)
-	}
-	return gvr, err
-}
-
-// Only apps.kruise.io is loaded when the scale client asks for apps/statefulsets: the prefix match is the only
-// candidate, so the wrapper must make the mapper discover "apps" instead of settling for the prefix match.
-func TestExactGroupMapperDiscoversRequestedGroupBeforeFallingBack(t *testing.T) {
-	lazy := &lazyMapper{RESTMapper: discoveryMapper(kruiseGroup()), full: discoveryMapper(kruiseGroup(), appsGroup())}
-	m := exactGroupMapper{RESTMapper: lazy, groupVersions: versionsOf}
-
-	gvr, err := m.ResourceFor(appsStatefulSets)
+	resources, err := newScaleResourceClient(&rest.Config{Host: server.URL, Timeout: 100 * time.Millisecond})
 	require.NoError(t, err)
-	assert.Equal(t, appsV1StatefulSets, gvr)
-
-	gvr, err = m.ResourceFor(appsStatefulSets)
-	require.NoError(t, err)
-	assert.Equal(t, appsV1StatefulSets, gvr, "second lookup is served from the now loaded group")
-}
-
-func TestExactGroupMapperNoMatchWhenGroupHasNoSuchResource(t *testing.T) {
-	m := exactGroupMapper{RESTMapper: discoveryMapper(kruiseGroup()), groupVersions: versionsOf}
-
-	// "apps" is not served by this cluster at all: never answer with another group's resource.
-	_, err := m.ResourceFor(appsStatefulSets)
-	require.Error(t, err)
-	assert.True(t, meta.IsNoMatchError(err))
-
-	// Nothing matches anywhere: still NoMatch.
-	_, err = m.ResourceFor(schema.GroupVersionResource{Group: "batch", Resource: "jobs"})
-	require.Error(t, err)
-	assert.True(t, meta.IsNoMatchError(err))
-}
-
-// failingMapper answers version-less lookups normally but fails fully qualified ones with a non-NoMatch error,
-// like a discovery call that timed out while loading the group.
-type failingMapper struct {
-	meta.RESTMapper
-	err error
-}
-
-func (f failingMapper) ResourceFor(input schema.GroupVersionResource) (schema.GroupVersionResource, error) {
-	if input.Version != "" {
-		return schema.GroupVersionResource{}, f.err
-	}
-	return f.RESTMapper.ResourceFor(input)
-}
-
-func TestExactGroupMapperPropagatesDiscoveryErrors(t *testing.T) {
-	boom := errors.New("discovery timed out")
-	m := exactGroupMapper{RESTMapper: failingMapper{RESTMapper: discoveryMapper(kruiseGroup()), err: boom}, groupVersions: versionsOf}
-
-	_, err := m.ResourceFor(appsStatefulSets)
-	require.ErrorIs(t, err, boom, "a real error while loading the group must not be reported as NoMatch")
+	client := &versionedScaleClient{client: resources}
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	target := schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "statefulsets"}
+	_, err = client.Scales("demo").Get(ctx, target, "web", metav1.GetOptions{})
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.NoError(t, ctx.Err(), "the client timeout should expire before the caller's deadline")
 }

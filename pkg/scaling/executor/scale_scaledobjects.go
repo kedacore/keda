@@ -304,7 +304,7 @@ func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Log
 }
 
 func (e *scaleExecutor) getScaleTargetScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) (*autoscalingv1.Scale, error) {
-	return e.scaleClient.Scales(scaledObject.Namespace).Get(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+	return e.scaleClient.Scales(scaledObject.Namespace).Get(ctx, scaledObject.Status.ScaleTargetGVKR.GroupVersionResource(), scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
 }
 
 func (e *scaleExecutor) updateScaleOnScaleTarget(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, replicas int32) (int32, error) {
@@ -323,7 +323,7 @@ func (e *scaleExecutor) updateScaleOnScaleTarget(ctx context.Context, scaledObje
 	currentReplicas := scale.Spec.Replicas
 	scale.Spec.Replicas = replicas
 
-	_, err = e.scaleClient.Scales(scaledObject.Namespace).Update(operationCtx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scale, metav1.UpdateOptions{})
+	_, err = e.scaleClient.Scales(scaledObject.Namespace).Update(operationCtx, scaledObject.Status.ScaleTargetGVKR.GroupVersionResource(), scale, metav1.UpdateOptions{})
 	return currentReplicas, err
 }
 

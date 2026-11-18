@@ -17,10 +17,18 @@ limitations under the License.
 package k8s
 
 import (
-	"k8s.io/apimachinery/pkg/api/meta"
+	"context"
+	"fmt"
+	"time"
+
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/scale"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -29,8 +37,75 @@ import (
 
 var log = ctrl.Log.WithName("scaleclient")
 
+// ScalesGetter provides access to the scale subresources in a namespace.
+type ScalesGetter interface {
+	Scales(namespace string) ScaleInterface
+}
+
+// ScaleInterface addresses the exact resource resolved from scaleTargetRef.
+type ScaleInterface interface {
+	Get(ctx context.Context, target schema.GroupVersionResource, name string, opts metav1.GetOptions) (*autoscalingv1.Scale, error)
+	Update(ctx context.Context, target schema.GroupVersionResource, value *autoscalingv1.Scale, opts metav1.UpdateOptions) (*autoscalingv1.Scale, error)
+}
+
+type versionedScaleClient struct {
+	client    dynamic.Interface
+	kinds     scale.ScaleKindResolver
+	converter *scale.ScaleConverter
+}
+
+type namespacedScales struct {
+	*versionedScaleClient
+	namespace string
+}
+
+func (c *versionedScaleClient) Scales(namespace string) ScaleInterface {
+	return &namespacedScales{versionedScaleClient: c, namespace: namespace}
+}
+
+func (c *namespacedScales) Get(ctx context.Context, target schema.GroupVersionResource, name string, opts metav1.GetOptions) (*autoscalingv1.Scale, error) {
+	obj, err := c.client.Resource(target).Namespace(c.namespace).Get(ctx, name, opts, "scale")
+	if err != nil {
+		return nil, err
+	}
+	return c.toScale(obj)
+}
+
+func (c *versionedScaleClient) toScale(obj *unstructured.Unstructured) (*autoscalingv1.Scale, error) {
+	converted, err := c.converter.ConvertToVersion(obj, autoscalingv1.SchemeGroupVersion)
+	if err != nil {
+		return nil, err
+	}
+	value, ok := converted.(*autoscalingv1.Scale)
+	if !ok {
+		return nil, fmt.Errorf("expected Scale, got %T", converted)
+	}
+	return value, nil
+}
+
+func (c *namespacedScales) Update(ctx context.Context, target schema.GroupVersionResource, value *autoscalingv1.Scale, opts metav1.UpdateOptions) (*autoscalingv1.Scale, error) {
+	// The Scale body can have a different API version from its parent resource.
+	kind, err := c.kinds.ScaleForResource(target)
+	if err != nil {
+		return nil, err
+	}
+	converted, err := c.converter.ConvertToVersion(value, kind.GroupVersion())
+	if err != nil {
+		return nil, err
+	}
+	body, err := runtime.DefaultUnstructuredConverter.ToUnstructured(converted)
+	if err != nil {
+		return nil, err
+	}
+	obj, err := c.client.Resource(target).Namespace(c.namespace).Update(ctx, &unstructured.Unstructured{Object: body}, opts, "scale")
+	if err != nil {
+		return nil, err
+	}
+	return c.toScale(obj)
+}
+
 // InitScaleClient initializes scale client and returns k8s version
-func InitScaleClient(mgr ctrl.Manager) (scale.ScalesGetter, kedautil.K8sVersion, error) {
+func InitScaleClient(mgr ctrl.Manager) (ScalesGetter, kedautil.K8sVersion, error) {
 	kubeVersion := kedautil.K8sVersion{}
 
 	// create Discovery clientset
@@ -50,85 +125,23 @@ func InitScaleClient(mgr ctrl.Manager) (scale.ScalesGetter, kedautil.K8sVersion,
 		return nil, kubeVersion, err
 	}
 
-	return scale.New(
-		clientset.RESTClient(), exactGroupMapper{RESTMapper: mgr.GetRESTMapper(), groupVersions: groupVersionsFunc(clientset)},
-		dynamic.LegacyAPIPathResolverFunc,
-		scale.NewDiscoveryScaleKindResolver(clientset),
-	), kubeVersion, nil
-}
-
-// groupVersionsFunc returns a lookup of the versions an API group serves, preferred version first.
-// It is only consulted when the RESTMapper has no candidate in the requested group (see exactGroupMapper).
-func groupVersionsFunc(client discovery.ServerGroupsInterface) func(group string) ([]string, error) {
-	return func(group string) ([]string, error) {
-		groups, err := client.ServerGroups()
-		if err != nil {
-			return nil, err
-		}
-		for _, g := range groups.Groups {
-			if g.Name != group {
-				continue
-			}
-			versions := []string{g.PreferredVersion.Version}
-			for _, v := range g.Versions {
-				if v.Version != g.PreferredVersion.Version {
-					versions = append(versions, v.Version)
-				}
-			}
-			return versions, nil
-		}
-		return nil, nil
-	}
-}
-
-// exactGroupMapper makes version-less resource lookups stay in the requested API group.
-//
-// The scale client resolves the GroupResource it is given with RESTMapper.ResourceFor(gr.WithVersion("")).
-// For that shape apimachinery's DefaultRESTMapper also accepts group-prefix matches (so that
-// "storageclass.storage" can find storage.k8s.io), and the discovery-backed mapper used by controller-runtime
-// is one DefaultRESTMapper per group/version behind a PriorityRESTMapper. When another group starts with the
-// requested group name and serves a resource of the same name (OpenKruise's apps.kruise.io serves
-// "statefulsets"), the prefix match is a candidate too, and which candidate wins follows the mapper's group
-// order, which is map-iteration order inside controller-runtime's lazy mapper. The result is that
-// apps/statefulsets may resolve to apps.kruise.io/v1beta1 statefulsets and every /scale call for a plain
-// StatefulSet fails with "not found" (https://github.com/kedacore/keda/issues/8182).
-//
-// KEDA always knows the exact group of the scale target, so version-less lookups only accept candidates from
-// the requested group (ResourcesFor keeps the preferred version first). controller-runtime's lazy mapper only
-// discovers a group when a lookup fails, and a prefix match does not fail, so the requested group may simply
-// not be loaded yet: in that case the group's versions are discovered and the mapper is asked with each of
-// them, which does make it load the group. A group that has no such resource at all yields NoMatch instead
-// of another group's resource. Fully qualified lookups are untouched.
-type exactGroupMapper struct {
-	meta.RESTMapper
-	groupVersions func(group string) ([]string, error)
-}
-
-func (m exactGroupMapper) ResourceFor(input schema.GroupVersionResource) (schema.GroupVersionResource, error) {
-	if input.Version != "" || input.Group == "" {
-		return m.RESTMapper.ResourceFor(input)
-	}
-	candidates, err := m.ResourcesFor(input)
-	if err != nil && !meta.IsNoMatchError(err) {
-		return schema.GroupVersionResource{}, err
-	}
-	for _, gvr := range candidates {
-		if gvr.Group == input.Group {
-			return gvr, nil
-		}
-	}
-	versions, err := m.groupVersions(input.Group)
+	client, err := newScaleResourceClient(mgr.GetConfig())
 	if err != nil {
-		return schema.GroupVersionResource{}, err
+		return nil, kubeVersion, err
 	}
-	for _, version := range versions {
-		gvr, err := m.RESTMapper.ResourceFor(input.GroupResource().WithVersion(version))
-		if err == nil {
-			return gvr, nil
-		}
-		if !meta.IsNoMatchError(err) {
-			return schema.GroupVersionResource{}, err
-		}
+	return &versionedScaleClient{
+		client:    client,
+		kinds:     scale.NewDiscoveryScaleKindResolver(clientset),
+		converter: scale.NewScaleConverter(),
+	}, kubeVersion, nil
+}
+
+func newScaleResourceClient(config *rest.Config) (*dynamic.DynamicClient, error) {
+	config = rest.CopyConfig(config)
+	if config.Timeout == 0 {
+		// Preserve the discovery REST client's default deadline for /scale requests.
+		// see also: https://github.com/kubernetes/client-go/blob/v0.36.6/discovery/discovery_client.go#L55-L57
+		config.Timeout = 32 * time.Second
 	}
-	return schema.GroupVersionResource{}, &meta.NoResourceMatchError{PartialResource: input}
+	return dynamic.NewForConfig(config)
 }
