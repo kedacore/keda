@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -291,6 +292,61 @@ func TestParseActiveMQMetadata(t *testing.T) {
 			if metadata != nil && metadata.Password != "" && metadata.Password != testData.authParams["password"] {
 				t.Error("Expected password from configuration but found something else: ", metadata.Password)
 				fmt.Println(testData)
+			}
+		})
+	}
+}
+
+// TypedConfig turns a panic in Validate into an error, so these cases check
+// the parsed values and the error text, not only whether there is an error.
+func TestActiveMQRestAPITemplateParsing(t *testing.T) {
+	const prefix = "http://localhost:8161/api/jolokia/read/org.apache.activemq"
+	tests := []struct {
+		name                        string
+		template                    string
+		wantBroker, wantDestination string
+		wantErr                     string
+	}{
+		{
+			name:            "complete",
+			template:        prefix + ":type=Broker,brokerName=localhost,destinationType=Queue,destinationName=testQueue/QueueSize",
+			wantBroker:      "localhost",
+			wantDestination: "testQueue",
+		},
+		{
+			name:     "no destinationName",
+			template: prefix + ":type=Broker,brokerName=localhost/QueueSize",
+			wantErr:  "no destinationName is given",
+		},
+		{
+			name:     "no brokerName",
+			template: prefix + ":type=Broker,destinationType=Queue,destinationName=testQueue/QueueSize",
+			wantErr:  "no brokerName given",
+		},
+		{
+			name:     "no properties",
+			template: prefix,
+			wantErr:  "no destinationName is given",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			meta, err := parseActiveMQMetadata(&scalersconfig.ScalerConfig{
+				TriggerMetadata: map[string]string{"restAPITemplate": tt.template},
+				AuthParams:      map[string]string{"username": "testUsername", "password": "pass123"},
+			})
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("parseActiveMQMetadata() error = %v, want an error containing %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parseActiveMQMetadata() error = %v, want nil", err)
+			}
+			if meta.BrokerName != tt.wantBroker || meta.DestinationName != tt.wantDestination {
+				t.Errorf("parseActiveMQMetadata() broker, destination = %s, %s, want %s, %s",
+					meta.BrokerName, meta.DestinationName, tt.wantBroker, tt.wantDestination)
 			}
 		})
 	}

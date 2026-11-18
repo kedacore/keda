@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -149,6 +150,88 @@ func TestArtemisParseMetadata(t *testing.T) {
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
 		}
+	}
+}
+
+// TypedConfig turns a panic in Validate into an error, so these cases check
+// the parsed values and the error text, not only whether there is an error.
+func TestArtemisRestAPITemplateParsing(t *testing.T) {
+	const prefix = "http://localhost:8161/console/jolokia/read/org.apache.activemq.artemis"
+	tests := []struct {
+		name                               string
+		template                           string
+		wantBroker, wantAddress, wantQueue string
+		wantErr                            string
+	}{
+		{
+			name:        "literal quotes",
+			template:    prefix + `:broker="b",component=addresses,address="a",subcomponent=queues,routing-type="anycast",queue="q"/MessageCount`,
+			wantBroker:  `"b"`,
+			wantAddress: `"a"`,
+			wantQueue:   `"q"`,
+		},
+		{
+			name:        "literal quotes and an encoded comma in a value",
+			template:    prefix + `:broker="b",component=addresses,address="a",subcomponent=queues,routing-type="anycast",queue="q%2Cr"/MessageCount`,
+			wantBroker:  `"b"`,
+			wantAddress: `"a"`,
+			wantQueue:   `"q,r"`,
+		},
+		{
+			name:        "percent-encoded quotes",
+			template:    prefix + ":broker=%22b%22,component=addresses,address=%22a%22,subcomponent=queues,routing-type=%22anycast%22,queue=%22q%22/MessageCount",
+			wantBroker:  `"b"`,
+			wantAddress: `"a"`,
+			wantQueue:   `"q"`,
+		},
+		{
+			name:        "no quotes",
+			template:    prefix + ":broker=b,component=addresses,address=a,subcomponent=queues,routing-type=anycast,queue=q/MessageCount",
+			wantBroker:  "b",
+			wantAddress: "a",
+			wantQueue:   "q",
+		},
+		{
+			name:     "empty broker in literal quotes",
+			template: prefix + `:broker="",component=addresses,address="a",subcomponent=queues,routing-type="anycast",queue="q"/MessageCount`,
+			wantErr:  "no brokerName given",
+		},
+		{
+			name:     "empty broker in percent-encoded quotes",
+			template: prefix + ":broker=%22%22,component=addresses,address=%22a%22,subcomponent=queues,routing-type=%22anycast%22,queue=%22q%22/MessageCount",
+			wantErr:  "no brokerName given",
+		},
+		{
+			name:     "no queue",
+			template: prefix + `:broker="b",component=addresses,address="a"/MessageCount`,
+			wantErr:  "no queueName is given",
+		},
+		{
+			name:     "no properties",
+			template: prefix + "/MessageCount",
+			wantErr:  "no brokerAddress given",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			meta, err := parseArtemisMetadata(&scalersconfig.ScalerConfig{
+				TriggerMetadata: map[string]string{"restApiTemplate": tt.template},
+				AuthParams:      artemisAuthParams,
+			})
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("parseArtemisMetadata() error = %v, want an error containing %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parseArtemisMetadata() error = %v, want nil", err)
+			}
+			if meta.BrokerName != tt.wantBroker || meta.BrokerAddress != tt.wantAddress || meta.QueueName != tt.wantQueue {
+				t.Errorf("parseArtemisMetadata() broker, address, queue = %s, %s, %s, want %s, %s, %s",
+					meta.BrokerName, meta.BrokerAddress, meta.QueueName, tt.wantBroker, tt.wantAddress, tt.wantQueue)
+			}
+		})
 	}
 }
 

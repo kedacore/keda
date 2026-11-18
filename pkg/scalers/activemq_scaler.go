@@ -55,21 +55,23 @@ func (a *activeMQMetadata) Validate() error {
 		}
 		a.ManagementEndpoint = u.Host
 		// This returns : type=Broker,brokerName=<<brokerName>>,destinationType=Queue,destinationName=<<destinationName>>
-		splitURL := strings.Split(strings.Split(u.Path, ":")[1], "/")[0]
+		// It is empty when the path has no ':', and the checks below report the missing names.
+		_, properties, _ := strings.Cut(u.Path, ":")
+		splitURL, _, _ := strings.Cut(properties, "/")
 		replacer := strings.NewReplacer(",", "&")
 		// This returns a map with key: string types and element type [] string. : map[brokerName:[<<brokerName>>] destinationName:[<<destinationName>>] destinationType:[Queue] type:[Broker]]
 		v, err := url.ParseQuery(replacer.Replace(splitURL))
 		if err != nil {
 			return fmt.Errorf("unable to parse ActiveMQ restAPITemplate: %w", err)
 		}
-		if len(v["destinationName"][0]) == 0 {
+		if v.Get("destinationName") == "" {
 			return fmt.Errorf("no destinationName is given")
 		}
-		a.DestinationName = v["destinationName"][0]
-		if len(v["brokerName"][0]) == 0 {
+		a.DestinationName = v.Get("destinationName")
+		if v.Get("brokerName") == "" {
 			return fmt.Errorf("no brokerName given: %s", a.RestAPITemplate)
 		}
-		a.BrokerName = v["brokerName"][0]
+		a.BrokerName = v.Get("brokerName")
 	} else {
 		a.RestAPITemplate = defaultActiveMQRestAPITemplate
 		if a.ManagementEndpoint == "" {

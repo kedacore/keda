@@ -138,27 +138,35 @@ func getAPIParameters(meta artemisMetadata) (artemisMetadata, error) {
 		return meta, fmt.Errorf("unable to parse the artemis restAPITemplate: %w", err)
 	}
 	meta.ManagementEndpoint = u.Host
-	splitURL := strings.Split(strings.Split(u.RawPath, ":")[1], "/")[0] // This returns : broker="<<brokerName>>",component=addresses,address="<<brokerAddress>>",subcomponent=queues,routing-type="anycast",queue="<<queueName>>"
-	replacer := strings.NewReplacer(",", "&", "\"\"", "")
+	// Use the path as written in the template. RawPath holds it only when it differs from
+	// the default encoding, as with literal quotes; otherwise EscapedPath returns it.
+	path := u.RawPath
+	if path == "" {
+		path = u.EscapedPath()
+	}
+	_, properties, _ := strings.Cut(path, ":")
+	splitURL, _, _ := strings.Cut(properties, "/") // This returns : broker="<<brokerName>>",component=addresses,address="<<brokerAddress>>",subcomponent=queues,routing-type="anycast",queue="<<queueName>>"
+	// An empty quoted value is "" or %22%22, depending on how the template writes quotes.
+	replacer := strings.NewReplacer(",", "&", "\"\"", "", "%22%22", "")
 	v, err := url.ParseQuery(replacer.Replace(splitURL)) // This returns a map with key: string types and element type [] string. : map[address:["<<brokerAddress>>"] broker:["<<brokerName>>"] component:[addresses] queue:["<<queueName>>"] routing-type:["anycast"] subcomponent:[queues]]
 	if err != nil {
 		return meta, fmt.Errorf("unable to parse the artemis restAPITemplate: %w", err)
 	}
 
-	if len(v["address"][0]) == 0 {
+	if v.Get("address") == "" {
 		return meta, errors.New("no brokerAddress given")
 	}
-	meta.BrokerAddress = v["address"][0]
+	meta.BrokerAddress = v.Get("address")
 
-	if len(v["queue"][0]) == 0 {
+	if v.Get("queue") == "" {
 		return meta, errors.New("no queueName is given")
 	}
-	meta.QueueName = v["queue"][0]
+	meta.QueueName = v.Get("queue")
 
-	if len(v["broker"][0]) == 0 {
+	if v.Get("broker") == "" {
 		return meta, fmt.Errorf("no brokerName given: %s", meta.RestAPITemplate)
 	}
-	meta.BrokerName = v["broker"][0]
+	meta.BrokerName = v.Get("broker")
 
 	return meta, nil
 }
