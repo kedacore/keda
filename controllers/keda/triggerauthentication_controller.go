@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -82,6 +83,7 @@ func (r *TriggerAuthenticationReconciler) Reconcile(ctx context.Context, req ctr
 		return ctrl.Result{}, err
 	}
 	r.updatePromMetrics(triggerAuthentication, req.String())
+	logDeprecatedVaultToken(reqLogger, &triggerAuthentication.Spec)
 
 	if triggerAuthentication.Generation == 1 {
 		r.Emit(triggerAuthentication, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.TriggerAuthenticationCreatedType, eventreason.TriggerAuthenticationAdded, message.TriggerAuthenticationCreatedMsg)
@@ -91,6 +93,15 @@ func (r *TriggerAuthenticationReconciler) Reconcile(ctx context.Context, req ctr
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// logDeprecatedVaultToken warns when a TriggerAuthentication or
+// ClusterTriggerAuthentication sets the HashiCorp Vault token inline instead of
+// reading it from a secret.
+func logDeprecatedVaultToken(logger logr.Logger, spec *kedav1alpha1.TriggerAuthenticationSpec) {
+	if vault := spec.HashiCorpVault; vault != nil && vault.Credential != nil && vault.Credential.Token != "" { //nolint:staticcheck // SA1019: intentional use of deprecated field for backward compatibility
+		logger.Info("hashiCorpVault.credential.token is deprecated, please use hashiCorpVault.credential.tokenFrom to read the Vault token from a secret")
+	}
 }
 
 // SetupWithManager sets up the controller with the Manager.

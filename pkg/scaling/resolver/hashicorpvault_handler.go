@@ -42,15 +42,21 @@ type HashicorpVaultHandler struct {
 	client    *vaultapi.Client
 	acs       *authentication.AuthClientSet
 	namespace string
-	stopCh    chan struct{}
+	// secretToken is the token read from credential.tokenFrom. It is kept here
+	// rather than written into vault.Credential, which belongs to a
+	// TriggerAuthentication that may be shared through the client cache.
+	secretToken string
+	stopCh      chan struct{}
 }
 
-// NewHashicorpVaultHandler creates a HashicorpVaultHandler object
-func NewHashicorpVaultHandler(v *kedav1alpha1.HashiCorpVault, acs *authentication.AuthClientSet, namespace string) *HashicorpVaultHandler {
+// NewHashicorpVaultHandler creates a HashicorpVaultHandler object. secretToken
+// is the token read from credential.tokenFrom, or empty when it is not set.
+func NewHashicorpVaultHandler(v *kedav1alpha1.HashiCorpVault, acs *authentication.AuthClientSet, namespace string, secretToken string) *HashicorpVaultHandler {
 	return &HashicorpVaultHandler{
-		vault:     v,
-		acs:       acs,
-		namespace: namespace,
+		vault:       v,
+		acs:         acs,
+		namespace:   namespace,
+		secretToken: secretToken,
 	}
 }
 
@@ -110,8 +116,10 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client, logger logr.Logg
 		switch {
 		case len(client.Token()) > 0:
 			break
-		case vh.vault.Credential != nil && len(vh.vault.Credential.Token) > 0:
-			token = vh.vault.Credential.Token
+		case len(vh.secretToken) > 0:
+			token = vh.secretToken
+		case vh.vault.Credential != nil && len(vh.vault.Credential.Token) > 0: //nolint:staticcheck // SA1019: intentional use of deprecated field for backward compatibility
+			token = vh.vault.Credential.Token //nolint:staticcheck // SA1019
 		default:
 			return token, errors.New("could not get Vault token")
 		}
