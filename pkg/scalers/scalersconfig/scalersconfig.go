@@ -17,6 +17,7 @@ limitations under the License.
 package scalersconfig
 
 import (
+	"context"
 	"time"
 
 	v2 "k8s.io/api/autoscaling/v2"
@@ -58,6 +59,9 @@ type ScalerConfig struct {
 
 	// AuthParams
 	AuthParams map[string]string
+
+	// ResolveAuthParams resolves the trigger authentication again, e.g. to obtain a new bound service account token
+	ResolveAuthParams func(ctx context.Context) (map[string]string, error)
 
 	// PodIdentity
 	PodIdentity kedav1alpha1.AuthPodIdentity
