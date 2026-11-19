@@ -6,6 +6,7 @@ import (
 
 	monitoringpb "cloud.google.com/go/monitoring/apiv3/v2/monitoringpb"
 	"github.com/go-logr/logr"
+	"golang.org/x/oauth2"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -113,9 +114,16 @@ func parseAggregation(meta *stackdriverMetadata) (*monitoringpb.Aggregation, err
 func initializeStackdriverClient(ctx context.Context, gcpAuthorization *gcp.AuthorizationMetadata, logger logr.Logger) (*gcp.StackDriverClient, error) {
 	var client *gcp.StackDriverClient
 	var err error
-	if gcpAuthorization.PodIdentityProviderEnabled {
+	switch {
+	case gcpAuthorization.ServiceAccountTokenProvider != nil:
+		tokenSource, tokenErr := newGCPMonitoringTokenSource(ctx, gcpAuthorization)
+		if tokenErr != nil {
+			return nil, tokenErr
+		}
+		client, err = gcp.NewStackDriverClientWithTokenSource(ctx, tokenSource)
+	case gcpAuthorization.PodIdentityProviderEnabled:
 		client, err = gcp.NewStackDriverClientPodIdentity(ctx)
-	} else {
+	default:
 		client, err = gcp.NewStackDriverClient(ctx, gcpAuthorization.GoogleApplicationCredentials)
 	}
 
@@ -124,6 +132,10 @@ func initializeStackdriverClient(ctx context.Context, gcpAuthorization *gcp.Auth
 		return nil, err
 	}
 	return client, nil
+}
+
+func newGCPMonitoringTokenSource(ctx context.Context, gcpAuthorization *gcp.AuthorizationMetadata) (oauth2.TokenSource, error) {
+	return gcpAuthorization.TokenSource(ctx, gcp.GcpScopeMonitoringRead)
 }
 
 func (s *stackdriverScaler) Close(context.Context) error {

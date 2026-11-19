@@ -70,6 +70,9 @@ func NewAzureDataExplorerScaler(config *scalersconfig.ScalerConfig) (Scaler, err
 	}
 
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
+	if config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount {
+		httpClient.CheckRedirect = kedautil.CheckSameOriginRedirect
+	}
 	client, err := azure.CreateAzureDataExplorerClient(metadata, httpClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create azure data explorer client: %w", err)
@@ -125,8 +128,9 @@ func parseAzureDataExplorerMetadata(config *scalersconfig.ScalerConfig, logger l
 
 func parseAzureDataExplorerAuthParams(config *scalersconfig.ScalerConfig, meta *azureDataExplorerMetadata, metadata *azure.DataExplorerMetadata, logger logr.Logger) error {
 	switch config.PodIdentity.Provider {
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload, kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount:
 		metadata.PodIdentity = config.PodIdentity
+		metadata.ServiceAccountTokenProvider = config.ServiceAccountTokenProvider
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		logger.V(1).Info("Pod Identity is not provided. Trying to resolve clientId, clientSecret and tenantId.")
 

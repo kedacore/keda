@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"cloud.google.com/go/storage"
 	"github.com/go-logr/logr"
 	"google.golang.org/api/iterator"
 	option "google.golang.org/api/option"
+	googlehttp "google.golang.org/api/transport/http"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -73,6 +75,8 @@ func NewGcsScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	var client *storage.Client
 
 	switch {
+	case meta.gcpAuthorization.ServiceAccountTokenProvider != nil:
+		client, err = newGcsServiceAccountClient(ctx, meta.gcpAuthorization)
 	case meta.gcpAuthorization.PodIdentityProviderEnabled:
 		client, err = storage.NewClient(ctx)
 	case meta.gcpAuthorization.GoogleApplicationCredentialsFile != "":
@@ -99,6 +103,27 @@ func NewGcsScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		metadata:   meta,
 		logger:     logger,
 	}, nil
+}
+
+func newGcsServiceAccountClient(ctx context.Context, auth *gcp.AuthorizationMetadata) (*storage.Client, error) {
+	// Match the SDK's emulator behavior: cloud credentials must never be sent
+	// to the operator-configured storage emulator.
+	opts := []option.ClientOption{option.WithoutAuthentication()}
+	if os.Getenv("STORAGE_EMULATOR_HOST") == "" {
+		tokenSource, err := auth.TokenSource(ctx, storage.ScopeReadOnly)
+		if err != nil {
+			return nil, err
+		}
+		opts = []option.ClientOption{option.WithTokenSource(tokenSource)}
+	}
+	httpClient, _, err := googlehttp.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	httpClient.CheckRedirect = kedautil.CheckSameOriginRedirect
+	// Keep the SDK's endpoint selection and JSON API behavior while applying the
+	// redirect policy to the authenticated client used for storage requests.
+	return storage.NewClient(ctx, append(opts, option.WithHTTPClient(httpClient))...)
 }
 
 func parseGcsMetadata(config *scalersconfig.ScalerConfig) (*gcsMetadata, error) {
