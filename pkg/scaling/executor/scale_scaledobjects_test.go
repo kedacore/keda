@@ -1355,3 +1355,196 @@ func TestRequestScale_ScalerErrorWithFallback_HPAHealthy(t *testing.T) {
 	readyCond := result.Conditions.GetReadyCondition()
 	assert.Truef(t, readyCond.IsTrue(), "with fallback configured and HPA healthy, Ready should be True, got %s/%s", readyCond.Status, readyCond.Reason)
 }
+
+func TestRequestScale_LastActiveTime_MinReplicasGreaterThanZeroNoIdleReplicas_Unchanged(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := events.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, kubernetesAPITimeout, recorder)
+
+	so := newSOWithHPA()
+	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
+	minReplicas := int32(1)
+	so.Spec.MinReplicaCount = &minReplicas
+	so.Spec.IdleReplicaCount = nil
+
+	mockDeploymentGet(mockClient)
+	mockHealthyHPA(mockClient)
+
+	result := exec.RequestScale(context.TODO(), &so, true, false, ScaleExecutorOptions{})
+
+	assert.Nil(t, result.LastActiveTime, "LastActiveTime must not be updated when minReplicaCount > 0 and idleReplicaCount is nil")
+}
+
+func TestRequestScale_LastActiveTime_NilTimestampInitialized(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := events.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, kubernetesAPITimeout, recorder)
+
+	so := newSOWithHPA()
+	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
+	minReplicas := int32(0)
+	so.Spec.MinReplicaCount = &minReplicas
+	so.Status.LastActiveTime = nil
+
+	mockDeploymentGet(mockClient)
+	mockHealthyHPA(mockClient)
+
+	result := exec.RequestScale(context.TODO(), &so, true, false, ScaleExecutorOptions{})
+
+	assert.NotNil(t, result.LastActiveTime, "LastActiveTime must be initialized when nil for scale-to-zero workloads")
+}
+
+func TestRequestScale_LastActiveTime_YoungerThanCooldownHalf_Unchanged(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := events.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, kubernetesAPITimeout, recorder)
+
+	so := newSOWithHPA()
+	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
+	minReplicas := int32(0)
+	so.Spec.MinReplicaCount = &minReplicas
+	cooldown := int32(300)
+	so.Spec.CooldownPeriod = &cooldown
+	// Timestamp 50s ago is younger than cooldownPeriod/2 (150s)
+	pastTime := v1.NewTime(time.Now().Add(-50 * time.Second))
+	so.Status.LastActiveTime = &pastTime
+
+	mockDeploymentGet(mockClient)
+	mockHealthyHPA(mockClient)
+
+	result := exec.RequestScale(context.TODO(), &so, true, false, ScaleExecutorOptions{})
+
+	assert.Nil(t, result.LastActiveTime, "LastActiveTime must not be updated when younger than cooldownPeriod/2")
+}
+
+func TestRequestScale_LastActiveTime_AtOrAfterCooldownHalf_Refreshed(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := events.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, kubernetesAPITimeout, recorder)
+
+	so := newSOWithHPA()
+	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
+	minReplicas := int32(0)
+	so.Spec.MinReplicaCount = &minReplicas
+	cooldown := int32(300)
+	so.Spec.CooldownPeriod = &cooldown
+	// Timestamp 200s ago is older than cooldownPeriod/2 (150s)
+	pastTime := v1.NewTime(time.Now().Add(-200 * time.Second))
+	so.Status.LastActiveTime = &pastTime
+
+	mockDeploymentGet(mockClient)
+	mockHealthyHPA(mockClient)
+
+	result := exec.RequestScale(context.TODO(), &so, true, false, ScaleExecutorOptions{})
+
+	assert.NotNil(t, result.LastActiveTime, "LastActiveTime must be refreshed when at or after cooldownPeriod/2")
+}
+
+func TestRequestScale_LastActiveTime_MinReplicasGreaterThanZeroWithIdleReplicas_Initialized(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := events.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, kubernetesAPITimeout, recorder)
+
+	so := newSOWithHPA()
+	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
+	minReplicas := int32(1)
+	idleReplicas := int32(0)
+	so.Spec.MinReplicaCount = &minReplicas
+	so.Spec.IdleReplicaCount = &idleReplicas
+	so.Status.LastActiveTime = nil
+
+	mockDeploymentGet(mockClient)
+	mockHealthyHPA(mockClient)
+
+	result := exec.RequestScale(context.TODO(), &so, true, false, ScaleExecutorOptions{})
+
+	assert.NotNil(t, result.LastActiveTime, "LastActiveTime must be updated when idleReplicaCount is set even if minReplicaCount > 0")
+}
+
+func TestRequestScale_LastActiveTime_ActiveToInactiveTransition_Stamped(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := events.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, kubernetesAPITimeout, recorder)
+
+	so := newSOWithHPA()
+	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
+	so.Status.Conditions.SetActiveCondition(v1.ConditionTrue, "ScalerActive", "Triggers are active")
+	minReplicas := int32(0)
+	so.Spec.MinReplicaCount = &minReplicas
+	cooldown := int32(300)
+	so.Spec.CooldownPeriod = &cooldown
+
+	mockDeploymentGet(mockClient)
+	mockHealthyHPA(mockClient)
+
+	// isActive transitions from true to false
+	result := exec.RequestScale(context.TODO(), &so, false, false, ScaleExecutorOptions{})
+
+	assert.NotNil(t, result.LastActiveTime, "LastActiveTime must be stamped on Active->Inactive transition when cooldown is relevant")
+	activeCond := result.Conditions.GetActiveCondition()
+	assert.Equal(t, true, activeCond.IsFalse())
+	assert.Equal(t, "ScalerCooldown", activeCond.Reason, "workload should enter cooldown using the fresh transition timestamp")
+}
+
+func TestRequestScale_LastActiveTime_InactiveToInactive_NotStamped(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := events.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, kubernetesAPITimeout, recorder)
+
+	so := newSOWithHPA()
+	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
+	so.Status.Conditions.SetActiveCondition(v1.ConditionFalse, "ScalerCooldown", "Cooling down")
+	minReplicas := int32(0)
+	so.Spec.MinReplicaCount = &minReplicas
+	cooldown := int32(300)
+	so.Spec.CooldownPeriod = &cooldown
+	pastTime := v1.NewTime(time.Now().Add(-50 * time.Second))
+	so.Status.LastActiveTime = &pastTime
+
+	mockDeploymentGet(mockClient)
+	mockHealthyHPA(mockClient)
+
+	// isActive remains false
+	result := exec.RequestScale(context.TODO(), &so, false, false, ScaleExecutorOptions{})
+
+	assert.Nil(t, result.LastActiveTime, "LastActiveTime must not be stamped again when triggers remain inactive")
+	activeCond := result.Conditions.GetActiveCondition()
+	assert.Equal(t, true, activeCond.IsFalse())
+	assert.Equal(t, "ScalerCooldown", activeCond.Reason)
+}
+
+func TestRequestScale_LastActiveTime_ActiveToInactiveTransition_MinReplicasGreaterThanZeroNoIdle_NotStamped(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := events.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	exec := NewScaleExecutor(mockClient, mockScaleClient, nil, kubernetesAPITimeout, recorder)
+
+	so := newSOWithHPA()
+	so.Status.Conditions = *v1alpha1.GetInitializedConditions()
+	so.Status.Conditions.SetActiveCondition(v1.ConditionTrue, "ScalerActive", "Triggers are active")
+	minReplicas := int32(2)
+	so.Spec.MinReplicaCount = &minReplicas
+	so.Spec.IdleReplicaCount = nil
+
+	mockDeploymentGet(mockClient)
+	mockHealthyHPA(mockClient)
+
+	result := exec.RequestScale(context.TODO(), &so, false, false, ScaleExecutorOptions{})
+
+	assert.Nil(t, result.LastActiveTime, "LastActiveTime must not be stamped when minReplicaCount > 0 and idle mode is disabled")
+}

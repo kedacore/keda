@@ -84,10 +84,19 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			logger.V(1).Info("Some triggers defined in ScaledObject are not working correctly")
 		default:
 			// triggers are active, but we didn't need to scale (replica count > 0)
-			result.LastActiveTime = &metav1.Time{Time: time.Now()}
+			if scaledObject.IsCooldownPeriodRelevant() {
+				cooldownPeriod := getCooldownPeriod(scaledObject)
+				if scaledObject.Status.LastActiveTime == nil || time.Since(scaledObject.Status.LastActiveTime.Time) >= cooldownPeriod/2 {
+					result.LastActiveTime = &metav1.Time{Time: time.Now()}
+				}
+			}
 		}
 	} else {
 		// isActive == false
+		wasActive := scaledObject.Status.Conditions.GetActiveCondition().Status == metav1.ConditionTrue
+		if wasActive && scaledObject.IsCooldownPeriodRelevant() {
+			result.LastActiveTime = &metav1.Time{Time: time.Now()}
+		}
 		result.Conditions.SetActiveCondition(metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active")
 		switch {
 		case isError && scaledObject.Spec.Fallback != nil && scaledObject.Spec.Fallback.Replicas != 0:
@@ -211,16 +220,17 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 		initialCooldownPeriod = time.Second * time.Duration(defaultInitialCooldownPeriod)
 	}
 
-	if scaledObject.Spec.CooldownPeriod != nil {
-		cooldownPeriod = time.Second * time.Duration(*scaledObject.Spec.CooldownPeriod)
-	} else {
-		cooldownPeriod = time.Second * time.Duration(defaultCooldownPeriod)
+	cooldownPeriod = getCooldownPeriod(scaledObject)
+
+	lastActiveTime := scaledObject.Status.LastActiveTime
+	if result.LastActiveTime != nil {
+		lastActiveTime = result.LastActiveTime
 	}
 
 	// LastActiveTime can be nil if the ScaleTarget was scaled outside of KEDA.
 	// In this case we will ignore the cooldown period and scale it down
-	if (scaledObject.Status.LastActiveTime == nil && scaledObject.CreationTimestamp.Add(initialCooldownPeriod).Before(time.Now())) || (scaledObject.Status.LastActiveTime != nil &&
-		scaledObject.Status.LastActiveTime.Add(cooldownPeriod).Before(time.Now())) {
+	if (lastActiveTime == nil && scaledObject.CreationTimestamp.Add(initialCooldownPeriod).Before(time.Now())) || (lastActiveTime != nil &&
+		lastActiveTime.Add(cooldownPeriod).Before(time.Now())) {
 		// or last time a trigger was active was > cooldown period, so scale in.
 		idleValue, scaleToReplicas := getIdleOrMinimumReplicaCount(scaledObject)
 
@@ -244,7 +254,7 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 				"Failed to deactivate %s %s/%s from %d to %d: %v", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, scaleToReplicas, err)
 		}
 	} else {
-		logger.V(1).Info("ScaleTarget cooling down", "LastActiveTime", scaledObject.Status.LastActiveTime, "CoolDownPeriod", cooldownPeriod)
+		logger.V(1).Info("ScaleTarget cooling down", "LastActiveTime", lastActiveTime, "CoolDownPeriod", cooldownPeriod)
 		result.Conditions.SetActiveCondition(metav1.ConditionFalse, "ScalerCooldown", "Scaler cooling down because triggers are not active")
 	}
 }
@@ -348,4 +358,14 @@ func getIdleOrMinimumReplicaCount(scaledObject *kedav1alpha1.ScaledObject) (bool
 	}
 
 	return false, *scaledObject.Spec.MinReplicaCount
+}
+
+func getCooldownPeriod(scaledObject *kedav1alpha1.ScaledObject) time.Duration {
+	if scaledObject.Spec.CooldownPeriod != nil {
+		if *scaledObject.Spec.CooldownPeriod < 0 {
+			return 0
+		}
+		return time.Second * time.Duration(*scaledObject.Spec.CooldownPeriod)
+	}
+	return time.Second * time.Duration(defaultCooldownPeriod)
 }
