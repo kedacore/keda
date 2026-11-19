@@ -205,7 +205,7 @@ func (r *ScaledObjectReconciler) updateHPAIfNeeded(ctx context.Context, logger l
 	if len(hpa.Spec.Metrics) != len(foundHpa.Spec.Metrics) ||
 		!equality.Semantic.DeepEqual(hpa.Spec.Behavior, foundHpa.Spec.Behavior) ||
 		!equality.Semantic.DeepDerivative(hpa.Spec, foundHpa.Spec) {
-		logger.V(1).Info("Found difference in the HPA spec accordint to ScaledObject", "currentHPA", foundHpa.Spec, "newHPA", hpa.Spec)
+		logger.V(1).Info("Found difference in the HPA spec according to ScaledObject", "currentHPA", foundHpa.Spec, "newHPA", hpa.Spec)
 		if err = r.Client.Update(ctx, hpa); err != nil {
 			foundHpa.Spec = hpa.Spec
 			logger.Error(err, "Failed to update HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
@@ -216,7 +216,7 @@ func (r *ScaledObjectReconciler) updateHPAIfNeeded(ctx context.Context, logger l
 	}
 
 	if !equality.Semantic.DeepDerivative(hpa.Labels, foundHpa.Labels) {
-		logger.V(1).Info("Found difference in the HPA labels accordint to ScaledObject", "currentHPA", foundHpa.Labels, "newHPA", hpa.Labels)
+		logger.V(1).Info("Found difference in the HPA labels according to ScaledObject", "currentHPA", foundHpa.Labels, "newHPA", hpa.Labels)
 		if err = r.Client.Update(ctx, hpa); err != nil {
 			foundHpa.Labels = hpa.Labels
 			logger.Error(err, "Failed to update HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
@@ -273,7 +273,7 @@ func (r *ScaledObjectReconciler) deleteHPA(ctx context.Context, logger logr.Logg
 	return nil
 }
 
-// getScaledObjectMetricSpecs returns MetricSpec for HPA, generater from Triggers defitinion in ScaledObject
+// getScaledObjectMetricSpecs returns MetricSpec for HPA, generated from Triggers definition in ScaledObject
 func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) ([]autoscalingv2.MetricSpec, error) {
 	var externalMetricNames []string
 	var resourceMetricNames []string
