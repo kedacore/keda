@@ -3357,6 +3357,56 @@
             ]
         },
         {
+            "type": "honeycomb",
+            "parameters": [
+                {
+                    "name": "apiKey",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "apiHost",
+                    "type": "string",
+                    "default": "https://api.honeycomb.io",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "dataset",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "query",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "resultField",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "threshold",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "activationThreshold",
+                    "type": "string",
+                    "default": "0",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "timeout",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                }
+            ]
+        },
+        {
             "type": "huawei-cloudeye",
             "parameters": [
                 {
