@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -692,4 +693,110 @@ func TestNATSJetStreamGetMaxMsgLagByStrategy(t *testing.T) {
 			assert.Equal(t, testData.expectedMsgLag, msgLag)
 		})
 	}
+}
+
+// TestNATSJetStreamRediscoversLeaderAfterFailedDiscovery covers the state a
+// failed leader discovery leaves behind: the consumer leader name is cached
+// (taken from whichever node answered the first /jsz), but no leader URL is.
+// Every later poll then goes to the load-balanced endpoint. If that lands on a
+// follower, the follower still names the right leader, so the "leader name
+// unchanged" check must not take that answer as having come from the leader.
+// Followers report num_pending 0, so trusting them stops all scaling.
+func TestNATSJetStreamRediscoversLeaderAfterFailedDiscovery(t *testing.T) {
+	const (
+		stream   = "mystream"
+		consumer = "pull_consumer"
+		leader   = "nats-1"
+	)
+
+	view := func(numPending int) []byte {
+		b, err := json.Marshal(&jetStreamEndpointResponse{
+			MetaCluster: metaCluster{ClusterSize: 3},
+			Accounts: []accountDetail{{
+				Name: "$G",
+				Streams: []*streamDetail{{
+					Name:      stream,
+					Consumers: []consumerDetail{{Name: consumer, NumPending: numPending, Cluster: consumerCluster{Leader: leader}}},
+				}},
+			}},
+		})
+		if err != nil {
+			t.Fatal("Could not marshal mock response:", err)
+		}
+		return b
+	}
+	followerView := view(0) // only the consumer leader tracks num_pending
+	leaderView := view(100)
+	varz := []byte(`{"server_name": "nats-0", "cluster": {"urls": ["nats-0.nats.localhost:6222", "nats-1.nats.localhost:6222", "nats-2.nats.localhost:6222"]}}`)
+
+	var nats0Down atomic.Bool
+	var varzCalls atomic.Int32
+	nats0Down.Store(true)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/varz":
+			varzCalls.Add(1)
+			_, _ = w.Write(varz)
+		case "/jsz":
+			switch r.Host {
+			case "nats-1.nats.localhost:8222":
+				_, _ = w.Write(leaderView)
+			case "nats-0.nats.localhost:8222":
+				if nats0Down.Load() {
+					w.WriteHeader(http.StatusServiceUnavailable)
+					_, _ = w.Write([]byte(`unavailable`))
+					return
+				}
+				_, _ = w.Write(followerView)
+			default:
+				// the load-balanced endpoint and nats-2 are followers
+				_, _ = w.Write(followerView)
+			}
+		default:
+			t.Errorf("Expected to request '/jsz or /varz', got: %s", r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+
+	dialer := &net.Dialer{}
+	client := &http.Client{Transport: &http.Transport{
+		DialContext: func(ctx context.Context, network, _ string) (net.Conn, error) {
+			return dialer.DialContext(ctx, network, srv.Listener.Addr().String())
+		},
+	}}
+
+	metadata := map[string]string{"natsServerMonitoringEndpoint": "nats.localhost:8222", "account": "$G", "stream": stream, "consumer": consumer, "activationLagThreshold": "10"}
+	config := &scalersconfig.ScalerConfig{TriggerMetadata: metadata, TriggerIndex: 0}
+	meta, err := parseNATSJetStreamMetadata(config)
+	if err != nil {
+		t.Fatal("Could not parse metadata:", err)
+	}
+	scaler := natsJetStreamScaler{
+		metadata:   meta,
+		httpClient: client,
+		logger:     InitializeLogger(config, "nats_jetstream_scaler"),
+	}
+	ctx := context.Background()
+
+	// 1. A node is unreachable during discovery (e.g. a rolling restart).
+	_, _, err = scaler.GetMetricsAndActivity(ctx, "metric_name")
+	assert.Error(t, err, "discovery should fail while nats-0 is down")
+	assert.Equal(t, leader, scaler.metadata.consumerLeader, "leader name is cached from the follower's answer")
+	assert.Empty(t, scaler.metadata.monitoringLeaderURL, "no leader URL was found")
+
+	// 2. The cluster is healthy again; the next poll must find the leader
+	// instead of trusting the follower behind the load-balanced endpoint.
+	nats0Down.Store(false)
+	_, isActive, err := scaler.GetMetricsAndActivity(ctx, "metric_name")
+	assert.NoError(t, err)
+	assert.True(t, isActive, "the leader reports 100 pending messages")
+	assert.Equal(t, "http://nats-1.nats.localhost:8222/jsz?acc=%24G&config=true&consumers=true", scaler.metadata.monitoringLeaderURL)
+
+	// 3. With the leader URL cached, polls go straight to the leader and skip discovery.
+	calls := varzCalls.Load()
+	_, isActive, err = scaler.GetMetricsAndActivity(ctx, "metric_name")
+	assert.NoError(t, err)
+	assert.True(t, isActive)
+	assert.Equal(t, calls, varzCalls.Load(), "no discovery while the cached leader is unchanged")
 }

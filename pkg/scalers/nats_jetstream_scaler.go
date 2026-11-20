@@ -184,8 +184,12 @@ func (s *natsJetStreamScaler) getNATSJetstreamMonitoringData(ctx context.Context
 		s.invalidateNATSJetStreamCachedMonitoringData()
 	}
 
-	// the leader name hasn't changed from the previous run, we can assume we just queried the correct leader node
-	if consumerFound && cachedConsumerLeader != "" && cachedConsumerLeader == s.metadata.consumerLeader {
+	// the leader name hasn't changed from the previous run and we queried the cached leader URL,
+	// so we can assume we just queried the correct leader node. Without a cached leader URL we
+	// queried the default endpoint, which may be a follower: followers name the leader too but
+	// report no pending messages, so the leader has to be discovered again.
+	if consumerFound && cachedConsumerLeader != "" && cachedConsumerLeader == s.metadata.consumerLeader &&
+		s.metadata.monitoringLeaderURL != "" {
 		return nil
 	}
 
