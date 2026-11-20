@@ -318,6 +318,22 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 			// FIXME: Delete this for v3
 			logger.Info("WARNING: AWS EKS Identity has been deprecated (https://github.com/kedacore/keda/discussions/5343) and will be removed from KEDA on v3")
 		case kedav1alpha1.PodIdentityProviderAzureWorkload:
+			if podIdentity.IsWorkloadIdentityOwner() {
+				if podIdentity.IdentityID != nil {
+					return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+						fmt.Errorf("identityId can't be set if KEDA isn't identity owner, current value: '%s'", *podIdentity.IdentityOwner)
+				}
+				value, err := resolveServiceAccountAnnotation(ctx, client, podTemplateSpec.Spec.ServiceAccountName, namespace, kedav1alpha1.PodIdentityAnnotationAzureWorkload, true)
+				if err != nil {
+					return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+						fmt.Errorf("error getting service account: '%s', error: %w", podTemplateSpec.Spec.ServiceAccountName, err)
+				}
+				if value == "" {
+					return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+						fmt.Errorf("annotation '%s' is empty", kedav1alpha1.PodIdentityAnnotationAzureWorkload)
+				}
+				podIdentity.IdentityID = &value
+			}
 			if podIdentity.IdentityID != nil && *podIdentity.IdentityID == "" {
 				return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, fmt.Errorf("IdentityID of PodIdentity should not be empty")
 			}

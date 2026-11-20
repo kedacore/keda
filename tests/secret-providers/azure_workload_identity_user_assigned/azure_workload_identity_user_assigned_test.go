@@ -63,9 +63,20 @@ spec:
       labels:
         app: {{.DeploymentName}}
     spec:
+      serviceAccountName: workload
       containers:
         - name: nginx
           image: ghcr.io/nginx/nginx-unprivileged:1.26
+`
+
+	serviceAccountTemplate = `
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: workload
+  namespace: {{.TestNamespace}}
+  annotations:
+    azure.workload.identity/client-id: {{.IdentityID}}
 `
 
 	triggerAuthTemplate = `
@@ -89,6 +100,18 @@ spec:
   podIdentity:
     provider: azure-workload
     identityId: {{.IdentityID}}
+`
+
+	triggerAuthTemplateWithIdentityOwner = `
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{.TriggerAuthName}}
+  namespace: {{.TestNamespace}}
+spec:
+  podIdentity:
+    provider: azure-workload
+    identityOwner: workload
 `
 
 	scaledObjectTemplate = `
@@ -137,6 +160,8 @@ func TestScaler(t *testing.T) {
 	testScaleOutWithIncorrectIdentity(t, kc, client)
 	testScaleOutWithCorrectIdentity(t, kc, data)
 	testScaleIn(t, kc, adminClient)
+	testScaleOutWithWorkloadIdentityOwner(t, kc, client, data)
+	testScaleIn(t, kc, adminClient)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
@@ -171,6 +196,7 @@ func getTemplateData() (templateData, []Template) {
 		ScaledObjectName: scaledObjectName,
 		QueueName:        queueName,
 	}, []Template{
+		{Name: "serviceAccountTemplate", Config: serviceAccountTemplate},
 		{Name: "deploymentTemplate", Config: deploymentTemplate},
 		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
 		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
@@ -179,14 +205,7 @@ func getTemplateData() (templateData, []Template) {
 
 func testScaleOutWithIncorrectIdentity(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Client) {
 	t.Log("--- testing scale out with incorrect identity ---")
-	sender, err := client.NewSender(queueName, nil)
-	assert.NoErrorf(t, err, "cannot create the sender - %s", err)
-	for i := 0; i < 5; i++ {
-		msg := fmt.Sprintf("Message - %d", i)
-		_ = sender.SendMessage(context.Background(), &azservicebus.Message{
-			Body: []byte(msg),
-		}, nil)
-	}
+	sendMessages(t, client)
 
 	// Scale out should fail as we are using the incorrect identity, so the replica count has to stay
 	// at 0 for the whole window rather than merely be 0 at the end of it. Thirty seconds is what the
@@ -204,6 +223,30 @@ func testScaleOutWithCorrectIdentity(t *testing.T, kc *kubernetes.Clientset, dat
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
+}
+
+func testScaleOutWithWorkloadIdentityOwner(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Client, data templateData) {
+	t.Log("--- testing scale out with the workload as identity owner ---")
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	KubectlDeleteWithTemplate(t, data, "triggerAuthTemplateWithIdentityID", triggerAuthTemplateWithIdentityID)
+
+	KubectlApplyWithTemplate(t, data, "triggerAuthTemplateWithIdentityOwner", triggerAuthTemplateWithIdentityOwner)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	sendMessages(t, client)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
+		"replica count should be 1 after 1 minute")
+}
+
+func sendMessages(t *testing.T, client *azservicebus.Client) {
+	sender, err := client.NewSender(queueName, nil)
+	assert.NoErrorf(t, err, "cannot create the sender - %s", err)
+	for i := 0; i < 5; i++ {
+		msg := fmt.Sprintf("Message - %d", i)
+		_ = sender.SendMessage(context.Background(), &azservicebus.Message{
+			Body: []byte(msg),
+		}, nil)
+	}
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, adminClient *admin.Client) {
