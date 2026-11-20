@@ -113,7 +113,7 @@ func TestForgejoRunnerScalerGetGlobalRunnerJobsUrl(t *testing.T) {
 					Address: "http://localhost",
 				},
 			},
-			want:    "http://localhost/api/v1/admin/runners/jobs?labels=ubuntu-latest",
+			want:    "http://localhost/api/v1/admin/actions/runners/jobs?labels=ubuntu-latest",
 			wantErr: assert.NoError,
 		},
 		{
