@@ -17,11 +17,23 @@ limitations under the License.
 package gcp
 
 import (
+	"context"
 	"errors"
+	"net"
 	"testing"
 
+	monitoring "cloud.google.com/go/monitoring/apiv3/v2"
+	monitoringpb "cloud.google.com/go/monitoring/apiv3/v2/monitoringpb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+	"google.golang.org/api/iterator"
+	"google.golang.org/api/option"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/local"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -150,5 +162,45 @@ func TestGetGCPAuthorization(t *testing.T) {
 				tt.check(t, got)
 			}
 		})
+	}
+}
+
+type fakeMetricServer struct {
+	monitoringpb.UnimplementedMetricServiceServer
+}
+
+func (fakeMetricServer) ListTimeSeries(context.Context, *monitoringpb.ListTimeSeriesRequest) (*monitoringpb.ListTimeSeriesResponse, error) {
+	return &monitoringpb.ListTimeSeriesResponse{}, nil
+}
+
+func TestGRPCClientOptionsDisablesGoogleTelemetry(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	server := grpc.NewServer(grpc.Creds(local.NewCredentials()))
+	monitoringpb.RegisterMetricServiceServer(server, fakeMetricServer{})
+	go func() { _ = server.Serve(listener) }()
+	t.Cleanup(server.Stop)
+
+	reader := sdkmetric.NewManualReader()
+	previous := otel.GetMeterProvider()
+	otel.SetMeterProvider(sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader)))
+	t.Cleanup(func() { otel.SetMeterProvider(previous) })
+
+	opts := append(GRPCClientOptions(),
+		option.WithEndpoint(listener.Addr().String()),
+		option.WithoutAuthentication(),
+		option.WithGRPCDialOption(grpc.WithTransportCredentials(local.NewCredentials())),
+	)
+	client, err := monitoring.NewMetricClient(t.Context(), opts...)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = client.Close() })
+
+	_, err = client.ListTimeSeries(t.Context(), &monitoringpb.ListTimeSeriesRequest{Name: "projects/test"}).Next()
+	require.ErrorIs(t, err, iterator.Done)
+
+	var got metricdata.ResourceMetrics
+	require.NoError(t, reader.Collect(t.Context(), &got))
+	for _, scope := range got.ScopeMetrics {
+		assert.NotEqual(t, otelgrpc.ScopeName, scope.Scope.Name, "Google's default otelgrpc handler must be disabled")
 	}
 }

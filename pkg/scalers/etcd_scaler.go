@@ -10,9 +10,11 @@ import (
 
 	"github.com/go-logr/logr"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"google.golang.org/grpc"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -30,10 +32,11 @@ const (
 )
 
 type etcdScaler struct {
-	metricType v2.MetricTargetType
-	metadata   *etcdMetadata
-	client     *clientv3.Client
-	logger     logr.Logger
+	metricType   v2.MetricTargetType
+	metadata     *etcdMetadata
+	client       *clientv3.Client
+	scalerConfig scalersconfig.ScalerConfig
+	logger       logr.Logger
 }
 
 type etcdMetadata struct {
@@ -94,15 +97,16 @@ func NewEtcdScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing etcd metadata: %w", parseErr)
 	}
 
-	cli, err := getEtcdClients(meta)
+	cli, err := getEtcdClients(meta, metricscollector.GRPCClientDialOptions())
 	if err != nil {
 		return nil, err
 	}
 	return &etcdScaler{
-		metricType: metricType,
-		metadata:   meta,
-		client:     cli,
-		logger:     InitializeLogger(config, "etcd_scaler"),
+		metricType:   metricType,
+		metadata:     meta,
+		client:       cli,
+		scalerConfig: *config,
+		logger:       InitializeLogger(config, "etcd_scaler"),
 	}, nil
 }
 
@@ -117,7 +121,7 @@ func parseEtcdMetadata(config *scalersconfig.ScalerConfig) (*etcdMetadata, error
 	return meta, nil
 }
 
-func getEtcdClients(metadata *etcdMetadata) (*clientv3.Client, error) {
+func getEtcdClients(metadata *etcdMetadata, dialOptions []grpc.DialOption) (*clientv3.Client, error) {
 	var tlsConfig *tls.Config
 	var err error
 	if metadata.EnableTLS == etcdTLSEnable {
@@ -133,6 +137,7 @@ func getEtcdClients(metadata *etcdMetadata) (*clientv3.Client, error) {
 		TLS:         tlsConfig,
 		Username:    metadata.Username,
 		Password:    metadata.Password,
+		DialOptions: dialOptions,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to etcd server: %w", err)
@@ -174,6 +179,7 @@ func (s *etcdScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 
 func (s *etcdScaler) Run(ctx context.Context, active chan<- bool) {
 	defer close(active)
+	ctx = metricscollector.BuildScalerRequestCtx(ctx, s.scalerConfig, "")
 
 	// It's possible for the watch to get terminated anytime, we need to run this in a retry loop
 	runWithWatch := func() {
