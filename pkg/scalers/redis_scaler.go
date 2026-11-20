@@ -4,14 +4,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"strconv"
+	"sync"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/go-logr/logr"
+	entraid "github.com/redis/go-redis-entraid"
+	"github.com/redis/go-redis-entraid/manager"
 	"github.com/redis/go-redis/v9"
+	"github.com/redis/go-redis/v9/auth"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
@@ -21,6 +29,7 @@ const (
 	defaultActivationListLength = 0
 	defaultDBIdx                = 0
 	defaultEnableTLS            = false
+	azureManagedRedisScope      = "https://redis.azure.com/.default"
 )
 
 var (
@@ -35,6 +44,13 @@ var (
 
 	// ErrRedisParse is returned when "listName" is missing from the config.
 	ErrRedisParse = errors.New("error parsing redis metadata")
+
+	// ErrRedisEntraIDIncompatibleWithPassword is returned when both types of auth are configured for the same triggerMetadata
+	ErrRedisEntraIDIncompatibleWithPassword = errors.New("cannot set password when podIdentity provider is azure-workload")
+	// ErrRedisEntraIDIncompatibleWithSentinel is returned when Redis Sentinel is configured with Azure Workload Identity
+	ErrRedisEntraIDIncompatibleWithSentinel = errors.New("cannot use redis sentinel when podIdentity provider is azure-workload")
+	// ErrRedisEntraIDRequiresTLS is returned when Azure Workload Identity is used without TLS.
+	ErrRedisEntraIDRequiresTLS = errors.New("azure-workload pod identity requires TLS to be enabled")
 )
 
 type redisScaler struct {
@@ -71,6 +87,7 @@ type redisMetadata struct {
 	AuthParamEnableTLS   string              `keda:"name=tls,                  order=authParams, optional"`
 	ConnectionInfo       redisConnectionInfo `keda:"optional"`
 	triggerIndex         int
+	podIdentity          kedav1alpha1.AuthPodIdentity
 }
 
 func (rci *redisConnectionInfo) SetEnableTLS(metadataEnableTLS string, authParamEnableTLS string) error {
@@ -111,11 +128,12 @@ func (r *redisMetadata) Validate() error {
 	}
 
 	err = r.ConnectionInfo.SetEnableTLS(r.MetadataEnableTLS, r.AuthParamEnableTLS)
-	if err == nil {
-		r.MetadataEnableTLS, r.AuthParamEnableTLS = "", ""
+	if err != nil {
+		return err
 	}
+	r.MetadataEnableTLS, r.AuthParamEnableTLS = "", ""
 
-	return err
+	return validateRedisEntraIDCompatibility(r.ConnectionInfo, r.podIdentity)
 }
 
 // NewRedisScaler creates a new redisScaler
@@ -157,18 +175,12 @@ func NewRedisScaler(ctx context.Context, isClustered, isSentinel bool, config *s
 }
 
 func createClusteredRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
-	client, err := getRedisClusterClient(ctx, meta.ConnectionInfo)
+	client, stop, err := getRedisClusterClient(ctx, meta.ConnectionInfo, meta.podIdentity, logger)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis cluster failed: %w", err)
 	}
 
-	closeFn := func() error {
-		if err := client.Close(); err != nil {
-			logger.Error(err, "error closing redis client")
-			return err
-		}
-		return nil
-	}
+	closeFn := newRedisCloseFn(client, stop, logger)
 
 	listLengthFn := func(ctx context.Context) (int64, error) {
 		cmd := client.Eval(ctx, script, []string{meta.ListName})
@@ -194,26 +206,20 @@ func createSentinelRedisScaler(ctx context.Context, meta *redisMetadata, script 
 		return nil, fmt.Errorf("connection to redis sentinel failed: %w", err)
 	}
 
-	return createRedisScalerWithClient(client, meta, script, metricType, logger), nil
+	return createRedisScalerWithClient(client, func() {}, meta, script, metricType, logger), nil
 }
 
 func createRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
-	client, err := getRedisClient(ctx, meta.ConnectionInfo, meta.DatabaseIndex)
+	client, stop, err := getRedisClient(ctx, meta.ConnectionInfo, meta.DatabaseIndex, meta.podIdentity, logger)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis failed: %w", err)
 	}
 
-	return createRedisScalerWithClient(client, meta, script, metricType, logger), nil
+	return createRedisScalerWithClient(client, stop, meta, script, metricType, logger), nil
 }
 
-func createRedisScalerWithClient(client *redis.Client, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) Scaler {
-	closeFn := func() error {
-		if err := client.Close(); err != nil {
-			logger.Error(err, "error closing redis client")
-			return err
-		}
-		return nil
-	}
+func createRedisScalerWithClient(client *redis.Client, stop func(), meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) Scaler {
+	closeFn := newRedisCloseFn(client, stop, logger)
 
 	listLengthFn := func(ctx context.Context) (int64, error) {
 		cmd := client.Eval(ctx, script, []string{meta.ListName})
@@ -234,7 +240,8 @@ func createRedisScalerWithClient(client *redis.Client, meta *redisMetadata, scri
 }
 
 func parseRedisMetadata(config *scalersconfig.ScalerConfig) (*redisMetadata, error) {
-	meta := &redisMetadata{}
+	// podIdentity must be set before TypedConfig, which runs Validate.
+	meta := &redisMetadata{podIdentity: config.PodIdentity}
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing redis metadata: %w", err)
 	}
@@ -293,26 +300,128 @@ func validateRedisAddress(c *redisConnectionInfo) error {
 	return nil
 }
 
-func getRedisClusterClient(ctx context.Context, info redisConnectionInfo) (*redis.ClusterClient, error) {
+func validateRedisEntraIDCompatibility(connectionInfo redisConnectionInfo, podIdentity kedav1alpha1.AuthPodIdentity) error {
+	if podIdentity.Provider != kedav1alpha1.PodIdentityProviderAzureWorkload {
+		return nil
+	}
+
+	if connectionInfo.Password != "" {
+		return ErrRedisEntraIDIncompatibleWithPassword
+	}
+
+	if connectionInfo.SentinelMaster != "" || connectionInfo.SentinelUsername != "" || connectionInfo.SentinelPassword != "" {
+		return ErrRedisEntraIDIncompatibleWithSentinel
+	}
+
+	// Authentication conflicts take precedence so existing invalid configurations
+	// continue to return their original errors before the TLS requirement.
+	if !connectionInfo.EnableTLS {
+		return ErrRedisEntraIDRequiresTLS
+	}
+
+	return nil
+}
+
+var newRedisCredential = func(logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity) (azcore.TokenCredential, error) {
+	return azure.NewChainedCredential(logger, podIdentity)
+}
+
+type stoppableTokenManager struct {
+	manager.TokenManager
+	mu   sync.Mutex
+	stop manager.StopFunc
+}
+
+func (m *stoppableTokenManager) Start(listener manager.TokenListener) (manager.StopFunc, error) {
+	stop, err := m.TokenManager.Start(listener)
+	if err != nil {
+		return nil, err
+	}
+
+	m.mu.Lock()
+	m.stop = stop
+	m.mu.Unlock()
+	return stop, nil
+}
+
+func (m *stoppableTokenManager) Stop() {
+	m.mu.Lock()
+	stop := m.stop
+	m.mu.Unlock()
+	if stop != nil {
+		_ = stop()
+	}
+}
+
+func newRedisEntraIDCredentialsProvider(logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity) (auth.StreamingCredentialsProvider, func(), error) {
+	noOpStop := func() {}
+
+	cred, err := newRedisCredential(logger, podIdentity)
+	if err != nil {
+		return nil, noOpStop, fmt.Errorf("error creating azure credential: %w", err)
+	}
+
+	idp := azure.NewRedisEntraIDProvider(cred, azureManagedRedisScope)
+	tokenManager, err := manager.NewTokenManager(idp, manager.TokenManagerOptions{})
+	if err != nil {
+		return nil, noOpStop, fmt.Errorf("error creating token manager: %w", err)
+	}
+
+	stoppableManager := &stoppableTokenManager{TokenManager: tokenManager}
+	credProvider, err := entraid.NewCredentialsProvider(stoppableManager, entraid.CredentialsProviderOptions{})
+	if err != nil {
+		stoppableManager.Stop()
+		return nil, noOpStop, fmt.Errorf("error creating streaming credentials provider: %w", err)
+	}
+
+	return credProvider, stoppableManager.Stop, nil
+}
+
+// newRedisCloseFn closes the client and stops the Entra ID token manager (if any),
+// so a scaler rebuild does not leak the token refresh goroutine.
+func newRedisCloseFn(client io.Closer, stop func(), logger logr.Logger) func() error {
+	return func() error {
+		defer stop()
+		if err := client.Close(); err != nil {
+			logger.Error(err, "error closing redis client")
+			return err
+		}
+		return nil
+	}
+}
+
+func getRedisClusterClient(ctx context.Context, info redisConnectionInfo, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger) (*redis.ClusterClient, func(), error) {
 	options := &redis.ClusterOptions{
 		Addrs:    info.Addresses,
 		Username: info.Username,
 		Password: info.Password,
 	}
+
 	if info.EnableTLS {
 		tlsConfig, err := util.NewTLSConfigWithPassword(info.Cert, info.Key, info.KeyPassword, info.Ca, info.UnsafeSsl)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		options.TLSConfig = tlsConfig
+	}
+
+	stop := func() {}
+	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
+		var err error
+		options.StreamingCredentialsProvider, stop, err = newRedisEntraIDCredentialsProvider(logger, podIdentity)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// confirm if connected
 	c := redis.NewClusterClient(options)
 	if err := c.Ping(ctx).Err(); err != nil {
-		return nil, err
+		_ = c.Close()
+		stop()
+		return nil, nil, err
 	}
-	return c, nil
+	return c, stop, nil
 }
 
 func getRedisSentinelClient(ctx context.Context, info redisConnectionInfo, dbIndex int) (*redis.Client, error) {
@@ -341,26 +450,38 @@ func getRedisSentinelClient(ctx context.Context, info redisConnectionInfo, dbInd
 	return c, nil
 }
 
-func getRedisClient(ctx context.Context, info redisConnectionInfo, dbIndex int) (*redis.Client, error) {
+func getRedisClient(ctx context.Context, info redisConnectionInfo, dbIndex int, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger) (*redis.Client, func(), error) {
 	options := &redis.Options{
 		Addr:     info.Addresses[0],
 		Username: info.Username,
 		Password: info.Password,
 		DB:       dbIndex,
 	}
+
 	if info.EnableTLS {
 		tlsConfig, err := util.NewTLSConfigWithPassword(info.Cert, info.Key, info.KeyPassword, info.Ca, info.UnsafeSsl)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		options.TLSConfig = tlsConfig
+	}
+
+	stop := func() {}
+	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
+		var err error
+		options.StreamingCredentialsProvider, stop, err = newRedisEntraIDCredentialsProvider(logger, podIdentity)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// confirm if connected
 	c := redis.NewClient(options)
 	err := c.Ping(ctx).Err()
 	if err != nil {
-		return nil, err
+		_ = c.Close()
+		stop()
+		return nil, nil, err
 	}
-	return c, nil
+	return c, stop, nil
 }
