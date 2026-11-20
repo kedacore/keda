@@ -3,6 +3,9 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"hash/fnv"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +20,12 @@ import (
 
 const (
 	cronMetricType = "External"
+)
+
+var (
+	cronHashRegex   = regexp.MustCompile(`^H(?:\((\d+)-(\d+)\))?(?:/(\d+))?$`)
+	cronFieldBounds = [5][2]uint64{{0, 59}, {0, 23}, {1, 31}, {1, 12}, {0, 6}}
+	cronParser      = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 )
 
 type cronScaler struct {
@@ -36,12 +45,11 @@ type cronMetadata struct {
 }
 
 func (m *cronMetadata) Validate() error {
-	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
-	if _, err := parser.Parse(m.Start); err != nil {
+	if _, _, err := parseCronSchedule(m.Start, ""); err != nil {
 		return fmt.Errorf("error parsing start schedule: %w", err)
 	}
 
-	if _, err := parser.Parse(m.End); err != nil {
+	if _, _, err := parseCronSchedule(m.End, ""); err != nil {
 		return fmt.Errorf("error parsing end schedule: %w", err)
 	}
 
@@ -67,10 +75,18 @@ func NewCronScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing cron metadata: %w", err)
 	}
 
-	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
-
-	startSchedule, _ := parser.Parse(meta.Start)
-	endSchedule, _ := parser.Parse(meta.End)
+	seed := fmt.Sprintf("%s/%s/%d", config.ScalableObjectNamespace, config.ScalableObjectName, config.TriggerIndex)
+	startExpr, startSchedule, err := parseCronSchedule(meta.Start, seed)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing start schedule: %w", err)
+	}
+	endExpr, endSchedule, err := parseCronSchedule(meta.End, seed)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing end schedule: %w", err)
+	}
+	if sameCronSchedule(startSchedule, endSchedule) {
+		return nil, fmt.Errorf("start %q and end %q resolve to the same schedule", startExpr, endExpr)
+	}
 
 	return &cronScaler{
 		metricType:    metricType,
@@ -79,6 +95,85 @@ func NewCronScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		startSchedule: startSchedule,
 		endSchedule:   endSchedule,
 	}, nil
+}
+
+func parseCronSchedule(expr, seed string) (string, cron.Schedule, error) {
+	expanded, err := expandCronHash(expr, seed)
+	if err != nil {
+		return "", nil, err
+	}
+	schedule, err := cronParser.Parse(expanded)
+	return expanded, schedule, err
+}
+
+func sameCronSchedule(a, b cron.Schedule) bool {
+	x, okX := a.(*cron.SpecSchedule)
+	y, okY := b.(*cron.SpecSchedule)
+	if !okX || !okY {
+		return false
+	}
+	xs, ys := *x, *y
+	xs.Location, ys.Location = nil, nil
+	return xs == ys && x.Location.String() == y.Location.String()
+}
+
+// expandCronHash replaces Jenkins-style H tokens (H, H(a-b), H/n, H(a-b)/n) with values derived
+// from the seed, so each trigger gets a stable but distinct time within the given range.
+func expandCronHash(expr, seed string) (string, error) {
+	fields := strings.Fields(expr)
+	prefix := ""
+	if len(fields) > 0 && (strings.HasPrefix(fields[0], "TZ=") || strings.HasPrefix(fields[0], "CRON_TZ=")) {
+		prefix, fields = fields[0]+" ", fields[1:]
+	}
+	if len(fields) != len(cronFieldBounds) {
+		return expr, nil
+	}
+
+	for i, field := range fields {
+		parts := strings.Split(field, ",")
+		for j, part := range parts {
+			match := cronHashRegex.FindStringSubmatch(part)
+			if match == nil {
+				continue
+			}
+
+			low, high := cronFieldBounds[i][0], cronFieldBounds[i][1]
+			if match[1] != "" {
+				var lowErr, highErr error
+				low, lowErr = strconv.ParseUint(match[1], 10, 64)
+				high, highErr = strconv.ParseUint(match[2], 10, 64)
+				if lowErr != nil || highErr != nil || low > high || low < cronFieldBounds[i][0] || high > cronFieldBounds[i][1] {
+					return "", fmt.Errorf("invalid H range %q", part)
+				}
+			} else if i == 2 {
+				// Cap day of month at 28 so every month has the chosen day, matching Jenkins.
+				high = 28
+			}
+
+			h := fnv.New64a()
+			fmt.Fprintf(h, "%s/%d", seed, i)
+			hash := h.Sum64()
+
+			var step uint64 = 1
+			if match[3] != "" {
+				var err error
+				step, err = strconv.ParseUint(match[3], 10, 64)
+				if err != nil || step == 0 || step > high-low+1 {
+					return "", fmt.Errorf("invalid H step %q", part)
+				}
+			}
+
+			// A step of 1 picks a single value like a bare H, matching Jenkins.
+			if step == 1 {
+				parts[j] = strconv.FormatUint(low+hash%(high-low+1), 10)
+			} else {
+				parts[j] = fmt.Sprintf("%d-%d/%d", low+hash%step, high, step)
+			}
+		}
+		fields[i] = strings.Join(parts, ",")
+	}
+
+	return prefix + strings.Join(fields, " "), nil
 }
 
 func getCronTime(location *time.Location, schedule cron.Schedule) time.Time {
