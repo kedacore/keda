@@ -215,7 +215,16 @@ func TransformObject(ctx context.Context, client runtimeclient.StatusClient, log
 		return err
 	}
 
-	err := client.Status().Patch(ctx, object, patch)
+	data, err := patch.Data(object)
+	if err != nil {
+		logger.Error(err, "failed to patch Objects")
+		return err
+	}
+	if string(data) == "{}" {
+		return nil
+	}
+
+	err = client.Status().Patch(ctx, object, runtimeclient.RawPatch(patch.Type(), data))
 	if err != nil {
 		logger.Error(err, "failed to patch Objects")
 	}
