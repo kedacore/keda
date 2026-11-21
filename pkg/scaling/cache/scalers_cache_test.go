@@ -696,3 +696,43 @@ func TestScalersCache_GetMetricSpecForScalingForScaler_UsesCachedSpecs(t *testin
 		t.Fatalf("expected selector owner=cache on second read, got %q", specsAgain[0].External.Metric.Selector.MatchLabels["owner"])
 	}
 }
+
+// TestCachedMetricSpecsForScaler verifies the accessor returns the last-known cached specs for a
+// scaler without querying the live scaler, and is a safe no-op for out-of-range indices or a
+// closed cache. This underpins the metric-spec-error fallback path, which must recover the real
+// metric target even after a live spec lookup has failed.
+func TestCachedMetricSpecsForScaler(t *testing.T) {
+	RegisterTestingT(t)
+
+	cached := []v2.MetricSpec{{
+		External: &v2.ExternalMetricSource{
+			Metric: v2.MetricIdentifier{Name: "s0-metric"},
+			Target: v2.MetricTarget{Type: v2.AverageValueMetricType, AverageValue: resource.NewQuantity(10, resource.DecimalSI)},
+		},
+	}}
+
+	c := &ScalersCache{
+		Scalers: []ScalerBuilder{{CachedMetricSpecs: cached}},
+	}
+
+	got := c.CachedMetricSpecsForScaler(0)
+	Expect(got).To(HaveLen(1))
+	Expect(got[0].External.Metric.Name).To(Equal("s0-metric"))
+	Expect(got[0].External.Target.AverageValue.Value()).To(Equal(int64(10)))
+
+	// The returned slice must be a clone: mutating it must not affect the cache.
+	got[0].External.Metric.Name = "mutated"
+	again := c.CachedMetricSpecsForScaler(0)
+	Expect(again[0].External.Metric.Name).To(Equal("s0-metric"))
+
+	// Out-of-range indices and scalers without cached specs return nil.
+	Expect(c.CachedMetricSpecsForScaler(5)).To(BeNil())
+	Expect(c.CachedMetricSpecsForScaler(-1)).To(BeNil())
+
+	empty := &ScalersCache{Scalers: []ScalerBuilder{{}}}
+	Expect(empty.CachedMetricSpecsForScaler(0)).To(BeNil())
+
+	// A closed cache returns nil.
+	c.closed = true
+	Expect(c.CachedMetricSpecsForScaler(0)).To(BeNil())
+}
