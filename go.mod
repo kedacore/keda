@@ -40,14 +40,14 @@ require (
 	github.com/arangodb/go-driver/v2 v2.4.1
 	github.com/aws/aws-msk-iam-sasl-signer-go v1.0.4
 	github.com/aws/aws-sdk-go-v2 v1.48.0
-	github.com/aws/aws-sdk-go-v2/config v1.33.18
-	github.com/aws/aws-sdk-go-v2/credentials v1.21.0
-	github.com/aws/aws-sdk-go-v2/service/amp v1.55.4
-	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.75.7
-	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.74.0
-	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.47.0
-	github.com/aws/aws-sdk-go-v2/service/kinesis v1.56.13
-	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.50.12
+	github.com/aws/aws-sdk-go-v2/config v1.33.19
+	github.com/aws/aws-sdk-go-v2/credentials v1.21.1
+	github.com/aws/aws-sdk-go-v2/service/amp v1.55.5
+	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.76.0
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.74.1
+	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.48.0
+	github.com/aws/aws-sdk-go-v2/service/kinesis v1.57.0
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.51.0
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.53.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.52.0
 	github.com/beanstalkd/go-beanstalk v0.2.0
