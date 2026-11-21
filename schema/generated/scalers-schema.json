@@ -46,6 +46,12 @@
                     "metadataVariableReadable": true
                 },
                 {
+                    "name": "usePost",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
                     "name": "restAPITemplate",
                     "type": "string",
                     "optional": true,
