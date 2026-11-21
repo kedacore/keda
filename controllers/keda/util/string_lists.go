@@ -21,7 +21,7 @@ import (
 	"strings"
 )
 
-// AppendIntoString append a new string into a string that has seprator
+// AppendIntoString append a new string into a string that has separator
 // For example,
 //
 //	-- input: `viewer,editor`, `owner`, `,`  output: `viewer,editor,owner`
@@ -42,7 +42,7 @@ func AppendIntoString(srcStr string, appendStr string, sep string) string {
 	return srcStr
 }
 
-// RemoveFromString remove a string from src string that has seprator
+// RemoveFromString remove a string from src string that has separator
 // For example,
 //
 //	-- input: `viewer,editor,owner`, `owner`, `,`  output: `viewer,editor`
