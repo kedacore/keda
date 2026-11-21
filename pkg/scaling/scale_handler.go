@@ -977,6 +977,9 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	// Let's collect status of all allScalers in parallel,
 	// no matter if any scaler raises error or is active
 	allScalers, scalerConfigs := scalersCache.GetScalers()
+	if len(allScalers) == 0 {
+		return false, true, map[string]metricscache.MetricsRecord{}, []string{}, false, fmt.Errorf("no scalers found in scalers cache for ScaledObject %s/%s", scaledObject.Namespace, scaledObject.Name)
+	}
 	results := make(chan scalerState, len(allScalers))
 	wg := sync.WaitGroup{}
 	for scalerIndex := range allScalers {
@@ -988,7 +991,11 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	}
 	wg.Wait()
 	close(results)
+	cacheClosed := false
 	for result := range results {
+		if errors.Is(result.Err, cache.ErrCacheClosed) {
+			cacheClosed = true
+		}
 		if result.IsActive {
 			isScaledObjectActive = true
 			// Collect external metric names for active triggers
@@ -1011,6 +1018,10 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 		maps.Copy(metricsRecord, result.Records)
 
 		metricscollector.RecordScaledObjectError(scaledObject.Namespace, scaledObject.Name, result.Err)
+	}
+
+	if cacheClosed {
+		return false, true, map[string]metricscache.MetricsRecord{}, []string{}, false, fmt.Errorf("discarding scale decision: %w", cache.ErrCacheClosed)
 	}
 
 	// invalidate the cache for the ScaledObject, if we hit an error in any scaler
@@ -1129,6 +1140,7 @@ func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler
 	metricSpecs, err := scalersCache.GetMetricSpecForScalingForScaler(ctx, triggerIndex)
 	if err != nil {
 		if errors.Is(err, cache.ErrCacheClosed) {
+			result.Err = err
 			return result
 		}
 		result.Err = err
@@ -1168,7 +1180,11 @@ func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler
 			var errCacheClosed error
 			record, errCacheClosed = h.observeMetric(ctx, logger, scaledObject, scalersCache, triggerIndex, result.TriggerName, spec, nil, RawMetricsPollingInterval)
 			if errCacheClosed != nil {
-				continue
+				// Return immediately: a later spec's ScalerError would
+				// overwrite result.Err below and hide the closed-cache
+				// signal from getScaledObjectState.
+				result.Err = errCacheClosed
+				return result
 			}
 		}
 		metrics, isMetricActive, fallbackActive, err := record.Metric, record.IsMetricActive, record.FallbackActive, record.ScalerError
