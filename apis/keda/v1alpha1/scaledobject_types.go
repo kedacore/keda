@@ -192,6 +192,8 @@ type ScaledObjectStatus struct {
 	// +optional
 	ScaleTargetGVKR *GroupVersionKindResource `json:"scaleTargetGVKR,omitempty"`
 	// +optional
+	ScaleTargetName string `json:"scaleTargetName,omitempty"`
+	// +optional
 	OriginalReplicaCount *int32 `json:"originalReplicaCount,omitempty"`
 	// +optional
 	LastActiveTime *metav1.Time `json:"lastActiveTime,omitempty"`

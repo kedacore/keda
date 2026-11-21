@@ -292,6 +292,8 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 	}
 
 	// Check if resource targeted for scaling exists and exposes /scale subresource
+	scaleTargetChanged := scaledObject.Status.ScaleTargetName != "" &&
+		scaledObject.Status.ScaleTargetName != scaledObject.Spec.ScaleTargetRef.Name
 	gvkr, err := r.checkTargetResourceIsScalable(ctx, logger, scaledObject)
 	if err != nil {
 		return message.ScaleTargetErrMsg, err
@@ -328,8 +330,9 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		}
 	}
 
-	// Notify ScaleHandler if a new HPA was created or if ScaledObject was updated
-	if newHPACreated || scaleObjectSpecChanged {
+	// Notify ScaleHandler if a new HPA was created, the ScaledObject was updated,
+	// or a target handoff needs to resume after its status was recorded.
+	if newHPACreated || scaleObjectSpecChanged || scaleTargetChanged {
 		if err := r.requestScaleLoop(ctx, logger, scaledObject); err != nil {
 			return "failed to start a new scale loop with scaling logic", err
 		}
@@ -375,6 +378,12 @@ func (r *ScaledObjectReconciler) handlePause(ctx context.Context, logger logr.Lo
 
 	if deleted, err := r.ensureHPAForScaledObjectIsDeleted(ctx, logger, scaledObject); !deleted {
 		return "failed to delete HPA for paused ScaledObject", err
+	}
+
+	if _, pausedReplicasSet := scaledObject.Annotations[kedav1alpha1.PausedReplicasAnnotation]; pausedReplicasSet {
+		if _, err := r.checkTargetResourceIsScalable(ctx, logger, scaledObject); err != nil {
+			return message.ScaleTargetErrMsg, err
+		}
 	}
 
 	if err := r.scaleTargetToPausedCount(ctx, logger, scaledObject); err != nil {
@@ -462,8 +471,11 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 	// do we need the scale to update the status later?
 	present := scaledObject.HasPausedAnnotation()
 	removePausedStatus := scaledObject.Status.PausedReplicaCount != nil && !present
+	targetNameChanged := scaledObject.Status.ScaleTargetName != "" &&
+		scaledObject.Status.ScaleTargetName != scaledObject.Spec.ScaleTargetRef.Name
 	wantStatusUpdate := scaledObject.Status.ScaleTargetKind != gvkString ||
 		statusGvkString != gvkString ||
+		scaledObject.Status.ScaleTargetName != scaledObject.Spec.ScaleTargetRef.Name ||
 		scaledObject.Status.OriginalReplicaCount == nil ||
 		removePausedStatus
 
@@ -503,9 +515,10 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 			status.ScaleTargetKind = gvkString
 			status.ScaleTargetGVKR = &gvkr
 		}
-		if scaledObject.Status.OriginalReplicaCount == nil {
+		if scaledObject.Status.OriginalReplicaCount == nil || targetNameChanged {
 			status.OriginalReplicaCount = &scale.Spec.Replicas
 		}
+		status.ScaleTargetName = scaledObject.Spec.ScaleTargetRef.Name
 
 		if removePausedStatus {
 			status.PausedReplicaCount = nil

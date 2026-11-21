@@ -459,6 +459,8 @@ spec:
                 type: object
               scaleTargetKind:
                 type: string
+              scaleTargetName:
+                type: string
               triggersActivity:
                 additionalProperties:
                   description: TriggerActivityStatus represents the activity status

@@ -36,6 +36,12 @@ import (
 
 func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool, isError bool, options ScaleExecutorOptions) ScaleResult {
 	logger := e.logger.WithValues("scaledobject.Name", scaledObject.Name, "scaledObject.Namespace", scaledObject.Namespace, "scaleTarget.Name", scaledObject.Spec.ScaleTargetRef.Name)
+	targetHandoffPending := scaledObject.Status.ScaleTargetName != "" &&
+		scaledObject.Status.ScaleTargetName != scaledObject.Spec.ScaleTargetRef.Name
+	if targetHandoffPending {
+		logger.V(1).Info("Skipping direct scaling until the new scale target is recorded in status")
+	}
+
 	var currentReplicas int32
 	result := ScaleResult{Conditions: kedav1alpha1.Conditions{}}
 	result.Conditions.SetReadyCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionReadySuccessReason, kedav1alpha1.ScaledObjectConditionReadySuccessMessage)
@@ -75,7 +81,8 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		}
 		// a scale target is active if triggers are active or if activation is being forced via annotation
 		switch {
-		case scaledObject.Spec.IdleReplicaCount != nil && currentReplicas < minReplicas, currentReplicas == 0:
+		case !targetHandoffPending && scaledObject.Spec.IdleReplicaCount != nil && currentReplicas < minReplicas,
+			!targetHandoffPending && currentReplicas == 0:
 			// triggers are active, Idle Replicas mode is enabled AND replica count is less than minimum replica count => scale the ScaleTarget up
 			e.scaleFromZeroOrIdle(ctx, logger, scaledObject, options.ActiveTriggers, &result)
 		case isError:
@@ -102,11 +109,12 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			msg := "Triggers defined in ScaledObject are not working correctly"
 			result.Conditions.SetReadyCondition(metav1.ConditionFalse, "TriggerError", msg)
 			logger.V(1).Info(msg)
-		case scaledObject.Spec.IdleReplicaCount != nil && currentReplicas > *scaledObject.Spec.IdleReplicaCount, currentReplicas > 0 && minReplicas == 0:
+		case !targetHandoffPending && scaledObject.Spec.IdleReplicaCount != nil && currentReplicas > *scaledObject.Spec.IdleReplicaCount,
+			!targetHandoffPending && currentReplicas > 0 && minReplicas == 0:
 			// there are no active triggers, Idle Replicas mode is enabled AND current replicas count is greater than Idle Replicas count
 			// Try to scale the deployment down, HPA will handle other scale in operations
 			e.scaleToZeroOrIdle(ctx, logger, scaledObject, &result)
-		case scaledObject.Spec.IdleReplicaCount == nil && currentReplicas < minReplicas:
+		case !targetHandoffPending && scaledObject.Spec.IdleReplicaCount == nil && currentReplicas < minReplicas:
 			// there are no active triggers AND ScaleTarget replicas count is less than minimum replica count specified in ScaledObject AND Idle Replicas mode is disabled
 			// ScaleTarget replicas count to correct value
 			_, err := e.updateScaleOnScaleTarget(ctx, scaledObject, *scaledObject.Spec.MinReplicaCount)
