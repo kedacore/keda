@@ -469,7 +469,7 @@ spec:
       - name: job-curl
         image: docker.io/curlimages/curl
         imagePullPolicy: Always
-        command: ["curl", "-X", "POST", "{{.MetricsServerEndpoint}}/{{.MetricValue}}"]
+        command: ["curl", "--connect-timeout", "5", "--retry", "20", "--retry-delay", "3", "--retry-all-errors", "-X", "POST", "{{.MetricsServerEndpoint}}/{{.MetricValue}}"]
       restartPolicy: Never
 `
 
