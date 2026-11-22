@@ -227,6 +227,235 @@ var _ = Describe("ScaledObjectController", func() {
 	})
 
 	Describe("functional tests", func() {
+		It("records the new target's original replica count when the scale target changes", func() {
+			const (
+				targetAName      = "original-replicas-target-a"
+				targetBName      = "original-replicas-target-b"
+				scaledObjectName = "original-replicas-target-change"
+			)
+
+			targetAReplicas := int32(4)
+			targetA := generateDeployment(targetAName)
+			targetA.Spec.Replicas = &targetAReplicas
+			Expect(k8sClient.Create(context.Background(), targetA)).To(Succeed())
+
+			targetBReplicas := int32(1)
+			targetB := generateDeployment(targetBName)
+			targetB.Spec.Replicas = &targetBReplicas
+			Expect(k8sClient.Create(context.Background(), targetB)).To(Succeed())
+			managedReplicas := int32(2)
+
+			scaledObject := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: scaledObjectName, Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef:  &kedav1alpha1.ScaleTarget{Name: targetAName},
+					MinReplicaCount: &managedReplicas,
+					Advanced: &kedav1alpha1.AdvancedConfig{
+						RestoreToOriginalReplicaCount: true,
+					},
+					Triggers: []kedav1alpha1.ScaleTriggers{{
+						Type: "cron",
+						Metadata: map[string]string{
+							"timezone":        "UTC",
+							"start":           "0 * * * *",
+							"end":             "1 * * * *",
+							"desiredReplicas": "1",
+						},
+					}},
+				},
+			}
+			Expect(k8sClient.Create(context.Background(), scaledObject)).To(Succeed())
+
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: scaledObjectName, Namespace: "default"}, scaledObject)).To(Succeed())
+				g.Expect(scaledObject.Status.ScaleTargetName).To(Equal(targetAName))
+				g.Expect(scaledObject.Status.OriginalReplicaCount).ToNot(BeNil())
+				g.Expect(*scaledObject.Status.OriginalReplicaCount).To(Equal(targetAReplicas))
+			}).WithTimeout(10 * time.Second).Should(Succeed())
+
+			Eventually(func() error {
+				if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: scaledObjectName, Namespace: "default"}, scaledObject); err != nil {
+					return err
+				}
+				scaledObject.Spec.ScaleTargetRef.Name = targetBName
+				return k8sClient.Update(context.Background(), scaledObject)
+			}).WithTimeout(10 * time.Second).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: scaledObjectName, Namespace: "default"}, scaledObject)).To(Succeed())
+				g.Expect(scaledObject.Status.ScaleTargetName).To(Equal(targetBName))
+				g.Expect(scaledObject.Status.OriginalReplicaCount).ToNot(BeNil())
+				g.Expect(*scaledObject.Status.OriginalReplicaCount).To(Equal(targetBReplicas))
+
+				hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+				g.Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-" + scaledObjectName, Namespace: "default"}, hpa)).To(Succeed())
+				g.Expect(hpa.Spec.ScaleTargetRef.Name).To(Equal(targetBName))
+			}).WithTimeout(10 * time.Second).Should(Succeed())
+
+			// Change the managed target so the finalizer must restore its recorded original count.
+			Eventually(func() error {
+				if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: targetBName, Namespace: "default"}, targetB); err != nil {
+					return err
+				}
+				targetB.Spec.Replicas = &managedReplicas
+				return k8sClient.Update(context.Background(), targetB)
+			}).WithTimeout(10 * time.Second).Should(Succeed())
+
+			Expect(k8sClient.Delete(context.Background(), scaledObject)).To(Succeed())
+			Eventually(func() bool {
+				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: scaledObjectName, Namespace: "default"}, scaledObject)
+				return errors.IsNotFound(err)
+			}).Should(BeTrue())
+
+			Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: targetBName, Namespace: "default"}, targetB)).To(Succeed())
+			Expect(targetB.Spec.Replicas).ToNot(BeNil())
+			Expect(*targetB.Spec.Replicas).To(Equal(targetBReplicas))
+		})
+
+		It("records the new target before scaling it to the paused replica count", func() {
+			const (
+				targetAName      = "paused-handoff-target-a"
+				targetBName      = "paused-handoff-target-b"
+				scaledObjectName = "paused-handoff-target-change"
+			)
+
+			targetAReplicas := int32(4)
+			targetA := generateDeployment(targetAName)
+			targetA.Spec.Replicas = &targetAReplicas
+			Expect(k8sClient.Create(context.Background(), targetA)).To(Succeed())
+
+			targetBReplicas := int32(1)
+			targetB := generateDeployment(targetBName)
+			targetB.Spec.Replicas = &targetBReplicas
+			Expect(k8sClient.Create(context.Background(), targetB)).To(Succeed())
+
+			scaledObject := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: scaledObjectName, Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: targetAName},
+					Advanced: &kedav1alpha1.AdvancedConfig{
+						RestoreToOriginalReplicaCount: true,
+					},
+					Triggers: []kedav1alpha1.ScaleTriggers{{
+						Type: "cron",
+						Metadata: map[string]string{
+							"timezone":        "UTC",
+							"start":           "0 * * * *",
+							"end":             "1 * * * *",
+							"desiredReplicas": "1",
+						},
+					}},
+				},
+			}
+			Expect(k8sClient.Create(context.Background(), scaledObject)).To(Succeed())
+
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: scaledObjectName, Namespace: "default"}, scaledObject)).To(Succeed())
+				g.Expect(scaledObject.Status.ScaleTargetName).To(Equal(targetAName))
+				g.Expect(scaledObject.Status.OriginalReplicaCount).ToNot(BeNil())
+				g.Expect(*scaledObject.Status.OriginalReplicaCount).To(Equal(targetAReplicas))
+			}).WithTimeout(10 * time.Second).Should(Succeed())
+
+			Eventually(func() error {
+				if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: scaledObjectName, Namespace: "default"}, scaledObject); err != nil {
+					return err
+				}
+				scaledObject.Spec.ScaleTargetRef.Name = targetBName
+				scaledObject.Annotations = map[string]string{kedav1alpha1.PausedReplicasAnnotation: "2"}
+				return k8sClient.Update(context.Background(), scaledObject)
+			}).WithTimeout(10 * time.Second).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: scaledObjectName, Namespace: "default"}, scaledObject)).To(Succeed())
+				g.Expect(scaledObject.Status.ScaleTargetName).To(Equal(targetBName))
+				g.Expect(scaledObject.Status.OriginalReplicaCount).ToNot(BeNil())
+				g.Expect(*scaledObject.Status.OriginalReplicaCount).To(Equal(targetBReplicas))
+
+				g.Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: targetBName, Namespace: "default"}, targetB)).To(Succeed())
+				g.Expect(targetB.Spec.Replicas).ToNot(BeNil())
+				g.Expect(*targetB.Spec.Replicas).To(Equal(int32(2)))
+			}).WithTimeout(10 * time.Second).Should(Succeed())
+
+			Expect(k8sClient.Delete(context.Background(), scaledObject)).To(Succeed())
+			Eventually(func() bool {
+				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: scaledObjectName, Namespace: "default"}, scaledObject)
+				return errors.IsNotFound(err)
+			}).Should(BeTrue())
+
+			Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: targetBName, Namespace: "default"}, targetB)).To(Succeed())
+			Expect(targetB.Spec.Replicas).ToNot(BeNil())
+			Expect(*targetB.Spec.Replicas).To(Equal(targetBReplicas))
+		})
+
+		It("restores original replicas when status does not contain the target name", func() {
+			const (
+				targetName       = "legacy-original-replicas-target"
+				scaledObjectName = "legacy-original-replicas"
+			)
+
+			managedReplicas := int32(2)
+			target := generateDeployment(targetName)
+			target.Spec.Replicas = &managedReplicas
+			Expect(k8sClient.Create(context.Background(), target)).To(Succeed())
+
+			scaledObject := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       scaledObjectName,
+					Namespace:  "default",
+					Finalizers: []string{scaledObjectFinalizer},
+					Annotations: map[string]string{
+						kedav1alpha1.PausedAnnotation: "true",
+					},
+				},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: targetName},
+					Advanced: &kedav1alpha1.AdvancedConfig{
+						RestoreToOriginalReplicaCount: true,
+					},
+					Triggers: []kedav1alpha1.ScaleTriggers{{
+						Type: "cron",
+						Metadata: map[string]string{
+							"timezone":        "UTC",
+							"start":           "0 * * * *",
+							"end":             "1 * * * *",
+							"desiredReplicas": "1",
+						},
+					}},
+				},
+			}
+			Expect(k8sClient.Create(context.Background(), scaledObject)).To(Succeed())
+
+			originalReplicas := int32(1)
+			Eventually(func() error {
+				if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: scaledObjectName, Namespace: "default"}, scaledObject); err != nil {
+					return err
+				}
+				scaledObject.Status.ScaleTargetGVKR = &kedav1alpha1.GroupVersionKindResource{
+					Group: "apps", Version: "v1", Kind: "Deployment", Resource: "deployments",
+				}
+				scaledObject.Status.OriginalReplicaCount = &originalReplicas
+				scaledObject.Status.ScaleTargetName = ""
+				return k8sClient.Status().Update(context.Background(), scaledObject)
+			}).WithTimeout(10 * time.Second).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: scaledObjectName, Namespace: "default"}, scaledObject)).To(Succeed())
+				g.Expect(scaledObject.Status.ScaleTargetName).To(BeEmpty())
+				g.Expect(scaledObject.Status.OriginalReplicaCount).ToNot(BeNil())
+				g.Expect(*scaledObject.Status.OriginalReplicaCount).To(Equal(originalReplicas))
+			}).WithTimeout(10 * time.Second).Should(Succeed())
+
+			Expect(k8sClient.Delete(context.Background(), scaledObject)).To(Succeed())
+			Eventually(func() bool {
+				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: scaledObjectName, Namespace: "default"}, scaledObject)
+				return errors.IsNotFound(err)
+			}).Should(BeTrue())
+
+			Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: targetName, Namespace: "default"}, target)).To(Succeed())
+			Expect(target.Spec.Replicas).ToNot(BeNil())
+			Expect(*target.Spec.Replicas).To(Equal(originalReplicas))
+		})
+
 		It("cleans up a deleted trigger from the HPA", func() {
 			// Create the scaling target.
 			err := k8sClient.Create(context.Background(), generateDeployment("clean-up"))

@@ -40,6 +40,30 @@ import (
 
 const kubernetesAPITimeout = 0
 
+func TestRequestScaleSkipsTargetHandoffUntilStatusIsRecorded(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	recorder := events.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	scaleExecutor := NewScaleExecutor(mockClient, mockScaleClient, nil, kubernetesAPITimeout, recorder)
+
+	scaledObject := newSOWithHPA()
+	minReplicas := int32(2)
+	scaledObject.Spec.MinReplicaCount = &minReplicas
+	scaledObject.Spec.ScaleTargetRef.Name = "new-target"
+	scaledObject.Status.ScaleTargetName = "old-target"
+
+	mockDeploymentGet(mockClient)
+	mockHealthyHPA(mockClient)
+
+	result := scaleExecutor.RequestScale(t.Context(), &scaledObject, false, false, ScaleExecutorOptions{})
+
+	readyCondition := result.Conditions.GetReadyCondition()
+	activeCondition := result.Conditions.GetActiveCondition()
+	assert.True(t, readyCondition.IsTrue())
+	assert.True(t, activeCondition.IsFalse())
+}
+
 func TestScaleToMinReplicasWhenNotActive(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
@@ -684,7 +708,7 @@ func TestScaleFromMinReplicasWhenActivationForced(t *testing.T) {
 	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
 	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
 
-	result := scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false, ScaleExecutorOptions{})
+	result := scaleExecutor.RequestScale(t.Context(), &scaledObject, false, false, ScaleExecutorOptions{})
 
 	assert.Equal(t, int32(1), scale.Spec.Replicas)
 	condition := result.Conditions.GetActiveCondition()

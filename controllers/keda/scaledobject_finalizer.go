@@ -55,7 +55,11 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logge
 				logger.V(1).Info("Failed to restore scaleTarget's replica count back to the original, the scaling haven't been probably initialized yet.")
 			} else {
 				// We have enough information about the scaleTarget, let's proceed.
-				scale, err := r.ScaleClient.Scales(scaledObject.Namespace).Get(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+				scaleTargetName := scaledObject.Status.ScaleTargetName
+				if scaleTargetName == "" {
+					scaleTargetName = scaledObject.Spec.ScaleTargetRef.Name
+				}
+				scale, err := r.ScaleClient.Scales(scaledObject.Namespace).Get(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scaleTargetName, metav1.GetOptions{})
 				if err != nil {
 					if errors.IsNotFound(err) {
 						logger.V(1).Info("Failed to get scaleTarget's scale status, because it was probably deleted", "error", err)
