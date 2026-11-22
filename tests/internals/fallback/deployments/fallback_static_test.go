@@ -1,8 +1,6 @@
 //go:build e2e
 // +build e2e
 
-// +e2e-deps:argo-rollouts
-
 package fallback_test
 
 import (
@@ -16,6 +14,6 @@ import (
 // Load environment variables from .env file
 var _ = godotenv.Load("../../../.env")
 
-func TestFallbackForRollouts(t *testing.T) {
-	TestFallback(t, Rollout)
+func TestFallbackStaticForDeployments(t *testing.T) {
+	TestFallbackWithStatic(t, Deployment)
 }

@@ -14,6 +14,6 @@ import (
 // Load environment variables from .env file
 var _ = godotenv.Load("../../../.env")
 
-func TestFallbackForDeployments(t *testing.T) {
-	TestFallback(t, Deployment)
+func TestFallbackCurrentReplicasIfHigherForDeployments(t *testing.T) {
+	TestFallbackWithCurrentReplicasIfHigher(t, Deployment)
 }
