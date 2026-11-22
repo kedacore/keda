@@ -56,7 +56,7 @@ func TestRequestScaleSkipsTargetHandoffUntilStatusIsRecorded(t *testing.T) {
 	mockDeploymentGet(mockClient)
 	mockHealthyHPA(mockClient)
 
-	result := scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false, ScaleExecutorOptions{})
+	result := scaleExecutor.RequestScale(t.Context(), &scaledObject, false, false, ScaleExecutorOptions{})
 
 	readyCondition := result.Conditions.GetReadyCondition()
 	activeCondition := result.Conditions.GetActiveCondition()
@@ -708,7 +708,7 @@ func TestScaleFromMinReplicasWhenActivationForced(t *testing.T) {
 	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
 	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
 
-	result := scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false, ScaleExecutorOptions{})
+	result := scaleExecutor.RequestScale(t.Context(), &scaledObject, false, false, ScaleExecutorOptions{})
 
 	assert.Equal(t, int32(1), scale.Spec.Replicas)
 	condition := result.Conditions.GetActiveCondition()
