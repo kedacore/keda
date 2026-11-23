@@ -159,13 +159,13 @@ func isTriggerAuthenticationRemovingFinalizer(om metav1.ObjectMeta, oldOm metav1
 }
 
 func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
+	warnings := hashiCorpVaultTokenWarnings(spec.HashiCorpVault)
+
 	// Validate authentication providers that are independent of pod identity up
 	// front, so they are not skipped by the pod-identity switch below (whose
 	// default arm returns early).
-	if spec.AzureServicePrincipal != nil {
-		if err := validateAzureServicePrincipal(spec.AzureServicePrincipal); err != nil {
-			return nil, err
-		}
+	if err := validatePodIdentityIndependentProviders(spec); err != nil {
+		return nil, err
 	}
 
 	if spec.PodIdentity != nil {
@@ -192,7 +192,7 @@ func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 				}
 			}
 		default:
-			return nil, nil
+			return warnings, nil
 		}
 	}
 
@@ -217,7 +217,45 @@ func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 		}
 	}
 
-	return nil, nil
+	return warnings, nil
+}
+
+// hashiCorpVaultTokenWarnings warns when the Vault token is set inline in the
+// spec, which is deprecated in favour of reading it from a secret.
+func hashiCorpVaultTokenWarnings(vault *HashiCorpVault) admission.Warnings {
+	if vault == nil || vault.Credential == nil || vault.Credential.Token == "" {
+		return nil
+	}
+	warnings := admission.Warnings{"hashiCorpVault.credential.token is deprecated, use hashiCorpVault.credential.tokenFrom to read the token from a secret"}
+	if vault.Credential.TokenFrom != nil {
+		warnings = append(warnings, "hashiCorpVault.credential.tokenFrom takes precedence over hashiCorpVault.credential.token")
+	}
+	return warnings
+}
+
+// validatePodIdentityIndependentProviders validates the authentication
+// providers that do not depend on pod identity.
+func validatePodIdentityIndependentProviders(spec *TriggerAuthenticationSpec) error {
+	if err := validateHashiCorpVaultTokenFrom(spec.HashiCorpVault); err != nil {
+		return err
+	}
+	if spec.AzureServicePrincipal != nil {
+		return validateAzureServicePrincipal(spec.AzureServicePrincipal)
+	}
+	return nil
+}
+
+// validateHashiCorpVaultTokenFrom rejects a tokenFrom reference that can never
+// resolve to a token. The CRD schema only requires the fields to be present.
+func validateHashiCorpVaultTokenFrom(vault *HashiCorpVault) error {
+	if vault == nil || vault.Credential == nil || vault.Credential.TokenFrom == nil {
+		return nil
+	}
+	secretKeyRef := vault.Credential.TokenFrom.SecretKeyRef
+	if secretKeyRef.Name == "" || secretKeyRef.Key == "" {
+		return fmt.Errorf("hashiCorpVault.credential.tokenFrom.secretKeyRef requires a non-empty name and key")
+	}
+	return nil
 }
 
 // validateAzureServicePrincipal admission-validates the azureServicePrincipal

@@ -251,8 +251,13 @@ type HashiCorpVault struct {
 
 // Credential defines the Hashicorp Vault credentials depending on the authentication method
 type Credential struct {
+	// Deprecated: Use tokenFrom instead to read the token from a secret.
 	// +optional
 	Token string `json:"token,omitempty"`
+
+	// TokenFrom reads the Vault token from a secret. It takes precedence over token.
+	// +optional
+	TokenFrom *ValueFromSecret `json:"tokenFrom,omitempty"`
 
 	// +optional
 	ServiceAccount string `json:"serviceAccount,omitempty"`

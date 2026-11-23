@@ -20,8 +20,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -411,7 +414,7 @@ func TestResolveAuthRef(t *testing.T) {
 							Address:        "invalid-vault-address",
 							Authentication: "token",
 							Credential: &kedav1alpha1.Credential{
-								Token: "my-token",
+								Token: "my-token", //nolint:staticcheck // SA1019: the inline token is deprecated but still supported
 							},
 							Mount: "kubernetes",
 							Role:  "my-role",
@@ -1452,4 +1455,141 @@ func TestResolveAuthSecret_UnrestrictedAccess_UsesOriginalNamespace(t *testing.T
 	)
 
 	assert.Equal(t, secretData, result)
+}
+
+func TestResolveAuthRef_HashicorpVaultTokenFromSecret(t *testing.T) {
+	const (
+		tokenSecretName = "vault-token"
+		tokenSecretKey  = "token"
+		tokenFromSecret = "token-from-secret"
+		clusterKind     = "ClusterTriggerAuthentication"
+		readError       = `could not read the Vault token from key "token" of secret "vault-token"`
+	)
+	require.NoError(t, corev1.AddToScheme(scheme.Scheme))
+	require.NoError(t, kedav1alpha1.AddToScheme(scheme.Scheme))
+	t.Setenv("KEDA_CLUSTER_OBJECT_NAMESPACE", clusterNamespace)
+
+	origRestrictSecretAccess := restrictSecretAccess
+	defer func() {
+		restrictSecretAccess = origRestrictSecretAccess
+	}()
+	restrictSecretAccess = ""
+
+	tests := []struct {
+		name            string
+		kind            string
+		inlineToken     string
+		envToken        string
+		secretNamespace string
+		wantErr         string
+	}{
+		{
+			name:            "triggerauth reads the token from a secret in its namespace",
+			secretNamespace: namespace,
+		},
+		{
+			name:            "token from secret takes precedence over the inline token",
+			inlineToken:     "inline-token",
+			secretNamespace: namespace,
+		},
+		{
+			name:            "clustertriggerauth reads the token from the cluster object namespace",
+			kind:            clusterKind,
+			secretNamespace: clusterNamespace,
+		},
+		{
+			name:            "clustertriggerauth does not read the token from the workload namespace",
+			kind:            clusterKind,
+			secretNamespace: namespace,
+			wantErr:         readError,
+		},
+		{
+			name:    "secret does not exist",
+			wantErr: readError,
+		},
+		{
+			name:     "VAULT_TOKEN is used without reading the secret",
+			envToken: "token-from-env",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Setenv("VAULT_TOKEN", test.envToken)
+			wantToken := tokenFromSecret
+			if test.envToken != "" {
+				wantToken = test.envToken
+			}
+
+			backend := mockVault(t, true)
+			defer backend.Close()
+
+			var mu sync.Mutex
+			var gotTokens []string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				gotTokens = append(gotTokens, r.Header.Get("X-Vault-Token"))
+				mu.Unlock()
+				backend.Config.Handler.ServeHTTP(w, r)
+			}))
+			defer server.Close()
+
+			spec := kedav1alpha1.TriggerAuthenticationSpec{
+				HashiCorpVault: &kedav1alpha1.HashiCorpVault{
+					Address:        server.URL,
+					Authentication: kedav1alpha1.VaultAuthenticationToken,
+					Credential: &kedav1alpha1.Credential{
+						Token: test.inlineToken, //nolint:staticcheck // SA1019: the inline token is deprecated but still supported
+						TokenFrom: &kedav1alpha1.ValueFromSecret{
+							SecretKeyRef: kedav1alpha1.SecretKeyRef{Name: tokenSecretName, Key: tokenSecretKey},
+						},
+					},
+					Secrets: []kedav1alpha1.VaultSecret{{Parameter: "test", Path: "kv_v2/data/keda", Key: "test"}},
+				},
+			}
+
+			var existing []runtime.Object
+			if test.kind == clusterKind {
+				existing = append(existing, &kedav1alpha1.ClusterTriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{Name: triggerAuthenticationName},
+					Spec:       spec,
+				})
+			} else {
+				existing = append(existing, &kedav1alpha1.TriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: triggerAuthenticationName},
+					Spec:       spec,
+				})
+			}
+			if test.secretNamespace != "" {
+				existing = append(existing, &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Namespace: test.secretNamespace, Name: tokenSecretName},
+					Data:       map[string][]byte{tokenSecretKey: []byte(tokenFromSecret)},
+				})
+			}
+
+			gotMap, _, err := resolveAuthRef(
+				context.Background(),
+				fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(existing...).Build(),
+				logf.Log.WithName("test"),
+				&kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName, Kind: test.kind},
+				nil,
+				namespace,
+				&authentication.AuthClientSet{},
+			)
+
+			mu.Lock()
+			defer mu.Unlock()
+			if test.wantErr != "" {
+				assert.EqualError(t, err, test.wantErr)
+				assert.Empty(t, gotTokens, "Vault must not be called when the token can't be read")
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, map[string]string{"test": kedaSecretValue}, gotMap)
+			assert.NotEmpty(t, gotTokens)
+			for _, token := range gotTokens {
+				assert.Equal(t, wantToken, token)
+			}
+		})
+	}
 }
