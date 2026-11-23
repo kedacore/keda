@@ -184,6 +184,12 @@ func (s *natsJetStreamScaler) getNATSJetstreamMonitoringData(ctx context.Context
 		s.invalidateNATSJetStreamCachedMonitoringData()
 	}
 
+	// the leader has changed, so the cached leader URL now points to a follower: drop it,
+	// so that a failed discovery below leaves no URL to be trusted for the new leader name
+	if s.metadata.consumerLeader != cachedConsumerLeader {
+		s.metadata.monitoringLeaderURL = ""
+	}
+
 	// the leader name hasn't changed from the previous run and we queried the cached leader URL,
 	// so we can assume we just queried the correct leader node. Without a cached leader URL we
 	// queried the default endpoint, which may be a follower: followers name the leader too but
