@@ -9,11 +9,11 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/atomic"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
