@@ -191,6 +191,12 @@ func TestGetValueFromResponse(t *testing.T) {
 		{name: "multiple labels not queried", input: inputPrometheus, key: "backend_queue_size{queueName=\"two\"}", format: PrometheusFormat, expectVal: 2},
 		{name: "multiple labels queried", input: inputPrometheus, key: "backend_queue_size{queueName=\"two\", instance=\"zero\"}", format: PrometheusFormat, expectVal: 20},
 		{name: "invalid data", input: inputPrometheus, key: "backend_queue_size{invalid=test}", format: PrometheusFormat, expectErr: true},
+		{name: "not equal label", input: inputPrometheus, key: "backend_queue_size{queueName!=\"zero\"}", format: PrometheusFormat, expectVal: 1},
+		{name: "regex label", input: inputPrometheus, key: "backend_queue_size{queueName=~\"t.o\"}", format: PrometheusFormat, expectVal: 2},
+		{name: "regex label is fully anchored", input: inputPrometheus, key: "backend_queue_size{queueName=~\"tw\"}", format: PrometheusFormat, expectErr: true},
+		{name: "not regex label", input: inputPrometheus, key: "backend_queue_size{queueName!~\"zero|one\"}", format: PrometheusFormat, expectVal: 2},
+		{name: "empty label matches missing label", input: inputPrometheus, key: "backend_queue_size{queueName=\"one\", instance=\"\"}", format: PrometheusFormat, expectVal: 1},
+		{name: "not empty label skips missing label", input: inputPrometheus, key: "backend_queue_size{instance!=\"\"}", format: PrometheusFormat, expectVal: 2},
 	}
 
 	for _, tc := range testCases {
