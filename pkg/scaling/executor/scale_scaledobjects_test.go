@@ -226,6 +226,28 @@ func TestScaleToMinReplicasFromLowerInitialReplicaCount(t *testing.T) {
 	assert.Equal(t, true, condition.IsFalse())
 }
 
+func TestPausedScaleOutPreventsRestoringMinReplicas(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	client := mock_client.NewMockClient(ctrl)
+	scaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	recorder := events.NewFakeRecorder(1)
+	scaleExecutor := NewScaleExecutor(client, scaleClient, nil, kubernetesAPITimeout, recorder)
+
+	scaledObject := newSOWithHPA()
+	scaledObject.Annotations = map[string]string{v1alpha1.PausedScaleOutAnnotation: "true"}
+	*scaledObject.Spec.MinReplicaCount = 3
+
+	// With one replica and no active triggers, the executor must skip the Scale update.
+	mockDeploymentGet(client)
+	mockHealthyHPA(client)
+
+	result := scaleExecutor.RequestScale(t.Context(), &scaledObject, false, false, ScaleExecutorOptions{})
+
+	assert.NoError(t, result.Error)
+	condition := result.Conditions.GetActiveCondition()
+	assert.True(t, condition.IsFalse())
+}
+
 func TestScaleFromMinReplicasWhenActive(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)

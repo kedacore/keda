@@ -106,7 +106,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			// there are no active triggers, Idle Replicas mode is enabled AND current replicas count is greater than Idle Replicas count
 			// Try to scale the deployment down, HPA will handle other scale in operations
 			e.scaleToZeroOrIdle(ctx, logger, scaledObject, &result)
-		case scaledObject.Spec.IdleReplicaCount == nil && currentReplicas < minReplicas:
+		case scaledObject.Spec.IdleReplicaCount == nil && currentReplicas < minReplicas && !scaledObject.NeedToPauseScaleOut():
 			// there are no active triggers AND ScaleTarget replicas count is less than minimum replica count specified in ScaledObject AND Idle Replicas mode is disabled
 			// ScaleTarget replicas count to correct value
 			_, err := e.updateScaleOnScaleTarget(ctx, scaledObject, *scaledObject.Spec.MinReplicaCount)
