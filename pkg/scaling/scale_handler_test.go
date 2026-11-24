@@ -1285,6 +1285,36 @@ func TestGetScaledJobState(t *testing.T) {
 	}
 }
 
+func TestGetScaledJobStateWithMultipleMetricsOnOneScaler(t *testing.T) {
+	scaledJob := createScaledJob(0, 100, "")
+	scaler := mock_scalers.NewMockScaler(gomock.NewController(t))
+	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{
+		createMetricSpec(5, "s0-quiet"),
+		createMetricSpec(10, "s0-backlog"),
+		createMetricSpec(5, "s0-inactive"),
+	})
+	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), "s0-quiet").
+		Return([]external_metrics.ExternalMetricValue{scalers.GenerateMetricInMili("s0-quiet", 0)}, true, nil)
+	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), "s0-backlog").
+		Return([]external_metrics.ExternalMetricValue{scalers.GenerateMetricInMili("s0-backlog", 40)}, true, nil)
+	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), "s0-inactive").
+		Return([]external_metrics.ExternalMetricValue{scalers.GenerateMetricInMili("s0-inactive", 80)}, false, nil)
+
+	sh := scaleHandler{
+		scalerCaches: map[string]*cache.ScalersCache{
+			scaledJob.GenerateIdentifier(): {Scalers: []cache.ScalerBuilder{{Scaler: scaler}}},
+		},
+		scalerCachesLock: &sync.RWMutex{},
+		subsLock:         &sync.RWMutex{},
+	}
+	isActive, isError, queueLength, maxValue, activeTriggers := sh.getScaledJobState(t.Context(), scaledJob)
+	assert.False(t, isError)
+	assert.True(t, isActive)
+	assert.Equal(t, int64(40), queueLength)
+	assert.Equal(t, int64(4), maxValue)
+	assert.Equal(t, []string{"s0-quiet", "s0-backlog"}, activeTriggers)
+}
+
 func TestGetScaledJobStateIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T) {
 	metricName := "s0-queueLength"
 	ctrl := gomock.NewController(t)

@@ -1244,7 +1244,6 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 	scalers, scalerConfigs := scalersCache.GetScalers()
 	for scalerIndex, scaler := range scalers {
 		scalerName := triggerNameForScaler(scalers[scalerIndex], scalerConfigs[scalerIndex])
-		isActive := false
 		scalerType := fmt.Sprintf("%T:", scaler)
 
 		scalerLogger := log.WithValues("scaledJob.Name", scaledJob.Name, "Scaler", scalerType)
@@ -1252,9 +1251,8 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 		metricSpecs := scaler.GetMetricSpecForScaling(ctx)
 
 		for _, spec := range metricSpecs {
-			// skip scaler that doesn't return any metric specs (usually External scaler with incorrect metadata)
-			// or skip cpu/memory resource scaler
-			if len(metricSpecs) < 1 || spec.External == nil {
+			// Skip resource metric specs, such as CPU and memory.
+			if spec.External == nil {
 				continue
 			}
 			metricName := spec.External.Metric.Name
@@ -1279,17 +1277,16 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 				go h.sendWhenSubscribed(scaledJob.Name, scaledJob.Namespace, scalerName, isTriggerActive, metrics)
 			}
 			if isTriggerActive {
-				isActive = true
 				activeTriggers = append(activeTriggers, metricName)
 			}
-			queueLength, maxValue, targetAverageValue := scaledjob.CalculateQueueLengthAndMaxValue(metrics, metricSpecs, scaledJob.MaxReplicaCount())
+			queueLength, maxValue, targetAverageValue := scaledjob.CalculateQueueLengthAndMaxValue(metrics, []v2.MetricSpec{spec}, scaledJob.MaxReplicaCount())
 
-			scalerLogger.V(1).Info("Scaler Metric value", "isTriggerActive", isTriggerActive, metricSpecs[0].External.Metric.Name, queueLength, "targetAverageValue", targetAverageValue)
+			scalerLogger.V(1).Info("Scaler Metric value", "isTriggerActive", isTriggerActive, metricName, queueLength, "targetAverageValue", targetAverageValue)
 
 			scalersMetrics = append(scalersMetrics, scaledjob.ScalerMetrics{
 				QueueLength: queueLength,
 				MaxValue:    maxValue,
-				IsActive:    isActive,
+				IsActive:    isTriggerActive,
 			})
 			for _, metric := range metrics {
 				metricValue := metric.Value.AsApproximateFloat64()
