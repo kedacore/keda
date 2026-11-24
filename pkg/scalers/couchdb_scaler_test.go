@@ -78,8 +78,8 @@ var testCOUCHDBMetadata = []parseCouchDBMetadataTestData{
 }
 
 var couchDBMetricIdentifiers = []couchDBMetricIdentifier{
-	{metadataTestData: &testCOUCHDBMetadata[2], triggerIndex: 0, name: "s0-coucdb-animals"},
-	{metadataTestData: &testCOUCHDBMetadata[2], triggerIndex: 1, name: "s1-coucdb-animals"},
+	{metadataTestData: &testCOUCHDBMetadata[2], triggerIndex: 0, name: "s0-couchdb-animals"},
+	{metadataTestData: &testCOUCHDBMetadata[2], triggerIndex: 1, name: "s1-couchdb-animals"},
 }
 
 func TestParseCouchDBMetadata(t *testing.T) {
