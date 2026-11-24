@@ -126,6 +126,38 @@ func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, e
 	}, nil
 }
 
+// NewStackDriverClientServiceAccount uses an explicitly selected workload service account without
+// discovering credentials or a default project from the operator's environment.
+func NewStackDriverClientServiceAccount(ctx context.Context, auth *AuthorizationMetadata) (*StackDriverClient, error) {
+	tokenSource, err := auth.TokenSource(ctx, GcpScopeMonitoringRead)
+	if err != nil {
+		return nil, err
+	}
+	clientOption := option.WithTokenSource(tokenSource)
+	metricsClient, err := monitoring.NewMetricClient(ctx, clientOption)
+	if err != nil {
+		return nil, err
+	}
+	queryClient, err := monitoring.NewQueryClient(ctx, clientOption)
+	if err != nil {
+		return nil, errors.Join(err, metricsClient.Close())
+	}
+	return &StackDriverClient{metricsClient: metricsClient, queryClient: queryClient}, nil
+}
+
+// NewStackDriverClientForAuthorization creates a Stackdriver client using the
+// authentication method resolved in auth.
+func NewStackDriverClientForAuthorization(ctx context.Context, auth *AuthorizationMetadata) (*StackDriverClient, error) {
+	switch {
+	case auth.ServiceAccountTokenProvider != nil:
+		return NewStackDriverClientServiceAccount(ctx, auth)
+	case auth.PodIdentityProviderEnabled:
+		return NewStackDriverClientPodIdentity(ctx)
+	default:
+		return NewStackDriverClient(ctx, auth.GoogleApplicationCredentials)
+	}
+}
+
 func NewStackdriverAggregator(period int64, aligner string, reducer string) (*monitoringpb.Aggregation, error) {
 	sdAggregation := monitoringpb.Aggregation{
 		AlignmentPeriod: &durationpb.Duration{

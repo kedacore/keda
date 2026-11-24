@@ -545,21 +545,20 @@ func (h *scaleHandler) getScalersCacheForScaledObject(ctx context.Context, scale
 // performGetScalersCache returns cache for input scalableObject, it is common code used by GetScalersCache() and getScalersCacheForScaledObject() methods
 func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, scalableObject kedav1alpha1.ScalableObject, scalableObjectGeneration *int64, scalableObjectKind, scalableObjectNamespace, scalableObjectName string) (*cache.ScalersCache, error) {
 	h.scalerCachesLock.RLock()
+	cached, ok := h.scalerCaches[key]
+	h.scalerCachesLock.RUnlock()
 
-	if cache, ok := h.scalerCaches[key]; ok {
+	if ok {
 		// generation was specified -> let's include it in the check as well
-		if scalableObjectGeneration != nil {
-			if cache.ScalableObjectGeneration == *scalableObjectGeneration {
-				h.scalerCachesLock.RUnlock()
-				return cache, nil
+		if scalableObjectGeneration == nil || cached.ScalableObjectGeneration == *scalableObjectGeneration {
+			if cached.IsAuthFresh(ctx) {
+				return cached, nil
 			}
-		} else {
-			h.scalerCachesLock.RUnlock()
-			return cache, nil
+			// Evict stale workload-service-account cache before rebuilding so a
+			// failed rebuild cannot leave the previous identity cached.
+			h.clearStaleScalersCache(ctx, key, cached)
 		}
 	}
-
-	h.scalerCachesLock.RUnlock()
 
 	if scalableObject == nil {
 		switch scalableObjectKind {
@@ -663,6 +662,16 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject ked
 	}
 
 	return nil
+}
+
+func (h *scaleHandler) clearStaleScalersCache(ctx context.Context, key string, expected *cache.ScalersCache) {
+	h.scalerCachesLock.Lock()
+	defer h.scalerCachesLock.Unlock()
+	if h.scalerCaches[key] == expected {
+		log.V(1).WithValues("key", key).Info("Removing stale entry from ScalersCache; scaler close runs asynchronously")
+		delete(h.scalerCaches, key)
+		go expected.Close(ctx)
+	}
 }
 
 /// --------------------------------------------------------------------------- ///

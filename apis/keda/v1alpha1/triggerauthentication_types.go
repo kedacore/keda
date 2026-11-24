@@ -17,7 +17,16 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
+	"regexp"
+	"strings"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
+)
+
+var (
+	gcpWorkloadServiceAccountEmailPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]*@([a-zA-Z0-9][a-zA-Z0-9.-]*\.iam\.gserviceaccount\.com|(?:developer|appspot)\.gserviceaccount\.com)$`)
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -72,6 +81,7 @@ type TriggerAuthentication struct {
 }
 
 // TriggerAuthenticationSpec defines the various ways to authenticate
+// +kubebuilder:validation:XValidation:rule="!has(self.podIdentity) || !has(self.podIdentity.serviceAccountName) || !has(self.azureServicePrincipal)",message="podIdentity.serviceAccountName cannot be combined with azureServicePrincipal"
 type TriggerAuthenticationSpec struct {
 	// +optional
 	PodIdentity *AuthPodIdentity `json:"podIdentity,omitempty"`
@@ -135,11 +145,12 @@ type PodIdentityProvider string
 // PodIdentityProviderNone specifies the default state when there is no Identity Provider
 // PodIdentityProvider<IDENTITY_PROVIDER> specifies other available Identity providers
 const (
-	PodIdentityProviderNone          PodIdentityProvider = "none"
-	PodIdentityProviderAzureWorkload PodIdentityProvider = "azure-workload"
-	PodIdentityProviderGCP           PodIdentityProvider = "gcp"
-	PodIdentityProviderAwsEKS        PodIdentityProvider = "aws-eks"
-	PodIdentityProviderAws           PodIdentityProvider = "aws"
+	PodIdentityProviderNone                      PodIdentityProvider = "none"
+	PodIdentityProviderAzureWorkload             PodIdentityProvider = "azure-workload"
+	PodIdentityProviderGCP                       PodIdentityProvider = "gcp"
+	PodIdentityProviderGCPWorkloadServiceAccount PodIdentityProvider = "gcp-workload-service-account"
+	PodIdentityProviderAwsEKS                    PodIdentityProvider = "aws-eks"
+	PodIdentityProviderAws                       PodIdentityProvider = "aws"
 )
 
 // PodIdentityAnnotationEKS specifies aws role arn for aws-eks Identity Provider
@@ -149,12 +160,22 @@ const (
 
 // AuthPodIdentity allows users to select the platform native identity
 // mechanism
+// +kubebuilder:validation:XValidation:rule="!(self.provider in ['gcp-workload-service-account']) || has(self.serviceAccountName)",message="workload service account providers require serviceAccountName"
+// +kubebuilder:validation:XValidation:rule="!has(self.serviceAccountName) || self.provider in ['gcp-workload-service-account']",message="serviceAccountName requires a workload service account provider"
 type AuthPodIdentity struct {
-	// +kubebuilder:validation:Enum=azure-workload;gcp;aws;aws-eks;none
+	// +kubebuilder:validation:Enum=azure-workload;gcp;gcp-workload-service-account;aws;aws-eks;none
 	Provider PodIdentityProvider `json:"provider"`
 
+	// For gcp-workload-service-account, identityId is the optional IAM service account email to impersonate.
 	// +optional
 	IdentityID *string `json:"identityId,omitempty"`
+
+	// ServiceAccountName selects a Kubernetes service account in the ScaledObject or ScaledJob namespace.
+	// Required for provider gcp-workload-service-account in the top-level podIdentity. The operator must
+	// be configured with an approved audience and token-creation RBAC for this service account.
+	// +optional
+	// +kubebuilder:validation:MinLength=1
+	ServiceAccountName *string `json:"serviceAccountName,omitempty"`
 
 	// +optional
 	// Set identityTenantId to override the default Azure tenant id. If this is set, then the IdentityID must also be set
@@ -176,6 +197,63 @@ type AuthPodIdentity struct {
 	// +optional
 	// IdentityOwner configures which identity has to be used during auto discovery, keda or the scaled workload. Mutually exclusive with roleArn
 	IdentityOwner *string `json:"identityOwner,omitempty"`
+}
+
+// ValidateServiceAccountName validates the pod identity provider and explicit Kubernetes service account selection.
+func (a *AuthPodIdentity) ValidateServiceAccountName() error {
+	if a == nil {
+		return nil
+	}
+	if !a.IsWorkloadServiceAccountProvider() {
+		if a.ServiceAccountName != nil {
+			return fmt.Errorf("podIdentity.serviceAccountName requires provider gcp-workload-service-account")
+		}
+		return nil
+	}
+	if a.ServiceAccountName == nil {
+		return fmt.Errorf("podIdentity.provider %s requires podIdentity.serviceAccountName", a.Provider)
+	}
+	if errs := validation.IsDNS1123Subdomain(*a.ServiceAccountName); len(errs) > 0 {
+		return fmt.Errorf("podIdentity.serviceAccountName must be a valid Kubernetes service account name: %s", strings.Join(errs, "; "))
+	}
+	if a.IdentityID != nil && !gcpWorkloadServiceAccountEmailPattern.MatchString(*a.IdentityID) {
+		return fmt.Errorf("podIdentity.identityId must be a valid Google service account email")
+	}
+	return nil
+}
+
+// IsWorkloadServiceAccountProvider reports whether the pod identity selects a
+// workload Kubernetes service account for cloud federation.
+func (a *AuthPodIdentity) IsWorkloadServiceAccountProvider() bool {
+	if a == nil {
+		return false
+	}
+	return a.Provider == PodIdentityProviderGCPWorkloadServiceAccount
+}
+
+// ValidateServiceAccountSelection restricts Kubernetes service account selection to top-level cloud pod identity.
+func (s *TriggerAuthenticationSpec) ValidateServiceAccountSelection() error {
+	if err := s.PodIdentity.ValidateServiceAccountName(); err != nil {
+		return err
+	}
+	if s.PodIdentity != nil && s.PodIdentity.ServiceAccountName != nil && s.AzureServicePrincipal != nil {
+		return fmt.Errorf("podIdentity.serviceAccountName cannot be combined with azureServicePrincipal authentication")
+	}
+	const nestedSelectionError = "%s.podIdentity.serviceAccountName is not supported; configure serviceAccountName only in the top-level podIdentity"
+	if s.AzureKeyVault != nil && selectsServiceAccount(s.AzureKeyVault.PodIdentity) {
+		return fmt.Errorf(nestedSelectionError, "azureKeyVault")
+	}
+	if s.AwsSecretManager != nil && selectsServiceAccount(s.AwsSecretManager.PodIdentity) {
+		return fmt.Errorf(nestedSelectionError, "awsSecretManager")
+	}
+	if s.GCPSecretManager != nil && selectsServiceAccount(s.GCPSecretManager.PodIdentity) {
+		return fmt.Errorf(nestedSelectionError, "gcpSecretManager")
+	}
+	return nil
+}
+
+func selectsServiceAccount(podIdentity *AuthPodIdentity) bool {
+	return podIdentity != nil && (podIdentity.ServiceAccountName != nil || podIdentity.IsWorkloadServiceAccountProvider())
 }
 
 func (a *AuthPodIdentity) GetIdentityID() string {
@@ -304,12 +382,14 @@ type VaultSecret struct {
 }
 
 // AzureKeyVault is used to authenticate using Azure Key Vault
+// +kubebuilder:validation:XValidation:rule="!has(self.podIdentity) || (!has(self.podIdentity.serviceAccountName) && !(self.podIdentity.provider in ['gcp-workload-service-account']))",message="azureKeyVault.podIdentity does not support workload service account selection"
 type AzureKeyVault struct {
 	VaultURI string `json:"vaultUri"`
 	// +kubebuilder:validation:MinItems=1
 	Secrets []AzureKeyVaultSecret `json:"secrets"`
 	// +optional
 	Credentials *AzureKeyVaultCredentials `json:"credentials"`
+	// PodIdentity selects the operator identity for Azure Key Vault. Workload service account selection is not supported here.
 	// +optional
 	PodIdentity *AuthPodIdentity `json:"podIdentity"`
 	// +optional
@@ -350,11 +430,14 @@ type AzureKeyVaultCloudInfo struct {
 	ActiveDirectoryEndpoint string `json:"activeDirectoryEndpoint"`
 }
 
+// GCPSecretManager is used to authenticate using GCP Secret Manager
+// +kubebuilder:validation:XValidation:rule="!has(self.podIdentity) || (!has(self.podIdentity.serviceAccountName) && !(self.podIdentity.provider in ['gcp-workload-service-account']))",message="gcpSecretManager.podIdentity does not support workload service account selection"
 type GCPSecretManager struct {
 	// +kubebuilder:validation:MinItems=1
 	Secrets []GCPSecretManagerSecret `json:"secrets"`
 	// +optional
 	Credentials *GCPCredentials `json:"credentials"`
+	// PodIdentity selects the operator identity for GCP Secret Manager. Workload service account selection is not supported here.
 	// +optional
 	PodIdentity *AuthPodIdentity `json:"podIdentity"`
 }
@@ -375,11 +458,13 @@ type GCPSecretManagerSecret struct {
 }
 
 // AwsSecretManager is used to authenticate using AwsSecretManager
+// +kubebuilder:validation:XValidation:rule="!has(self.podIdentity) || (!has(self.podIdentity.serviceAccountName) && !(self.podIdentity.provider in ['gcp-workload-service-account']))",message="awsSecretManager.podIdentity does not support workload service account selection"
 type AwsSecretManager struct {
 	// +kubebuilder:validation:MinItems=1
 	Secrets []AwsSecretManagerSecret `json:"secrets"`
 	// +optional
 	Credentials *AwsSecretManagerCredentials `json:"credentials"`
+	// PodIdentity selects the operator identity for AWS Secrets Manager. Workload service account selection is not supported here.
 	// +optional
 	PodIdentity *AuthPodIdentity `json:"podIdentity"`
 	// +optional

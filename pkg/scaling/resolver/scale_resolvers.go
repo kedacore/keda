@@ -109,6 +109,10 @@ type Config struct {
 	// ServiceAccountTokenAudiences permits file-token audiences. Entries with namespace
 	// and serviceAccountName also select the audience for Vault and generic BSAT minting.
 	ServiceAccountTokenAudiences []ServiceAccountTokenAudience
+	// CloudWorkloadIdentityAudiences maps exact namespace/serviceAccountName pairs to
+	// approved cloud federation audiences for workload service account pod identity.
+	// It is isolated from Vault file tokens and generic boundServiceAccountToken minting.
+	CloudWorkloadIdentityAudiences []CloudWorkloadIdentityAudience
 	// VaultKubernetesAuthTokenFile is the operator's dedicated projected token, read on each login.
 	VaultKubernetesAuthTokenFile string
 }
@@ -127,6 +131,9 @@ func (cfg *Config) Validate() error {
 		return fmt.Errorf("unsupported %s.hashiCorpVault.mode %q: expected off, warn, or enforce", OutboundFilterEnvVar, cfg.OutboundEndpointPolicy)
 	}
 	if err := cfg.validateServiceAccountTokenPolicy(); err != nil {
+		return err
+	}
+	if err := cfg.validateCloudWorkloadIdentityPolicy(); err != nil {
 		return err
 	}
 	for _, endpoint := range cfg.AllowedOutboundEndpoints {
@@ -339,11 +346,19 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 	podIdentity := kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}
 	var err error
 
-	if namespace != "" && triggerAuthRef != nil && triggerAuthRef.Name != "" {
-		triggerAuthSpec, triggerNamespace, err := getTriggerAuthSpec(ctx, client, triggerAuthRef, namespace)
+	if namespace != "" && triggerAuthRef != nil {
+		if triggerAuthRef.Name == "" {
+			return result, podIdentity, fmt.Errorf("authenticationRef.name must not be empty")
+		}
+		var triggerAuthSpec *kedav1alpha1.TriggerAuthenticationSpec
+		var triggerNamespace string
+		triggerAuthSpec, triggerNamespace, err = getTriggerAuthSpec(ctx, client, triggerAuthRef, namespace)
 		if err != nil {
 			logger.Error(err, "error getting triggerAuth", "triggerAuthRef.Name", triggerAuthRef.Name)
 		} else {
+			if err := triggerAuthSpec.ValidateServiceAccountSelection(); err != nil {
+				return nil, podIdentity, err
+			}
 			if triggerAuthSpec.PodIdentity != nil {
 				podIdentity = *triggerAuthSpec.PodIdentity
 			}

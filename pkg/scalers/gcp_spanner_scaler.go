@@ -115,6 +115,14 @@ func newSpannerClient(ctx context.Context, meta *spannerMetadata) (*spanner.Clie
 	var opts []option.ClientOption
 
 	switch {
+	case meta.gcpAuthorization.ServiceAccountTokenProvider != nil:
+		tokenSource, err := meta.gcpAuthorization.TokenSource(ctx, spanner.Scope)
+		if err != nil {
+			return nil, err
+		}
+		// Native Spanner client metrics require a Cloud Monitoring write scope. Keep
+		// them disabled because the selected service account receives only the data scope.
+		return spanner.NewClientWithConfig(ctx, db, spanner.ClientConfig{DisableNativeMetrics: true}, option.WithTokenSource(tokenSource))
 	case meta.gcpAuthorization.PodIdentityProviderEnabled:
 		// Workload Identity / ADC — the SDK picks up credentials from the
 		// metadata server automatically; no explicit option is needed.

@@ -85,6 +85,13 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 			}
 			config.AuthParams = authParams
 			config.PodIdentity = podIdentity
+			if err := validateWorkloadServiceAccountTrigger(trigger.Type, podIdentity.Provider); err != nil {
+				return nil, nil, err
+			}
+			config.ServiceAccountTokenProvider, err = resolver.ResolveServiceAccountTokenProvider(factoryCtx, h.client, trigger.AuthenticationRef, podIdentity, withTriggers.Namespace, h.authClientSet)
+			if err != nil {
+				return nil, nil, err
+			}
 			scaler, err := buildScaler(factoryCtx, h.client, trigger.Type, config)
 			return scaler, config, err
 		}
@@ -117,6 +124,21 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 	}
 
 	return result, nil
+}
+
+// validateWorkloadServiceAccountTrigger fails closed when a workload service
+// account pod identity provider is paired with a scaler that does not support it.
+func validateWorkloadServiceAccountTrigger(triggerType string, provider kedav1alpha1.PodIdentityProvider) error {
+	switch provider {
+	case kedav1alpha1.PodIdentityProviderGCPWorkloadServiceAccount:
+		switch triggerType {
+		case "gcp-pubsub", "gcp-spanner", "gcp-stackdriver", "gcp-storage", "prometheus":
+			return nil
+		}
+	default:
+		return nil
+	}
+	return fmt.Errorf("podIdentity.provider %s is not supported by scaler %q", provider, triggerType)
 }
 
 // buildScaler builds a scaler form input config and trigger type

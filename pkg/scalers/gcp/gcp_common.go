@@ -33,9 +33,15 @@ type AuthorizationMetadata struct {
 	GoogleApplicationCredentials     string
 	GoogleApplicationCredentialsFile string
 	PodIdentityProviderEnabled       bool
+	ServiceAccountTokenProvider      *scalersconfig.ServiceAccountTokenProvider
+	IdentityID                       string
 }
 
-func (a *AuthorizationMetadata) tokenSource(ctx context.Context, scopes ...string) (oauth2.TokenSource, error) {
+// TokenSource returns credentials for the configured authentication method.
+func (a *AuthorizationMetadata) TokenSource(ctx context.Context, scopes ...string) (oauth2.TokenSource, error) {
+	if a.ServiceAccountTokenProvider != nil {
+		return a.workloadIdentityTokenSource(ctx, scopes...)
+	}
 	if a.PodIdentityProviderEnabled {
 		return google.DefaultTokenSource(ctx, scopes...)
 	}
@@ -67,6 +73,16 @@ func (a *AuthorizationMetadata) tokenSource(ctx context.Context, scopes ...strin
 }
 
 func GetGCPAuthorization(config *scalersconfig.ScalerConfig) (*AuthorizationMetadata, error) {
+	if config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderGCPWorkloadServiceAccount {
+		if config.ServiceAccountTokenProvider == nil {
+			return nil, errors.New("gcp-workload-service-account requires a resolved service account token provider")
+		}
+		return &AuthorizationMetadata{
+			PodIdentityProviderEnabled:  true,
+			ServiceAccountTokenProvider: config.ServiceAccountTokenProvider,
+			IdentityID:                  config.PodIdentity.GetIdentityID(),
+		}, nil
+	}
 	if config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderGCP {
 		return &AuthorizationMetadata{PodIdentityProviderEnabled: true}, nil
 	}
@@ -92,7 +108,7 @@ func GetGCPOAuth2HTTPTransport(config *scalersconfig.ScalerConfig, base http.Rou
 		return nil, err
 	}
 
-	ts, err := a.tokenSource(context.Background(), scopes...)
+	ts, err := a.TokenSource(context.Background(), scopes...)
 	if err != nil {
 		return nil, err
 	}

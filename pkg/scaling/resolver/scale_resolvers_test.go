@@ -282,21 +282,33 @@ func TestResolveAuthRef(t *testing.T) {
 		comment             string
 	}{
 		{
-			name:                "foo",
+			name:                "no authenticationRef specified",
 			expected:            make(map[string]string),
 			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
 		{
-			name:                "no triggerauth exists",
-			soar:                &kedav1alpha1.AuthenticationRef{Name: "notthere"},
+			name:                "empty authenticationRef name fails closed",
+			soar:                &kedav1alpha1.AuthenticationRef{},
 			expected:            make(map[string]string),
 			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+			isError:             true,
+			comment:             "explicit authenticationRef with empty name must not silently omit authentication",
 		},
 		{
-			name:                "no triggerauth exists",
+			name:                "missing triggerauth fails closed",
 			soar:                &kedav1alpha1.AuthenticationRef{Name: "notthere"},
 			expected:            make(map[string]string),
 			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+			isError:             true,
+			comment:             "referenced TriggerAuthentication does not exist",
+		},
+		{
+			name:                "missing clustertriggerauth fails closed",
+			soar:                &kedav1alpha1.AuthenticationRef{Name: "notthere", Kind: "ClusterTriggerAuthentication"},
+			expected:            make(map[string]string),
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+			isError:             true,
+			comment:             "referenced ClusterTriggerAuthentication does not exist",
 		},
 		{
 			name: "triggerauth exists, podidentity nil",

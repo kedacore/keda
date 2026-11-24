@@ -472,6 +472,10 @@ func configureAuthenticationPolicyOrDie(config *resolver.Config) {
 		setupLog.Error(err, "invalid service account token policy")
 		os.Exit(1)
 	}
+	if err := config.LoadCloudWorkloadIdentityAudiences(os.Getenv(resolver.CloudWorkloadIdentityAudiencesEnvVar)); err != nil {
+		setupLog.Error(err, "invalid cloud workload identity policy")
+		os.Exit(1)
+	}
 	if err := config.LoadOutboundFilter(os.Getenv(resolver.OutboundFilterEnvVar)); err != nil {
 		setupLog.Error(err, "invalid authentication policy")
 		os.Exit(1)
