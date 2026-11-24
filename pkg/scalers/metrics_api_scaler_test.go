@@ -20,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
@@ -603,6 +604,111 @@ func TestGetEndpointsUrlsFromServiceURL_IPv6(t *testing.T) {
 	urls, err = s.getEndpointsUrlsFromServiceURL(t.Context(), "http://my-service.my-namespace.svc/metrics")
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"http://[2001:db8::1]/metrics"}, urls)
+}
+
+func TestGetEndpointsUrlsFromServiceURL_KeepsQueryString(t *testing.T) {
+	ready := true
+	port8080 := int32(8080)
+
+	slice := func(name string, addressType discoveryV1.AddressType, address string) discoveryV1.EndpointSlice {
+		return discoveryV1.EndpointSlice{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: "my-namespace",
+				Labels: map[string]string{
+					discoveryV1.LabelServiceName: "my-service",
+				},
+			},
+			AddressType: addressType,
+			Ports:       []discoveryV1.EndpointPort{{Port: &port8080}},
+			Endpoints: []discoveryV1.Endpoint{{
+				Addresses:  []string{address},
+				Conditions: discoveryV1.EndpointConditions{Ready: &ready},
+			}},
+		}
+	}
+
+	tests := []struct {
+		name       string
+		slice      discoveryV1.EndpointSlice
+		serviceURL string
+		expected   []string
+	}{
+		{
+			name:       "query string is kept",
+			slice:      slice("my-service-ipv4", discoveryV1.AddressTypeIPv4, "10.0.0.1"),
+			serviceURL: "http://my-service.my-namespace.svc:8080/metrics?family=app_queue_metrics",
+			expected:   []string{"http://10.0.0.1:8080/metrics?family=app_queue_metrics"},
+		},
+		{
+			name:       "repeated and encoded query parameters are kept as is",
+			slice:      slice("my-service-ipv4", discoveryV1.AddressTypeIPv4, "10.0.0.1"),
+			serviceURL: "http://my-service.my-namespace.svc:8080/metrics?a=1&b=x%2Fy&a=2&c=hello+world",
+			expected:   []string{"http://10.0.0.1:8080/metrics?a=1&b=x%2Fy&a=2&c=hello+world"},
+		},
+		{
+			name:       "query string is kept with an IPv6 endpoint",
+			slice:      slice("my-service-ipv6", discoveryV1.AddressTypeIPv6, "2001:db8::1"),
+			serviceURL: "http://my-service.my-namespace.svc:8080/metrics?family=a",
+			expected:   []string{"http://[2001:db8::1]:8080/metrics?family=a"},
+		},
+		{
+			name:       "query string is kept when the port is inferred from the scheme",
+			slice:      slice("my-service-ipv4", discoveryV1.AddressTypeIPv4, "10.0.0.1"),
+			serviceURL: "http://my-service.my-namespace.svc/metrics?family=a",
+			expected:   []string{"http://10.0.0.1/metrics?family=a"},
+		},
+		{
+			name:       "encoded path is kept",
+			slice:      slice("my-service-ipv4", discoveryV1.AddressTypeIPv4, "10.0.0.1"),
+			serviceURL: "http://my-service.my-namespace.svc:8080/api%2Fv1/metrics?family=a",
+			expected:   []string{"http://10.0.0.1:8080/api%2Fv1/metrics?family=a"},
+		},
+		{
+			name:       "userinfo and fragment are left out",
+			slice:      slice("my-service-ipv4", discoveryV1.AddressTypeIPv4, "10.0.0.1"),
+			serviceURL: "http://user:pass@my-service.my-namespace.svc:8080/metrics?family=a#fragment",
+			expected:   []string{"http://10.0.0.1:8080/metrics?family=a"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			kubeClient := fake.NewClientBuilder().
+				WithLists(&discoveryV1.EndpointSliceList{Items: []discoveryV1.EndpointSlice{tt.slice}}).
+				Build()
+
+			s := metricsAPIScaler{
+				kubeClient: kubeClient,
+				logger:     logr.Discard(),
+			}
+
+			urls, err := s.getEndpointsUrlsFromServiceURL(t.Context(), tt.serviceURL)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, urls)
+		})
+	}
+}
+
+func TestGetMetricAPIServerRequest_APIKeyQueryKeepsEndpointQueryString(t *testing.T) {
+	meta := &metricsAPIScalerMetadata{
+		URL: "http://my-service.my-namespace.svc:8080/metrics?family=a",
+		MetricsAPIAuth: &authentication.Config{
+			Modes: []authentication.Type{authentication.APIKeyAuthType},
+			APIKeyAuth: authentication.APIKeyAuth{
+				APIKey:       "secret",
+				Method:       methodValueQuery,
+				KeyParamName: "token",
+			},
+		},
+	}
+	endpointURL := "http://10.0.0.1:8080/metrics?family=a"
+
+	req, err := getMetricAPIServerRequest(t.Context(), meta, &endpointURL)
+	assert.NoError(t, err)
+	assert.Equal(t, "10.0.0.1:8080", req.URL.Host)
+	assert.Equal(t, "/metrics", req.URL.Path)
+	assert.Equal(t, "a", req.URL.Query().Get("family"))
+	assert.Equal(t, "secret", req.URL.Query().Get("token"))
 }
 
 func TestGetEndpointsUrlsFromServiceURL_DualStack(t *testing.T) {

@@ -411,7 +411,16 @@ func (s *metricsAPIScaler) getEndpointsUrlsFromServiceURL(ctx context.Context, s
 				if ip := net.ParseIP(address); ip != nil && ip.To4() == nil {
 					host = "[" + address + "]"
 				}
-				endpointUrls = append(endpointUrls, fmt.Sprintf("%s://%s%s%s", url.Scheme, host, foundPort, url.Path))
+				// keep the path and the query string of the configured url, as they are when the url is used without aggregation;
+				// userinfo and fragment are left out on purpose, so that credentials never end up in the per-endpoint urls
+				endpointURL := neturl.URL{
+					Scheme:   url.Scheme,
+					Host:     host + foundPort,
+					Path:     url.Path,
+					RawPath:  url.RawPath,
+					RawQuery: url.RawQuery,
+				}
+				endpointUrls = append(endpointUrls, endpointURL.String())
 			}
 		}
 	}
