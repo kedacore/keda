@@ -253,8 +253,12 @@ func uninstallSolace(t *testing.T) {
 }
 
 func publishMessages(t *testing.T, messageRate, messageNumber, messageSize int) {
-	_, _, err := ExecCommandOnSpecificPod(t, producerPodName, solaceDMTestNamespace, fmt.Sprintf("./sdkperf/sdkperf_java.sh -cip=kedalab-pubsubplus-dev:55555 -cu default@default -cp= -mr %d -mn %d -msx %d -mt=direct -ptl=topic/message/A", messageRate, messageNumber, messageSize))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	// The producer pod or the broker may not accept connections right after being created,
+	// so retry the publication instead of failing on the first transient error.
+	ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, producerPodName, solaceDMTestNamespace,
+		fmt.Sprintf("./sdkperf/sdkperf_java.sh -cip=kedalab-pubsubplus-dev:55555 -cu default@default -cp= -mr %d -mn %d -msx %d -mt=direct -ptl=topic/message/A", messageRate, messageNumber, messageSize),
+		5, 5)
+	assert.Truef(t, ok, "cannot execute command - %v; Output: %s, Error: %s", err, out, errOut)
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, mode string, messageRate int, messageNumber int, iterations int, interval int) {
