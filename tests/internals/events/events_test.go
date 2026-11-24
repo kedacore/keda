@@ -386,8 +386,7 @@ func testTargetNotFoundErr(t *testing.T, _ *kubernetes.Clientset, data templateD
 	t.Log("--- testing target not found error event ---")
 
 	KubectlApplyWithTemplate(t, data, "scaledObjectTargetErrTemplate", scaledObjectTargetErrTemplate)
-	checkingEvent(t, testNamespace, "scaledobject", scaledObjectTargetNotFoundName, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNotFoundMsg)
-	checkingEvent(t, testNamespace, "scaledobject", scaledObjectTargetNotFoundName, eventreason.ScaledObjectCheckFailed, message.ScaleTargetErrMsg)
+	checkingEvent(t, testNamespace, "scaledobject", scaledObjectTargetNotFoundName, eventreason.ScaledObjectCheckFailed, fmt.Sprintf("%s: %s", message.ScaleTargetErrMsg, message.ScaleTargetNotFoundMsg))
 }
 
 func testTargetNotSupportEventErr(t *testing.T, _ *kubernetes.Clientset, data templateData) {
@@ -395,8 +394,7 @@ func testTargetNotSupportEventErr(t *testing.T, _ *kubernetes.Clientset, data te
 
 	KubectlApplyWithTemplate(t, data, "daemonSetTemplate", daemonSetTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTargetNotSupportTemplate", scaledObjectTargetNotSupportTemplate)
-	checkingEvent(t, testNamespace, "scaledobject", scaledObjectTargetNoSubresourceName, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNoSubresourceMsg)
-	checkingEvent(t, testNamespace, "scaledobject", scaledObjectTargetNoSubresourceName, eventreason.ScaledObjectCheckFailed, message.ScaleTargetErrMsg)
+	checkingEvent(t, testNamespace, "scaledobject", scaledObjectTargetNoSubresourceName, eventreason.ScaledObjectCheckFailed, fmt.Sprintf("%s: %s", message.ScaleTargetErrMsg, message.ScaleTargetNoSubresourceMsg))
 }
 
 func testScaledJobNormalEvent(t *testing.T, kc *kubernetes.Clientset, data templateData) {
