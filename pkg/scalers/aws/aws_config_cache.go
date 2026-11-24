@@ -32,6 +32,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -70,10 +71,19 @@ func newSharedConfigsCache() sharedConfigCache {
 // As it can contain sensitive data, the key is hashed to not expose secrets
 func (a *sharedConfigCache) getCacheKey(awsAuthorization AuthorizationMetadata) string {
 	key := "keda-" + awsAuthorization.AwsRegion
-	if awsAuthorization.AwsAccessKeyID != "" {
+	if provider := awsAuthorization.ServiceAccountTokenProvider; provider != nil {
+		// A role can trust several service accounts. Its credentials must not be
+		// reused across those identities, or across this and operator auth modes.
+		key = strings.Join([]string{"service-account", provider.Namespace, provider.ServiceAccountName, provider.Audience, awsAuthorization.AwsRoleArn, awsAuthorization.AwsRegion}, "\x00")
+	} else if awsAuthorization.AwsAccessKeyID != "" {
 		key = fmt.Sprintf("%s-%s-%s-%s", awsAuthorization.AwsAccessKeyID, awsAuthorization.AwsSecretAccessKey, awsAuthorization.AwsSessionToken, awsAuthorization.AwsRegion)
 	} else if awsAuthorization.AwsRoleArn != "" {
 		key = fmt.Sprintf("%s-%s-%s", awsAuthorization.AwsRoleArn, awsAuthorization.AwsExternalID, awsAuthorization.AwsRegion)
+	}
+	if awsAuthorization.ServiceAccountTokenProvider == nil {
+		// Legacy inputs can contain arbitrary bytes. Prefix their assembled key
+		// so they cannot collide with a selected service account's credentials.
+		key = "legacy\x00" + key
 	}
 	// to avoid sensitive data as key and to use a constant key size,
 	// we hash the key with sha3
@@ -87,6 +97,11 @@ func (a *sharedConfigCache) getCacheKey(awsAuthorization AuthorizationMetadata) 
 // every time when an scaler requests *aws.Config we register it inside
 // the cached item.
 func (a *sharedConfigCache) GetCredentials(ctx context.Context, awsAuthorization AuthorizationMetadata) (*aws.Config, error) {
+	if awsAuthorization.ServiceAccountTokenProvider != nil {
+		if err := validateServiceAccountAuthorization(awsAuthorization); err != nil {
+			return nil, err
+		}
+	}
 	a.Lock()
 	defer a.Unlock()
 	key := a.getCacheKey(awsAuthorization)
@@ -94,6 +109,15 @@ func (a *sharedConfigCache) GetCredentials(ctx context.Context, awsAuthorization
 		cachedEntry.usages[awsAuthorization.TriggerUniqueKey] = true
 		a.items[key] = cachedEntry
 		return cachedEntry.config, nil
+	}
+
+	if awsAuthorization.ServiceAccountTokenProvider != nil {
+		cfg, err := newServiceAccountConfig(awsAuthorization)
+		if err != nil {
+			return nil, err
+		}
+		a.items[key] = cacheEntry{config: cfg, usages: map[string]bool{awsAuthorization.TriggerUniqueKey: true}}
+		return cfg, nil
 	}
 
 	configOptions := make([]func(*config.LoadOptions) error, 0)

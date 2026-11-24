@@ -178,6 +178,9 @@ func (a *azurePipelinesMetadata) Validate() error {
 // NewAzurePipelinesScaler creates a new AzurePipelinesScaler
 func NewAzurePipelinesScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
+	if config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount {
+		httpClient.CheckRedirect = kedautil.CheckSameOriginRedirect
+	}
 
 	logger := InitializeLogger(config, "azure_pipelines_scaler")
 	metricType, err := GetMetricTargetType(config)
@@ -200,6 +203,9 @@ func NewAzurePipelinesScaler(ctx context.Context, config *scalersconfig.ScalerCo
 
 func configureAzurePipelinesAuth(logger logr.Logger, config *scalersconfig.ScalerConfig, meta *azurePipelinesMetadata) error {
 	if meta.PersonalAccessToken != "" {
+		if config.PodIdentity.ServiceAccountName != nil {
+			return fmt.Errorf("personalAccessToken cannot be combined with serviceAccountName")
+		}
 		meta.authContext.pat = strings.TrimSuffix(meta.PersonalAccessToken, "\n")
 		meta.authContext.authType = azurePipelinesAuthTypePAT
 		return nil
@@ -217,8 +223,8 @@ func configureAzurePipelinesAuth(logger logr.Logger, config *scalersconfig.Scale
 			return nil
 		}
 		return fmt.Errorf("no personalAccessToken, Azure service principal, or PodIdentity provider configured")
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		credential, err := azure.NewChainedCredential(logger, config.PodIdentity)
+	case kedav1alpha1.PodIdentityProviderAzureWorkload, kedav1alpha1.PodIdentityProviderAzureWorkloadServiceAccount:
+		credential, err := azure.NewChainedCredential(logger, config.PodIdentity, config.ServiceAccountTokenProvider)
 		if err != nil {
 			return err
 		}

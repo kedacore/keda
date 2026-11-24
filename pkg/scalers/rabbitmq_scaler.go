@@ -340,6 +340,16 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 
 	s.metadata = meta
+	if config.PodIdentity.ServiceAccountName != nil {
+		if config.PodIdentity.Provider != v1alpha1.PodIdentityProviderAzureWorkloadServiceAccount || meta.WorkloadIdentityResource == "" {
+			return nil, fmt.Errorf("serviceAccountName requires Azure workload identity and workloadIdentityResource for RabbitMQ")
+		}
+		credential, err := azure.NewChainedCredential(s.logger, config.PodIdentity, config.ServiceAccountTokenProvider)
+		if err != nil {
+			return nil, fmt.Errorf("error creating Azure workload identity credential: %w", err)
+		}
+		s.azureOAuth = azure.NewAzureADWorkloadIdentityTokenProviderWithCredential(context.Background(), credential, meta.WorkloadIdentityResource)
+	}
 
 	timeout := config.GlobalHTTPTimeout
 	if s.metadata.Timeout != 0 {
@@ -363,6 +373,10 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 			}
 			s.httpClient.Transport = kedautil.CreateRTWithTLSConfig(tlsConfig)
 		}
+	}
+
+	if config.PodIdentity.Provider == v1alpha1.PodIdentityProviderAzureWorkloadServiceAccount {
+		s.httpClient.CheckRedirect = kedautil.CheckSameOriginRedirect
 	}
 
 	if meta.Protocol == amqpProtocol {
@@ -405,7 +419,7 @@ func parseRabbitMQMetadata(config *scalersconfig.ScalerConfig) (*rabbitMQMetadat
 		return nil, fmt.Errorf("error parsing RabbitMQ metadata: %w", err)
 	}
 
-	if config.PodIdentity.Provider == v1alpha1.PodIdentityProviderAzureWorkload {
+	if config.PodIdentity.Provider == v1alpha1.PodIdentityProviderAzureWorkload || config.PodIdentity.Provider == v1alpha1.PodIdentityProviderAzureWorkloadServiceAccount {
 		if meta.WorkloadIdentityResource != "" {
 			meta.workloadIdentityClientID = config.PodIdentity.GetIdentityID()
 			meta.workloadIdentityTenantID = config.PodIdentity.GetIdentityTenantID()
