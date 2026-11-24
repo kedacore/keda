@@ -54,9 +54,9 @@ func TestCleanUpNormalCase(t *testing.T) {
 
 	// Setup current running jobs
 	client := getMockClient(t, ctrl, &[]mockJobParameter{
-		{Name: "name1", CompletionTime: "2020-07-29T15:37:00Z", JobConditionType: batchv1.JobComplete},
-		{Name: "name2", CompletionTime: "2020-07-29T15:36:00Z", JobConditionType: batchv1.JobComplete},
-		{Name: "name3", CompletionTime: "2020-07-29T15:38:00Z", JobConditionType: batchv1.JobComplete},
+		{Name: "name1", FinishedAt: "2020-07-29T15:37:00Z", JobConditionType: batchv1.JobComplete},
+		{Name: "name2", FinishedAt: "2020-07-29T15:36:00Z", JobConditionType: batchv1.JobComplete},
+		{Name: "name3", FinishedAt: "2020-07-29T15:38:00Z", JobConditionType: batchv1.JobComplete},
 	}, &actualDeletedJobName)
 
 	scaleExecutor := getMockScaleExecutor(client)
@@ -218,12 +218,12 @@ func TestCleanUpMixedCaseWithSortByTime(t *testing.T) {
 
 	// Setup current running jobs
 	client := getMockClient(t, ctrl, &[]mockJobParameter{
-		{Name: "success1", CompletionTime: "2020-07-29T15:37:00Z", JobConditionType: batchv1.JobComplete},
-		{Name: "success2", CompletionTime: "2020-07-29T15:36:00Z", JobConditionType: batchv1.JobComplete},
-		{Name: "success3", CompletionTime: "2020-07-29T15:35:00Z", JobConditionType: batchv1.JobComplete},
-		{Name: "fail1", CompletionTime: "2020-07-29T15:37:00Z", JobConditionType: batchv1.JobFailed},
-		{Name: "fail2", CompletionTime: "2020-07-29T15:36:00Z", JobConditionType: batchv1.JobFailed},
-		{Name: "fail3", CompletionTime: "2020-07-29T15:38:00Z", JobConditionType: batchv1.JobFailed},
+		{Name: "success1", FinishedAt: "2020-07-29T15:37:00Z", JobConditionType: batchv1.JobComplete},
+		{Name: "success2", FinishedAt: "2020-07-29T15:36:00Z", JobConditionType: batchv1.JobComplete},
+		{Name: "success3", FinishedAt: "2020-07-29T15:35:00Z", JobConditionType: batchv1.JobComplete},
+		{Name: "fail1", FinishedAt: "2020-07-29T15:37:00Z", JobConditionType: batchv1.JobFailed},
+		{Name: "fail2", FinishedAt: "2020-07-29T15:36:00Z", JobConditionType: batchv1.JobFailed},
+		{Name: "fail3", FinishedAt: "2020-07-29T15:38:00Z", JobConditionType: batchv1.JobFailed},
 	}, &actualDeletedJobName)
 
 	scaleExecutor := getMockScaleExecutor(client)
@@ -298,13 +298,13 @@ func TestCleanUpDefaultValue(t *testing.T) {
 	var actualDeletedJobName = make(map[string]string)
 	mockJobParameters := make([]mockJobParameter, 202)
 	// Setup the first one will be removed.
-	mockJobParameters[0] = mockJobParameter{Name: "success0", CompletionTime: "2020-07-29T15:35:00Z", JobConditionType: batchv1.JobComplete}
+	mockJobParameters[0] = mockJobParameter{Name: "success0", FinishedAt: "2020-07-29T15:35:00Z", JobConditionType: batchv1.JobComplete}
 	for i := 1; i < 101; i++ {
-		mockJobParameters[i] = mockJobParameter{Name: fmt.Sprintf("success%d", i), CompletionTime: "2020-07-29T15:40:00Z", JobConditionType: batchv1.JobComplete}
+		mockJobParameters[i] = mockJobParameter{Name: fmt.Sprintf("success%d", i), FinishedAt: "2020-07-29T15:40:00Z", JobConditionType: batchv1.JobComplete}
 	}
-	mockJobParameters[101] = mockJobParameter{Name: "fail101", CompletionTime: "2020-07-29T15:35:00Z", JobConditionType: batchv1.JobFailed}
+	mockJobParameters[101] = mockJobParameter{Name: "fail101", FinishedAt: "2020-07-29T15:35:00Z", JobConditionType: batchv1.JobFailed}
 	for i := 102; i < 202; i++ {
-		mockJobParameters[i] = mockJobParameter{Name: fmt.Sprintf("fail%d", i), CompletionTime: "2020-07-29T15:40:00Z", JobConditionType: batchv1.JobFailed}
+		mockJobParameters[i] = mockJobParameter{Name: fmt.Sprintf("fail%d", i), FinishedAt: "2020-07-29T15:40:00Z", JobConditionType: batchv1.JobFailed}
 	}
 
 	// Setup current running jobs
@@ -595,7 +595,7 @@ func TestGenerateJobs(t *testing.T) {
 
 type mockJobParameter struct {
 	Name             string
-	CompletionTime   string
+	FinishedAt       string
 	JobConditionType batchv1.JobConditionType
 }
 
@@ -728,7 +728,7 @@ func getMockClient(t *testing.T, ctrl *gomock.Controller, jobs *[]mockJobParamet
 		j, ok := list.(*batchv1.JobList)
 		if ok {
 			for _, job := range *jobs {
-				j.Items = append(j.Items, *getJob(t, job.Name, job.CompletionTime, job.JobConditionType))
+				j.Items = append(j.Items, *getJob(t, job.Name, job.FinishedAt, job.JobConditionType))
 			}
 		}
 	}).
@@ -824,27 +824,30 @@ func getMockClientForTestingPendingPodsMultiple(t *testing.T, ctrl *gomock.Contr
 	return client
 }
 
-func getJob(t *testing.T, name string, completionTime string, jobConditionType batchv1.JobConditionType) *batchv1.Job {
-	parsedCompletionTime, err := time.Parse(time.RFC3339, completionTime)
-	completionTimeT := metav1.NewTime(parsedCompletionTime)
+func getJob(t *testing.T, name string, finishedAt string, jobConditionType batchv1.JobConditionType) *batchv1.Job {
+	parsedTime, err := time.Parse(time.RFC3339, finishedAt)
 	if err != nil {
-		t.Errorf("Can not parse %s as RFC3339: %v", completionTime, err)
+		t.Errorf("Can not parse %s as RFC3339: %v", finishedAt, err)
 	}
-	return &batchv1.Job{
+	timestamp := metav1.NewTime(parsedTime)
+	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Spec: batchv1.JobSpec{},
 		Status: batchv1.JobStatus{
 			Conditions: []batchv1.JobCondition{
 				{
-					Type:   jobConditionType,
-					Status: v1.ConditionTrue,
+					Type:               jobConditionType,
+					Status:             v1.ConditionTrue,
+					LastTransitionTime: timestamp,
 				},
 			},
-			CompletionTime: &completionTimeT,
 		},
 	}
+	if jobConditionType == batchv1.JobComplete {
+		job.Status.CompletionTime = &timestamp
+	}
+	return job
 }
 
 func getPodCondition(podConditionType v1.PodConditionType) v1.PodCondition {
