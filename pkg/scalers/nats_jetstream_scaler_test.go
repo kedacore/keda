@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/atomic"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -692,4 +693,157 @@ func TestNATSJetStreamGetMaxMsgLagByStrategy(t *testing.T) {
 			assert.Equal(t, testData.expectedMsgLag, msgLag)
 		})
 	}
+}
+
+// natsJetStreamFakeCluster serves the monitoring endpoints of a three-node NATS
+// cluster (nats-0, nats-1, nats-2). Every node names the current consumer
+// leader, but only the leader reports pending messages, like JetStream. The
+// load-balanced endpoint is served by nats-2, which the tests keep as a
+// follower. While discoveryDown is set, /varz fails, so leader discovery fails.
+type natsJetStreamFakeCluster struct {
+	leader        atomic.String
+	discoveryDown atomic.Bool
+	varzCalls     atomic.Int32
+}
+
+const (
+	natsFakeStream   = "mystream"
+	natsFakeConsumer = "pull_consumer"
+	natsFakePending  = 100
+)
+
+func (c *natsJetStreamFakeCluster) jsz(t *testing.T, node string) []byte {
+	numPending := 0
+	if node == c.leader.Load() {
+		numPending = natsFakePending
+	}
+	b, err := json.Marshal(&jetStreamEndpointResponse{
+		MetaCluster: metaCluster{ClusterSize: 3},
+		Accounts: []accountDetail{{
+			Name: "$G",
+			Streams: []*streamDetail{{
+				Name:      natsFakeStream,
+				Consumers: []consumerDetail{{Name: natsFakeConsumer, NumPending: numPending, Cluster: consumerCluster{Leader: c.leader.Load()}}},
+			}},
+		}},
+	})
+	if err != nil {
+		t.Fatal("Could not marshal mock response:", err)
+	}
+	return b
+}
+
+// newScaler starts the fake cluster and returns a scaler pointed at its load-balanced endpoint.
+func (c *natsJetStreamFakeCluster) newScaler(t *testing.T) *natsJetStreamScaler {
+	varz := []byte(`{"server_name": "nats-2", "cluster": {"urls": ["nats-0.nats.localhost:6222", "nats-1.nats.localhost:6222", "nats-2.nats.localhost:6222"]}}`)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/varz":
+			c.varzCalls.Inc()
+			if c.discoveryDown.Load() {
+				http.Error(w, "unavailable", http.StatusServiceUnavailable)
+				return
+			}
+			_, _ = w.Write(varz)
+		case "/jsz":
+			node := strings.TrimSuffix(r.Host, ".nats.localhost:8222")
+			if r.Host == "nats.localhost:8222" {
+				node = "nats-2"
+			}
+			_, _ = w.Write(c.jsz(t, node))
+		default:
+			t.Errorf("Expected to request '/jsz or /varz', got: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	dialer := &net.Dialer{}
+	client := &http.Client{Transport: &http.Transport{
+		DialContext: func(ctx context.Context, network, _ string) (net.Conn, error) {
+			return dialer.DialContext(ctx, network, srv.Listener.Addr().String())
+		},
+	}}
+
+	metadata := map[string]string{"natsServerMonitoringEndpoint": "nats.localhost:8222", "account": "$G", "stream": natsFakeStream, "consumer": natsFakeConsumer, "activationLagThreshold": "10"}
+	config := &scalersconfig.ScalerConfig{TriggerMetadata: metadata, TriggerIndex: 0}
+	meta, err := parseNATSJetStreamMetadata(config)
+	if err != nil {
+		t.Fatal("Could not parse metadata:", err)
+	}
+	return &natsJetStreamScaler{
+		metadata:   meta,
+		httpClient: client,
+		logger:     InitializeLogger(config, "nats_jetstream_scaler"),
+	}
+}
+
+func natsFakeLeaderURL(node string) string {
+	return "http://" + node + ".nats.localhost:8222/jsz?acc=%24G&config=true&consumers=true"
+}
+
+// TestNATSJetStreamRediscoversLeaderAfterFailedDiscovery covers the state a
+// failed leader discovery leaves behind: the consumer leader name is cached
+// (taken from whichever node answered the first /jsz), but no leader URL is.
+// Every later poll then goes to the load-balanced endpoint. If that lands on a
+// follower, the follower still names the right leader, so the "leader name
+// unchanged" check must not take that answer as having come from the leader.
+// Followers report num_pending 0, so trusting them stops all scaling.
+func TestNATSJetStreamRediscoversLeaderAfterFailedDiscovery(t *testing.T) {
+	cluster := &natsJetStreamFakeCluster{}
+	cluster.leader.Store("nats-1")
+	scaler := cluster.newScaler(t)
+	ctx := context.Background()
+
+	// 1. Discovery fails (e.g. a node is unreachable during a rolling restart).
+	cluster.discoveryDown.Store(true)
+	_, _, err := scaler.GetMetricsAndActivity(ctx, "metric_name")
+	assert.Error(t, err, "discovery should fail")
+	assert.Equal(t, "nats-1", scaler.metadata.consumerLeader, "leader name is cached from the follower's answer")
+	assert.Empty(t, scaler.metadata.monitoringLeaderURL, "no leader URL was found")
+
+	// 2. The cluster is healthy again; the next poll must find the leader
+	// instead of trusting the follower behind the load-balanced endpoint.
+	cluster.discoveryDown.Store(false)
+	_, isActive, err := scaler.GetMetricsAndActivity(ctx, "metric_name")
+	assert.NoError(t, err)
+	assert.True(t, isActive, "the leader reports pending messages")
+	assert.Equal(t, natsFakeLeaderURL("nats-1"), scaler.metadata.monitoringLeaderURL)
+
+	// 3. With the leader URL cached, polls go straight to the leader and skip discovery.
+	calls := cluster.varzCalls.Load()
+	_, isActive, err = scaler.GetMetricsAndActivity(ctx, "metric_name")
+	assert.NoError(t, err)
+	assert.True(t, isActive)
+	assert.Equal(t, calls, cluster.varzCalls.Load(), "no discovery while the cached leader is unchanged")
+}
+
+// TestNATSJetStreamRediscoversLeaderAfterLeaderChange covers a leader change
+// where the follow-up discovery fails. The cached leader URL now points to a
+// follower, which names the new leader, so that URL must not be kept for the
+// new leader name.
+func TestNATSJetStreamRediscoversLeaderAfterLeaderChange(t *testing.T) {
+	cluster := &natsJetStreamFakeCluster{}
+	cluster.leader.Store("nats-0")
+	scaler := cluster.newScaler(t)
+	ctx := context.Background()
+
+	_, isActive, err := scaler.GetMetricsAndActivity(ctx, "metric_name")
+	assert.NoError(t, err)
+	assert.True(t, isActive)
+	assert.Equal(t, natsFakeLeaderURL("nats-0"), scaler.metadata.monitoringLeaderURL)
+
+	// 1. The leader moves to nats-1 and the discovery it triggers fails.
+	cluster.leader.Store("nats-1")
+	cluster.discoveryDown.Store(true)
+	_, _, err = scaler.GetMetricsAndActivity(ctx, "metric_name")
+	assert.Error(t, err, "discovery should fail")
+	assert.Empty(t, scaler.metadata.monitoringLeaderURL, "the old leader's URL must not be kept for the new leader")
+
+	// 2. The next poll must find the new leader instead of trusting nats-0, now a follower.
+	cluster.discoveryDown.Store(false)
+	_, isActive, err = scaler.GetMetricsAndActivity(ctx, "metric_name")
+	assert.NoError(t, err)
+	assert.True(t, isActive, "the new leader reports pending messages")
+	assert.Equal(t, natsFakeLeaderURL("nats-1"), scaler.metadata.monitoringLeaderURL)
 }
