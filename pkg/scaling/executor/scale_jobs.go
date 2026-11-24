@@ -381,7 +381,9 @@ func (e *scaleExecutor) cleanUp(ctx context.Context, scaledJob *kedav1alpha1.Sca
 	}
 
 	sort.Sort(byCompletedTime(completedJobs))
-	sort.Sort(byCompletedTime(failedJobs))
+	sort.Slice(failedJobs, func(i, j int) bool {
+		return jobFailureTime(&failedJobs[i]).Before(jobFailureTime(&failedJobs[j]))
+	})
 
 	successfulJobsHistoryLimit := defaultSuccessfulJobsHistoryLimit
 	failedJobsHistoryLimit := defaultFailedJobsHistoryLimit
@@ -434,6 +436,19 @@ func (c byCompletedTime) Less(i, j int) bool {
 	return c[i].Status.CompletionTime.Before(c[j].Status.CompletionTime)
 }
 func (c byCompletedTime) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
+
+func jobFailureTime(job *batchv1.Job) time.Time {
+	// Kubernetes sets CompletionTime only for successful Jobs.
+	for _, condition := range job.Status.Conditions {
+		if condition.Type == batchv1.JobFailed && condition.Status == corev1.ConditionTrue && !condition.LastTransitionTime.IsZero() {
+			return condition.LastTransitionTime.Time
+		}
+	}
+	if !job.Status.CompletionTime.IsZero() {
+		return job.Status.CompletionTime.Time
+	}
+	return job.CreationTimestamp.Time
+}
 
 func (e *scaleExecutor) getFinishedJobConditionType(j *batchv1.Job) batchv1.JobConditionType {
 	for _, c := range j.Status.Conditions {
