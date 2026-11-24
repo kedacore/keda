@@ -199,9 +199,9 @@ pkg/mock/mock_eventemitter/mock_interface.go: pkg/eventemitter/eventemitter.go
 pkg/mock/mock_secretlister/mock_interfaces.go:
 	mkdir -p pkg/mock/mock_secretlister
 	$(MOCKGEN) k8s.io/client-go/listers/core/v1 SecretLister,SecretNamespaceLister > $@
-pkg/mock/mock_scale/mock_interfaces.go:
+pkg/mock/mock_scale/mock_interfaces.go: pkg/k8s/scaleclient.go
 	mkdir -p pkg/mock/mock_scale
-	$(MOCKGEN) k8s.io/client-go/scale ScalesGetter,ScaleInterface > $@
+	$(MOCKGEN) -source=$< -destination=$@ -package=mock_scale
 pkg/mock/mock_client/mock_interfaces.go:
 	mkdir -p pkg/mock/mock_client
 	$(MOCKGEN) sigs.k8s.io/controller-runtime/pkg/client Patch,Reader,Writer,StatusClient,StatusWriter,Client,WithWatch,FieldIndexer > $@

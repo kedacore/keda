@@ -23,6 +23,7 @@ import (
 	"sync"
 
 	"github.com/go-logr/logr"
+	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -32,7 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/scale"
 	"k8s.io/client-go/tools/cache"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -50,6 +50,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/fallback"
+	"github.com/kedacore/keda/v2/pkg/k8s"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
@@ -73,7 +74,7 @@ import (
 type ScaledObjectReconciler struct {
 	Client       client.Client
 	Scheme       *runtime.Scheme
-	ScaleClient  scale.ScalesGetter
+	ScaleClient  k8s.ScalesGetter
 	ScaleHandler scaling.ScaleHandler
 	EventEmitter eventemitter.EventHandler
 
@@ -97,8 +98,8 @@ var (
 func init() {
 	// Prefill the cache with some known values for core resources in case of future parallelism to avoid stampeding herd on startup.
 	isScalableCache = &sync.Map{}
-	isScalableCache.Store("deployments.apps", true)
-	isScalableCache.Store("statefulsets.apps", true)
+	isScalableCache.Store(appsv1.SchemeGroupVersion.WithResource("deployments"), true)
+	isScalableCache.Store(appsv1.SchemeGroupVersion.WithResource("statefulsets"), true)
 
 	scaledObjectPromMetricsMap = make(map[string]scaledObjectMetricsData)
 	scaledObjectPromMetricsLock = &sync.Mutex{}
@@ -421,8 +422,8 @@ func (r *ScaledObjectReconciler) scaleTargetToPausedCount(ctx context.Context, l
 		return fmt.Errorf("failed to parse Group, Version, Kind, Resource: %w", err)
 	}
 
-	gr := gvkr.GroupResource()
-	scale, err := r.ScaleClient.Scales(scaledObject.Namespace).Get(ctx, gr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+	gvr := gvkr.GroupVersionResource()
+	scale, err := r.ScaleClient.Scales(scaledObject.Namespace).Get(ctx, gvr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get scale for target resource: %w", err)
 	}
@@ -433,7 +434,7 @@ func (r *ScaledObjectReconciler) scaleTargetToPausedCount(ctx context.Context, l
 
 	logger.Info("Scaling target to paused replica count", "currentReplicas", scale.Spec.Replicas, "pausedReplicas", *pausedCount)
 	scale.Spec.Replicas = *pausedCount
-	_, err = r.ScaleClient.Scales(scaledObject.Namespace).Update(ctx, gr, scale, metav1.UpdateOptions{})
+	_, err = r.ScaleClient.Scales(scaledObject.Namespace).Update(ctx, gvr, scale, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to scale target to paused replica count: %w", err)
 	}
@@ -469,13 +470,13 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 
 	// check if we already know.
 	var scale *autoscalingv1.Scale
-	gr := gvkr.GroupResource()
-	_, isScalable := isScalableCache.Load(gr.String())
+	gvr := gvkr.GroupVersionResource()
+	_, isScalable := isScalableCache.Load(gvr)
 	if !isScalable || wantStatusUpdate {
 		// not cached, let's try to detect /scale subresource
 		// also rechecks when we need to update the status.
 		var errScale error
-		scale, errScale = (r.ScaleClient).Scales(scaledObject.Namespace).Get(ctx, gr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+		scale, errScale = r.ScaleClient.Scales(scaledObject.Namespace).Get(ctx, gvr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
 		if errScale != nil {
 			// not able to get /scale subresource -> let's check if the resource even exist in the cluster
 			unstruct := &unstructured.Unstructured{}
@@ -491,7 +492,7 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 			r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNoSubresourceMsg)
 			return gvkr, errScale
 		}
-		isScalableCache.Store(gr.String(), true)
+		isScalableCache.Store(gvr, true)
 	}
 
 	// if it is not already present in ScaledObject Status:

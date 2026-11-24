@@ -28,12 +28,12 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/scale"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/k8s"
 	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
@@ -44,7 +44,7 @@ var log = logf.Log.WithName("fallback")
 type ScaledObjectHandler struct {
 	Ctx          context.Context
 	KubeClient   runtimeclient.Client
-	ScaleClient  scale.ScalesGetter
+	ScaleClient  k8s.ScalesGetter
 	UpdateLock   *sync.RWMutex
 	ScaledObject *kedav1alpha1.ScaledObject
 }
@@ -202,7 +202,7 @@ func getReadyReplicasCount(soh ScaledObjectHandler) (int32, error) {
 		return -1, fmt.Errorf("")
 	}
 
-	scale, err := soh.ScaleClient.Scales(scaledObject.Namespace).Get(soh.Ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+	scale, err := soh.ScaleClient.Scales(scaledObject.Namespace).Get(soh.Ctx, scaledObject.Status.ScaleTargetGVKR.GroupVersionResource(), scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
 	if err != nil {
 		return -1, err
 	}
