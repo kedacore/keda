@@ -106,6 +106,11 @@ var _ = BeforeSuite(func() {
 	webhookInstallOptions := &testEnv.WebhookInstallOptions
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme,
+		Client: client.Options{
+			Cache: &client.CacheOptions{
+				DisableFor: WebhookUncachedObjects(),
+			},
+		},
 		WebhookServer: webhook.NewServer(webhook.Options{
 			Host:    webhookInstallOptions.LocalServingHost,
 			Port:    webhookInstallOptions.LocalServingPort,

@@ -112,6 +112,17 @@ func (so *ScaledObject) SetupWebhookWithManager(mgr ctrl.Manager, cacheMissFallb
 		Complete()
 }
 
+// WebhookUncachedObjects returns the object types that the admission webhooks
+// read straight from the API server instead of through the manager's informer
+// cache. verifyCPUMemoryScalers only ever needs the single workload targeted by
+// the incoming ScaledObject, but a cached Get would start a cluster-wide
+// informer and keep every Deployment and StatefulSet in memory, which on large
+// clusters is enough to OOMKill the webhook. Pass this to the manager via
+// client.Options.Cache.DisableFor.
+func WebhookUncachedObjects() []client.Object {
+	return []client.Object{&appsv1.Deployment{}, &appsv1.StatefulSet{}}
+}
+
 func setupKubernetesClients(mgr ctrl.Manager, cacheMissFallback bool) error {
 	kc = mgr.GetClient()
 	restMapper = mgr.GetRESTMapper()

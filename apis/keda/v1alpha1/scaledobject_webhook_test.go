@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -32,6 +33,48 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// errCacheRead is returned by failingCacheReader so tests can tell whether a
+// read was served by the informer cache.
+var errCacheRead = errors.New("read served by the informer cache")
+
+type failingCacheReader struct{}
+
+func (failingCacheReader) Get(context.Context, client.ObjectKey, client.Object, ...client.GetOption) error {
+	return errCacheRead
+}
+
+func (failingCacheReader) List(context.Context, client.ObjectList, ...client.ListOption) error {
+	return errCacheRead
+}
+
+var _ = It("should read scale target workloads without the informer cache", func() {
+	namespaceName := "uncached-workload-reads"
+	namespace := createNamespace(namespaceName)
+	Expect(k8sClient.Create(context.Background(), namespace)).To(Succeed())
+
+	deployment := createDeployment(namespaceName, true, true)
+	Expect(k8sClient.Create(context.Background(), deployment)).To(Succeed())
+	statefulSet := createStatefulSet(namespaceName, true, true)
+	Expect(k8sClient.Create(context.Background(), statefulSet)).To(Succeed())
+
+	// Same cache options the webhook manager uses, but with a cache reader that
+	// always fails, so any type that isn't excluded from the cache errors out.
+	c, err := client.New(cfg, client.Options{
+		Scheme: k8sClient.Scheme(),
+		Cache: &client.CacheOptions{
+			Reader:     failingCacheReader{},
+			DisableFor: WebhookUncachedObjects(),
+		},
+	})
+	Expect(err).ToNot(HaveOccurred())
+
+	Expect(c.Get(context.Background(), client.ObjectKeyFromObject(deployment), &appsv1.Deployment{})).To(Succeed())
+	Expect(c.Get(context.Background(), client.ObjectKeyFromObject(statefulSet), &appsv1.StatefulSet{})).To(Succeed())
+
+	// Other webhook reads, e.g. LimitRanges, still go through the cache.
+	Expect(c.List(context.Background(), &v1.LimitRangeList{}, client.InNamespace(namespaceName))).To(MatchError(errCacheRead))
+})
 
 var _ = It("should validate the so creation when there isn't any hpa", func() {
 
