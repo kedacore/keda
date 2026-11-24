@@ -193,7 +193,7 @@ func NewSolaceScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 func parseSolaceMetadata(config *scalersconfig.ScalerConfig) (*SolaceMetadata, error) {
 	meta := &SolaceMetadata{}
 	if err := config.TypedConfig(meta); err != nil {
-		return nil, fmt.Errorf("error parsing prometheus metadata: %w", err)
+		return nil, fmt.Errorf("error parsing solace metadata: %w", err)
 	}
 	meta.triggerIndex = config.TriggerIndex
 
