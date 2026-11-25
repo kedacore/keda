@@ -79,14 +79,16 @@ func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriver
 	if err := json.Unmarshal([]byte(credentials), &gcpCredentials); err != nil {
 		return nil, err
 	}
-	clientOption := option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(credentials))
+	clientOpts := append([]option.ClientOption{
+		option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(credentials)),
+	}, GRPCClientOptions()...)
 
-	metricsClient, err := monitoring.NewMetricClient(ctx, clientOption)
+	metricsClient, err := monitoring.NewMetricClient(ctx, clientOpts...)
 	if err != nil {
 		return nil, err
 	}
 
-	queryClient, err := monitoring.NewQueryClient(ctx, clientOption)
+	queryClient, err := monitoring.NewQueryClient(ctx, clientOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -100,11 +102,13 @@ func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriver
 
 // NewStackDriverClientPodIdentity creates a new stackdriver client with the credentials underlying
 func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, error) {
-	metricsClient, err := monitoring.NewMetricClient(ctx)
+	clientOpts := GRPCClientOptions()
+
+	metricsClient, err := monitoring.NewMetricClient(ctx, clientOpts...)
 	if err != nil {
 		return nil, err
 	}
-	queryClient, err := monitoring.NewQueryClient(ctx)
+	queryClient, err := monitoring.NewQueryClient(ctx, clientOpts...)
 	if err != nil {
 		return nil, err
 	}

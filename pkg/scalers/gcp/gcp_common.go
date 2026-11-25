@@ -8,8 +8,10 @@ import (
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+	"google.golang.org/api/option"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
@@ -84,6 +86,19 @@ func GetGCPAuthorization(config *scalersconfig.ScalerConfig) (*AuthorizationMeta
 	}
 
 	return nil, ErrGoogleApplicationCrendentialsNotFound
+}
+
+// GRPCClientOptions returns the client options that instrument a Google Cloud
+// gRPC client with KEDA's gRPC client metrics. Pass them to any Google SDK
+// client constructor that dials over gRPC.
+func GRPCClientOptions() []option.ClientOption {
+	// Google's transport otherwise adds its own otelgrpc handler on the global
+	// meter provider, double-counting RPCs alongside KEDA's handler.
+	opts := []option.ClientOption{option.WithTelemetryDisabled()}
+	for _, dialOption := range metricscollector.GRPCClientDialOptions() {
+		opts = append(opts, option.WithGRPCDialOption(dialOption))
+	}
+	return opts
 }
 
 func GetGCPOAuth2HTTPTransport(config *scalersconfig.ScalerConfig, base http.RoundTripper, scopes ...string) (http.RoundTripper, error) {

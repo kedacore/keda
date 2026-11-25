@@ -12,6 +12,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	liiklus_service "github.com/kedacore/keda/v2/pkg/scalers/liiklus"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -62,9 +63,13 @@ func NewLiiklusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, err
 	}
 
-	conn, err := grpc.NewClient(lm.Address,
+	options := []grpc.DialOption{
 		grpc.WithDefaultServiceConfig(grpcConfig),
-		grpc.WithTransportCredentials(insecure.NewCredentials()))
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+	options = append(options, metricscollector.GRPCClientDialOptions()...)
+
+	conn, err := grpc.NewClient(lm.Address, options...)
 	if err != nil {
 		return nil, err
 	}

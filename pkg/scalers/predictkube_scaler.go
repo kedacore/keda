@@ -27,6 +27,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -156,6 +157,8 @@ func (s *PredictKubeScaler) setupClientConn() error {
 	if err != nil {
 		return err
 	}
+
+	clientOpt = append(clientOpt, metricscollector.GRPCClientDialOptions()...)
 
 	connection, err := grpc.NewClient(net.JoinHostPort(mlEngineHost, fmt.Sprintf("%d", mlEnginePort)), clientOpt...)
 	if err != nil {
