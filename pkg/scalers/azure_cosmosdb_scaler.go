@@ -34,6 +34,8 @@ const (
 	cosmosDBRestAPIVersion                 = "2018-12-31"
 	cosmosDBSubStatusHeader                = "x-ms-substatus"
 	cosmosDBPartitionKeyRangeGoneSubStatus = "1002"
+	// Lease Mode written by the .NET SDK for all-versions-and-deletes processors.
+	cosmosDBFullFidelityFeed = "Full-Fidelity Feed"
 )
 
 type azureCosmosDBScaler struct {
@@ -108,6 +110,7 @@ type leaseDocument struct {
 	LeaseToken        string `json:"LeaseToken"`
 	ContinuationToken string `json:"ContinuationToken"`
 	Owner             string `json:"Owner,omitempty"`
+	Mode              string `json:"Mode,omitempty"`
 }
 
 type changeFeedResponse struct {
@@ -455,7 +458,7 @@ func (c *cosmosDBClient) queryLeases(ctx context.Context) ([]leaseDocument, erro
 	return leases, nil
 }
 
-func (c *cosmosDBClient) readChangeFeed(ctx context.Context, partitionKeyRangeID, continuationToken string) (*changeFeedResponse, error) {
+func (c *cosmosDBClient) readChangeFeed(ctx context.Context, partitionKeyRangeID, continuationToken string, fullFidelity bool) (*changeFeedResponse, error) {
 	resourceLink := fmt.Sprintf("dbs/%s/colls/%s", c.databaseID, c.containerID)
 	reqURL := fmt.Sprintf("%s/%s/docs", strings.TrimRight(c.dataEndpoint, "/"), resourceLink)
 
@@ -468,8 +471,18 @@ func (c *cosmosDBClient) readChangeFeed(ctx context.Context, partitionKeyRangeID
 	req.Header.Set("x-ms-date", now)
 	req.Header.Set("x-ms-version", cosmosDBRestAPIVersion)
 	req.Header.Set("x-ms-documentdb-partitionkeyrangeid", partitionKeyRangeID)
-	req.Header.Set("A-IM", "Incremental feed")
 	req.Header.Set("x-ms-max-item-count", "1")
+	if fullFidelity {
+		// Deletes and TTL expirations only appear in this feed. A lease without a
+		// checkpoint starts from now, as the processor does in this mode.
+		req.Header.Set("A-IM", cosmosDBFullFidelityFeed)
+		req.Header.Set("x-ms-cosmos-changefeed-wire-format-version", "2021-09-15")
+		if continuationToken == "" {
+			continuationToken = "*"
+		}
+	} else {
+		req.Header.Set("A-IM", "Incremental feed")
+	}
 
 	if continuationToken != "" {
 		req.Header.Set("If-None-Match", continuationToken)
@@ -604,7 +617,7 @@ func (c *cosmosDBClient) estimateOnce(ctx context.Context) (int64, int64, bool, 
 //  4. If no items (304): lag = 0 (caught up)
 //  5. If 410/1002: flag a stale parent lease so the lease store can be refreshed
 func (c *cosmosDBClient) estimatePartitionLag(ctx context.Context, lease leaseDocument) (int64, bool, error) {
-	cfResp, err := c.readChangeFeed(ctx, lease.LeaseToken, lease.ContinuationToken)
+	cfResp, err := c.readChangeFeed(ctx, lease.LeaseToken, lease.ContinuationToken, lease.Mode == cosmosDBFullFidelityFeed)
 	if err != nil {
 		return 0, false, fmt.Errorf("error reading change feed for partition %s: %w", lease.LeaseToken, err)
 	}
@@ -673,13 +686,20 @@ func parseLSNFromSessionToken(sessionToken string) (int64, error) {
 	return strconv.ParseInt(lsnStr, 10, 64)
 }
 
-// extractItemLSN extracts the _lsn value from a Cosmos DB change feed document.
+// extractItemLSN extracts the LSN of a change feed item: "_lsn" in the latest-version
+// feed, "metadata.lsn" in the all-versions-and-deletes feed.
 func extractItemLSN(item json.RawMessage) (int64, error) {
 	var doc struct {
-		LSN json.Number `json:"_lsn"`
+		LSN      json.Number `json:"_lsn"`
+		Metadata struct {
+			LSN json.Number `json:"lsn"`
+		} `json:"metadata"`
 	}
 	if err := json.Unmarshal(item, &doc); err != nil {
 		return -1, fmt.Errorf("parsing item: %w", err)
+	}
+	if doc.Metadata.LSN != "" {
+		return doc.Metadata.LSN.Int64()
 	}
 	return doc.LSN.Int64()
 }

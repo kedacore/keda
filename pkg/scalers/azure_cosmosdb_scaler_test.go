@@ -907,6 +907,11 @@ func TestExtractItemLSN(t *testing.T) {
 			expectedLSN: 5678,
 		},
 		{
+			name:        "all versions and deletes item",
+			item:        `{"current": {}, "metadata": {"lsn": 4321, "operationType": "delete"}}`,
+			expectedLSN: 4321,
+		},
+		{
 			name:        "missing LSN",
 			item:        `{"id": "doc1"}`,
 			expectedLSN: 0,
@@ -1322,6 +1327,54 @@ func TestCosmosDBLagEstimation(t *testing.T) {
 	totalLag, _, _, err := client.estimateLag(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, int64(51), totalLag)
+}
+
+func TestCosmosDBLagEstimationAllVersionsAndDeletes(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/dbs/testdb/colls/leases/docs":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"Documents":[
+				{"id": "lease0", "LeaseToken": "0", "ContinuationToken": "\"900\"", "Mode": "Full-Fidelity Feed"},
+				{"id": "lease1", "LeaseToken": "1", "ContinuationToken": "", "Mode": "Full-Fidelity Feed"}
+			]}`))
+		case "/dbs/testdb/colls/testcontainer/docs":
+			assert.Equal(t, "Full-Fidelity Feed", r.Header.Get("A-IM"))
+			assert.Equal(t, "2021-09-15", r.Header.Get("x-ms-cosmos-changefeed-wire-format-version"))
+			switch r.Header.Get("x-ms-documentdb-partitionkeyrangeid") {
+			case "0":
+				assert.Equal(t, `"900"`, r.Header.Get("If-None-Match"))
+				// The pending changes start with a TTL delete, which has no current image.
+				w.Header().Set("x-ms-session-token", "0:0#1000")
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"Documents":[{"current":{},"metadata":{"lsn":901,"operationType":"delete","timeToLiveExpired":true}}]}`))
+			case "1":
+				// A lease that never checkpointed starts from now in this mode.
+				assert.Equal(t, "*", r.Header.Get("If-None-Match"))
+				w.Header().Set("x-ms-session-token", "1:0#500")
+				w.WriteHeader(http.StatusNotModified)
+			}
+		}
+	}))
+	defer server.Close()
+
+	client := &cosmosDBClient{
+		httpClient:       &http.Client{},
+		dataEndpoint:     server.URL,
+		dataKey:          "dGVzdGtleQ==",
+		leaseEndpoint:    server.URL,
+		leaseKey:         "dGVzdGtleQ==",
+		databaseID:       "testdb",
+		containerID:      "testcontainer",
+		leaseDatabaseID:  "testdb",
+		leaseContainerID: "leases",
+		processorName:    "testprocessor",
+	}
+
+	totalLag, activePartitions, _, err := client.estimateLag(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, int64(100), totalLag)
+	assert.Equal(t, int64(1), activePartitions)
 }
 
 func TestCosmosDBLagEstimationEmptyLeases(t *testing.T) {
