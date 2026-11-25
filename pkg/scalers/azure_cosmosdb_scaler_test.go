@@ -891,10 +891,11 @@ func TestExtractLSNFromSessionToken(t *testing.T) {
 
 func TestExtractItemLSN(t *testing.T) {
 	testCases := []struct {
-		name        string
-		item        string
-		expectedLSN int64
-		expectError bool
+		name         string
+		item         string
+		fullFidelity bool
+		expectedLSN  int64
+		expectError  bool
 	}{
 		{
 			name:        "numeric LSN",
@@ -907,9 +908,20 @@ func TestExtractItemLSN(t *testing.T) {
 			expectedLSN: 5678,
 		},
 		{
-			name:        "all versions and deletes item",
-			item:        `{"current": {}, "metadata": {"lsn": 4321, "operationType": "delete"}}`,
-			expectedLSN: 4321,
+			name:         "all versions and deletes item",
+			item:         `{"current": {}, "metadata": {"lsn": 4321, "operationType": "delete"}}`,
+			fullFidelity: true,
+			expectedLSN:  4321,
+		},
+		{
+			name:        "document with its own metadata object",
+			item:        `{"_lsn": 901, "metadata": {"lsn": 1001}}`,
+			expectedLSN: 901,
+		},
+		{
+			name:        "document with its own metadata string",
+			item:        `{"_lsn": 901, "metadata": "source-a"}`,
+			expectedLSN: 901,
 		},
 		{
 			name:        "missing LSN",
@@ -927,7 +939,7 @@ func TestExtractItemLSN(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lsn, err := extractItemLSN(json.RawMessage(tc.item))
+			lsn, err := extractItemLSN(json.RawMessage(tc.item), tc.fullFidelity)
 			if tc.expectError {
 				assert.True(t, err != nil || lsn <= 0)
 			} else {

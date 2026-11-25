@@ -617,7 +617,8 @@ func (c *cosmosDBClient) estimateOnce(ctx context.Context) (int64, int64, bool, 
 //  4. If no items (304): lag = 0 (caught up)
 //  5. If 410/1002: flag a stale parent lease so the lease store can be refreshed
 func (c *cosmosDBClient) estimatePartitionLag(ctx context.Context, lease leaseDocument) (int64, bool, error) {
-	cfResp, err := c.readChangeFeed(ctx, lease.LeaseToken, lease.ContinuationToken, lease.Mode == cosmosDBFullFidelityFeed)
+	fullFidelity := lease.Mode == cosmosDBFullFidelityFeed
+	cfResp, err := c.readChangeFeed(ctx, lease.LeaseToken, lease.ContinuationToken, fullFidelity)
 	if err != nil {
 		return 0, false, fmt.Errorf("error reading change feed for partition %s: %w", lease.LeaseToken, err)
 	}
@@ -640,7 +641,7 @@ func (c *cosmosDBClient) estimatePartitionLag(ctx context.Context, lease leaseDo
 		return 0, false, fmt.Errorf("partition %s: could not parse session token LSN %q: %w", lease.LeaseToken, cfResp.SessionToken, err)
 	}
 
-	firstItemLSN, err := extractItemLSN(cfResp.Items[0])
+	firstItemLSN, err := extractItemLSN(cfResp.Items[0], fullFidelity)
 	if err != nil {
 		return 0, false, fmt.Errorf("partition %s: could not extract _lsn from first item: %w", lease.LeaseToken, err)
 	}
@@ -688,18 +689,24 @@ func parseLSNFromSessionToken(sessionToken string) (int64, error) {
 
 // extractItemLSN extracts the LSN of a change feed item: "_lsn" in the latest-version
 // feed, "metadata.lsn" in the all-versions-and-deletes feed.
-func extractItemLSN(item json.RawMessage) (int64, error) {
+// Latest-version items are application documents, so their own "metadata" field is ignored.
+func extractItemLSN(item json.RawMessage, fullFidelity bool) (int64, error) {
+	if fullFidelity {
+		var doc struct {
+			Metadata struct {
+				LSN json.Number `json:"lsn"`
+			} `json:"metadata"`
+		}
+		if err := json.Unmarshal(item, &doc); err != nil {
+			return -1, fmt.Errorf("parsing item: %w", err)
+		}
+		return doc.Metadata.LSN.Int64()
+	}
 	var doc struct {
-		LSN      json.Number `json:"_lsn"`
-		Metadata struct {
-			LSN json.Number `json:"lsn"`
-		} `json:"metadata"`
+		LSN json.Number `json:"_lsn"`
 	}
 	if err := json.Unmarshal(item, &doc); err != nil {
 		return -1, fmt.Errorf("parsing item: %w", err)
-	}
-	if doc.Metadata.LSN != "" {
-		return doc.Metadata.LSN.Int64()
 	}
 	return doc.LSN.Int64()
 }
