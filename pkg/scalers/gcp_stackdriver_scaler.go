@@ -62,7 +62,7 @@ func NewStackdriverScaler(ctx context.Context, config *scalersconfig.ScalerConfi
 		return nil, fmt.Errorf("error parsing Stackdriver metadata: %w", err)
 	}
 
-	client, err := initializeStackdriverClient(ctx, meta.gcpAuthorization, logger)
+	client, err := gcp.NewStackDriverClientForAuthorization(ctx, meta.gcpAuthorization)
 	if err != nil {
 		logger.Error(err, "Failed to create stack driver client")
 		return nil, err
@@ -108,22 +108,6 @@ func parseAggregation(meta *stackdriverMetadata) (*monitoringpb.Aggregation, err
 	}
 
 	return gcp.NewStackdriverAggregator(meta.AlignmentPeriodSeconds, meta.AlignmentAligner, meta.AlignmentReducer)
-}
-
-func initializeStackdriverClient(ctx context.Context, gcpAuthorization *gcp.AuthorizationMetadata, logger logr.Logger) (*gcp.StackDriverClient, error) {
-	var client *gcp.StackDriverClient
-	var err error
-	if gcpAuthorization.PodIdentityProviderEnabled {
-		client, err = gcp.NewStackDriverClientPodIdentity(ctx)
-	} else {
-		client, err = gcp.NewStackDriverClient(ctx, gcpAuthorization.GoogleApplicationCredentials)
-	}
-
-	if err != nil {
-		logger.Error(err, "Failed to create stack driver client")
-		return nil, err
-	}
-	return client, nil
 }
 
 func (s *stackdriverScaler) Close(context.Context) error {

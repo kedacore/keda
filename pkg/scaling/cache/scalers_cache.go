@@ -129,6 +129,26 @@ func (c *ScalersCache) GetScalers() ([]scalers.Scaler, []scalersconfig.ScalerCon
 	return scalersList, configsList
 }
 
+// IsAuthFresh reports whether every cached scaler's workload service account
+// token provider still matches its referenced authentication resource.
+func (c *ScalersCache) IsAuthFresh(ctx context.Context) bool {
+	c.mutex.RLock()
+	var verifiers []func(context.Context) error
+	for _, s := range c.Scalers {
+		if s.ScalerConfig.ServiceAccountTokenProvider != nil && s.ScalerConfig.ServiceAccountTokenProvider.Verify != nil {
+			verifiers = append(verifiers, s.ScalerConfig.ServiceAccountTokenProvider.Verify)
+		}
+	}
+	c.mutex.RUnlock()
+
+	for _, verify := range verifiers {
+		if err := verify(ctx); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
 // getScalerBuilder returns a ScalerBuilder stored in the cache
 func (c *ScalersCache) getScalerBuilder(index int) (ScalerBuilder, error) {
 	c.mutex.RLock()

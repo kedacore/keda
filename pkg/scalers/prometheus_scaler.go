@@ -10,6 +10,7 @@ import (
 	"net/http"
 	url_pkg "net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -28,6 +29,9 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
+
+// gcpManagedPrometheusHost serves the Google Cloud Managed Service for Prometheus query API.
+const gcpManagedPrometheusHost = "monitoring.googleapis.com"
 
 type prometheusScaler struct {
 	metricType         v2.MetricTargetType
@@ -96,6 +100,9 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 
 	httpClient := kedautil.CreateHTTPClient(httpClientTimeout, meta.UnsafeSSL)
+	if config.PodIdentity.IsWorkloadServiceAccountProvider() {
+		httpClient.CheckRedirect = kedautil.CheckSameOriginRedirect
+	}
 
 	if !meta.PrometheusAuth.Disabled() {
 		if meta.PrometheusAuth.CA != "" || meta.PrometheusAuth.EnabledTLS() {
@@ -150,14 +157,17 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 			httpClient.Transport = gcpTransport
 		}
 
-		awsTransport, err := aws.NewSigV4RoundTripper(config, meta.AwsRegion)
-		if err != nil {
-			logger.V(1).Error(err, "failed to get AWS client HTTP transport")
-			return nil, err
-		}
+		// Operator AWS credentials must not replace the workload service account transport.
+		if !config.PodIdentity.IsWorkloadServiceAccountProvider() {
+			awsTransport, err := aws.NewSigV4RoundTripper(config, meta.AwsRegion)
+			if err != nil {
+				logger.V(1).Error(err, "failed to get AWS client HTTP transport")
+				return nil, err
+			}
 
-		if awsTransport != nil {
-			httpClient.Transport = awsTransport
+			if awsTransport != nil {
+				httpClient.Transport = awsTransport
+			}
 		}
 	}
 
@@ -185,6 +195,11 @@ func parsePrometheusMetadata(config *scalersconfig.ScalerConfig) (meta *promethe
 	if err != nil {
 		return nil, err
 	}
+	if config.PodIdentity.IsWorkloadServiceAccountProvider() {
+		if err := checkWorkloadServiceAccountEndpoint(meta); err != nil {
+			return nil, err
+		}
+	}
 
 	return meta, nil
 }
@@ -195,6 +210,24 @@ func checkAuthConfigWithPodIdentity(config *scalersconfig.ScalerConfig, meta *pr
 	}
 	if config.PodIdentity.Provider != kedav1alpha1.PodIdentityProviderNone && config.PodIdentity.Provider != "" {
 		return fmt.Errorf("pod identity cannot be enabled with other auth types")
+	}
+	return nil
+}
+
+// checkWorkloadServiceAccountEndpoint keeps tokens minted for a workload service
+// account at Google Cloud Managed Service for Prometheus. serverAddress is set by
+// the ScaledObject author, so any other destination could receive the token.
+func checkWorkloadServiceAccountEndpoint(meta *prometheusMetadata) error {
+	if meta.UnsafeSSL {
+		return fmt.Errorf("unsafeSsl cannot be enabled with podIdentity.provider %s", kedav1alpha1.PodIdentityProviderGCPWorkloadServiceAccount)
+	}
+	if strings.ContainsAny(meta.ServerAddress, "?#") {
+		return fmt.Errorf("serverAddress cannot contain a query or fragment with podIdentity.provider %s", kedav1alpha1.PodIdentityProviderGCPWorkloadServiceAccount)
+	}
+	serverURL, err := url_pkg.Parse(meta.ServerAddress)
+	if err != nil || serverURL.Scheme != "https" || serverURL.User != nil ||
+		!strings.EqualFold(serverURL.Hostname(), gcpManagedPrometheusHost) || (serverURL.Port() != "" && serverURL.Port() != "443") {
+		return fmt.Errorf("podIdentity.provider %s requires serverAddress to use https://%s", kedav1alpha1.PodIdentityProviderGCPWorkloadServiceAccount, gcpManagedPrometheusHost)
 	}
 	return nil
 }

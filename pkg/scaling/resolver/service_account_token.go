@@ -46,25 +46,34 @@ type ServiceAccountTokenAudience struct {
 
 // LoadServiceAccountTokenAudiences reads audience approvals and minting mappings from YAML or JSON.
 func (cfg *Config) LoadServiceAccountTokenAudiences(value string) error {
-	var audiences []ServiceAccountTokenAudience
-	if strings.TrimSpace(value) != "" {
-		reader := k8syaml.NewYAMLReader(bufio.NewReader(strings.NewReader(value)))
-		document, err := reader.Read()
-		if err != nil {
-			return fmt.Errorf("invalid %s: %w", ServiceAccountTokenAudiencesEnvVar, err)
-		}
-		if _, err = reader.Read(); !errors.Is(err, io.EOF) {
-			return fmt.Errorf("%s must contain one YAML or JSON document", ServiceAccountTokenAudiencesEnvVar)
-		}
-		if err := yaml.UnmarshalStrict(document, &audiences); err != nil {
-			return fmt.Errorf("invalid %s: %w", ServiceAccountTokenAudiencesEnvVar, err)
-		}
-		if audiences == nil {
-			return fmt.Errorf("%s must be an array, not null", ServiceAccountTokenAudiencesEnvVar)
-		}
+	audiences, err := unmarshalSingleYAMLArray[ServiceAccountTokenAudience](value, ServiceAccountTokenAudiencesEnvVar)
+	if err != nil {
+		return err
 	}
 	cfg.ServiceAccountTokenAudiences = audiences
 	return cfg.validateServiceAccountTokenPolicy()
+}
+
+func unmarshalSingleYAMLArray[T any](value, envVar string) ([]T, error) {
+	if strings.TrimSpace(value) == "" {
+		return nil, nil
+	}
+	reader := k8syaml.NewYAMLReader(bufio.NewReader(strings.NewReader(value)))
+	document, err := reader.Read()
+	if err != nil {
+		return nil, fmt.Errorf("invalid %s: %w", envVar, err)
+	}
+	if _, err = reader.Read(); !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("%s must contain one YAML or JSON document", envVar)
+	}
+	var items []T
+	if err := yaml.UnmarshalStrict(document, &items); err != nil {
+		return nil, fmt.Errorf("invalid %s: %w", envVar, err)
+	}
+	if items == nil {
+		return nil, fmt.Errorf("%s must be an array, not null", envVar)
+	}
+	return items, nil
 }
 
 // IsLegacyServiceAccountTokenMode reports whether the audience enforcement is disabled.

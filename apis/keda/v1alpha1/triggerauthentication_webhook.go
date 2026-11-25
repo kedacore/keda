@@ -159,6 +159,10 @@ func isTriggerAuthenticationRemovingFinalizer(om metav1.ObjectMeta, oldOm metav1
 }
 
 func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
+	if err := spec.ValidateServiceAccountSelection(); err != nil {
+		return nil, err
+	}
+
 	// Validate authentication providers that are independent of pod identity up
 	// front, so they are not skipped by the pod-identity switch below (whose
 	// default arm returns early).
@@ -171,16 +175,8 @@ func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 	if spec.PodIdentity != nil {
 		switch spec.PodIdentity.Provider {
 		case PodIdentityProviderAzureWorkload:
-			if spec.PodIdentity.IdentityID != nil && *spec.PodIdentity.IdentityID == "" {
-				return nil, fmt.Errorf("identityId of PodIdentity should not be empty. If it's set, identityId has to be different than \"\"")
-			}
-
-			if spec.PodIdentity.IdentityAuthorityHost != nil && *spec.PodIdentity.IdentityAuthorityHost != "" {
-				if spec.PodIdentity.IdentityTenantID == nil || *spec.PodIdentity.IdentityTenantID == "" {
-					return nil, fmt.Errorf("identityTenantID of PodIdentity should not be nil or empty when identityAuthorityHost of PodIdentity is set")
-				}
-			} else if spec.PodIdentity.IdentityTenantID != nil && *spec.PodIdentity.IdentityTenantID == "" {
-				return nil, fmt.Errorf("identityTenantId of PodIdentity should not be empty. If it's set, identityTenantId has to be different than \"\"")
+			if err := validateAzureWorkloadPodIdentity(spec.PodIdentity); err != nil {
+				return nil, err
 			}
 		case PodIdentityProviderAws:
 			if spec.PodIdentity.RoleArn != nil && *spec.PodIdentity.RoleArn != "" && spec.PodIdentity.IsWorkloadIdentityOwner() {
@@ -191,6 +187,9 @@ func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 					return nil, fmt.Errorf("externalID of PodIdentity requires roleArn to be set")
 				}
 			}
+		case PodIdentityProviderGCPWorkloadServiceAccount:
+			// Validated by ValidateServiceAccountSelection above; continue to
+			// validate the remaining authentication settings.
 		default:
 			return nil, nil
 		}
@@ -218,6 +217,22 @@ func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 	}
 
 	return nil, nil
+}
+
+// validateAzureWorkloadPodIdentity validates the azure-workload pod identity
+// fields. It is split out of validateSpec to keep its complexity in bounds.
+func validateAzureWorkloadPodIdentity(podIdentity *AuthPodIdentity) error {
+	if podIdentity.IdentityID != nil && *podIdentity.IdentityID == "" {
+		return fmt.Errorf("identityId of PodIdentity should not be empty. If it's set, identityId has to be different than \"\"")
+	}
+	if podIdentity.IdentityAuthorityHost != nil && *podIdentity.IdentityAuthorityHost != "" {
+		if podIdentity.IdentityTenantID == nil || *podIdentity.IdentityTenantID == "" {
+			return fmt.Errorf("identityTenantID of PodIdentity should not be nil or empty when identityAuthorityHost of PodIdentity is set")
+		}
+	} else if podIdentity.IdentityTenantID != nil && *podIdentity.IdentityTenantID == "" {
+		return fmt.Errorf("identityTenantId of PodIdentity should not be empty. If it's set, identityTenantId has to be different than \"\"")
+	}
+	return nil
 }
 
 // validateAzureServicePrincipal admission-validates the azureServicePrincipal

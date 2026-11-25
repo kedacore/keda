@@ -93,6 +93,13 @@ func parsePubSubMetadata(config *scalersconfig.ScalerConfig) (*pubsubMetadata, e
 		return nil, err
 	}
 	meta.gcpAuthorization = auth
+	if auth.ServiceAccountTokenProvider != nil {
+		// A full regexp match has exactly four path segments.
+		if regexpCompositeSubscriptionIDPrefix.FindString(meta.resourceName) != meta.resourceName ||
+			strings.Split(meta.resourceName, "/")[2] != meta.resourceType+"s" {
+			return nil, fmt.Errorf("service account authentication requires a fully qualified Pub/Sub resource name: projects/PROJECT/%ss/NAME", meta.resourceType)
+		}
+	}
 	meta.triggerIndex = config.TriggerIndex
 
 	return meta, nil
@@ -161,14 +168,7 @@ func (s *pubsubScaler) GetMetricsAndActivity(ctx context.Context, metricName str
 }
 
 func (s *pubsubScaler) setStackdriverClient(ctx context.Context) error {
-	var client *gcp.StackDriverClient
-	var err error
-	if s.metadata.gcpAuthorization.PodIdentityProviderEnabled {
-		client, err = gcp.NewStackDriverClientPodIdentity(ctx)
-	} else {
-		client, err = gcp.NewStackDriverClient(ctx, s.metadata.gcpAuthorization.GoogleApplicationCredentials)
-	}
-
+	client, err := gcp.NewStackDriverClientForAuthorization(ctx, s.metadata.gcpAuthorization)
 	if err != nil {
 		return err
 	}
