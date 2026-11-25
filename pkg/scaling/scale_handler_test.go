@@ -1941,7 +1941,7 @@ func TestGetScaledJobMetrics_CacheClosedIsBenign(t *testing.T) {
 	}
 }
 
-func TestGetScaledObjectState_CacheClosedIsBenign(t *testing.T) {
+func TestGetScaledObjectState_CacheClosedSkipsScaleDecision(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockClient := mock_client.NewMockClient(ctrl)
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
@@ -1968,6 +1968,12 @@ func TestGetScaledObjectState_CacheClosedIsBenign(t *testing.T) {
 
 	key := scaledObject.GenerateIdentifier()
 	caches := map[string]*cache.ScalersCache{key: scalerCache}
+	metricsCache := metricscache.NewMetricsCache()
+	cachedRecord := metricscache.MetricsRecord{
+		IsMetricActive: true,
+		Metric:         []external_metrics.ExternalMetricValue{scalers.GenerateMetricInMili("cached-metric", float64(10))},
+	}
+	metricsCache.StoreRecord(key, "cached-metric", cachedRecord)
 
 	sh := scaleHandler{
 		client:                   mockClient,
@@ -1977,20 +1983,150 @@ func TestGetScaledObjectState_CacheClosedIsBenign(t *testing.T) {
 		recorder:                 recorder,
 		scalerCaches:             caches,
 		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricsCache,
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
+	}
+
+	isActive, isError, records, activeTriggers, isFallbackActive, err := sh.getScaledObjectState(context.Background(), &scaledObject)
+	assert.ErrorIs(t, err, cache.ErrCacheClosed)
+	assert.False(t, isActive)
+	assert.True(t, isError)
+	assert.Empty(t, records)
+	assert.Empty(t, activeTriggers)
+	assert.False(t, isFallbackActive)
+
+	sh.scalerCachesLock.RLock()
+	_, stillPresent := sh.scalerCaches[key]
+	sh.scalerCachesLock.RUnlock()
+	assert.True(t, stillPresent, "ClearScalersCache should not have run")
+
+	// The mock executor has no RequestScale expectation: checkScalers must
+	// discard this invalid observation before it can request any scale change.
+	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	sh.checkScalers(context.Background(), &scaledObject, &sync.RWMutex{})
+
+	record, found := metricsCache.ReadRecord(key, "cached-metric")
+	assert.True(t, found)
+	assert.Equal(t, cachedRecord, record)
+}
+
+func TestGetScalerState_CacheClosedMetricReadRecordsError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	metricName := "cache-closed-metric"
+	metricSpecs := []v2.MetricSpec{createMetricSpec(10, metricName)}
+	scalerConfig := scalersconfig.ScalerConfig{TriggerName: "cache-closed-trigger"}
+
+	refreshedScaler := mock_scalers.NewMockScaler(ctrl)
+	refreshedScaler.EXPECT().GetMetricsAndActivity(gomock.Any(), metricName).Return(nil, false, cache.ErrCacheClosed)
+	refreshedScaler.EXPECT().Close(gomock.Any())
+
+	scaler := mock_scalers.NewMockScaler(ctrl)
+	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricSpecs)
+	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), metricName).Return(nil, false, cache.ErrCacheClosed)
+	scaler.EXPECT().Close(gomock.Any())
+
+	factory := func(context.Context) (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		return refreshedScaler, &scalerConfig, nil
+	}
+	scalerCache := &cache.ScalersCache{
+		Scalers:  []cache.ScalerBuilder{{Scaler: scaler, ScalerConfig: scalerConfig, Factory: factory}},
+		Recorder: events.NewFakeRecorder(10),
+	}
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "test"},
+		},
+	}
+
+	sh := scaleHandler{}
+	result := sh.getScalerState(context.Background(), scaler, 0, scalerConfig, scalerCache, log, &scaledObject, false)
+	scalerCache.Close(context.Background())
+
+	assert.ErrorIs(t, result.Err, cache.ErrCacheClosed)
+	assert.False(t, result.IsActive)
+	assert.Empty(t, result.Metrics)
+	assert.Empty(t, result.Records)
+}
+
+func TestGetScaledObjectState_CacheClosedNotOverwrittenByLaterHPAError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	scaledObject := scaledObjectWithIrrelevantPolling()
+
+	closedMetric := "cache-closed-metric"
+	hpaMetric := "hpa-error-metric"
+
+	scaler := mock_scalers.NewMockScaler(ctrl)
+	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{
+		createMetricSpec(10, closedMetric),
+		createMetricSpec(10, hpaMetric),
+	})
+	// The closed-cache read is retried once on the refreshed scaler.
+	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), closedMetric).Return(nil, false, cache.ErrCacheClosed).Times(2)
+	scaler.EXPECT().Close(gomock.Any()).AnyTimes()
+
+	sh, scalerCache, mockClient := newHPAObservationsHandler(ctrl, scaledObject, scaler)
+	expectHPAScalingActive(mockClient, v1.ConditionTrue)
+	// The second spec reuses an HPA observation carrying a ScalerError.
+	// Without the early return in getScalerState, that error overwrites
+	// ErrCacheClosed and the tick is no longer discarded as closed-cache.
+	sh.scaledObjectsMetricCache.StoreRecord(scaledObject.GenerateIdentifier(), hpaMetric, metricscache.MetricsRecord{
+		IsMetricActive: false,
+		ScalerError:    errors.New("hpa scaler error"),
+	})
+
+	isActive, isError, records, activeTriggers, isFallbackActive, err := sh.getScaledObjectState(t.Context(), scaledObject)
+
+	scalerCache.Close(t.Context())
+
+	assert.ErrorIs(t, err, cache.ErrCacheClosed)
+	assert.False(t, isActive)
+	assert.True(t, isError)
+	assert.Empty(t, records)
+	assert.Empty(t, activeTriggers)
+	assert.False(t, isFallbackActive)
+
+	sh.scalerCachesLock.RLock()
+	_, stillPresent := sh.scalerCaches[scaledObject.GenerateIdentifier()]
+	sh.scalerCachesLock.RUnlock()
+	assert.True(t, stillPresent, "ClearScalersCache should not have run")
+}
+
+func TestGetScaledObjectState_EmptyScalerSnapshotIsError(t *testing.T) {
+	recorder := events.NewFakeRecorder(10)
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{Name: "test"},
+			Triggers:       []kedav1alpha1.ScaleTriggers{{Type: "external"}},
+		},
+	}
+	scalerCache := &cache.ScalersCache{
+		Scalers:  []cache.ScalerBuilder{},
+		Recorder: recorder,
+	}
+	sh := scaleHandler{
+		scaleLoopContexts:        &sync.Map{},
+		globalHTTPTimeout:        time.Duration(1000),
+		recorder:                 recorder,
+		scalerCaches:             map[string]*cache.ScalersCache{scaledObject.GenerateIdentifier(): scalerCache},
+		scalerCachesLock:         &sync.RWMutex{},
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
 		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
 		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
 		subsLock:                 &sync.RWMutex{},
 	}
 
-	_, isError, _, _, _, err := sh.getScaledObjectState(context.Background(), &scaledObject)
-	assert.NoError(t, err)
-	assert.False(t, isError)
+	isActive, isError, records, activeTriggers, isFallbackActive, err := sh.getScaledObjectState(context.Background(), &scaledObject)
 
-	sh.scalerCachesLock.RLock()
-	_, stillPresent := sh.scalerCaches[key]
-	sh.scalerCachesLock.RUnlock()
-	assert.True(t, stillPresent, "ClearScalersCache should not have run")
+	assert.ErrorContains(t, err, "no scalers found in scalers cache")
+	assert.False(t, isActive)
+	assert.True(t, isError)
+	assert.Empty(t, records)
+	assert.Empty(t, activeTriggers)
+	assert.False(t, isFallbackActive)
 }
 
 func TestHandleResult_DeltaDoesNotOverwriteConcurrentChanges(t *testing.T) {
