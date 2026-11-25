@@ -94,7 +94,7 @@ func NewEtcdScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	meta, parseErr := parseEtcdMetadata(config)
 	if parseErr != nil {
-		return nil, fmt.Errorf("error parsing kubernetes workload metadata: %w", parseErr)
+		return nil, fmt.Errorf("error parsing etcd metadata: %w", parseErr)
 	}
 
 	cli, err := getEtcdClients(meta, metricscollector.GRPCClientDialOptions())
@@ -114,7 +114,7 @@ func parseEtcdMetadata(config *scalersconfig.ScalerConfig) (*etcdMetadata, error
 	meta := &etcdMetadata{}
 
 	if err := config.TypedConfig(meta); err != nil {
-		return nil, fmt.Errorf("error parsing redis metadata: %w", err)
+		return nil, fmt.Errorf("error parsing etcd metadata: %w", err)
 	}
 
 	meta.triggerIndex = config.TriggerIndex

@@ -32,6 +32,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -501,9 +502,9 @@ func mockScaleAndDeployment(
 	scaleClient.EXPECT().Scales(gomock.Eq("default")).Return(mockScaleInterface).MinTimes(1).MaxTimes(2)
 	mockScaleInterface.EXPECT().Get(
 		gomock.Any(),
-		gomock.Eq("apps"),
-		gomock.Eq("deployment"),
-		gomock.Eq("myapp"),
+		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
+		"myapp",
+		metav1.GetOptions{},
 	).Return(scale, nil).MinTimes(1).MaxTimes(2)
 
 	// Mock Deployment lookup
@@ -588,8 +589,7 @@ func buildScaledObject(fallbackConfig *kedav1alpha1.Fallback, status *kedav1alph
 		},
 		Status: kedav1alpha1.ScaledObjectStatus{
 			ScaleTargetGVKR: &kedav1alpha1.GroupVersionKindResource{
-				Group: "apps",
-				Kind:  "Deployment",
+				Group: "apps", Version: "v1", Kind: "Deployment", Resource: "deployments",
 			},
 		},
 	}

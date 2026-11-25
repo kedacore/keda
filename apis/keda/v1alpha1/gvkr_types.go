@@ -38,6 +38,11 @@ func (gvkr GroupVersionKindResource) GroupVersion() schema.GroupVersion {
 	return schema.GroupVersion{Group: gvkr.Group, Version: gvkr.Version}
 }
 
+// GroupVersionResource returns the exact REST resource for the scale target.
+func (gvkr GroupVersionKindResource) GroupVersionResource() schema.GroupVersionResource {
+	return gvkr.GroupVersion().WithResource(gvkr.Resource)
+}
+
 // GroupResource returns the group and resource of GroupVersionKindResource
 func (gvkr GroupVersionKindResource) GroupResource() schema.GroupResource {
 	return schema.GroupResource{Group: gvkr.Group, Resource: gvkr.Resource}

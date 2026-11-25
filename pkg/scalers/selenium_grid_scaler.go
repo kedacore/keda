@@ -179,7 +179,7 @@ func parseSeleniumGridScalerMetadata(config *scalersconfig.ScalerConfig) (*selen
 	}
 
 	if err := config.TypedConfig(meta); err != nil {
-		return nil, fmt.Errorf("error parsing prometheus metadata: %w", err)
+		return nil, fmt.Errorf("error parsing selenium grid metadata: %w", err)
 	}
 
 	meta.triggerIndex = config.TriggerIndex
