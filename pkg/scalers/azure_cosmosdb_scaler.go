@@ -618,6 +618,9 @@ func (c *cosmosDBClient) estimateOnce(ctx context.Context) (int64, int64, bool, 
 //  5. If 410/1002: flag a stale parent lease so the lease store can be refreshed
 func (c *cosmosDBClient) estimatePartitionLag(ctx context.Context, lease leaseDocument) (int64, bool, error) {
 	fullFidelity := lease.Mode == cosmosDBFullFidelityFeed
+	if fullFidelity && lease.ContinuationToken == "" {
+		c.logger.V(1).Info(fmt.Sprintf("partition %s: all-versions-and-deletes lease has no checkpoint yet, so lag is counted from now", lease.LeaseToken))
+	}
 	cfResp, err := c.readChangeFeed(ctx, lease.LeaseToken, lease.ContinuationToken, fullFidelity)
 	if err != nil {
 		return 0, false, fmt.Errorf("error reading change feed for partition %s: %w", lease.LeaseToken, err)
