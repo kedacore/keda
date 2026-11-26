@@ -39,8 +39,7 @@ type arangoDBMetadata struct {
 	ArangoDBAuth *authentication.Config `keda:"optional"`
 	// Specify the unique arangoDB server ID. Only required if bearer JWT is being used.
 	// +optional
-	serverID string
-
+	ServerID string `keda:"name=serverID, order=triggerMetadata;authParams;resolvedEnv, optional"`
 	// The name of the database to be queried.
 	// +required
 	DbName string `keda:"name=dbName, order=triggerMetadata;authParams"`
@@ -82,18 +81,20 @@ func NewArangoDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
-
 	meta, err := parseArangoDBMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing arangoDB metadata: %w", err)
 	}
-
+	// Security: serverID is required only for bearer auth
+	if meta.ArangoDBAuth.EnabledBearerAuth() && meta.ServerID == "" {
+		return nil, fmt.Errorf("serverID is required when bearer authentication is used")
+	}
 	client, err := getNewArangoDBClient(meta)
 	if err != nil {
 		return nil, err
 	}
-
-	return &arangoDBScaler{
+	
+return &arangoDBScaler{
 		metricType: metricType,
 		metadata:   meta,
 		client:     client,
@@ -108,18 +109,16 @@ const arangodJWTIssuer = "arangodb"
 // is set, the client opens at most that many connections to each endpoint.
 func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
 	var auth connection.Authentication
-
-	if meta.ArangoDBAuth.EnabledBasicAuth() {
+if meta.ArangoDBAuth.EnabledBasicAuth() {
 		auth = connection.NewBasicAuth(meta.ArangoDBAuth.Username, meta.ArangoDBAuth.Password)
 	} else if meta.ArangoDBAuth.EnabledBearerAuth() {
-		hdr, err := createArangodJWTAuthorizationHeader(meta.ArangoDBAuth.BearerToken, meta.serverID)
+		hdr, err := createArangodJWTAuthorizationHeader(meta.ArangoDBAuth.BearerToken, meta.ServerID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create bearer token authorization header, %w", err)
 		}
 		auth = connection.NewHeaderAuth("Authorization", hdr)
 	}
-
-	conn := connection.NewHttpConnection(connection.HttpConfiguration{
+conn := connection.NewHttpConnection(connection.HttpConfiguration{
 		Authentication: auth,
 		Endpoint:       connection.NewRoundRobinEndpoints(strings.Split(meta.Endpoints, ",")),
 		Transport: &http.Transport{
