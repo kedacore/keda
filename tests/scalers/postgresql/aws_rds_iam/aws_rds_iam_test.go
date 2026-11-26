@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -242,7 +243,7 @@ func getTemplateData(t *testing.T) (templateData, []Template, []Template) {
 	connectionString := url.URL{
 		Scheme:   "postgresql",
 		User:     url.UserPassword(rdsAdminUsername, rdsAdminPassword),
-		Host:     fmt.Sprintf("%s:5432", rdsHost),
+		Host:     net.JoinHostPort(rdsHost, "5432"),
 		Path:     rdsDatabase,
 		RawQuery: "sslmode=require",
 	}
