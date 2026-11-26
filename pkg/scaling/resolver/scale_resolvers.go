@@ -35,12 +35,12 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	corev1listers "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/scale"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/k8s"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/util"
@@ -840,7 +840,7 @@ func resolveServiceAccountAnnotation(ctx context.Context, client client.Client, 
 }
 
 // GetCurrentReplicas returns the current replica count for a ScaledObject
-func GetCurrentReplicas(ctx context.Context, client client.Client, scaleClient scale.ScalesGetter, scaledObject *kedav1alpha1.ScaledObject) (int32, error) {
+func GetCurrentReplicas(ctx context.Context, client client.Client, scaleClient k8s.ScalesGetter, scaledObject *kedav1alpha1.ScaledObject) (int32, error) {
 	// trying to prevent operator crashes, due to some race condition, sometimes scaledObject.Status.ScaleTargetGVKR is nil
 	// see https://github.com/kedacore/keda/issues/4389
 	// Tracking issue: https://github.com/kedacore/keda/issues/4955
@@ -895,7 +895,7 @@ func GetCurrentReplicas(ctx context.Context, client client.Client, scaleClient s
 			}
 		}
 		// Fall back to scale subresource if cache read or field extraction fails.
-		scale, err := scaleClient.Scales(scaledObject.Namespace).Get(ctx, targetGVKR.GroupResource(), targetName, metav1.GetOptions{})
+		scale, err := scaleClient.Scales(scaledObject.Namespace).Get(ctx, targetGVKR.GroupVersionResource(), targetName, metav1.GetOptions{})
 		if err != nil {
 			logger.Error(err, "error getting scale subresource")
 			return 0, err

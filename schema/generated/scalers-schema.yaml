@@ -3119,6 +3119,13 @@ scalers:
           type: string
           default: "0"
           metadataVariableReadable: true
+        - name: lagStrategy
+          type: string
+          default: all
+          allowedValue:
+            - all
+            - pending
+          metadataVariableReadable: true
         - name: useHttps
           type: string
           optional: true

@@ -171,6 +171,18 @@ in parallel, but tests within a file can be run in parallel or in series. More a
 > }
 > ```
 
+## Waiting in tests
+
+Do **not** use bare `time.Sleep` under `tests/`. Fixed sleeps are calibrated to one CI environment and flake everywhere else (see [#7991](https://github.com/kedacore/keda/issues/7991)). Pre-commit / CI enforce this via [`tools/check_test_sleeps.sh`](../tools/check_test_sleeps.sh); known leftovers are listed in [`tools/test_sleep_allowlist.txt`](../tools/test_sleep_allowlist.txt) and should shrink over time.
+
+Use the primitives in [`helper/helper.go`](helper/helper.go):
+
+- **`KedaEventually(ctx, cond, interval)`** — poll until `cond` returns true (or the context deadline expires). Prefer this for "wait until X is ready / has N replicas / reports status Y".
+- **`KedaConsistently(ctx, cond, interval)`** — assert that `cond` stays true for the whole context window. Prefer this for "must not scale / must not create a job for N seconds" instead of sleeping then reading once.
+- **`WaitFor*` helpers** — thin wrappers over those primitives for common Kubernetes reads (replica counts, job success, pod ready, …). Always **assert the bool they return** (`assert.True` / `require.True`); discarding it turns the wait into a delay that cannot fail.
+
+When picking a budget, put the reason next to it (how many polling intervals of the resource under test, how long a cold image pull can take, …). Prefer a deadline (`context.WithTimeout`) over a bare iteration count.
+
 ## Adding tests
 
 - Tests are written using `Go`'s default [`testing`](https://pkg.go.dev/testing) framework, and [`testify`](https://pkg.go.dev/github.com/stretchr/testify).
