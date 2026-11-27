@@ -187,7 +187,7 @@ func fallbackExceededThreshold(status kedav1alpha1.ScaledObjectStatus, failureTh
 func HasValidFallback(scaledObject *kedav1alpha1.ScaledObject) bool {
 	modifierChecking := true
 	if scaledObject.IsUsingModifiers() {
-		value, err := strconv.ParseInt(scaledObject.Spec.Advanced.ScalingModifiers.Target, 10, 64)
+		value, err := strconv.ParseFloat(scaledObject.Spec.Advanced.ScalingModifiers.Target, 64)
 		modifierChecking = err == nil && value > 0
 	}
 	return scaledObject.Spec.Fallback.FailureThreshold >= 0 &&
