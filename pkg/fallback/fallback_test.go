@@ -244,6 +244,50 @@ var _ = Describe("fallback", func() {
 		Expect(so.Status.Health[metricName]).To(haveFailureAndStatus(4, kedav1alpha1.HealthStatusFailing))
 	})
 
+	It("should return fallback metrics when scalingModifiers target is fractional", func() {
+		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("some error"))
+		startingNumberOfFailures := int32(3)
+		expectedMetricValue := 0.8 * 10
+
+		so := buildScaledObject(
+			&kedav1alpha1.Fallback{
+				FailureThreshold: int32(3),
+				Replicas:         int32(10),
+			},
+			&kedav1alpha1.ScaledObjectStatus{
+				Health: map[string]kedav1alpha1.HealthStatus{
+					metricName: {
+						NumberOfFailures: &startingNumberOfFailures,
+						Status:           kedav1alpha1.HealthStatusHappy,
+					},
+				},
+			},
+		)
+		so.Spec.Advanced = &kedav1alpha1.AdvancedConfig{
+			ScalingModifiers: kedav1alpha1.ScalingModifiers{
+				Target:     "0.8",
+				Formula:    "trig_one / trig_two",
+				MetricType: v2.AverageValueMetricType,
+			},
+		}
+
+		metricSpec := createMetricSpec(10)
+		expectStatusPatch(ctrl, client)
+
+		mockScaleAndDeployment(ctrl, client, scaleClient, 5)
+
+		metrics, fallbackActive, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
+		metrics, fallbackActive, err = GetMetricsWithFallback(newHandler(client, scaleClient, so), metrics, err, metricName, metricSpec)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(fallbackActive).To(BeTrue())
+		Expect(metrics).To(HaveLen(1))
+		Expect(metrics[0].MetricName).To(Equal(kedav1alpha1.CompositeMetricName))
+		value := metrics[0].Value.AsApproximateFloat64()
+		Expect(value).Should(Equal(expectedMetricValue))
+		Expect(so.Status.Health[metricName]).To(haveFailureAndStatus(4, kedav1alpha1.HealthStatusFailing))
+	})
+
 	It("should ignore error if we fail to update kubernetes status", func() {
 		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("some error"))
 		startingNumberOfFailures := int32(3)
@@ -625,6 +669,38 @@ func createMetricSpec(averageValue int) v2.MetricSpec {
 				AverageValue: qty,
 			},
 		},
+	}
+}
+
+func TestHasValidFallback_FractionalScalingModifiersTarget(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		target string
+	}{
+		{name: "fractional", target: "0.8"},
+		{name: "mixed", target: "2.5"},
+		{name: "integer with decimal point", target: "1.0"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			so := &kedav1alpha1.ScaledObject{
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					Fallback: &kedav1alpha1.Fallback{
+						FailureThreshold: 3,
+						Replicas:         5,
+					},
+					Advanced: &kedav1alpha1.AdvancedConfig{
+						ScalingModifiers: kedav1alpha1.ScalingModifiers{
+							Target:     tc.target,
+							Formula:    "trig_one / trig_two",
+							MetricType: v2.AverageValueMetricType,
+						},
+					},
+				},
+			}
+			if !HasValidFallback(so) {
+				t.Fatalf("HasValidFallback(%q) = false, want true", tc.target)
+			}
+		})
 	}
 }
 
