@@ -697,6 +697,14 @@ func validateScalingModifiersFormula(so *ScaledObject) (*vm.Program, error) {
 func validateScalingModifiersTarget(so *ScaledObject) error {
 	sm := so.Spec.Advanced.ScalingModifiers
 
+	// activationTarget is parsed as a float on every scaling loop, so reject
+	// invalid values here instead of failing at runtime
+	if sm.ActivationTarget != "" {
+		if _, err := strconv.ParseFloat(sm.ActivationTarget, 64); err != nil {
+			return fmt.Errorf("error converting activationTarget for scalingModifiers (string->float) to valid value: %w", err)
+		}
+	}
+
 	if sm.Target == "" {
 		return nil
 	}
