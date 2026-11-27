@@ -320,9 +320,16 @@ func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity ke
 		logger.Error(err, fmt.Sprintf("Found error opening postgreSQL: %s", err))
 		return nil, err
 	}
-	err = db.PingContext(ctx)
+	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAws {
+		// Lets the caller cancel signing the first token
+		// Other paths keep Ping as the Azure token refresh in getActiveNumber isn't safe to cancel midway, see #8423
+		err = db.PingContext(ctx)
+	} else {
+		err = db.Ping()
+	}
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Found error pinging postgreSQL: %s", err))
+		db.Close()
 		return nil, err
 	}
 	return db, nil
