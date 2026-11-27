@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"net"
 	"os"
@@ -513,5 +514,37 @@ func TestPostgreSQLAwsIAMUsesCAFromAuthParams(t *testing.T) {
 	}
 	if connConfig.TLSConfig.ServerName != "mydb.abc123.us-east-2.rds.amazonaws.com" {
 		t.Errorf("expected the server name to be verified, got %q", connConfig.TLSConfig.ServerName)
+	}
+}
+
+func TestPostgreSQLAwsIAMConnectionHonoursContext(t *testing.T) {
+	roleArn := "arn:aws:iam::123456789012:role/keda-rds"
+	meta, podIdentity, err := parsePostgreSQLMetadata(logr.Discard(), &scalersconfig.ScalerConfig{
+		TriggerMetadata:  awsRDSTriggerMetadata(map[string]string{"sslrootcert": writeTestCABundle(t)}),
+		PodIdentity:      kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAws, RoleArn: &roleArn},
+		TriggerUniqueKey: "test-cancelled-context",
+	})
+	if err != nil {
+		t.Fatal("Could not parse metadata:", err)
+	}
+	t.Cleanup(func() { awsutils.ClearAwsConfig(meta.awsAuthorization) })
+
+	signed := false
+	previous := buildRDSAuthToken
+	buildRDSAuthToken = func(context.Context, string, string, string, aws.CredentialsProvider, ...func(*rdsauth.BuildAuthTokenOptions)) (string, error) {
+		signed = true
+		return "signed-token", nil
+	}
+	t.Cleanup(func() { buildRDSAuthToken = previous })
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err = getConnection(ctx, meta, podIdentity, logr.Discard())
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+	if signed {
+		t.Error("expected no token to be signed after the context was cancelled")
 	}
 }

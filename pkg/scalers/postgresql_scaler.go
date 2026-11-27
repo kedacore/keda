@@ -320,7 +320,7 @@ func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity ke
 		logger.Error(err, fmt.Sprintf("Found error opening postgreSQL: %s", err))
 		return nil, err
 	}
-	err = db.Ping()
+	err = db.PingContext(ctx)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Found error pinging postgreSQL: %s", err))
 		return nil, err

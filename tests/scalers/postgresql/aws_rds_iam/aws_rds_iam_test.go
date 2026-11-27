@@ -156,10 +156,12 @@ func TestPostgreSQLScalerWithAwsRDSIAM(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, clientTemplates, templates := getTemplateData(t)
 	t.Cleanup(func() {
+		// Deferred so the namespace is removed even if the SQL cleanup fails
+		defer DeleteKubernetesResources(t, testNamespace, data, clientTemplates)
+
 		// Remove the ScaledObject first so KEDA stops connecting as the IAM user before it's dropped
 		KubectlDeleteMultipleWithTemplate(t, data, templates)
 		execAdminSQL(t, fmt.Sprintf(`DROP TABLE IF EXISTS task_instance; DROP ROLE IF EXISTS \"%s\";`, rdsIAMUsername))
-		DeleteKubernetesResources(t, testNamespace, data, clientTemplates)
 	})
 
 	// The in-cluster PostgreSQL pod is only used as a psql client for the RDS instance
@@ -185,6 +187,9 @@ func TestPostgreSQLScalerWithAwsRDSIAM(t *testing.T) {
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
 	KubectlReplaceWithTemplate(t, data, "lowLevelRecordsJobTemplate", pg.LowLevelRecordsJobTemplate)
+	// Wait for the records to be inserted, otherwise the check below could pass against an empty table
+	require.True(t, WaitForJobSuccess(t, kc, "postgresql-insert-low-level-job", testNamespace, 60, 3),
+		"low level records job should succeed after 3 minutes")
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
