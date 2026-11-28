@@ -495,17 +495,28 @@ func getTemporalClient(ctx context.Context, meta *temporalMetadata, log logr.Log
 		options.Credentials = sdk.NewAPIKeyStaticCredentials(meta.APIKey)
 	}
 
-	tlsConfig, err := buildTemporalTLSConfig(meta, log)
+	connectionOptions, err := buildTemporalConnectionOptions(meta, dialOptions, log)
 	if err != nil {
 		return nil, err
 	}
-
-	options.ConnectionOptions = sdk.ConnectionOptions{
-		DialOptions: dialOptions,
-		TLS:         tlsConfig,
-	}
+	options.ConnectionOptions = connectionOptions
 
 	return sdk.DialContext(ctx, options)
+}
+
+func buildTemporalConnectionOptions(meta *temporalMetadata, dialOptions []grpc.DialOption, log logr.Logger) (sdk.ConnectionOptions, error) {
+	tlsConfig, err := buildTemporalTLSConfig(meta, log)
+	if err != nil {
+		return sdk.ConnectionOptions{}, err
+	}
+
+	return sdk.ConnectionOptions{
+		DialOptions: dialOptions,
+		TLS:         tlsConfig,
+		// The SDK turns TLS on for API key credentials unless TLSDisabled is set,
+		// so an apiKey with enableTLS=false must disable TLS explicitly.
+		TLSDisabled: meta.APIKey != "" && !meta.EnableTLS && tlsConfig == nil,
+	}, nil
 }
 
 func buildTemporalTLSConfig(meta *temporalMetadata, log logr.Logger) (*tls.Config, error) {

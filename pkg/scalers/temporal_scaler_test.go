@@ -625,6 +625,31 @@ func TestBuildTemporalTLSConfig(t *testing.T) {
 	})
 }
 
+func TestBuildTemporalConnectionOptions(t *testing.T) {
+	t.Run("apiKey + enableTLS=false disables TLS (plaintext)", func(t *testing.T) {
+		meta := &temporalMetadata{APIKey: "secret", EnableTLS: false}
+		opts, err := buildTemporalConnectionOptions(meta, nil, logger)
+		assert.NoError(t, err)
+		assert.Nil(t, opts.TLS)
+		assert.True(t, opts.TLSDisabled, "TLSDisabled must be set, or the SDK enables TLS for the API key")
+	})
+	t.Run("apiKey + enableTLS=true keeps TLS", func(t *testing.T) {
+		meta := &temporalMetadata{APIKey: "secret", EnableTLS: true}
+		opts, err := buildTemporalConnectionOptions(meta, nil, logger)
+		assert.NoError(t, err)
+		assert.NotNil(t, opts.TLS)
+		assert.False(t, opts.TLSDisabled)
+	})
+	t.Run("apiKey + cert+key + enableTLS=false keeps mTLS", func(t *testing.T) {
+		certPEM, keyPEM := generateTemporalTestCertAndKey(t)
+		meta := &temporalMetadata{APIKey: "secret", EnableTLS: false, Cert: certPEM, Key: keyPEM}
+		opts, err := buildTemporalConnectionOptions(meta, nil, logger)
+		assert.NoError(t, err)
+		assert.NotNil(t, opts.TLS)
+		assert.False(t, opts.TLSDisabled)
+	})
+}
+
 func TestAuthType(t *testing.T) {
 	cases := []struct {
 		name string
